@@ -61,15 +61,13 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
       Eigen::Matrix<T, Eigen::Dynamic, 1> xx(data.transpose() * X);
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> co(Dop * data / T(2));
       for(int i = 0; i < data.cols(); i ++) {
-        Eigen::Matrix<T, Eigen::Dynamic, 1> n2v(xx[i] * co.col(i) + ff[i] * dd.col(i));
-        T ratio(sqrt(n2v.dot(n2v)));
-        const int w(data.rows());
-        ratio  = (ratio == 0 ? T(0) : T(1) / ratio);
-        ratio *= sin(Pi / w) / (cos(Pi / w) - T(1)) * T(2) / (w + 1);
-        ff[i] *= ratio / T(2);
-        xx[i] *= ratio / T(2);
+        const T lr(data.rows() * data.rows() * 2. * Pi * 2. * Pi);
+        ff[i] /= lr * T(2);
+        xx[i] /= lr * T(2);
         for(int j = 0; j < data.rows(); j ++) {
-          const T delta(- co(j, i) * (xx[i] * co(j, i) + ff[i] * dd(j, i)));
+          // XXX fixme:
+          // const T delta(- co(j, i) * (xx[i] * co(j, i) + ff[i] * dd(j, i)));
+          const T delta(- (xx[i] * co(j, i) + ff[i] * dd(j, i)));
           result(j * 2 + 0, i) = data(j, i) - delta;
           result(j * 2 + 1, i) = data(j, i) + delta;
         }
@@ -186,7 +184,7 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
       result.row(0) = data.row(0);
       for(int i = 0; i < work.cols(); i ++)
         for(int j = 1; j < work.rows(); j ++)
-          result(j, i) = result(j - 1, i) + work(j, i) / 2.;
+          result(j, i) = result(j - 1, i) + work(j - 1, i) / 2.;
     }
     break;
   case ENLARGE_BOTH:

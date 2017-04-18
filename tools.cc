@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include "ppm2eigen.hh"
 #include "enlarge.hh"
+#include "fisheye.hh"
 
 using namespace std;
 
@@ -47,7 +48,12 @@ int main(int argc, const char* argv[]) {
     }
     break;
   case 2:
-    cerr << "not implemented now." << endl;
+    {
+      PseudoBump<float> bump;
+      data[0] = bump.getPseudoBump(bump.rgb2l(data), true);
+      data[1] = data[0];
+      data[2] = data[0];
+    }
     break;
   default:
     break;
