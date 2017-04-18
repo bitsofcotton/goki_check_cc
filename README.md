@@ -9,3 +9,6 @@ Goki Check on the implementation of C plus plus.
     
     # enlarge for left differential
     ./tools enlargeds input.ppm output.ppm
+    
+    # make 2d to 3d pseudo bumpmap
+    ./tools bump input.ppm output.ppm
