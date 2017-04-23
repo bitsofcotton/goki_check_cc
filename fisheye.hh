@@ -1,6 +1,7 @@
 #if !defined(_2D3D_PSEUDO_)
 
 #include <cstdio>
+#include <cmath>
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "enlarge.hh"
@@ -17,6 +18,7 @@ public:
   T      gthresh;
   int    zband;
   int    rband;
+  int    pratio;
   T      Pi;
   
   PseudoBump();
@@ -44,7 +46,8 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 16, 64, 2, 100., 1e4, 1e-17, 2 / 256., 4, 4);
+  // initialize(32, 16, 16, 3, 100., 1e4, 1e-17, 2 / 256., 16, 4);
+  initialize(8, 16, 16, 2, 100., 1e4, 1e-17, 2 / 256., 16, 4);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -52,9 +55,10 @@ template <typename T> PseudoBump<T>::~PseudoBump() {
 }
 
 template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& enll, const T& roff, const T& rdist, const T& sthresh, const T& gthresh, const int& rband, const int& zband) {
+  const int enlp(std::max(int(pow(2, enll) - 1), int(1)));
   this->z_max   = z_max;
   this->stp     = stp;
-  this->rstp    = rstp;
+  this->rstp    = rstp * enlp;
   this->enll    = enll;
   this->roff    = roff;
   this->rdist   = rdist;
@@ -62,6 +66,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->gthresh = gthresh;
   this->rband   = rband;
   this->zband   = zband;
+  this->pratio  = enlp;
   this->Pi      = 4. * atan2(T(1.), T(1.));
 };
 
@@ -83,10 +88,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const bool& y_only) {
   if(y_only) {
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(input.rows(), input.cols());
     auto work(input);
     for(int i = 0; i < enll; i ++)
-      work = enlarger.enlarge2ds(work, enlarger2exds<T, complex<T> >::ENLARGE_Y);
+      work = enlarger.enlarge2ds(work, enlarger2exds<T, complex<T> >::ENLARGE_BOTH);
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(work.rows(), work.cols());
     ww = work.cols();
     hh = work.rows();
     Eigen::Matrix<T, Eigen::Dynamic, 1> p0(3), p1(3);
@@ -104,10 +109,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         lrf(i, 1)(0, j) = 0;
       }
     const int& delta(result.rows());
-    for(int i = 0; i < work.cols(); i ++) {
+    for(int i = 0; i < result.cols(); i ++) {
       p0[0] = i;
       p1[0] = i;
-      cerr << "bump: " << i << "/" << work.cols() << endl;
+      cerr << "bump: " << i << "/" << result.cols() << endl;
       for(int j = 0; j < result.rows(); j ++)
         result(j, i) = - T(1);
       Eigen::Matrix<T, Eigen::Dynamic, 1> zval(result.rows());
@@ -150,6 +155,24 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         }
       }
       result.col(i) = complementLine(result.col(i));
+    }
+    int ppratio = (result.cols() + input.cols() - 1) / input.cols();
+    cerr << input.cols() * ppratio - result.cols() << endl;
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> res(input.rows(), result.cols());
+    for(int i = 0; i < input.rows(); i ++) {
+      res.row(i) = result.row(i * ppratio);
+      int j;
+      for(j = 1; j < ppratio && i * ppratio + j < result.rows(); j ++)
+        res.row(i) += result.row(i * ppratio + j);
+      res.row(i) /= j;
+    }
+    result = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(input.rows(), input.cols());
+    for(int i = 0; i < input.cols(); i ++) {
+      result.col(i) = res.col(i * ppratio);
+      int j;
+      for(j = 1; j < ppratio && i * ppratio + j < result.cols(); j ++)
+        result.col(i) += res.col(i * ppratio + j);
+      result.col(i) /= j;
     }
     return result;
   } else {
@@ -256,16 +279,16 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
   complex<T> I(sqrt(complex<T>(- 1)));
   for(int i = 0; i < Dopb.rows(); i ++)
     for(int j = 0; j < Dopb.cols(); j ++) {
-      Dopb(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>((i + 1) * (j + 1)) / T(Dopb.rows()));
-      Iopb(i, j) = exp(complex<T>(  2) * Pi * I * complex<T>((i + 1) * (j + 1)) / T(Dopb.rows())) / T(Dopb.rows());
+      Dopb(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>(i * j) / T(Dopb.rows()));
+      Iopb(i, j) = exp(complex<T>(  2) * Pi * I * complex<T>(i * j) / T(Dopb.rows())) / T(Dopb.rows());
     }
   for(int i = 0; i < Dopb.rows(); i ++)
     Dopb.row(i) *= complex<T>(- 2.) * Pi * I * T(i) / T(Dopb.rows());
   Dop = (Iopb * Dopb).real();
   for(int i = 0; i < Dop2b.rows(); i ++)
     for(int j = 0; j < Dop2b.cols(); j ++) {
-      Dop2b(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>((i + 1) * (j + 1)) / T(Dop2b.rows()));
-      Iop2b(i, j) = exp(complex<T>(  2) * Pi * I * complex<T>((i + 1) * (j + 1)) / T(Dop2b.rows())) / T(Dop2b.rows());
+      Dop2b(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>(i * j) / T(Dop2b.rows()));
+      Iop2b(i, j) = exp(complex<T>(  2) * Pi * I * complex<T>(i * j) / T(Dop2b.rows())) / T(Dop2b.rows());
     }
   for(int i = 0; i < Dop2b.rows(); i ++)
     Dop2b.row(i) *= complex<T>(- 2.) * Pi * I * T(i) / T(Dop2b.rows());
@@ -372,7 +395,7 @@ template <typename T> T PseudoBump<T>::complement(const Eigen::Matrix<int, Eigen
     }
     res += pts[rng[i]] * work;
   }
-  return max(T(0), min(T(2), res));
+  return std::max(T(0), std::min(T(2), res));
 }
 
 #define _2D3D_PSEUDO_

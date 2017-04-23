@@ -141,13 +141,13 @@ template <typename T, typename U> void enlarger2ex<T,U>::initPattern(const int& 
   Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> Dbuf(size, size);
   for(int i = 0; i < Dbuf.rows(); i ++)
     for(int j = 0; j < Dbuf.cols(); j ++)
-      Dbuf(i, j) = exp(U(- 2.) * Pi * I * U((i + 1) * (j + 1) / T(size)));
+      Dbuf(i, j) = exp(U(- 2.) * Pi * I * U(i * j / T(size)));
   for(int i = 0; i < Dbuf.rows(); i ++)
     Dbuf.row(i) *= U(- 2.) * Pi * I * U(i / T(size));
   Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> Iop(size, size);
   for(int i = 0; i < Dbuf.rows(); i ++)
     for(int j = 0; j < Dbuf.cols(); j ++)
-      Iop(i, j) = exp(U(2.) * Pi * I * U((i + 1) * (j + 1) / T(size))) / U(size);
+      Iop(i, j) = exp(U(2.) * Pi * I * U(i * j / T(size))) / U(size);
   Dop = (Iop * Dbuf).real().template cast<T>();
   return;
 }
