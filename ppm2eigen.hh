@@ -122,19 +122,22 @@ template <typename T> bool savep2or3(const char* filename, Eigen::Matrix<T, Eige
   return true;
 }
 
-template <typename T> void normalize(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const T& upper) {
+template <typename T> void normalize(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> data[3], const T& upper) {
   T MM(0), mm(0);
-  for(int i = 0; i < data.rows(); i ++)
-    for(int j = 0; j < data.cols(); j ++) {
-      MM = std::max(MM, data(i, j));
-      mm = std::min(mm, data(i, j));
-    }
+  for(int k = 0; k < 3; k ++)
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++) {
+        MM = std::max(MM, data[k](i, j));
+        mm = std::min(mm, data[k](i, j));
+      }
   if(MM == mm)
     return;
-  for(int i = 0; i < data.rows(); i ++)
-    for(int j = 0; j < data.cols(); j ++)
-      data(i, j) -= mm;
-  data *= upper / (MM - mm);
+  for(int k = 0; k < 3; k ++) {
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++)
+        data[k](i, j) -= mm;
+    data[k] *= upper / (MM - mm);
+  }
 }
 
 #define _PPM2EIGEN_
