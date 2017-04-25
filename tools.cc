@@ -9,7 +9,7 @@
 using namespace std;
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlargeds|bump) <input filename>.p[gp]m <output filename>.p[gp]m";
+  cout << "Usage: tools (enlarge|enlargeds|bump|bumpds|detect|collect) <input filename>.p[gp]m <output filename>.p[gp]m";
   return;
 }
 
@@ -57,7 +57,7 @@ int main(int argc, const char* argv[]) {
   case 2:
     {
       PseudoBump<float> bump;
-      data[0] = bump.getPseudoBump(bump.rgb2l(data), true, false);
+      data[0] = bump.getPseudoBump(bump.rgb2l(data), ! true, false);
       data[1] = data[0];
       data[2] = data[0];
     }

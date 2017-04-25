@@ -5,6 +5,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "enlarge.hh"
+#include "edgedetect.hh"
 
 template <typename T> class PseudoBump {
 public:
@@ -25,7 +26,7 @@ public:
   void initialize(const int& z_max, const int& stp, const int& rstp, const int& enll, const T& roff, const T& rdist, const T& sthresh, const T& gthresh, const int& rband, const int& zband);
   ~PseudoBump();
   
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBump(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const bool& y_only);
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBump(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const bool& y_only, const bool& differential);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb2l(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb[3]);
 private:
   T zz(const T& t);
@@ -86,11 +87,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return .212639 * rgb[0] + .715169 * rgb[1] + .072192 * rgb[2];
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const bool& y_only) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const bool& y_only, const bool& differential) {
   if(y_only) {
     auto work(input);
     for(int i = 0; i < enll; i ++)
       work = enlarger.enlarge2ds(work, enlarger2exds<T, complex<T> >::ENLARGE_BOTH);
+    if(differential) {
+      edgedetect<float, complex<float> > detect;
+      work = detect.detect(work, edgedetect<float, complex<float> >::COLLECT_Y);
+    }
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(work.rows(), work.cols());
     ww = work.cols();
     hh = work.rows();
@@ -176,8 +181,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     }
     return result;
   } else {
-    auto pbx(getPseudoBump(input.transpose(), true).transpose());
-    auto pby(getPseudoBump(input, true));
+    auto pbx(getPseudoBump(input.transpose(), true, differential).transpose());
+    auto pby(getPseudoBump(input, true, differential));
     return (pbx + pby) / 2.;
   }
   return Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>();
@@ -220,6 +225,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSqua
   for(int i = 0; i < w.size(); i ++)
     result[i] *= w[i];
   result = Vt * result;
+  result[0] += avg[0];
   return result;
 }
 

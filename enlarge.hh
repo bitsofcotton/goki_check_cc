@@ -14,6 +14,7 @@ public:
   enlarger2ex();
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarge2(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>&, const direction_t& dir);
 private:
+  T sgn(const T& x);
   void seedPattern(const int&, const int&, const int&);
   void initPattern(const int&);
   U    I;
@@ -29,6 +30,14 @@ private:
 template <typename T, typename U> enlarger2ex<T,U>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1.), T(1.)) * T(4.);
+}
+
+template <typename T, typename U> T enlarger2ex<T,U>::sgn(const T& x) {
+  if(x < T(0))
+    return - T(1);
+  if(x > T(0))
+    return T(1);
+  return T(0);
 }
 
 template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T,U>::enlarge2(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const enlarger2ex<T,U>::direction_t& dir) {
@@ -61,13 +70,15 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
       Eigen::Matrix<T, Eigen::Dynamic, 1> xx(data.transpose() * X);
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> co(Dop * data / T(2));
       for(int i = 0; i < data.cols(); i ++) {
-        const T lr(data.rows() * data.rows() * 2. * Pi * 2. * Pi);
+        // XXX fixme:
+        const T lr(data.rows() * data.rows() * 2. * Pi * Pi);
         ff[i] /= lr * T(2);
         xx[i] /= lr * T(2);
         for(int j = 0; j < data.rows(); j ++) {
           // XXX fixme:
           // const T delta(- co(j, i) * (xx[i] * co(j, i) + ff[i] * dd(j, i)));
-          const T delta(- (xx[i] * co(j, i) + ff[i] * dd(j, i)));
+          const T delta(- sgn(co(j, i)) * std::abs(xx[i] * co(j, i) + ff[i] * dd(j, i)));
+          // const T delta(- (xx[i] * co(j, i) + ff[i] * dd(j, i)));
           result(j * 2 + 0, i) = data(j, i) - delta;
           result(j * 2 + 1, i) = data(j, i) + delta;
         }
