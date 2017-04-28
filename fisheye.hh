@@ -181,8 +181,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     }
     return result;
   } else {
-    auto pbx(getPseudoBump(input.transpose(), true, differential).transpose());
-    auto pby(getPseudoBump(input, true, differential));
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pbx(getPseudoBump(input.transpose(), true, differential).transpose());
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pby(getPseudoBump(input, true, differential));
     return (pbx + pby) / 2.;
   }
   return Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>();
