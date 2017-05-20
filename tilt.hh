@@ -40,7 +40,7 @@ private:
 };
 
 template <typename T> tilter<T>::tilter() {
-  initialize(300., .99, 4);
+  initialize(4., .99, 4);
   return;
 }
 
@@ -120,7 +120,7 @@ template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& 
   for(int i = 0; i < 3; i ++)
     work(i, 3) = 0.;
   for(int i = 0; i < 3;  i ++) {
-    work(2, i)  = bump(int(work(0, i)), int(work(1, i))) * std::sqrt(T(work.rows() * work.cols())) * z_ratio;
+    work(2, i)  = bump(int(work(0, i)), int(work(1, i))) * std::sqrt(T(in.rows() * in.cols())) * z_ratio;
     work(0, 3) += in(int(work(0, i)), int(work(1, i)));
     work(1, 3) += work(2, i);
   }
@@ -217,8 +217,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     return result;
   }
   std::vector<Triangles> triangles;
-  for(int i = 0; i < in.cols() - 1; i ++)
-    for(int j = 0; j < in.rows() - 1; j ++) {
+  for(int i = 0; i < in.rows() - 1; i ++)
+    for(int j = 0; j < in.cols() - 1; j ++) {
       triangles.push_back(makeTriangle(i, j, in, bump, false));
       triangles.push_back(makeTriangle(i, j, in, bump, true));
     }
