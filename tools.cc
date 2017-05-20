@@ -5,11 +5,12 @@
 #include "enlarge.hh"
 #include "fisheye.hh"
 #include "edgedetect.hh"
+#include "tilt.hh"
 
 using namespace std;
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlargeds|bump|bumpds|detect|collect) <input filename>.p[gp]m <output filename>.p[gp]m";
+  cout << "Usage: tools (enlarge|enlargeds|bump|bumpds|detect|collect|tilt) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -31,6 +32,8 @@ int main(int argc, const char* argv[]) {
     mode = 4;
   else if(strcmp(argv[1], "bumpds") == 0)
     mode = 5;
+  else if(strcmp(argv[1], "tilt") == 0)
+    mode = 6;
   if(mode < 0) {
     usage();
     return - 1;
@@ -57,7 +60,7 @@ int main(int argc, const char* argv[]) {
   case 2:
     {
       PseudoBump<float> bump;
-      data[0] = bump.getPseudoBump(bump.rgb2l(data), ! true, false);
+      data[0] = bump.getPseudoBump(bump.rgb2l(data), true, false);
       data[1] = data[0];
       data[2] = data[0];
     }
@@ -84,6 +87,24 @@ int main(int argc, const char* argv[]) {
       data[2] = data[0];
     }
     break;
+  case 6:
+    {
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bump[3];
+      if(!loadp2or3<float>(bump, argv[4]))
+        return - 2;
+      tilter<float> tilt;
+      const int M_TILT = 64;
+      tilt.initialize(200., .99, M_TILT);
+      for(int i = 0; i < M_TILT; i ++) {
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
+        for(int j = 0; j < 3; j ++)
+          out[j] = tilt.tilt(data[j], bump[0], i);
+        std::string outfile(argv[3]);
+        outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
+        savep2or3<float>(outfile.c_str(), out, false);
+      }
+      return 0;
+    }
   default:
     break;
   }
