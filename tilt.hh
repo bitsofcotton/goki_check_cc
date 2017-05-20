@@ -40,7 +40,7 @@ private:
 };
 
 template <typename T> tilter<T>::tilter() {
-  initialize(4., .99, 4);
+  initialize(1., .99, 4);
   return;
 }
 
@@ -122,10 +122,12 @@ template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& 
   for(int i = 0; i < 3;  i ++) {
     work(2, i)  = bump(int(work(0, i)), int(work(1, i))) * std::sqrt(T(in.rows() * in.cols())) * z_ratio;
     work(0, 3) += in(int(work(0, i)), int(work(1, i)));
-    work(1, 3) += work(2, i);
   }
-  work.col(3) /= 3;
+  work(0, 3) /= 3.;
   work.col(4)  = solveN(work.col(0) - work.col(1), work.col(2) - work.col(1), 0);
+  for(int i = 0; i < 3; i ++)
+    work(1, 3) += work.col(4).dot(work.col(i));
+  work(1, 3)   /= 3.;
   return work;
 }
 
@@ -178,8 +180,11 @@ template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::rotate(const Eigen::Matr
     zero[i]    = 0.;
   }
   res.col(3) = triangle.col(3);
-  res(1, 3)  = (res(2, 0) + res(2, 1) + res(2, 2)) / 3.;
   res.col(4) = rotate0(triangle.col(4), zero, theta, psi);
+  res(1, 3)  = 0.;
+  for(int i = 0; i < 3; i ++)
+    res(1, 3) += res.col(4).dot(res.col(i));
+  res(1, 3)   /= 3.;
   return res;
 }
 
@@ -232,7 +237,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   const int i = idx % samples;
   {
     const T theta(2. * Pi * i / samples);
-    const T radius(std::sqrt(T(in.rows()) * T(in.cols())));
+    const T radius(std::max(T(in.rows()), T(in.cols())) * 2.);
     Vec3 pcenter;
     pcenter[0]  = radius * cos(theta) * cos(psi);
     pcenter[1]  = radius * sin(theta) * cos(psi);
@@ -256,13 +261,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
       int tt = int(std::max(std::max(tri(1, 0), tri(1, 1)), tri(1, 2)));
       T    z(0);
       Vec2 geom;
-      for(geom[0] = ll; geom[0] < int(rr + .5); geom[0] ++)
-        for(geom[1] = bb; geom[1] < int(tt + .5); geom[1] ++) {
+      for(geom[0] = ll; geom[0] < int(rr + 1); geom[0] ++)
+        for(geom[1] = bb; geom[1] < int(tt + 1); geom[1] ++) {
           const Vec2 orig(rotate2d(geom, center, - theta));
           if(! (0 <= orig[0] && orig[0] < result.rows() &&
                 0 <= orig[1] && orig[1] < result.cols()) )
             continue;
-          if(onTriangle(z, tri, geom) && zb(int(orig[0]), int(orig[1])) < z) {
+          Vec2 midgeom(geom);
+          midgeom[0] += .5;
+          midgeom[1] += .5;
+          if(onTriangle(z, tri, midgeom) && zb(int(orig[0]), int(orig[1])) < z) {
             result(int(orig[0]), int(orig[1])) = tri(0, 3);
             zb(int(orig[0]), int(orig[1])) = z;
           }
