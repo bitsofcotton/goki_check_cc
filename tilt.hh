@@ -40,7 +40,7 @@ private:
 };
 
 template <typename T> tilter<T>::tilter() {
-  initialize(1., .99, 4);
+  initialize(.125, .9, 4);
   return;
 }
 
@@ -153,6 +153,7 @@ template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::rotate0(const Eigen::Mat
   R1(2, 0) = 0.;
   R1(2, 1) =   sin(psi);
   R1(2, 2) =   cos(psi);
+  // glitch : rotate in 2D, then tilt.
   return R1 * (R0 * (work - origin)) + origin;
 }
 
@@ -221,6 +222,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     std::cerr << "tilt: size mismatch..." << std::endl;
     return result;
   }
+  std::cerr << "making triangles..." << std::endl;
   std::vector<Triangles> triangles;
   for(int i = 0; i < in.rows() - 1; i ++)
     for(int j = 0; j < in.cols() - 1; j ++) {
@@ -231,53 +233,64 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   for(int i = 0; i < zb.rows(); i ++)
     for(int j = 0; j < zb.cols(); j ++)
       zb(i, j) = 0.;
+  const T radius(std::max(T(in.rows()), T(in.cols())) * 2.);
   Vec2 center;
-  center[0] = in.cols() / 2.;
-  center[1] = in.rows() / 2.;
+  Vec3 pcenter;
+  center[0]  = in.cols() / 2.;
+  center[1]  = in.rows() / 2.;
+  pcenter[0] = center[0];
+  pcenter[1] = center[1];
+  pcenter[2] = radius;
   const int i = idx % samples;
   {
+    std::cerr << "rotate: " << i << "/" << samples << std::endl;
     const T theta(2. * Pi * i / samples);
-    const T radius(std::max(T(in.rows()), T(in.cols())) * 2.);
-    Vec3 pcenter;
-    pcenter[0]  = radius * cos(theta) * cos(psi);
-    pcenter[1]  = radius * sin(theta) * cos(psi);
-    pcenter[2]  = radius * sin(psi);
-    pcenter[0] += center[0];
-    pcenter[1] += center[1];
     std::vector<Triangles> rotriangles;
-    for(int j = 0; j < triangles.size(); j ++) {
+    for(int j = 0; j < triangles.size(); j ++)
       rotriangles.push_back(rotate(triangles[j], pcenter, theta, psi));
-      if(j % max(in.cols(), in.rows()) == 0)
-        std::cerr << "rotate: " << j << "/" << triangles.size() << " on " << i << "/" << samples << std::endl;
-    }
+    std::cerr << "draw: " << i << "/" << samples << std::endl;
     for(int j = 0; j < zb.rows(); j ++)
       for(int k = 0; k < zb.cols(); k ++)
         zb(j, k) = - 20000;
+    Mat zb0(zb);
+    Mat result0(result);
+    Vec2 geom0;
+    geom0[0] = rotriangles[0](0, 0);
+    geom0[1] = rotriangles[0](1, 0);
+    geom0    = rotate2d(geom0, center, - theta);
     for(int j = 0; j < rotriangles.size(); j ++) {
       Triangles& tri = rotriangles[j];
-      int ll = int(std::min(std::min(tri(0, 0), tri(0, 1)), tri(0, 2)));
-      int rr = int(std::max(std::max(tri(0, 0), tri(0, 1)), tri(0, 2)));
-      int bb = int(std::min(std::min(tri(1, 0), tri(1, 1)), tri(1, 2)));
-      int tt = int(std::max(std::max(tri(1, 0), tri(1, 1)), tri(1, 2)));
-      T    z(0);
-      Vec2 geom;
-      for(geom[0] = ll; geom[0] < int(rr + 1); geom[0] ++)
-        for(geom[1] = bb; geom[1] < int(tt + 1); geom[1] ++) {
-          const Vec2 orig(rotate2d(geom, center, - theta));
-          if(! (0 <= orig[0] && orig[0] < result.rows() &&
-                0 <= orig[1] && orig[1] < result.cols()) )
-            continue;
-          Vec2 midgeom(geom);
-          midgeom[0] += .5;
-          midgeom[1] += .5;
-          if(onTriangle(z, tri, midgeom) && zb(int(orig[0]), int(orig[1])) < z) {
-            result(int(orig[0]), int(orig[1])) = tri(0, 3);
-            zb(int(orig[0]), int(orig[1])) = z;
+      Vec2 gs[3];
+      for(int k = 0; k < 3; k ++) {
+        gs[k][0] = tri(0, k);
+        gs[k][1] = tri(1, k);
+        gs[k]    = rotate2d(gs[k], center, - theta);
+        gs[k]   -= geom0;
+      }
+      int ll = int(std::min(std::min(gs[0][0], gs[1][0]), gs[2][0]));
+      int rr = std::ceil(std::max(std::max(gs[0][0], gs[1][0]), gs[2][0]));
+      int bb = int(std::min(std::min(gs[0][1], gs[1][1]), gs[2][1]));
+      int tt = std::ceil(std::max(std::max(gs[0][1], gs[1][1]), gs[2][1]));
+      for(int y = std::max(0, ll); y < std::min(rr, int(in.rows())); y ++)
+        for(int x = std::max(0, bb); x < std::min(tt, int(in.cols())); x ++) {
+          T z;
+          Vec2 midgeom;
+          midgeom[0] = y + .25;
+          midgeom[1] = x + .25;
+          if(onTriangle(z, tri, rotate2d(midgeom, center, theta) + geom0) && zb(y, x) < z) {
+            result(y, x) = tri(0, 3);
+            zb(y, x)     = z;
+          }
+          if(zb0(y, x) < tri(1, 3)) {
+            result0(y, x) = tri(0, 3);
+            zb0(y, x)     = tri(1, 3);
           }
         }
-      if(j % max(in.rows(), in.cols()) == 0)
-        std::cerr << "draw: " << j << "/" << rotriangles.size() << " on " << i << "/" << samples << std::endl;
     }
+    for(int i = 0; i < zb.rows(); i ++)
+      for(int j = 0; j < zb.cols(); j ++)
+        if(zb(i, j) <= - 20000)
+          result(i, j) = result0(i, j);
   }
   return result;
 }

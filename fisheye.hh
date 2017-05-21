@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <vector>
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "enlarge.hh"
@@ -12,6 +13,7 @@ public:
   int    z_max;
   int    stp;
   int    rstp;
+  int    gstp;
   int    enll;
   T      roff;
   T      rdist;
@@ -23,7 +25,7 @@ public:
   T      Pi;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& rstp, const int& enll, const T& roff, const T& rdist, const T& sthresh, const T& gthresh, const int& rband, const int& zband);
+  void initialize(const int& z_max, const int& stp, const int& rstp, const int& gstp, const int& enll, const T& roff, const T& rdist, const T& sthresh, const T& gthresh, const int& rband, const int& zband);
   ~PseudoBump();
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBump(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const bool& y_only, const bool& differential);
@@ -47,19 +49,20 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  // initialize(32, 16, 16, 3, 100., 1e4, 1e-17, 2 / 256., 16, 4);
-  initialize(8, 16, 16, 2, 100., 1e4, 1e-17, 2 / 256., 16, 4);
+  // initialize(32, 16, 16, 3, 2, 100., 1e4, 1e-17, 2 / 256., 16, 4);
+  initialize(8, 16, 16, 1, 2, 100., 1e4, 1e-17, 2 / 256., 2, 4);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& enll, const T& roff, const T& rdist, const T& sthresh, const T& gthresh, const int& rband, const int& zband) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& gstp, const int& enll, const T& roff, const T& rdist, const T& sthresh, const T& gthresh, const int& rband, const int& zband) {
   const int enlp(std::max(int(pow(2, enll) - 1), int(1)));
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = rstp * enlp;
+  this->gstp    = gstp;
   this->enll    = enll;
   this->roff    = roff;
   this->rdist   = rdist;
@@ -145,15 +148,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           for(int u = 0; u < lc2.size(); u ++)
             lc2[u] = lc[u - lc2.size() + lc.size()];
           for(int u = 0; u < rc2.size(); u ++)
-            rc2[u] = rc[u - rc2.size() + rc.size()];
+            rc2[u] = rc[u];
           auto msl(minSquare(Dop * lc)),    msr(minSquare(Dop * rc));
           auto msl2(minSquare(Dop2 * lc2)), msr2(minSquare(Dop2 * rc2));
-          auto ms( abs(msl[0])  + abs(msr[0]) );
-          auto ms2(abs(msl2[0]) + abs(msr2[0]));
-          T n2(0);
-          if(ms2 > ms)
-            n2 = abs(ms2 - ms);
-          if(zval[s] < n2) {
+          auto ms( abs(msl[0]  - msr[0]) );
+          auto ms2(abs(msl2[0] - msr2[0]));
+          const T n2(ms2 / (ms + 1.));
+          if(isfinite(n2) && zval[s] < n2) {
             result(s, i) = zz / T(z_max);
             zval[s]      = n2;
           }
@@ -162,24 +163,21 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       result.col(i) = complementLine(result.col(i));
     }
     int ppratio = (result.cols() + input.cols() - 1) / input.cols();
-    cerr << input.cols() * ppratio - result.cols() << endl;
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> res(input.rows(), result.cols());
-    for(int i = 0; i < input.rows(); i ++) {
-      res.row(i) = result.row(i * ppratio);
-      int j;
-      for(j = 1; j < ppratio && i * ppratio + j < result.rows(); j ++)
-        res.row(i) += result.row(i * ppratio + j);
-      res.row(i) /= j;
-    }
-    result = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(input.rows(), input.cols());
-    for(int i = 0; i < input.cols(); i ++) {
-      result.col(i) = res.col(i * ppratio);
-      int j;
-      for(j = 1; j < ppratio && i * ppratio + j < result.cols(); j ++)
-        result.col(i) += res.col(i * ppratio + j);
-      result.col(i) /= j;
-    }
-    return result;
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> res(input.rows(), input.cols());
+    for(int i = 0; i < input.rows(); i ++)
+      for(int j = 0; j < input.cols(); j ++) {
+        std::vector<T> meds;
+        for(int ii = std::max((i - gstp) * ppratio, 0); ii < std::min((i + gstp) * ppratio, int(result.rows())); ii ++)
+          for(int jj = std::max((j - gstp) * ppratio, 0); jj < std::min((j + gstp) * ppratio, int(result.cols())); jj ++)
+            meds.push_back(result(ii, jj));
+        // std::sort(meds.begin(), meds.end());
+        // res(i, j) = meds[meds.size() / 2];
+        res(i, j) = T(0);
+        for(int k = 0; k < meds.size(); k ++)
+          res(i, j) += meds[k];
+        res(i, j) /= meds.size();
+      }
+    return res;
   } else {
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pbx(getPseudoBump(input.transpose(), true, differential).transpose());
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pby(getPseudoBump(input, true, differential));
@@ -215,16 +213,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSqua
     A(i, 1) = (i - avg[1]) * (input[i] - avg[0]);
   }
   Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  auto U(svd.matrixU().transpose());
-  auto Vt(svd.matrixV().transpose());
+  auto Ut(svd.matrixU().transpose());
+  auto V(svd.matrixV().transpose());
   auto w(svd.singularValues());
   for(int i = 0; i < w.size(); i ++)
     if(abs(w[i]) > sthresh)
       w[i] = T(1) / w[i];
-  Eigen::Matrix<T, Eigen::Dynamic, 1> result(U * b);
+  Eigen::Matrix<T, Eigen::Dynamic, 1> result(Ut * b);
   for(int i = 0; i < w.size(); i ++)
     result[i] *= w[i];
-  result = Vt * result;
+  result = V * result;
   result[0] += avg[0];
   return result;
 }
@@ -323,7 +321,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
   Eigen::Matrix<T,   Eigen::Dynamic, 1> pts(line.size() * 2);
   Eigen::Matrix<T,   Eigen::Dynamic, 1> result(line);
   int idx = 0;
-  for(int i = 0; i < line.size(); i ++) {
+  for(int i = 0; i < line.size(); i ++)
     if(0 <= line[i]) {
       if(idx < 1 && i != 0) {
         ptsi[idx] = - i;
@@ -334,7 +332,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
       pts[idx]  = line[i];
       idx ++;
     }
-  }
   if(idx > 0) {
     ptsi[idx] = line.size() + (line.size() - ptsi[idx - 1]);
     pts[idx]  = pts[idx - 1];
@@ -355,33 +352,28 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
 }
 
 template <typename T> T PseudoBump<T>::complement(const Eigen::Matrix<int, Eigen::Dynamic, 1>& ptsi, const Eigen::Matrix<T, Eigen::Dynamic, 1>& pts, const T& idx) {
-  int size(pts.size() - 1);
+  int size(- 1);
   for(int i = 0; i < pts.size(); i ++)
-    if(pts[i] < 0) {
+    if(0 <= pts[i])
       size = i;
-      break;
-    }
-  size ++;
-  if(size <= 1) {
-    if(size < 1)
+  if(size <= 0) {
+    if(size < 0)
       return 0.;
     return pts[0];
   }
   Eigen::Matrix<int, Eigen::Dynamic, 1> rng(3);
   for(int i = 0; i < rng.size(); i ++)
     rng[i] = - 1;
-  for(int i = 0; i < size - 1; i ++)
-    if(ptsi[i] <= idx - rband && idx - rband <= ptsi[i + 1]) {
+  for(int i = 0; i < size; i ++)
+    if(ptsi[i] <= idx - rband)
       rng[0] = i;
-      break;
-    }
-  for(int i = 0; i < size - 1; i ++)
+  for(int i = 0; i < size; i ++)
     if(ptsi[i] <= idx && idx <= ptsi[i + 1]) {
       rng[1] = i;
       break;
     }
-  for(int i = 0; i < size - 1; i ++)
-    if(ptsi[i] <= idx + rband && idx + rband <= ptsi[i + 1]) {
+  for(int i = 0; i <= size; i ++)
+    if(idx + rband <= ptsi[i]) {
       rng[2] = i;
       break;
     }
@@ -395,13 +387,15 @@ template <typename T> T PseudoBump<T>::complement(const Eigen::Matrix<int, Eigen
   for(int i = 0; i < rng.size(); i ++) {
     T work(1);
     for(int j = 0; j < rng.size(); j ++) {
-      if(ptsi[rng[i]] == ptsi[rng[j]])
+      if(rng[i] == rng[j])
         continue;
-      work *= (T(idx) - ptsi[rng[j]]) / T(pts[rng[i]] - pts[rng[j]]);
+      work *= (T(idx) - ptsi[rng[j]]) / T(ptsi[rng[i]] - ptsi[rng[j]]);
     }
     res += pts[rng[i]] * work;
   }
-  return std::max(T(0), std::min(T(2), res));
+  if(!isfinite(res))
+    return T(.5);
+  return std::max(T(0), std::min(T(1.2), res));
 }
 
 #define _2D3D_PSEUDO_
