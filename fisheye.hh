@@ -170,12 +170,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         for(int ii = std::max((i - gstp) * ppratio, 0); ii < std::min((i + gstp) * ppratio, int(result.rows())); ii ++)
           for(int jj = std::max((j - gstp) * ppratio, 0); jj < std::min((j + gstp) * ppratio, int(result.cols())); jj ++)
             meds.push_back(result(ii, jj));
-        // std::sort(meds.begin(), meds.end());
-        // res(i, j) = meds[meds.size() / 2];
+        std::sort(meds.begin(), meds.end());
+        res(i, j) = meds[meds.size() / 2];
+/*
         res(i, j) = T(0);
         for(int k = 0; k < meds.size(); k ++)
           res(i, j) += meds[k];
-        res(i, j) /= meds.size();
+        res(i, j) = 1. - res(i, j) / meds.size();
+*/
       }
     return res;
   } else {
@@ -214,7 +216,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSqua
   }
   Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
   auto Ut(svd.matrixU().transpose());
-  auto V(svd.matrixV().transpose());
+  auto Vt(svd.matrixV());
   auto w(svd.singularValues());
   for(int i = 0; i < w.size(); i ++)
     if(abs(w[i]) > sthresh)
@@ -222,7 +224,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSqua
   Eigen::Matrix<T, Eigen::Dynamic, 1> result(Ut * b);
   for(int i = 0; i < w.size(); i ++)
     result[i] *= w[i];
-  result = V * result;
+  result = Vt * result;
   result[0] += avg[0];
   return result;
 }

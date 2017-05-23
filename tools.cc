@@ -94,7 +94,7 @@ int main(int argc, const char* argv[]) {
         return - 2;
       tilter<float> tilt;
       const int M_TILT = 64;
-      tilt.initialize(1., .99, M_TILT);
+      tilt.initialize(1.5, .99, M_TILT);
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
