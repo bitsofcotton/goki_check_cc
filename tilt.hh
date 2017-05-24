@@ -41,7 +41,7 @@ private:
 };
 
 template <typename T> tilter<T>::tilter() {
-  initialize(.08, .8, 4);
+  initialize(.08, .99, 4);
   return;
 }
 
@@ -269,59 +269,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     const T theta(2. * Pi * i / samples);
     std::vector<Triangles> rotriangles;
     for(int j = 0; j < triangles.size(); j ++)
-      rotriangles.push_back(rotate(triangles[j], pcenter, theta, psi));
-    Mat2x2 A;
-    Vec2   p[2];
-    p[0][0] = rotriangles[0](0, 0) - rotriangles[rotriangles.size() - 1](0, 2);
-    p[0][1] = rotriangles[0](1, 0) - rotriangles[rotriangles.size() - 1](1, 2);
-    p[1][0] = rotriangles[(in.cols() - 1) * 2 - 2](0, 1) - rotriangles[(in.cols() - 1) * 2 * (in.rows() - 2) + 2](0, 1);
-    p[1][1] = rotriangles[(in.cols() - 1) * 2 - 2](1, 1) - rotriangles[(in.cols() - 1) * 2 * (in.rows() - 2) + 2](1, 1);
-    const T diameter(std::sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())));
-    Vec2 ratio;
-    Vec3 center;
-    for(int ii = 0; ii < 2; ii ++) {
-      const T norm(std::sqrt(p[ii].dot(p[ii])));
-      center[ii] = rotriangles[0](ii, 0) + rotriangles[rotriangles.size() - 1](ii, 2);
-      ratio[ii]  = diameter / norm - 1.;
-      p[ii]     /= norm;
-    }
-    center[2] = 0.;
-    for(int ii = 0; ii < A.rows(); ii ++)
-      for(int jj = 0; jj < A.cols(); jj ++)
-        A(ii, jj) = p[ii].dot(p[jj]);
-    ratio = A.inverse() * ratio;
-    Vec3 pp[2];
-    pp[0][0] = p[0][0];
-    pp[0][1] = p[0][1];
-    pp[0][2] = 0.;
-    pp[1][0] = p[1][0];
-    pp[1][1] = p[1][1];
-    pp[1][2] = 0.;
-    for(int k = 0; k < rotriangles.size(); k ++)
-      for(int l = 0; l < 3; l ++) {
-        rotriangles[k].col(l) -= center;
-        rotriangles[k].col(l) += rotriangles[k].col(l).dot(pp[0]) * ratio[0] * pp[0] + rotriangles[k].col(l).dot(pp[1]) * ratio[1] * pp[1];
-        rotriangles[k].col(l) += center;
-      }
-    Vec3 orig(rotriangles[0].col(0) + rotriangles[rotriangles.size() - 1].col(2));
-    orig[2] = 0.;
-    orig   /= 2.;
-    for(int k = 0; k < rotriangles.size(); k ++)
-      for(int l = 0; l < 3; l ++)
-        rotriangles[k].col(l) -= orig;
-    const Vec3 refvec(rotriangles[(in.cols() - 1) * 2 * (in.rows() / 2) - 2].col(1) - rotriangles[(in.cols() - 1) * 2 * (in.rows() / 2 - 1)].col(0));
-    const T     theta1(sgn(refvec[0]) * std::acos(refvec[1] / std::sqrt(refvec[0] * refvec[0] + refvec[1] * refvec[1])));
-    for(int k = 0; k < rotriangles.size(); k ++)
-      for(int l = 0; l < 3; l ++)
-        rotriangles[k].col(l) = rotate0(rotriangles[k].col(l), zero3, theta1, Pi / 2.);
-    orig    = rotriangles[0].col(0) + rotriangles[rotriangles.size() - 1].col(2);
-    orig[0] -= in.rows();
-    orig[1] -= in.cols();
-    orig[2]  = 0.;
-    orig    /= 2.;
-    for(int k = 0; k < rotriangles.size(); k ++)
-      for(int l = 0; l < 3; l ++)
-        rotriangles[k].col(l) -= orig;
+      rotriangles.push_back(rotate(rotate(triangles[j], pcenter, theta, psi), pcenter, - theta, Pi / 2.));
     std::cerr << "draw: " << i << "/" << samples << std::endl;
     for(int j = 0; j < zb.rows(); j ++)
       for(int k = 0; k < zb.cols(); k ++)
@@ -334,7 +282,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
       for(int k = 0; k < 3; k ++) {
         gs[k][0] = tri(0, k);
         gs[k][1] = tri(1, k);
-      //  gs[k]    = rotate2d(gs[k], zero2, - theta);
       }
       int ll = int(std::min(std::min(gs[0][0], gs[1][0]), gs[2][0]));
       int rr = std::ceil(std::max(std::max(gs[0][0], gs[1][0]), gs[2][0]));
@@ -344,12 +291,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
         for(int x = std::max(0, bb); x < std::min(tt, int(in.cols())); x ++) {
           T z;
           Vec2 midgeom;
-          midgeom[0] = y + .25;
-          midgeom[1] = x + .25;
-          // if(onTriangle(z, tri, rotate2d(midgeom, zero2, theta)) && zb(y, x) < z) {
+          midgeom[0] = x + .5;
+          midgeom[1] = y + .5;
           if(onTriangle(z, tri, midgeom) && zb(y, x) < z) {
-            result(y, x) = tri(0, 3);
-            zb(y, x)     = z;
+            result(y, x)  = tri(0, 3);
+            zb(y, x)      = z;
           }
           if(zb0(y, x) < tri(1, 3)) {
             result0(y, x) = tri(0, 3);
@@ -357,10 +303,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
           }
         }
     }
-    for(int i = 0; i < zb.rows(); i ++)
-      for(int j = 0; j < zb.cols(); j ++)
-        if(zb(i, j) <= - 20000)
-          result(i, j) = result0(i, j);
+    for(int y = 0; y < result.rows(); y ++)
+      for(int x = 0; x < result.cols(); x ++)
+        if(zb(y, x) < 0)
+          result(y, x) = result0(y, x);
   }
   return result;
 }
