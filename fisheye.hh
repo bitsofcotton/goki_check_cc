@@ -6,6 +6,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "enlarge.hh"
+#include "edgedetect.hh"
 
 template <typename T> class PseudoBump {
 public:
@@ -18,12 +19,14 @@ public:
   T      rdist;
   T      gratio;
   int    zband;
+  int    nlevel;
+  int    nedge;
   int    rband;
   T      sthresh;
   T      Pi;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& rstp, const int& estp, const int& enll, const T& roff, const T& rdist, const T& gratio);
+  void initialize(const int& z_max, const int& stp, const int& rstp, const int& estp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel, const int& nedge);
   ~PseudoBump();
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBumpSub(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
@@ -48,14 +51,14 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 16, 3, 4, 1, .5, 1e3, 0.);
+  initialize(8, 16, 3, 4, 1, .5, 1e3, 0., 8, 32);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& estp, const int& enll, const T& roff, const T& rdist, const T& gratio) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& estp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel, const int& nedge) {
   const int enlp(std::max(int(pow(2, enll) - 1), int(1)));
   this->z_max   = z_max;
   this->stp     = stp;
@@ -66,7 +69,9 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->rdist   = rdist;
   this->gratio  = gratio;
   this->zband   = int(std::max(1., std::sqrt(stp)));
-  this->Pi      = 4. * atan2(T(1.), T(1.));
+  this->nlevel  = nlevel;
+  this->nedge   = nedge;
+  Pi            = 4. * atan2(T(1.), T(1.));
   rband         = this->rstp;
   sthresh       = pow(1. / 256., 6.);
 };
@@ -201,15 +206,29 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       ratio += 1.;
     }
     out /= ratio;
+    edgedetect<T, complex<T> > edge;
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> edges(edge.detect(input, edgedetect<T, complex<T> >::COLLECT_Y));
+    std::vector<T> estat;
+    for(int i = 0; i < edges.rows(); i ++)
+      for(int j = 0; j < edges.cols(); j ++)
+        estat.push_back(edges(i, j));
+    std::sort(estat.begin(), estat.end());
+    for(int i = 0; i < out.rows(); i ++)
+      for(int j = 0; j < out.cols(); j ++)
+        if(estat[estat.size() * (nedge - 1) / nedge] < edges(i, j))
+          out(i, j) = - T(1);
+    for(int i = 0; i < out.cols(); i ++)
+      out.col(i) = complementLine(out.col(i), rband);
     std::vector<T> stat;
     for(int i = 0; i < out.rows(); i ++)
       for(int j = 0; j < out.cols(); j ++) {
-        out(i, j) = 1. - out(i, j);
+        // XXX fixme:
+        // out(i, j) = 1. - out(i, j);
         stat.push_back(out(i, j));
       }
     std::sort(stat.begin(), stat.end());
-    const T mm(stat[stat.size() / 8]);
-    T MM(stat[stat.size() * 7 / 8]);
+    const T mm(stat[stat.size() / nlevel]);
+    T MM(stat[stat.size() * (nlevel - 1) / nlevel]);
     if(MM == mm)
       MM = mm + 1.;
     for(int i = 0; i < out.rows(); i ++)

@@ -54,7 +54,7 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
   case ENLARGE_Y:
     {
       result = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(data.rows() * 2, data.cols());
-      cerr << "enlarge_y" << endl;
+      cerr << " enlarge_y";
       initPattern(data.rows());
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dd(D * data);
       Eigen::Matrix<T, Eigen::Dynamic, 1> ff(data.transpose() * F);
