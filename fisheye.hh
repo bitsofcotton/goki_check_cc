@@ -13,20 +13,18 @@ public:
   int    z_max;
   int    stp;
   int    rstp;
-  int    estp;
   int    enll;
   T      roff;
   T      rdist;
   T      gratio;
   int    zband;
   int    nlevel;
-  int    nedge;
   int    rband;
   T      sthresh;
   T      Pi;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& rstp, const int& estp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel, const int& nedge);
+  void initialize(const int& z_max, const int& stp, const int& rstp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel);
   ~PseudoBump();
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBumpSub(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
@@ -35,14 +33,16 @@ public:
 private:
   T zz(const T& t);
   T sgn(const T& x);
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getMosaic(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const int& i);
   Eigen::Matrix<T, Eigen::Dynamic, 1> minSquare(const Eigen::Matrix<T, Eigen::Dynamic, 1>& input);
   Eigen::Matrix<T, Eigen::Dynamic, 1> getLineAxis(Eigen::Matrix<T, Eigen::Dynamic, 1> p, Eigen::Matrix<T, Eigen::Dynamic, 1> c, const int& w, const int& h);
   Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, Eigen::Dynamic> prepareLineAxis(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p0, const Eigen::Matrix<T, Eigen::Dynamic, 1>& p1, const int& z0);
   T getImgPt(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& img, const T& y, const T& x);
   Eigen::Matrix<T, Eigen::Dynamic, 1> indiv(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p0, const Eigen::Matrix<T, Eigen::Dynamic, 1>& p1, const T& pt);
-  enlarger2exds<T, complex<T> > enlarger;
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> integrate(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> autoLevel(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
   Eigen::Matrix<T, Eigen::Dynamic, 1> complementLine(const Eigen::Matrix<T, Eigen::Dynamic, 1>& line, const int& rband);
+  
+  enlarger2exds<T, complex<T> > enlarger;
   
   int ww;
   int hh;
@@ -51,26 +51,24 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 16, 3, 4, 1, .5, 1e3, 0., 8, 32);
+  initialize(8, 16, 3, 1, .5, 1e3, 0., 32);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& estp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel, const int& nedge) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel) {
   const int enlp(std::max(int(pow(2, enll) - 1), int(1)));
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = rstp;
-  this->estp    = estp;
   this->enll    = enll;
   this->roff    = roff;
   this->rdist   = rdist;
   this->gratio  = gratio;
   this->zband   = int(std::max(1., std::sqrt(stp)));
   this->nlevel  = nlevel;
-  this->nedge   = nedge;
   Pi            = 4. * atan2(T(1.), T(1.));
   rband         = this->rstp;
   sthresh       = pow(1. / 256., 6.);
@@ -169,72 +167,65 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return res;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getMosaic(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const int& i) {
-  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> work(input);
-  for(int x = 0; x < (input.cols() + i - 1) / i; x ++) {
-    for(int y = 0; y < (input.rows() + i - 1) / i; y ++) {
-      std::vector<float> meds;
-      for(int xx = x * i;
-              xx < std::min(int(work.cols()), (x + 1) * i);
-              xx ++)
-        for(int yy = y * i;
-                yy < std::min(int(work.rows()), (y + 1) * i);
-                yy ++) {
-          meds.push_back(work(yy, xx));
-          work(yy, xx) = - 1.;
-        }
-      std::sort(meds.begin(), meds.end());
-      work(std::min(int(input.rows()) - 1, y * i + i / 2), x * i) = meds[meds.size() / 2];
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::integrate(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input) {
+  Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> Iop(input.rows(), input.rows());
+  Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> A(Iop.rows(), Iop.cols());
+  complex<T> I(sqrt(complex<T>(- 1)));
+  for(int i = 0; i < Iop.rows(); i ++)
+    for(int j = 0; j < Iop.cols(); j ++) {
+      Iop(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>(i * j) / T(Iop.rows()));
+      A(i, j)   = exp(complex<T>(  2) * Pi * I * complex<T>(i * j) / T(Iop.rows())) / T(Iop.rows());
     }
-    work.col(x * i) = complementLine(work.col(x * i), 1);
+  Iop.row(0) *= T(0);
+  for(int i = 1; i < Iop.rows(); i ++)
+    Iop.row(i) /= complex<T>(- 2.) * Pi * I * T(i) / T(Iop.rows());
+  Iop = A * Iop;
+  
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> centerized(input.rows(), input.cols());
+  Eigen::Matrix<T, Eigen::Dynamic, 1> ms0(input.cols()), ms1(input.cols());
+  for(int i = 0; i < input.cols(); i ++) {
+    auto ms(minSquare(input.col(i)));
+    ms0[i] = ms[0];
+    ms1[i] = ms[1];
+    for(int j = 0; j < input.rows(); j ++)
+      centerized(j, i) = input(j, i) - (ms[0] + ms[1] * j);
   }
-  for(int y = 0; y < work.rows(); y ++)
-    work.row(y) = complementLine(work.row(y), 1);
-  return work;
+  centerized = Iop.real().template cast<T>() * centerized;
+  for(int i = 0; i < input.cols(); i ++) {
+    for(int j = 0; j < input.rows(); j ++)
+      centerized(j, i) += (ms0[i] * j + ms1[i] * j * j / 2.);
+    auto ms(minSquare(centerized.col(i)));
+    ms0[i] = ms[0];
+  }
+  const T norm2ms0(std::sqrt(ms0.dot(ms0)));
+  for(int i = 0; i < centerized.cols(); i ++)
+    for(int j = 0; j < centerized.rows(); j ++)
+      centerized(j, i) += norm2ms0 - ms0[i];
+  return centerized;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::autoLevel(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input) {
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> res(input.rows(), input.cols());
+  std::vector<T> stat;
+  for(int i = 0; i < input.rows(); i ++)
+    for(int j = 0; j < input.cols(); j ++)
+      stat.push_back(input(i, j));
+  std::sort(stat.begin(), stat.end());
+  const T mm(stat[stat.size() / nlevel]);
+  T MM(stat[stat.size() * (nlevel - 1) / nlevel]);
+  if(MM == mm)
+    MM = mm + 1.;
+  for(int i = 0; i < input.rows(); i ++)
+    for(int j = 0; j < input.cols(); j ++)
+      res(i, j) = (std::max(std::min(input(i, j), MM), mm) - mm) / (MM - mm);
+  return res;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const bool& y_only)
  {
   if(y_only) {
-    T ratio = 0;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out(input.rows(), input.cols());
-    for(int i = 0; i < out.rows(); i ++)
-      for(int j = 0; j < out.cols(); j ++)
-        out(i, j) = 0.;
-    for(int i = estp; i < input.rows() / estp; i *= 2) {
-      out   += getMosaic(getPseudoBumpSub(getMosaic(input, i)), i);
-      ratio += 1.;
-    }
-    out /= ratio;
     edgedetect<T, complex<T> > edge;
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> edges(edge.detect(input, edgedetect<T, complex<T> >::COLLECT_Y));
-    std::vector<T> estat;
-    for(int i = 0; i < edges.rows(); i ++)
-      for(int j = 0; j < edges.cols(); j ++)
-        estat.push_back(edges(i, j));
-    std::sort(estat.begin(), estat.end());
-    for(int i = 0; i < out.rows(); i ++)
-      for(int j = 0; j < out.cols(); j ++)
-        if(estat[estat.size() * (nedge - 1) / nedge] < edges(i, j))
-          out(i, j) = - T(1);
-    for(int i = 0; i < out.cols(); i ++)
-      out.col(i) = complementLine(out.col(i), rband);
-    std::vector<T> stat;
-    for(int i = 0; i < out.rows(); i ++)
-      for(int j = 0; j < out.cols(); j ++) {
-        // XXX fixme:
-        // out(i, j) = 1. - out(i, j);
-        stat.push_back(out(i, j));
-      }
-    std::sort(stat.begin(), stat.end());
-    const T mm(stat[stat.size() / nlevel]);
-    T MM(stat[stat.size() * (nlevel - 1) / nlevel]);
-    if(MM == mm)
-      MM = mm + 1.;
-    for(int i = 0; i < out.rows(); i ++)
-      for(int j = 0; j < out.cols(); j ++)
-        out(i, j) = (std::max(std::min(out(i, j), MM), mm) - mm) / (MM - mm);
-    return out;
+    return autoLevel(integrate(getPseudoBumpSub(edge.detect(input, edgedetect<T, complex<T> >::DETECT_Y))));
   } else {
     const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pbx(getPseudoBump(input.transpose(), true).transpose());
     const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pby(getPseudoBump(input, true));
@@ -281,7 +272,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSqua
     result[i] *= w[i];
   result = Vt * result;
   result[0] += avg[0];
-  return result;
+  return result / input.size();
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getLineAxis(Eigen::Matrix<T, Eigen::Dynamic, 1> p, Eigen::Matrix<T, Eigen::Dynamic, 1> c, const int& w, const int& h) {

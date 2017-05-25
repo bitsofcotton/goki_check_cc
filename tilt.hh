@@ -252,17 +252,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     for(int j = 0; j < zb.cols(); j ++)
       zb(i, j) = 0.;
   const T radius(std::max(T(in.rows()), T(in.cols())) * 2.);
-  Vec2 zero2;
   Vec3 pcenter;
-  Vec3 zero3;
-  zero2[0]   = 0.;
-  zero2[1]   = 0.;
   pcenter[0] = in.rows() / 2.;
   pcenter[1] = in.cols() / 2.;
-  pcenter[2] = radius;
-  zero3[0]   = 0.;
-  zero3[1]   = 0.;
-  zero3[2]   = 0.;
+  pcenter[2] = 0.;
   const int i = idx % samples;
   {
     std::cerr << "rotate: " << i << "/" << samples << std::endl;
