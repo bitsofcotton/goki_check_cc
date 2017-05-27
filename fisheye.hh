@@ -24,7 +24,7 @@ public:
   T      Pi;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& rstp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel);
+  void initialize(const int& z_max, const int& stp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel);
   ~PseudoBump();
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBumpSub(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
@@ -51,18 +51,17 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 16, 3, 1, .5, 1e3, 0., 32);
+  initialize(8, 20, 0, .5, 1., 0, 64);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel) {
-  const int enlp(std::max(int(pow(2, enll) - 1), int(1)));
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel) {
   this->z_max   = z_max;
   this->stp     = stp;
-  this->rstp    = rstp;
+  this->rstp    = stp * 2;
   this->enll    = enll;
   this->roff    = roff;
   this->rdist   = rdist;
@@ -70,8 +69,9 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->zband   = int(std::max(1., std::sqrt(stp)));
   this->nlevel  = nlevel;
   Pi            = 4. * atan2(T(1.), T(1.));
-  rband         = this->rstp;
+  rband         = 1;
   sthresh       = pow(1. / 256., 6.);
+  return;
 };
 
 template <typename T> T PseudoBump<T>::sgn(const T& x) {
@@ -83,7 +83,7 @@ template <typename T> T PseudoBump<T>::sgn(const T& x) {
 }
 
 template <typename T> T PseudoBump<T>::zz(const T& t) {
-  return (t + T(1)) / z_max;
+  return (t + 1) / z_max;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::rgb2l(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb[3]) {
@@ -190,18 +190,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int j = 0; j < input.rows(); j ++)
       centerized(j, i) = input(j, i) - (ms[0] + ms[1] * j);
   }
-  centerized = Iop.real().template cast<T>() * centerized;
-  for(int i = 0; i < input.cols(); i ++) {
-    for(int j = 0; j < input.rows(); j ++)
-      centerized(j, i) += (ms0[i] * j + ms1[i] * j * j / 2.);
-    auto ms(minSquare(centerized.col(i)));
-    ms0[i] = ms[0];
-  }
-  const T norm2ms0(std::sqrt(ms0.dot(ms0)));
-  for(int i = 0; i < centerized.cols(); i ++)
-    for(int j = 0; j < centerized.rows(); j ++)
-      centerized(j, i) += norm2ms0 - ms0[i];
-  return centerized;
+  return Iop.real().template cast<T>() * centerized;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::autoLevel(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input) {
@@ -225,11 +214,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
  {
   if(y_only) {
     edgedetect<T, complex<T> > edge;
-    return autoLevel(integrate(getPseudoBumpSub(edge.detect(input, edgedetect<T, complex<T> >::DETECT_Y))));
+    // N.B. We may not need integrate on local to global operation,
+    //      the graphics may include global data in local data.
+    // N.B. We need differential because of lack of integrate constant.
+    // N.B. We assume differential/integral of getPseudoBumpSub as linear,
+    //      but in fact, it's not.
+    return autoLevel(edge.detect(getPseudoBumpSub(integrate(input)), edgedetect<T, complex<T> >::DETECT_Y));
   } else {
     const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pbx(getPseudoBump(input.transpose(), true).transpose());
     const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pby(getPseudoBump(input, true));
-    return Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>((pbx + pby) / 2.);
+    return (pbx + pby) / 2.;
   }
   return Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>();
 }
@@ -294,7 +288,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getLine
 
 template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::prepareLineAxis(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p0, const Eigen::Matrix<T, Eigen::Dynamic, 1>& p1, const int& z0) {
   Eigen::Matrix<T, Eigen::Dynamic, 1> dir(p1 - p0);
-  dir /= sqrt(dir.dot(dir));
+  T ndir(sqrt(dir.dot(dir)));
+  dir /= ndir;
   
   Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, Eigen::Dynamic> result(z0, 2);
   for(int zi = 0; zi < z0; zi ++) {
@@ -310,7 +305,7 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
       Eigen::Matrix<T, Eigen::Dynamic, 1> camera(3);
       camera[0] = dir[0] * roff;
       camera[1] = dir[1] * roff;
-      camera[2] = - zzi / T(z_max) * rdist;
+      camera[2] = - zzi / T(z_max) * rdist * ndir;
       auto rd(getLineAxis(cpoint, camera, T(ww), T(hh)));
       camera    = - camera;
       camera[2] = - camera[2];

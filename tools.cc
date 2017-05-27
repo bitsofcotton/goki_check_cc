@@ -101,7 +101,6 @@ int main(int argc, const char* argv[]) {
   case 7:
     {
       PseudoBump<float> bump;
-      bump.initialize(16, 16, 3, 0, .5, 1e3, 0., 32);
       data[0]  = bump.getPseudoBump(bump.rgb2l(data), !true);
       data[1] = data[0];
       data[2] = data[0];
