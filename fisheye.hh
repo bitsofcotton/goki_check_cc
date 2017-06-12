@@ -5,7 +5,6 @@
 #include <vector>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include "enlarge.hh"
 #include "edgedetect.hh"
 
 template <typename T> class PseudoBump {
@@ -13,18 +12,15 @@ public:
   int    z_max;
   int    stp;
   int    rstp;
-  int    enll;
   T      roff;
   T      rdist;
-  T      gratio;
-  int    zband;
   int    nlevel;
   int    rband;
   T      sthresh;
   T      Pi;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel);
+  void initialize(const int& z_max, const int& stp, const int& nlevel);
   ~PseudoBump();
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBumpSub(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
@@ -42,8 +38,6 @@ private:
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> autoLevel(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
   Eigen::Matrix<T, Eigen::Dynamic, 1> complementLine(const Eigen::Matrix<T, Eigen::Dynamic, 1>& line, const int& rband);
   
-  enlarger2exds<T, complex<T> > enlarger;
-  
   int ww;
   int hh;
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Dop;
@@ -51,22 +45,19 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 20, 0, .5, 1., 0, 64);
+  initialize(128, 20, 128);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& enll, const T& roff, const T& rdist, const T& gratio, const int& nlevel) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel) {
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp * 2;
-  this->enll    = enll;
-  this->roff    = roff;
-  this->rdist   = rdist;
-  this->gratio  = gratio;
-  this->zband   = int(std::max(1., std::sqrt(stp)));
+  this->roff    = 1. / 6.;
+  this->rdist   = 2.;
   this->nlevel  = nlevel;
   Pi            = 4. * atan2(T(1.), T(1.));
   rband         = 1;
@@ -92,8 +83,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpSub(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input) {
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> work(input);
-  for(int i = 0; i < enll; i ++)
-    work = enlarger.enlarge2ds(work, enlarger2exds<T, complex<T> >::ENLARGE_Y);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(work.rows(), work.cols());
   const int ppratio = (result.rows() + input.rows() - 1) / input.rows();
   ww = work.cols();
@@ -140,19 +129,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           lc[u] = c[u];
         for(int u = 0; u < rc.size(); u ++)
           rc[u] = c[u - rc.size() + c.size()];
-        Eigen::Matrix<T, Eigen::Dynamic, 1> lc2(zband), rc2(zband);
-        for(int u = 0; u < lc2.size(); u ++)
-          lc2[u] = lc[u - lc2.size() + lc.size()];
-        for(int u = 0; u < rc2.size(); u ++)
-          rc2[u] = rc[u];
         const Eigen::Matrix<T, Eigen::Dynamic, 1> msl( Dop  * lc);
         const Eigen::Matrix<T, Eigen::Dynamic, 1> msr( Dop  * rc);
-        const Eigen::Matrix<T, Eigen::Dynamic, 1> msl2(Dop2 * lc2);
-        const Eigen::Matrix<T, Eigen::Dynamic, 1> msr2(Dop2 * rc2);
-        auto ms( abs(msl[ msl.size()  - 1] - msr[0]) );
-        auto ms2(abs(msl2[msl2.size() - 1] - msr2[0]));
-        const T n2(ms2 / (ms + 1.));
-        if(isfinite(n2) && gratio < n2 && zval[s] < n2) {
+        auto n2( abs(msl[ msl.size()  - 1] - msr[0]) );
+        if(isfinite(n2) && zval[s] < n2) {
           result(s, i) = zz / T(z_max);
           zval[s]      = n2;
         }
@@ -160,11 +140,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     }
     result.col(i) = complementLine(result.col(i), rband * ppratio);
   }
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> res(input.rows(), input.cols());
-  for(int x = 0; x < input.cols(); x ++)
-    for(int y0 = 0; y0 < input.rows(); y0 ++)
-      res(y0, x) = result(y0 * ppratio, x);
-  return res;
+  return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::integrate(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input) {
@@ -190,7 +166,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int j = 0; j < input.rows(); j ++)
       centerized(j, i) = input(j, i) - (ms[0] + ms[1] * j);
   }
-  return Iop.real().template cast<T>() * centerized;
+  centerized = Iop.real().template cast<T>() * centerized;
+  for(int i = 0; i < input.cols(); i ++)
+    for(int j = 0; j < input.rows(); j ++)
+      centerized(j, i) += ms0[i] * j + ms1[i] * j * j / 2.;
+  return centerized;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::autoLevel(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input) {
@@ -214,8 +194,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
  {
   if(y_only) {
     edgedetect<T, complex<T> > edge;
-    // N.B. We may not need integrate on local to global operation,
-    //      the graphics may include global data in local data.
+    // N.B. We may need integrate on local to global operation.
     // N.B. We need differential because of lack of integrate constant.
     // N.B. We assume differential/integral of getPseudoBumpSub as linear,
     //      but in fact, it's not.
@@ -317,9 +296,7 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
     }
   }
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> Dopb(stp / 2 + 1, stp / 2 + 1);
-  Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> Dop2b(zband, zband);
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> Iopb(Dopb.rows(), Dopb.cols());
-  Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> Iop2b(Dop2b.rows(), Dop2b.cols());
   complex<T> I(sqrt(complex<T>(- 1)));
   for(int i = 0; i < Dopb.rows(); i ++)
     for(int j = 0; j < Dopb.cols(); j ++) {
@@ -329,14 +306,6 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
   for(int i = 0; i < Dopb.rows(); i ++)
     Dopb.row(i) *= complex<T>(- 2.) * Pi * I * T(i) / T(Dopb.rows());
   Dop = (Iopb * Dopb).real();
-  for(int i = 0; i < Dop2b.rows(); i ++)
-    for(int j = 0; j < Dop2b.cols(); j ++) {
-      Dop2b(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>(i * j) / T(Dop2b.rows()));
-      Iop2b(i, j) = exp(complex<T>(  2) * Pi * I * complex<T>(i * j) / T(Dop2b.rows())) / T(Dop2b.rows());
-    }
-  for(int i = 0; i < Dop2b.rows(); i ++)
-    Dop2b.row(i) *= complex<T>(- 2.) * Pi * I * T(i) / T(Dop2b.rows());
-  Dop2 = (Iop2b * Dop2b).real();
   return result;
 }
 
