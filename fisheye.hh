@@ -96,7 +96,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p1[2] = 0;
   cerr << " bump";
   cerr.flush();
-  auto lrf(prepareLineAxis(p0, p1, z_max));
+  Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, Eigen::Dynamic> lrf(prepareLineAxis(p0, p1, z_max));
   for(int i = 0; i < lrf.rows(); i ++)
     for(int j = 0; j < lrf(i, 0).cols(); j ++) {
       lrf(i, 0)(1, j) = 0;
@@ -114,7 +114,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int j = 0; j < zval.size(); j ++)
       zval[j] = T(0);
     for(int s = 0; s < delta; s ++) {
-      auto pt(indiv(p0, p1, s / T(delta)));
+      Eigen::Matrix<T, Eigen::Dynamic, 1> pt(indiv(p0, p1, s / T(delta)));
       for(int zz = 0; zz < lrf.rows(); zz ++) {
         Eigen::Matrix<T, Eigen::Dynamic, 1> c(lrf(zz, 0).cols());
         for(int u = 0; u < c.size(); u ++) {
@@ -131,7 +131,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           rc[u] = c[u - rc.size() + c.size()];
         const Eigen::Matrix<T, Eigen::Dynamic, 1> msl( Dop  * lc);
         const Eigen::Matrix<T, Eigen::Dynamic, 1> msr( Dop  * rc);
-        auto n2( abs(msl[ msl.size()  - 1] - msr[0]) );
+        const T n2( abs(msl[ msl.size()  - 1] - msr[0]) );
         if(isfinite(n2) && zval[s] < n2) {
           result(s, i) = zz / T(z_max);
           zval[s]      = n2;
@@ -160,7 +160,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> centerized(input.rows(), input.cols());
   Eigen::Matrix<T, Eigen::Dynamic, 1> ms0(input.cols()), ms1(input.cols());
   for(int i = 0; i < input.cols(); i ++) {
-    auto ms(minSquare(input.col(i)));
+    Eigen::Matrix<T, Eigen::Dynamic, 1> ms(minSquare(input.col(i)));
     ms0[i] = ms[0];
     ms1[i] = ms[1];
     for(int j = 0; j < input.rows(); j ++)
@@ -234,9 +234,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSqua
     A(i, 1) = (i - avg[1]) * (input[i] - avg[0]);
   }
   Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  auto Ut(svd.matrixU().transpose());
-  auto Vt(svd.matrixV());
-  auto w(svd.singularValues());
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Ut(svd.matrixU().transpose());
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Vt(svd.matrixV());
+  Eigen::Matrix<T, Eigen::Dynamic, 1> w(svd.singularValues());
   for(int i = 0; i < w.size(); i ++)
     if(abs(w[i]) > sthresh)
       w[i] = T(1) / w[i];
@@ -275,20 +275,20 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
     result(zi, 0) = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(3, stp);
     result(zi, 1) = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(3, stp);
     for(int s = 0; s < stp; s ++) {
-      auto cpoint(indiv(p0, p1, 1. / 2.));
+      Eigen::Matrix<T, Eigen::Dynamic, 1> cpoint(indiv(p0, p1, 1. / 2.));
       cpoint[0] += (s / (stp - 1.) - 1. / 2.) * rstp * dir[0];
       cpoint[1] += (s / (stp - 1.) - 1. / 2.) * rstp * dir[1];
       cpoint[2]  = z_max;
 
-      auto zzi(zi + 1);
+      const T zzi(zi + 1);
       Eigen::Matrix<T, Eigen::Dynamic, 1> camera(3);
       camera[0] = dir[0] * roff;
       camera[1] = dir[1] * roff;
       camera[2] = - zzi / T(z_max) * rdist * ndir;
-      auto rd(getLineAxis(cpoint, camera, T(ww), T(hh)));
+      Eigen::Matrix<T, Eigen::Dynamic, 1> rd(getLineAxis(cpoint, camera, T(ww), T(hh)));
       camera    = - camera;
       camera[2] = - camera[2];
-      auto ld(getLineAxis(cpoint, camera, T(ww), T(hh)));
+      Eigen::Matrix<T, Eigen::Dynamic, 1> ld(getLineAxis(cpoint, camera, T(ww), T(hh)));
       rd -= indiv(p0, p1, 1. / 2.);
       ld -= indiv(p0, p1, 1. / 2.);
       result(zi, 0).col(s) = rd;
@@ -312,8 +312,8 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
 template <typename T> T PseudoBump<T>::getImgPt(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& img, const T& y, const T& x) {
   const int& w(img.cols());
   const int& h(img.rows());
-  auto xx((int(x + .5) + 2 * w) % (2 * w));
-  auto yy((int(y + .5) + 2 * h) % (2 * h));
+  T xx((int(x + .5) + 2 * w) % (2 * w));
+  T yy((int(y + .5) + 2 * h) % (2 * h));
   if(abs(xx) >= w)
     xx = - xx + sgn(xx) * w;
   if(abs(yy) >= h)
