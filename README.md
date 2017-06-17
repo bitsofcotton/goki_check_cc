@@ -14,10 +14,7 @@ Goki Check on the implementation of C plus plus.
     ./tools collect input.ppm output.ppm
     
     # make 2d to 3d pseudo bumpmap
-    ./tools bump input.ppm output.ppm
-    
-    # make 2d to 3d pseudo bumpmap on dft differential.
-    ./tools bumpds input.ppm output.ppm
+    ./tools bumpscale input.ppm output.ppm
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
