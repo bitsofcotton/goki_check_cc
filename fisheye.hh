@@ -15,7 +15,6 @@ public:
   T      roff;
   T      rdist;
   int    nlevel;
-  int    rband;
   T      sthresh;
   T      Pi;
   
@@ -26,6 +25,7 @@ public:
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBumpSub(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getPseudoBump(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const bool& y_only);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb2l(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb[3]);
+  Eigen::Matrix<T, Eigen::Dynamic, 1> complementLine(const Eigen::Matrix<T, Eigen::Dynamic, 1>& line, const T& rratio);
 private:
   T zz(const T& t);
   T sgn(const T& x);
@@ -36,7 +36,6 @@ private:
   Eigen::Matrix<T, Eigen::Dynamic, 1> indiv(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p0, const Eigen::Matrix<T, Eigen::Dynamic, 1>& p1, const T& pt);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> integrate(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> autoLevel(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input);
-  Eigen::Matrix<T, Eigen::Dynamic, 1> complementLine(const Eigen::Matrix<T, Eigen::Dynamic, 1>& line, const int& rband);
   
   int ww;
   int hh;
@@ -60,7 +59,6 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->rdist   = 2.;
   this->nlevel  = nlevel;
   Pi            = 4. * atan2(T(1.), T(1.));
-  rband         = 1;
   sthresh       = pow(1. / 256., 6.);
   return;
 };
@@ -78,7 +76,14 @@ template <typename T> T PseudoBump<T>::zz(const T& t) {
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::rgb2l(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb[3]) {
-  return .212639 * rgb[0] + .715169 * rgb[1] + .072192 * rgb[2];
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Y(T(.299) * rgb[0] + T(.587) * rgb[1] + T(.114) * rgb[2]);
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> U(T(-.14713) * rgb[0] + T(-.28886) * rgb[1] + T(.436) * rgb[2]);
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> V(T(.615) * rgb[0] + T(-.51499) * rgb[1] + T(-.10001) * rgb[2]);
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(rgb[0].rows(), rgb[0].cols());
+  for(int j = 0; j < rgb[0].rows(); j ++)
+    for(int k = 0; k < rgb[0].cols(); k ++)
+      result(j, k) = std::sqrt(Y(j, k) * Y(j, k) + U(j, k) * U(j, k) + V(j, k) * V(j, k));
+  return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpSub(const Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input) {
@@ -138,7 +143,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         }
       }
     }
-    result.col(i) = complementLine(result.col(i), rband * ppratio);
+    result.col(i) = complementLine(result.col(i), .5);;
   }
   return result;
 }
@@ -230,7 +235,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSqua
   
   Matrix<T, Eigen::Dynamic, Eigen::Dynamic> A(input.size(), 2);
   for(int i = 0; i < input.size(); i ++) {
-    A(i, 0) = pow(input[i] - avg[0], 2.);
+    A(i, 0) = pow(T(input[i] - avg[0]), T(2));
     A(i, 1) = (i - avg[1]) * (input[i] - avg[0]);
   }
   Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
@@ -325,7 +330,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::indiv(c
   return (p1 - p0) * pt + p0;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complementLine(const Eigen::Matrix<T, Eigen::Dynamic, 1>& line, const int& rband) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complementLine(const Eigen::Matrix<T, Eigen::Dynamic, 1>& line, const T& rratio) {
   std::vector<int> ptsi;
   std::vector<T>   pts;
   bool flag = true;
@@ -353,13 +358,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
   rng[0] = rng[1] = rng[2] = 0;
   for(int i = 0; i < line.size(); i ++) {
     for(; rng[0] < ptsi.size() - 1; rng[0] ++)
-      if(i - rband <= ptsi[rng[0] + 1])
+      if(i <= ptsi[rng[0] + 1])
         break;
     for(; rng[1] < ptsi.size(); rng[1] ++)
-      if(i - rband <= ptsi[rng[1]] && ptsi[rng[1]] <= i + rband)
+      if(i <= ptsi[rng[1]] && ptsi[rng[1]] <= i)
         break;
     for(; rng[2] < ptsi.size(); rng[2] ++)
-      if(i + rband < ptsi[rng[2]])
+      if(i < ptsi[rng[2]])
         break;
     if(rng[2] < rng[1])
       rng[1] = (rng[2] + rng[0]) / 2;
@@ -367,6 +372,20 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
       rng[0] --;
     if(rng[1] == rng[2] && rng[2] < ptsi.size() - 1)
       rng[2] ++;
+    const T ratio(std::abs((ptsi[rng[2]] - ptsi[rng[1]] + 1.) /
+                           (ptsi[rng[1]] - ptsi[rng[0]] + 1.)));
+    if(ratio < rratio || T(1) / ratio < rratio) {
+      if(std::abs(ptsi[rng[2]] - ptsi[rng[1]]) >
+         std::abs(ptsi[rng[1]] - ptsi[rng[0]])) {
+        for(; rng[0] > 0; rng[0] --)
+          if(ptsi[rng[1]] - ptsi[rng[0]] > (ptsi[rng[2]] - ptsi[rng[1]]) * rratio)
+            break;
+      } else {
+        for(; rng[2] < ptsi.size() - 1; rng[2] ++)
+          if(ptsi[rng[2]] - ptsi[rng[1]] > (ptsi[rng[1]] - ptsi[rng[0]]) * rratio)
+            break;
+      }
+    }
     result[i] = 0.;
     for(int ii = 0; ii < 3; ii ++) {
       T work(1);
@@ -375,6 +394,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
           work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
       result[i] += work * pts[rng[ii]];
     }
+    result[i] = std::max(std::min(result[i], T(1)), T(0));
   }
   return result;
 }

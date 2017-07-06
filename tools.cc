@@ -7,11 +7,12 @@
 #include "fisheye.hh"
 #include "edgedetect.hh"
 #include "tilt.hh"
+#include "scancontext.hh"
 
 using namespace std;
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlargeds|bump|bumpscale|detect|collect|tilt) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlargeds|bump|bumpscale|detect|collect|tilt|lpoly) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -35,6 +36,8 @@ int main(int argc, const char* argv[]) {
     mode = 6;
   else if(strcmp(argv[1], "bumpscale") == 0)
     mode = 7;
+  else if(strcmp(argv[1], "lpoly") == 0)
+    mode = 8;
   if(mode < 0) {
     usage();
     return - 1;
@@ -106,6 +109,24 @@ int main(int argc, const char* argv[]) {
       data[2] = data[0];
       normalize<float>(data, 1.);
     }
+    break;
+  case 8:
+    {
+      lowFreq<float> lf;
+      PseudoBump<float> bump;
+      lf.init(.0025);
+      for(int i = 0; i < 3; i ++)
+        data[i] = lf.getLowFreqImage(data[i]);
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> work(bump.rgb2l(data));
+      std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(work));
+      for(int i = 0; i < 3; i ++)
+        for(int j = 0; j < data[i].cols(); j ++)
+          data[i].col(j) = bump.complementLine(data[i].col(j), .75);
+      std::cout << "Handled points:" << std::endl;
+      for(int i = 0; i < points.size(); i ++)
+        std::cout << points[i].transpose() << std::endl;
+    }
+    break;
   default:
     break;
   }
