@@ -19,6 +19,10 @@ Goki Check on the implementation of C plus plus.
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
 
+# Demos
+http://services.limpid-intensity.info/ have a sample interface to working demos.
+Please bookmark output directory page after sending images, then please wait some minutes.
+
 # How to use as library (sample code).
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
     
