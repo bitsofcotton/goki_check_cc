@@ -1,31 +1,31 @@
 # Goki Check
-These program aims to get context(s) from a still image.
-Now, only pseudo 2D->3D and tilt program is published. 
+静止画像からあらかじめ想定される文脈を得ることが目的のプログラムです。
+現在は擬似バンプマップの作成とそれを元にした傾きプログラムのみ公開しています。
 
-Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
+古い情報は https://sourceforge.net/p/gokicheck/wiki/Home/ を参照してください。
 
-# How to use
-Please touch Makefile for Eigen and stdc++ enabled.  
-This program needs ascii raw ppm files to input/output.  
-To convert image files to raw ppm, it is powerful tool that imagemagick with 'convert from.image -compress none to.ppm'. 
+# 使い方
+Makefile を Eigen と stdc++ を使えるように変更してください。  
+このプログラムは ascii 形式の ppm ファイルを入出力に使用します。  
+変換の際は、例えばパワルフなツールである imagemagick の 'convert from.image -compress none to.ppm' が使用できます。
 
-# Parameters
+# 調整可能なパラメタ
 * fisheye.hh
-* * z_max  : z-index resolution.
-* * stp    : number of points to be used in detecting edges.
-* * nlevel : ratio to auto level.
+* * z_max  : 出力する z 軸の解像度です。
+* * stp    : ぼやけ具合を検出する際に使用される点の数です。
+* * nlevel : 自動レベル補正の際の比率です。
 * tilt.hh
-* * z_atio : [0,1] to [0,z_atio].
-* * psi    : tilt as &pi;/2 * psi.
-* * samples: number of rotation samples.
+* * z_atio : [0,1] から [0,z_atio] への線形写像。
+* * psi    : &pi;/2 * psi だけ傾けます。
+* * samples: 傾ける画像の個数です。
 
-# Context
-This program is inspired from re-focus photo softwares.
+# 文脈
+写真の後でのピント調整プログラムに刺激されました。
 
-# Status
-Deducting 3D to 3D match with many different origin rotations. 
+# 状態
+3D から 3D の回転がたくさんある際の部分一致アルゴリズムを散策しています。
 
-# Usage
+# 使い方
     make tools
     
     # enlarge
@@ -43,7 +43,7 @@ Deducting 3D to 3D match with many different origin rotations.
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
 
-# How to use as library (sample code).
+# ライブラリとしての使い方
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
     
     #include "enlarge.hh"
@@ -68,18 +68,18 @@ Deducting 3D to 3D match with many different origin rotations.
     // If you need, please scope with namespace block.
     // but include guard definition may harms.
 
-# Demos
-http://services.limpid-intensity.info/ have a sample interface to working demos.
-Please bookmark output directory page after sending images, then please wait some minutes.  
-N.B. a file per 5 minutes, sha 256 order.  
-N.B. up to 20 Mo total upload size.
+# デモ
+http://services.limpid-intensity.info/ にサンプルがあります。  
+画像をアップロードした後、リンク先のページをブックマークしてください。その後、計算終了までに空いていて数分かかります。  
+N.B. 5分に一回バッチが回ります。アップロード順ではなく sha256 の名前順です。  
+N.B. アップロードのサイズを 20Mo までに制限してあります。
 
 # Tips
-These program's enlarge and enlarge-ds is based on pseudo DFT half space plausible one.  
-These program's collect is based on DFT differential.  
-These program's bump assumes F=∞ and y-axis polarized graphics.   
+enlarge と enlarge-ds は DFT 時の半整数空間から擬似的にとってきています。  
+collect は単純に DFT 微分の後、abs をとってきています。  
+bump は F=&infin; と y軸方向への偏光フィルタを仮定しています。
 
-# Another downloads
+# その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz (preparing...)
+* https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz (準備中...)
