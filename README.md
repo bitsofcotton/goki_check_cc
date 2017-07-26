@@ -82,4 +82,5 @@ These program's bump assumes F=∞ and y-axis polarized graphics.
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-rc4.tar.gz
 * https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz (preparing...)
