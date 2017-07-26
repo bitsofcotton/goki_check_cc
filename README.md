@@ -11,13 +11,13 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 
 # Parameters
 * fisheye.hh
-** z_max  : z-index resolution.
-** stp    : number of points to be used in detecting edges.
-** nlevel : ratio to auto level.
+* * z_max  : z-index resolution.
+* * stp    : number of points to be used in detecting edges.
+* * nlevel : ratio to auto level.
 * tilt.hh
-** z_atio : [0,1] to [0,z_atio].
-** psi    : tilt as &pi;/2 * psi.
-** samples: number of rotation samples.
+* * z_atio : [0,1] to [0,z_atio].
+* * psi    : tilt as &pi;/2 * psi.
+* * samples: number of rotation samples.
 
 # Context
 This program is inspired from re-focus photo softwares.
