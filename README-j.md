@@ -82,4 +82,5 @@ bump は F=&infin; と y軸方向への偏光フィルタを仮定していま�
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-rc4.tar.gz
 * https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz (準備中...)
