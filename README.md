@@ -2,6 +2,8 @@
 These program aims to get context(s) from a still image.
 Now, only pseudo 2D->3D and tilt program is published. 
 
+Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
+
 # How to use
 Please touch Makefile for Eigen and stdc++ enabled.
 This program needs ascii raw ppm files to input/output.
