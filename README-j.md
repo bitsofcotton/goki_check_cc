@@ -47,15 +47,15 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
     
     #include "enlarge.hh"
-    enlarger2ex<float, complex<float> > enlarger;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float, complex<float> >::ENLARGE_BOTH));
+    enlarger2ex<float> enlarger;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float>::ENLARGE_BOTH));
     
-    enlarger2exds<float, complex<float> > enlargerds;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlargedds(enlargerds.enlarge2ds(input, enlarger2exds<float, complex<float> >::ENLARGE_BOTH));
+    enlarger2exds<float> enlargerds;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlargedds(enlargerds.enlarge2ds(input, enlarger2exds<float>::ENLARGE_BOTH));
     
     #include "edgedetect.hh"
-    edgedetect<float, complex<float> > detect;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.detect(input, edgedetect<float, complex<float> >::COLLECT_BOTH));
+    edgedetect<float> detect;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.detect(input, edgedetect<float>::COLLECT_BOTH));
     
     #include "fisheye.hh"
     PseudoBump<float> bump;
@@ -83,4 +83,4 @@ bump は F=&infin; と y軸方向への偏光フィルタを仮定していま�
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
 * https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-rc4.tar.gz
-* https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz (準備中...)
+* https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz
