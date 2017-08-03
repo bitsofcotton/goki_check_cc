@@ -47,15 +47,15 @@ Deducting 3D to 3D match with many different origin rotations.
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
     
     #include "enlarge.hh"
-    enlarger2ex<float, complex<float> > enlarger;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float, complex<float> >::ENLARGE_BOTH));
+    enlarger2ex<float> enlarger;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float>::ENLARGE_BOTH));
     
-    enlarger2exds<float, complex<float> > enlargerds;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlargedds(enlargerds.enlarge2ds(input, enlarger2exds<float, complex<float> >::ENLARGE_BOTH));
+    enlarger2exds<float> enlargerds;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlargedds(enlargerds.enlarge2ds(input, enlarger2exds<float>::ENLARGE_BOTH));
     
     #include "edgedetect.hh"
-    edgedetect<float, complex<float> > detect;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.detect(input, edgedetect<float, complex<float> >::COLLECT_BOTH));
+    edgedetect<float> detect;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.detect(input, edgedetect<float>::COLLECT_BOTH));
     
     #include "fisheye.hh"
     PseudoBump<float> bump;
