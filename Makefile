@@ -2,11 +2,12 @@
 CXX=	g++
 
 # compiler flags.
-CXXFLAGS+=	-Ofast
-#CXXFLAGS+=	-O2 -g2
+CXXFLAGS=	-I/usr/local/include/eigen3
+#CXXFLAGS+=	-fopenmp -pthread
+CXXFLAGS+=	-O2 -g2 -mtune=native
 LDFLAGS=	-lstdc++
 
-CLEANFILES= *.o *.dSYM tools
+CLEANFILES= *.o tools
 
 all:	tools
 

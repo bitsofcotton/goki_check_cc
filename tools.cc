@@ -12,7 +12,7 @@
 using namespace std;
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlargeds|bump|bumpscale|detect|collect|tilt|lpoly) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlargeds|bump|detect|collect|tilt|lpoly) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -34,8 +34,6 @@ int main(int argc, const char* argv[]) {
     mode = 4;
   else if(strcmp(argv[1], "tilt") == 0)
     mode = 6;
-  else if(strcmp(argv[1], "bumpscale") == 0)
-    mode = 7;
   else if(strcmp(argv[1], "lpoly") == 0)
     mode = 8;
   if(mode < 0) {
@@ -48,37 +46,37 @@ int main(int argc, const char* argv[]) {
   switch(mode) {
   case 0:
     {
-      enlarger2ex<float, complex<float> > enlarger;
+      enlarger2ex<float> enlarger;
       for(int i = 0; i < 3; i ++) {
-        data[i] = enlarger.enlarge2(data[i], enlarger2ex<float, complex<float> >::ENLARGE_BOTH);
+        data[i] = enlarger.enlarge2(data[i], enlarger2ex<float>::ENLARGE_BOTH);
       }
     }
     break;
   case 1:
     {
-      enlarger2exds<float, complex<float> > enlarger;
+      enlarger2exds<float> enlarger;
       for(int i = 0; i < 3; i ++)
-        data[i] = enlarger.enlarge2ds(data[i], enlarger2exds<float, complex<float> >::ENLARGE_BOTH);
+        data[i] = enlarger.enlarge2ds(data[i], enlarger2exds<float>::ENLARGE_BOTH);
     }
     break;
   case 3:
     {
-      edgedetect<float, complex<float> > detect;
+      edgedetect<float> detect;
       for(int i = 0; i < 3; i ++)
-        data[i] = detect.detect(data[i], edgedetect<float, complex<float> >::DETECT_BOTH);
+        data[i] = detect.detect(data[i], edgedetect<float>::DETECT_BOTH);
     }
     break;
   case 4:
     {
-      edgedetect<float, complex<float> > detect;
+      edgedetect<float> detect;
       for(int i = 0; i < 3; i ++)
-        data[i] = detect.detect(data[i], edgedetect<float, complex<float> >::COLLECT_BOTH);
+        data[i] = detect.detect(data[i], edgedetect<float>::COLLECT_BOTH);
     }
     break;
   case 2:
     {
       PseudoBump<float> bump;
-      data[0] = bump.getPseudoBumpSub(bump.rgb2l(data));
+      data[0] = bump.getPseudoBump(bump.rgb2l(data), false);
       data[1] = data[0];
       data[2] = data[0];
     }
@@ -100,14 +98,6 @@ int main(int argc, const char* argv[]) {
         savep2or3<float>(outfile.c_str(), out, false);
       }
       return 0;
-    }
-  case 7:
-    {
-      PseudoBump<float> bump;
-      data[0]  = bump.getPseudoBump(bump.rgb2l(data), !true);
-      data[1] = data[0];
-      data[2] = data[0];
-      normalize<float>(data, 1.);
     }
     break;
   case 8:

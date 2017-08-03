@@ -4,7 +4,16 @@
 #include <iostream>
 #include <fstream>
 
-using namespace std;
+using std::max;
+using std::min;
+using std::cerr;
+using std::cout;
+using std::endl;
+using std::string;
+using std::ifstream;
+using std::getline;
+using std::istringstream;
+using std::ofstream;
 
 template <typename T> bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* datas) {
   int i = 0, j = 0, k = 0;
@@ -35,7 +44,6 @@ template <typename T> bool loadstub(ifstream& input, const int& nmax, const int&
 }
 
 template <typename T> bool loadp2or3(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> data[3], const char* filename) {
-  using namespace std;
   string line;
   string line2;
   string line3;
@@ -93,7 +101,6 @@ template <typename T> bool loadp2or3(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyn
 }
 
 template <typename T> bool savep2or3(const char* filename, Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> data[3], const bool& gray) {
-  using namespace std;
   ofstream output;
   output.open(filename);
   if(output.is_open()) {
@@ -127,8 +134,8 @@ template <typename T> void normalize(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyn
   for(int k = 0; k < 3; k ++)
     for(int i = 0; i < data[k].rows(); i ++)
       for(int j = 0; j < data[k].cols(); j ++) {
-        MM = std::max(MM, data[k](i, j));
-        mm = std::min(mm, data[k](i, j));
+        MM = max(MM, data[k](i, j));
+        mm = min(mm, data[k](i, j));
       }
   if(MM == mm)
     return;

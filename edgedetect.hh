@@ -3,9 +3,10 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 
-using namespace Eigen;
+using std::complex;
+using std::abs;
 
-template <typename T, typename U> class edgedetect {
+template <typename T> class edgedetect {
 public:
   typedef enum {
     DETECT_X,
@@ -15,26 +16,29 @@ public:
     COLLECT_Y,
     COLLECT_BOTH } direction_t;
   edgedetect();
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> detect(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>&, const direction_t& dir);
+  typedef complex<T> U;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
+  Mat detect(const Mat& data, const direction_t& dir);
 private:
   void initPattern(const int&);
   U    I;
   T    Pi;
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Dop;
+  Mat  Dop;
 };
 
-template <typename T, typename U> edgedetect<T,U>::edgedetect() {
+template <typename T> edgedetect<T>::edgedetect() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1.), T(1.)) * T(4.);
 }
 
-template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> edgedetect<T,U>::detect(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const edgedetect<T,U>::direction_t& dir) {
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(data);
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> edgedetect<T>::detect(const Mat& data, const direction_t& dir) {
+  Mat result(data);
   switch(dir) {
   case DETECT_BOTH:
     {
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> w(detect(data, DETECT_X));
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> h(detect(data, DETECT_Y));
+      Mat w(detect(data, DETECT_X));
+      Mat h(detect(data, DETECT_Y));
       result = (w + h) / T(2);
     }
     break;
@@ -47,8 +51,8 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
     break;
   case COLLECT_BOTH:
     {
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> w(detect(data, COLLECT_X));
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> h(detect(data, COLLECT_Y));
+      Mat w(detect(data, COLLECT_X));
+      Mat h(detect(data, COLLECT_Y));
       result = (w + h) / T(2);
     }
     break;
@@ -64,22 +68,19 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
     }
     break;
   default:
-    return Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>();
+    ;
   }
   return result;
 }
 
-template <typename T, typename U> void edgedetect<T,U>::initPattern(const int& size) {
-  Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> Dbuf(size, size);
+template <typename T> void edgedetect<T>::initPattern(const int& size) {
+  MatU Dbuf(size, size);
   for(int i = 0; i < Dbuf.rows(); i ++)
     for(int j = 0; j < Dbuf.cols(); j ++)
       Dbuf(i, j) = exp(U(- 2.) * Pi * I * U(i * j / T(size)));
+  MatU Iop(Dbuf.transpose());
   for(int i = 0; i < Dbuf.rows(); i ++)
     Dbuf.row(i) *= U(- 2.) * Pi * I * U(i / T(size));
-  Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> Iop(size, size);
-  for(int i = 0; i < Dbuf.rows(); i ++)
-    for(int j = 0; j < Dbuf.cols(); j ++)
-      Iop(i, j) = exp(U(2.) * Pi * I * U(i * j / T(size))) / U(size);
   Dop = (Iop * Dbuf).real().template cast<T>();
   return;
 }

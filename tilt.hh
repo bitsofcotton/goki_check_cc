@@ -269,6 +269,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
         zb(j, k) = - 20000;
     Mat zb0(zb);
     Mat result0(result);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for
+#endif
     for(int j = 0; j < rotriangles.size(); j ++) {
       Triangles& tri = rotriangles[j];
       Vec2 gs[3];
@@ -296,6 +300,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
           }
         }
     }
+#if defined(_OPENMP)
+#pragma omp for
+#endif
     for(int y = 0; y < result.rows(); y ++)
       for(int x = 0; x < result.cols(); x ++)
         if(zb(y, x) < 0)

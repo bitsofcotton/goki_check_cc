@@ -3,14 +3,12 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 
-using namespace Eigen;
-
 template <typename T> class lowFreq {
 public:
-  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
   typedef complex<T> U;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   lowFreq();
   ~lowFreq();
   void init(const T& thresh);
@@ -88,7 +86,23 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lowFreq<T
   return cost / norm2;
 }
 
-template <typename T> class matchPartial {
+/*
+
+template <typename T> class match_t {
+  Eigen::Matrix<T, 3, 3> rot;
+  Eigen::Matrix<T, 3, 1> offset;
+  T                      ratio;
+  match_t();
+  ~match_t();
+  match_t& operator = (const match_t& other) {
+    rot    = other.rot;
+    offset = other.offset;
+    ratio  = other.ratio;
+  }
+};
+
+
+template <typename T> class matchPartialPartial {
 public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
@@ -96,16 +110,97 @@ public:
   typedef Eigen::Matrix<T, 3, 1>              Vec3;
   typedef complex<T> U;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
-  matchPartial();
-  ~matchPartial();
-  void init(const std::vector<Vec3>& shapebase);
+  matchPartialPartial();
+  ~matchPartialPartial();
+  void init(const std::vector<Vec3>& shapebase, const T& thresh);
   
-  std::vector<Mat3x3> match(const std::vector<std::vector<Vec3> >& points);
+  std::vector<match_t<T> > match(const std::vector<Vec3>& points);
 private:
   U I;
   T Pi;
+  T thresh;
   std::vector<std::vector<Vec3> > shapebase;
 };
+
+template <typename T> matchPartialPartial<T>::matchPartialPartial() {
+  I  = std::sqrt(U(- T(1)));
+  Pi = std::atan2(T(1), T(1)) * T(4);
+}
+
+template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
+  ;
+}
+
+template <typename T> void matchPartialPartial<T>::init(const std::vector<Vec3>& shapebase, const T& thresh) {
+  this->shapebase = shapebase;
+  this->thresh    = thresh;
+}
+
+template <typename T> std::vector<match_t<T> > matchPartialPartial<T>::match(const std::vector<Vec3>& points) {
+}
+
+
+template <typename T> class matchWholePartial {
+public:
+  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
+  typedef Eigen::Matrix<T, 3, 1>              Vec3;
+  typedef complex<T> U;
+  typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
+  matchWholePartial();
+  ~matchWholePartial();
+  void init(const std::vector<std::vector<Vec3> >& shapebase, const T& thresh);
+
+  std::vector<match_t<T> > match(const std::vector<Vec3>& points);
+private:
+  U I;
+  T Pi;
+  T thresh;
+  std::vector<matchPartialPartial<T> > matches;
+  std::vector<std::vector<Vec3> >      shapebase;
+};
+
+template <typename T> matchWholePartial<T>::matchWholePartial() {
+  I  = std::sqrt(U(- T(1)));
+  Pi = std::atan2(T(1), T(1)) * T(4);
+}
+
+template <typename T> matchWholePartial<T>::~matchWholePartial() {
+  ;
+}
+
+template <typename T> void matchWholePartial<T>::init(const std::vector<std::vector<Vec3> >& shapebase, const T& thresh) {
+  for(int i = 0; i < shapebase.size(); i ++) {
+    matchPartialPartial work();
+    work.init(shapebase[i]);
+    matches.push_back(work);
+  }
+  return;
+}
+
+template <typename T> std::vector<match_t<T> > matchWholePartial<T>::match(const std::vector<Vec3>& points) {
+  std::cerr << "matching partial polys..." << std::endl;
+  std::vector<std::vector<match_t<T> > > pmatches;
+  for(int i = 0; i < matches.size(); i ++)
+    pmatches.push_back(matches[i].match(points));
+  std::cerr << "detecting possible whole matches..." << std::endl;
+  std::vector<match_t<T> > result;
+  return result;
+}
+
+
+template <typename T> class reDig {
+public:
+  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
+  typedef Eigen::Matrix<T, 3, 1>              Vec3;
+  
+  void init();
+  Mat emphasis(const Mat& dst, const Mat& src, const std::vector<match_t<T> >& match, const T& ratio);
+};
+*/
 
 #define _SCAN_CONTEXT_
 #endif

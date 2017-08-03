@@ -3,40 +3,45 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 
-using namespace Eigen;
+using std::complex;
 
-template <typename T, typename U> class enlarger2ex {
+template <typename T> class enlarger2ex {
 public:
   typedef enum {
     ENLARGE_X,
     ENLARGE_Y,
     ENLARGE_BOTH } direction_t;
+  typedef complex<T> U;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
+  typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   enlarger2ex();
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarge2(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>&, const direction_t& dir);
+  Mat enlarge2(const Mat& data, const direction_t& dir);
 private:
   void seedPattern(const int&, const int&, const int&);
   void initPattern(const int&);
   U    I;
   T    Pi;
-  Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> B;
-  Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> G;
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> D;
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Dop;
-  Eigen::Matrix<T, Eigen::Dynamic, 1> F;
-  Eigen::Matrix<T, Eigen::Dynamic, 1> X;
+  MatU B;
+  MatU G;
+  Mat  D;
+  Mat  Dop;
+  Vec F;
+  Vec X;
 };
 
-template <typename T, typename U> enlarger2ex<T,U>::enlarger2ex() {
+template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1.), T(1.)) * T(4.);
 }
 
-template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T,U>::enlarge2(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const enlarger2ex<T,U>::direction_t& dir) {
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result;
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::enlarge2(const Mat& data, const direction_t& dir) {
+  Mat result;
   switch(dir) {
   case ENLARGE_BOTH:
     {
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rw, rh;
+      Mat rw, rh;
       rw = enlarge2(data, ENLARGE_X);
       rh = enlarge2(data, ENLARGE_Y);
       rw = enlarge2(rw, ENLARGE_Y);
@@ -45,21 +50,17 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
     }
     break;
   case ENLARGE_X:
-    {
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> buf(data);
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> work(enlarge2(buf.transpose(), ENLARGE_Y));
-      result = work.transpose();
-    }
+    result = enlarge2(data.transpose(), ENLARGE_Y).transpose();
     break;
   case ENLARGE_Y:
     {
-      result = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(data.rows() * 2, data.cols());
+      result = Mat(data.rows() * 2, data.cols());
       cerr << " enlarge_y";
       initPattern(data.rows());
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dd(D * data);
-      Eigen::Matrix<T, Eigen::Dynamic, 1> ff(data.transpose() * F);
-      Eigen::Matrix<T, Eigen::Dynamic, 1> xx(data.transpose() * X);
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> co(Dop * data / T(2));
+      Mat dd(D * data);
+      Vec ff(data.transpose() * F);
+      Vec xx(data.transpose() * X);
+      Mat co(Dop * data / T(2));
       for(int i = 0; i < data.cols(); i ++) {
         const T lr(data.rows() * data.rows() * 2. * Pi * 2. * Pi);
         ff[i] /= lr * T(2);
@@ -75,12 +76,12 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
     }
     break;
   default:
-    return Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>();
+    ;
   }
   return result;
 }
 
-template <typename T, typename U> void enlarger2ex<T,U>::seedPattern(const int& freqidx, const int& stage, const int& row) {
+template <typename T> void enlarger2ex<T>::seedPattern(const int& freqidx, const int& stage, const int& row) {
   for(int i = 0; i < B.cols(); i ++) {
     U   ee(0), eth(0);
     int tt;
@@ -102,24 +103,40 @@ template <typename T, typename U> void enlarger2ex<T,U>::seedPattern(const int& 
   return;
 }
 
-template <typename T, typename U> void enlarger2ex<T,U>::initPattern(const int& size) {
+template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   int wp = size / 4 * 4;
-  B = Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic>(wp, wp);
-  G = Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic>(wp, wp);
+  B = MatU(wp, wp);
+  G = MatU(wp, wp);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for
+#endif
   for(int i = 0; i < wp; i ++)
     for(int j = 0; j < wp; j ++) {
       B(i, j) = U(0);
       G(i, j) = U(0);
     }
   int i = 0;
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int j = 0; j < wp / 2; j ++)
     seedPattern(j,         2, i ++);
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int j = 0; j < wp / 4; j ++)
     seedPattern(j * 2,     0, i ++);
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int j = 0; j < wp / 4; j ++)
     seedPattern(j * 2 + 1, 1, i ++);
-  Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> B0(B.inverse() * G);
-  D = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(size, size);
+  MatU B0(B.inverse() * G);
+  D = Mat(size, size);
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int i = 0; i < size; i ++)
     for(int j = 0; j < size; j ++) {
       const int idx = (j - i + size + wp / 4) % size;
@@ -128,8 +145,11 @@ template <typename T, typename U> void enlarger2ex<T,U>::initPattern(const int& 
       else
         D(i, j) = T(0);
     }
-  F = Eigen::Matrix<T, Eigen::Dynamic, 1>(size);
-  X = Eigen::Matrix<T, Eigen::Dynamic, 1>(size);
+  F = Vec(size);
+  X = Vec(size);
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int i = 0; i < size; i ++) {
     U ee(exp(- I * Pi * U(i * size / 2. / size)));
     U eth(exp(- I * Pi * U(size / 2. / size)));
@@ -138,49 +158,53 @@ template <typename T, typename U> void enlarger2ex<T,U>::initPattern(const int& 
     F[i] = ((c0 + c1) * ee).real();
     X[i] = ((c0 - c1) * ee).real();
   }
-  Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> Dbuf(size, size);
+  MatU Dbuf(size, size);
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int i = 0; i < Dbuf.rows(); i ++)
     for(int j = 0; j < Dbuf.cols(); j ++)
       Dbuf(i, j) = exp(U(- 2.) * Pi * I * U(i * j / T(size)));
+  MatU Iop(Dbuf.transpose());
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int i = 0; i < Dbuf.rows(); i ++)
     Dbuf.row(i) *= U(- 2.) * Pi * I * U(i / T(size));
-  Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> Iop(size, size);
-  for(int i = 0; i < Dbuf.rows(); i ++)
-    for(int j = 0; j < Dbuf.cols(); j ++)
-      Iop(i, j) = exp(U(2.) * Pi * I * U(i * j / T(size))) / U(size);
   Dop = (Iop * Dbuf).real().template cast<T>();
   return;
 }
 
 
-template <typename T, typename U> class enlarger2exds {
+template <typename T> class enlarger2exds {
 public:
   typedef enum {
     ENLARGE_X,
     ENLARGE_Y,
     ENLARGE_BOTH } direction_t;
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarge2ds(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const direction_t& dir);
+  typedef complex<T> U;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
+  typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
+  Mat enlarge2ds(const Mat& data, const direction_t& dir);
 };
 
-template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2exds<T,U>::enlarge2ds(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const enlarger2exds<T,U>::direction_t& dir) {
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result;
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2exds<T>::enlarge2ds(const Mat& data, const direction_t& dir) {
+  Mat result;
   switch(dir) {
   case ENLARGE_X:
-    {
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> buf(data);
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> work(enlarge2ds(buf.transpose(), ENLARGE_Y));
-      result = work.transpose();
-    }
+    result = enlarge2ds(data.transpose(), ENLARGE_Y).transpose();
     break;
   case ENLARGE_Y:
     {
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> buf(data.rows() - 1, data.cols());
+      Mat buf(data.rows() - 1, data.cols());
       for(int i = 0; i < data.cols(); i ++)
         for(int j = 1; j < data.rows(); j ++)
           buf(j - 1, i) = data(j, i) - data(j - 1, i);
-      enlarger2ex<T,U> enlarger;
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> work(enlarger.enlarge2(buf, enlarger2ex<T,U>::ENLARGE_Y));
-      result = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(data.rows() * 2 - 1, data.cols());
+      enlarger2ex<T> enlarger;
+      Mat work(enlarger.enlarge2(buf, enlarger2ex<T>::ENLARGE_Y));
+      result = Mat(data.rows() * 2 - 1, data.cols());
       result.row(0) = data.row(0);
       for(int i = 0; i < work.cols(); i ++)
         for(int j = 1; j < work.rows(); j ++)
@@ -189,7 +213,7 @@ template <typename T, typename U> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
     break;
   case ENLARGE_BOTH:
     {
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rw, rh;
+      Mat rw, rh;
       rw = enlarge2ds(data, ENLARGE_X);
       rh = enlarge2ds(data, ENLARGE_Y);
       rw = enlarge2ds(rw, ENLARGE_Y);
