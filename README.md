@@ -1,6 +1,6 @@
 # Goki Check
 These program aims to get context(s) from a still image.
-Now, only pseudo 2D->3D and tilt program is published. 
+Now, testing partial to partial match.
 
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
@@ -16,14 +16,12 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * * nlevel : ratio to auto level.
 * tilt.hh
 * * z_atio : [0,1] to [0,z_atio].
-* * psi    : tilt as &pi;/2 * psi.
-* * samples: number of rotation samples.
 
 # Context
 This program is inspired from re-focus photo softwares.
 
 # Status
-Deducting 3D to 3D match with many different origin rotations. 
+Writing partial to partial match.
 
 # Usage
     make tools
@@ -42,6 +40,9 @@ Deducting 3D to 3D match with many different origin rotations.
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
+    
+    # list matches.
+    ./tools match input-matchbase.ppm output-base input-to-bematched.ppm ref-to-be-matched.ppm ref-matchbase.ppm
 
 # How to use as library (sample code).
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
@@ -63,7 +64,16 @@ Deducting 3D to 3D match with many different origin rotations.
     
     #include "tilt.hh"
     tilter<float> tilt;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .999));
+    
+    #include "scancontext.hh"
+    lowFreq<float> lf;
+    matchPartialPartial<float> statmatch;
+    std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(input, 300));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape2(lf.getLowFreq(input2, 300));
+    statmatch.init(shape0, .85, .25);
+    std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
+    // match operations.
     
     // If you need, please scope with namespace block.
     // but include guard definition may harms.
