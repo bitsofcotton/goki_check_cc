@@ -1,6 +1,6 @@
 # Goki Check
 静止画像からあらかじめ想定される文脈を得ることが目的のプログラムです。
-現在は擬似バンプマップの作成とそれを元にした傾きプログラムのみ公開しています。
+現在は回転のない固いオブジェクト同士のマッチを実装しています。
 
 古い情報は https://sourceforge.net/p/gokicheck/wiki/Home/ を参照してください。
 
@@ -16,14 +16,12 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * * nlevel : 自動レベル補正の際の比率です。
 * tilt.hh
 * * z_atio : [0,1] から [0,z_atio] への線形写像。
-* * psi    : &pi;/2 * psi だけ傾けます。
-* * samples: 傾ける画像の個数です。
 
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。
 
 # 状態
-3D から 3D の回転がたくさんある際の部分一致アルゴリズムを散策しています。
+回転のない場合の部分-部分一致の実装をしています。
 
 # 使い方
     make tools
@@ -42,6 +40,9 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
+    
+    # list matches.
+    ./tools match input-matchbase.ppm output-base input-to-bematched.ppm ref-to-be-matched.ppm ref-matchbase.ppm
 
 # ライブラリとしての使い方
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
@@ -63,7 +64,16 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     #include "tilt.hh"
     tilter<float> tilt;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .999));
+    
+    #include "scancontext.hh"
+    lowFreq<float> lf;
+    matchPartialPartial<float> statmatch;
+    std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(input, 300));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape2(lf.getLowFreq(input2, 300));
+    statmatch.init(shape0, .85, .25);
+    std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
+    // match operations.
     
     // If you need, please scope with namespace block.
     // but include guard definition may harms.
