@@ -74,11 +74,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> edgedetec
 }
 
 template <typename T> void edgedetect<T>::initPattern(const int& size) {
-  MatU Dbuf(size, size);
+  MatU Dbuf(size, size), Iop(size, size);
   for(int i = 0; i < Dbuf.rows(); i ++)
-    for(int j = 0; j < Dbuf.cols(); j ++)
+    for(int j = 0; j < Dbuf.cols(); j ++) {
       Dbuf(i, j) = exp(U(- 2.) * Pi * I * U(i * j / T(size)));
-  MatU Iop(Dbuf.transpose());
+      Iop(i, j)  = exp(U(  2.) * Pi * I * U(i * j / T(size)));
+    }
   for(int i = 0; i < Dbuf.rows(); i ++)
     Dbuf.row(i) *= U(- 2.) * Pi * I * U(i / T(size));
   Dop = (Iop * Dbuf).real().template cast<T>();

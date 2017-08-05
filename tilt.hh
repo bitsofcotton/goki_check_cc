@@ -11,7 +11,6 @@ template <typename T> class tilter {
 public:
   typedef Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Matrix<T, 3, 3>                           Mat3x3;
-  typedef Matrix<T, 2, 2>                           Mat2x2;
   typedef Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Matrix<T, 3, 1>                           Vec3;
   typedef Matrix<T, 2, 1>                           Vec2;
@@ -19,29 +18,27 @@ public:
   
   tilter();
   ~tilter();
-  void initialize(const T& z_ratio, const T& psi, const int& samples);
+  void initialize(const T& z_ratio);
   
-  Mat tilt(const Mat& in, const Mat& bump, const int& idx);
+  Mat tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
+  Mat tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto);
 private:
+  Mat tiltsub(const Mat& in, const std::vector<Triangles>& triangles, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& origin, const Vec3& moveto, const T& rto);
   T    sgn(const T& x);
   Vec3 solveN(const Vec3& p, const Vec3& q, const int& cnt);
   Eigen::Matrix<T, 3, 5> makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
-  Vec3 rotate0(const Vec3& work, const Vec3& origin, const T& theta, const T& psi0);
-  Eigen::Matrix<T, 3, 5> rotate(const Eigen::Matrix<T, 3, 5>& triangle, const Eigen::Matrix<T, 3, 1>& origin, const T& theta, const T& psi);
-  Vec2 rotate2d(const Vec2& work, const Vec2& origin, const T& theta);
+  Vec3 rotate0(const Vec3& work, const Mat3x3& rot, const Vec3& origin);
+  Eigen::Matrix<T, 3, 5> rotate(const Eigen::Matrix<T, 3, 5>& triangle, const Mat3x3& rot, const Vec3& origin);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   bool scale(Mat3x3& A, Vec3& b, const Mat3x3& vorig, const Mat3x3& vto);
   T   Pi;
   T   z_ratio;
-  T   c_ratio;
-  T   psi;
   T   thresh;
-  int samples;
 };
 
 template <typename T> tilter<T>::tilter() {
-  initialize(.08, .8, 4);
+  initialize(.08);
   return;
 }
 
@@ -49,11 +46,9 @@ template <typename T> tilter<T>::~tilter() {
   ;
 }
 
-template <typename T> void tilter<T>::initialize(const T& z_ratio, const T& psi, const int& samples) {
+template <typename T> void tilter<T>::initialize(const T& z_ratio) {
   this->z_ratio = z_ratio;
-  this->samples = samples;
   Pi            = atan2(T(1.), T(1.)) * T(4.);
-  this->psi     = psi * Pi / 2.;
   thresh        = 1e-8;
   return;
 }
@@ -67,7 +62,7 @@ template <typename T> T tilter<T>::sgn(const T& x) {
 }
 
 // <p, n> = 0, <q, n> = 0.
-template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::solveN(const Eigen::Matrix<T, 3, 1>& p, const Eigen::Matrix<T, 3, 1>& q, const int& cnt) {
+template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::solveN(const Vec3& p, const Vec3& q, const int& cnt) {
   const T det(p[1] * q[2] - p[2] * q[1]);
   Vec3 nn;
   if(std::abs(det) <= thresh) {
@@ -101,7 +96,7 @@ template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::solveN(const Eigen::Matr
   return nn / std::sqrt(nn.dot(nn));
 }
 
-template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& u, const int& v, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& in, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump, const int& flg) {
+template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
   Eigen::Matrix<T, 3, 5> work;
   if(flg) {
     work(0, 0) = u;
@@ -132,57 +127,26 @@ template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& 
   return work;
 }
 
-template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::rotate0(const Eigen::Matrix<T, 3, 1>& work, const Eigen::Matrix<T, 3, 1>& origin, const T& theta, const T& psi0) {
-  const T psi(Pi / 2. - psi0);
-  Mat3x3 R0;
-  Mat3x3 R1;
-  R0(0, 0) =   cos(theta);
-  R0(0, 1) = - sin(theta);
-  R0(0, 2) = 0.;
-  R0(1, 0) =   sin(theta);
-  R0(1, 1) =   cos(theta);
-  R0(1, 2) = 0.;
-  R0(2, 0) = 0.;
-  R0(2, 1) = 0.;
-  R0(2, 2) = 1.;
-  R1(0, 0) = 1.;
-  R1(0, 1) = 0.;
-  R1(0, 2) = 0.;
-  R1(1, 0) = 0.;
-  R1(1, 1) =   cos(psi);
-  R1(1, 2) = - sin(psi);
-  R1(2, 0) = 0.;
-  R1(2, 1) =   sin(psi);
-  R1(2, 2) =   cos(psi);
-  // glitch : rotate in 2D, then tilt.
-  return R1 * (R0 * (work - origin)) + origin;
+template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::rotate0(const Vec3& work, const Mat3x3& rot, const Vec3& origin) {
+  return rot * (work - origin) + origin;
 }
 
-template <typename T> Eigen::Matrix<T, 2, 1> tilter<T>::rotate2d(const Eigen::Matrix<T, 2, 1>& work, const Eigen::Matrix<T, 2, 1>& origin, const T& theta) {
-  Mat2x2 R;
-  R(0, 0) =   cos(theta);
-  R(0, 1) = - sin(theta);
-  R(1, 0) =   sin(theta);
-  R(1, 1) =   cos(theta);
-  return R * (work - origin) + origin;
-}
-
-template <typename T> bool tilter<T>::sameSide2(const Eigen::Matrix<T, 2, 1>& p0, const Eigen::Matrix<T, 2, 1>& p1, const Eigen::Matrix<T, 2, 1>& p2, const Eigen::Matrix<T, 2, 1>& q) {
+template <typename T> bool tilter<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q) {
   const Vec2 dlt(p1 - p0);
   Vec2 dp(p2 - p0);
   dp -= dlt.dot(dp) * dlt / dlt.dot(dlt);
   return dp.dot(q) * dp.dot(p0) >= 0;
 }
 
-template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::rotate(const Eigen::Matrix<T, 3, 5>& triangle, const Eigen::Matrix<T, 3, 1>& origin, const T& theta, const T& psi) {
+template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::rotate(const Eigen::Matrix<T, 3, 5>& triangle, const Mat3x3& rot, const Vec3& origin) {
   Triangles res;
   Vec3      zero;
   for(int i = 0; i < 3; i ++) {
-    res.col(i) = rotate0(triangle.col(i), origin, theta, psi);
+    res.col(i) = rotate0(triangle.col(i), rot, origin);
     zero[i]    = 0.;
   }
   res.col(3) = triangle.col(3);
-  res.col(4) = rotate0(triangle.col(4), zero, theta, psi);
+  res.col(4) = rotate0(triangle.col(4), rot, zero);
   res(1, 3)  = 0.;
   for(int i = 0; i < 3; i ++)
     res(1, 3) += res.col(4).dot(res.col(i));
@@ -191,7 +155,7 @@ template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::rotate(const Eigen::Matr
 }
 
 // <[x, y, t], triangle.n> == triangle.k
-template <typename T> bool tilter<T>::onTriangle(T& z, const Eigen::Matrix<T, 3, 5>& tri, const Eigen::Matrix<T, 2, 1>& geom) {
+template <typename T> bool tilter<T>::onTriangle(T& z, const Eigen::Matrix<T, 3, 5>& tri, const Vec2& geom) {
   Vec3 v0;
   Vec3 camera;
   v0[0] = 0;
@@ -214,7 +178,7 @@ template <typename T> bool tilter<T>::onTriangle(T& z, const Eigen::Matrix<T, 3,
   return f;
 }
 
-template <typename T> bool tilter<T>::scale(Eigen::Matrix<T, 3, 3>& A, Eigen::Matrix<T, 3, 1>& b, const Eigen::Matrix<T, 3, 3>& vorig, const Eigen::Matrix<T, 3, 3>& vto) {
+template <typename T> bool tilter<T>::scale(Mat3x3& A, Vec3& b, const Mat3x3& vorig, const Mat3x3& vto) {
   b = vto.col(0) - vorig.col(0);
   Mat3x3 vdorig, vdto;
   vdorig.col(0) = vorig.col(1) - vorig.col(0);
@@ -231,83 +195,110 @@ template <typename T> bool tilter<T>::scale(Eigen::Matrix<T, 3, 3>& A, Eigen::Ma
   return true;
 } 
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& in, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump, const int& idx) {
-  Mat result(in.rows(), in.cols());
-  for(int i = 0; i < in.rows(); i ++)
-    for(int j = 0; j < in.cols(); j ++)
-      result(i, j) = 0.;
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
+  const T theta(2. * Pi * idx / samples);
+  const T lpsi(Pi / 2. - psi * Pi / 2.);
+  Mat3x3 R0;
+  Mat3x3 R1;
+  R0(0, 0) =   cos(theta);
+  R0(0, 1) = - sin(theta);
+  R0(0, 2) = 0.;
+  R0(1, 0) =   sin(theta);
+  R0(1, 1) =   cos(theta);
+  R0(1, 2) = 0.;
+  R0(2, 0) = 0.;
+  R0(2, 1) = 0.;
+  R0(2, 2) = 1.;
+  R1(0, 0) = 1.;
+  R1(0, 1) = 0.;
+  R1(0, 2) = 0.;
+  R1(1, 0) = 0.;
+  R1(1, 1) =   cos(lpsi);
+  R1(1, 2) = - sin(lpsi);
+  R1(2, 0) = 0.;
+  R1(2, 1) =   sin(lpsi);
+  R1(2, 2) =   cos(lpsi);
+  Vec3 zero3;
+  zero3[0]   = T(0);
+  zero3[1]   = T(0);
+  zero3[2]   = T(0);
+  return tilt(in, bump, R1 * R0, R0.transpose(), zero3, T(1));
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto) {
   if(in.rows() != bump.rows() || in.cols() != bump.cols()) {
     std::cerr << "tilt: size mismatch..." << std::endl;
-    return result;
+    return Mat();
   }
-  std::cerr << "making triangles" << std::endl;
+  std::cerr << " making triangles";
+  fflush(stderr);
   std::vector<Triangles> triangles;
   for(int i = 0; i < in.rows() - 1; i ++)
     for(int j = 0; j < in.cols() - 1; j ++) {
       triangles.push_back(makeTriangle(i, j, in, bump, false));
       triangles.push_back(makeTriangle(i, j, in, bump, true));
     }
-  Mat zb(in.rows(), in.cols());
-  for(int i = 0; i < zb.rows(); i ++)
-    for(int j = 0; j < zb.cols(); j ++)
-      zb(i, j) = 0.;
-  const T radius(std::max(T(in.rows()), T(in.cols())) * 2.);
   Vec3 pcenter;
   pcenter[0] = in.rows() / 2.;
   pcenter[1] = in.cols() / 2.;
   pcenter[2] = 0.;
-  const int i = idx % samples;
-  {
-    std::cerr << "rotate: " << i << "/" << samples << std::endl;
-    const T theta(2. * Pi * i / samples);
-    std::vector<Triangles> rotriangles;
-    for(int j = 0; j < triangles.size(); j ++)
-      rotriangles.push_back(rotate(rotate(triangles[j], pcenter, theta, psi), pcenter, - theta, Pi / 2.));
-    std::cerr << "draw: " << i << "/" << samples << std::endl;
-    for(int j = 0; j < zb.rows(); j ++)
-      for(int k = 0; k < zb.cols(); k ++)
-        zb(j, k) = - 20000;
-    Mat zb0(zb);
-    Mat result0(result);
+  return tiltsub(in, triangles, rot, rotrev, pcenter, moveto, rto);
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tiltsub(const Mat& in, const std::vector<Triangles>& triangles, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& origin, const Vec3& moveto, const T& rto) {
+  Mat result(in.rows(), in.cols());
+  for(int i = 0; i < in.rows(); i ++)
+    for(int j = 0; j < in.cols(); j ++)
+      result(i, j) = 0.;
+  std::vector<Triangles> rotriangles;
+  for(int j = 0; j < triangles.size(); j ++)
+    rotriangles.push_back(rotate(rotate(triangles[j], rto * rot, origin), rotrev, origin));
+  std::cerr << " draw";
+  fflush(stderr);
+  Mat zb(in.rows(), in.cols());
+  for(int j = 0; j < zb.rows(); j ++)
+    for(int k = 0; k < zb.cols(); k ++)
+      zb(j, k) = - 20000;
+  Mat zb0(zb);
+  Mat result0(result);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for
 #endif
-    for(int j = 0; j < rotriangles.size(); j ++) {
-      Triangles& tri = rotriangles[j];
-      Vec2 gs[3];
-      for(int k = 0; k < 3; k ++) {
-        gs[k][0] = tri(0, k);
-        gs[k][1] = tri(1, k);
-      }
-      int ll = int(std::min(std::min(gs[0][0], gs[1][0]), gs[2][0]));
-      int rr = std::ceil(std::max(std::max(gs[0][0], gs[1][0]), gs[2][0]));
-      int bb = int(std::min(std::min(gs[0][1], gs[1][1]), gs[2][1]));
-      int tt = std::ceil(std::max(std::max(gs[0][1], gs[1][1]), gs[2][1]));
-      for(int y = std::max(0, ll); y < std::min(rr, int(in.rows())); y ++)
-        for(int x = std::max(0, bb); x < std::min(tt, int(in.cols())); x ++) {
-          T z;
-          Vec2 midgeom;
-          midgeom[0] = x + .5;
-          midgeom[1] = y + .5;
-          if(onTriangle(z, tri, midgeom) && zb(y, x) < z) {
-            result(y, x)  = tri(0, 3);
-            zb(y, x)      = z;
-          }
-          if(zb0(y, x) < tri(1, 3)) {
-            result0(y, x) = tri(0, 3);
-            zb0(y, x)     = tri(1, 3);
-          }
-        }
+  for(int j = 0; j < rotriangles.size(); j ++) {
+    Triangles& tri = rotriangles[j];
+    Vec2 gs[3];
+    for(int k = 0; k < 3; k ++) {
+      gs[k][0] = tri(0, k);
+      gs[k][1] = tri(1, k);
     }
+    int ll = int(std::min(std::min(gs[0][0], gs[1][0]), gs[2][0]));
+    int rr = std::ceil(std::max(std::max(gs[0][0], gs[1][0]), gs[2][0]));
+    int bb = int(std::min(std::min(gs[0][1], gs[1][1]), gs[2][1]));
+    int tt = std::ceil(std::max(std::max(gs[0][1], gs[1][1]), gs[2][1]));
+    for(int y = std::max(0, ll); y < std::min(rr, int(in.rows())); y ++)
+      for(int x = std::max(0, bb); x < std::min(tt, int(in.cols())); x ++) {
+        T z;
+        Vec2 midgeom;
+        midgeom[0] = x + .5 + moveto[0];
+        midgeom[1] = y + .5 + moveto[1];
+        if(onTriangle(z, tri, midgeom) && zb(y, x) < z) {
+          result(y, x)  = tri(0, 3);
+          zb(y, x)      = z;
+        }
+        if(zb0(y, x) < tri(1, 3)) {
+          result0(y, x) = tri(0, 3);
+          zb0(y, x)     = tri(1, 3);
+        }
+      }
+  }
 #if defined(_OPENMP)
 #pragma omp for
 #endif
-    for(int y = 0; y < result.rows(); y ++)
-      for(int x = 0; x < result.cols(); x ++)
-        if(zb(y, x) < 0)
-          result(y, x) = result0(y, x);
-  }
+  for(int y = 0; y < result.rows(); y ++)
+    for(int x = 0; x < result.cols(); x ++)
+      if(zb(y, x) < 0)
+        result(y, x) = result0(y, x);
   return result;
 }
 

@@ -173,16 +173,17 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::integrate(const Mat& input) {
-  MatU Iop(input.rows(), input.rows());
+  MatU Iop(input.rows(), input.rows()), A(input.rows(), input.rows());
   U    I(sqrt(complex<T>(- 1)));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for
 #endif
   for(int i = 0; i < Iop.rows(); i ++)
-    for(int j = 0; j < Iop.cols(); j ++)
+    for(int j = 0; j < Iop.cols(); j ++) {
       Iop(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>(i * j) / T(Iop.rows()));
-  MatU A(Iop.transpose());
+      A(i, j)   = exp(complex<T>(  2) * Pi * I * complex<T>(i * j) / T(Iop.rows()));
+    }
   Iop.row(0) *= T(0);
   for(int i = 1; i < Iop.rows(); i ++)
     Iop.row(i) /= complex<T>(- 2.) * Pi * I * T(i) / T(Iop.rows());
@@ -341,14 +342,16 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
     }
   }
   MatU Dopb(stp / 2 + 1, stp / 2 + 1);
+  MatU Iopb(Dopb.rows(), Dopb.cols());
   U I(sqrt(complex<T>(- 1)));
 #if defined(_OPENMP)
 #pragma omp for
 #endif
   for(int i = 0; i < Dopb.rows(); i ++)
-    for(int j = 0; j < Dopb.cols(); j ++)
+    for(int j = 0; j < Dopb.cols(); j ++) {
       Dopb(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>(i * j) / T(Dopb.rows()));
-  MatU Iopb(Dopb.transpose());
+      Iopb(i, j) = exp(complex<T>(  2) * Pi * I * complex<T>(i * j) / T(Iopb.rows()));
+    }
 #if defined(_OPENMP)
 #pragma omp for
 #endif

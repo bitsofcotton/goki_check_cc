@@ -158,14 +158,15 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
     F[i] = ((c0 + c1) * ee).real();
     X[i] = ((c0 - c1) * ee).real();
   }
-  MatU Dbuf(size, size);
+  MatU Dbuf(size, size), Iop(size, size);
 #if defined(_OPENMP)
 #pragma omp for
 #endif
   for(int i = 0; i < Dbuf.rows(); i ++)
-    for(int j = 0; j < Dbuf.cols(); j ++)
+    for(int j = 0; j < Dbuf.cols(); j ++) {
       Dbuf(i, j) = exp(U(- 2.) * Pi * I * U(i * j / T(size)));
-  MatU Iop(Dbuf.transpose());
+      Iop(i, j)  = exp(U(  2.) * Pi * I * U(i * j / T(size)));
+    }
 #if defined(_OPENMP)
 #pragma omp for
 #endif
