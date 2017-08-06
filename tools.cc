@@ -90,7 +90,6 @@ int main(int argc, const char* argv[]) {
         return - 2;
       tilter<float> tilt;
       const int M_TILT = 4;
-      tilt.initialize(16);
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
@@ -124,41 +123,64 @@ int main(int argc, const char* argv[]) {
         return - 2;
       if(!loadp2or3<float>(data3, argv[6]))
         return - 2;
+      // XXX: configure me.
+      float thresh_para(.85);
+      float thresh_points(.5);
+      float zr(.05);
+      int   hp(60);
+      int   div(20);
+      int   nshow(40);
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mbump;
+      Eigen::Matrix<float, 3, 3> I3;
+      mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>(data3[0].rows(), data3[0].cols());
+      for(int i = 0; i < 3; i ++)
+        for(int j = 0; j < 3; j ++)
+          I3(i, j) = (i == j ? float(1) : float(0));
+      for(int i = 0; i < min(mout[0].rows(), data2[0].rows()); i ++) {
+        for(int j = 0; j < min(mout[0].cols(), data2[0].cols()); j ++) {
+          mout[0](i, j) = data2[0](i, j);
+          mout[1](i, j) = data2[1](i, j);
+          mout[2](i, j) = data2[2](i, j);
+          mbump(i, j)   = data1[0](i, j);
+        }
+        for(int j = min(mout[0].cols(), data2[0].cols()); j < mout[0].cols(); j ++)
+          mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = float(0);
+      }
+      
+      for(int i = min(mout[0].rows(), data2[0].rows()); i < mout[0].rows(); i ++)
+        for(int j = 0; j < mout[0].cols(); j ++)
+          mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = float(0);
+      Eigen::Matrix<float, 3, 1> zero3;
+      zero3[0] = zero3[1] = zero3[2] = float(0);
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
       lowFreq<float> lf;
-      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), 20));
-      std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1), 20));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), hp));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1), hp));
       for(int i = 0; i < shape0.size(); i ++) {
-        shape0[i][2] *= sqrt(float(data[0].rows())  * data[0].cols());
-        shape1[i][2] *= sqrt(float(data1[0].rows()) * data1[0].cols());
+        shape0[i][2] *= zr;
+        shape1[i][2] *= zr;
       }
-      statmatch.init(shape0, .85, .25);
-      std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
-      for(int n = 0; n < min(int(matches.size()), 16); n ++) {
-        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], zero2(data2[0].rows(), data2[0].cols());
-        Eigen::Matrix<float, 3, 3> I3;
-        for(int i = 0; i < 3; i ++)
-          for(int j = 0; j < 3; j ++)
-            I3(i, j) = (i == j ? float(1) : float(0));
-        for(int i = 0; i < zero2.rows(); i ++)
-          for(int j = 0; j < zero2.cols(); j ++)
-            zero2(i, j) = float(0);
+      statmatch.init(shape0, thresh_para, thresh_points);
+      std::vector<match_t<float> > matches(statmatch.match(shape1, div));
+      for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3];
         tilter<float> tilt;
-        tilt.initialize(16);
-        cerr << "Writing " << n << " / " << matches.size() << endl;
+        tilt.initialize(zr);
+        tilt.initialize(sqrt(float(data1[0].rows()) * data1[0].cols()));
+        cerr << "Writing " << n << " / " << matches.size() << "(" << float(1) / matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = tilt.tilt(showMatch<float>(data2[idx], shape1, matches[n].srcpoints), zero2, matches[n].rot, I3, matches[n].offset, matches[n].ratio);;
-        //  outs[idx] = showMatch<float>(data2[idx], shape1, matches[n].srcpoints);
+          outs[idx] = tilt.tilt(showMatch<float>(mout[idx], shape1, matches[n].srcpoints), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
         normalize<float>(outs, 1.);
         std::string outfile;
-        outfile = std::string(argv[3]) + std::string("-src-") + std::to_string(n + 1) + std::string(".ppm");
+        outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-src.ppm");
         savep2or3<float>(outfile.c_str(), outs, false);
         
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = showMatch<float>(data3[idx], shape0, matches[n].dstpoints);
         normalize<float>(outs, 1.);
-        outfile = std::string(argv[3]) + std::string("-dst-") + std::to_string(n + 1) + std::string(".ppm");
+        outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-dst.ppm");
         savep2or3<float>(outfile.c_str(), outs, false);
       }
     }
