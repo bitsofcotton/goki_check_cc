@@ -1,6 +1,6 @@
 # Goki Check
 These program aims to get context(s) from a still image.
-Now, testing partial to partial match.
+Now, testing solid whole to rotate partials match.
 
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
@@ -16,12 +16,15 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * * nlevel : ratio to auto level.
 * tilt.hh
 * * z_atio : [0,1] to [0,z_atio].
+* scancontext.hh
+* * matchPartialPartial::thresh  : threshold to detect parallel vectors.
+* * matchPartialPartial::threshp : threshold for matched points.
 
 # Context
 This program is inspired from re-focus photo softwares.
 
 # Status
-Writing partial to partial match.
+Writing whole to rotated partials match.
 
 # Usage
     make tools
@@ -88,9 +91,10 @@ N.B. up to 20 Mo total upload size.
 These program's enlarge and enlarge-ds is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ and y-axis polarized graphics.   
+These program's match assumes input file as bump map.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
 * https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-rc4.tar.gz
-* https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz (preparing...)
+* https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz
