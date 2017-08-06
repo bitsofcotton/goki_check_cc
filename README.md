@@ -91,7 +91,7 @@ N.B. up to 20 Mo total upload size.
 These program's enlarge and enlarge-ds is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ and y-axis polarized graphics.   
-These program's match assumes input file as bump map.
+These program's match assumes input file as bump map. And, that matches including z-depth.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
