@@ -163,7 +163,8 @@ public:
 
 template <typename T> int cmpwrap(const match_t<T>& x0, const match_t<T>& x1) {
   // XXX configure me:
-  return abs(x0.ratio) > abs(x1.ratio) || (x0.ratio == x1.ratio && x0.rpoints > x1.rpoints);
+  // return abs(x0.ratio) > abs(x1.ratio) || (x0.ratio == x1.ratio && x0.rpoints > x1.rpoints);
+  return abs(x0.ratio) > abs(x1.ratio) || (x0.ratio == x1.ratio && x0.rdepth > x1.rdepth) || (x0.ratio == x1.ratio && x0.rdepth == x1.rdepth && x0.rpoints > x1.rpoints);
   // return x0.rpoints > x1.rpoints || (x0.rpoints == x1.rpoints && abs(x0.ratio) > abs(x1.ratio));
 }
 
@@ -185,7 +186,7 @@ public:
   ~matchPartialPartial();
   void init(const vector<Vec3>& shapebase, const T& thresh, const T& threshp);
   
-  vector<match_t<T> > match(const vector<Vec3>& points, const int& ndiv = 100);
+  vector<match_t<T> > match(const vector<Vec3>& points, const int& ndiv = 100, const T& r_max_theta = T(0));
 private:
   U I;
   T Pi;
@@ -211,7 +212,7 @@ template <typename T> void matchPartialPartial<T>::init(const vector<Vec3>& shap
   return;
 }
 
-template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& points, const int& ndiv) {
+template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& points, const int& ndiv, const T& r_max_theta) {
   vector<match_t<T> > result;
   for(int i = 0; i < 3; i ++) {
     Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
@@ -298,6 +299,8 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           lrot((k + i + 1) % 3, (k + i + 2) % 3) = T(0);
           work.rot = lrot * work.rot;
         }
+        if(abs(work.rot(2, 2)) < r_max_theta)
+          continue;
         bool flagk[points.size()];
         bool flagj[shapebase.size()];
         for(int kk = 0; kk < points.size(); kk ++)
@@ -377,9 +380,19 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           work.rdepth = T(1) / sqrt(err / n2);
           if(sqrt(err / n2) < thresh) {
 #if defined(_OPENMP)
-#pragma omp atomic
+#pragma omp critical
 #endif
-            result.push_back(work);
+            {
+              bool flag = false;
+              for(int kk = 0; kk < result.size(); kk ++)
+                if(result[kk].srcpoints == work.srcpoints &&
+                   result[kk].dstpoints == work.dstpoints) {
+                  flag = true;
+                  break;
+                }
+              if(!flag)
+                result.push_back(work);
+            }
           }
         }
       }

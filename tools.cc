@@ -90,10 +90,11 @@ int main(int argc, const char* argv[]) {
         return - 2;
       tilter<float> tilt;
       const int M_TILT = 4;
+      tilt.initialize(0.25);
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .999);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .95);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<float>(outfile.c_str(), out, false);
@@ -124,12 +125,14 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data3, argv[6]))
         return - 2;
       // XXX: configure me.
-      float thresh_para(.85);
-      float thresh_points(.5);
-      float zr(.05);
+      float thresh_para(.99995);
+      float thresh_points(.05);
+      float zr(.005);
+      // bump to bump match.
+      float r_max_theta(.99925);
       int   hp(60);
-      int   div(20);
-      int   nshow(40);
+      int   div(120);
+      int   nshow(6);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<float, 3, 3> I3;
@@ -159,13 +162,13 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), hp));
       std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1), hp));
       for(int i = 0; i < shape0.size(); i ++) {
-        shape0[i][2] *= zr;
-        shape1[i][2] *= zr;
+        shape0[i][2] *= zr * sqrt(float(data[0].rows())  * float(data[0].cols()));
+        shape1[i][2] *= zr * sqrt(float(data1[0].rows()) * float(data1[0].cols()));
       }
       statmatch.init(shape0, thresh_para, thresh_points);
-      std::vector<match_t<float> > matches(statmatch.match(shape1, div));
+      std::vector<match_t<float> > matches(statmatch.match(shape1, div, r_max_theta));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3];
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3];
         tilter<float> tilt;
         tilt.initialize(zr);
         tilt.initialize(sqrt(float(data1[0].rows()) * data1[0].cols()));
@@ -178,10 +181,16 @@ int main(int argc, const char* argv[]) {
         savep2or3<float>(outfile.c_str(), outs, false);
         
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = showMatch<float>(data3[idx], shape0, matches[n].dstpoints);
-        normalize<float>(outs, 1.);
+          outs2[idx] = showMatch<float>(data3[idx], shape0, matches[n].dstpoints);
+        normalize<float>(outs2, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-dst.ppm");
-        savep2or3<float>(outfile.c_str(), outs, false);
+        savep2or3<float>(outfile.c_str(), outs2, false);
+        
+        for(int idx = 0; idx < 3; idx ++)
+          outs3[idx] = outs[idx] + outs2[idx];
+        normalize<float>(outs3, 1.);
+        outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-match.ppm");
+        savep2or3<float>(outfile.c_str(), outs3, false);
       }
     }
     return 0;
