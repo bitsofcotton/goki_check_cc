@@ -104,11 +104,13 @@ int main(int argc, const char* argv[]) {
     break;
   case 8:
     {
-      lowFreq<float> lf;
+      lowFreq<float>    lf;
       PseudoBump<float> bump;
-      for(int i = 0; i < 3; i ++)
-        data[i] = lf.getLowFreqImage(data[i]);
+      edgedetect<float> detect;
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> work(bump.rgb2l(data));
+      data[0] = lf.getLowFreqImage(detect.detect(work, edgedetect<float>::COLLECT_BOTH));
+      for(int i = 1; i < 3; i ++)
+        data[i] = data[0];
       std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(work));
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
@@ -125,12 +127,11 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data3, argv[6]))
         return - 2;
       // XXX: configure me.
-      float thresh_para(.99995);
-      float thresh_points(.05);
-      float zr(.005);
+      float thresh_para(.9995);
+      float thresh_points(.025);
+      float zr(.125);
       // bump to bump match.
-      float r_max_theta(.99925);
-      int   hp(60);
+      float r_max_theta(.75);
       int   div(120);
       int   nshow(6);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
@@ -159,19 +160,18 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
       lowFreq<float> lf;
-      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), hp));
-      std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1), hp));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data)));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1)));
       for(int i = 0; i < shape0.size(); i ++) {
-        shape0[i][2] *= zr * sqrt(float(data[0].rows())  * float(data[0].cols()));
-        shape1[i][2] *= zr * sqrt(float(data1[0].rows()) * float(data1[0].cols()));
+        shape0[i][2] *= zr;
+        shape1[i][2] *= zr;
       }
       statmatch.init(shape0, thresh_para, thresh_points);
       std::vector<match_t<float> > matches(statmatch.match(shape1, div, r_max_theta));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3];
         tilter<float> tilt;
-        tilt.initialize(zr);
-        tilt.initialize(sqrt(float(data1[0].rows()) * data1[0].cols()));
+        tilt.initialize(zr * sqrt((data1[0].rows() * data1[0].cols()) / (data[0].rows() * data[0].cols())));
         cerr << "Writing " << n << " / " << matches.size() << "(" << float(1) / matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = tilt.tilt(showMatch<float>(mout[idx], shape1, matches[n].srcpoints), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);

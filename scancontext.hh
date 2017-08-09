@@ -4,12 +4,14 @@
 #include <Eigen/LU>
 #include <cmath>
 #include <vector>
+#include "edgedetect.hh"
 
 using std::sqrt;
 using std::atan2;
 using std::abs;
 using std::cos;
 using std::sin;
+using std::pow;
 using std::sort;
 using std::min;
 using std::cerr;
@@ -29,9 +31,7 @@ public:
 };
 
 template <typename T> int cmplfwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
-  // XXX confirm me:
   return x0.score > x1.score;
-  // return x0.score < x1.score;
 }
 
 template <typename T> class lowFreq {
@@ -39,11 +39,11 @@ public:
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
-  lowFreq();
+  lowFreq(const T& guard = T(.02));
   ~lowFreq();
   
   vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 600);
-  Mat getLowFreqImage(const Mat& data, const int& npoints = 600);
+  Mat getLowFreqImage(const Mat& data, const int& npoints = 120);
 private:
   vector<lfmatch_t<T> > prepareCost(const Mat& data, const int& npoints);
   T Pi;
@@ -51,10 +51,10 @@ private:
   T guard;
 };
 
-template <typename T> lowFreq<T>::lowFreq() {
-  Pi     = atan2(T(1), T(1)) * T(4);
-  I      = sqrt(U(- 1));
-  guard  = T(20);
+template <typename T> lowFreq<T>::lowFreq(const T& guard) {
+  Pi          = atan2(T(1), T(1)) * T(4);
+  I           = sqrt(U(- 1));
+  this->guard = guard;
 }
 
 template <typename T> lowFreq<T>::~lowFreq() {
@@ -83,40 +83,50 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > lowFreq<T>::getLowFreq(con
 
 template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const int& npoints) {
   vector<lfmatch_t<T> > match;
-  for(int i = 1; i < data.rows() - 1; i ++)
-    for(int j = 1; j < data.cols() - 1; j ++) {
+  edgedetect<T> differ;
+  Mat costs(differ.detect(data, edgedetect<T>::COLLECT_BOTH));
+  for(int i = 0; i < data.rows(); i ++)
+    for(int j = 0; j < data.cols(); j ++) {
       lfmatch_t<T> m;
-      T& cost(m.score);
-      cost  = abs(data(i - 1, j - 1) - data(i, j));
-      cost += abs(data(i - 1, j)     - data(i, j));
-      cost += abs(data(i - 1, j + 1) - data(i, j));
-      cost += abs(data(i,     j - 1) - data(i, j));
-      cost += abs(data(i,     j + 1) - data(i, j));
-      cost += abs(data(i + 1, j - 1) - data(i, j));
-      cost += abs(data(i + 1, j)     - data(i, j));
-      cost += abs(data(i + 1, j + 1) - data(i, j));
-      cost /= T(8);
+      m.score = costs(i, j);
       Eigen::Matrix<T, 3, 1>& pt(m.pt);
       pt[0] = i;
       pt[1] = j;
-      pt[2] = data(i, j);
+      // XXX check me:
+      pt[2] = data(i, j) * sqrt(T(data.rows() * data.cols()));
       match.push_back(m);
     }
   sort(match.begin(), match.end(), cmplfwrap<T>);
   vector<lfmatch_t<T> > result;
-  for(int i = 0; i < match.size() && result.size() < npoints; i ++) {
-    bool flag = false;
-    for(int j = 0; j < result.size(); j ++) {
-      const Eigen::Matrix<T, 3, 1> diff(match[i].pt - result[j].pt);
-      const T    r2(diff.dot(diff));
-      if(r2 < guard) {
-        flag = true;
-        break;
+  bool flagw = false;
+  while(!flagw) {
+    cerr << "lpoly: " << guard << "/1 (" << match.size() << ")" << endl;
+    result = vector<lfmatch_t<T> >();
+    for(int i = 0; i < match.size(); i ++) {
+      bool flag = false;
+      for(int j = 0; j < result.size(); j ++) {
+        const Eigen::Matrix<T, 3, 1> diff(match[i].pt - result[j].pt);
+        const T r2(diff.dot(diff) / (T(data.rows() * data.rows() + data.cols() * data.cols()) + abs(match[i].pt[2] * result[j].pt[2])));
+        if(isfinite(r2) && r2 < guard * guard) {
+          flag = true;
+          break;
+        }
+      }
+      if(!flag) {
+        result.push_back(match[i]);
+        flagw = true;
       }
     }
-    if(!flag)
-      result.push_back(match[i]);
+    if(!flagw || result.size() == match.size()) {
+      result = match;
+      break;
+    }
+    if(result.size() <= npoints)
+      break;
+    else
+      match = result;
   }
+  result.resize(min(int(result.size()), npoints));
   return result;
 }
 
@@ -164,8 +174,8 @@ public:
 template <typename T> int cmpwrap(const match_t<T>& x0, const match_t<T>& x1) {
   // XXX configure me:
   // return abs(x0.ratio) > abs(x1.ratio) || (x0.ratio == x1.ratio && x0.rpoints > x1.rpoints);
-  return abs(x0.ratio) > abs(x1.ratio) || (x0.ratio == x1.ratio && x0.rdepth > x1.rdepth) || (x0.ratio == x1.ratio && x0.rdepth == x1.rdepth && x0.rpoints > x1.rpoints);
-  // return x0.rpoints > x1.rpoints || (x0.rpoints == x1.rpoints && abs(x0.ratio) > abs(x1.ratio));
+  // return abs(x0.ratio) > abs(x1.ratio) || (x0.ratio == x1.ratio && x0.rdepth > x1.rdepth) || (x0.ratio == x1.ratio && x0.rdepth == x1.rdepth && x0.rpoints > x1.rpoints);
+  return x0.rpoints > x1.rpoints || (x0.rpoints == x1.rpoints && x0.rdepth > x1.rdepth);
 }
 
 template <typename T> int cmpsubwrap(const msub_t<T>& x0, const msub_t<T>& x1) {
@@ -186,7 +196,7 @@ public:
   ~matchPartialPartial();
   void init(const vector<Vec3>& shapebase, const T& thresh, const T& threshp);
   
-  vector<match_t<T> > match(const vector<Vec3>& points, const int& ndiv = 100, const T& r_max_theta = T(0));
+  vector<match_t<T> > match(const vector<Vec3>& points, const int& ndiv = 120, const T& r_max_theta = T(0));
 private:
   U I;
   T Pi;
@@ -384,12 +394,22 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
 #endif
             {
               bool flag = false;
-              for(int kk = 0; kk < result.size(); kk ++)
-                if(result[kk].srcpoints == work.srcpoints &&
-                   result[kk].dstpoints == work.dstpoints) {
+              // eliminate similar matches.
+              for(int kk = 0; kk < result.size(); kk ++) {
+                Vec3 test(work.offset - result[kk].offset);
+                T    rotdnorm(0);
+                for(int l = 0; l < work.rot.rows(); l ++)
+                  for(int ll = 0; ll < work.rot.cols(); ll ++)
+                    rotdnorm += pow(work.rot(l, ll) - result[kk].rot(l, ll), T(2));
+                // XXX magic number:
+                if(sqrt(test.dot(test) / work.offset.dot(work.offset) +
+                        rotdnorm +
+                        pow(T(1) - work.ratio / result[kk].ratio, T(2)))
+                    <= T(13) * T(.01)) {
                   flag = true;
                   break;
                 }
+              }
               if(!flag)
                 result.push_back(work);
             }
