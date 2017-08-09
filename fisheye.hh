@@ -32,7 +32,7 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& nlevel, const T& brange = T(1.));
+  void initialize(const int& z_max, const int& stp, const int& nlevel);
   ~PseudoBump();
   
   Mat getPseudoBumpSub(const Mat& input, const int& rstp);
@@ -57,18 +57,17 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 8, 64, T(1.));
+  initialize(8, 8, 64);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel, const T& brange) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel) {
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp * 2;
-  this->brange  = brange;
   this->roff    = 1. / 6.;
   this->rdist   = 2.;
   this->nlevel  = nlevel;
@@ -243,19 +242,19 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     //      repeat each range.
     Mat result(input);
     result *= T(0);
-    for(int i = 0; pow(T(2), i) * rstp < input.rows() / T(4); i ++) {
+    for(int i = 0; pow(T(2), i) * rstp < input.rows() / T(8); i ++) {
       const T rstp(pow(T(2), i) * this->rstp);
-      result += edge.detect(getPseudoBumpSub(integrate(input), rstp), edgedetect<T>::DETECT_Y) * pow(brange, i);
+      result += edge.detect(getPseudoBumpSub(integrate(input), rstp), edgedetect<T>::DETECT_Y) * (i + 1);
     }
     return autoLevel(result);
   } else {
     Mat result(input);
     result *= T(0);
-    for(int i = 0; pow(T(2), i) * rstp < min(input.rows(), input.cols()) / T(4); i ++) {
+    for(int i = 0; pow(T(2), i) * rstp < min(input.rows(), input.cols()) / T(8); i ++) {
       const T rstp(pow(T(2), i) * this->rstp);
       const Mat pbx(edge.detect(getPseudoBumpSub(integrate(input.transpose()), rstp), edgedetect<T>::DETECT_Y).transpose());
       const Mat pby(edge.detect(getPseudoBumpSub(integrate(input), rstp), edgedetect<T>::DETECT_Y));
-      result += (pbx + pby) * pow(T(1.5), i);
+      result += (pbx + pby) * (i + 1);
     }
     return autoLevel(result);
   }
