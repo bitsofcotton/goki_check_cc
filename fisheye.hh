@@ -22,6 +22,7 @@ public:
   int    rstp;
   T      roff;
   T      rdist;
+  T      brange;
   int    nlevel;
   T      sthresh;
   typedef complex<T> U;
@@ -34,16 +35,16 @@ public:
   void initialize(const int& z_max, const int& stp, const int& nlevel);
   ~PseudoBump();
   
-  Mat getPseudoBumpSub(const Mat& input);
+  Mat getPseudoBumpSub(const Mat& input, const int& rstp);
   Mat getPseudoBump(const Mat& input, const bool& y_only);
   Mat rgb2l(const Mat rgb[3]);
-  Vec complementLine(const Vec& line, const T& rratio);
+  Vec complementLine(const Vec& line, const T& rratio = T(.8));
 private:
   T zz(const T& t);
   T sgn(const T& x);
   Vec minSquare(const Vec& input);
   Vec getLineAxis(Vec p, Vec c, const int& w, const int& h);
-  Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> prepareLineAxis(const Vec& p0, const Vec& p1, const int& z0);
+  Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> prepareLineAxis(const Vec& p0, const Vec& p1, const int& z0, const int& rstp);
   T   getImgPt(const Mat& img, const T& y, const T& x);
   Vec indiv(const Vec& p0, const Vec& p1, const T& pt);
   Mat integrate(const Mat& input);
@@ -52,12 +53,11 @@ private:
   int ww;
   int hh;
   Mat Dop;
-  Mat Dop2;
   T   Pi;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(128, 20, 128);
+  initialize(8, 8, 64);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -72,7 +72,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->rdist   = 2.;
   this->nlevel  = nlevel;
   Pi            = 4. * atan2(T(1.), T(1.));
-  sthresh       = pow(1. / 256., 6.);
+  sthresh       = T(1e-8) / T(256);
   return;
 };
 
@@ -85,7 +85,7 @@ template <typename T> T PseudoBump<T>::sgn(const T& x) {
 }
 
 template <typename T> T PseudoBump<T>::zz(const T& t) {
-  return (t + 1) / z_max;
+  return (t + 1 + z_max) / z_max / T(3);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::rgb2l(const Mat rgb[3]) {
@@ -98,11 +98,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 #endif
   for(int j = 0; j < rgb[0].rows(); j ++)
     for(int k = 0; k < rgb[0].cols(); k ++)
-      result(j, k) = std::sqrt(Y(j, k) * Y(j, k) + U(j, k) * U(j, k) + V(j, k) * V(j, k));
+      result(j, k) = sqrt(Y(j, k) * Y(j, k) + U(j, k) * U(j, k) + V(j, k) * V(j, k));
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpSub(const Mat& input) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpSub(const Mat& input, const int& rstp) {
   Mat work(input);
   Mat result(work.rows(), work.cols());
   const int ppratio = (result.rows() + input.rows() - 1) / input.rows();
@@ -117,7 +117,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p1[2] = 0;
   cerr << " bump";
   cerr.flush();
-  Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> lrf(prepareLineAxis(p0, p1, z_max));
+  Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> lrf(prepareLineAxis(p0, p1, z_max, rstp));
   for(int i = 0; i < lrf.rows(); i ++)
     for(int j = 0; j < lrf(i, 0).cols(); j ++) {
       lrf(i, 0)(1, j) = 0;
@@ -158,16 +158,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           lc[u] = c[u];
         for(int u = 0; u < rc.size(); u ++)
           rc[u] = c[u - rc.size() + c.size()];
-        const Vec msl( Dop  * lc);
-        const Vec msr( Dop  * rc);
-        const T n2( abs(msl[ msl.size()  - 1] - msr[0]) );
+        const Vec msl(Dop * lc);
+        const Vec msr(Dop * rc);
+        const T n2(abs(msl[msl.size() - 1] - msr[0]));
         if(isfinite(n2) && zval[s] < n2) {
           result(s, i) = zz / T(z_max);
           zval[s]      = n2;
         }
       }
     }
-    result.col(i) = complementLine(result.col(i), .5);;
+    result.col(i) = complementLine(result.col(i));
   }
   return result;
 }
@@ -207,8 +207,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 #endif
   for(int i = 0; i < input.cols(); i ++)
     for(int j = 0; j < input.rows(); j ++)
-      centerized(j, i) += ms0[i] * j + ms1[i] * j * j / 2.;
-  return centerized;
+      centerized(j, i) += (ms0[i] * j + ms1[i] * j * j / 2.) / input.rows();
+  return centerized / input.rows();
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::autoLevel(const Mat& input) {
@@ -231,20 +231,32 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return res;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& input, const bool& y_only)
- {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& input, const bool& y_only) {
+  edgedetect<T> edge;
   if(y_only) {
-    edgedetect<T> edge;
     // N.B. We may need integrate on local to global operation.
-    // N.B. We need a differential because of lack of integrate constant.
+    // N.B. If twice integrate/differential, we can get low frequency image.
     // N.B. We assume differential/integral of getPseudoBumpSub as a linear,
     //      but in fact, it's not.
-    return autoLevel(edge.detect(getPseudoBumpSub(integrate(input)), edgedetect<T>::DETECT_Y));
+    // N.B. Local to global operation in this is pseudo, so to avoid this,
+    //      repeat each range.
+    Mat result(input);
+    result *= T(0);
+    for(int i = 0; pow(T(2), i) * rstp < input.rows() / T(8); i ++) {
+      const T rstp(pow(T(2), i) * this->rstp);
+      result += edge.detect(getPseudoBumpSub(integrate(input), rstp), edgedetect<T>::DETECT_Y) * (i + 1);
+    }
+    return autoLevel(result);
   } else {
-    edgedetect<T> edge;
-    const Mat pbx(edge.detect(getPseudoBumpSub(integrate(input.transpose())), edgedetect<T>::DETECT_Y).transpose());
-    const Mat pby(edge.detect(getPseudoBumpSub(integrate(input)), edgedetect<T>::DETECT_Y));
-    return autoLevel((pbx + pby) / 2.);
+    Mat result(input);
+    result *= T(0);
+    for(int i = 0; pow(T(2), i) * rstp < min(input.rows(), input.cols()) / T(8); i ++) {
+      const T rstp(pow(T(2), i) * this->rstp);
+      const Mat pbx(edge.detect(getPseudoBumpSub(integrate(input.transpose()), rstp), edgedetect<T>::DETECT_Y).transpose());
+      const Mat pby(edge.detect(getPseudoBumpSub(integrate(input), rstp), edgedetect<T>::DETECT_Y));
+      result += (pbx + pby) * (i + 1);
+    }
+    return autoLevel(result);
   }
   return Mat();
 }
@@ -287,7 +299,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSqua
     result[i] *= w[i];
   result = Vt * result;
   result[0] += avg[0];
-  return result / input.size();
+  result[1] /= input.size();
+  return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getLineAxis(Vec p, Vec c, const int& w, const int& h) {
@@ -307,7 +320,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getLine
   return work;
 }
 
-template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::prepareLineAxis(const Vec& p0, const Vec& p1, const int& z0) {
+template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::prepareLineAxis(const Vec& p0, const Vec& p1, const int& z0, const int& rstp) {
   Vec dir(p1 - p0);
   T ndir(sqrt(dir.dot(dir)));
   dir /= ndir;
@@ -326,11 +339,11 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
       cpoint[1] += (s / (stp - 1.) - 1. / 2.) * rstp * dir[1];
       cpoint[2]  = z_max;
 
-      const T zzi(zi + 1);
+      const T zzi(zz(zi + 1));
       Vec camera(3);
       camera[0] = dir[0] * roff;
       camera[1] = dir[1] * roff;
-      camera[2] = - zzi / T(z_max) * rdist * ndir;
+      camera[2] = - zzi * rdist * ndir;
       Vec rd(getLineAxis(cpoint, camera, T(ww), T(hh)));
       camera    = - camera;
       camera[2] = - camera[2];
@@ -378,8 +391,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::indiv(c
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complementLine(const Vec& line, const T& rratio) {
-  std::vector<int> ptsi;
-  std::vector<T>   pts;
+  vector<int> ptsi;
+  vector<T>   pts;
   bool flag = true;
   for(int i = 0; i < line.size(); i ++)
     if(T(0) <= line[i]) {
@@ -393,7 +406,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
       ptsi.push_back(i);
       pts.push_back(line[i]);
     }
-  Vec result(line.size());
+  Vec result(line);
   if(ptsi.size() <= 0) {
     for(int i = 0; i < line.size(); i ++)
       result[i] = T(.5);
@@ -404,6 +417,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
   int rng[3];
   rng[0] = rng[1] = rng[2] = 0;
   for(int i = 0; i < line.size(); i ++) {
+    if(result[i] >= T(0))
+      continue;
     for(; rng[0] < ptsi.size() - 1; rng[0] ++)
       if(i <= ptsi[rng[0] + 1])
         break;
@@ -419,11 +434,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
       rng[0] --;
     if(rng[1] == rng[2] && rng[2] < ptsi.size() - 1)
       rng[2] ++;
-    const T ratio(std::abs((ptsi[rng[2]] - ptsi[rng[1]] + 1.) /
-                           (ptsi[rng[1]] - ptsi[rng[0]] + 1.)));
+    const T ratio(abs((ptsi[rng[2]] - ptsi[rng[1]] + 1.) /
+                      (ptsi[rng[1]] - ptsi[rng[0]] + 1.)));
     if(ratio < rratio || T(1) / ratio < rratio) {
-      if(std::abs(ptsi[rng[2]] - ptsi[rng[1]]) >
-         std::abs(ptsi[rng[1]] - ptsi[rng[0]])) {
+      if(abs(ptsi[rng[2]] - ptsi[rng[1]]) >
+         abs(ptsi[rng[1]] - ptsi[rng[0]])) {
         for(; rng[0] > 0; rng[0] --)
           if(ptsi[rng[1]] - ptsi[rng[0]] > (ptsi[rng[2]] - ptsi[rng[1]]) * rratio)
             break;
@@ -441,7 +456,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
           work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
       result[i] += work * pts[rng[ii]];
     }
-    result[i] = std::max(std::min(result[i], T(1)), T(0));
+    result[i] = max(min(result[i], T(1)), T(0));
   }
   return result;
 }

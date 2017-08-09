@@ -31,7 +31,7 @@ public:
 };
 
 template <typename T> int cmplfwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
-  return x0.score > x1.score;
+  return x0.score < x1.score;
 }
 
 template <typename T> class lowFreq {
@@ -39,7 +39,8 @@ public:
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
-  lowFreq(const T& guard = T(.02));
+  typedef Eigen::Matrix<T, 3, 1>                           Vec3;
+  lowFreq(const T& guard = T(.125));
   ~lowFreq();
   
   vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 600);
@@ -88,7 +89,7 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++) {
       lfmatch_t<T> m;
-      m.score = costs(i, j);
+      m.score = T(1) / costs(i, j);
       Eigen::Matrix<T, 3, 1>& pt(m.pt);
       pt[0] = i;
       pt[1] = j;
@@ -97,34 +98,53 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
       match.push_back(m);
     }
   sort(match.begin(), match.end(), cmplfwrap<T>);
+  match.resize(match.size() * guard);
   vector<lfmatch_t<T> > result;
-  bool flagw = false;
-  while(!flagw) {
-    cerr << "lpoly: " << guard << "/1 (" << match.size() << ")" << endl;
+  while(true) {
     result = vector<lfmatch_t<T> >();
     for(int i = 0; i < match.size(); i ++) {
-      bool flag = false;
-      for(int j = 0; j < result.size(); j ++) {
-        const Eigen::Matrix<T, 3, 1> diff(match[i].pt - result[j].pt);
-        const T r2(diff.dot(diff) / (T(data.rows() * data.rows() + data.cols() * data.cols()) + abs(match[i].pt[2] * result[j].pt[2])));
-        if(isfinite(r2) && r2 < guard * guard) {
-          flag = true;
+      cerr << "lpoly : " << match.size() << " : " << i << endl;
+      vector<T> lmbuf;
+      for(int j = 0; j < match.size(); j ++) {
+        Eigen::Matrix<T, 3, 1> diff(match[i].pt - match[j].pt);
+        lmbuf.push_back(diff.dot(diff));
+      }
+      vector<T> slmbuf(lmbuf);
+      sort(slmbuf.begin(), slmbuf.end());
+      if(!slmbuf.size()) break;
+      Vec3 p[3];
+      int  pidx[3];
+      int  k0(1);
+      for(int k = 0; k < p[0].size(); k ++)
+        for(int j = 0; j < lmbuf.size(); j ++)
+          if(slmbuf[k + k0] == lmbuf[j]) {
+            bool flag = false;
+            for(int kk = 0; kk < k; kk ++)
+              if(j == pidx[kk])
+                flag = true;
+            if(flag) continue;
+            pidx[k] = j;
+            p[k]    = match[j].pt;
+            break;
+          }
+      Vec3 q(p[1] - p[0]), r(p[2] - p[0]);
+      r -= r.dot(q) * q / q.dot(q);
+      Vec3 ek;
+      for(int k = 0; k < p[0].size(); k ++) {
+        for(int kk = 0; kk < p[0].size(); kk ++)
+          ek[kk] = k == kk ? T(1) : T(0);
+        ek -= ek.dot(q) * q / q.dot(q) + ek.dot(r) * r / r.dot(r);
+        if(ek.dot(ek) > T(1) / T(9))
           break;
-        }
       }
-      if(!flag) {
-        result.push_back(match[i]);
-        flagw = true;
-      }
+      result.push_back(match[i]);
+      result[i].score = abs(ek.dot(result[i].pt - p[0]) / sqrt(ek.dot(ek)));
     }
-    if(!flagw || result.size() == match.size()) {
-      result = match;
+    sort(result.begin(), result.end(), cmplfwrap<T>);
+    result.resize(result.size() * guard);
+    if(result.size() == match.size() || result.size() <= npoints)
       break;
-    }
-    if(result.size() <= npoints)
-      break;
-    else
-      match = result;
+    match = result;
   }
   result.resize(min(int(result.size()), npoints));
   return result;
