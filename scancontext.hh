@@ -529,7 +529,7 @@ template <typename T> void reDig<T>::init() {
   return;
 }
 
-template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& src, const match_t<T>& match, const T& ratio) {
+template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio) {
   const Vec3 a(refdst);
   const Vec3 b(match.rot * src * match.ratio + match.offset);
   const T    r0(sqrt((a - b).dot(a - b)));
