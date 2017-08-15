@@ -19,6 +19,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * scancontext.hh
 * * matchPartialPartial::thresh  : 平行なベクトルのための誤差です。1 - &epsilon;
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
+* * matchPartialPartial::threshr : 検出される最小の画像倍率です。
 
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。
@@ -74,7 +75,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     matchPartialPartial<float> statmatch;
     std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(input, 300));
     std::vector<Eigen::Matrix<float, 3, 1> > shape2(lf.getLowFreq(input2, 300));
-    statmatch.init(shape0, .85, .25);
+    statmatch.init(shape0, .85, .25, .125);
     std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
     // match operations.
     
@@ -97,5 +98,5 @@ match は z 軸方向まで含めて合致する部分を探します。
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-rc4.tar.gz
-* https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-stable.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.00-stable.tar.gz

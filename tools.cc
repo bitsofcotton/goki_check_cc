@@ -89,7 +89,7 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(bump, argv[4]))
         return - 2;
       tilter<float> tilt;
-      const int M_TILT = 8;
+      const int M_TILT = 32;
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
@@ -128,9 +128,10 @@ int main(int argc, const char* argv[]) {
       // XXX: configure me.
       float thresh_para(.9995);
       float thresh_points(.025);
+      float thresh_r(.125);
       float zr(.125);
       // bump to bump match.
-      float r_max_theta(.75);
+      float r_max_theta(.01);
       int   div(120);
       int   nshow(6);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
@@ -165,11 +166,12 @@ int main(int argc, const char* argv[]) {
         shape0[i][2] *= zr;
         shape1[i][2] *= zr;
       }
-      statmatch.init(shape0, thresh_para, thresh_points);
+      statmatch.init(shape0, thresh_para, thresh_points, thresh_r);
       std::vector<match_t<float> > matches(statmatch.match(shape1, div, r_max_theta));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3];
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<float> tilt;
+        reDig<float>  redig;
         tilt.initialize(zr * sqrt((data1[0].rows() * data1[0].cols()) / (data[0].rows() * data[0].cols())));
         cerr << "Writing " << n << " / " << matches.size() << "(" << float(1) / matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
         for(int idx = 0; idx < 3; idx ++)
@@ -190,6 +192,17 @@ int main(int argc, const char* argv[]) {
         normalize<float>(outs3, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-match.ppm");
         savep2or3<float>(outfile.c_str(), outs3, false);
+        
+        for(int idx = 0; idx < 3; idx ++) {
+          outs4[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], float(- 2));
+          outs5[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], float(2));
+        }
+        normalize<float>(outs4, 1.);
+        normalize<float>(outs5, 1.);
+        outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");
+        savep2or3<float>(outfile.c_str(), outs4, false);
+        outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-2.ppm");
+        savep2or3<float>(outfile.c_str(), outs5, false);
       }
     }
     return 0;

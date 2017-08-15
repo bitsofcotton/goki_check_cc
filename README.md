@@ -19,6 +19,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * scancontext.hh
 * * matchPartialPartial::thresh  : threshold to detect parallel vectors.
 * * matchPartialPartial::threshp : threshold for matched points.
+* * matchPartialPartial::threshr : threshold for matched size ratios.
 
 # Context
 This program is inspired from re-focus photo softwares.
@@ -74,7 +75,7 @@ Writing whole to rotated partials match.
     matchPartialPartial<float> statmatch;
     std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(input, 300));
     std::vector<Eigen::Matrix<float, 3, 1> > shape2(lf.getLowFreq(input2, 300));
-    statmatch.init(shape0, .85, .25);
+    statmatch.init(shape0, .85, .25, .125);
     std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
     // match operations.
     
@@ -96,5 +97,5 @@ These program's match assumes input file as bump map. And, that matches includin
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-rc4.tar.gz
-* https://files.limpid-intensity.info/goki_check_cc-1.00-rc4.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-stable.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.00-stable.tar.gz

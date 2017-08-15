@@ -30,14 +30,14 @@ public:
   
   Mat tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
   Mat tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto, const Vec3& origin0);
-private:
-  Mat tiltsub(const Mat& in, const vector<Triangles>& triangles, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& origin, const Vec3& moveto, const T& rto);
-  T    sgn(const T& x);
   Vec3 solveN(const Vec3& p, const Vec3& q, const Vec3& r);
   Eigen::Matrix<T, 3, 5> makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
+  Mat tiltsub(const Mat& in, const vector<Triangles>& triangles, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& origin, const Vec3& moveto, const T& rto);
+  bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q);
+private:
+  T    sgn(const T& x);
   Vec3 rotate0(const Vec3& work, const Mat3x3& rot, const Vec3& origin);
   Eigen::Matrix<T, 3, 5> rotate(const Eigen::Matrix<T, 3, 5>& triangle, const Mat3x3& rot, const Vec3& origin, const T& rr);
-  bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   bool scale(Mat3x3& A, Vec3& b, const Mat3x3& vorig, const Mat3x3& vto);
   T   Pi;
