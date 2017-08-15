@@ -194,7 +194,7 @@ int main(int argc, const char* argv[]) {
         savep2or3<float>(outfile.c_str(), outs3, false);
         
         for(int idx = 0; idx < 3; idx ++) {
-          outs4[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], float(0));
+          outs4[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], float(- 2));
           outs5[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], float(2));
         }
         normalize<float>(outs4, 1.);

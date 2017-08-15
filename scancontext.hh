@@ -512,7 +512,7 @@ public:
   reDig();
   ~reDig();
   void init();
-  Vec3 emphasis0(const Vec3& dst, const Vec3& src, const match_t<T>& match, const T& ratio);
+  Vec3 emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
   vector<Vec3> emphasis(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
   Mat          emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
 };
@@ -530,10 +530,10 @@ template <typename T> void reDig<T>::init() {
 }
 
 template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& src, const match_t<T>& match, const T& ratio) {
-  const Vec3 a(dst);
+  const Vec3 a(refdst);
   const Vec3 b(match.rot * src * match.ratio + match.offset);
   const T    r0(sqrt((a - b).dot(a - b)));
-  return a + (b - a) * (ratio - T(1)) / r0;
+  return dst + (b - a) * (ratio - T(1)) / r0;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
@@ -546,8 +546,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       triangles.push_back(tilt.makeTriangle(i, j, dstimg, dstbump, false));
       triangles.push_back(tilt.makeTriangle(i, j, dstimg, dstbump, true));
     }
-  bool checked[triangles.size()];
-  for(int i = 0; i < triangles.size(); i ++)
+  bool checked[triangles.size() * 3];
+  for(int i = 0; i < triangles.size() * 3; i ++)
     checked[i] = false;
   
   for(int i = 0; i < match.dstpoints.size(); i ++)
@@ -575,15 +575,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
         p2[0] = dst[match.dstpoints[k]][0];
         p2[1] = dst[match.dstpoints[k]][1];
         for(int l = 0; l < triangles.size(); l ++)
-          if(!checked[l]) {
+          if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
             Vec2 q;
             for(int ll = 0; ll < 3; ll ++) {
+              if(checked[l * 3 + ll])
+                continue;
               q[0] = triangles[l](0, ll);
               q[1] = triangles[l](1, ll);
               if(tilt.sameSide2(p0, p1, p2, q) &&
                  tilt.sameSide2(p1, p2, p0, q) &&
                  tilt.sameSide2(p2, p0, p1, q)) {
-                triangles[l].col(ll) = emphasis0(triangles[l].col(ll), src[match.srcpoints[i]], match, ratio);
+                triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst[match.dstpoints[i]], src[match.srcpoints[i]], match, ratio);
+                checked[l * 3 + ll]  = true;
               }
             }
             triangles[l].col(4) = tilt.solveN(triangles[l].col(0), triangles[l].col(1), triangles[l].col(2));
