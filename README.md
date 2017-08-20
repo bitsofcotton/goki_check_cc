@@ -92,7 +92,7 @@ N.B. up to 20 Mo total upload size.
 These program's enlarge and enlarge-ds is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ and y-axis polarized graphics.   
-These program's match assumes input file as bump map. And, that matches including z-depth.
+These program's match assumes input file as bump map. And, that matches including z-depth.  
 These program's match3d assumes input file as bump map and .obj 3d file. And for now, it considers only vertexes (not planes). So redig result gains strange one.
 
 # Another downloads
