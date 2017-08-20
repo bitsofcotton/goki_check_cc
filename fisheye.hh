@@ -47,7 +47,7 @@ private:
   Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> prepareLineAxis(const Vec& p0, const Vec& p1, const int& z0, const int& rstp);
   T   getImgPt(const Mat& img, const T& y, const T& x);
   Vec indiv(const Vec& p0, const Vec& p1, const T& pt);
-  Mat integrateLE(const Mat& input);
+  Mat integrate(const Mat& input);
   Mat autoLevel(const Mat& input);
   
   int ww;
@@ -172,7 +172,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::integrateLE(const Mat& input) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::integrate(const Mat& input) {
   MatU Iop(input.rows(), input.rows()), A(input.rows(), input.rows());
   U    I(sqrt(complex<T>(- 1)));
 #if defined(_OPENMP)
@@ -187,9 +187,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   Iop.row(0) *= T(0);
   for(int i = 1; i < Iop.rows(); i ++)
     Iop.row(i) /= complex<T>(- 2.) * Pi * I * T(i) / T(Iop.rows());
-  // XXX low frequency emphasis check me.
-  for(int i = 0; i < Iop.rows(); i ++)
-    Iop.row(i) *= cos(Pi / T(8) * (Iop.rows() - i) / Iop.rows());
   Iop = A * Iop;
   
   Mat centerized(input.rows(), input.cols());
@@ -244,20 +241,23 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     // N.B. Local to global operation in this is pseudo, so to avoid this,
     //      repeat each range.
     Mat result(input);
+    Mat cache(integrate(input));
     result *= T(0);
-    for(int i = 0; pow(T(2), i) * rstp < input.rows() / T(8); i ++) {
-      const T rstp(pow(T(2), i) * this->rstp);
-      result += edge.detect(getPseudoBumpSub(integrateLE(input), rstp), edgedetect<T>::DETECT_Y) * (i + 1);
+    for(int i = 0; pow(T(2), i) * rstp < T(2) * input.rows() / T(8); i ++) {
+      const T rstp(pow(T(2), i / 2.) * this->rstp);
+      result += edge.detect(getPseudoBumpSub(cache, rstp), edgedetect<T>::DETECT_Y) * pow(i + 1, 2);
     }
     return autoLevel(result);
   } else {
     Mat result(input);
+    Mat cachex(integrate(input.transpose()));
+    Mat cachey(integrate(input));
     result *= T(0);
-    for(int i = 0; pow(T(2), i) * rstp < min(input.rows(), input.cols()) / T(8); i ++) {
-      const T rstp(pow(T(2), i) * this->rstp);
-      const Mat pbx(edge.detect(getPseudoBumpSub(integrateLE(input.transpose()), rstp), edgedetect<T>::DETECT_Y).transpose());
-      const Mat pby(edge.detect(getPseudoBumpSub(integrateLE(input), rstp), edgedetect<T>::DETECT_Y));
-      result += (pbx + pby) * (i + 1);
+    for(int i = 0; pow(T(2), i) * rstp < T(2) * min(input.rows(), input.cols()) / T(8); i ++) {
+      const T rstp(pow(T(2), i / 2.) * this->rstp);
+      const Mat pbx(edge.detect(getPseudoBumpSub(cachex, rstp), edgedetect<T>::DETECT_Y).transpose());
+      const Mat pby(edge.detect(getPseudoBumpSub(cachey, rstp), edgedetect<T>::DETECT_Y));
+      result += (pbx + pby) * pow(i + 1, 2);
     }
     return autoLevel(result);
   }

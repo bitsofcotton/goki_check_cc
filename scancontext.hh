@@ -87,21 +87,27 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
   vector<lfmatch_t<T> > match;
   edgedetect<T> differ;
   Mat costs(differ.detect(data, edgedetect<T>::COLLECT_BOTH));
-  for(int i = 0; i < data.rows(); i ++)
-    for(int j = 0; j < data.cols(); j ++) {
+  for(int i = 0; i < data.rows() * std::sqrt(guard); i ++)
+    for(int j = 0; j < data.cols() * std::sqrt(guard); j ++) {
       lfmatch_t<T> m;
       m.score = T(1) / costs(i, j);
       Eigen::Matrix<T, 3, 1>& pt(m.pt);
-      pt[0] = i;
-      pt[1] = j;
+      pt[0] = i + std::sqrt(guard) / T(2);
+      pt[1] = j + std::sqrt(guard) / T(2);
+      pt[2] = T(0);
+      int count(0);
+      for(int ii = i / std::sqrt(guard); ii < min(T(data.rows()), (i + 1) / std::sqrt(guard)); ii ++)
+        for(int jj = j / std::sqrt(guard); jj < min(T(data.cols()), (j + 1) / std::sqrt(guard)); jj ++) {
+          pt[2] += data(i, j);
+          count ++;
+        }
       // XXX check me:
-      pt[2] = data(i, j) * sqrt(T(data.rows() * data.cols()));
+      pt[2] *= sqrt(T(data.rows() * data.cols())) / count;
       match.push_back(m);
     }
   sort(match.begin(), match.end(), cmplfwrap<T>);
-  match.resize(match.size() * guard);
-  vector<lfmatch_t<T> > result;
-  while(true) {
+  vector<lfmatch_t<T> > result(match);
+  while(result.size() > npoints) {
     result = vector<lfmatch_t<T> >();
     for(int i = 0; i < match.size(); i ++) {
       cerr << "lpoly : " << match.size() << " : " << i << endl;
@@ -512,7 +518,7 @@ public:
   reDig();
   ~reDig();
   void init();
-  Vec3 emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
+  Vec3         emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
   vector<Vec3> emphasis(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
   Mat          emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
 };
@@ -532,8 +538,7 @@ template <typename T> void reDig<T>::init() {
 template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio) {
   const Vec3 a(refdst);
   const Vec3 b(match.rot * src * match.ratio + match.offset);
-  const T    r0(sqrt((a - b).dot(a - b)));
-  return dst + (b - a) * (ratio - T(1)) / r0;
+  return dst + (b - a) * (ratio - T(1));
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
@@ -546,27 +551,30 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       triangles.push_back(tilt.makeTriangle(i, j, dstimg, dstbump, false));
       triangles.push_back(tilt.makeTriangle(i, j, dstimg, dstbump, true));
     }
-  bool checked[triangles.size() * 3];
+  bool *checked;
+  checked = new bool[triangles.size() * 3];
   for(int i = 0; i < triangles.size() * 3; i ++)
     checked[i] = false;
   
+  // for each pixels near matched points.
   for(int i = 0; i < match.dstpoints.size(); i ++)
     for(int j = i + 1; j < match.dstpoints.size(); j ++)
       for(int k = max(i, j) + 1; k < match.dstpoints.size(); k ++) {
-        const Vec3 n(tilt.solveN(dst[match.dstpoints[i]],
-                                 dst[match.dstpoints[j]],
-                                 dst[match.dstpoints[k]]));
-        if(n[2] < T(0))
-          continue;
+        Vec3 n(tilt.solveN(dst[match.dstpoints[i]],
+                           dst[match.dstpoints[j]],
+                           dst[match.dstpoints[k]]));
         bool flag = true;
         for(int l = 1; l < match.dstpoints.size(); l ++)
           if(n.dot(dst[match.dstpoints[0]]) *
              n.dot(dst[match.dstpoints[l]]) < T(0)) {
             flag = false;
             break;
-          }
-        if(!flag)
+          } else if(n.dot(dst[match.dstpoints[l]]) < T(0))
+            n = - n;
+        if(!flag || n[2] <= T(0))
           continue;
+        const Vec3 dst0((dst[match.dstpoints[i]] + dst[match.dstpoints[j]] + dst[match.dstpoints[k]]) / T(3));
+        const Vec3 src0((src[match.srcpoints[i]] + src[match.srcpoints[j]] + src[match.srcpoints[k]]) / T(3));
         Vec2 p0, p1, p2;
         p0[0] = dst[match.dstpoints[i]][0];
         p0[1] = dst[match.dstpoints[i]][1];
@@ -574,7 +582,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
         p1[1] = dst[match.dstpoints[j]][1];
         p2[0] = dst[match.dstpoints[k]][0];
         p2[1] = dst[match.dstpoints[k]][1];
-        for(int l = 0; l < triangles.size(); l ++)
+        for(int l = 0; l < triangles.size(); l ++) {
           if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
             Vec2 q;
             for(int ll = 0; ll < 3; ll ++) {
@@ -585,17 +593,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
               if(tilt.sameSide2(p0, p1, p2, q) &&
                  tilt.sameSide2(p1, p2, p0, q) &&
                  tilt.sameSide2(p2, p0, p1, q)) {
-                triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst[match.dstpoints[i]], src[match.srcpoints[i]], match, ratio);
+                triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst0, src0, match, ratio);
                 checked[l * 3 + ll]  = true;
               }
             }
             triangles[l].col(4) = tilt.solveN(triangles[l].col(0), triangles[l].col(1), triangles[l].col(2));
-            triangles[l](1, 3)  = triangles[l].col(4).dot(triangles[l].col(0));
-            checked[l] = true;
           }
+          triangles[l](1, 3)  = triangles[l].col(4).dot(triangles[l].col(0));
+        }
       }
   
-  // for each pixels extends.
   Mat I3(3, 3);
   Vec zero3(3);
   for(int i = 0; i < 3; i ++) {
@@ -603,6 +610,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       I3(i, j) = (i == j ? T(1) : T(0));
     zero3[i] = T(0);
   }
+  delete[] checked;
   return tilt.tiltsub(dstimg, triangles, I3, I3, zero3, zero3, T(1));
 }
 
