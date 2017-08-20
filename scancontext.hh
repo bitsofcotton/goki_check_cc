@@ -90,19 +90,22 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
   for(int i = 0; i < data.rows() * std::sqrt(guard); i ++)
     for(int j = 0; j < data.cols() * std::sqrt(guard); j ++) {
       lfmatch_t<T> m;
-      m.score = T(1) / costs(i, j);
       Eigen::Matrix<T, 3, 1>& pt(m.pt);
-      pt[0] = i + std::sqrt(guard) / T(2);
-      pt[1] = j + std::sqrt(guard) / T(2);
-      pt[2] = T(0);
+      T csum(0);
+      pt[0] = pt[1] = pt[2] = T(0);
       int count(0);
       for(int ii = i / std::sqrt(guard); ii < min(T(data.rows()), (i + 1) / std::sqrt(guard)); ii ++)
         for(int jj = j / std::sqrt(guard); jj < min(T(data.cols()), (j + 1) / std::sqrt(guard)); jj ++) {
-          pt[2] += data(i, j);
+          csum  += costs(ii, jj);
+          pt[0] += ii;
+          pt[1] += jj;
+          pt[2] += data(ii, jj);
           count ++;
         }
-      // XXX check me:
-      pt[2] *= sqrt(T(data.rows() * data.cols())) / count;
+      m.score = csum / count;
+      pt /= count;
+      // XXX checkme:
+      pt[2] *= sqrt(T(data.rows() * data.cols()));
       match.push_back(m);
     }
   sort(match.begin(), match.end(), cmplfwrap<T>);
@@ -557,7 +560,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     checked[i] = false;
   
   // for each pixels near matched points.
-  for(int i = 0; i < match.dstpoints.size(); i ++)
+  for(int i = 0; i < match.dstpoints.size(); i ++) {
+    cerr << "reDig : " << i << "/" << match.dstpoints.size() << endl;
     for(int j = i + 1; j < match.dstpoints.size(); j ++)
       for(int k = max(i, j) + 1; k < match.dstpoints.size(); k ++) {
         Vec3 n(tilt.solveN(dst[match.dstpoints[i]],
@@ -602,6 +606,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
           triangles[l](1, 3)  = triangles[l].col(4).dot(triangles[l].col(0));
         }
       }
+  }
   
   Mat I3(3, 3);
   Vec zero3(3);

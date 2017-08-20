@@ -209,7 +209,6 @@ int main(int argc, const char* argv[]) {
         return - 2;
       if(!loadobj<float>(datapoly, argv[5]))
         return - 2;
-      int divs = 16;
       Eigen::Matrix<float, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> zero(data1[0].rows(), data1[0].cols());
@@ -233,13 +232,10 @@ int main(int argc, const char* argv[]) {
       float emph(.25);
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
-      lowFreq<float> lf;
+      lowFreq<float> lf(.0125);
       std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(bump.rgb2l(data)));
       for(int i = 0; i < shape.size(); i ++)
-        shape[i] *= divs;
-      for(int i = 0; i < shape.size(); i ++)
         shape[i][2] *= zr;
-      cout << shape.size() << endl;
       statmatch.init(shape, thresh_para, thresh_points, thresh_r);
       std::vector<match_t<float> > matches(statmatch.match(datapoly, div, r_max_theta));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
