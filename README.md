@@ -1,6 +1,6 @@
 # Goki Check
 These program aims to get context(s) from a still image.
-Now, testing solid whole to rotate partials match.
+Now, testing solid whole to rotate partials match, and, deducting z-axis variable scaled one.
 
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
@@ -93,6 +93,7 @@ These program's enlarge and enlarge-ds is based on pseudo DFT half space plausib
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ and y-axis polarized graphics.   
 These program's match assumes input file as bump map. And, that matches including z-depth.
+These program's match3d assumes input file as bump map and .obj 3d file. And for now, it considers only vertexes (not planes). So redig result gains strange one.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
