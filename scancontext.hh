@@ -32,7 +32,8 @@ public:
 };
 
 template <typename T> int cmplfwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
-  return x0.score < x1.score;
+  // fixed. 2017/08/20.
+  return x0.score > x1.score;
 }
 
 template <typename T> class lowFreq {

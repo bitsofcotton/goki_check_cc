@@ -224,7 +224,7 @@ int main(int argc, const char* argv[]) {
       float thresh_para(.9995);
       float thresh_points(.25);
       float thresh_r(.125);
-      float zr(.125);
+      float zr(.25);
       // bump to bump match.
       float r_max_theta(.01);
       int   div(120);
