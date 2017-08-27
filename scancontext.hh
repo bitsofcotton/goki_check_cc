@@ -152,7 +152,7 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
       result[i].score = abs(ek.dot(result[i].pt - p[0]) / sqrt(ek.dot(ek)));
     }
     sort(result.begin(), result.end(), cmplfwrap<T>);
-    result.resize(result.size() * guard);
+    result.resize(max(result.size() * guard, T(npoints)));
     if(result.size() == match.size() || result.size() <= npoints)
       break;
     match = result;
@@ -561,6 +561,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     checked[i] = false;
   
   // for each pixels near matched points.
+  // XXX fixme: cf. .obj file vf and vt.
+  //            this get convex hull of the vertices.
   for(int i = 0; i < match.dstpoints.size(); i ++) {
     cerr << "reDig : " << i << "/" << match.dstpoints.size() << endl;
     for(int j = i + 1; j < match.dstpoints.size(); j ++)

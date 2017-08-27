@@ -101,11 +101,13 @@ int main(int argc, const char* argv[]) {
       lowFreq<float>    lf;
       PseudoBump<float> bump;
       edgedetect<float> detect;
-      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> work(bump.rgb2l(data));
-      data[0] = lf.getLowFreqImage(detect.detect(work, edgedetect<float>::COLLECT_BOTH));
-      for(int i = 1; i < 3; i ++)
-        data[i] = data[0];
-      std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(work));
+      std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data), 30));
+      std::vector<int> dstpoints;
+      for(int i = 0; i < points.size(); i ++)
+        dstpoints.push_back(i);
+      normalize<float>(data, 1.);
+      for(int i = 0; i < 3; i ++)
+        data[i] = showMatch<float>(data[i], points, dstpoints);
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
         std::cout << points[i].transpose() << std::endl;
@@ -224,7 +226,7 @@ int main(int argc, const char* argv[]) {
       float thresh_para(.9995);
       float thresh_points(.25);
       float thresh_r(.125);
-      float zr(.25);
+      float zr(.125);
       // bump to bump match.
       float r_max_theta(.01);
       int   div(120);
