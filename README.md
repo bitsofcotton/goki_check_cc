@@ -23,6 +23,8 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 
 # Context
 This program is inspired from re-focus photo softwares.
+And around this, there's preceders that many approach to get bump maps with certain conditions
+(such as multiple camera conditions, or, with layered objects, or, spherical, or, etcetc).
 
 # Status
 Writing whole to rotated partials match.
