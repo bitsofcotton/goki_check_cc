@@ -25,6 +25,7 @@ public:
   T      brange;
   int    nlevel;
   T      sthresh;
+  T      cthresh;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
@@ -32,7 +33,7 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& nlevel);
+  void initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh);
   ~PseudoBump();
   
   Mat getPseudoBumpSub(const Mat& input, const int& rstp);
@@ -57,20 +58,21 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 8, 64);
+  initialize(8, 8, 64, .5);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh) {
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp * 2;
   this->roff    = 1. / 6.;
   this->rdist   = 2.;
   this->nlevel  = nlevel;
+  this->cthresh = cthresh;
   Pi            = 4. * atan2(T(1.), T(1.));
   sthresh       = T(1e-8) / T(256);
   return;
@@ -138,7 +140,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     cerr << ".";
     cerr.flush();
     for(int j = 0; j < result.rows(); j ++)
-      result(j, i) = - T(1);
+      result(j, i) = T(.5);
     Vec zval(result.rows());
     for(int j = 0; j < zval.size(); j ++)
       zval[j] = T(0);
@@ -160,8 +162,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           rc[u] = c[u - rc.size() + c.size()];
         const Vec msl(Dop * lc);
         const Vec msr(Dop * rc);
-        const T n2(abs(msl[msl.size() - 1] - msr[0]));
-        if(isfinite(n2) && zval[s] < n2) {
+        const T   lr(msl[msl.size() - 1] * msl[msl.size() - 1] / (msl.dot(msl) - msl[msl.size() - 1] * msl[msl.size() - 1]));
+        const T   rr(msr[0] * msr[0] / (msr.dot(msr) - msr[0] * msr[0]));
+        const T   n2(abs(msl[msl.size() - 1] - msr[0]));
+        if(isfinite(n2) && zval[s] < n2 &&
+           cthresh / msl.size() <= lr &&
+           cthresh / msr.size() <= rr) {
           result(s, i) = zz / T(z_max);
           zval[s]      = n2;
         }
@@ -235,17 +241,17 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   edgedetect<T> edge;
   if(y_only) {
     // N.B. We may need integrate on local to global operation.
-    // N.B. If twice integrate/differential, we can get low frequency image.
     // N.B. We assume differential/integral of getPseudoBumpSub as a linear,
     //      but in fact, it's not.
     // N.B. Local to global operation in this is pseudo, so to avoid this,
     //      repeat each range.
+    // N.B. intensity that this gain wider range is logarithm scale.
     Mat result(input);
     Mat cache(integrate(input));
     result *= T(0);
     for(int i = 0; pow(T(2), i) * rstp < T(2) * input.rows() / T(8); i ++) {
       const T rstp(pow(T(2), i / 2.) * this->rstp);
-      result += edge.detect(getPseudoBumpSub(cache, rstp), edgedetect<T>::DETECT_Y) * pow(i + 1, 2);
+      result += edge.detect(getPseudoBumpSub(cache, rstp), edgedetect<T>::DETECT_Y) * (i + 1);
     }
     return autoLevel(result);
   } else {
@@ -257,7 +263,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       const T rstp(pow(T(2), i / 2.) * this->rstp);
       const Mat pbx(edge.detect(getPseudoBumpSub(cachex, rstp), edgedetect<T>::DETECT_Y).transpose());
       const Mat pby(edge.detect(getPseudoBumpSub(cachey, rstp), edgedetect<T>::DETECT_Y));
-      result += (pbx + pby) * pow(i + 1, 2);
+      result += (pbx + pby) * (i + 1);
     }
     return autoLevel(result);
   }
