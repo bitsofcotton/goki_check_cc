@@ -20,6 +20,7 @@ public:
   int    z_max;
   int    stp;
   int    rstp;
+  int    bloop;
   T      roff;
   T      rdist;
   T      brange;
@@ -33,7 +34,7 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh);
+  void initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh, const int& bloop);
   ~PseudoBump();
   
   Mat getPseudoBumpSub(const Mat& input, const int& rstp);
@@ -58,14 +59,14 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 8, 64, .5);
+  initialize(8, 8, 64, .5, 4);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh, const int& bloop) {
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp * 2;
@@ -73,6 +74,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->rdist   = 2.;
   this->nlevel  = nlevel;
   this->cthresh = cthresh;
+  this->bloop   = bloop;
   Pi            = 4. * atan2(T(1.), T(1.));
   sthresh       = T(1e-8) / T(256);
   return;
@@ -139,6 +141,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     p1[2] = 0;
     cerr << ".";
     cerr.flush();
+    // initialize z with middle point.
     for(int j = 0; j < result.rows(); j ++)
       result(j, i) = T(.5);
     Vec zval(result.rows());
@@ -239,35 +242,31 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& input, const bool& y_only) {
   edgedetect<T> edge;
+  Mat           result(input);
+  result *= T(0);
   if(y_only) {
     // N.B. We may need integrate on local to global operation.
     // N.B. We assume differential/integral of getPseudoBumpSub as a linear,
     //      but in fact, it's not.
     // N.B. Local to global operation in this is pseudo, so to avoid this,
     //      repeat each range.
-    // N.B. intensity that this gain wider range is logarithm scale.
-    Mat result(input);
+    // N.B. intensity that we gain wider range is logarithm scale multiplied.
     Mat cache(integrate(input));
-    result *= T(0);
-    for(int i = 0; pow(T(2), i) * rstp < T(2) * input.rows() / T(8); i ++) {
-      const T rstp(pow(T(2), i / 2.) * this->rstp);
+    for(int i = 0; i < bloop; i ++) {
+      const T rstp(pow(sqrt(T(2)), i) * this->rstp);
       result += edge.detect(getPseudoBumpSub(cache, rstp), edgedetect<T>::DETECT_Y) * (i + 1);
     }
-    return autoLevel(result);
   } else {
-    Mat result(input);
     Mat cachex(integrate(input.transpose()));
     Mat cachey(integrate(input));
-    result *= T(0);
-    for(int i = 0; pow(T(2), i) * rstp < T(2) * min(input.rows(), input.cols()) / T(8); i ++) {
-      const T rstp(pow(T(2), i / 2.) * this->rstp);
+    for(int i = 0; i < bloop; i ++) {
+      const T   rstp(pow(sqrt(T(2)), i) * this->rstp);
       const Mat pbx(edge.detect(getPseudoBumpSub(cachex, rstp), edgedetect<T>::DETECT_Y).transpose());
       const Mat pby(edge.detect(getPseudoBumpSub(cachey, rstp), edgedetect<T>::DETECT_Y));
       result += (pbx + pby) * (i + 1);
     }
-    return autoLevel(result);
   }
-  return Mat();
+  return autoLevel(result);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSquare(const Vec& input) {
