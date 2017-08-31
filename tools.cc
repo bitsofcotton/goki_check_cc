@@ -134,6 +134,7 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<float, 3, 3> I3;
+      float emph(.1);
       mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>(data3[0].rows(), data3[0].cols());
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < 3; j ++)
@@ -190,9 +191,10 @@ int main(int argc, const char* argv[]) {
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-match.ppm");
         savep2or3<float>(outfile.c_str(), outs3, false);
         
+        std::vector<Eigen::Matrix<int, 3, 1> > hull(loadConvexHull(shape1, matches[n]));
         for(int idx = 0; idx < 3; idx ++) {
-          outs4[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], float(- 2));
-          outs5[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], float(2));
+          outs4[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], hull, float(1.) - emph);
+          outs5[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], hull, float(1.) + emph);
         }
         normalize<float>(outs4, 1.);
         normalize<float>(outs5, 1.);
@@ -231,10 +233,10 @@ int main(int argc, const char* argv[]) {
       float r_max_theta(.01);
       int   div(120);
       int   nshow(6);
-      float emph(.25);
+      float emph(.1);
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
-      lowFreq<float> lf(.0125);
+      lowFreq<float> lf;
       std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(bump.rgb2l(data)));
       for(int i = 0; i < shape.size(); i ++)
         shape[i][2] *= zr;
@@ -246,8 +248,15 @@ int main(int argc, const char* argv[]) {
         reDig<float>  redig;
         tilt.initialize(zr * sqrt((data1[0].rows() * data1[0].cols()) / (data[0].rows() * data[0].cols())));
         cerr << "Writing " << n << " / " << matches.size() << "(" << float(1) / matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
+        
+        vector<Eigen::Matrix<float, 3, 1> > shape3d;
+        vector<int>                         id3d;
+        for(int idx = 0; idx < matches[n].srcpoints.size(); idx ++) {
+          shape3d.push_back(matches[n].rot * matches[n].ratio * datapoly[matches[n].srcpoints[idx]] + matches[n].offset);
+          id3d.push_back(idx);
+        }
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = showMatch<float>(zero, datapoly, matches[n].srcpoints);
+          outs[idx] = showMatch<float>(zero, shape3d, id3d);
         normalize<float>(outs, 1.);
         
         std::string outfile;
@@ -266,9 +275,10 @@ int main(int argc, const char* argv[]) {
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-match.ppm");
         savep2or3<float>(outfile.c_str(), outs3, false);
         
+        vector<Eigen::Matrix<int, 3, 1> > hull(loadConvexHull(datapoly, matches[n]));
         for(int idx = 0; idx < 3; idx ++) {
-          outs4[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], float(1) - emph);
-          outs5[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], float(1) + emph);
+          outs4[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], hull, float(1) - emph);
+          outs5[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], hull, float(1) + emph);
         }
         normalize<float>(outs4, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");

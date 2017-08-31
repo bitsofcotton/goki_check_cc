@@ -42,7 +42,7 @@ public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
-  lowFreq(const T& guard = T(.125));
+  lowFreq(const T& guard = T(.0625));
   ~lowFreq();
   
   vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 600);
@@ -114,7 +114,7 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
   while(result.size() > npoints) {
     result = vector<lfmatch_t<T> >();
     for(int i = 0; i < match.size(); i ++) {
-      cerr << "lpoly : " << match.size() << " : " << i << endl;
+      cerr << "lpoly : " << i << "/" << match.size() << endl;
       vector<T> lmbuf;
       for(int j = 0; j < match.size(); j ++) {
         Eigen::Matrix<T, 3, 1> diff(match[i].pt - match[j].pt);
@@ -522,9 +522,8 @@ public:
   reDig();
   ~reDig();
   void init();
-  Vec3         emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
-  vector<Vec3> emphasis(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
-  Mat          emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
+  Vec3 emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
+  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio);
 };
 
 template <typename T> reDig<T>::reDig() {
@@ -542,10 +541,10 @@ template <typename T> void reDig<T>::init() {
 template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio) {
   const Vec3 a(refdst);
   const Vec3 b(match.rot * src * match.ratio + match.offset);
-  return dst + (b - a) * (ratio - T(1));
+  return dst + (b - a) * (exp(ratio) - exp(T(1))) / exp(T(1));
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
   cerr << " making triangles";
   fflush(stderr);
   tilter<T> tilt;
@@ -560,55 +559,39 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   for(int i = 0; i < triangles.size() * 3; i ++)
     checked[i] = false;
   
-  // for each pixels near matched points.
-  // XXX fixme: cf. .obj file vf and vt.
-  //            this get convex hull of the vertices.
-  for(int i = 0; i < match.dstpoints.size(); i ++) {
-    cerr << "reDig : " << i << "/" << match.dstpoints.size() << endl;
-    for(int j = i + 1; j < match.dstpoints.size(); j ++)
-      for(int k = max(i, j) + 1; k < match.dstpoints.size(); k ++) {
-        Vec3 n(tilt.solveN(dst[match.dstpoints[i]],
-                           dst[match.dstpoints[j]],
-                           dst[match.dstpoints[k]]));
-        bool flag = true;
-        for(int l = 1; l < match.dstpoints.size(); l ++)
-          if(n.dot(dst[match.dstpoints[0]]) *
-             n.dot(dst[match.dstpoints[l]]) < T(0)) {
-            flag = false;
-            break;
-          } else if(n.dot(dst[match.dstpoints[l]]) < T(0))
-            n = - n;
-        if(!flag || n[2] <= T(0))
-          continue;
-        const Vec3 dst0((dst[match.dstpoints[i]] + dst[match.dstpoints[j]] + dst[match.dstpoints[k]]) / T(3));
-        const Vec3 src0((src[match.srcpoints[i]] + src[match.srcpoints[j]] + src[match.srcpoints[k]]) / T(3));
-        Vec2 p0, p1, p2;
-        p0[0] = dst[match.dstpoints[i]][0];
-        p0[1] = dst[match.dstpoints[i]][1];
-        p1[0] = dst[match.dstpoints[j]][0];
-        p1[1] = dst[match.dstpoints[j]][1];
-        p2[0] = dst[match.dstpoints[k]][0];
-        p2[1] = dst[match.dstpoints[k]][1];
-        for(int l = 0; l < triangles.size(); l ++) {
-          if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
-            Vec2 q;
-            for(int ll = 0; ll < 3; ll ++) {
-              if(checked[l * 3 + ll])
-                continue;
-              q[0] = triangles[l](0, ll);
-              q[1] = triangles[l](1, ll);
-              if(tilt.sameSide2(p0, p1, p2, q) &&
-                 tilt.sameSide2(p1, p2, p0, q) &&
-                 tilt.sameSide2(p2, p0, p1, q)) {
-                triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst0, src0, match, ratio);
-                checked[l * 3 + ll]  = true;
-              }
-            }
-            triangles[l].col(4) = tilt.solveN(triangles[l].col(0), triangles[l].col(1), triangles[l].col(2));
+  for(int ii = 0; ii < hull.size(); ii ++) {
+    cerr << "emphasis: " << ii << "/" << hull.size() << endl;
+    const int i(hull[ii][0]);
+    const int j(hull[ii][1]);
+    const int k(hull[ii][2]);
+    const Vec3 dst0((dst[match.dstpoints[i]] + dst[match.dstpoints[j]] + dst[match.dstpoints[k]]) / T(3));
+    const Vec3 src0((src[match.srcpoints[i]] + src[match.srcpoints[j]] + src[match.srcpoints[k]]) / T(3));
+    Vec2 p0, p1, p2;
+    p0[0] = dst[match.dstpoints[i]][0];
+    p0[1] = dst[match.dstpoints[i]][1];
+    p1[0] = dst[match.dstpoints[j]][0];
+    p1[1] = dst[match.dstpoints[j]][1];
+    p2[0] = dst[match.dstpoints[k]][0];
+    p2[1] = dst[match.dstpoints[k]][1];
+    for(int l = 0; l < triangles.size(); l ++) {
+      if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
+        Vec2 q;
+        for(int ll = 0; ll < 3; ll ++) {
+          if(checked[l * 3 + ll])
+            continue;
+          q[0] = triangles[l](0, ll);
+          q[1] = triangles[l](1, ll);
+          if(tilt.sameSide2(p0, p1, p2, q) &&
+             tilt.sameSide2(p1, p2, p0, q) &&
+             tilt.sameSide2(p2, p0, p1, q)) {
+            triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst0, src0, match, ratio);
+            checked[l * 3 + ll]  = true;
           }
-          triangles[l](1, 3)  = triangles[l].col(4).dot(triangles[l].col(0));
         }
+        triangles[l].col(4) = tilt.solveN(triangles[l].col(0), triangles[l].col(1), triangles[l].col(2));
       }
+      triangles[l](1, 3)  = triangles[l].col(4).dot(triangles[l].col(0));
+    }
   }
   
   Mat I3(3, 3);
