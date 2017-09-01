@@ -166,15 +166,19 @@ int main(int argc, const char* argv[]) {
       for(float zr = zrs;
           (zrs / zre < float(1) && zr < zre) || 
           (zre / zrs < float(1) && zre < zr);
-          zr *= pow(zre / zrs, float(1) / float(zrl))) {
-        std::vector<Eigen::Matrix<float, 3, 1> > sshape0(shape0), sshape1(shape1);
-        for(int i = 0; i < shape0.size(); i ++) {
-          sshape0[i][2] *= zrs;
-          sshape1[i][2] *= zr;
-        }
-        statmatch.init(sshape0, thresh_para, thresh_points, thresh_r);
-        std::vector<match_t<float> > lmatches(statmatch.match(sshape1, div, r_max_theta));
-        std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
+          zr *= pow(zre / zrs, float(1) / float(zrl)))
+        for(float zr2 = zrs;
+            (zrs / zre < float(1) && zr2 < zre) ||
+            (zre / zrs < float(1) && zre < zr2);
+            zr2 *= pow(zre / zrs, float(1) / float(zrl))) {
+          std::vector<Eigen::Matrix<float, 3, 1> > sshape0(shape0), sshape1(shape1);
+          for(int i = 0; i < shape0.size(); i ++) {
+            sshape0[i][2] *= zr;
+            sshape1[i][2] *= zr2;
+          }
+          statmatch.init(sshape0, thresh_para, thresh_points, thresh_r);
+          std::vector<match_t<float> > lmatches(statmatch.match(sshape1, div, r_max_theta));
+          std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
       }
       std::sort(matches.begin(), matches.end(), cmpwrap<float>);
       float zr(zrs);
