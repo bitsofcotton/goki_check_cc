@@ -126,7 +126,9 @@ int main(int argc, const char* argv[]) {
       float thresh_para(.9995);
       float thresh_points(.125);
       float thresh_r(.125);
-      float zr(.125);
+      float zrs(1.);
+      float zre(.25);
+      int   zrl(4);
       // bump to bump match.
       float r_max_theta(.01);
       int   div(120);
@@ -160,12 +162,22 @@ int main(int argc, const char* argv[]) {
       lowFreq<float> lf;
       std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data)));
       std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1)));
-      for(int i = 0; i < shape0.size(); i ++) {
-        shape0[i][2] *= zr;
-        shape1[i][2] *= zr;
+      std::vector<match_t<float> > matches;
+      for(float zr = zrs;
+          (zrs / zre < float(1) && zr < zre) || 
+          (zre / zrs < float(1) && zre < zr);
+          zr *= pow(zre / zrs, float(1) / float(zrl))) {
+        std::vector<Eigen::Matrix<float, 3, 1> > sshape0(shape0), sshape1(shape1);
+        for(int i = 0; i < shape0.size(); i ++) {
+          sshape0[i][2] *= zrs;
+          sshape1[i][2] *= zr;
+        }
+        statmatch.init(sshape0, thresh_para, thresh_points, thresh_r);
+        std::vector<match_t<float> > lmatches(statmatch.match(sshape1, div, r_max_theta));
+        std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
       }
-      statmatch.init(shape0, thresh_para, thresh_points, thresh_r);
-      std::vector<match_t<float> > matches(statmatch.match(shape1, div, r_max_theta));
+      std::sort(matches.begin(), matches.end(), cmpwrap<float>);
+      float zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<float> tilt;
@@ -192,14 +204,14 @@ int main(int argc, const char* argv[]) {
         savep2or3<float>(outfile.c_str(), outs3, false);
         
         std::vector<Eigen::Matrix<int, 3, 1> > hull(loadConvexHull(shape1, matches[n]));
-        for(int idx = 0; idx < 3; idx ++) {
+        for(int idx = 0; idx < 3; idx ++)
           outs4[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], hull, float(1.) - emph);
-          outs5[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], hull, float(1.) + emph);
-        }
         normalize<float>(outs4, 1.);
-        normalize<float>(outs5, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");
         savep2or3<float>(outfile.c_str(), outs4, false);
+        for(int idx = 0; idx < 3; idx ++)
+          outs5[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], hull, float(1.) + emph);
+        normalize<float>(outs5, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-2.ppm");
         savep2or3<float>(outfile.c_str(), outs5, false);
       }
@@ -228,20 +240,32 @@ int main(int argc, const char* argv[]) {
       float thresh_para(.9995);
       float thresh_points(.25);
       float thresh_r(.125);
-      float zr(.125);
+      float zrs(1.);
+      float zre(.25);
+      int   zrl(4);
       // bump to bump match.
       float r_max_theta(.01);
-      int   div(120);
+      int   div(20);
       int   nshow(6);
       float emph(.1);
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
       lowFreq<float> lf;
       std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(bump.rgb2l(data)));
-      for(int i = 0; i < shape.size(); i ++)
-        shape[i][2] *= zr;
-      statmatch.init(shape, thresh_para, thresh_points, thresh_r);
-      std::vector<match_t<float> > matches(statmatch.match(datapoly, div, r_max_theta));
+      std::vector<match_t<float> > matches;
+      for(float zr = zrs;
+          (zrs / zre < float(1) && zr < zre) || 
+          (zre / zrs < float(1) && zre < zr);
+          zr *= pow(zre / zrs, float(1) / float(zrl))) {
+        std::vector<Eigen::Matrix<float, 3, 1> > sshape(shape);
+        for(int i = 0; i < shape.size(); i ++)
+          sshape[i][2] *= zr;
+        statmatch.init(sshape, thresh_para, thresh_points, thresh_r);
+        std::vector<match_t<float> > lmatches(statmatch.match(datapoly, div, r_max_theta));
+        std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
+      }
+      float zr(zrs);
+      std::sort(matches.begin(), matches.end(), cmpwrap<float>);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<float> tilt;
@@ -276,13 +300,13 @@ int main(int argc, const char* argv[]) {
         savep2or3<float>(outfile.c_str(), outs3, false);
         
         vector<Eigen::Matrix<int, 3, 1> > hull(loadConvexHull(datapoly, matches[n]));
-        for(int idx = 0; idx < 3; idx ++) {
+        for(int idx = 0; idx < 3; idx ++)
           outs4[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], hull, float(1) - emph);
-          outs5[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], hull, float(1) + emph);
-        }
         normalize<float>(outs4, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");
         savep2or3<float>(outfile.c_str(), outs4, false);
+        for(int idx = 0; idx < 3; idx ++)
+          outs5[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], hull, float(1) + emph);
         normalize<float>(outs5, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-2.ppm");
         savep2or3<float>(outfile.c_str(), outs5, false);

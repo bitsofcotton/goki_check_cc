@@ -45,7 +45,7 @@ public:
   lowFreq(const T& guard = T(.0625));
   ~lowFreq();
   
-  vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 600);
+  vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 120);
   Mat getLowFreqImage(const Mat& data, const int& npoints = 120);
 private:
   vector<lfmatch_t<T> > prepareCost(const Mat& data, const int& npoints);
@@ -88,15 +88,15 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
   vector<lfmatch_t<T> > match;
   edgedetect<T> differ;
   Mat costs(differ.detect(data, edgedetect<T>::COLLECT_BOTH));
-  for(int i = 0; i < data.rows() * std::sqrt(guard); i ++)
-    for(int j = 0; j < data.cols() * std::sqrt(guard); j ++) {
+  for(int i = 0; i < data.rows() * sqrt(guard); i ++)
+    for(int j = 0; j < data.cols() * sqrt(guard); j ++) {
       lfmatch_t<T> m;
       Eigen::Matrix<T, 3, 1>& pt(m.pt);
       T csum(0);
       pt[0] = pt[1] = pt[2] = T(0);
       int count(0);
-      for(int ii = i / std::sqrt(guard); ii < min(T(data.rows()), (i + 1) / std::sqrt(guard)); ii ++)
-        for(int jj = j / std::sqrt(guard); jj < min(T(data.cols()), (j + 1) / std::sqrt(guard)); jj ++) {
+      for(int ii = i / sqrt(guard); ii < min(T(data.rows()), (i + 1) / sqrt(guard)); ii ++)
+        for(int jj = j / sqrt(guard); jj < min(T(data.cols()), (j + 1) / sqrt(guard)); jj ++) {
           csum  += costs(ii, jj);
           pt[0] += ii;
           pt[1] += jj;
@@ -278,7 +278,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
             table(j, k)[l] = sqrt(- T(1));
             continue;
           }
-          const T theta0(T(2) * atan2(sqrt(a * a + b * b - c * c) - b, a + c));
+          const T theta0(T(2) * atan2(  sqrt(a * a + b * b - c * c) - b, a + c));
           const T theta1(T(2) * atan2(- sqrt(a * a + b * b - c * c) - b, a + c));
           table(j, k)[l] = sqrt(- T(1));
           if(isfinite(theta0) &&
