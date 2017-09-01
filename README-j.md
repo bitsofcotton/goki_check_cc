@@ -1,7 +1,6 @@
 # Goki Check
 静止画像からあらかじめ想定される文脈を得ることが目的のプログラムです。  
-現在は回転のある固いオブジェクト同士のマッチを実装しています。
-また、z 軸方向の深度の比率が任意の場合のマッチを演繹しています。
+現在は複数のハンドルポイントの回転のある固いオブジェクト同士の合致を実装しています。
 
 古い情報は https://sourceforge.net/p/gokicheck/wiki/Home/ を参照してください。
 
@@ -29,7 +28,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
  ただし、正しい公式ページがどれなのかわからないために、リンクは差し控えさせていただきます。)
 
 # 状態
-回転のある場合の全体-部分一致の実装をしています。
+回転のある場合の全体の*部分*一致の実装をしています。
 
 # 使い方
     make tools
@@ -103,5 +102,5 @@ match3d は入力にバンプマップと .obj ファイルを仮定していま
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-stable.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.00-stable.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-accurate0.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.00-accurate0.tar.gz
