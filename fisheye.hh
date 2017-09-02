@@ -59,7 +59,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 8, 64, .5, 4);
+  initialize(8, 8, 64, .5, 8);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -253,14 +253,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     // N.B. intensity that we gain wider range is logarithm scale multiplied.
     Mat cache(integrate(input));
     for(int i = 0; i < bloop; i ++) {
-      const T rstp(pow(sqrt(T(2)), i) * this->rstp);
+      // const T rstp(pow(sqrt(T(2)), i) * this->rstp);
+      const T rstp((i + 1) * this->rstp);
       result += edge.detect(getPseudoBumpSub(cache, rstp), edgedetect<T>::DETECT_Y) * (i + 1);
     }
   } else {
     Mat cachex(integrate(input.transpose()));
     Mat cachey(integrate(input));
     for(int i = 0; i < bloop; i ++) {
-      const T   rstp(pow(sqrt(T(2)), i) * this->rstp);
+      // const T   rstp(pow(sqrt(T(2)), i) * this->rstp);
+      const T   rstp((i + 1) * this->rstp);
       const Mat pbx(edge.detect(getPseudoBumpSub(cachex, rstp), edgedetect<T>::DETECT_Y).transpose());
       const Mat pby(edge.detect(getPseudoBumpSub(cachey, rstp), edgedetect<T>::DETECT_Y));
       result += (pbx + pby) * (i + 1);
