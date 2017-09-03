@@ -22,10 +22,14 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * * matchPartialPartial::threshr : threshold for matched size ratios.
 
 # Context
-This program is inspired from re-focus photo softwares.
+This program is inspired from re-focus photo softwares.  
+And around this, there's preceders that many approach to get bump maps with certain conditions
+(such as multiple camera conditions, or, with layered objects, or, spherical, or, etcetc).
+(And I have no clue which is a correct official page, no hyperlink from here.).   
+This get bump maps in a different way.
 
 # Status
-Writing whole to rotated partials match.
+Searching bone-enabled 3d model simple format. Writing whole to rotated partials match.
 
 # Usage
     make tools
@@ -92,10 +96,11 @@ N.B. up to 20 Mo total upload size.
 These program's enlarge and enlarge-ds is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ and y-axis polarized graphics.   
-These program's match assumes input file as bump map. And, that matches including z-depth.
+These program's match assumes input file as bump map. And, that matches including z-depth.  
+These program's match3d assumes input file as bump map and .obj 3d file. And for now, it considers only vertexes (not planes). So redig result gains strange one.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-stable.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.00-stable.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-accurate0.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.00-accurate0.tar.gz

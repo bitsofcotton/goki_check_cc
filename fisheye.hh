@@ -5,7 +5,6 @@
 #include <vector>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include "edgedetect.hh"
 
 using std::complex;
 using std::abs;
@@ -20,11 +19,13 @@ public:
   int    z_max;
   int    stp;
   int    rstp;
+  int    bloop;
   T      roff;
   T      rdist;
   T      brange;
   int    nlevel;
   T      sthresh;
+  T      cthresh;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
@@ -32,7 +33,7 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& nlevel);
+  void initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh, const int& bloop);
   ~PseudoBump();
   
   Mat getPseudoBumpSub(const Mat& input, const int& rstp);
@@ -47,7 +48,7 @@ private:
   Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> prepareLineAxis(const Vec& p0, const Vec& p1, const int& z0, const int& rstp);
   T   getImgPt(const Mat& img, const T& y, const T& x);
   Vec indiv(const Vec& p0, const Vec& p1, const T& pt);
-  Mat integrateLE(const Mat& input);
+  Mat integrate(const Mat& input);
   Mat autoLevel(const Mat& input);
   
   int ww;
@@ -57,20 +58,22 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 8, 64);
+  initialize(8, 8, 64, .5, 8);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh, const int& bloop) {
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp * 2;
   this->roff    = 1. / 6.;
   this->rdist   = 2.;
   this->nlevel  = nlevel;
+  this->cthresh = cthresh;
+  this->bloop   = bloop;
   Pi            = 4. * atan2(T(1.), T(1.));
   sthresh       = T(1e-8) / T(256);
   return;
@@ -138,7 +141,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     cerr << ".";
     cerr.flush();
     for(int j = 0; j < result.rows(); j ++)
-      result(j, i) = - T(1);
+      result(j, i) = - T(1.);
     Vec zval(result.rows());
     for(int j = 0; j < zval.size(); j ++)
       zval[j] = T(0);
@@ -160,8 +163,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           rc[u] = c[u - rc.size() + c.size()];
         const Vec msl(Dop * lc);
         const Vec msr(Dop * rc);
-        const T n2(abs(msl[msl.size() - 1] - msr[0]));
-        if(isfinite(n2) && zval[s] < n2) {
+        const T   lr(msl[msl.size() - 1] * msl[msl.size() - 1] / (msl.dot(msl) - msl[msl.size() - 1] * msl[msl.size() - 1]));
+        const T   rr(msr[0] * msr[0] / (msr.dot(msr) - msr[0] * msr[0]));
+        const T   n2(abs(msl[msl.size() - 1] - msr[0]));
+        if(isfinite(n2) && zval[s] < n2 &&
+           cthresh / msl.size() <= lr &&
+           cthresh / msr.size() <= rr) {
           result(s, i) = zz / T(z_max);
           zval[s]      = n2;
         }
@@ -172,7 +179,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::integrateLE(const Mat& input) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::integrate(const Mat& input) {
   MatU Iop(input.rows(), input.rows()), A(input.rows(), input.rows());
   U    I(sqrt(complex<T>(- 1)));
 #if defined(_OPENMP)
@@ -187,9 +194,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   Iop.row(0) *= T(0);
   for(int i = 1; i < Iop.rows(); i ++)
     Iop.row(i) /= complex<T>(- 2.) * Pi * I * T(i) / T(Iop.rows());
-  // XXX low frequency emphasis check me.
-  for(int i = 0; i < Iop.rows(); i ++)
-    Iop.row(i) *= cos(Pi / T(8) * (Iop.rows() - i) / Iop.rows());
   Iop = A * Iop;
   
   Mat centerized(input.rows(), input.cols());
@@ -235,33 +239,34 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& input, const bool& y_only) {
-  edgedetect<T> edge;
+  Mat result(input);
+  result *= T(0);
   if(y_only) {
-    // N.B. We may need integrate on local to global operation.
-    // N.B. If twice integrate/differential, we can get low frequency image.
+    // N.B. We may need integrate on local to global operation,
+    //      but this is not enough for intensity and edges,
+    //      so repeat each range for a flat result.
     // N.B. We assume differential/integral of getPseudoBumpSub as a linear,
     //      but in fact, it's not.
-    // N.B. Local to global operation in this is pseudo, so to avoid this,
-    //      repeat each range.
-    Mat result(input);
-    result *= T(0);
-    for(int i = 0; pow(T(2), i) * rstp < input.rows() / T(8); i ++) {
-      const T rstp(pow(T(2), i) * this->rstp);
-      result += edge.detect(getPseudoBumpSub(integrateLE(input), rstp), edgedetect<T>::DETECT_Y) * (i + 1);
+    Mat cache(integrate(input));
+    for(int i = 0; i < bloop; i ++) {
+      // const T rstp(pow(sqrt(T(2)), i) * this->rstp);
+      const T rstp((i + 1) * this->rstp);
+      // result += getPseudoBumpSub(cache, rstp) * (i + 1);
+      result += getPseudoBumpSub(cache, rstp);
     }
-    return autoLevel(result);
   } else {
-    Mat result(input);
-    result *= T(0);
-    for(int i = 0; pow(T(2), i) * rstp < min(input.rows(), input.cols()) / T(8); i ++) {
-      const T rstp(pow(T(2), i) * this->rstp);
-      const Mat pbx(edge.detect(getPseudoBumpSub(integrateLE(input.transpose()), rstp), edgedetect<T>::DETECT_Y).transpose());
-      const Mat pby(edge.detect(getPseudoBumpSub(integrateLE(input), rstp), edgedetect<T>::DETECT_Y));
-      result += (pbx + pby) * (i + 1);
+    Mat cachex(integrate(input.transpose()));
+    Mat cachey(integrate(input));
+    for(int i = 0; i < bloop; i ++) {
+      // const T   rstp(pow(sqrt(T(2)), i) * this->rstp);
+      const T   rstp((i + 1) * this->rstp);
+      const Mat pbx(getPseudoBumpSub(cachex, rstp).transpose());
+      const Mat pby(getPseudoBumpSub(cachey, rstp));
+      // result += (pbx + pby) * (i + 1);
+      result += (pbx + pby);
     }
-    return autoLevel(result);
   }
-  return Mat();
+  return autoLevel(result);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSquare(const Vec& input) {

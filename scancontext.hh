@@ -32,7 +32,8 @@ public:
 };
 
 template <typename T> int cmplfwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
-  return x0.score < x1.score;
+  // fixed. 2017/08/20.
+  return x0.score > x1.score;
 }
 
 template <typename T> class lowFreq {
@@ -41,10 +42,10 @@ public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
-  lowFreq(const T& guard = T(.125));
+  lowFreq(const T& guard = T(.0625));
   ~lowFreq();
   
-  vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 600);
+  vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 120);
   Mat getLowFreqImage(const Mat& data, const int& npoints = 120);
 private:
   vector<lfmatch_t<T> > prepareCost(const Mat& data, const int& npoints);
@@ -87,24 +88,33 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
   vector<lfmatch_t<T> > match;
   edgedetect<T> differ;
   Mat costs(differ.detect(data, edgedetect<T>::COLLECT_BOTH));
-  for(int i = 0; i < data.rows(); i ++)
-    for(int j = 0; j < data.cols(); j ++) {
+  for(int i = 0; i < data.rows() * sqrt(guard); i ++)
+    for(int j = 0; j < data.cols() * sqrt(guard); j ++) {
       lfmatch_t<T> m;
-      m.score = T(1) / costs(i, j);
       Eigen::Matrix<T, 3, 1>& pt(m.pt);
-      pt[0] = i;
-      pt[1] = j;
-      // XXX check me:
-      pt[2] = data(i, j) * sqrt(T(data.rows() * data.cols()));
+      T csum(0);
+      pt[0] = pt[1] = pt[2] = T(0);
+      int count(0);
+      for(int ii = i / sqrt(guard); ii < min(T(data.rows()), (i + 1) / sqrt(guard)); ii ++)
+        for(int jj = j / sqrt(guard); jj < min(T(data.cols()), (j + 1) / sqrt(guard)); jj ++) {
+          csum  += costs(ii, jj);
+          pt[0] += ii;
+          pt[1] += jj;
+          pt[2] += data(ii, jj);
+          count ++;
+        }
+      m.score = csum / count;
+      pt /= count;
+      // XXX checkme:
+      pt[2] *= sqrt(T(data.rows() * data.cols()));
       match.push_back(m);
     }
   sort(match.begin(), match.end(), cmplfwrap<T>);
-  match.resize(match.size() * guard);
-  vector<lfmatch_t<T> > result;
-  while(true) {
+  vector<lfmatch_t<T> > result(match);
+  while(result.size() > npoints) {
     result = vector<lfmatch_t<T> >();
     for(int i = 0; i < match.size(); i ++) {
-      cerr << "lpoly : " << match.size() << " : " << i << endl;
+      cerr << "lpoly : " << i << "/" << match.size() << endl;
       vector<T> lmbuf;
       for(int j = 0; j < match.size(); j ++) {
         Eigen::Matrix<T, 3, 1> diff(match[i].pt - match[j].pt);
@@ -142,7 +152,7 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
       result[i].score = abs(ek.dot(result[i].pt - p[0]) / sqrt(ek.dot(ek)));
     }
     sort(result.begin(), result.end(), cmplfwrap<T>);
-    result.resize(result.size() * guard);
+    result.resize(max(result.size() * guard, T(npoints)));
     if(result.size() == match.size() || result.size() <= npoints)
       break;
     match = result;
@@ -268,7 +278,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
             table(j, k)[l] = sqrt(- T(1));
             continue;
           }
-          const T theta0(T(2) * atan2(sqrt(a * a + b * b - c * c) - b, a + c));
+          const T theta0(T(2) * atan2(  sqrt(a * a + b * b - c * c) - b, a + c));
           const T theta1(T(2) * atan2(- sqrt(a * a + b * b - c * c) - b, a + c));
           table(j, k)[l] = sqrt(- T(1));
           if(isfinite(theta0) &&
@@ -513,8 +523,7 @@ public:
   ~reDig();
   void init();
   Vec3 emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
-  vector<Vec3> emphasis(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
-  Mat          emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
+  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio);
 };
 
 template <typename T> reDig<T>::reDig() {
@@ -532,11 +541,10 @@ template <typename T> void reDig<T>::init() {
 template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio) {
   const Vec3 a(refdst);
   const Vec3 b(match.rot * src * match.ratio + match.offset);
-  const T    r0(sqrt((a - b).dot(a - b)));
-  return dst + (b - a) * (ratio - T(1)) / r0;
+  return dst + (b - a) * (exp(ratio) - exp(T(1))) / exp(T(1));
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
   cerr << " making triangles";
   fflush(stderr);
   tilter<T> tilt;
@@ -546,56 +554,46 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       triangles.push_back(tilt.makeTriangle(i, j, dstimg, dstbump, false));
       triangles.push_back(tilt.makeTriangle(i, j, dstimg, dstbump, true));
     }
-  bool checked[triangles.size() * 3];
+  bool *checked;
+  checked = new bool[triangles.size() * 3];
   for(int i = 0; i < triangles.size() * 3; i ++)
     checked[i] = false;
   
-  for(int i = 0; i < match.dstpoints.size(); i ++)
-    for(int j = i + 1; j < match.dstpoints.size(); j ++)
-      for(int k = max(i, j) + 1; k < match.dstpoints.size(); k ++) {
-        const Vec3 n(tilt.solveN(dst[match.dstpoints[i]],
-                                 dst[match.dstpoints[j]],
-                                 dst[match.dstpoints[k]]));
-        if(n[2] < T(0))
-          continue;
-        bool flag = true;
-        for(int l = 1; l < match.dstpoints.size(); l ++)
-          if(n.dot(dst[match.dstpoints[0]]) *
-             n.dot(dst[match.dstpoints[l]]) < T(0)) {
-            flag = false;
-            break;
+  for(int ii = 0; ii < hull.size(); ii ++) {
+    cerr << "emphasis: " << ii << "/" << hull.size() << endl;
+    const int i(hull[ii][0]);
+    const int j(hull[ii][1]);
+    const int k(hull[ii][2]);
+    const Vec3 dst0((dst[match.dstpoints[i]] + dst[match.dstpoints[j]] + dst[match.dstpoints[k]]) / T(3));
+    const Vec3 src0((src[match.srcpoints[i]] + src[match.srcpoints[j]] + src[match.srcpoints[k]]) / T(3));
+    Vec2 p0, p1, p2;
+    p0[0] = dst[match.dstpoints[i]][0];
+    p0[1] = dst[match.dstpoints[i]][1];
+    p1[0] = dst[match.dstpoints[j]][0];
+    p1[1] = dst[match.dstpoints[j]][1];
+    p2[0] = dst[match.dstpoints[k]][0];
+    p2[1] = dst[match.dstpoints[k]][1];
+    for(int l = 0; l < triangles.size(); l ++) {
+      if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
+        Vec2 q;
+        for(int ll = 0; ll < 3; ll ++) {
+          if(checked[l * 3 + ll])
+            continue;
+          q[0] = triangles[l](0, ll);
+          q[1] = triangles[l](1, ll);
+          if(tilt.sameSide2(p0, p1, p2, q) &&
+             tilt.sameSide2(p1, p2, p0, q) &&
+             tilt.sameSide2(p2, p0, p1, q)) {
+            triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst0, src0, match, ratio);
+            checked[l * 3 + ll]  = true;
           }
-        if(!flag)
-          continue;
-        Vec2 p0, p1, p2;
-        p0[0] = dst[match.dstpoints[i]][0];
-        p0[1] = dst[match.dstpoints[i]][1];
-        p1[0] = dst[match.dstpoints[j]][0];
-        p1[1] = dst[match.dstpoints[j]][1];
-        p2[0] = dst[match.dstpoints[k]][0];
-        p2[1] = dst[match.dstpoints[k]][1];
-        for(int l = 0; l < triangles.size(); l ++)
-          if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
-            Vec2 q;
-            for(int ll = 0; ll < 3; ll ++) {
-              if(checked[l * 3 + ll])
-                continue;
-              q[0] = triangles[l](0, ll);
-              q[1] = triangles[l](1, ll);
-              if(tilt.sameSide2(p0, p1, p2, q) &&
-                 tilt.sameSide2(p1, p2, p0, q) &&
-                 tilt.sameSide2(p2, p0, p1, q)) {
-                triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst[match.dstpoints[i]], src[match.srcpoints[i]], match, ratio);
-                checked[l * 3 + ll]  = true;
-              }
-            }
-            triangles[l].col(4) = tilt.solveN(triangles[l].col(0), triangles[l].col(1), triangles[l].col(2));
-            triangles[l](1, 3)  = triangles[l].col(4).dot(triangles[l].col(0));
-            checked[l] = true;
-          }
+        }
+        triangles[l].col(4) = tilt.solveN(triangles[l].col(0), triangles[l].col(1), triangles[l].col(2));
       }
+      triangles[l](1, 3)  = triangles[l].col(4).dot(triangles[l].col(0));
+    }
+  }
   
-  // for each pixels extends.
   Mat I3(3, 3);
   Vec zero3(3);
   for(int i = 0; i < 3; i ++) {
@@ -603,6 +601,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       I3(i, j) = (i == j ? T(1) : T(0));
     zero3[i] = T(0);
   }
+  delete[] checked;
   return tilt.tiltsub(dstimg, triangles, I3, I3, zero3, zero3, T(1));
 }
 

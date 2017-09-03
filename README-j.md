@@ -1,6 +1,6 @@
 # Goki Check
 静止画像からあらかじめ想定される文脈を得ることが目的のプログラムです。  
-現在は回転のある固いオブジェクト同士のマッチを実装しています。
+現在は複数のハンドルポイントの回転のある固いオブジェクト同士の合致を実装しています。
 
 古い情報は https://sourceforge.net/p/gokicheck/wiki/Home/ を参照してください。
 
@@ -23,9 +23,12 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。
+また、この分野に関して、様々な(これと異なる)付帯条件での先行がたくさんありました。
+(例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるものなど。
+ ただし、正しい公式ページがどれなのかわからないために、リンクは差し控えさせていただきます。)
 
 # 状態
-回転のある場合の全体-部分一致の実装をしています。
+回転のある場合の全体の*部分*一致の実装をしています。
 
 # 使い方
     make tools
@@ -93,10 +96,11 @@ enlarge と enlarge-ds は DFT 時の半整数空間から擬似的にとって�
 collect は単純に DFT 微分の後、abs をとってきています。  
 bump は F=&infin; と y軸方向への偏光フィルタを仮定しています。  
 match は入力されるファイルがバンプマップであることを仮定しています。また、内部で深度の比率を調節してください。  
-match は z 軸方向まで含めて合致する部分を探します。
+match は z 軸方向まで含めて合致する部分を探します。  
+match3d は入力にバンプマップと .obj ファイルを仮定しています。また、reDig 関数は頂点の凸包を元に調整するので、現在おかしな結果が返ります。
 
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-stable.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.00-stable.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-accurate0.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.00-accurate0.tar.gz
