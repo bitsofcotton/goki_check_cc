@@ -11,9 +11,11 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 
 # 調整可能なパラメタ
 * fisheye.hh
-* * z_max  : 出力する z 軸の解像度です。
-* * stp    : ぼやけ具合を検出する際に使用される点の数です。
-* * nlevel : 自動レベル補正の際の比率です。
+* * z_max   : 出力する z 軸の解像度です。
+* * stp     : ぼやけ具合を検出する際に使用される点の数です。
+* * nlevel  : 自動レベル補正の際の比率です。
+* * cthresh : 取ってきた微分値が意味を持つかどうかを判定する比率です。
+* * bloop   : 平滑化の際にループする広さと回数です。
 * tilt.hh
 * * z_atio : [0,1] から [0,z_atio] への線形写像。
 * scancontext.hh
@@ -102,5 +104,5 @@ match3d は入力にバンプマップと .obj ファイルを仮定していま
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-accurate0.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.00-accurate0.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-accurate2.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.00-accurate2.tar.gz
