@@ -1,6 +1,6 @@
 # Goki Check
 These program aims to get context(s) from a still image.
-Now, testing solid whole to rotate partials match.
+Now, testing solid whole to rotate partials partial match.
 
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
@@ -11,9 +11,11 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 
 # Parameters
 * fisheye.hh
-* * z_max  : z-index resolution.
-* * stp    : number of points to be used in detecting edges.
-* * nlevel : ratio to auto level.
+* * z_max   : z-index resolution.
+* * stp     : number of points to be used in detecting edges.
+* * nlevel  : ratio to auto level.
+* * cthresh : threshold for differential value is valid or not.
+* * bloop   : loop number for flatting result.
 * tilt.hh
 * * z_atio : [0,1] to [0,z_atio].
 * scancontext.hh
@@ -102,5 +104,5 @@ These program's match3d assumes input file as bump map and .obj 3d file. And for
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-accurate0.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.00-accurate0.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-accurate2.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.00-accurate2.tar.gz
