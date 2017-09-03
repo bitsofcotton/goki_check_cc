@@ -5,7 +5,6 @@
 #include <vector>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include "edgedetect.hh"
 
 using std::complex;
 using std::abs;
@@ -141,9 +140,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     p1[2] = 0;
     cerr << ".";
     cerr.flush();
-    // initialize z with middle point.
     for(int j = 0; j < result.rows(); j ++)
-      result(j, i) = T(.5);
+      result(j, i) = - T(1.);
     Vec zval(result.rows());
     for(int j = 0; j < zval.size(); j ++)
       zval[j] = T(0);
@@ -241,21 +239,20 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& input, const bool& y_only) {
-  edgedetect<T> edge;
-  Mat           result(input);
+  Mat result(input);
   result *= T(0);
   if(y_only) {
-    // N.B. We may need integrate on local to global operation.
+    // N.B. We may need integrate on local to global operation,
+    //      but this is not enough for intensity and edges,
+    //      so repeat each range for a flat result.
     // N.B. We assume differential/integral of getPseudoBumpSub as a linear,
     //      but in fact, it's not.
-    // N.B. Local to global operation in this is pseudo, so to avoid this,
-    //      repeat each range.
-    // N.B. intensity that we gain wider range is logarithm scale multiplied.
     Mat cache(integrate(input));
     for(int i = 0; i < bloop; i ++) {
       // const T rstp(pow(sqrt(T(2)), i) * this->rstp);
       const T rstp((i + 1) * this->rstp);
-      result += edge.detect(getPseudoBumpSub(cache, rstp), edgedetect<T>::DETECT_Y) * (i + 1);
+      // result += getPseudoBumpSub(cache, rstp) * (i + 1);
+      result += getPseudoBumpSub(cache, rstp);
     }
   } else {
     Mat cachex(integrate(input.transpose()));
@@ -263,9 +260,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int i = 0; i < bloop; i ++) {
       // const T   rstp(pow(sqrt(T(2)), i) * this->rstp);
       const T   rstp((i + 1) * this->rstp);
-      const Mat pbx(edge.detect(getPseudoBumpSub(cachex, rstp), edgedetect<T>::DETECT_Y).transpose());
-      const Mat pby(edge.detect(getPseudoBumpSub(cachey, rstp), edgedetect<T>::DETECT_Y));
-      result += (pbx + pby) * (i + 1);
+      const Mat pbx(getPseudoBumpSub(cachex, rstp).transpose());
+      const Mat pby(getPseudoBumpSub(cachey, rstp));
+      // result += (pbx + pby) * (i + 1);
+      result += (pbx + pby);
     }
   }
   return autoLevel(result);
