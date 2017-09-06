@@ -126,9 +126,9 @@ template <typename T> bool tilter<T>::sameSide2(const Vec2& p0, const Vec2& p1, 
   const Vec2 dlt(p1 - p0);
   Vec2 dp(p2 - p0);
   dp -= dlt.dot(dp) * dlt / dlt.dot(dlt);
-  // XXX refixed (dq.dot(p2 - p0) >> 0).
-  return dp.dot(q) + max(abs(dp[0]) + abs(dp[1]), T(0)) / T(2)
-          >= dp.dot(p0);
+  // XXX refixed. dp.dot(p2 - p0) >> 0.
+  // XXX refixed. another place uses.
+  return dp.dot(q - p0) + max(abs(dp[0]) + abs(dp[1]), T(0)) / T(2) / max(max(sqrt((p0 - p1).dot(p0 - p1)), sqrt((p1 - p2).dot(p1 - p2))), sqrt((p2 - p0).dot(p2 - p0))) >= T(0);
 }
 
 template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::rotate(const Eigen::Matrix<T, 3, 5>& triangle, const Mat3x3& rot, const Vec3& origin, const T& rr) {
@@ -163,9 +163,10 @@ template <typename T> bool tilter<T>::onTriangle(T& z, const Eigen::Matrix<T, 3,
     tritri(0, i) = tri(0, i);
     tritri(1, i) = tri(1, i);
   }
-  return sameSide2(tritri.col(0), tritri.col(1), tritri.col(2), geom) &&
-         sameSide2(tritri.col(1), tritri.col(2), tritri.col(0), geom) &&
-         sameSide2(tritri.col(2), tritri.col(0), tritri.col(1), geom);
+  // XXX: don't now why, but logic is inverted in calculation.
+  return !(sameSide2(tritri.col(0), tritri.col(1), tritri.col(2), geom) &&
+           sameSide2(tritri.col(1), tritri.col(2), tritri.col(0), geom) &&
+           sameSide2(tritri.col(2), tritri.col(0), tritri.col(1), geom));
 }
 
 template <typename T> bool tilter<T>::scale(Mat3x3& A, Vec3& b, const Mat3x3& vorig, const Mat3x3& vto) {
@@ -274,7 +275,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
         Vec2 midgeom;
         midgeom[0] = y;
         midgeom[1] = x;
-        if(onTriangle(z, tri, midgeom)
+        if(!onTriangle(z, tri, midgeom)
            && zb(y, x) < z) {
             result(y, x)  = tri(0, 3);
             zb(y, x)      = z;

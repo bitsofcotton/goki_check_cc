@@ -15,6 +15,7 @@ using std::sin;
 using std::pow;
 using std::sort;
 using std::min;
+using std::max;
 using std::cerr;
 using std::endl;
 using std::fflush;
@@ -34,6 +35,10 @@ public:
 template <typename T> int cmplfwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
   // fixed. 2017/08/20.
   return x0.score > x1.score;
+}
+
+template <typename T> int cmplfrwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
+  return x0.pt[0] < x1.pt[0] || (x0.pt[0] == x1.pt[0] && x0.pt[1] < x1.pt[1]);
 }
 
 template <typename T> class lowFreq {
@@ -87,7 +92,7 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > lowFreq<T>::getLowFreq(con
 template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const int& npoints) {
   vector<lfmatch_t<T> > match;
   edgedetect<T> differ;
-  Mat costs(differ.detect(data, edgedetect<T>::COLLECT_BOTH));
+  const T guard(T(npoints) / (data.rows() * data.cols()));
   for(int i = 0; i < data.rows() * sqrt(guard); i ++)
     for(int j = 0; j < data.cols() * sqrt(guard); j ++) {
       lfmatch_t<T> m;
@@ -97,7 +102,7 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
       int count(0);
       for(int ii = i / sqrt(guard); ii < min(T(data.rows()), (i + 1) / sqrt(guard)); ii ++)
         for(int jj = j / sqrt(guard); jj < min(T(data.cols()), (j + 1) / sqrt(guard)); jj ++) {
-          csum  += costs(ii, jj);
+          csum  += data(ii, jj);
           pt[0] += ii;
           pt[1] += jj;
           pt[2] += data(ii, jj);
@@ -106,11 +111,13 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
       m.score = csum / count;
       pt /= count;
       // XXX checkme:
-      pt[2] *= sqrt(T(data.rows() * data.cols()));
+      pt[2] *= T(60);
       match.push_back(m);
     }
   sort(match.begin(), match.end(), cmplfwrap<T>);
+  // XXX fixme:
   vector<lfmatch_t<T> > result(match);
+/*
   while(result.size() > npoints) {
     result = vector<lfmatch_t<T> >();
     for(int i = 0; i < match.size(); i ++) {
@@ -158,6 +165,8 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
     match = result;
   }
   result.resize(min(int(result.size()), npoints));
+*/
+  sort(result.begin(), result.end(), cmplfrwrap<T>);
   return result;
 }
 
@@ -225,7 +234,7 @@ public:
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
-  void init(const vector<Vec3>& shapebase, const T& thresh, const T& threshp, const T& threshr);
+  void init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr);
   
   vector<match_t<T> > match(const vector<Vec3>& points, const int& ndiv = 120, const T& r_max_theta = T(0));
 private:
@@ -233,6 +242,7 @@ private:
   T Pi;
   // thresh, threshp in [0, 1]
   T thresh;
+  T threshl;
   T threshp;
   T threshr;
   vector<Vec3> shapebase;
@@ -247,9 +257,10 @@ template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
   ;
 }
 
-template <typename T> void matchPartialPartial<T>::init(const vector<Vec3>& shapebase, const T& thresh, const T& threshp, const T& threshr) {
+template <typename T> void matchPartialPartial<T>::init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr) {
   this->shapebase = shapebase;
   this->thresh    = T(1) - thresh;
+  this->threshl   = threshl;
   this->threshp   = threshp;
   this->threshr   = threshr;
   return;
@@ -300,13 +311,11 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
 #if defined(_OPENMP)
 #pragma omp for
 #endif
-    for(int nd = 0; nd < ndiv + 1; nd ++) {
-      cerr << "matching table (" << i << "/3)" << " : " << nd << "/" << ndiv + 1 << endl;
+    for(int nd = 0; nd < ndiv; nd ++) {
+      cerr << "matching table (" << i << "/3)" << " : " << nd << "/" << ndiv << endl;
       Eigen::Matrix<T, 2, 1> ddiv;
       ddiv[0] = cos(2. * Pi * nd / ndiv);
       ddiv[1] = sin(2. * Pi * nd / ndiv);
-      if(nd == ndiv)
-        ddiv *= T(0);
       Mat3x3 drot0;
       for(int k = 0; k < drot0.rows(); k ++)
         for(int l = 0; l < drot0.cols(); l ++)
@@ -315,7 +324,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
       for(int j = 0; j < shapebase.size(); j ++) {
         for(int k = 0; k < points.size(); k ++) {
           const T ldepth(table(j, k).dot(ddiv) / sqrt(table(j, k).dot(table(j, k))) - T(1));
-          if(isfinite(ldepth) && abs(ldepth) <= thresh) {
+          if(isfinite(ldepth) && abs(T(1) - abs(ldepth)) <= thresh) {
             msub_t<T> work;
             work.mbufj = j;
             work.mbufk = k;
@@ -326,9 +335,10 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
       }
       sort(msub.begin(), msub.end(), cmpsubwrap<T>);
       for(int k0 = 0; k0 < msub.size(); k0 ++) {
+        // cerr << k0 << "/" << msub.size() << endl;
         match_t<T> work;
         work.rot = drot0;
-        for(int k = 0; k < ddiv.size(); k ++) {
+        for(int k = 0; k < 2; k ++) {
           Mat3x3 lrot;
           const T theta(ddiv[k] * msub[k0].mbufN);
           lrot((k + i    ) % 3, (k + i    ) % 3) =   cos(theta);
@@ -353,22 +363,29 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         for(int k = k0; k < msub.size(); k ++) {
           int kfix = k;
           T   err(thresh * T(2));
-          for(int kk = k;
+          for(int kk = k + 1;
                   kk < msub.size();
                   kk ++)
             if(!flagj[msub[kk].mbufj] &&
                !flagk[msub[kk].mbufk]) {
-              Vec3 aj(shapebase[msub[kk].mbufj]);
-              Vec3 bk(work.rot * points[msub[kk].mbufk]);
+              const Vec3 aj0(shapebase[msub[kk].mbufj]);
+              const Vec3 bk(work.rot * points[msub[kk].mbufk]);
+              Vec3 aj(aj0);
               aj /= sqrt(aj.dot(aj));
               aj -= aj.dot(bk) * bk / bk.dot(bk);
               if(!isfinite(aj.dot(aj)) || thresh < aj.dot(aj))
                 continue;
+              const Vec3 aj00(shapebase[msub[k0].mbufj]);
+              const Vec3 bk00(work.rot * points[msub[k0].mbufk]);
+              const T t00(aj00.dot(bk00) / bk00.dot(bk00));
+              const T t0(aj0.dot(bk) / bk.dot(bk));
+              const T r(abs((t0 - t00) / t00));
+              if(!isfinite(r) || threshl < r)
+                continue;
               if(aj.dot(aj) < err) {
-                err = aj.dot(aj);
+                err  = aj.dot(aj);
                 kfix = kk;
               }
-              // XXX confirm me. ;?
               break;
             }
           if(thresh < err)
@@ -377,6 +394,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           work.srcpoints.push_back(msub[kfix].mbufk);
           flagj[msub[kfix].mbufj] = true;
           flagk[msub[kfix].mbufk] = true;
+          k = kfix;
         }
         // if there's a match.
         work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
@@ -561,9 +579,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   
   for(int ii = 0; ii < hull.size(); ii ++) {
     cerr << "emphasis: " << ii << "/" << hull.size() << endl;
-    const int i(hull[ii][0]);
-    const int j(hull[ii][1]);
-    const int k(hull[ii][2]);
+    const int  i(hull[ii][0]);
+    const int  j(hull[ii][1]);
+    const int  k(hull[ii][2]);
     const Vec3 dst0((dst[match.dstpoints[i]] + dst[match.dstpoints[j]] + dst[match.dstpoints[k]]) / T(3));
     const Vec3 src0((src[match.srcpoints[i]] + src[match.srcpoints[j]] + src[match.srcpoints[k]]) / T(3));
     Vec2 p0, p1, p2;
@@ -581,9 +599,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
             continue;
           q[0] = triangles[l](0, ll);
           q[1] = triangles[l](1, ll);
-          if(tilt.sameSide2(p0, p1, p2, q) &&
-             tilt.sameSide2(p1, p2, p0, q) &&
-             tilt.sameSide2(p2, p0, p1, q)) {
+          // XXX don't know why, but logic is inverted in calculation.
+          if(!(tilt.sameSide2(p0, p1, p2, q) &&
+               tilt.sameSide2(p1, p2, p0, q) &&
+               tilt.sameSide2(p2, p0, p1, q))) {
             triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst0, src0, match, ratio);
             checked[l * 3 + ll]  = true;
           }
@@ -605,60 +624,86 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return tilt.tiltsub(dstimg, triangles, I3, I3, zero3, zero3, T(1));
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const vector<Eigen::Matrix<T, 3, 1> >& refpoints, const vector<int>& prefpoints, const T& emph = T(.8)) {
+template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph) {
+  if(lref1[0] == lref0[0]) {
+    int sgndelta(1);
+    if(lref1[1] < lref0[1])
+      sgndelta = - 1;
+    for(int i = lref0[1]; (lref1[1] - i) * sgndelta > 0; i += sgndelta)
+      map(max(0, min(int(lref0[0]), int(map.rows() - 1))),
+          max(0, min(i,             int(map.cols() - 1)))) = emph;
+  } else if(lref1[1] == lref0[1]) {
+    int sgndelta(1);
+    if(lref1[0] < lref0[0])
+      sgndelta = - 1;
+    for(int j = lref0[0]; (lref1[0] - j) * sgndelta > 0; j += sgndelta) {
+      map(max(0, min(j,             int(map.rows() - 1))),
+          max(0, min(int(lref0[1]), int(map.cols() - 1)))) = emph;
+    }
+  } else if(abs(lref1[1] - lref0[1]) > abs(lref1[0] - lref0[0])) {
+    const T tilt((lref1[1] - lref0[1]) / (lref1[0] - lref0[0]));
+    int sgndelta(1);
+    if(lref1[0] < lref0[0])
+      sgndelta = - 1;
+    int i = lref0[0], ii = 0;
+    for(; i != int(lref1[0]) &&
+          (i < 0 || map.rows() <= i ||
+           lref0[1] + tilt * ii < 0 ||
+           map.rows() <= lref0[1] + tilt * ii);
+          i += sgndelta, ii += sgndelta);
+    for(; i != int(lref1[0]) &&
+          0 <= lref0[1] + tilt * ii &&
+               lref0[1] + tilt * ii <= map.cols();
+          i += sgndelta, ii += sgndelta)
+      for(int jj = 0; jj < abs(tilt); jj ++) {
+        int j = tilt * (ii - sgndelta) +
+                jj * (tilt * sgndelta < T(0) ? - 1 : 1);
+        map(max(0, min(i, int(map.rows() - 1))),
+            max(0, min(int(lref0[1] + j), int(map.cols() - 1)))) = emph;
+      }
+  } else {
+    const T tilt((lref1[0] - lref0[0]) / (lref1[1] - lref0[1]));
+    int sgndelta(1);
+    if(lref1[1] < lref0[1])
+      sgndelta = - 1;
+    int j = lref0[1], jj = 0;
+    for(; j != int(lref1[1]) &&
+          (j < 0 || map.cols() <= j ||
+           lref0[0] + tilt * jj < 0 ||
+           map.cols() <= lref0[0] + tilt * jj);
+          j += sgndelta, jj += sgndelta);
+    for(; j != int(lref1[1]) &&
+          0 <= lref0[0] + tilt * jj &&
+               lref0[0] + tilt * jj <= map.rows();
+          j += sgndelta, jj += sgndelta)
+      for(int ii = 0; ii < abs(tilt); ii ++) {
+        int i = tilt * (jj - sgndelta) +
+                ii * (tilt * sgndelta < T(0) ? - 1 : 1);
+        map(max(0, min(int(lref0[0] + i), int(map.rows() - 1))),
+            max(0, min(j, int(map.cols() - 1)))) = emph;
+      }
+  }
+  return;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const vector<Eigen::Matrix<T, 3, 1> >& refpoints, const vector<Eigen::Matrix<int, 3, 1> >& prefpoints, const T& emph = T(.8)) {
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(input), map(input.rows(), input.cols());
   for(int i = 0; i < map.rows(); i ++)
     for(int j = 0; j < map.cols(); j ++)
       map(i, j) = T(0);
   for(int k = 0; k < prefpoints.size(); k ++) {
-    const Eigen::Matrix<T, 3, 1>& lref0(refpoints[prefpoints[k]]);
-    for(int l = k + 1; l < prefpoints.size(); l ++) {
-      const Eigen::Matrix<T, 3, 1>& lref1(refpoints[prefpoints[l]]);
-      if(lref0 == lref1) continue;
-      if(abs(lref1[1] - lref0[1]) > abs(lref1[0] - lref0[0])) {
-        const T tilt((lref1[1] - lref0[1]) / (lref1[0] - lref0[0]));
-        int sgndelta(1);
-        if(lref1[0] < lref0[0])
-          sgndelta = - 1;
-        int i = lref0[0], ii = 0;
-        for(; i != int(lref1[0]) &&
-              (i < 0 || map.rows() <= i ||
-               lref0[1] + tilt * ii < 0 ||
-               map.rows() <= lref0[1] + tilt * ii);
-              i += sgndelta, ii += sgndelta);
-        for(; i != int(lref1[0]) &&
-              0 <= lref0[1] + tilt * ii &&
-                   lref0[1] + tilt * ii < map.cols();
-              i += sgndelta, ii += sgndelta)
-          for(int jj = 0; jj < abs(tilt); jj ++) {
-            int j = tilt * (ii - sgndelta) +
-                    jj * (tilt * sgndelta < T(0) ? - 1 : 1);
-            map(max(0, min(i, int(map.rows() - 1))),
-                max(0, min(int(lref0[1] + j), int(map.cols() - 1)))) = emph;
-          }
-      } else {
-        const T tilt((lref1[0] - lref0[0]) / (lref1[1] - lref0[1]));
-        int sgndelta(1);
-        if(lref1[1] < lref0[1])
-          sgndelta = - 1;
-        int j = lref0[1], jj = 0;
-        for(; j != int(lref1[1]) &&
-              (j < 0 || map.cols() <= j ||
-               lref0[0] + tilt * jj < 0 ||
-               map.cols() <= lref0[0] + tilt * jj);
-              j += sgndelta, jj += sgndelta);
-        for(; j != int(lref1[1]) &&
-              0 <= lref0[0] + tilt * jj &&
-                   lref0[0] + tilt * jj < map.rows();
-              j += sgndelta, jj += sgndelta)
-          for(int ii = 0; ii < abs(tilt); ii ++) {
-            int i = tilt * (jj - sgndelta) +
-                    ii * (tilt * sgndelta < T(0) ? - 1 : 1);
-            map(max(0, min(int(lref0[0] + i), int(map.rows() - 1))),
-                max(0, min(j, int(map.cols() - 1)))) = emph;
-          }
-      }
-    }
+    drawMatchLine<T>(map,
+                     refpoints[prefpoints[k][0]],
+                     refpoints[prefpoints[k][1]],
+                     emph);
+    drawMatchLine<T>(map,
+                     refpoints[prefpoints[k][1]],
+                     refpoints[prefpoints[k][2]],
+                     emph);
+    drawMatchLine<T>(map,
+                     refpoints[prefpoints[k][2]],
+                     refpoints[prefpoints[k][0]],
+                     emph);
   }
   return result + map;
 }
