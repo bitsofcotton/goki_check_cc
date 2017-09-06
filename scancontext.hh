@@ -47,22 +47,20 @@ public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
-  lowFreq(const T& guard = T(.0625));
+  lowFreq();
   ~lowFreq();
   
   vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 120);
-  Mat getLowFreqImage(const Mat& data, const int& npoints = 120);
+  Mat getLowFreqImage(const Mat& data, const int& npoints = 600);
 private:
   vector<lfmatch_t<T> > prepareCost(const Mat& data, const int& npoints);
   T Pi;
   U I;
-  T guard;
 };
 
-template <typename T> lowFreq<T>::lowFreq(const T& guard) {
+template <typename T> lowFreq<T>::lowFreq() {
   Pi          = atan2(T(1), T(1)) * T(4);
   I           = sqrt(U(- 1));
-  this->guard = guard;
 }
 
 template <typename T> lowFreq<T>::~lowFreq() {
@@ -599,10 +597,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
             continue;
           q[0] = triangles[l](0, ll);
           q[1] = triangles[l](1, ll);
-          // XXX don't know why, but logic is inverted in calculation.
-          if(!(tilt.sameSide2(p0, p1, p2, q) &&
-               tilt.sameSide2(p1, p2, p0, q) &&
-               tilt.sameSide2(p2, p0, p1, q))) {
+          if(tilt.sameSide2(p0, p1, p2, q) &&
+             tilt.sameSide2(p1, p2, p0, q) &&
+             tilt.sameSide2(p2, p0, p1, q)) {
             triangles[l].col(ll) = emphasis0(triangles[l].col(ll), dst0, src0, match, ratio);
             checked[l * 3 + ll]  = true;
           }

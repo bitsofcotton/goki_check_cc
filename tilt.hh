@@ -163,10 +163,9 @@ template <typename T> bool tilter<T>::onTriangle(T& z, const Eigen::Matrix<T, 3,
     tritri(0, i) = tri(0, i);
     tritri(1, i) = tri(1, i);
   }
-  // XXX: don't now why, but logic is inverted in calculation.
-  return !(sameSide2(tritri.col(0), tritri.col(1), tritri.col(2), geom) &&
-           sameSide2(tritri.col(1), tritri.col(2), tritri.col(0), geom) &&
-           sameSide2(tritri.col(2), tritri.col(0), tritri.col(1), geom));
+  return (sameSide2(tritri.col(0), tritri.col(1), tritri.col(2), geom) &&
+          sameSide2(tritri.col(1), tritri.col(2), tritri.col(0), geom) &&
+          sameSide2(tritri.col(2), tritri.col(0), tritri.col(1), geom));
 }
 
 template <typename T> bool tilter<T>::scale(Mat3x3& A, Vec3& b, const Mat3x3& vorig, const Mat3x3& vto) {

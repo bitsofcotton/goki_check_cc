@@ -85,12 +85,12 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(bump, argv[4]))
         return - 2;
       tilter<float> tilt;
-      tilt.initialize(8.);
+      tilt.initialize(20.);
       const int M_TILT = 32;
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .999);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .9995);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<float>(outfile.c_str(), out, false);
@@ -267,6 +267,11 @@ int main(int argc, const char* argv[]) {
         return - 2;
       if(!loadobj<float>(datapoly, polynorms, argv[5]))
         return - 2;
+      // XXX magic number:
+      if(datapoly.size() > 2000) {
+        std::cerr << "Too many vertices." << std::endl;
+        return - 2;
+      }
       Eigen::Matrix<float, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> zero(data1[0].rows(), data1[0].cols());
