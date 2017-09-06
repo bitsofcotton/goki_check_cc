@@ -275,7 +275,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
         Vec2 midgeom;
         midgeom[0] = y;
         midgeom[1] = x;
-        if(!onTriangle(z, tri, midgeom)
+        if(onTriangle(z, tri, midgeom)
            && zb(y, x) < z) {
             result(y, x)  = tri(0, 3);
             zb(y, x)      = z;
