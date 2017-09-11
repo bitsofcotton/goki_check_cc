@@ -103,7 +103,7 @@ int main(int argc, const char* argv[]) {
       lowFreq<float>    lf;
       PseudoBump<float> bump;
       edgedetect<float> detect;
-      std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data), 30));
+      std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data)));
       std::vector<int> dstpoints;
       for(int i = 0; i < points.size(); i ++)
         dstpoints.push_back(i);
@@ -144,9 +144,9 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data3, argv[6]))
         return - 2;
       // XXX: configure me.
-      float thresh_para(.9);
-      float thresh_len(.2);
-      float thresh_points(.125);
+      float thresh_para(.9995);
+      float thresh_len(.9995);
+      float thresh_points(.0625);
       float thresh_r(.125);
       float zrs(1.);
       float zre(.25);
@@ -182,7 +182,7 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
       lowFreq<float> lf;
-      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data)));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), data[0].rows() * data[0].cols() / 32));
       std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1)));
       std::vector<match_t<float> > matches;
       for(float zr = zrs;
@@ -284,9 +284,9 @@ int main(int argc, const char* argv[]) {
           I3(i, j) = (i == j ? float(1) : float(0));
       
       // XXX: configure me.
-      float thresh_para(.9);
-      float thresh_len(.2);
-      float thresh_points(.25);
+      float thresh_para(.9995);
+      float thresh_len(.9995);
+      float thresh_points(.0625);
       float thresh_r(.125);
       float zrs(1.);
       float zre(.25);

@@ -51,7 +51,7 @@ public:
   ~lowFreq();
   
   vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 120);
-  Mat getLowFreqImage(const Mat& data, const int& npoints = 600);
+  Mat getLowFreqImage(const Mat& data, const int& npoints = 60);
 private:
   vector<lfmatch_t<T> > prepareCost(const Mat& data, const int& npoints);
   T Pi;
@@ -257,8 +257,8 @@ template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
 
 template <typename T> void matchPartialPartial<T>::init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr) {
   this->shapebase = shapebase;
-  this->thresh    = T(1) - thresh;
-  this->threshl   = threshl;
+  this->thresh    = abs(T(1) - thresh);
+  this->threshl   = abs(T(1) - threshl);
   this->threshp   = threshp;
   this->threshr   = threshr;
   return;
@@ -309,21 +309,27 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
 #if defined(_OPENMP)
 #pragma omp for
 #endif
-    for(int nd = 0; nd < ndiv; nd ++) {
-      cerr << "matching table (" << i << "/3)" << " : " << nd << "/" << ndiv << endl;
+    for(int nd = 0; nd < ndiv + 1; nd ++) {
+      cerr << "matching table (" << i << "/3)" << " : " << nd << "/" << ndiv + 1;
       Eigen::Matrix<T, 2, 1> ddiv;
       ddiv[0] = cos(2. * Pi * nd / ndiv);
       ddiv[1] = sin(2. * Pi * nd / ndiv);
+      if(nd == ndiv)
+        ddiv *= T(0);
       Mat3x3 drot0;
       for(int k = 0; k < drot0.rows(); k ++)
         for(int l = 0; l < drot0.cols(); l ++)
           drot0(k, l) = (k == l ? T(1) : T(0));
       vector<msub_t<T> > msub;
-      for(int j = 0; j < shapebase.size(); j ++) {
-        for(int k = 0; k < points.size(); k ++) {
-          const T ldepth(table(j, k).dot(ddiv) / sqrt(table(j, k).dot(table(j, k))) - T(1));
-          if(isfinite(ldepth) && abs(T(1) - abs(ldepth)) <= thresh) {
-            msub_t<T> work;
+      for(int k = 0; k < points.size(); k ++) {
+        msub_t<T> work;
+        for(int j = 0; j < shapebase.size(); j ++) {
+          T ldepth(1);
+          if(nd < ndiv)
+            ldepth = table(j, k).dot(ddiv) / sqrt(table(j, k).dot(table(j, k))) - T(1);
+          else
+            ldepth = sqrt(table(j, k).dot(table(j, k)));
+          if(isfinite(ldepth) && abs(ldepth) <= thresh) {
             work.mbufj = j;
             work.mbufk = k;
             work.mbufN = sqrt(table(j, k).dot(table(j, k)));
@@ -331,10 +337,11 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           }
         }
       }
+      cerr << " : " << msub.size() << endl;
       sort(msub.begin(), msub.end(), cmpsubwrap<T>);
       for(int k0 = 0; k0 < msub.size(); k0 ++) {
-        // cerr << k0 << "/" << msub.size() << endl;
         match_t<T> work;
+        bool       flagk0(false);
         work.rot = drot0;
         for(int k = 0; k < 2; k ++) {
           Mat3x3 lrot;
@@ -354,10 +361,12 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           continue;
         bool flagk[points.size()];
         bool flagj[shapebase.size()];
+        bool flagt(false);
         for(int kk = 0; kk < points.size(); kk ++)
           flagk[kk] = false;
         for(int kk = 0; kk < shapebase.size(); kk ++)
           flagj[kk] = false;
+        T    t0(0);
         for(int k = k0; k < msub.size(); k ++) {
           int kfix = k;
           T   err(thresh * T(2));
@@ -373,14 +382,14 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
               aj -= aj.dot(bk) * bk / bk.dot(bk);
               if(!isfinite(aj.dot(aj)) || thresh < aj.dot(aj))
                 continue;
-              const Vec3 aj00(shapebase[msub[k0].mbufj]);
-              const Vec3 bk00(work.rot * points[msub[k0].mbufk]);
-              const T t00(aj00.dot(bk00) / bk00.dot(bk00));
-              const T t0(aj0.dot(bk) / bk.dot(bk));
-              const T r(abs((t0 - t00) / t00));
-              if(!isfinite(r) || threshl < r)
+              const T t(aj0.dot(bk) / bk.dot(bk));
+              if(!isfinite(t) || (flagt && abs(t0 - t) / t0 <= threshl))
                 continue;
               if(aj.dot(aj) < err) {
+                if(!flagt) {
+                  t0    = abs(t);
+                  flagt = true;
+                }
                 err  = aj.dot(aj);
                 kfix = kk;
               }
@@ -392,8 +401,14 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           work.srcpoints.push_back(msub[kfix].mbufk);
           flagj[msub[kfix].mbufj] = true;
           flagk[msub[kfix].mbufk] = true;
-          k = kfix;
+          // this is no good but use substitute k0.
+          k0 = k = kfix;
+          flagk0 = true;
         }
+        if(!flagk0)
+          for(int k00 = k0; k0 < msub.size(); k0 ++)
+            if(abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k0].mbufN >= thresh)
+              break;
         // if there's a match.
         work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
         if(threshp <= work.rpoints) {
@@ -534,12 +549,14 @@ public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
   typedef Eigen::Matrix<T, 3, 1>              Vec3;
   typedef Eigen::Matrix<T, 2, 1>              Vec2;
+  typedef Eigen::Matrix<int, 3, 1>            Veci3;
   
   reDig();
   ~reDig();
   void init();
   Vec3 emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
-  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio);
+  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
+  bool takeShape(vector<Vec3>& points, vector<Veci3>& tris, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
 };
 
 template <typename T> reDig<T>::reDig() {

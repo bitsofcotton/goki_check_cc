@@ -266,7 +266,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       result += (pbx + pby);
     }
   }
-  return autoLevel(result);
+  // bump map is in the logic exchanged convex part and concave part.
+  return - autoLevel(result);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSquare(const Vec& input) {

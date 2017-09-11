@@ -4,6 +4,8 @@
 #include <Eigen/LU>
 
 using std::complex;
+using std::abs;
+using std::pow;
 
 template <typename T> class enlarger2ex {
 public:
@@ -62,13 +64,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       Vec xx(data.transpose() * X);
       Mat co(Dop * data / T(2));
       for(int i = 0; i < data.cols(); i ++) {
-        const T lr(data.rows() * data.rows() * 2. * Pi * 2. * Pi);
+        const T lr(pow(T(2) * Pi * data.rows(), T(2)));
         ff[i] /= lr * T(2);
         xx[i] /= lr * T(2);
         for(int j = 0; j < data.rows(); j ++) {
-          // XXX fixme:
-          // const T delta(- co(j, i) * (xx[i] * co(j, i) + ff[i] * dd(j, i)));
-          const T delta(- (xx[i] * co(j, i) + ff[i] * dd(j, i)));
+          const T delta((co(j, i) < T(0) ? - T(1) : T(1)) * abs(xx[i] * co(j, i) + ff[i] * dd(j, i)));
           result(j * 2 + 0, i) = data(j, i) - delta;
           result(j * 2 + 1, i) = data(j, i) + delta;
         }
@@ -207,9 +207,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       Mat work(enlarger.enlarge2(buf, enlarger2ex<T>::ENLARGE_Y));
       result = Mat(data.rows() * 2 - 1, data.cols());
       result.row(0) = data.row(0);
-      for(int i = 0; i < work.cols(); i ++)
-        for(int j = 1; j < work.rows(); j ++)
-          result(j, i) = result(j - 1, i) + work(j - 1, i) / 2.;
+      for(int i = 1; i < work.rows() + 1; i ++)
+        result.row(i) = result.row(i - 1) + work.row(i - 1) / T(2);
     }
     break;
   case ENLARGE_BOTH:

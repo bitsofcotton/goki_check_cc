@@ -109,15 +109,15 @@ template <typename T> bool savep2or3(const char* filename, Eigen::Matrix<T, Eige
         output << "P2" << endl;
       else
         output << "P3" << endl;
-      output << data[0].cols() << " " << data[0].rows() << endl;
-      output << 255 << endl;
+      output << data[0].cols() << " " << data[0].rows() << "\n";
+      output << 255 << "\n";
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
           if(gray)
-            output << int(data[0](i, j) * 255) << endl;
+            output << int(data[0](i, j) * 255) << "\n";
           else
             for(int k = 0; k < 3; k ++)
-              output << int(data[k](i, j) * 255) << endl;
+              output << int(data[k](i, j) * 255) << "\n";
     } catch (const ofstream::failure& e) {
       cerr << "An error has occured while writing file." << endl;
     }
