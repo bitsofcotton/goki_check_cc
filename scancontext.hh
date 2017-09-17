@@ -267,6 +267,10 @@ template <typename T> void matchPartialPartial<T>::init(const vector<Vec3>& shap
 template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& points, const int& ndiv, const T& r_max_theta) {
   vector<match_t<T> > result;
   for(int i = 0; i < 3; i ++) {
+    Mat3x3 drot0;
+    for(int k = 0; k < drot0.rows(); k ++)
+      for(int l = 0; l < drot0.cols(); l ++)
+        drot0(k, l) = (k == l ? T(1) : T(0));
     Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
     // init table.
 #if defined(_OPENMP)
@@ -279,17 +283,15 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         Vec3 aj(shapebase[j]), bk(points[k]);
         aj /= sqrt(aj.dot(aj));
         bk /= sqrt(bk.dot(bk));
-        for(int l = 0; l < 2; l ++) {
+        for(int l = 0; l < table(j, k).size(); l ++) {
           const T a(bk[(l + i) % 3]);
           const T b(bk[(l + i + 1) % 3]);
           const T c(aj[(l + i) % 3]);
-          if(a * a + b * b < c * c) {
-            table(j, k)[l] = sqrt(- T(1));
+          table(j, k)[l] = sqrt(- T(1));
+          if(a * a + b * b < c * c)
             continue;
-          }
           const T theta0(T(2) * atan2(  sqrt(a * a + b * b - c * c) - b, a + c));
           const T theta1(T(2) * atan2(- sqrt(a * a + b * b - c * c) - b, a + c));
-          table(j, k)[l] = sqrt(- T(1));
           if(isfinite(theta0) &&
              abs((cos(theta0) * a - sin(theta0) * b) - c) < thresh)
             table(j, k)[l] = theta0;
@@ -316,10 +318,6 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
       ddiv[1] = sin(2. * Pi * nd / ndiv);
       if(nd == ndiv)
         ddiv *= T(0);
-      Mat3x3 drot0;
-      for(int k = 0; k < drot0.rows(); k ++)
-        for(int l = 0; l < drot0.cols(); l ++)
-          drot0(k, l) = (k == l ? T(1) : T(0));
       vector<msub_t<T> > msub;
       for(int k = 0; k < points.size(); k ++) {
         msub_t<T> work;
@@ -341,9 +339,8 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
       sort(msub.begin(), msub.end(), cmpsubwrap<T>);
       for(int k0 = 0; k0 < msub.size(); k0 ++) {
         match_t<T> work;
-        bool       flagk0(false);
         work.rot = drot0;
-        for(int k = 0; k < 2; k ++) {
+        for(int k = 0; k < ddiv.size(); k ++) {
           Mat3x3 lrot;
           const T theta(ddiv[k] * msub[k0].mbufN);
           lrot((k + i    ) % 3, (k + i    ) % 3) =   cos(theta);
@@ -357,11 +354,12 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           lrot((k + i + 1) % 3, (k + i + 2) % 3) = T(0);
           work.rot = lrot * work.rot;
         }
-        if(abs(work.rot(2, 2)) < r_max_theta)
+        if(abs(work.rot((i + 2) % 3, (i + 2) % 3)) < r_max_theta)
           continue;
         bool flagk[points.size()];
         bool flagj[shapebase.size()];
         bool flagt(false);
+        bool flagk0(false);
         for(int kk = 0; kk < points.size(); kk ++)
           flagk[kk] = false;
         for(int kk = 0; kk < shapebase.size(); kk ++)
@@ -383,11 +381,11 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
               if(!isfinite(aj.dot(aj)) || thresh < aj.dot(aj))
                 continue;
               const T t(aj0.dot(bk) / bk.dot(bk));
-              if(!isfinite(t) || (flagt && abs(t0 - t) / t0 <= threshl))
+              if(!isfinite(t) || threshl < (flagt && abs(t0 - t) / abs(t0)))
                 continue;
               if(aj.dot(aj) < err) {
                 if(!flagt) {
-                  t0    = abs(t);
+                  t0    = t;
                   flagt = true;
                 }
                 err  = aj.dot(aj);
@@ -407,7 +405,8 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         }
         if(!flagk0)
           for(int k00 = k0; k0 < msub.size(); k0 ++)
-            if(abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k0].mbufN >= thresh)
+            if(thresh <= abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k0].mbufN  ||
+               thresh <= abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k00].mbufN)
               break;
         // if there's a match.
         work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
