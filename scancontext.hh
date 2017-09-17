@@ -273,12 +273,14 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         drot0(k, l) = (k == l ? T(1) : T(0));
     Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
     // init table.
+    cerr << "making table (" << i << "/3)" << endl;
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for
 #endif
     for(int j = 0; j < shapebase.size(); j ++) {
-      cerr << "making table (" << i << "/3)" << " : " << j << "/" << shapebase.size() << endl;
+      cerr << "*";
+      fflush(stderr);
       for(int k = 0; k < points.size(); k ++) {
         Vec3 aj(shapebase[j]), bk(points[k]);
         aj /= sqrt(aj.dot(aj));
@@ -358,57 +360,51 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           continue;
         bool flagk[points.size()];
         bool flagj[shapebase.size()];
-        bool flagt(false);
         bool flagk0(false);
         for(int kk = 0; kk < points.size(); kk ++)
           flagk[kk] = false;
         for(int kk = 0; kk < shapebase.size(); kk ++)
           flagj[kk] = false;
-        T    t0(0);
-        for(int k = k0; k < msub.size(); k ++) {
-          int kfix = k;
+        const Vec3 ajk0(shapebase[msub[k0].mbufj]);
+        const Vec3 bkk0(work.rot * points[msub[k0].mbufk]);
+        const T    t0(ajk0.dot(bkk0) / bkk0.dot(bkk0));
+        int  kk(k0);
+        for(; kk < msub.size(); kk ++) {
           T   err(thresh * T(2));
-          for(int kk = k + 1;
-                  kk < msub.size();
-                  kk ++)
+          for(; kk < msub.size(); kk ++)
             if(!flagj[msub[kk].mbufj] &&
                !flagk[msub[kk].mbufk] &&
-               abs(msub[k0].mbufN - msub[kk].mbufN) / msub[k0].mbufN < thresh && 
                abs(msub[k0].mbufN - msub[kk].mbufN) / msub[kk].mbufN < thresh) {
               const Vec3 aj0(shapebase[msub[kk].mbufj]);
               const Vec3 bk(work.rot * points[msub[kk].mbufk]);
               Vec3 aj(aj0);
               aj /= sqrt(aj.dot(aj));
               aj -= aj.dot(bk) * bk / bk.dot(bk);
-              if(!isfinite(aj.dot(aj)) || thresh < aj.dot(aj))
+              if(!isfinite(aj.dot(aj)) || thresh * thresh < aj.dot(aj))
                 continue;
               const T t(aj0.dot(bk) / bk.dot(bk));
-              if(!isfinite(t) || threshl < (flagt && abs(t0 - t) / abs(t0)))
+              if(!isfinite(t) || threshl < abs(t0 - t) / abs(t0))
                 continue;
               if(aj.dot(aj) < err) {
-                if(!flagt) {
-                  t0    = t;
-                  flagt = true;
-                }
                 err  = aj.dot(aj);
-                kfix = kk;
+                if(thresh * thresh < err)
+                  break;
               }
-              break;
             }
-          if(thresh < err)
+          if(thresh * thresh < err)
             break;
-          work.dstpoints.push_back(msub[kfix].mbufj);
-          work.srcpoints.push_back(msub[kfix].mbufk);
-          flagj[msub[kfix].mbufj] = true;
-          flagk[msub[kfix].mbufk] = true;
-          // this is no good but use substitute k0.
-          k0 = k = kfix;
+          work.dstpoints.push_back(msub[kk].mbufj);
+          work.srcpoints.push_back(msub[kk].mbufk);
+          flagj[msub[kk].mbufj] = true;
+          flagk[msub[kk].mbufk] = true;
           flagk0 = true;
         }
-        if(!flagk0)
+        if(flagk0)
+          // not better way.
+          k0 = kk;
+        else
           for(int k00 = k0; k0 < msub.size(); k0 ++)
-            if(thresh <= abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k0].mbufN  ||
-               thresh <= abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k00].mbufN)
+            if(thresh <= abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k0].mbufN)
               break;
         // if there's a match.
         work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
