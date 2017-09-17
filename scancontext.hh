@@ -50,7 +50,7 @@ public:
   lowFreq();
   ~lowFreq();
   
-  vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 120);
+  vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 60);
   Mat getLowFreqImage(const Mat& data, const int& npoints = 60);
 private:
   vector<lfmatch_t<T> > prepareCost(const Mat& data, const int& npoints);
@@ -372,7 +372,9 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
                   kk < msub.size();
                   kk ++)
             if(!flagj[msub[kk].mbufj] &&
-               !flagk[msub[kk].mbufk]) {
+               !flagk[msub[kk].mbufk] &&
+               abs(msub[k0].mbufN - msub[kk].mbufN) / msub[k0].mbufN < thresh && 
+               abs(msub[k0].mbufN - msub[kk].mbufN) / msub[kk].mbufN < thresh) {
               const Vec3 aj0(shapebase[msub[kk].mbufj]);
               const Vec3 bk(work.rot * points[msub[kk].mbufk]);
               Vec3 aj(aj0);
