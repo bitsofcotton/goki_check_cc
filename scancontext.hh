@@ -370,7 +370,8 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         const T    t0(ajk0.dot(bkk0) / bkk0.dot(bkk0));
         int  kk(k0);
         for(; kk < msub.size(); kk ++) {
-          T   err(thresh * T(2));
+          T    err(thresh * T(2));
+          bool flagt(false);
           for(; kk < msub.size(); kk ++)
             if(!flagj[msub[kk].mbufj] &&
                !flagk[msub[kk].mbufk] &&
@@ -385,13 +386,10 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
               const T t(aj0.dot(bk) / bk.dot(bk));
               if(!isfinite(t) || threshl < abs(t0 - t) / abs(t0))
                 continue;
-              if(aj.dot(aj) < err) {
-                err  = aj.dot(aj);
-                if(thresh * thresh < err)
-                  break;
-              }
+              flagt = true;
+              break;
             }
-          if(thresh * thresh < err)
+          if(!flagt)
             break;
           work.dstpoints.push_back(msub[kk].mbufj);
           work.srcpoints.push_back(msub[kk].mbufk);
@@ -404,7 +402,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           k0 = kk;
         else
           for(int k00 = k0; k0 < msub.size(); k0 ++)
-            if(thresh <= abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k0].mbufN)
+            if(thresh <= abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k00].mbufN)
               break;
         // if there's a match.
         work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));

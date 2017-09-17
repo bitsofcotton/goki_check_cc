@@ -144,8 +144,8 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data3, argv[6]))
         return - 2;
       // XXX: configure me.
-      float thresh_para(.9995);
-      float thresh_len(.9995);
+      float thresh_para(.85);
+      float thresh_len(.85);
       float thresh_points(.0625);
       float thresh_r(.125);
       float zrs(1.);
@@ -284,8 +284,8 @@ int main(int argc, const char* argv[]) {
           I3(i, j) = (i == j ? float(1) : float(0));
       
       // XXX: configure me.
-      float thresh_para(.9995);
-      float thresh_len(.9995);
+      float thresh_para(.85);
+      float thresh_len(.85);
       float thresh_points(.0625);
       float thresh_r(.125);
       float zrs(1.);
