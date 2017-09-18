@@ -144,8 +144,8 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data3, argv[6]))
         return - 2;
       // XXX: configure me.
-      float thresh_para(.85);
-      float thresh_len(.85);
+      float thresh_para(.95);
+      float thresh_len(.95);
       float thresh_points(.0625);
       float thresh_r(.125);
       float zrs(1.);
@@ -182,7 +182,7 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
       lowFreq<float> lf;
-      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), data[0].rows() * data[0].cols() / 32));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), data[0].rows() * data[0].cols() / 128));
       std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1)));
       std::vector<match_t<float> > matches;
       for(float zr = zrs;
@@ -196,13 +196,17 @@ int main(int argc, const char* argv[]) {
           std::vector<Eigen::Matrix<float, 3, 1> > sshape0, sshape1;
           for(int i = 0; i < shape0.size(); i ++) {
             sshape0.push_back(shape0[i]);
-            sshape1.push_back(shape1[i]);
             sshape0[i][2] *= zr;
+          }
+          for(int i = 0; i < shape1.size(); i ++) {
+            sshape1.push_back(shape1[i]);
             sshape1[i][2] *= zr2;
           }
           statmatch.init(sshape0, thresh_para, thresh_len, thresh_points, thresh_r);
           std::vector<match_t<float> > lmatches(statmatch.match(sshape1, div, r_max_theta));
-          std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
+          // XXX: for memory and compiler debug, non stl code preferred.
+          for(int i = 0; i < lmatches.size(); i ++)
+            matches.push_back(lmatches[i]);
       }
       std::sort(matches.begin(), matches.end(), cmpwrap<float>);
       float zr(zrs);
@@ -218,9 +222,6 @@ int main(int argc, const char* argv[]) {
           for(int idx2 = 0; idx2 < hull1[idx].size(); idx2 ++)
             buf[idx2] = matches[n].dstpoints[hull1[idx][idx2]];
           mhull0.push_back(buf);
-        }
-        for(int idx = 0; idx < hull1.size(); idx ++) {
-          Eigen::Matrix<int, 3, 1> buf;
           for(int idx2 = 0; idx2 < hull1[idx].size(); idx2 ++)
             buf[idx2] = matches[n].srcpoints[hull1[idx][idx2]];
           mhull1.push_back(buf);
@@ -284,8 +285,8 @@ int main(int argc, const char* argv[]) {
           I3(i, j) = (i == j ? float(1) : float(0));
       
       // XXX: configure me.
-      float thresh_para(.85);
-      float thresh_len(.85);
+      float thresh_para(.95);
+      float thresh_len(.95);
       float thresh_points(.0625);
       float thresh_r(.125);
       float zrs(1.);

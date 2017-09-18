@@ -90,7 +90,7 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > lowFreq<T>::getLowFreq(con
 template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const int& npoints) {
   vector<lfmatch_t<T> > match;
   edgedetect<T> differ;
-  const T guard(T(npoints) / (data.rows() * data.cols()));
+  const T guard(T(npoints) / T(data.rows() * data.cols()));
   for(int i = 0; i < data.rows() * sqrt(guard); i ++)
     for(int j = 0; j < data.cols() * sqrt(guard); j ++) {
       lfmatch_t<T> m;
@@ -178,13 +178,13 @@ public:
   vector<int>            dstpoints;
   vector<int>            srcpoints;
   match_t() {
-    dstpoints = vector<int>();
-    srcpoints = vector<int>();
-  }
-  ~match_t() {
     ;
   }
-  match_t& operator = (const match_t& other) {
+  match_t(const match_t<T>& other) {
+    *this = other;
+    return;
+  }
+  match_t<T>& operator = (const match_t<T>& other) {
     rot       = other.rot;
     offset    = other.offset;
     ratio     = other.ratio;
@@ -201,10 +201,17 @@ public:
   int mbufj;
   int mbufk;
   T   mbufN;
-  msub_t& operator = (const msub_t& other) {
-    mbufj   = other.mbufj;
-    mbufk   = other.mbufk;
-    mbufN   = other.mbufN;
+  msub_t() {
+    ;
+  }
+  msub_t(const msub_t<T>& other) {
+    *this = other;
+    return;
+  }
+  msub_t<T>& operator = (const msub_t<T>& other) {
+    mbufj = other.mbufj;
+    mbufk = other.mbufk;
+    mbufN = other.mbufN;
     return *this;
   }
 };
@@ -322,7 +329,6 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         ddiv *= T(0);
       vector<msub_t<T> > msub;
       for(int k = 0; k < points.size(); k ++) {
-        msub_t<T> work;
         for(int j = 0; j < shapebase.size(); j ++) {
           T ldepth(1);
           if(nd < ndiv)
@@ -330,16 +336,20 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           else
             ldepth = sqrt(table(j, k).dot(table(j, k)));
           if(isfinite(ldepth) && abs(ldepth) <= thresh) {
-            work.mbufj = j;
-            work.mbufk = k;
-            work.mbufN = sqrt(table(j, k).dot(table(j, k)));
-            msub.push_back(work);
+            msub_t<T> workm;
+            workm.mbufj = j;
+            workm.mbufk = k;
+            workm.mbufN = sqrt(table(j, k).dot(table(j, k)));
+            msub.push_back(workm);
           }
         }
       }
       cerr << " : " << msub.size() << endl;
+      if(!msub.size())
+        continue;
       sort(msub.begin(), msub.end(), cmpsubwrap<T>);
-      for(int k0 = 0; k0 < msub.size(); k0 ++) {
+      int k0(0);
+      for(; k0 < msub.size(); k0 ++) {
         match_t<T> work;
         work.rot = drot0;
         for(int k = 0; k < ddiv.size(); k ++) {
@@ -360,7 +370,6 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           continue;
         bool flagk[points.size()];
         bool flagj[shapebase.size()];
-        bool flagk0(false);
         for(int kk = 0; kk < points.size(); kk ++)
           flagk[kk] = false;
         for(int kk = 0; kk < shapebase.size(); kk ++)
@@ -368,7 +377,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         const Vec3 ajk0(shapebase[msub[k0].mbufj]);
         const Vec3 bkk0(work.rot * points[msub[k0].mbufk]);
         const T    t0(ajk0.dot(bkk0) / bkk0.dot(bkk0));
-        int  kk(k0);
+        int  kk(k0 + 1);
         for(; kk < msub.size(); kk ++) {
           T    err(thresh * T(2));
           bool flagt(false);
@@ -384,26 +393,21 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
               if(!isfinite(aj.dot(aj)) || thresh * thresh < aj.dot(aj))
                 continue;
               const T t(aj0.dot(bk) / bk.dot(bk));
-              if(!isfinite(t) || threshl < abs(t0 - t) / abs(t0))
+              if(!isfinite(t) || threshl < max(abs(t0 / t - T(1)),
+                                               abs(t / t0 - T(1))))
                 continue;
               flagt = true;
               break;
             }
-          if(!flagt)
+          if(!flagt || msub.size() <= kk)
             break;
-          work.dstpoints.push_back(msub[kk].mbufj);
-          work.srcpoints.push_back(msub[kk].mbufk);
+          work.dstpoints.push_back(int(msub[kk].mbufj));
+          work.srcpoints.push_back(int(msub[kk].mbufk));
           flagj[msub[kk].mbufj] = true;
           flagk[msub[kk].mbufk] = true;
-          flagk0 = true;
         }
-        if(flagk0)
-          // not better way.
-          k0 = kk;
-        else
-          for(int k00 = k0; k0 < msub.size(); k0 ++)
-            if(thresh <= abs(msub[k0].mbufN - msub[k00].mbufN) / msub[k00].mbufN)
-              break;
+        // XXX: skip as not better ways.
+        // k0 = kk;
         // if there's a match.
         work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
         if(threshp <= work.rpoints) {
@@ -414,6 +418,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           work.offset[2] = T(0);
           for(int k = 0; k < work.dstpoints.size(); k ++)
             work.offset += shapebase[work.dstpoints[k]];
+          work.offset /= work.dstpoints.size();
           // maximize parallel parts.
           Mat2x2 A;
           Vec2   b;
