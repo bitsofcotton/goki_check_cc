@@ -239,7 +239,7 @@ public:
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
-  void init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr);
+  void init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN);
   
   vector<match_t<T> > match(const vector<Vec3>& points, const int& ndiv = 120, const T& r_max_theta = T(0));
 private:
@@ -248,6 +248,7 @@ private:
   // thresh, threshp in [0, 1]
   T thresh;
   T threshl;
+  T threshN;
   T threshp;
   T threshr;
   vector<Vec3> shapebase;
@@ -262,10 +263,11 @@ template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
   ;
 }
 
-template <typename T> void matchPartialPartial<T>::init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr) {
+template <typename T> void matchPartialPartial<T>::init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN) {
   this->shapebase = shapebase;
   this->thresh    = abs(T(1) - thresh);
   this->threshl   = abs(T(1) - threshl);
+  this->threshN   = threshN;
   this->threshp   = threshp;
   this->threshr   = threshr;
   return;
@@ -384,7 +386,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           for(; kk < msub.size(); kk ++)
             if(!flagj[msub[kk].mbufj] &&
                !flagk[msub[kk].mbufk] &&
-               abs(msub[k0].mbufN - msub[kk].mbufN) / msub[kk].mbufN < thresh) {
+               abs(msub[k0].mbufN - msub[kk].mbufN) / msub[kk].mbufN < threshN) {
               const Vec3 aj0(shapebase[msub[kk].mbufj]);
               const Vec3 bk(work.rot * points[msub[kk].mbufk]);
               Vec3 aj(aj0);
@@ -406,8 +408,6 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           flagj[msub[kk].mbufj] = true;
           flagk[msub[kk].mbufk] = true;
         }
-        // XXX: skip as not better ways.
-        // k0 = kk;
         // if there's a match.
         work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
         if(threshp <= work.rpoints) {
@@ -446,15 +446,15 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           work.ratio   = b[1];
           if(abs(work.ratio) < threshr)
             continue;
-          T err(0), n2(0);
+          T err(0);
           for(int k = 0; k < work.dstpoints.size(); k ++) {
             const Vec3 a(shapebase[work.dstpoints[k]]);
             const Vec3 b(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset);
-            n2  += a.dot(a) * b.dot(b);
-            err += (a - b).dot(a - b);
+            err += (a - b).dot(a - b) / a.dot(a) / b.dot(b);
           }
-          work.rdepth = T(1) / sqrt(err / n2);
-          if(sqrt(err / n2) < thresh) {
+          err /= work.dstpoints.size();
+          work.rdepth = T(1) / sqrt(err);
+          if(sqrt(err) < thresh) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif

@@ -145,7 +145,8 @@ int main(int argc, const char* argv[]) {
         return - 2;
       // XXX: configure me.
       float thresh_para(.95);
-      float thresh_len(.95);
+      float thresh_len(.8);
+      float thresh_n(200.);
       float thresh_points(.0625);
       float thresh_r(.125);
       float zrs(1.);
@@ -158,7 +159,7 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<float, 3, 3> I3;
-      float emph(.1);
+      float emph(.75);
       mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>(data3[0].rows(), data3[0].cols());
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < 3; j ++)
@@ -183,6 +184,7 @@ int main(int argc, const char* argv[]) {
       PseudoBump<float> bump;
       lowFreq<float> lf;
       std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), data[0].rows() * data[0].cols() / 128));
+      //std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data)));
       std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1)));
       std::vector<match_t<float> > matches;
       for(float zr = zrs;
@@ -193,16 +195,12 @@ int main(int argc, const char* argv[]) {
             (zrs / zre < float(1) && zr2 < zre) ||
             (zre / zrs < float(1) && zre < zr2);
             zr2 *= pow(zre / zrs, float(1) / float(zrl))) {
-          std::vector<Eigen::Matrix<float, 3, 1> > sshape0, sshape1;
-          for(int i = 0; i < shape0.size(); i ++) {
-            sshape0.push_back(shape0[i]);
+          std::vector<Eigen::Matrix<float, 3, 1> > sshape0(shape0), sshape1(shape1);
+          for(int i = 0; i < sshape0.size(); i ++)
             sshape0[i][2] *= zr;
-          }
-          for(int i = 0; i < shape1.size(); i ++) {
-            sshape1.push_back(shape1[i]);
+          for(int i = 0; i < sshape1.size(); i ++)
             sshape1[i][2] *= zr2;
-          }
-          statmatch.init(sshape0, thresh_para, thresh_len, thresh_points, thresh_r);
+          statmatch.init(sshape0, thresh_para, thresh_len, thresh_points, thresh_r, thresh_n);
           std::vector<match_t<float> > lmatches(statmatch.match(sshape1, div, r_max_theta));
           // XXX: for memory and compiler debug, non stl code preferred.
           for(int i = 0; i < lmatches.size(); i ++)
@@ -286,17 +284,17 @@ int main(int argc, const char* argv[]) {
       
       // XXX: configure me.
       float thresh_para(.95);
-      float thresh_len(.95);
+      float thresh_len(.8);
+      float thresh_n(200.);
       float thresh_points(.0625);
       float thresh_r(.125);
       float zrs(1.);
       float zre(.25);
       int   zrl(4);
-      // bump to bump match.
-      float r_max_theta(.01);
+      float r_max_theta(0);
       int   div(20);
       int   nshow(6);
-      float emph(.1);
+      float emph(.75);
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
       lowFreq<float> lf;
@@ -309,7 +307,7 @@ int main(int argc, const char* argv[]) {
         std::vector<Eigen::Matrix<float, 3, 1> > sshape(shape);
         for(int i = 0; i < shape.size(); i ++)
           sshape[i][2] *= zr;
-        statmatch.init(sshape, thresh_para, thresh_len, thresh_points, thresh_r);
+        statmatch.init(sshape, thresh_para, thresh_len, thresh_points, thresh_r, thresh_n);
         std::vector<match_t<float> > lmatches(statmatch.match(datapoly, div, r_max_theta));
         std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
       }
@@ -332,7 +330,7 @@ int main(int argc, const char* argv[]) {
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-src.ppm");
         savep2or3<float>(outfile.c_str(), outs, false);
         
-        std::vector<Eigen::Matrix<int, 3, 1> > ch(loadBumpSimpleMesh<float>(datapoly, matches[n].srcpoints));
+        std::vector<Eigen::Matrix<int, 3, 1> > ch(loadBumpSimpleMesh<float>(datapoly, matches[n].dstpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mch;
         for(int idx = 0; idx < ch.size(); idx ++) {
           Eigen::Matrix<int, 3, 1> buf;
