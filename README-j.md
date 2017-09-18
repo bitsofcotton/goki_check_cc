@@ -20,6 +20,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * * z_atio : [0,1] から [0,z_atio] への線形写像。
 * scancontext.hh
 * * matchPartialPartial::thresh  : 平行なベクトルのための誤差です。1 - &epsilon;
+* * matchPartialPartial::threshl : 平行なベクトルのノルムのための誤差です。 1 - &epsilon;
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
 * * matchPartialPartial::threshr : 検出される最小の画像倍率です。
 
@@ -30,7 +31,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
  ただし、正しい公式ページがどれなのかわからないために、リンクは差し控えさせていただきます。)
 
 # 状態
-回転のある場合の全体の*部分*一致の実装をしています。
+回転のある場合の全体の一致の実装をしています。
 
 # 使い方
     make tools
@@ -104,5 +105,5 @@ match3d は入力にバンプマップと .obj ファイルを仮定していま
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.00-accurate2.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.00-accurate2.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-RC2.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-RC2.tar.gz
