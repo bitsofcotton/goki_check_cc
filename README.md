@@ -1,5 +1,6 @@
 # Goki Check
-These program aims to get context(s) from a still image.
+These program aims to get context(s) from a still image.  
+And then, aiming to get scene from roughly prepared dictionaries, and, reproduce the scene with another prepared dictionaries, and, get a copy of image produced 3D model into a dictionary.  
 Now, implementing bone enabled match.
 
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
@@ -20,7 +21,8 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * * z_atio : [0,1] to [0,z_atio].
 * scancontext.hh
 * * matchPartialPartial::thresh  : threshold to detect parallel vectors.
-* * matchPartialPartial::thresh  : threshold to detect parallel vectors norm.
+* * matchPartialPartial::threshl : threshold to detect parallel vectors norm.
+* * matchPartialPartial::threshN : threshold to detect angle norm for match.
 * * matchPartialPartial::threshp : threshold for matched points.
 * * matchPartialPartial::threshr : threshold for matched size ratios.
 
@@ -82,7 +84,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     matchPartialPartial<float> statmatch;
     std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(input, 300));
     std::vector<Eigen::Matrix<float, 3, 1> > shape2(lf.getLowFreq(input2, 300));
-    statmatch.init(shape0, .85, .25, .125);
+    statmatch.init(shape0, .85, .25, .125, .3);
     std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
     // match operations.
     
@@ -100,10 +102,11 @@ These program's enlarge and enlarge-ds is based on pseudo DFT half space plausib
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ and y-axis polarized graphics.   
 These program's match assumes input file as bump map. And, that matches including z-depth.  
-These program's match3d assumes input file as bump map and .obj 3d file. And for now, it considers only vertexes (not planes). So redig result gains strange one.
+These program's match3d assumes input file as bump map and .obj 3d file.  
+These program's match assumes one of vertices is full and another is lowPoly, but lowFreq implementation now, it worse generate lowPoly.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-RC2.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-RC2.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable.tar.gz
