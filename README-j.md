@@ -1,8 +1,7 @@
 # Goki Check
 静止画像からあらかじめ想定される文脈を得ることが目的のプログラムです。  
-現在は複数のハンドルポイントの回転のある固いオブジェクト同士の合致を実装しています。
-
-古い情報は https://sourceforge.net/p/gokicheck/wiki/Home/ を参照してください。
+その後、得た文脈から他のモデルを使って再描画、あるいは、得た文脈のモデルを辞書に追加することが計画されています。  
+現在はボーン情報のある固いオブジェクト同士の合致を実装しています。
 
 # 使い方
 Makefile を Eigen と stdc++ を使えるように変更してください。  
@@ -21,6 +20,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * scancontext.hh
 * * matchPartialPartial::thresh  : 平行なベクトルのための誤差です。1 - &epsilon;
 * * matchPartialPartial::threshl : 平行なベクトルのノルムのための誤差です。 1 - &epsilon;
+* * matchPartialPartial::threshN : 平行なベクトルを検出する際の角度のノルムの閾値です。
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
 * * matchPartialPartial::threshr : 検出される最小の画像倍率です。
 
@@ -81,7 +81,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     matchPartialPartial<float> statmatch;
     std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(input, 300));
     std::vector<Eigen::Matrix<float, 3, 1> > shape2(lf.getLowFreq(input2, 300));
-    statmatch.init(shape0, .85, .25, .125);
+    statmatch.init(shape0, .85, .25, .125, .3);
     std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
     // match operations.
     
@@ -100,10 +100,11 @@ collect は単純に DFT 微分の後、abs をとってきています。
 bump は F=&infin; と y軸方向への偏光フィルタを仮定しています。  
 match は入力されるファイルがバンプマップであることを仮定しています。また、内部で深度の比率を調節してください。  
 match は z 軸方向まで含めて合致する部分を探します。  
-match3d は入力にバンプマップと .obj ファイルを仮定しています。また、reDig 関数は頂点の凸包を元に調整するので、現在おかしな結果が返ります。
+match3d は入力にバンプマップと .obj ファイルを仮定しています。  
+match は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定していますが、現行の実装では、lowFreq の出力がよろしくない結果を返します。
 
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-RC2.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-RC2.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable.tar.gz
