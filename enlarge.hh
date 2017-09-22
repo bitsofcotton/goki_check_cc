@@ -12,7 +12,10 @@ public:
   typedef enum {
     ENLARGE_X,
     ENLARGE_Y,
-    ENLARGE_BOTH } direction_t;
+    ENLARGE_D,
+    ENLARGE_DD,
+    ENLARGE_BOTH,
+    ENLARGE_QUAD } direction_t;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
@@ -20,6 +23,7 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   enlarger2ex();
   Mat enlarge2(const Mat& data, const direction_t& dir);
+  Mat normQuad(const Mat& rw, const Mat& rh, const Mat& rdr, const Mat& rdl);
 private:
   void seedPattern(const int&, const int&, const int&);
   void initPattern(const int&);
@@ -38,9 +42,55 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   Pi = atan2(T(1.), T(1.)) * T(4.);
 }
 
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::normQuad(const Mat& rw, const Mat& rh, const Mat& rdr, const Mat& rdl) {
+  Mat result(rdr.rows(), rdr.cols());
+  for(int i = 0; i < rw.rows() / 2 * 2 - 1; i ++)
+    for(int j = 0; j < rh.cols() / 2 * 2 - 1; j ++) {
+      Mat A(4, 4);
+      Vec b(4);
+      A(0, 0) = rw(i, j * 2)     / T(2);
+      A(0, 1) = rw(i, j * 2 + 1) / T(2);
+      A(0, 2) = rw(i, j * 2)     / T(2);
+      A(0, 3) = rw(i, j * 2 + 1) / T(2);
+      A(1, 0) = rh(i * 2,     j) / T(2);
+      A(1, 1) = rh(i * 2,     j) / T(2);
+      A(1, 2) = rh(i * 2 + 1, j) / T(2);
+      A(1, 3) = rh(i * 2 + 1, j) / T(2);
+      A(2, 0) = rdr(i * 2,     j * 2);
+      A(2, 1) = T(0);
+      A(2, 2) = T(0);
+      A(2, 3) = rdr(i * 2 + 1, j * 2 + 1);
+      A(3, 0) = T(0);
+      A(3, 1) = rdl(i * 2,     j * 2 + 1);
+      A(3, 2) = rdl(i * 2 + 1, j * 2);
+      A(3, 3) = T(0);
+      b[0] = b[1] = b[2] = b[3] = T(1);
+      // XXX fixme:
+      if(A.determinant() > 1)
+        b = A.inverse() * b;
+      else {
+        b *= T(0);
+        for(int i = 0; i < 4; i ++)
+          b += A.row(i).transpose();
+        b /= T(3);
+      }
+      result(i * 2 + 0, j * 2 + 0) = b[0];
+      result(i * 2 + 0, j * 2 + 1) = b[1];
+      result(i * 2 + 1, j * 2 + 0) = b[2];
+      result(i * 2 + 1, j * 2 + 1) = b[3];
+    }
+  return result;
+}
+
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::enlarge2(const Mat& data, const direction_t& dir) {
   Mat result;
   switch(dir) {
+  case ENLARGE_QUAD:
+    result = normQuad(enlarge2(data, ENLARGE_X),
+                      enlarge2(data, ENLARGE_Y),
+                      enlarge2(data, ENLARGE_D),
+                      enlarge2(data, ENLARGE_DD));
+    break;
   case ENLARGE_BOTH:
     {
       Mat rw, rh;
@@ -73,6 +123,79 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
           result(j * 2 + 1, i) = data(j, i) + delta;
         }
       }
+    }
+    break;
+  case ENLARGE_D:
+    {
+      result = Mat(data.rows() * 2, data.cols() * 2);
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = T(0);
+      cerr << " enlarge_d";
+      const int width0(min(data.rows(), data.cols()));
+      initPattern(width0);
+      for(int i = 0; i < data.cols(); i ++) {
+        const int width(min(data.cols() - i, data.rows()));
+        Vec dbuf(width0);
+        for(int j = width0 / 2 - width / 2, jj = 0; j < dbuf.size(); j ++, jj ++)
+          dbuf[j] = data( jj      % width,
+                         (jj + i) % width);
+        for(int j = width0 / 2 - width / 2, jj = 0; j >= 0; j --, jj --)
+          dbuf[j] = data((jj + width * width0)     % width,
+                         (jj + width * width0 + i) % width);
+        Vec dd(D * dbuf);
+        T   ff(dbuf.transpose() * F);
+        T   xx(dbuf.transpose() * X);
+        Vec co(Dop * dbuf / T(2));
+        const T lr(pow(T(2) * Pi * width0, T(2)));
+        ff /= lr * T(2);
+        xx /= lr * T(2);
+        for(int j = 0; j < width0 * 2; j ++) {
+          const int jj(width0 - width);
+          const T delta((co[jj] < T(0) ? - T(1) : T(1)) * abs(xx * co[jj] + ff * dd[jj]));
+          if(j * 2 < result.rows() && i * 2 + j * 2 + 0 < result.cols())
+            result(j * 2 + 0, i * 2 + j * 2 + 0) = data(j, i + j) - delta;
+          if(j * 2 + 1 < result.rows() && i * 2 + j * 2 + 1 < result.cols())
+            result(j * 2 + 1, i * 2 + j * 2 + 1) = data(j, i + j) + delta;
+        }
+      }
+      for(int i = 0; i < data.rows(); i ++) {
+        const int width(min(data.cols(), data.rows() - i));
+        Vec dbuf(width0);
+        for(int j = width0 / 2 - width / 2, jj = 0; j < dbuf.size(); j ++, jj ++)
+          dbuf[j] = data((jj + i) % width,
+                          jj      % width);
+        for(int j = width0 / 2 - width / 2, jj = 0; j >= 0; j --, jj --)
+          dbuf[j] = data((jj + width * width0 + i) % width,
+                         (jj + width * width0)     % width);
+        Vec dd(D * dbuf);
+        T   ff(dbuf.transpose() * F);
+        T   xx(dbuf.transpose() * X);
+        Vec co(Dop * dbuf / T(2));
+        const T lr(pow(T(2) * Pi * width0, T(2)));
+        ff /= lr * T(2);
+        xx /= lr * T(2);
+        for(int j = 0; j < width0 * 2; j ++) {
+          const int jj(width0 - width);
+          const T delta((co[jj] < T(0) ? - T(1) : T(1)) * abs(xx * co[jj] + ff *
+ dd[jj]));
+          if(i * 2 + j * 2 < result.rows() && j * 2 + 0 < result.cols())
+            result(i * 2 + j * 2 + 0, j * 2 + 0) = data(i + j, j) - delta;
+          if(i * 2 + j * 2 + 1 < result.rows() && j * 2 + 1 < result.cols())
+            result(i * 2 + j * 2 + 1, j * 2 + 1) = data(i + j, j) + delta;
+        }
+      }
+    }
+    break;
+  case ENLARGE_DD:
+    {
+      Mat buf(data.rows(), data.cols());
+      for(int i = 0; i < data.cols(); i ++)
+        buf.col(i) = data.col(data.cols() - 1 - i);
+      buf = enlarge2(buf, ENLARGE_D);
+      result = Mat(buf.rows(), buf.cols());
+      for(int i = 0; i < buf.cols(); i ++)
+        result.col(i) = buf.col(buf.cols() - 1 - i);
     }
     break;
   default:
@@ -182,7 +305,10 @@ public:
   typedef enum {
     ENLARGE_X,
     ENLARGE_Y,
-    ENLARGE_BOTH } direction_t;
+    ENLARGE_D,
+    ENLARGE_DD,
+    ENLARGE_BOTH,
+    ENLARGE_QUAD } direction_t;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
@@ -211,6 +337,41 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         result.row(i) = result.row(i - 1) + work.row(i - 1) / T(2);
     }
     break;
+  case ENLARGE_D:
+    {
+      Mat buf(data.rows() - 1, data.cols() - 1);
+      for(int i = 1; i < data.cols(); i ++)
+        for(int j = 1; j < min(data.rows(), data.cols() - i); j ++)
+          buf(j - 1, i - 1 + j - 1) = data(j, i + j - 1) - data(j - 1, i + j - 1 - 1);
+      for(int i = 1; i < data.rows(); i ++)
+        for(int j = 1; j < min(data.cols(), data.rows() - i); j ++)
+          buf(i - 1 + j - 1, j - 1) = data(i + j - 1, j) - data(i + j - 1 - 1, j - 1);
+      enlarger2ex<T> enlarger;
+      buf = enlarger.enlarge2(buf, enlarger2ex<T>::ENLARGE_D);
+      result = Mat(data.rows() * 2 - 1, data.cols() * 2 - 1);
+      for(int i = 0; i < result.cols(); i ++)
+        result(0, i) = data(0, i / 2);
+      for(int i = 0; i < result.rows(); i ++)
+        result(i, 0) = data(i / 2, 0);
+      for(int i = 1; i < buf.cols(); i ++)
+        for(int j = 1; j < min(buf.rows(), buf.cols() - i); j ++)
+          result(j, i + j - 1) = result(j - 1, i + j - 1 - 1) + buf(j - 1, i + j - 1 - 1) / T(2) * sqrt((data.rows() + data.cols()) / (T(data.rows() * data.rows()) + T(data.cols() * data.cols())));
+      for(int i = 1; i < buf.rows(); i ++)
+        for(int j = 1; j < min(buf.cols(), buf.rows() - i); j ++)
+          result(i + j - 1, j) = result(i + j - 1 - 1, j - 1) + buf(i + j - 1 - 1, j - 1) / T(2) * sqrt((data.rows() + data.cols()) / (T(data.rows() * data.rows()) + T(data.cols() * data.cols())));
+    }
+    break;
+  case ENLARGE_DD:
+    {
+      Mat buf(data.rows(), data.cols());
+      for(int i = 0; i < data.cols(); i ++)
+        buf.col(i) = data.col(data.cols() - 1 - i);
+      buf = enlarge2ds(buf, ENLARGE_D);
+      result = Mat(buf.rows(), buf.cols());
+      for(int i = 0; i < buf.cols(); i ++)
+        result.col(i) = buf.col(buf.cols() - 1 - i);
+    }
+    break;
   case ENLARGE_BOTH:
     {
       Mat rw, rh;
@@ -219,6 +380,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       rw = enlarge2ds(rw, ENLARGE_Y);
       rh = enlarge2ds(rh, ENLARGE_X);
       result = (rw + rh) / 2.;
+    }
+    break;
+  case ENLARGE_QUAD:
+    {
+      enlarger2ex<T> enlarger;
+      result = enlarger.normQuad(enlarge2ds(data, ENLARGE_X),
+                                 enlarge2ds(data, ENLARGE_Y),
+                                 enlarge2ds(data, ENLARGE_D),
+                                 enlarge2ds(data, ENLARGE_DD));
     }
     break;
   }
