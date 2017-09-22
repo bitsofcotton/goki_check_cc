@@ -52,15 +52,21 @@ int main(int argc, const char* argv[]) {
   case 0:
     {
       enlarger2ex<float> enlarger;
-      for(int i = 0; i < 3; i ++)
-        data[i] = enlarger.enlarge2(data[i], enlarger2ex<float>::ENLARGE_QUAD);
+      for(int kk = 0; kk < 3; kk ++) {
+        for(int i = 0; i < 3; i ++)
+          data[i] = enlarger.enlarge2(data[i], enlarger2ex<float>::ENLARGE_QUAD);
+        autoLevel<float>(data, 3);
+      }
     }
     break;
   case 1:
     {
       enlarger2exds<float> enlarger;
-      for(int i = 0; i < 3; i ++)
-        data[i] = enlarger.enlarge2ds(data[i], enlarger2exds<float>::ENLARGE_QUAD);
+      for(int kk = 0; kk < 3; kk ++) {
+        for(int i = 0; i < 3; i ++)
+          data[i] = enlarger.enlarge2ds(data[i], enlarger2exds<float>::ENLARGE_QUAD);
+        autoLevel<float>(data, 3);
+      }
     }
     break;
   case 4:

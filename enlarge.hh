@@ -6,6 +6,29 @@
 using std::complex;
 using std::abs;
 using std::pow;
+using std::vector;
+using std::sort;
+
+template <typename T> void autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* data, const int& size, const int& nlevel = 20) {
+  vector<T> stat;
+  for(int i = 0; i < size; i ++)
+    for(int j = 0; j < data[i].rows(); j ++)
+      for(int k = 0; k < data[i].cols(); k ++)
+        stat.push_back(data[i](j, k));
+  sort(stat.begin(), stat.end());
+  const T mm(stat[stat.size() / nlevel]);
+  T MM(stat[stat.size() * (nlevel - 1) / nlevel]);
+  if(MM == mm)
+    MM = mm + 1.;
+  for(int k = 0; k < size; k ++) {
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> buf(data[k].rows(), data[k].cols());
+    for(int i = 0; i < buf.rows(); i ++)
+      for(int j = 0; j < buf.cols(); j ++)
+        buf(i, j) = (max(min(data[k](i, j), MM), mm) - mm) / (MM - mm);
+    data[k] = buf;
+  }
+  return;
+}
 
 template <typename T> class enlarger2ex {
 public:
@@ -44,7 +67,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::normQuad(const Mat& rw, const Mat& rh, const Mat& rdr, const Mat& rdl) {
   Mat result(rdr.rows(), rdr.cols());
-  for(int i = 0; i < rw.rows() / 2 * 2 - 1; i ++)
+  for(int i = 1; i < rw.rows() / 2 * 2 - 1; i ++)
     for(int j = 0; j < rh.cols() / 2 * 2 - 1; j ++) {
       Mat A(4, 4);
       Vec b(4);
@@ -61,19 +84,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       A(2, 2) = T(0);
       A(2, 3) = rdr(i * 2 + 1, j * 2 + 1);
       A(3, 0) = T(0);
-      A(3, 1) = rdl(i * 2,     j * 2 + 1);
-      A(3, 2) = rdl(i * 2 + 1, j * 2);
+      A(3, 1) = rdl(i * 2 - 1, j * 2 + 1);
+      A(3, 2) = rdl(i * 2,     j * 2);
       A(3, 3) = T(0);
       b[0] = b[1] = b[2] = b[3] = T(1);
       // XXX fixme:
-      if(A.determinant() > 1)
+      if(abs(A.determinant()) > T(3))
         b = A.inverse() * b;
-      else {
-        b *= T(0);
-        for(int i = 0; i < 4; i ++)
-          b += A.row(i).transpose();
-        b /= T(3);
-      }
+      else
+        b = A.transpose() * b / T(3);
       result(i * 2 + 0, j * 2 + 0) = b[0];
       result(i * 2 + 0, j * 2 + 1) = b[1];
       result(i * 2 + 1, j * 2 + 0) = b[2];
@@ -96,8 +115,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       Mat rw, rh;
       rw = enlarge2(data, ENLARGE_X);
       rh = enlarge2(data, ENLARGE_Y);
-      rw = enlarge2(rw, ENLARGE_Y);
-      rh = enlarge2(rh, ENLARGE_X);
+      rw = enlarge2(rw,   ENLARGE_Y);
+      rh = enlarge2(rh,   ENLARGE_X);
       result = (rw + rh) / 2.;
     }
     break;
@@ -150,8 +169,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         const T lr(pow(T(2) * Pi * width0, T(2)));
         ff /= lr * T(2);
         xx /= lr * T(2);
-        for(int j = 0; j < width0 * 2; j ++) {
-          const int jj(width0 - width);
+        for(int j = 0; j < width; j ++) {
+          const int jj(width0 / 2 - width / 2 + j);
           const T delta((co[jj] < T(0) ? - T(1) : T(1)) * abs(xx * co[jj] + ff * dd[jj]));
           if(j * 2 < result.rows() && i * 2 + j * 2 + 0 < result.cols())
             result(j * 2 + 0, i * 2 + j * 2 + 0) = data(j, i + j) - delta;
@@ -175,8 +194,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         const T lr(pow(T(2) * Pi * width0, T(2)));
         ff /= lr * T(2);
         xx /= lr * T(2);
-        for(int j = 0; j < width0 * 2; j ++) {
-          const int jj(width0 - width);
+        for(int j = 0; j < width; j ++) {
+          const int jj(width0 / 2 - width / 2 + j);
           const T delta((co[jj] < T(0) ? - T(1) : T(1)) * abs(xx * co[jj] + ff *
  dd[jj]));
           if(i * 2 + j * 2 < result.rows() && j * 2 + 0 < result.cols())
@@ -314,27 +333,30 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
-  Mat enlarge2ds(const Mat& data, const direction_t& dir);
+  Mat enlarge2ds(const Mat& data, const direction_t& dir, const bool diff = false);
 };
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2exds<T>::enlarge2ds(const Mat& data, const direction_t& dir) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2exds<T>::enlarge2ds(const Mat& data, const direction_t& dir, const bool diff) {
   Mat result;
   switch(dir) {
   case ENLARGE_X:
-    result = enlarge2ds(data.transpose(), ENLARGE_Y).transpose();
+    result = enlarge2ds(data.transpose(), ENLARGE_Y, diff).transpose();
     break;
   case ENLARGE_Y:
     {
       Mat buf(data.rows() - 1, data.cols());
-      for(int i = 0; i < data.cols(); i ++)
-        for(int j = 1; j < data.rows(); j ++)
-          buf(j - 1, i) = data(j, i) - data(j - 1, i);
+      for(int i = 1; i < data.rows(); i ++)
+        buf.row(i - 1) = data.row(i) - data.row(i - 1);
       enlarger2ex<T> enlarger;
       Mat work(enlarger.enlarge2(buf, enlarger2ex<T>::ENLARGE_Y));
-      result = Mat(data.rows() * 2 - 1, data.cols());
-      result.row(0) = data.row(0);
-      for(int i = 1; i < work.rows() + 1; i ++)
-        result.row(i) = result.row(i - 1) + work.row(i - 1) / T(2);
+      if(diff)
+        result = work;
+      else {
+        result = Mat(data.rows() * 2 - 1, data.cols());
+        result.row(0) = data.row(0);
+        for(int i = 1; i < work.rows() + 1; i ++)
+          result.row(i) = result.row(i - 1) + work.row(i - 1) / T(2);
+      }
     }
     break;
   case ENLARGE_D:
@@ -348,17 +370,24 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
           buf(i - 1 + j - 1, j - 1) = data(i + j - 1, j) - data(i + j - 1 - 1, j - 1);
       enlarger2ex<T> enlarger;
       buf = enlarger.enlarge2(buf, enlarger2ex<T>::ENLARGE_D);
-      result = Mat(data.rows() * 2 - 1, data.cols() * 2 - 1);
-      for(int i = 0; i < result.cols(); i ++)
-        result(0, i) = data(0, i / 2);
-      for(int i = 0; i < result.rows(); i ++)
-        result(i, 0) = data(i / 2, 0);
-      for(int i = 1; i < buf.cols(); i ++)
-        for(int j = 1; j < min(buf.rows(), buf.cols() - i); j ++)
-          result(j, i + j - 1) = result(j - 1, i + j - 1 - 1) + buf(j - 1, i + j - 1 - 1) / T(2) * sqrt((data.rows() + data.cols()) / (T(data.rows() * data.rows()) + T(data.cols() * data.cols())));
-      for(int i = 1; i < buf.rows(); i ++)
-        for(int j = 1; j < min(buf.cols(), buf.rows() - i); j ++)
-          result(i + j - 1, j) = result(i + j - 1 - 1, j - 1) + buf(i + j - 1 - 1, j - 1) / T(2) * sqrt((data.rows() + data.cols()) / (T(data.rows() * data.rows()) + T(data.cols() * data.cols())));
+      if(diff)
+        result = buf;
+      else {
+        result = Mat(data.rows() * 2 - 1, data.cols() * 2 - 1);
+        for(int i = 0; i < result.rows(); i ++)
+          for(int j = 0; j < result.cols(); j ++)
+            result(i, j) = T(0);
+        for(int i = 0; i < result.cols(); i ++)
+          result(0, i) = data(0, i / 2);
+        for(int i = 0; i < result.rows(); i ++)
+          result(i, 0) = data(i / 2, 0);
+        for(int i = 1; i < buf.cols(); i ++)
+          for(int j = 1; j < min(buf.rows(), buf.cols() - i); j ++)
+            result(j, i + j - 1) = result(j - 1, i + j - 1 - 1) + buf(j - 1, i + j - 1 - 1) / T(2);
+        for(int i = 1; i < buf.rows(); i ++)
+          for(int j = 1; j < min(buf.cols(), buf.rows() - i); j ++)
+            result(i + j - 1, j) = result(i + j - 1 - 1, j - 1) + buf(i + j - 1 - 1, j - 1) / T(2);
+      }
     }
     break;
   case ENLARGE_DD:
@@ -366,7 +395,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       Mat buf(data.rows(), data.cols());
       for(int i = 0; i < data.cols(); i ++)
         buf.col(i) = data.col(data.cols() - 1 - i);
-      buf = enlarge2ds(buf, ENLARGE_D);
+      buf = enlarge2ds(buf, ENLARGE_D, diff);
       result = Mat(buf.rows(), buf.cols());
       for(int i = 0; i < buf.cols(); i ++)
         result.col(i) = buf.col(buf.cols() - 1 - i);
@@ -375,20 +404,36 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   case ENLARGE_BOTH:
     {
       Mat rw, rh;
-      rw = enlarge2ds(data, ENLARGE_X);
-      rh = enlarge2ds(data, ENLARGE_Y);
-      rw = enlarge2ds(rw, ENLARGE_Y);
-      rh = enlarge2ds(rh, ENLARGE_X);
+      rw = enlarge2ds(data, ENLARGE_X, false);
+      rh = enlarge2ds(data, ENLARGE_Y, false);
+      rw = enlarge2ds(rw,   ENLARGE_Y, false);
+      rh = enlarge2ds(rh,   ENLARGE_X, false);
       result = (rw + rh) / 2.;
     }
     break;
   case ENLARGE_QUAD:
     {
       enlarger2ex<T> enlarger;
-      result = enlarger.normQuad(enlarge2ds(data, ENLARGE_X),
-                                 enlarge2ds(data, ENLARGE_Y),
-                                 enlarge2ds(data, ENLARGE_D),
-                                 enlarge2ds(data, ENLARGE_DD));
+      Mat buf(enlarger.normQuad(enlarge2ds(data, ENLARGE_X,  true),
+                                enlarge2ds(data, ENLARGE_Y,  true),
+                                enlarge2ds(data, ENLARGE_D,  true),
+                                enlarge2ds(data, ENLARGE_DD, true)));
+      result = Mat(data.rows() * 2 - 1, data.cols() * 2 - 1);
+      for(int i = 0; i < result.cols(); i ++)
+        result(0, i) = data(0, i / 2);
+      for(int i = 0; i < result.rows(); i ++)
+        result(i, 0) = data(i / 2, 0);
+      for(int i = 0; i < data.rows(); i ++)
+        for(int j = 0; j < data.cols(); j ++) 
+          if(i * 2 < buf.rows() && j * 2 < buf.cols()) {
+            result(i * 2 + 0, j * 2 + 0) = data(i, j) + buf(i * 2 + 0, j * 2 + 0);
+            if(j * 2 + 1 < buf.cols())
+              result(i * 2 + 0, j * 2 + 1) = data(i, j) + buf(i * 2 + 0, j * 2 + 1);
+            if(i * 2 + 1 < buf.rows())
+              result(i * 2 + 1, j * 2 + 0) = data(i, j) + buf(i * 2 + 1, j * 2 + 0);
+            if(i * 2 + 1 < buf.rows() && j * 2 + 1 < buf.cols())
+              result(i * 2 + 1, j * 2 + 1) = data(i, j) + buf(i * 2 + 1, j * 2 + 1);
+        }
     }
     break;
   }
