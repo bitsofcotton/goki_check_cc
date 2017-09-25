@@ -67,8 +67,8 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::normQuad(const Mat& rw, const Mat& rh, const Mat& rdr, const Mat& rdl) {
   Mat result(rdr.rows(), rdr.cols());
-  for(int i = 1; i < rw.rows() / 2 * 2 - 1; i ++)
-    for(int j = 0; j < rh.cols() / 2 * 2 - 1; j ++) {
+  for(int i = 1; i < rw.rows() / 2 * 2 - 2; i ++)
+    for(int j = 1; j < rh.cols() / 2 * 2 - 2; j ++) {
       Mat A(4, 4);
       Vec b(4);
       A(0, 0) = rw(i, j * 2)     / T(2);
@@ -84,8 +84,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       A(2, 2) = T(0);
       A(2, 3) = rdr(i * 2 + 1, j * 2 + 1);
       A(3, 0) = T(0);
-      A(3, 1) = rdl(i * 2 - 1, j * 2 + 1);
-      A(3, 2) = rdl(i * 2,     j * 2);
+      A(3, 1) = (rdl(i * 2 - 1, j * 2 + 1) + rdl(i * 2, j * 2 + 2)) / T(2);
+      A(3, 2) = (rdl(i * 2 + 1, j * 2 - 1) + rdl(i * 2 + 2, j * 2)) / T(2);
       A(3, 3) = T(0);
       b[0] = b[1] = b[2] = b[3] = T(1);
       // XXX fixme:
