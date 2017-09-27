@@ -108,7 +108,7 @@ int main(int argc, const char* argv[]) {
       lowFreq<float>    lf;
       PseudoBump<float> bump;
       edgedetect<float> detect;
-      std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data)));
+      std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data), 200));
       std::vector<int> dstpoints;
       for(int i = 0; i < points.size(); i ++)
         dstpoints.push_back(i);
@@ -119,6 +119,7 @@ int main(int argc, const char* argv[]) {
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
         std::cout << points[i].transpose() << std::endl;
+      saveobj(points, pptr, argv[4]);
     }
     break;
   case 11:
@@ -188,8 +189,8 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<float> statmatch;
       PseudoBump<float> bump;
       lowFreq<float> lf;
-      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), data[0].rows() * data[0].cols() / 128));
-      //std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data)));
+      // std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), data[0].rows() * data[0].cols() / 128));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data)));
       std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1)));
       std::vector<match_t<float> > matches;
       for(float zr = zrs;

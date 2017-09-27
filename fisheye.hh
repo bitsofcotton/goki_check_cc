@@ -5,6 +5,7 @@
 #include <vector>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include "edgedetect.hh"
 
 using std::complex;
 using std::abs;
@@ -19,7 +20,6 @@ public:
   int    z_max;
   int    stp;
   int    rstp;
-  int    bloop;
   T      roff;
   T      rdist;
   T      brange;
@@ -33,7 +33,7 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   
   PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh, const int& bloop);
+  void initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh);
   ~PseudoBump();
   
   Mat getPseudoBumpSub(const Mat& input, const int& rstp);
@@ -58,14 +58,14 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(8, 8, 64, .5, 8);
+  initialize(20, 12, 64, .5);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh, const int& bloop) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh) {
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp * 2;
@@ -73,7 +73,6 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->rdist   = 2.;
   this->nlevel  = nlevel;
   this->cthresh = cthresh;
-  this->bloop   = bloop;
   Pi            = 4. * atan2(T(1.), T(1.));
   sthresh       = T(1e-8) / T(256);
   return;
@@ -239,32 +238,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& input, const bool& y_only) {
+  edgedetect<T> detect;
   Mat result(input);
   result *= T(0);
   if(y_only) {
-    // N.B. We may need integrate on local to global operation,
-    //      but this is not enough for intensity and edges,
-    //      so repeat each range for a flat result.
+    // N.B. We may need integrate on local to global operation.
     // N.B. We assume differential/integral of getPseudoBumpSub as a linear,
     //      but in fact, it's not.
-    Mat cache(integrate(input));
-    for(int i = 0; i < bloop; i ++) {
-      // const T rstp(pow(sqrt(T(2)), i) * this->rstp);
-      const T rstp((i + 1) * this->rstp);
-      // result += getPseudoBumpSub(cache, rstp) * (i + 1);
-      result += getPseudoBumpSub(cache, rstp);
-    }
+    result = detect.detect(getPseudoBumpSub(integrate(input), rstp),
+                           edgedetect<T>::DETECT_Y);
   } else {
-    Mat cachex(integrate(input.transpose()));
-    Mat cachey(integrate(input));
-    for(int i = 0; i < bloop; i ++) {
-      // const T   rstp(pow(sqrt(T(2)), i) * this->rstp);
-      const T   rstp((i + 1) * this->rstp);
-      const Mat pbx(getPseudoBumpSub(cachex, rstp).transpose());
-      const Mat pby(getPseudoBumpSub(cachey, rstp));
-      // result += (pbx + pby) * (i + 1);
-      result += (pbx + pby);
-    }
+    const Mat cachex(integrate(input.transpose()));
+    const Mat cachey(integrate(input));
+    const Mat pbx(getPseudoBumpSub(cachex, rstp).transpose());
+    const Mat pby(getPseudoBumpSub(cachey, rstp));
+    result = detect.detect(pbx, edgedetect<T>::DETECT_X) +
+             detect.detect(pby, edgedetect<T>::DETECT_Y);
   }
   // bump map is in the logic exchanged convex part and concave part.
   return - autoLevel(result);
