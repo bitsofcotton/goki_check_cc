@@ -105,17 +105,16 @@ int main(int argc, const char* argv[]) {
     break;
   case 8:
     {
-      lowFreq<float>    lf;
+      lowFreq<double>    lf;
       PseudoBump<float> bump;
-      edgedetect<float> detect;
-      std::vector<Eigen::Matrix<float, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data), 200));
+      std::vector<Eigen::Matrix<double, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data).template cast<double>(), 400));
       std::vector<int> dstpoints;
       for(int i = 0; i < points.size(); i ++)
         dstpoints.push_back(i);
       normalize<float>(data, 1.);
-      std::vector<Eigen::Matrix<int, 3, 1> > pptr(loadBumpSimpleMesh<float>(points, dstpoints));
+      std::vector<Eigen::Matrix<int, 3, 1> > pptr(loadBumpSimpleMesh<double>(points, dstpoints));
       for(int i = 0; i < 3; i ++)
-        data[i] = showMatch<float>(data[i], points, pptr);
+        data[i] = showMatch<double>(data[i].template cast<double>(), points, pptr).template cast<float>();
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
         std::cout << points[i].transpose() << std::endl;

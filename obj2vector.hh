@@ -32,10 +32,26 @@ template <typename T> bool clockwise(const Eigen::Matrix<T, 2, 1>& p0, const Eig
   return true;
 }
 
+template <typename T> bool isCross(const Eigen::Matrix<T, 2, 1>& p0, const Eigen::Matrix<T, 2, 1>& p1, const Eigen::Matrix<T, 2, 1>& q0, const Eigen::Matrix<T, 2, 1>& q1, const T& epsilon = T(0)) {
+  Eigen::Matrix<T, 2, 2> A;
+  Eigen::Matrix<T, 2, 1> b;
+  b = q0 - p0;
+  A.col(0) = q0 - q1;
+  A.col(1) = p1 - p0;
+  // parallel.
+  if(!isfinite(A.determinant()) ||
+     abs(A.determinant()) / sqrt(b.dot(b)) <= epsilon * epsilon)
+    return false;
+  auto ts(A.inverse() * b);
+  return epsilon < ts[0] && ts[0] < T(1) - epsilon &&
+         epsilon < ts[1] && ts[1] < T(1) - epsilon;
+}
+
 // N.B. delaunay trianglation algorithm best works but this isn't.
 //      terrible inefficient and imcomplete temporary stub.
 template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const vector<Eigen::Matrix<T, 3, 1> >& dst, const vector<int>& dstpoints) {
   vector<Eigen::Matrix<int, 3, 1> > res;
+  // for each combination.
   for(int i = 0; i < dstpoints.size(); i ++) {
     cerr << "mesh: " << i << "/" << dstpoints.size() << endl;
     for(int j = i + 1; j < dstpoints.size(); j ++)
@@ -73,16 +89,37 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const
             dc(m, 2) = dc(m, 0) * dc(m, 0) + dc(m, 1) * dc(m, 1);
             dc(m, 3) = T(1);
           }
-          if(dc.determinant() > T(0)) {
+          if(dc.determinant() > T(0))
             flag = true;
-            break;
+        }
+        // if there exists crossing part, don't append.
+        Eigen::Matrix<T, 2, 3> pp0, pp1;
+        pp0(0, 0) = dst[dstpoints[i]][0];
+        pp0(1, 0) = dst[dstpoints[i]][1];
+        pp0(0, 1) = dst[dstpoints[j]][0];
+        pp0(1, 1) = dst[dstpoints[j]][1];
+        pp0(0, 2) = dst[dstpoints[k]][0];
+        pp0(1, 2) = dst[dstpoints[k]][1];
+        for(int l = 0; l < res.size() && !flag; l ++) {
+          for(int ll = 0; ll < res[l].size(); ll ++) {
+            pp1(0, ll) = dst[dstpoints[res[l][ll]]][0];
+            pp1(1, ll) = dst[dstpoints[res[l][ll]]][1];
           }
+          for(int i0 = 0; i0 < pp0.cols() && !flag; i0 ++)
+            for(int j0 = 0; j0 < pp1.cols() && !flag; j0 ++)
+              // XXX: magic number.
+              if(isCross<T>(pp0.col((i0 + 0) % 3),
+                            pp0.col((i0 + 1) % 3),
+                            pp1.col((j0 + 0) % 3),
+                            pp1.col((j0 + 1) % 3),
+                            T(1e-4)))
+                flag = true;
         }
         if(!flag) {
           Eigen::Matrix<int, 3, 1> buf;
-          buf[0] = i;
-          buf[1] = j;
-          buf[2] = k;
+          buf[0] = ii;
+          buf[1] = jj;
+          buf[2] = kk;
           res.push_back(buf);
         }
       }
@@ -95,6 +132,7 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
   output.open(filename, std::ios::out);
   if(output.is_open()) {
     for(int i = 0; i < data.size(); i ++)
+      // XXX magic number:
       output << "v " << data[i][0] << " " << data[i][1] << " " << data[i][2] * T(8) << endl;
     for(int i = 0; i < polys.size(); i ++)
       output << "f " << polys[i][0] + 1 << " " << polys[i][1] + 1 << " " << polys[i][2] + 1 << endl;
