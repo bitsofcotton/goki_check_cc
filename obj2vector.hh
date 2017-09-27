@@ -28,8 +28,8 @@ template <typename T> bool clockwise(const Eigen::Matrix<T, 2, 1>& p0, const Eig
   theta += T(1);
   theta -= floor(theta);
   if(theta * T(2) * Pi - Pi < T(0))
-    return true;
-  return false;
+    return false;
+  return true;
 }
 
 // N.B. delaunay trianglation algorithm best works but this isn't.
