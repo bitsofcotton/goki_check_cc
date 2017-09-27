@@ -16,7 +16,7 @@ using std::istringstream;
 using std::stringstream;
 using std::vector;
 using std::pair;
-using std::ceil;
+using std::floor;
 template <typename T> class match_t;
 template <typename T> class tilter;
 
@@ -24,9 +24,9 @@ template <typename T> bool clockwise(const Eigen::Matrix<T, 2, 1>& p0, const Eig
   Eigen::Matrix<T, 2, 1> p10(p1 - p0), p20(p2 - p0);
   const T Pi(T(4) * atan2(T(1), T(1)));
   T theta((atan2(p10[1], p10[0]) - atan2(p20[1], p20[0]) + Pi) / (T(2) * Pi));
-  theta -= ceil(theta);
+  theta -= floor(theta);
   theta += T(1);
-  theta -= ceil(theta);
+  theta -= floor(theta);
   if(theta * T(2) * Pi - Pi < T(0))
     return true;
   return false;
