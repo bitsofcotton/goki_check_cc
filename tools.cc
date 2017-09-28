@@ -90,12 +90,12 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(bump, argv[4]))
         return - 2;
       tilter<float> tilt;
-      tilt.initialize(40.);
+      tilt.initialize(60.);
       const int M_TILT = 32;
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .9995);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .99975);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<float>(outfile.c_str(), out, false);
