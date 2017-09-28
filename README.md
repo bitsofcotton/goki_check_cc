@@ -62,10 +62,10 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     
     #include "enlarge.hh"
     enlarger2ex<float> enlarger;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float>::ENLARGE_BOTH));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float>::ENLARGE_QUAD));
     
     enlarger2exds<float> enlargerds;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlargedds(enlargerds.enlarge2ds(input, enlarger2exds<float>::ENLARGE_BOTH));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlargedds(enlargerds.enlarge2ds(input, enlarger2exds<float>::ENLARGE_QUAD));
     
     #include "edgedetect.hh"
     edgedetect<float> detect;
@@ -108,5 +108,5 @@ These program's match assumes one of vertices is full and another is lowPoly, bu
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable3.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable3.tar.gz
