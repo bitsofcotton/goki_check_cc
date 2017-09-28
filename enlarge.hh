@@ -9,15 +9,17 @@ using std::pow;
 using std::vector;
 using std::sort;
 
-template <typename T> void autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* data, const int& size, const int& nlevel = 20) {
+template <typename T> void autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* data, const int& size, int npad = 0) {
+  if(npad <= 0)
+    npad = (data[0].rows() + data[0].cols()) * 4;
   vector<T> stat;
   for(int i = 0; i < size; i ++)
     for(int j = 0; j < data[i].rows(); j ++)
       for(int k = 0; k < data[i].cols(); k ++)
         stat.push_back(data[i](j, k));
   sort(stat.begin(), stat.end());
-  const T mm(stat[stat.size() / nlevel]);
-  T MM(stat[stat.size() * (nlevel - 1) / nlevel]);
+  const T mm(stat[npad]);
+  T MM(stat[stat.size() - 1 - npad]);
   if(MM == mm)
     MM = mm + 1.;
   for(int k = 0; k < size; k ++) {

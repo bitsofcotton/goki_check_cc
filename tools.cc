@@ -90,7 +90,7 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(bump, argv[4]))
         return - 2;
       tilter<float> tilt;
-      tilt.initialize(20.);
+      tilt.initialize(40.);
       const int M_TILT = 32;
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
@@ -107,7 +107,7 @@ int main(int argc, const char* argv[]) {
     {
       lowFreq<double>    lf;
       PseudoBump<float> bump;
-      std::vector<Eigen::Matrix<double, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data).template cast<double>(), 400));
+      std::vector<Eigen::Matrix<double, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data).template cast<double>(), 600));
       std::vector<int> dstpoints;
       for(int i = 0; i < points.size(); i ++)
         dstpoints.push_back(i);

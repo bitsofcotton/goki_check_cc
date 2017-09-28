@@ -48,8 +48,6 @@ private:
   Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> prepareLineAxis(const Vec& p0, const Vec& p1, const int& z0, const int& rstp);
   T   getImgPt(const Mat& img, const T& y, const T& x);
   Vec indiv(const Vec& p0, const Vec& p1, const T& pt);
-  Mat integrate(const Mat& input);
-  Mat autoLevel(const Mat& input);
   
   int ww;
   int hh;
@@ -68,7 +66,7 @@ template <typename T> PseudoBump<T>::~PseudoBump() {
 template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nlevel, const T& cthresh) {
   this->z_max   = z_max;
   this->stp     = stp;
-  this->rstp    = stp * 2;
+  this->rstp    = stp * 3;
   this->roff    = 1. / 6.;
   this->rdist   = 2.;
   this->nlevel  = nlevel;
@@ -178,85 +176,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::integrate(const Mat& input) {
-  MatU Iop(input.rows(), input.rows()), A(input.rows(), input.rows());
-  U    I(sqrt(complex<T>(- 1)));
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for
-#endif
-  for(int i = 0; i < Iop.rows(); i ++)
-    for(int j = 0; j < Iop.cols(); j ++) {
-      Iop(i, j) = exp(complex<T>(- 2) * Pi * I * complex<T>(i * j) / T(Iop.rows()));
-      A(i, j)   = exp(complex<T>(  2) * Pi * I * complex<T>(i * j) / T(Iop.rows()));
-    }
-  Iop.row(0) *= T(0);
-  for(int i = 1; i < Iop.rows(); i ++)
-    Iop.row(i) /= complex<T>(- 2.) * Pi * I * T(i) / T(Iop.rows());
-  Iop = A * Iop;
-  
-  Mat centerized(input.rows(), input.cols());
-  Vec ms0(input.cols()), ms1(input.cols());
-#if defined(_OPENMP)
-#pragma omp for
-#endif
-  for(int i = 0; i < input.cols(); i ++) {
-    Vec ms(minSquare(input.col(i)));
-    ms0[i] = ms[0];
-    ms1[i] = ms[1];
-    for(int j = 0; j < input.rows(); j ++)
-      centerized(j, i) = input(j, i) - (ms[0] + ms[1] * j);
-  }
-  centerized = Iop.real().template cast<T>() * centerized;
-#if defined(_OPENMP)
-#pragma omp for
-#endif
-  for(int i = 0; i < input.cols(); i ++)
-    for(int j = 0; j < input.rows(); j ++)
-      centerized(j, i) += (ms0[i] * j + ms1[i] * j * j / 2.) / input.rows();
-  return centerized / input.rows();
-}
-
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::autoLevel(const Mat& input) {
-  Mat res(input.rows(), input.cols());
-  vector<T> stat;
-  for(int i = 0; i < input.rows(); i ++)
-    for(int j = 0; j < input.cols(); j ++)
-      stat.push_back(input(i, j));
-  sort(stat.begin(), stat.end());
-  const T mm(stat[stat.size() / nlevel]);
-  T MM(stat[stat.size() * (nlevel - 1) / nlevel]);
-  if(MM == mm)
-    MM = mm + 1.;
-#if defined(_OPENMP)
-#pragma omp for
-#endif
-  for(int i = 0; i < input.rows(); i ++)
-    for(int j = 0; j < input.cols(); j ++)
-      res(i, j) = (max(min(input(i, j), MM), mm) - mm) / (MM - mm);
-  return res;
-}
-
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& input, const bool& y_only) {
-  edgedetect<T> detect;
-  Mat result(input);
-  result *= T(0);
-  if(y_only) {
-    // N.B. We may need integrate on local to global operation.
-    // N.B. We assume differential/integral of getPseudoBumpSub as a linear,
-    //      but in fact, it's not.
-    result = detect.detect(getPseudoBumpSub(integrate(input), rstp),
-                           edgedetect<T>::DETECT_Y);
-  } else {
-    const Mat cachex(integrate(input.transpose()));
-    const Mat cachey(integrate(input));
-    const Mat pbx(getPseudoBumpSub(cachex, rstp).transpose());
-    const Mat pby(getPseudoBumpSub(cachey, rstp));
-    result = detect.detect(pbx, edgedetect<T>::DETECT_X) +
-             detect.detect(pby, edgedetect<T>::DETECT_Y);
-  }
+  Mat result(input.rows(), input.cols());
+  if(y_only)
+    result = getPseudoBumpSub(input, rstp);
+  else
+    result = getPseudoBumpSub(input.transpose(), rstp).transpose() +
+             getPseudoBumpSub(input, rstp);
   // bump map is in the logic exchanged convex part and concave part.
-  return - autoLevel(result);
+  return - result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::minSquare(const Vec& input) {
