@@ -12,9 +12,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * fisheye.hh
 * * z_max   : 出力する z 軸の解像度です。
 * * stp     : ぼやけ具合を検出する際に使用される点の数です。
-* * nlevel  : 自動レベル補正の際の比率です。
 * * cthresh : 取ってきた微分値が意味を持つかどうかを判定する比率です。
-* * bloop   : 平滑化の際にループする広さと回数です。
 * tilt.hh
 * * z_atio : [0,1] から [0,z_atio] への線形写像。
 * scancontext.hh
@@ -51,6 +49,9 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
     
+    # make (pseudo) lowpoly and get match.ppm and .obj file.
+    ./tools lpoly input.ppm output-match.ppm output.obj
+    
     # list matches.
     ./tools match input-matchbase.ppm output-base input-to-bematched.ppm ref-to-be-matched.ppm ref-matchbase.ppm
 
@@ -59,14 +60,14 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     #include "enlarge.hh"
     enlarger2ex<float> enlarger;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float>::ENLARGE_BOTH));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float>::ENLARGE_QUAD));
     
     enlarger2exds<float> enlargerds;
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlargedds(enlargerds.enlarge2ds(input, enlarger2exds<float>::ENLARGE_BOTH));
     
     #include "edgedetect.hh"
     edgedetect<float> detect;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.detect(input, edgedetect<float>::COLLECT_BOTH));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.detect(input, edgedetect<float>::COLLECT_QUAD));
     
     #include "fisheye.hh"
     PseudoBump<float> bump;
@@ -106,5 +107,5 @@ match は片方が稠密な頂点、もう片方が lowPoly された頂点で�
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable3.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable3.tar.gz
