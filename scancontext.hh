@@ -639,15 +639,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return tilt.tiltsub(dstimg, triangles, I3, I3, zero3, zero3, T(1));
 }
 
-template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph) {
-  if(lref1[0] == lref0[0]) {
+template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph, const T& epsilon = T(1e-4)) {
+  if(abs(lref1[0] - lref0[0]) <= epsilon) {
     int sgndelta(1);
     if(lref1[1] < lref0[1])
       sgndelta = - 1;
     for(int i = lref0[1]; (lref1[1] - i) * sgndelta > 0; i += sgndelta)
       map(max(0, min(int(lref0[0]), int(map.rows() - 1))),
           max(0, min(i,             int(map.cols() - 1)))) = emph;
-  } else if(lref1[1] == lref0[1]) {
+  } else if(abs(lref1[1] - lref0[1]) <= epsilon) {
     int sgndelta(1);
     if(lref1[0] < lref0[0])
       sgndelta = - 1;
