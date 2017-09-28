@@ -30,7 +30,12 @@ for idx in range(2, len(argv)):
   if(not os.path.exists(root + "-bump-blur" + ext)):
     f = open(line, "r")
     f.readline()
-    size = map(int, f.readline().split()) 
+    buf = f.readline()
+    while buf:
+      if(buf[0] != "#"):
+        break
+      buf = f.readline()
+    size = map(int, buf.split()) 
     f.close()
     subprocess.call(["convert", root + "-bump" + ext, "-resize", str(size[0]) + "x" + str(size[1]) + "!", "-compress", "none", root + "-bump-blur" + ext])
   if(not os.path.exists(root + "-tilt-1" + ext) and not os.path.exists(root + ".mp4")):
