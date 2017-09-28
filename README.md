@@ -14,9 +14,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * fisheye.hh
 * * z_max   : z-index resolution.
 * * stp     : number of points to be used in detecting edges.
-* * nlevel  : ratio to auto level.
 * * cthresh : threshold for differential value is valid or not.
-* * bloop   : loop number for flatting result.
 * tilt.hh
 * * z_atio : [0,1] to [0,z_atio].
 * scancontext.hh
@@ -53,6 +51,9 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
+    
+    # make (pseudo) lowpoly and get match.ppm and .obj file.
+    ./tools lpoly input.ppm output-match.ppm output.obj
     
     # list matches.
     ./tools match input-matchbase.ppm output-base input-to-bematched.ppm ref-to-be-matched.ppm ref-matchbase.ppm
