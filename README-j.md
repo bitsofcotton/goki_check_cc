@@ -44,7 +44,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     ./tools collect input.ppm output.ppm
     
     # make 2d to 3d pseudo bumpmap
-    ./tools bumpscale input.ppm output.ppm
+    ./tools bump input.ppm output.ppm
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
@@ -104,8 +104,12 @@ match は z 軸方向まで含めて合致する部分を探します。
 match3d は入力にバンプマップと .obj ファイルを仮定しています。  
 match は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定していますが、現行の実装では、lowFreq の出力がよろしくない結果を返します。
 
+# バグ
+PseudoBump はもっともらしいバンプマップを返しますが、正しくない場合があります。
+この場合、tilter で傾けた後もう一度 PseudoBump を適用することを何度か繰り返し、元のバンプマップに適用し直すことが必要です。
+
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable3.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable3.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable4.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable4.tar.gz
