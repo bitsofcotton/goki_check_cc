@@ -13,6 +13,10 @@ template <typename T> void autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyn
   if(npad <= 0)
     npad = (data[0].rows() + data[0].cols()) * 4;
   vector<T> stat;
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for
+#endif
   for(int i = 0; i < size; i ++)
     for(int j = 0; j < data[i].rows(); j ++)
       for(int k = 0; k < data[i].cols(); k ++)
@@ -22,6 +26,9 @@ template <typename T> void autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyn
   T MM(stat[stat.size() - 1 - npad]);
   if(MM == mm)
     MM = mm + 1.;
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int k = 0; k < size; k ++) {
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> buf(data[k].rows(), data[k].cols());
     for(int i = 0; i < buf.rows(); i ++)
@@ -69,6 +76,9 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::normQuad(const Mat& rw, const Mat& rh, const Mat& rdr, const Mat& rdl) {
   Mat result(rdr.rows(), rdr.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
   for(int i = 1; i < rw.rows() / 2 * 2 - 2; i ++)
     for(int j = 1; j < rh.cols() / 2 * 2 - 2; j ++) {
       Mat A(4, 4);
@@ -134,6 +144,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       Vec ff(data.transpose() * F);
       Vec xx(data.transpose() * X);
       Mat co(Dop * data / T(2));
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
       for(int i = 0; i < data.cols(); i ++) {
         const T lr(pow(T(2) * Pi * data.rows(), T(2)));
         ff[i] /= lr * T(2);
@@ -149,12 +162,19 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   case ENLARGE_D:
     {
       result = Mat(data.rows() * 2, data.cols() * 2);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for
+#endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = T(0);
       cerr << " enlarge_d";
       const int width0(min(data.rows(), data.cols()));
       initPattern(width0);
+#if defined(_OPENMP)
+#pragma omp for
+#endif
       for(int i = 0; i < data.cols(); i ++) {
         const int width(min(data.cols() - i, data.rows()));
         Vec dbuf(width0);
@@ -180,6 +200,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
             result(j * 2 + 1, i * 2 + j * 2 + 1) = data(j, i + j) + delta;
         }
       }
+#if defined(_OPENMP)
+#pragma omp for
+#endif
       for(int i = 0; i < data.rows(); i ++) {
         const int width(min(data.cols(), data.rows() - i));
         Vec dbuf(width0);
@@ -211,10 +234,17 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   case ENLARGE_DD:
     {
       Mat buf(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for
+#endif
       for(int i = 0; i < data.cols(); i ++)
         buf.col(i) = data.col(data.cols() - 1 - i);
       buf = enlarge2(buf, ENLARGE_D);
       result = Mat(buf.rows(), buf.cols());
+#if defined(_OPENMP)
+#pragma omp for
+#endif
       for(int i = 0; i < buf.cols(); i ++)
         result.col(i) = buf.col(buf.cols() - 1 - i);
     }

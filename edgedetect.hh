@@ -62,6 +62,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> edgedetec
   case COLLECT_Y:
     {
       result = detect(data, DETECT_Y);
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = abs(result(i, j));
@@ -75,11 +78,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> edgedetec
 
 template <typename T> void edgedetect<T>::initPattern(const int& size) {
   MatU Dbuf(size, size), Iop(size, size);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for
+#endif
   for(int i = 0; i < Dbuf.rows(); i ++)
     for(int j = 0; j < Dbuf.cols(); j ++) {
       Dbuf(i, j) = exp(U(- 2.) * Pi * I * U(i * j / T(size)));
       Iop(i, j)  = exp(U(  2.) * Pi * I * U(i * j / T(size)));
     }
+#if defined(_OPENMP)
+#pragma omp for
+#endif
   for(int i = 0; i < Dbuf.rows(); i ++)
     Dbuf.row(i) *= U(- 2.) * Pi * I * U(i / T(size));
   Dop = (Iop * Dbuf).real().template cast<T>();

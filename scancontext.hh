@@ -113,57 +113,8 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
       match.push_back(m);
     }
   sort(match.begin(), match.end(), cmplfwrap<T>);
-  // XXX fixme:
+  // XXX add me lowpoly:
   vector<lfmatch_t<T> > result(match);
-/*
-  while(result.size() > npoints) {
-    result = vector<lfmatch_t<T> >();
-    for(int i = 0; i < match.size(); i ++) {
-      cerr << "lpoly : " << i << "/" << match.size() << endl;
-      vector<T> lmbuf;
-      for(int j = 0; j < match.size(); j ++) {
-        Eigen::Matrix<T, 3, 1> diff(match[i].pt - match[j].pt);
-        lmbuf.push_back(diff.dot(diff));
-      }
-      vector<T> slmbuf(lmbuf);
-      sort(slmbuf.begin(), slmbuf.end());
-      if(!slmbuf.size()) break;
-      Vec3 p[3];
-      int  pidx[3];
-      int  k0(1);
-      for(int k = 0; k < p[0].size(); k ++)
-        for(int j = 0; j < lmbuf.size(); j ++)
-          if(slmbuf[k + k0] == lmbuf[j]) {
-            bool flag = false;
-            for(int kk = 0; kk < k; kk ++)
-              if(j == pidx[kk])
-                flag = true;
-            if(flag) continue;
-            pidx[k] = j;
-            p[k]    = match[j].pt;
-            break;
-          }
-      Vec3 q(p[1] - p[0]), r(p[2] - p[0]);
-      r -= r.dot(q) * q / q.dot(q);
-      Vec3 ek;
-      for(int k = 0; k < p[0].size(); k ++) {
-        for(int kk = 0; kk < p[0].size(); kk ++)
-          ek[kk] = k == kk ? T(1) : T(0);
-        ek -= ek.dot(q) * q / q.dot(q) + ek.dot(r) * r / r.dot(r);
-        if(ek.dot(ek) > T(1) / T(9))
-          break;
-      }
-      result.push_back(match[i]);
-      result[i].score = abs(ek.dot(result[i].pt - p[0]) / sqrt(ek.dot(ek)));
-    }
-    sort(result.begin(), result.end(), cmplfwrap<T>);
-    result.resize(max(result.size() * guard, T(npoints)));
-    if(result.size() == match.size() || result.size() <= npoints)
-      break;
-    match = result;
-  }
-  result.resize(min(int(result.size()), npoints));
-*/
   sort(result.begin(), result.end(), cmplfrwrap<T>);
   return result;
 }

@@ -15,18 +15,16 @@ for idx in range(2, len(argv)):
   line = argv[idx]
   print line
   root, ext = os.path.splitext(line)
-  if(not os.path.exists(root + "-enl5" + ext)):
+  if(not os.path.exists(root + "-enl3" + ext)):
     subprocess.call([argv[1], "enlargeds", line, root + "-enl0" + ext])
     subprocess.call(["convert", root + "-enl0" + ext, "-resize", "75%", "-unsharp", "10x4+1+0", "-compress", "none", root + "-enl1" + ext])
     subprocess.call([argv[1], "enlargeds", root + "-enl1" + ext, root + "-enl2" + ext])
     subprocess.call(["convert", root + "-enl2" + ext, "-resize", "75%", "-unsharp", "10x4+1+0", "-compress", "none", root + "-enl3" + ext])
-    subprocess.call([argv[1], "enlargeds", root + "-enl3" + ext, root + "-enl4" + ext])
-    subprocess.call(["convert", root + "-enl4" + ext, "-resize", "75%", "-unsharp", "10x4+1+0", "-compress", "none", root + "-enl5" + ext])
 
   if(not os.path.exists(root + "-collect" + ext)):
     subprocess.call([argv[1], "collect", line, root + "-collect" + ext])
   if(not os.path.exists(root + "-bump" + ext)):
-    subprocess.call([argv[1], "bump", root + "-enl5" + ext, root + "-bump" + ext])
+    subprocess.call([argv[1], "bump", root + "-enl3" + ext, root + "-bump" + ext])
   if(not os.path.exists(root + "-bump-blur" + ext)):
     f = open(line, "r")
     f.readline()

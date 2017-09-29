@@ -8,6 +8,7 @@
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::isfinite;
 using std::string;
 using std::ifstream;
 using std::ofstream;

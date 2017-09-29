@@ -8,7 +8,7 @@ CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-O2 -g2 -mtune=native
 LDFLAGS=	-lstdc++
 
-CLEANFILES= *.o tools
+CLEANFILES= tools
 
 all:	tools
 
