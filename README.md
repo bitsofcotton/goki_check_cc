@@ -47,7 +47,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     ./tools collect input.ppm output.ppm
     
     # make 2d to 3d pseudo bumpmap
-    ./tools bumpscale input.ppm output.ppm
+    ./tools bump input.ppm output.ppm
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
@@ -106,8 +106,12 @@ These program's match assumes input file as bump map. And, that matches includin
 These program's match3d assumes input file as bump map and .obj 3d file.  
 These program's match assumes one of vertices is full and another is lowPoly, but lowFreq implementation now, it worse generate lowPoly.
 
+# Known bugs
+PseudoBump makes a pseudo plausible things.
+So only a still picture, we should tilt and make bump maps retry more and reconstruct bump map once more.
+
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable3.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable3.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable4.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable4.tar.gz
