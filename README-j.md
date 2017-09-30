@@ -13,6 +13,9 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * * z_max   : 出力する z 軸の解像度です。
 * * stp     : ぼやけ具合を検出する際に使用される点の数です。
 * * cthresh : 取ってきた微分値が意味を持つかどうかを判定する比率です。
+* * cutoff  : 近すぎまたは遠すぎる場合のカットオフです。[0, 0.5]
+* * crowd   : 混みすぎる点を緩和する正方形のサイズです。
+* * vmax    : pseudoBumpVec で返される点の最大数です。(若干上下します)
 * tilt.hh
 * * z_atio : [0,1] から [0,z_atio] への線形写像。
 * scancontext.hh
@@ -45,6 +48,9 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     # make 2d to 3d pseudo bumpmap
     ./tools bump input.ppm output.ppm
+    
+    # make 2d to 3d pseudo bumpmap with obj friendly
+    ./tools bumpobj input.ppm output.ppm output.obj
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
@@ -111,5 +117,5 @@ PseudoBump はもっともらしいバンプマップを返しますが、正し
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable4.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable4.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable5.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable5.tar.gz
