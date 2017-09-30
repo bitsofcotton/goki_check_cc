@@ -1,9 +1,11 @@
 #if !defined(_OBJ2VECTOR_)
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include "tilt.hh"
 
 using std::cerr;
 using std::cout;
@@ -16,112 +18,90 @@ using std::getline;
 using std::istringstream;
 using std::stringstream;
 using std::vector;
-using std::pair;
 using std::floor;
-template <typename T> class match_t;
-template <typename T> class tilter;
+using std::min;
+using std::max;
 
-template <typename T> bool clockwise(const Eigen::Matrix<T, 2, 1>& p0, const Eigen::Matrix<T, 2, 1>& p1, const Eigen::Matrix<T, 2, 1>& p2) {
-  Eigen::Matrix<T, 2, 1> p10(p1 - p0), p20(p2 - p0);
-  const T Pi(T(4) * atan2(T(1), T(1)));
-  T theta((atan2(p10[1], p10[0]) - atan2(p20[1], p20[0]) + Pi) / (T(2) * Pi));
-  theta -= floor(theta);
-  theta += T(1);
-  theta -= floor(theta);
-  if(theta * T(2) * Pi - Pi < T(0))
-    return false;
-  return true;
+template <typename T> int clockwise(const Eigen::Matrix<T, 3, 1>& p0, const Eigen::Matrix<T, 3, 1>& p1, const Eigen::Matrix<T, 3, 1>& p2, const T& epsilon = T(0)) {
+  Eigen::Matrix<T, 3, 3> dc0;
+  dc0(0, 0) = T(1);
+  dc0(0, 1) = p0[0];
+  dc0(0, 2) = p0[1];
+  dc0(1, 0) = T(1);
+  dc0(1, 1) = p1[0];
+  dc0(1, 2) = p1[1];
+  dc0(2, 0) = T(1);
+  dc0(2, 1) = p2[0];
+  dc0(2, 2) = p2[1];
+  const T det(dc0.determinant());
+  if(abs(det) <= epsilon)
+    return 0;
+  return det < T(0) ? - 1 : 1;
 }
 
-template <typename T> bool isCross(const Eigen::Matrix<T, 2, 1>& p0, const Eigen::Matrix<T, 2, 1>& p1, const Eigen::Matrix<T, 2, 1>& q0, const Eigen::Matrix<T, 2, 1>& q1, const T& epsilon = T(0)) {
-  Eigen::Matrix<T, 2, 2> A;
-  Eigen::Matrix<T, 2, 1> b;
-  b = q0 - p0;
-  A.col(0) = q0 - q1;
-  A.col(1) = p1 - p0;
-  // parallel.
-  if(!isfinite(A.determinant()) ||
-     abs(A.determinant()) / sqrt(b.dot(b)) <= epsilon * epsilon)
-    return false;
-  auto ts(A.inverse() * b);
-  return epsilon < ts[0] && ts[0] < T(1) - epsilon &&
-         epsilon < ts[1] && ts[1] < T(1) - epsilon;
-}
-
-// N.B. delaunay trianglation algorithm best works but this isn't.
-//      terrible inefficient and imcomplete temporary stub.
-template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const vector<Eigen::Matrix<T, 3, 1> >& dst, const vector<int>& dstpoints) {
+// N.B. delaunay trianglation algorithm best works but this is brute force.
+// XXX: terrible inefficient temporary stub.
+template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const vector<Eigen::Matrix<T, 3, 1> >& dst, const vector<int>& dstpoints, const T epsilon = T(1e-5)) {
   vector<Eigen::Matrix<int, 3, 1> > res;
-  // for each combination.
+  tilter<T> tilt;
+  cerr << "Delaunay(" << dstpoints.size() << ")";
   for(int i = 0; i < dstpoints.size(); i ++) {
-    cerr << "mesh: " << i << "/" << dstpoints.size() << endl;
+    cerr << ".";
+    fflush(stderr);
     for(int j = i + 1; j < dstpoints.size(); j ++)
       for(int k = j + 1; k < dstpoints.size(); k ++) {
-        int ii(i), jj(j), kk(k);
-        Eigen::Matrix<T, 2, 1> p0, p1, p2;
-        p0[0] = dst[dstpoints[ii]][0];
-        p0[1] = dst[dstpoints[ii]][1];
-        p1[0] = dst[dstpoints[jj]][0];
-        p1[1] = dst[dstpoints[jj]][1];
-        p2[0] = dst[dstpoints[kk]][0];
-        p2[1] = dst[dstpoints[kk]][1];
-        // make sure counter clockwise.
-        if(clockwise(p0, p1, p2)) {
-          jj = k;
-          kk = j;
+        Eigen::Matrix<T, 4, 4> dc;
+        auto g((dst[dstpoints[i]] +
+                dst[dstpoints[j]] +
+                dst[dstpoints[k]]) / T(3));
+        int idxs[3];
+        idxs[0] = i;
+        idxs[1] = j;
+        idxs[2] = k;
+        for(int l = 0; l < 3; l ++) {
+          dc(l, 0) = T(1);
+          dc(l, 1) = dst[dstpoints[idxs[l]]][0] - g[0];
+          dc(l, 2) = dst[dstpoints[idxs[l]]][1] - g[1];
+          dc(l, 3) = dc(l, 1) * dc(l, 1) + dc(l, 2) * dc(l, 2);
         }
-        // XXX have a glitch, on the same line.
-        if((p0[0] == p1[0] && p1[0] == p2[0]) ||
-           (p0[1] == p1[1] && p1[1] == p2[1]))
-          continue;
-        bool flag(false);
-        // brute force.
-        for(int l = 0; l < dstpoints.size() && !flag; l ++) {
-          Eigen::Matrix<T, 4, 4> dc;
-          dc(0, 0) = dst[dstpoints[ii]][0];
-          dc(0, 1) = dst[dstpoints[ii]][1];
-          dc(1, 0) = dst[dstpoints[jj]][0];
-          dc(1, 1) = dst[dstpoints[jj]][1];
-          dc(2, 0) = dst[dstpoints[kk]][0];
-          dc(2, 1) = dst[dstpoints[kk]][1];
-          dc(3, 0) = dst[dstpoints[l]][0];
-          dc(3, 1) = dst[dstpoints[l]][1];
-          for(int m = 0; m < dc.rows(); m ++) {
-            dc(m, 2) = dc(m, 0) * dc(m, 0) + dc(m, 1) * dc(m, 1);
-            dc(m, 3) = T(1);
+        dc(3, 0) = T(1);
+        int cw(clockwise<T>(dst[dstpoints[i]] - g,
+                            dst[dstpoints[j]] - g,
+                            dst[dstpoints[k]] - g, epsilon));
+        bool flag(true);
+        for(int l = 0; l < dstpoints.size(); l ++) {
+          dc(3, 1) = dst[dstpoints[l]][0] - g[0];
+          dc(3, 2) = dst[dstpoints[l]][1] - g[1];
+          dc(3, 3) = dc(3, 1) * dc(3, 1) + dc(3, 2) * dc(3, 2);
+          // if one of them not meets delaunay or inside triangle, break;
+          if(cw * dc.determinant() < - epsilon ||
+             (tilt.sameSide2(dst[dstpoints[i]],
+                             dst[dstpoints[j]],
+                             dst[dstpoints[k]],
+                             dst[dstpoints[l]], false) &&
+              tilt.sameSide2(dst[dstpoints[j]],
+                             dst[dstpoints[k]],
+                             dst[dstpoints[i]],
+                             dst[dstpoints[l]], false) &&
+              tilt.sameSide2(dst[dstpoints[k]],
+                             dst[dstpoints[i]],
+                             dst[dstpoints[j]],
+                             dst[dstpoints[l]], false)) ) {
+            flag = false;
+            break;
           }
-          if(dc.determinant() > T(0))
-            flag = true;
         }
-        // if there exists crossing part, don't append.
-        Eigen::Matrix<T, 2, 3> pp0, pp1;
-        pp0(0, 0) = dst[dstpoints[i]][0];
-        pp0(1, 0) = dst[dstpoints[i]][1];
-        pp0(0, 1) = dst[dstpoints[j]][0];
-        pp0(1, 1) = dst[dstpoints[j]][1];
-        pp0(0, 2) = dst[dstpoints[k]][0];
-        pp0(1, 2) = dst[dstpoints[k]][1];
-        for(int l = 0; l < res.size() && !flag; l ++) {
-          for(int ll = 0; ll < res[l].size(); ll ++) {
-            pp1(0, ll) = dst[dstpoints[res[l][ll]]][0];
-            pp1(1, ll) = dst[dstpoints[res[l][ll]]][1];
+        if(flag) {
+          Eigen::Matrix<int, 3, 1> idx;
+          idx[0] = i;
+          if(cw < 0) {
+            idx[1] = k;
+            idx[2] = j;
+          } else {
+            idx[1] = j;
+            idx[2] = k;
           }
-          for(int i0 = 0; i0 < pp0.cols() && !flag; i0 ++)
-            for(int j0 = 0; j0 < pp1.cols() && !flag; j0 ++)
-              // XXX: magic number.
-              if(isCross<T>(pp0.col((i0 + 0) % 3),
-                            pp0.col((i0 + 1) % 3),
-                            pp1.col((j0 + 0) % 3),
-                            pp1.col((j0 + 1) % 3),
-                            T(1e-4)))
-                flag = true;
-        }
-        if(!flag) {
-          Eigen::Matrix<int, 3, 1> buf;
-          buf[0] = ii;
-          buf[1] = jj;
-          buf[2] = kk;
-          res.push_back(buf);
+          res.push_back(idx);
         }
       }
   }

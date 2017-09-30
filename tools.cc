@@ -29,6 +29,8 @@ int main(int argc, const char* argv[]) {
     mode = 1;
   else if(strcmp(argv[1], "bump") == 0)
     mode = 2;
+  else if(strcmp(argv[1], "bumpobj") == 0)
+    mode = 3;
   else if(strcmp(argv[1], "collect") == 0)
     mode = 4;
   else if(strcmp(argv[1], "tilt") == 0)
@@ -78,10 +80,27 @@ int main(int argc, const char* argv[]) {
     break;
   case 2:
     {
-      PseudoBump<float> bump;
-      data[0] = bump.getPseudoBump(bump.rgb2l(data), false);
+      PseudoBump<double> bump;
+      bump.initialize(20, 20, double(1), double(1) / double(8), 8, 800);
+      data[0] = bump.getPseudoBump(rgb2l(data).template cast<double>(), false).template cast<float>();
       data[1] = data[0];
       data[2] = data[0];
+    }
+    break;
+  case 3:
+    {
+      PseudoBump<double> bump;
+      std::vector<Eigen::Matrix<double, 3, 1> > points;
+      std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
+      data[0] = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay).template cast<float>();
+      data[1] = data[0];
+      data[2] = data[0];
+      for(int i = 0; i < points.size(); i ++)
+        points[i][2] *= double(20);
+      std::cout << "Handled points:" << std::endl;
+      for(int i = 0; i < points.size(); i ++)
+        std::cout << points[i].transpose() << std::endl;
+      saveobj(points, delaunay, argv[4]);
     }
     break;
   case 6:
@@ -106,8 +125,7 @@ int main(int argc, const char* argv[]) {
   case 8:
     {
       lowFreq<double>    lf;
-      PseudoBump<float> bump;
-      std::vector<Eigen::Matrix<double, 3, 1> > points(lf.getLowFreq(bump.rgb2l(data).template cast<double>(), 600));
+      std::vector<Eigen::Matrix<double, 3, 1> > points(lf.getLowFreq(rgb2l(data).template cast<double>(), 600));
       std::vector<int> dstpoints;
       for(int i = 0; i < points.size(); i ++)
         dstpoints.push_back(i);
@@ -186,11 +204,10 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<float, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
       matchPartialPartial<float> statmatch;
-      PseudoBump<float> bump;
       lowFreq<float> lf;
-      // std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data), data[0].rows() * data[0].cols() / 128));
-      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(bump.rgb2l(data)));
-      std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(bump.rgb2l(data1)));
+      // std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(rgb2l(data), data[0].rows() * data[0].cols() / 128));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(rgb2l(data)));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(rgb2l(data1)));
       std::vector<match_t<float> > matches;
       for(float zr = zrs;
           (zrs / zre < float(1) && zr < zre) || 
@@ -301,9 +318,8 @@ int main(int argc, const char* argv[]) {
       int   nshow(6);
       float emph(.75);
       matchPartialPartial<float> statmatch;
-      PseudoBump<float> bump;
       lowFreq<float> lf;
-      std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(bump.rgb2l(data)));
+      std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(rgb2l(data)));
       std::vector<match_t<float> > matches;
       for(float zr = zrs;
           (zrs / zre < float(1) && zr < zre) || 

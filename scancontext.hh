@@ -551,21 +551,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     const int  k(hull[ii][2]);
     const Vec3 dst0((dst[match.dstpoints[i]] + dst[match.dstpoints[j]] + dst[match.dstpoints[k]]) / T(3));
     const Vec3 src0((src[match.srcpoints[i]] + src[match.srcpoints[j]] + src[match.srcpoints[k]]) / T(3));
-    Vec2 p0, p1, p2;
-    p0[0] = dst[match.dstpoints[i]][0];
-    p0[1] = dst[match.dstpoints[i]][1];
-    p1[0] = dst[match.dstpoints[j]][0];
-    p1[1] = dst[match.dstpoints[j]][1];
-    p2[0] = dst[match.dstpoints[k]][0];
-    p2[1] = dst[match.dstpoints[k]][1];
+    const Vec3& p0(dst[match.dstpoints[i]]);
+    const Vec3& p1(dst[match.dstpoints[j]]);
+    const Vec3& p2(dst[match.dstpoints[k]]);
     for(int l = 0; l < triangles.size(); l ++) {
       if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
-        Vec2 q;
         for(int ll = 0; ll < 3; ll ++) {
           if(checked[l * 3 + ll])
             continue;
-          q[0] = triangles[l](0, ll);
-          q[1] = triangles[l](1, ll);
+          const Vec3& q(triangles[l].col(ll));
           if(tilt.sameSide2(p0, p1, p2, q) &&
              tilt.sameSide2(p1, p2, p0, q) &&
              tilt.sameSide2(p2, p0, p1, q)) {

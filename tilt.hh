@@ -33,7 +33,8 @@ public:
   Vec3 solveN(const Vec3& p, const Vec3& q, const Vec3& r);
   Eigen::Matrix<T, 3, 5> makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
   Mat tiltsub(const Mat& in, const vector<Triangles>& triangles, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& origin, const Vec3& moveto, const T& rto);
-  bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q);
+  bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true);
+  bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true);
 private:
   T    sgn(const T& x);
   Vec3 rotate0(const Vec3& work, const Mat3x3& rot, const Vec3& origin);
@@ -122,13 +123,19 @@ template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::rotate0(const Vec3& work
   return rot * (work - origin) + origin;
 }
 
-template <typename T> bool tilter<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q) {
+template <typename T> bool tilter<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q, const bool& extend) {
   const Vec2 dlt(p1 - p0);
   Vec2 dp(p2 - p0);
   dp -= dlt.dot(dp) * dlt / dlt.dot(dlt);
-  // XXX refixed. dp.dot(p2 - p0) >> 0.
-  // XXX refixed. another place uses.
-  return dp.dot(q - p0) + max(abs(dp[0]) + abs(dp[1]), T(0)) / T(2) / max(max(sqrt((p0 - p1).dot(p0 - p1)), sqrt((p1 - p2).dot(p1 - p2))), sqrt((p2 - p0).dot(p2 - p0))) >= T(0);
+  // N.B. dp.dot(p1 - p0) >> 0.
+  // XXX magic number:
+  return dp.dot(q - p0) >= (extend ? - T(1) : T(1)) * (abs(dp[0]) + abs(dp[1])) * T(1e-5);
+}
+
+template <typename T> bool tilter<T>::sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const bool& extend) {
+  return sameSide2(Vec2(p0[0], p0[1]), Vec2(p1[0], p1[1]),
+                   Vec2(p2[0], p2[1]), Vec2(q[0],  q[1]),
+                   extend);
 }
 
 template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::rotate(const Eigen::Matrix<T, 3, 5>& triangle, const Mat3x3& rot, const Vec3& origin, const T& rr) {

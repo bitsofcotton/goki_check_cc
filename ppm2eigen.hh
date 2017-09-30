@@ -15,6 +15,20 @@ using std::getline;
 using std::istringstream;
 using std::ofstream;
 
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb2l(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb[3]) {
+  auto Y(T( .299  ) * rgb[0] + T( .587  ) * rgb[1] + T(.114   ) * rgb[2]);
+  auto U(T(-.14713) * rgb[0] + T(-.28886) * rgb[1] + T(.436   ) * rgb[2]);
+  auto V(T( .615  ) * rgb[0] + T(-.51499) * rgb[1] + T(-.10001) * rgb[2]);
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(rgb[0].rows(), rgb[0].cols());
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+  for(int j = 0; j < rgb[0].rows(); j ++)
+    for(int k = 0; k < rgb[0].cols(); k ++)
+      result(j, k) = sqrt(Y(j, k) * Y(j, k) + U(j, k) * U(j, k) + V(j, k) * V(j, k));
+  return result;
+}
+
 template <typename T> bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* datas) {
   int i = 0, j = 0, k = 0;
   char buf;
