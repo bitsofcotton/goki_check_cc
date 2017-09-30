@@ -15,6 +15,9 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * * z_max   : z-index resolution.
 * * stp     : number of points to be used in detecting edges.
 * * cthresh : threshold for differential value is valid or not.
+* * cutoff  : ratio of the threshold for too near and too far, [0, .5].
+* * crowd   : box size for reducing crowded point return.
+* * vmax    : max points to be returned in pseudoBumpVec.
 * tilt.hh
 * * z_atio : [0,1] to [0,z_atio].
 * scancontext.hh
@@ -48,6 +51,9 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     
     # make 2d to 3d pseudo bumpmap
     ./tools bump input.ppm output.ppm
+    
+    # make 2d to 3d pseudo bumpmap with obj friendly.
+    ./tools bumpobj input.ppm output.ppm output.obj
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
@@ -113,5 +119,5 @@ So only a still picture, we should tilt and make bump maps retry more and recons
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable4.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable4.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable5.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable5.tar.gz
