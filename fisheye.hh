@@ -18,8 +18,6 @@ using std::sort;
 using std::max;
 using std::min;
 using std::sin;
-using std::cos;
-using std::acos;
 using std::sqrt;
 using std::isfinite;
 
@@ -205,26 +203,26 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   Mat result(getPseudoBumpSub(input, rstp));
   for(int i = 0; i < nloop; i ++ ) {
     tilter<T> tilter;
-    const Mat worku(getPseudoBumpSub(tilter.tilt(input, result, 1, 4, i / T(ndiv) + T(1)), rstp));
-    const Mat workl(getPseudoBumpSub(tilter.tilt(input, result, 3, 4, i / T(ndiv) + T(1)), rstp));
-    const T ry(cos(Pi * i / T(2) / ndiv));
-    const T sy(sin(Pi * i / T(2) / ndiv));
+    // XXX which is l, which is u.
+    const Mat  workl(getPseudoBumpSub(tilter.tilt(input, result, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
+    const Mat& worku(workl);
+    const T ry(sin(Pi * (i + 1) / T(2) / ndiv));
     const T dy(result.rows() / 2 - result.rows() / 2 * ry);
-    for(int j = dy; j < result.rows() - dy; j ++)
+    const T t(T(1) + sqrt(T(2) * (T(1) - ry)));
+    for(int j = dy; j <= (result.rows() - dy) / 2 + 1; j ++)
       for(int k = 0; k < worku.cols(); k ++) {
-        // XXX: rotate is now pseudo.
-        const int jj0((j     - result.rows() / 2) / ry + result.rows() / 2);
-        const int jj1((j + 1 - result.rows() / 2) / ry + result.rows() / 2);
-        const T   xu0((T(1) + sy * ((j     - result.rows() / 2) / T(result.rows() / 2))) * worku(j, k));
-        const T   xu1((T(1) + sy * ((j + 1 - result.rows() / 2) / T(result.rows() / 2))) * worku(min(j + 1, int(result.rows() - 1)), k));
+        const int jj0(( j      - result.rows() / 2) / ry + result.rows() / 2);
+        const int jj1(((j + 1) - result.rows() / 2) / ry + result.rows() / 2);
+        const T   xu0(t * worku(j, k));
+        const T   xu1(t * worku(min(j + 1, int(result.rows() - 1)), k));
         for(int l = max(jj0, 0); l < min(jj1, int(result.rows())); l ++) {
           const T t((l - jj0) / T(jj1 - jj0));
           result(l, k) = max(result(l, k), (xu0 * t + xu1 * (T(1) - t)) * ry);
         }
-        const int jk0(jj0);
-        const int jk1(jj1);
-        const T   xl0((T(1) - sy * ((j     - result.rows() / 2) / T(result.rows() / 2))) * workl(j, k));
-        const T   xl1((T(1) - sy * ((j + 1 - result.rows() / 2) / T(result.rows() / 2))) * workl(min(j + 1, int(result.rows() - 1)), k));
+        const int jk0((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
+        const int jk1((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
+        const T   xl0(t * workl((result.rows() - 1 - j), k));
+        const T   xl1(t * workl(min(int(result.rows() - 1 - (j + 1)), int(result.rows() - 1)), k));
         for(int l = max(jk0, 0); l < min(jk1, int(result.rows())); l ++) {
           const T t((l - jk0) / T(jk1 - jk0));
           result(l, k) = max(result(l, k), (xl0 * t + xl1 * (T(1) - t)) * ry);
@@ -233,7 +231,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   }
   if(elim) {
     edgedetect<T> detect;
-    auto edge(detect.detect(detect.detect(result, detect.DETECT_Y), detect.COLLECT_Y));
+    // XXX select me:
+    // auto edge(detect.detect(detect.detect(result, detect.DETECT_Y), detect.COLLECT_Y));
+    auto edge(detect.detect(input, detect.COLLECT_Y));
     T avg(0);
     for(int i = 0; i < result.cols(); i ++)
       avg = max(avg, edge.col(i).dot(edge.col(i)));
