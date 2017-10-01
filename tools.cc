@@ -81,7 +81,7 @@ int main(int argc, const char* argv[]) {
   case 2:
     {
       PseudoBump<double> bump;
-      data[0] = bump.getPseudoBump(rgb2l(data).template cast<double>(), false).template cast<float>();
+      data[0] = bump.getPseudoBump(rgb2l(data).template cast<double>(), !false).template cast<float>();
       data[1] = data[0];
       data[2] = data[0];
     }
@@ -91,7 +91,7 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
-      data[0] = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay).template cast<float>();
+      data[0] = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay, true).template cast<float>();
       data[1] = data[0];
       data[2] = data[0];
       for(int i = 0; i < points.size(); i ++)
@@ -112,7 +112,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .95);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .975);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<float>(outfile.c_str(), out, false);
@@ -164,9 +164,9 @@ int main(int argc, const char* argv[]) {
       bump.vmax = 300;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay0, delaunay1;
-      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0).template cast<float>();
+      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0, true).template cast<float>();
       bump.vmax = 120;
-      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1).template cast<float>();
+      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1, true).template cast<float>();
       // XXX: configure me.
       float thresh_para(.95);
       float thresh_len(.8);
@@ -292,7 +292,7 @@ int main(int argc, const char* argv[]) {
       bumper.vmax = 120;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int, 3, 1> > poly;
-      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly).template cast<float>();
+      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly, true).template cast<float>();
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());
