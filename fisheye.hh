@@ -60,6 +60,7 @@ private:
   Vec indiv(const Vec& p0, const Vec& p1, const T& pt);
   Mat complement(const Mat& in, const int& crowd, const int& vmax, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   Mat integrate(const Mat& input);
+  Vec complementLine(const Vec& line, const T& rratio = T(.8));
   
   int ww;
   int hh;
@@ -148,7 +149,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     cerr << ".";
     cerr.flush();
     for(int j = 0; j < result.rows(); j ++)
-      result(j, i) = T(.5);
+      result(j, i) = - T(1);
     Vec zval(result.rows());
     for(int j = 0; j < zval.size(); j ++)
       zval[j] = T(0);
@@ -185,7 +186,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     // XXX: unfortunately, too near or too far is not stable.
     for(int s = 0; s < result.rows(); s ++)
       if(result(s, i) <= cutz || T(1) - cutz <= result(s, i))
-        result(s, i) = T(.5);
+        result(s, i) = - T(1);
+    result.col(i) = complementLine(result.col(i));
   }
   if(elim) {
     edgedetect<T> detect;
@@ -392,6 +394,77 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int j = 0; j < input.rows(); j ++)
       centerized(j, i) += avg[i] * j / input.rows();
   return centerized;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complementLine(const Vec& line, const T& rratio) {
+  vector<int> ptsi;
+  vector<T>   pts;
+  bool flag = true;
+  for(int i = 0; i < line.size(); i ++)
+    if(T(0) <= line[i]) {
+      if(!i)
+        flag = false;
+      else if(flag) {
+        ptsi.push_back(- i);
+        pts.push_back(line[i]);
+        flag = false;
+      }
+      ptsi.push_back(i);
+      pts.push_back(line[i]);
+    }
+  Vec result(line);
+  if(ptsi.size() <= 0) {
+    for(int i = 0; i < line.size(); i ++)
+      result[i] = T(.5);
+    return result;
+  }
+  ptsi.push_back(ptsi[ptsi.size() - 1] + 2. * (line.size() - ptsi[ptsi.size() - 1]));
+  pts.push_back(pts[pts.size() - 1]);
+  int rng[3];
+  rng[0] = rng[1] = rng[2] = 0;
+  for(int i = 0; i < line.size(); i ++) {
+    if(result[i] >= T(0))
+      continue;
+    for(; rng[0] < ptsi.size() - 1; rng[0] ++)
+      if(i <= ptsi[rng[0] + 1])
+        break;
+    for(; rng[1] < ptsi.size(); rng[1] ++)
+      if(i <= ptsi[rng[1]] && ptsi[rng[1]] <= i)
+        break;
+    for(; rng[2] < ptsi.size(); rng[2] ++)
+      if(i < ptsi[rng[2]])
+        break;
+    if(rng[2] < rng[1])
+      rng[1] = (rng[2] + rng[0]) / 2;
+    if(rng[1] == rng[0] && 0 < rng[0])
+      rng[0] --;
+    if(rng[1] == rng[2] && rng[2] < ptsi.size() - 1)
+      rng[2] ++;
+    const T ratio(abs((ptsi[rng[2]] - ptsi[rng[1]] + 1.) /
+                      (ptsi[rng[1]] - ptsi[rng[0]] + 1.)));
+    if(ratio < rratio || T(1) / ratio < rratio) {
+      if(abs(ptsi[rng[2]] - ptsi[rng[1]]) >
+         abs(ptsi[rng[1]] - ptsi[rng[0]])) {
+        for(; rng[0] > 0; rng[0] --)
+          if(ptsi[rng[1]] - ptsi[rng[0]] > (ptsi[rng[2]] - ptsi[rng[1]]) * rratio)
+            break;
+      } else {
+        for(; rng[2] < ptsi.size() - 1; rng[2] ++)
+          if(ptsi[rng[2]] - ptsi[rng[1]] > (ptsi[rng[1]] - ptsi[rng[0]]) * rratio)
+            break;
+      }
+    }
+    result[i] = 0.;
+    for(int ii = 0; ii < 3; ii ++) {
+      T work(1);
+      for(int jj = 0; jj < 3; jj ++)
+        if(ptsi[rng[ii]] != ptsi[rng[jj]])
+          work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
+      result[i] += work * pts[rng[ii]];
+    }
+    result[i] = max(min(result[i], T(1)), T(0));
+  }
+  return result;
 }
 
 #define _2D3D_PSEUDO_
