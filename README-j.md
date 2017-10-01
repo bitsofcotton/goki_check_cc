@@ -15,6 +15,8 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * * crowd   : 混みすぎる点を緩和する正方形のサイズです。
 * * vmax    : pseudoBumpVec で返される点の最大数です。(若干上下します)
 * * rdist   : カメラと距離を置いて計算される平面との距離の比です
+* * nloop   : 傾けながら z 軸を補正していく際のループ回数です
+* * ndiv    : 傾ける際の最小の角度の分割数です
 * tilt.hh
 * * z_atio : [0,1] から [0,z_atio] への線形写像。
 * scancontext.hh
@@ -80,7 +82,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     #include "tilt.hh"
     tilter<float> tilt;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .999));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .95));
     
     #include "scancontext.hh"
     lowFreq<float> lf;
@@ -111,10 +113,9 @@ match は片方が稠密な頂点、もう片方が lowPoly された頂点で�
 
 # バグ
 PseudoBump はもっともらしいバンプマップを返しますが、正しくない場合があります。
-この場合、tilter で傾けた後もう一度 PseudoBump を適用することを何度か繰り返し、元のバンプマップに適用し直すことが必要です。
 
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable6.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable6.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable7.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable7.tar.gz
