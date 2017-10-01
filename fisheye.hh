@@ -32,6 +32,7 @@ public:
   T      cdist;
   T      rdist;
   T      cutoff;
+  T      cutz;
   T      cthresh;
   int    crowd;
   int    vmax;
@@ -84,6 +85,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->cdist   = - 1.;
   this->rdist   = rdist * (- this->cdist);
   this->cutoff  = T(.5);
+  this->cutz    = T(1) / T(3);
   this->cthresh = T(1);
   this->sthresh = T(1e-8) / T(256);
   Pi = 4. * atan2(T(1.), T(1.));
@@ -180,6 +182,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         }
       }
     }
+    // XXX: unfortunately, too near or too far is not stable.
+    for(int s = 0; s < result.rows(); s ++)
+      if(result(s, i) <= cutz || result(s, i) <= T(1) - cutz)
+        result(s, i) = T(.5);
   }
   if(elim) {
     edgedetect<T> detect;
@@ -203,10 +209,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   else
     result = getPseudoBumpSub(input.transpose(), rstp, false).transpose() +
              getPseudoBumpSub(input, rstp, false);
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      if(result(i, j) < T(0))
-        result(i, j) = T(.5);
   // bump map is in the logic exchanged convex part and concave part.
   return - result;
 }
@@ -260,7 +262,7 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
       cpoint[0] = (s / (stp - 1.) - 1. / 2.) * rstp + center[0];
       cpoint[1] = (s / (stp - 1.) - 1. / 2.) * rstp + center[1];
       // XXX checkme:
-      cpoint[2] = (zi + z0) / T(z0 * 3) * rdist;
+      cpoint[2] = (zi + 1) / T(z0) * rdist;
       result(zi, 0).col(s) = getLineAxis(cpoint, camera0, T(ww), T(hh)) - center;
       result(zi, 1).col(s) = getLineAxis(cpoint, camera1, T(ww), T(hh)) - center;
     }
