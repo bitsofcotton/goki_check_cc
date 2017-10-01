@@ -81,7 +81,6 @@ int main(int argc, const char* argv[]) {
   case 2:
     {
       PseudoBump<double> bump;
-      bump.initialize(20, 20, double(1), double(1) / double(8), 8, 800);
       data[0] = bump.getPseudoBump(rgb2l(data).template cast<double>(), false).template cast<float>();
       data[1] = data[0];
       data[2] = data[0];
@@ -109,12 +108,11 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(bump, argv[4]))
         return - 2;
       tilter<float> tilt;
-      tilt.initialize(600.);
       const int M_TILT = 32;
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .999975);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .95);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<float>(outfile.c_str(), out, false);
@@ -159,13 +157,16 @@ int main(int argc, const char* argv[]) {
     break;
   case 9:
     {
-      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> data1[3], data2[3], data3[3];
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> data1[3], bump0, bump1;
       if(!loadp2or3<float>(data1, argv[4]))
         return - 2;
-      if(!loadp2or3<float>(data2, argv[5]))
-        return - 2;
-      if(!loadp2or3<float>(data3, argv[6]))
-        return - 2;
+      PseudoBump<double> bump;
+      bump.vmax = 300;
+      std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
+      std::vector<Eigen::Matrix<int,    3, 1> > delaunay0, delaunay1;
+      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0).template cast<float>();
+      bump.vmax = 120;
+      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1).template cast<float>();
       // XXX: configure me.
       float thresh_para(.95);
       float thresh_len(.8);
@@ -181,34 +182,30 @@ int main(int argc, const char* argv[]) {
       int   nshow(6);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mbump;
-      Eigen::Matrix<float, 3, 3> I3;
+      Eigen::Matrix<double, 3, 3> I3;
       float emph(.75);
-      mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>(data3[0].rows(), data3[0].cols());
+      mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < 3; j ++)
           I3(i, j) = (i == j ? float(1) : float(0));
-      for(int i = 0; i < min(mout[0].rows(), data2[0].rows()); i ++) {
-        for(int j = 0; j < min(mout[0].cols(), data2[0].cols()); j ++) {
-          mout[0](i, j) = data2[0](i, j);
-          mout[1](i, j) = data2[1](i, j);
-          mout[2](i, j) = data2[2](i, j);
-          mbump(i, j)   = data1[0](i, j);
+      for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
+        for(int j = 0; j < min(mout[0].cols(), data1[0].cols()); j ++) {
+          mout[0](i, j) = data1[0](i, j);
+          mout[1](i, j) = data1[1](i, j);
+          mout[2](i, j) = data1[2](i, j);
+          mbump(i, j)   = bump1(i, j);
         }
-        for(int j = min(mout[0].cols(), data2[0].cols()); j < mout[0].cols(); j ++)
+        for(int j = min(mout[0].cols(), data1[0].cols()); j < mout[0].cols(); j ++)
           mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = float(0);
       }
       
-      for(int i = min(mout[0].rows(), data2[0].rows()); i < mout[0].rows(); i ++)
+      for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
         for(int j = 0; j < mout[0].cols(); j ++)
           mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = float(0);
-      Eigen::Matrix<float, 3, 1> zero3;
+      Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
-      matchPartialPartial<float> statmatch;
-      lowFreq<float> lf;
-      // std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(rgb2l(data), data[0].rows() * data[0].cols() / 128));
-      std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(rgb2l(data)));
-      std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(rgb2l(data1)));
-      std::vector<match_t<float> > matches;
+      matchPartialPartial<double> statmatch;
+      std::vector<match_t<double> > matches;
       for(float zr = zrs;
           (zrs / zre < float(1) && zr < zre) || 
           (zre / zrs < float(1) && zre < zr);
@@ -217,25 +214,25 @@ int main(int argc, const char* argv[]) {
             (zrs / zre < float(1) && zr2 < zre) ||
             (zre / zrs < float(1) && zre < zr2);
             zr2 *= pow(zre / zrs, float(1) / float(zrl))) {
-          std::vector<Eigen::Matrix<float, 3, 1> > sshape0(shape0), sshape1(shape1);
+          std::vector<Eigen::Matrix<double, 3, 1> > sshape0(shape0), sshape1(shape1);
           for(int i = 0; i < sshape0.size(); i ++)
             sshape0[i][2] *= zr;
           for(int i = 0; i < sshape1.size(); i ++)
             sshape1[i][2] *= zr2;
           statmatch.init(sshape0, thresh_para, thresh_len, thresh_points, thresh_r, thresh_n);
-          std::vector<match_t<float> > lmatches(statmatch.match(sshape1, div, r_max_theta));
+          std::vector<match_t<double> > lmatches(statmatch.match(sshape1, div, r_max_theta));
           // XXX: for memory and compiler debug, non stl code preferred.
           for(int i = 0; i < lmatches.size(); i ++)
             matches.push_back(lmatches[i]);
       }
-      std::sort(matches.begin(), matches.end(), cmpwrap<float>);
+      std::sort(matches.begin(), matches.end(), cmpwrap<double>);
       float zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
-        tilter<float> tilt;
-        reDig<float>  redig;
+        tilter<double> tilt;
+        reDig<double>  redig;
         tilt.initialize(zr * sqrt((data1[0].rows() * data1[0].cols()) / (data[0].rows() * data[0].cols())));
-        std::vector<Eigen::Matrix<int, 3, 1> > hull1(loadBumpSimpleMesh<float>(shape1, matches[n].srcpoints));
+        std::vector<Eigen::Matrix<int, 3, 1> > hull1(loadBumpSimpleMesh<double>(shape1, matches[n].srcpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
         for(int idx = 0; idx < hull1.size(); idx ++) {
           Eigen::Matrix<int, 3, 1> buf;
@@ -248,14 +245,14 @@ int main(int argc, const char* argv[]) {
         }
         cerr << "Writing " << n << " / " << matches.size() << "(" << float(1) / matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = tilt.tilt(showMatch<float>(mout[idx], shape1, mhull1), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
+          outs[idx] = tilt.tilt(showMatch<double>(mout[idx].template cast<double>(), shape1, mhull1), mbump.template cast<double>(), matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3).template cast<float>();
         normalize<float>(outs, 1.);
         std::string outfile;
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-src.ppm");
         savep2or3<float>(outfile.c_str(), outs, false);
         
         for(int idx = 0; idx < 3; idx ++)
-          outs2[idx] = showMatch<float>(data3[idx], shape0, mhull0);
+          outs2[idx] = showMatch<double>(data[idx].template cast<double>(), shape0, mhull0).template cast<float>();
         normalize<float>(outs2, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-dst.ppm");
         savep2or3<float>(outfile.c_str(), outs2, false);
@@ -267,12 +264,12 @@ int main(int argc, const char* argv[]) {
         savep2or3<float>(outfile.c_str(), outs3, false);
         
         for(int idx = 0; idx < 3; idx ++)
-          outs4[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], hull1, float(1.) - emph);
+          outs4[idx] = redig.emphasis(data[idx].template cast<double>(), bump0.template cast<double>(), shape0, shape1, matches[n], hull1, float(1.) - emph).template cast<float>();
         normalize<float>(outs4, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");
         savep2or3<float>(outfile.c_str(), outs4, false);
         for(int idx = 0; idx < 3; idx ++)
-          outs5[idx] = redig.emphasis(data3[idx], data[idx], shape0, shape1, matches[n], hull1, float(1.) + emph);
+          outs5[idx] = redig.emphasis(data1[idx].template cast<double>(), bump1.template cast<double>(), shape0, shape1, matches[n], hull1, float(1.) + emph).template cast<float>();
         normalize<float>(outs5, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-2.ppm");
         savep2or3<float>(outfile.c_str(), outs5, false);
@@ -281,25 +278,28 @@ int main(int argc, const char* argv[]) {
     return 0;
   case 10:
     {
-      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> data1[3];
-      std::vector<Eigen::Matrix<float, 3, 1> > datapoly;
-      std::vector<Eigen::Matrix<int, 3, 1> > polynorms;
-      if(!loadp2or3<float>(data1, argv[4]))
-        return - 2;
-      if(!loadobj<float>(datapoly, polynorms, argv[5]))
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bump;
+      std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
+      std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
+      if(!loadobj<double>(datapoly, polynorms, argv[4]))
         return - 2;
       // XXX magic number:
       if(datapoly.size() > 2000) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
       }
-      Eigen::Matrix<float, 3, 1> zero3;
+      PseudoBump<double> bumper;
+      bumper.vmax = 120;
+      std::vector<Eigen::Matrix<double, 3, 1> > shape;
+      std::vector<Eigen::Matrix<int, 3, 1> > poly;
+      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly).template cast<float>();
+      Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
-      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> zero(data1[0].rows(), data1[0].cols());
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());
       for(int i = 0; i < zero.rows(); i ++)
         for(int j = 0; j < zero.cols(); j ++)
           zero(i, j) = float(0);
-      Eigen::Matrix<float, 3, 3> I3;
+      Eigen::Matrix<double, 3, 3> I3;
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < 3; j ++)
           I3(i, j) = (i == j ? float(1) : float(0));
@@ -317,41 +317,39 @@ int main(int argc, const char* argv[]) {
       int   div(20);
       int   nshow(6);
       float emph(.75);
-      matchPartialPartial<float> statmatch;
-      lowFreq<float> lf;
-      std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(rgb2l(data)));
-      std::vector<match_t<float> > matches;
+      matchPartialPartial<double> statmatch;
+      std::vector<match_t<double> > matches;
       for(float zr = zrs;
           (zrs / zre < float(1) && zr < zre) || 
           (zre / zrs < float(1) && zre < zr);
           zr *= pow(zre / zrs, float(1) / float(zrl))) {
-        std::vector<Eigen::Matrix<float, 3, 1> > sshape(shape);
+        std::vector<Eigen::Matrix<double, 3, 1> > sshape(shape);
         for(int i = 0; i < shape.size(); i ++)
           sshape[i][2] *= zr;
         statmatch.init(sshape, thresh_para, thresh_len, thresh_points, thresh_r, thresh_n);
-        std::vector<match_t<float> > lmatches(statmatch.match(datapoly, div, r_max_theta));
+        std::vector<match_t<double> > lmatches(statmatch.match(datapoly, div, r_max_theta));
         std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
       }
       float zr(zrs);
-      std::sort(matches.begin(), matches.end(), cmpwrap<float>);
+      std::sort(matches.begin(), matches.end(), cmpwrap<double>);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
-        tilter<float> tilt;
-        reDig<float>  redig;
-        tilt.initialize(zr * sqrt((data1[0].rows() * data1[0].cols()) / (data[0].rows() * data[0].cols())));
+        tilter<double> tilt;
+        reDig<double>  redig;
+        tilt.initialize(zr * sqrt((data[0].rows() * data[0].cols()) / (data[0].rows() * data[0].cols())));
         cerr << "Writing " << n << " / " << matches.size() << "(" << float(1) / matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
         
-        vector<Eigen::Matrix<float, 3, 1> > shape3d;
+        vector<Eigen::Matrix<double, 3, 1> > shape3d;
         for(int idx = 0; idx < datapoly.size(); idx ++)
           shape3d.push_back(matches[n].rot * matches[n].ratio * datapoly[idx] + matches[n].offset);
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = showMatch<float>(zero, shape3d, polynorms);
+          outs[idx] = showMatch<double>(zero.template cast<double>(), shape3d, polynorms).template cast<float>();
         normalize<float>(outs, 1.);
         std::string outfile;
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-src.ppm");
         savep2or3<float>(outfile.c_str(), outs, false);
         
-        std::vector<Eigen::Matrix<int, 3, 1> > ch(loadBumpSimpleMesh<float>(datapoly, matches[n].dstpoints));
+        std::vector<Eigen::Matrix<int, 3, 1> > ch(loadBumpSimpleMesh<double>(datapoly, matches[n].dstpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mch;
         for(int idx = 0; idx < ch.size(); idx ++) {
           Eigen::Matrix<int, 3, 1> buf;
@@ -360,7 +358,7 @@ int main(int argc, const char* argv[]) {
           mch.push_back(buf);
         }
         for(int idx = 0; idx < 3; idx ++)
-          outs2[idx] = showMatch<float>(data1[idx], shape, mch);
+          outs2[idx] = showMatch<double>(data[idx].template cast<double>(), shape, mch).template cast<float>();
         normalize<float>(outs2, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-dst.ppm");
         savep2or3<float>(outfile.c_str(), outs2, false);
@@ -372,12 +370,12 @@ int main(int argc, const char* argv[]) {
         savep2or3<float>(outfile.c_str(), outs3, false);
         
         for(int idx = 0; idx < 3; idx ++)
-          outs4[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], ch, float(1) - emph);
+          outs4[idx] = redig.emphasis(data[idx].template cast<double>(), bump.template cast<double>(), shape, datapoly, matches[n], ch, float(1) - emph).template cast<float>();
         normalize<float>(outs4, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");
         savep2or3<float>(outfile.c_str(), outs4, false);
         for(int idx = 0; idx < 3; idx ++)
-          outs5[idx] = redig.emphasis(data1[idx], data[idx], shape, datapoly, matches[n], ch, float(1) + emph);
+          outs5[idx] = redig.emphasis(data[idx].template cast<double>(), bump.template cast<double>(), shape, datapoly, matches[n], ch, float(1) + emph).template cast<float>();
         normalize<float>(outs5, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-2.ppm");
         savep2or3<float>(outfile.c_str(), outs5, false);

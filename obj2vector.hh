@@ -114,7 +114,7 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
   if(output.is_open()) {
     for(int i = 0; i < data.size(); i ++)
       // XXX magic number:
-      output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] * T(8) << endl;
+      output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] * T(8) << endl;
     for(int i = 0; i < polys.size(); i ++)
       output << "f " << polys[i][0] + 1 << " " << polys[i][1] + 1 << " " << polys[i][2] + 1 << endl;
     output.close();
