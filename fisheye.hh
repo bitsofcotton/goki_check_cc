@@ -85,7 +85,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->cdist   = - 1.;
   this->rdist   = rdist * (- this->cdist);
   this->cutoff  = T(.5);
-  this->cutz    = T(1) / T(3);
+  this->cutz    = T(.125);
   this->cthresh = T(1);
   this->sthresh = T(1e-8) / T(256);
   Pi = 4. * atan2(T(1.), T(1.));
