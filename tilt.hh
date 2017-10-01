@@ -14,6 +14,7 @@ using std::cerr;
 using std::endl;
 using std::fflush;
 using std::vector;
+using std::abs;
 
 template <typename T> class tilter {
 public:
@@ -47,7 +48,7 @@ private:
 };
 
 template <typename T> tilter<T>::tilter() {
-  initialize(.75);
+  initialize(.5);
   return;
 }
 

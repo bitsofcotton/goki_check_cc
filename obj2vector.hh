@@ -21,6 +21,7 @@ using std::vector;
 using std::floor;
 using std::min;
 using std::max;
+using std::abs;
 
 template <typename T> int clockwise(const Eigen::Matrix<T, 3, 1>& p0, const Eigen::Matrix<T, 3, 1>& p1, const Eigen::Matrix<T, 3, 1>& p2, const T& epsilon = T(0)) {
   Eigen::Matrix<T, 3, 3> dc0;

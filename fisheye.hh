@@ -7,9 +7,9 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "enlarge.hh"
+#include "tilt.hh"
 #include "edgedetect.hh"
 #include "obj2vector.hh"
-#include "tilt.hh"
 
 using std::complex;
 using std::abs;
@@ -17,6 +17,10 @@ using std::vector;
 using std::sort;
 using std::max;
 using std::min;
+using std::sin;
+using std::cos;
+using std::acos;
+using std::sqrt;
 using std::isfinite;
 
 template <typename T> int cmpbump(const Eigen::Matrix<T, 3, 1>& x0, const Eigen::Matrix<T, 3, 1>& x1) {
@@ -36,6 +40,8 @@ public:
   T      cthresh;
   int    crowd;
   int    vmax;
+  int    nloop;
+  int    ndiv;
   T      sthresh;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
@@ -47,9 +53,10 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& crowd, const int& vmax, const T& rdist);
+  void initialize(const int& z_max, const int& stp, const int& crowd, const int& vmax, const int& nloop, const int& ndiv, const T& rdist);
   
-  Mat getPseudoBumpSub(const Mat& work, const int& rstp, const bool& elim);
+  Mat getPseudoBumpSub(const Mat& work, const int& rstp);
+  Mat getPseudoBumpLoop(const Mat& work, const bool& elim);
   Mat getPseudoBump(const Mat& input, const bool& y_only = false);
   Mat getPseudoBumpVec(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, const bool& y_only = false);
 private:
@@ -69,19 +76,23 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 20, 20, 800, T(.75));
+  initialize(20, 20, 20, 800, 2, 12, T(.75));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& crowd, const int& vmax, const T& rdist) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& crowd, const int& vmax, const int& nloop, const int& ndiv, const T& rdist) {
+  this->Pi      = 4. * atan2(T(1.), T(1.));
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp * 2;
   this->crowd   = crowd;
   this->vmax    = vmax;
+  this->nloop   = nloop;
+  this->ndiv    = ndiv;
+  assert(nloop / T(ndiv) < T(1));
   this->roff    = 1. / 6.;
   this->cdist   = - 1.;
   this->rdist   = rdist * (- this->cdist);
@@ -89,7 +100,6 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->cutz    = T(.125);
   this->cthresh = T(1);
   this->sthresh = T(1e-8) / T(256);
-  Pi = 4. * atan2(T(1.), T(1.));
   MatU Dopb(stp / 2 + 1, stp / 2 + 1);
   MatU Iopb(Dopb.rows(), Dopb.cols());
   U I(sqrt(complex<T>(- 1)));
@@ -118,7 +128,7 @@ template <typename T> T PseudoBump<T>::sgn(const T& x) {
   return T(0);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpSub(const Mat& work0, const int& rstp, const bool& elim) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpSub(const Mat& work0, const int& rstp) {
   // N.B. we assume bump map operation as a linear, but it isn't.
   // N.B. integrate for local to global operation.
   const Mat work(integrate(work0));
@@ -183,11 +193,43 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         }
       }
     }
-    // XXX: unfortunately, too near or too far is not stable.
     for(int s = 0; s < result.rows(); s ++)
       if(result(s, i) <= cutz || T(1) - cutz <= result(s, i))
         result(s, i) = - T(1);
     result.col(i) = complementLine(result.col(i));
+  }
+  return result;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpLoop(const Mat& input, const bool& elim) {
+  Mat result(getPseudoBumpSub(input, rstp));
+  for(int i = 0; i < nloop; i ++ ) {
+    tilter<T> tilter;
+    const Mat worku(getPseudoBumpSub(tilter.tilt(input, result, 1, 4, i / T(ndiv) + T(1)), rstp));
+    const Mat workl(getPseudoBumpSub(tilter.tilt(input, result, 3, 4, i / T(ndiv) + T(1)), rstp));
+    const T ry(cos(Pi * i / T(2) / ndiv));
+    const T sy(sin(Pi * i / T(2) / ndiv));
+    const T dy(result.rows() / 2 - result.rows() / 2 * ry);
+    for(int j = dy; j < result.rows() - dy; j ++)
+      for(int k = 0; k < worku.cols(); k ++) {
+        // XXX: rotate is now pseudo.
+        const int jj0((j     - result.rows() / 2) / ry + result.rows() / 2);
+        const int jj1((j + 1 - result.rows() / 2) / ry + result.rows() / 2);
+        const T   xu0((T(1) + sy * ((j     - result.rows() / 2) / T(result.rows() / 2))) * worku(j, k));
+        const T   xu1((T(1) + sy * ((j + 1 - result.rows() / 2) / T(result.rows() / 2))) * worku(min(j + 1, int(result.rows() - 1)), k));
+        for(int l = max(jj0, 0); l < min(jj1, int(result.rows())); l ++) {
+          const T t((l - jj0) / T(jj1 - jj0));
+          result(l, k) = max(result(l, k), (xu0 * t + xu1 * (T(1) - t)) * ry);
+        }
+        const int jk0(jj0);
+        const int jk1(jj1);
+        const T   xl0((T(1) - sy * ((j     - result.rows() / 2) / T(result.rows() / 2))) * workl(j, k));
+        const T   xl1((T(1) - sy * ((j + 1 - result.rows() / 2) / T(result.rows() / 2))) * workl(min(j + 1, int(result.rows() - 1)), k));
+        for(int l = max(jk0, 0); l < min(jk1, int(result.rows())); l ++) {
+          const T t((l - jk0) / T(jk1 - jk0));
+          result(l, k) = max(result(l, k), (xl0 * t + xl1 * (T(1) - t)) * ry);
+        }
+      }
   }
   if(elim) {
     edgedetect<T> detect;
@@ -207,10 +249,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& input, const bool& y_only) {
   Mat result(input.rows(), input.cols());
   if(y_only)
-    result = getPseudoBumpSub(input, rstp, false);
+    result = getPseudoBumpLoop(input, false);
   else
-    result = getPseudoBumpSub(input.transpose(), rstp, false).transpose() +
-             getPseudoBumpSub(input, rstp, false);
+    result = getPseudoBumpLoop(input.transpose(), false).transpose() +
+             getPseudoBumpLoop(input, false);
   // bump map is in the logic exchanged convex part and concave part.
   return - result;
 }
@@ -218,10 +260,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, vector<Eigen::Matrix<T, 3, 1> >& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, const bool& y_only) {
   Mat result(input.rows(), input.cols());
   if(y_only)
-    result = getPseudoBumpSub(input, rstp, true);
+    result = getPseudoBumpLoop(input, true);
   else
-    result = getPseudoBumpSub(input.transpose(), rstp, true).transpose() +
-             getPseudoBumpSub(input, rstp, true);
+    result = getPseudoBumpLoop(input.transpose(), true).transpose() +
+             getPseudoBumpLoop(input, true);
   return - complement(result, crowd, vmax, points, delaunays);
 }
 
@@ -311,10 +353,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         geoms.push_back(work / count);
     }
   sort(geoms.begin(), geoms.end(), cmpbump<T>);
-  int start(max(0, int(geoms.size() - vmax) / 2));
-  int end(min(int(geoms.size()), int(geoms.size() + vmax) / 2));
-  geoms.erase(geoms.begin(), geoms.begin() + start);
-  geoms.resize(end - start);
+  if(vmax < geoms.size()) {
+    const int diff(geoms.size() - vmax);
+    const int start((geoms.size() - diff) / 2);
+    const int end((geoms.size() + diff) / 2);
+    geoms.erase(geoms.begin() + start, geoms.begin() + end);
+  }
   Vec work(3);
   work[0] = 0;
   work[1] = 0;
