@@ -85,7 +85,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     
     #include "tilt.hh"
     tilter<float> tilt;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .999));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .95));
     
     #include "scancontext.hh"
     lowFreq<float> lf;
@@ -115,7 +115,6 @@ These program's match assumes one of vertices is full and another is lowPoly, bu
 
 # Known bugs
 PseudoBump makes a pseudo plausible things.
-So only a still picture, we should tilt and make bump maps retry more and reconstruct bump map once more.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
