@@ -16,6 +16,8 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * * stp     : number of points to be used in detecting edges.
 * * crowd   : box size for reducing crowded point return.
 * * vmax    : max points to be returned in pseudoBumpVec.
+* * nloop   : number of loops with tilting and bumps.
+* * ndiv    : tilt angle base.
 * * rdist   : ratio of distance for camera and plane.
 * tilt.hh
 * * z_atio : [0,1] to [0,z_atio].
@@ -118,5 +120,5 @@ So only a still picture, we should tilt and make bump maps retry more and recons
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable6.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable6.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable7.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable7.tar.gz
