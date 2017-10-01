@@ -32,6 +32,7 @@ public:
   T      cdist;
   T      rdist;
   T      cutoff;
+  T      cthresh;
   int    crowd;
   int    vmax;
   T      sthresh;
@@ -83,6 +84,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->cdist   = - 1.;
   this->rdist   = rdist * (- this->cdist);
   this->cutoff  = T(.5);
+  this->cthresh = T(1);
   this->sthresh = T(1e-8) / T(256);
   Pi = 4. * atan2(T(1.), T(1.));
   MatU Dopb(stp / 2 + 1, stp / 2 + 1);
@@ -166,9 +168,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           rc[u] = c[u - rc.size() + c.size()];
         const Vec msl(Dop * lc);
         const Vec msr(Dop * rc);
+        const T   lr(msl[msl.size() - 1] * msl[msl.size() - 1] / (msl.dot(msl) -
+ msl[msl.size() - 1] * msl[msl.size() - 1]));
         const T   rr(msr[0] * msr[0] / (msr.dot(msr) - msr[0] * msr[0]));
         const T   n2(abs(msl[msl.size() - 1] - msr[0]));
-        if(isfinite(n2) && zval[s] < n2) {
+        if(isfinite(n2) && zval[s] < n2 &&
+           (cthresh / msl.size() <= lr ||
+            cthresh / msr.size() <= rr) ) {
           result(s, i) = zz / T(lrf.rows());
           zval[s]      = n2;
         }
