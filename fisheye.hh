@@ -184,7 +184,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     }
     // XXX: unfortunately, too near or too far is not stable.
     for(int s = 0; s < result.rows(); s ++)
-      if(result(s, i) <= cutz || result(s, i) <= T(1) - cutz)
+      if(result(s, i) <= cutz || T(1) - cutz <= result(s, i))
         result(s, i) = T(.5);
   }
   if(elim) {
