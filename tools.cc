@@ -269,7 +269,7 @@ int main(int argc, const char* argv[]) {
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");
         savep2or3<float>(outfile.c_str(), outs4, false);
         for(int idx = 0; idx < 3; idx ++)
-          outs5[idx] = redig.emphasis(data1[idx].template cast<double>(), bump1.template cast<double>(), shape0, shape1, matches[n], hull1, float(1.) + emph).template cast<float>();
+          outs5[idx] = redig.emphasis(data[idx].template cast<double>(), bump1.template cast<double>(), shape0, shape1, matches[n], hull1, float(1.) + emph).template cast<float>();
         normalize<float>(outs5, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-2.ppm");
         savep2or3<float>(outfile.c_str(), outs5, false);
