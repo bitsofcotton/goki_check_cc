@@ -21,7 +21,7 @@ for idx in range(2, len(argv)):
   if(not os.path.exists(root + "-collect" + ext)):
     subprocess.call([argv[1], "collect", line, root + "-collect" + ext])
   if(not os.path.exists(root + "-bump-blur" + ext)):
-    subprocess.call([argv[1], "bump", line, root + "-bump-blur" + ext, root + "-bump" + ext, root + ".obj"])
+    subprocess.call([argv[1], "bump", line, root + "-bump" + ext, root + "-bump-blur" + ext, root + ".obj"])
   if(not os.path.exists(root + "-tilt-1" + ext) and not os.path.exists(root + ".mp4")):
     subprocess.call([argv[1], "tilt", line, root + "-tilt", root + "-bump-blur" + ext])
   if(not os.path.exists(root + ".mp4")):
