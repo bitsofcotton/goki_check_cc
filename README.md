@@ -51,10 +51,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     ./tools collect input.ppm output.ppm
     
     # make 2d to 3d pseudo bumpmap
-    ./tools bump input.ppm output.ppm
-    
-    # make 2d to 3d pseudo bumpmap with obj friendly.
-    ./tools bumpobj input.ppm output.ppm output.obj
+    ./tools bump input.ppm output.ppm output-delaunay.ppm output.obj
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
@@ -119,5 +116,5 @@ PseudoBump makes a pseudo plausible things.
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable9.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable9.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable10.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable10.tar.gz
