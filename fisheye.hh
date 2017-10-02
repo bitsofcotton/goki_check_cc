@@ -216,7 +216,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         const int j0((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
         const int jc1(min(max(j1, 0), int(result.rows() - 1)));
         const int jc0(min(max(j0, 0), int(result.rows() - 1)));
-        const int jj1(result.rows() - 1 - j);
+        const int jj1(max(int(result.rows() - 1 - j), 0));
         const int jj0(max(int(min(result.rows() - 1 - (j + 1), result.rows() - 1)), 0));
         T x0(worku(jj0, k) / t);
         if(x0 < T(0) || (T(0) <= workl(jj0, k) * t && workl(jj0, k) * t < x0))
@@ -252,61 +252,30 @@ template <typename T> void PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, 
     for(int j = 0; j < result.cols(); j ++)
       if(T(1) <= sute(i, j) && T(0) <= result(i, j))
         result(i, j) = med;
-  sute = Mat(result);
   for(int i = 0; i < sute.cols(); i ++)
-    sute.col(i) = complementLine(sute.col(i));
-  edgedetect<T> detect;
-  auto edge(detect.detect(detect.detect(sute, detect.DETECT_Y), detect.COLLECT_Y));
-  T avg(0);
-  for(int i = 0; i < result.cols(); i ++) {
-    T buf(0);
-    int count(0);
-    for(int j = 0; j < result.rows(); j ++)
-      if(T(0) <= result(j, i)) {
-        buf += result(j, i);
-        count ++;
-      }
-    if(count)
-      avg = max(avg, buf / count);
-  }
-  avg = sqrt(avg / result.rows());
-  Mat work(result);
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      if(edge(i, j) <= cutoff * avg)
-        work(i, j) = - T(4);
-  complement(work, crowd, vmax, points, delaunays);
+    result.col(i) = complementLine(result.col(i));
   return;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& bumps, const bool& y_only) {
   Mat mats(input);
   getPseudoBumpVecSub(mats, points, delaunays, bumps, vmax, y_only);
-  bumps = Mat(- bumps);
   tilter<T> tilt;
-  T ratio(1);
+  int ratio(1);
   while(rrstp * rrstp * 8 < min(mats.rows(), mats.cols())) {
     mats   = shrink(mats);
     ratio *= rrstp;
     vector<Vec3> workpoints;
     vector<Eigen::Matrix<int, 3, 1> > workdels;
-    Mat sute;
-    getPseudoBumpVecSub(mats, workpoints, workdels, sute, vmax / ratio, y_only);
-    for(int i = 0; i < workdels.size(); i ++) {
-      const Vec3& p0(workpoints[workdels[i][0]] * ratio);
-      const Vec3& p1(workpoints[workdels[i][1]] * ratio);
-      const Vec3& p2(workpoints[workdels[i][2]] * ratio);
-      const Vec3  g((p0 + p1 + p2) / T(3));
-      for(int j = 0; j < points.size(); j ++) {
-        const Vec3& q(points[j]);
-        if(tilt.sameSide2(p0, p1, p2, q) &&
-           tilt.sameSide2(p1, p2, p0, q) &&
-           tilt.sameSide2(p2, p0, p1, q))
-          // XXX check me.
-          points[j][2] += g[2] / sqrt(ratio);
-      }
-    }
+    Mat merge;
+    getPseudoBumpVecSub(mats, workpoints, workdels, merge, vmax / ratio, y_only);
+    for(int i = 0; i < mats.rows(); i ++)
+      for(int j = 0; j < mats.cols(); j ++)
+        for(int ii = i * ratio; ii < min((i + 1) * ratio, int(mats.rows())); ii ++)
+          for(int jj = j * ratio; jj < min((j + 1) * ratio, int(mats.cols())); jj ++)
+            bumps(ii, jj) += merge(i, j);
   }
+  complement(bumps, crowd, vmax, points, delaunays);
   vector<Vec3> ppoints(points);
   sort(ppoints.begin(), ppoints.end(), cmpbump<T>);
   int ii(0), jj(ppoints.size() - 1);
@@ -428,7 +397,26 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::indiv(c
 
 template <typename T> void PseudoBump<T>::complement(const Mat& in, const int& crowd, const int& vmax, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
   Mat result(in);
+  edgedetect<T> detect;
+  auto edge(detect.detect(detect.detect(result, detect.DETECT_Y), detect.COLLECT_Y));
   T   avg(0);
+  for(int i = 0; i < result.cols(); i ++) {
+    T buf(0);
+    int count(0);
+    for(int j = 0; j < result.rows(); j ++)
+      if(T(0) <= result(j, i)) {
+        buf += result(j, i);
+        count ++;
+      }
+    if(count)
+      avg = max(avg, buf / count);
+  }
+  avg = sqrt(avg / result.rows());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      if(edge(i, j) <= cutoff * avg)
+        result(i, j) = - T(4);
+  avg = T(0);
   int cavg(0);
   geoms = vector<Vec3>();
   for(int i = 0; i < in.rows() / crowd; i ++)
@@ -440,12 +428,12 @@ template <typename T> void PseudoBump<T>::complement(const Mat& in, const int& c
       int count(0);
       for(int ii = i * crowd; ii < min((i + 1) * crowd, int(in.rows())); ii ++)
         for(int jj = j * crowd; jj < min((j + 1) * crowd, int(in.cols())); jj ++) {
-          if(0 <= in(ii, jj)) {
+          if(0 <= result(ii, jj)) {
             work[0] += ii;
             work[1] += jj;
             work[2] += in(ii, jj);
             count ++;
-            avg += in(ii, jj);
+            avg += result(ii, jj);
             cavg ++;
           }
         }
@@ -552,7 +540,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::shrink(const Mat& in) {
-  Mat res(in.rows() / rrstp, in.cols() / rrstp);
+  Mat res((in.rows() + rrstp - 1) / rrstp, (in.cols() + rrstp - 1) / rrstp);
   for(int i = 0; i < res.rows(); i ++)
     for(int j = 0; j < res.cols(); j ++) {
       res(i, j) = T(0);
