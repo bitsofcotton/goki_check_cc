@@ -272,7 +272,7 @@ template <typename T> void PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& bumps, const bool& y_only) {
   Mat mats(input);
   getPseudoBumpVecSub(mats, points, delaunays, bumps, vmax, y_only);
-  bumps = - bumps;
+  bumps = Mat(- bumps);
   tilter<T> tilt;
   T ratio(1);
   while(rrstp * rrstp * 8 < min(mats.rows(), mats.cols())) {
