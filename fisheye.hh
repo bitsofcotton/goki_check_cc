@@ -205,7 +205,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     Mat work(result);
     for(int j = 0; j < work.cols(); j ++)
       work.col(j) = complementLine(work.col(j));
-    const Mat workt(getPseudoBumpSub(tilter.tilt(input, work, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
+    const Mat workt(getPseudoBumpSub(tilter.tilt(work, work, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
     const T ry(sin(Pi / T(2) * (i + 1) / T(ndiv)));
     const T dy(result.rows() / 2 - result.rows() / 2 * ry);
     const T t(T(1) + sqrt(T(2) * (T(1) - ry)));
@@ -217,7 +217,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         const T   x1(t * workt(min(int(result.rows() - 1 - (j + 1)), int(result.rows() - 1)), k));
         for(int l = max(j0, 0); l < min(j1, int(result.rows())); l ++) {
           const T t((l - j0) / T(j1 - j0));
-          result(l, k) = max(result(l, k), (x0 * t + x1 * (T(1) - t)) * ry);
+          if(result(l, k) < T(0))
+            result(l, k) = max(result(l, k), (x0 * t + x1 * (T(1) - t)) * ry);
         }
       }
   }
@@ -236,8 +237,8 @@ template <typename T> void PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, 
   bumps = - result;
   edgedetect<T> detect;
   // XXX select me:
-  // auto edge(detect.detect(detect.detect(result, detect.DETECT_Y), detect.COLLECT_Y));
-  auto edge(detect.detect(input, detect.COLLECT_Y));
+  auto edge(detect.detect(detect.detect(result, detect.DETECT_Y), detect.COLLECT_Y));
+  // auto edge(detect.detect(input, detect.COLLECT_Y));
   T avg(0);
   for(int i = 0; i < result.cols(); i ++)
     avg = max(avg, edge.col(i).dot(edge.col(i)));
