@@ -250,8 +250,11 @@ template <typename T> void PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, 
     for(int j = 0; j < result.cols(); j ++)
       if(T(1) <= sute(i, j) && T(0) <= result(i, j))
         result(i, j) = med;
+  sute = Mat(result);
+  for(int i = 0; i < sute.cols(); i ++)
+    sute.col(i) = complementLine(sute.col(i));
   edgedetect<T> detect;
-  auto edge(detect.detect(detect.detect(input, detect.DETECT_Y), detect.COLLECT_Y));
+  auto edge(detect.detect(detect.detect(sute, detect.DETECT_Y), detect.COLLECT_Y));
   T avg(0);
   for(int i = 0; i < result.cols(); i ++) {
     T buf(0);

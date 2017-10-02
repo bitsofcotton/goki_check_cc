@@ -91,6 +91,7 @@ int main(int argc, const char* argv[]) {
         std::cout << points[i].transpose() << std::endl;
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3];
       outs[0] = outs[1] = outs[2] = b_mesh.template cast<float>();
+      normalize<float>(outs, 1.);
       savep2or3<float>(argv[4], outs, false);
       saveobj(points, delaunay, argv[5]);
     }
@@ -105,7 +106,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .99);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .995);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<float>(outfile.c_str(), out, false);
