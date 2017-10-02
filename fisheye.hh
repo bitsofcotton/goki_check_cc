@@ -212,8 +212,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     const T t(T(1) + sqrt(T(2) * (T(1) - ry)));
     for(int j = dy; j < result.rows() - dy + 1; j ++)
       for(int k = 0; k < result.cols(); k ++) {
-        const int j0((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
-        const int j1((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
+        const int j1((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
+        const int j0((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
         const int jj0(result.rows() - 1 - j);
         const int jj1(min(result.rows() - 1 - (j + 1), result.rows() - 1));
         T x0(worku(jj0, k) / t);
