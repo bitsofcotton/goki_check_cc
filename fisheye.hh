@@ -274,7 +274,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         for(int ii = i * ratio; ii < min((i + 1) * ratio, int(bumps.rows())); ii ++)
           for(int jj = j * ratio; jj < min((j + 1) * ratio, int(bumps.cols())); jj ++)
             // XXX checkme (intensity ratio).
-            bumps(ii, jj) += merge(i, j) / sqrt(rrstp);
+            bumps(ii, jj) += merge(i, j) / sqrt(ratio);
   }
   complement(bumps, crowd, vmax, points, delaunays);
   vector<Vec3> ppoints(points);
