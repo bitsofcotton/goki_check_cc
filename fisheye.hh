@@ -214,8 +214,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       for(int k = 0; k < result.cols(); k ++) {
         const int j1((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
         const int j0((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
-        const int jj0(result.rows() - 1 - j);
-        const int jj1(min(result.rows() - 1 - (j + 1), result.rows() - 1));
+        const int jc1(min(max(j1, 0), int(result.rows() - 1)));
+        const int jc0(min(max(j0, 0), int(result.rows() - 1)));
+        const int jj1(result.rows() - 1 - j);
+        const int jj0(min(result.rows() - 1 - (j + 1), result.rows() - 1));
         T x0(worku(jj0, k) / t);
         if(x0 < T(0) || (T(0) <= workl(jj0, k) * t && workl(jj0, k) * t < x0))
           x0 = t * workl(jj0, k);
@@ -224,7 +226,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           x1 = t * workl(jj1, k);
         if(x0 < T(0) || x1 < T(0))
           continue;
-        for(int l = max(j0, 0); l < min(j1, int(result.rows())); l ++) {
+        for(int l = jj0; l < jj1; l ++) {
           const T t((l - j0) / T(j1 - j0));
           if(result(l, k) < T(0))
             result(l, k) = max(result(l, k), (x0 * t + x1 * (T(1) - t)) * ry);
