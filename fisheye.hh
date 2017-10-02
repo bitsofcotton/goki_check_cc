@@ -41,7 +41,6 @@ public:
   int    vmax;
   int    nloop;
   int    ndiv;
-  T      sthresh;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
@@ -77,7 +76,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 20, 20, 800, 2, 12, T(.75));
+  initialize(20, 20, 20, 800, 12, 16, T(.75));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -89,7 +88,8 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp * 2;
-  this->rrstp   = rstp / 8;
+  this->rrstp   = rstp / 4;
+  assert(1 < this->rrstp);
   this->crowd   = crowd;
   this->vmax    = vmax;
   this->nloop   = nloop;
@@ -100,8 +100,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->rdist   = rdist * (- this->cdist);
   this->cutoff  = T(.5);
   this->cutz    = T(.125);
-  this->cthresh = T(1);
-  this->sthresh = T(1e-8) / T(256);
+  this->cthresh = T(.25);
   MatU Dopb(stp / 2 + 1, stp / 2 + 1);
   MatU Iopb(Dopb.rows(), Dopb.cols());
   U I(sqrt(complex<T>(- 1)));
@@ -198,7 +197,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int s = 0; s < result.rows(); s ++)
       if(result(s, i) <= cutz || T(1) - cutz <= result(s, i))
         result(s, i) = - T(1);
-    result.col(i) = complementLine(result.col(i));
   }
   return result;
 }
@@ -207,32 +205,27 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   Mat result(getPseudoBumpSub(input, rstp));
   for(int i = 0; i < nloop; i ++ ) {
     tilter<T> tilter;
-    // XXX which is l, which is u.
-    const Mat  workl(getPseudoBumpSub(tilter.tilt(input, result, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
-    const Mat& worku(workl);
-    const T ry(sin(Pi * (i + 1) / T(2) / ndiv));
+    Mat work(result);
+    for(int j = 0; j < work.cols(); j ++)
+      work.col(j) = complementLine(work.col(j));
+    const Mat workt(getPseudoBumpSub(tilter.tilt(input, work, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
+    const T ry(sin(Pi / T(2) * (i + 1) / T(ndiv)));
     const T dy(result.rows() / 2 - result.rows() / 2 * ry);
     const T t(T(1) + sqrt(T(2) * (T(1) - ry)));
-    for(int j = dy; j <= (result.rows() - dy) / 2 + 1; j ++)
-      for(int k = 0; k < worku.cols(); k ++) {
-        const int jj0(( j      - result.rows() / 2) / ry + result.rows() / 2);
-        const int jj1(((j + 1) - result.rows() / 2) / ry + result.rows() / 2);
-        const T   xu0(t * worku(j, k));
-        const T   xu1(t * worku(min(j + 1, int(result.rows() - 1)), k));
-        for(int l = max(jj0, 0); l < min(jj1, int(result.rows())); l ++) {
-          const T t((l - jj0) / T(jj1 - jj0));
-          result(l, k) = max(result(l, k), (xu0 * t + xu1 * (T(1) - t)) * ry);
-        }
-        const int jk0((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
-        const int jk1((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
-        const T   xl0(t * workl((result.rows() - 1 - j), k));
-        const T   xl1(t * workl(min(int(result.rows() - 1 - (j + 1)), int(result.rows() - 1)), k));
-        for(int l = max(jk0, 0); l < min(jk1, int(result.rows())); l ++) {
-          const T t((l - jk0) / T(jk1 - jk0));
-          result(l, k) = max(result(l, k), (xl0 * t + xl1 * (T(1) - t)) * ry);
+    for(int j = dy; j < result.rows() - dy + 1; j ++)
+      for(int k = 0; k < workt.cols(); k ++) {
+        const int j0((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
+        const int j1((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
+        const T   x0(t * workt((result.rows() - 1 - j), k));
+        const T   x1(t * workt(min(int(result.rows() - 1 - (j + 1)), int(result.rows() - 1)), k));
+        for(int l = max(j0, 0); l < min(j1, int(result.rows())); l ++) {
+          const T t((l - j0) / T(j1 - j0));
+          result(l, k) = max(result(l, k), (x0 * t + x1 * (T(1) - t)) * ry);
         }
       }
   }
+  for(int i = 0; i < result.cols(); i ++)
+    result.col(i) = complementLine(result.col(i));
   if(elim) {
     edgedetect<T> detect;
     // XXX select me:
@@ -296,6 +289,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       }
     }
   }
+  vector<Vec3> ppoints(points);
+  sort(ppoints.begin(), ppoints.end(), cmpbump<T>);
+  const T mm(ppoints[4][2]);
+  const T MM(ppoints[ppoints.size() - 4][2]);
+  for(int i = 0; i < points.size(); i ++)
+    points[i][2] = max(min(MM, points[i][2]), mm);
   Mat result(input * T(0));
   const vector<Eigen::Matrix<int, 3, 1> >& delaunay(delaunays);
   const vector<Vec3>& geoms(points);
