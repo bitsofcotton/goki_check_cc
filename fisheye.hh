@@ -217,7 +217,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         const int jc1(min(max(j1, 0), int(result.rows() - 1)));
         const int jc0(min(max(j0, 0), int(result.rows() - 1)));
         const int jj1(result.rows() - 1 - j);
-        const int jj0(max(min(result.rows() - 1 - (j + 1), result.rows() - 1), 0));
+        const int jj0(max(int(min(result.rows() - 1 - (j + 1), result.rows() - 1)), 0));
         T x0(worku(jj0, k) / t);
         if(x0 < T(0) || (T(0) <= workl(jj0, k) * t && workl(jj0, k) * t < x0))
           x0 = t * workl(jj0, k);
