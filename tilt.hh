@@ -216,15 +216,20 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   R1(2, 0) = 0.;
   R1(2, 1) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
-  Vec3 zero3;
-  zero3[0]   = T(0);
-  zero3[1]   = T(0);
-  zero3[2]   = T(0);
   Vec3 pcenter;
-  pcenter[0] = in.rows() / 2.;
-  pcenter[1] = in.cols() / 2.;
+  pcenter[0] = in.rows() / 2;
+  pcenter[1] = in.cols() / 2;
   pcenter[2] = 0.;
-  return tilt(in, bump, R1 * R0, R0.transpose(), zero3, T(1), pcenter);
+  Vec3 move0, move1;
+  move0[0] = T(in.rows() - 1);
+  move0[1] = T(in.cols() - 1);
+  move0[2] = T(0);
+  move1[0] = T(0);
+  move1[1] = T(0);
+  move1[2] = T(0);
+  move0    = rotate0(rotate0(move0, R1 * R0, pcenter), R0.transpose(), pcenter);
+  move1    = rotate0(rotate0(move1, R1 * R0, pcenter), R0.transpose(), pcenter);
+  return tilt(in, bump, R1 * R0, R0.transpose(), - ((move0 + move1) / T(2) - pcenter), T(1), pcenter);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto, const Vec3& origin0) {

@@ -215,7 +215,6 @@ int main(int argc, const char* argv[]) {
             sshape1[i][2] *= zr2;
           statmatch.init(sshape0, thresh_para, thresh_len, thresh_points, thresh_r, thresh_n);
           std::vector<match_t<double> > lmatches(statmatch.match(sshape1, div, r_max_theta));
-          // XXX: for memory and compiler debug, non stl code preferred.
           for(int i = 0; i < lmatches.size(); i ++)
             matches.push_back(lmatches[i]);
       }

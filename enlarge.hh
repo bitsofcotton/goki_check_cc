@@ -9,7 +9,7 @@ using std::pow;
 using std::vector;
 using std::sort;
 
-template <typename T> void autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* data, const int& size, int npad = 0) {
+template <typename T> T autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* data, const int& size, int npad = 0) {
   if(npad <= 0)
     npad = (data[0].rows() + data[0].cols()) * 4;
   vector<T> stat;
@@ -36,7 +36,7 @@ template <typename T> void autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyn
         buf(i, j) = (max(min(data[k](i, j), MM), mm) - mm) / (MM - mm);
     data[k] = buf;
   }
-  return;
+  return stat[stat.size() / 2];
 }
 
 template <typename T> class enlarger2ex {
