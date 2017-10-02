@@ -53,10 +53,10 @@ public:
   ~PseudoBump();
   void initialize(const int& z_max, const int& stp, const int& crowd, const int& vmax, const int& nloop, const int& ndiv, const T& rdist);
   
-  Mat  getPseudoBumpSub(const Mat& work, const int& rstp);
-  Mat  getPseudoBumpLoop(const Mat& work);
-  void getPseudoBumpVecSub(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& result, const int& vmax, const bool& y_only = false);
-  Mat  getPseudoBumpVec(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& bumps, const bool& y_only = false);
+  Mat getPseudoBumpSub(const Mat& work, const int& rstp);
+  Mat getPseudoBumpLoop(const Mat& work);
+  Mat getPseudoBumpVecSub(const Mat& input, const bool& y_only = false);
+  Mat getPseudoBumpVec(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& bumps, const bool& y_only = false);
 private:
   T sgn(const T& x);
   Vec getLineAxis(Vec p, Vec c, const int& w, const int& h);
@@ -238,7 +238,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return result;
 }
 
-template <typename T> void PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& result, const int& vmax, const bool& y_only) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, const bool& y_only) {
+  Mat result;
   if(y_only)
     result = getPseudoBumpLoop(input);
   else
@@ -254,12 +255,12 @@ template <typename T> void PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, 
         result(i, j) = med;
   for(int i = 0; i < sute.cols(); i ++)
     result.col(i) = complementLine(result.col(i));
-  return;
+  return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& bumps, const bool& y_only) {
   Mat mats(input);
-  getPseudoBumpVecSub(mats, points, delaunays, bumps, vmax, y_only);
+  bumps = getPseudoBumpVecSub(mats);
   tilter<T> tilt;
   int ratio(1);
   while(rrstp * rrstp * 8 < min(mats.rows(), mats.cols())) {
@@ -267,13 +268,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     ratio *= rrstp;
     vector<Vec3> workpoints;
     vector<Eigen::Matrix<int, 3, 1> > workdels;
-    Mat merge;
-    getPseudoBumpVecSub(mats, workpoints, workdels, merge, vmax / ratio, y_only);
-    for(int i = 0; i < mats.rows(); i ++)
-      for(int j = 0; j < mats.cols(); j ++)
-        for(int ii = i * ratio; ii < min((i + 1) * ratio, int(mats.rows())); ii ++)
-          for(int jj = j * ratio; jj < min((j + 1) * ratio, int(mats.cols())); jj ++)
-            bumps(ii, jj) += merge(i, j);
+    Mat merge(getPseudoBumpVecSub(mats));
+    for(int i = 0; i < merge.rows(); i ++)
+      for(int j = 0; j < merge.cols(); j ++)
+        for(int ii = i * ratio; ii < min((i + 1) * ratio, int(bumps.rows())); ii ++)
+          for(int jj = j * ratio; jj < min((j + 1) * ratio, int(bumps.cols())); jj ++)
+            // XXX checkme (intensity ratio).
+            bumps(ii, jj) += merge(i, j) / sqrt(rrstp);
   }
   complement(bumps, crowd, vmax, points, delaunays);
   vector<Vec3> ppoints(points);
