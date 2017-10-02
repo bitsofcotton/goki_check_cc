@@ -29,8 +29,6 @@ int main(int argc, const char* argv[]) {
     mode = 1;
   else if(strcmp(argv[1], "bump") == 0)
     mode = 2;
-  else if(strcmp(argv[1], "bumpobj") == 0)
-    mode = 3;
   else if(strcmp(argv[1], "collect") == 0)
     mode = 4;
   else if(strcmp(argv[1], "tilt") == 0)
@@ -81,25 +79,20 @@ int main(int argc, const char* argv[]) {
   case 2:
     {
       PseudoBump<double> bump;
-      data[0] = bump.getPseudoBump(rgb2l(data).template cast<double>(), !false).template cast<float>();
-      data[1] = data[0];
-      data[2] = data[0];
-    }
-    break;
-  case 3:
-    {
-      PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
-      data[0] = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay, true).template cast<float>();
-      data[1] = data[0];
-      data[2] = data[0];
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps;
+      const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay, bumps, true).template cast<float>());
+      data[0] = data[1] = data[2] = bumps.template cast<float>();
       for(int i = 0; i < points.size(); i ++)
         points[i][2] *= double(20);
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
         std::cout << points[i].transpose() << std::endl;
-      saveobj(points, delaunay, argv[4]);
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3];
+      outs[0] = outs[1] = outs[2] = b_mesh.template cast<float>();
+      savep2or3<float>(argv[4], outs, false);
+      saveobj(points, delaunay, argv[5]);
     }
     break;
   case 6:
@@ -112,7 +105,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .975);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .99);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<float>(outfile.c_str(), out, false);
@@ -161,12 +154,13 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data1, argv[4]))
         return - 2;
       PseudoBump<double> bump;
-      bump.vmax = 300;
+      bump.vmax = 150;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay0, delaunay1;
-      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0, true).template cast<float>();
-      bump.vmax = 120;
-      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1, true).template cast<float>();
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sute;
+      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0, sute, true).template cast<float>();
+      bump.vmax = 60;
+      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1, sute, true).template cast<float>();
       // XXX: configure me.
       float thresh_para(.95);
       float thresh_len(.8);
@@ -289,10 +283,11 @@ int main(int argc, const char* argv[]) {
         return - 2;
       }
       PseudoBump<double> bumper;
-      bumper.vmax = 120;
+      bumper.vmax = 60;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int, 3, 1> > poly;
-      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly, true).template cast<float>();
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sute;
+      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly, sute, true).template cast<float>();
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());
