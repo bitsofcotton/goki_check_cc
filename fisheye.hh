@@ -17,7 +17,7 @@ using std::vector;
 using std::sort;
 using std::max;
 using std::min;
-using std::sin;
+using std::cos;
 using std::sqrt;
 using std::isfinite;
 
@@ -206,7 +206,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       workc.col(j) = complementLine(workc.col(j));
     const Mat worku(getPseudoBumpSub(tilter.tilt(workc, work, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
     const Mat workl(getPseudoBumpSub(tilter.tilt(workc, work, 3, 4, (i + 1) / T(ndiv) + T(1)), rstp));
-    const T ry(sin(Pi / T(2) * (i + 1) / T(ndiv)));
+    const T ry(cos(Pi / T(2) * (i + 1) / T(ndiv)));
     const T dy(result.rows() / 2 - result.rows() / 2 * ry);
     // XXX : inverse of t?
     const T t(T(1) + sqrt(T(2) * (T(1) - ry)));
@@ -361,6 +361,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
                           geoms[delaunay[i][2]][2]) / T(3);
       }
   }
+  autoLevel<T>(&result, 1);
   return result;
 }
 
