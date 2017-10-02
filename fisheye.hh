@@ -250,15 +250,20 @@ template <typename T> void PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, 
     for(int j = 0; j < result.cols(); j ++)
       if(T(1) <= sute(i, j) && T(0) <= result(i, j))
         result(i, j) = med;
-  sute = result;
-  for(int i = 0; i < sute.cols(); i ++)
-    sute.col(i) = complementLine(sute.col(i));
-  autoLevel<T>(&sute, 1, 0);
   edgedetect<T> detect;
-  auto edge(detect.detect(detect.detect(sute, detect.DETECT_Y), detect.COLLECT_Y));
+  auto edge(detect.detect(detect.detect(input, detect.DETECT_Y), detect.COLLECT_Y));
   T avg(0);
-  for(int i = 0; i < result.cols(); i ++)
-    avg = max(avg, edge.col(i).dot(edge.col(i)));
+  for(int i = 0; i < result.cols(); i ++) {
+    T buf(0);
+    int count(0);
+    for(int j = 0; j < result.rows(); j ++)
+      if(T(0) <= result(j, i)) {
+        buf += result(j, i);
+        count ++;
+      }
+    if(count)
+      avg = max(avg, buf / count);
+  }
   avg = sqrt(avg / result.rows());
   Mat work(result);
   for(int i = 0; i < result.rows(); i ++)
