@@ -208,7 +208,7 @@ private:
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(12, .95, .8, .0625, .125, 2., .125, .1);
+  init(12, .95, .8, .0625, .125, 2., .25, .1);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -419,8 +419,8 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
                 Mat3x3 roterr(work.rot * result[kk].rot.transpose());
                 T      rotdnorm(0);
                 for(int l = 0; l < work.rot.rows(); l ++)
-                  rotdnorm += pow(abs(roterr(l, l)) - T(1), T(2));
-                rotdnorm  = sqrt(rotdnorm) / T(3);
+                  rotdnorm += pow(roterr(l, l) - T(1), T(2));
+                rotdnorm  = sqrt(rotdnorm);
                 rotdnorm += sqrt(test.dot(test) / 
                                  (work.offset.dot(work.offset) *
                                   result[kk].offset.dot(result[kk].offset)))
@@ -429,10 +429,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
                    min(min(pow(T(1) - work.ratio / result[kk].ratio, T(2)),
                            pow(T(1) - result[kk].ratio / work.ratio, T(2))),
                        T(1));
-                if(!(rotdnorm <= threshc &&
-                     T(0) <= roterr(0, 0) &&
-                     T(0) <= roterr(1, 1) &&
-                     T(0) <= roterr(2, 2)) ) {
+                if(rotdnorm <= threshc) {
                   vector<match_t<T>> workbuf;
                   workbuf.push_back(result[kk]);
                   workbuf.push_back(work);
