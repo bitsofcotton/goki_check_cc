@@ -150,34 +150,18 @@ public:
   bool operator == (const match_t<T>& x) const {
     const auto test(offset - x.offset);
     const auto roterr(rot * x.rot.transpose());
-          T      rotdnorm(0);
+          T    rotdnorm(0);
     for(int l = 0; l < rot.rows(); l ++)
       rotdnorm += pow(roterr(l, l) - T(1), T(2));
     rotdnorm  = sqrt(rotdnorm) / T(3);
     rotdnorm += sqrt(test.dot(test) / 
-                    (offset.dot(offset) * x.offset.dot(x.offset))) / T(3);
+                     (offset.dot(offset) * x.offset.dot(x.offset))) / T(3);
     rotdnorm +=
       min(min(pow(T(1) - ratio   / x.ratio, T(2)),
               pow(T(1) - x.ratio / ratio,   T(2))), T(1));
     return rotdnorm <= threshc;
   }
 };
-
-template <typename T> bool lessDupMatch(const match_t<T>& x0, const match_t<T>& x1) {
-    const auto test(x0.offset - x1.offset);
-    const auto roterr(x0.rot * x1.rot.transpose());
-          T    rotdnorm(0);
-    for(int l = 0; l < x0.rot.rows(); l ++)
-      rotdnorm += pow(roterr(l, l) - T(1), T(2));
-    rotdnorm  = sqrt(rotdnorm) / T(3);
-    rotdnorm += sqrt(test.dot(test) / 
-                    (x0.offset.dot(x0.offset) * x1.offset.dot(x1.offset)))
-                / T(3);
-    rotdnorm +=
-      min(min(pow(T(1) - x0.ratio / x1.ratio, T(2)),
-              pow(T(1) - x1.ratio / x0.ratio, T(2))), T(1));
-    return rotdnorm - x0.threshc < T(0);
-}
 
 template <typename T> class msub_t {
 public:
@@ -422,19 +406,27 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
             work.rdepth = sqrt(err);
             if(sqrt(err) < thresh) {
 #if defined(_OPENMP)
-#pragma omp atomic
+#pragma omp critical
 #endif
-              result.push_back(work);
-              cerr << "*";
-              fflush(stderr);
+              {
+                bool flag(false);
+                for(int k = 0; k < result.size(); k ++)
+                  if(result[k] == work) {
+                    flag = true;
+                    break;
+                  }
+                if(!flag) {
+                  result.push_back(work);
+                  cerr << "*";
+                  fflush(stderr);
+                }
+              }
             }
           }
         }
       }
     }
   }
-  sort(result.begin(), result.end(), lessDupMatch<T>);
-  result.erase(unique(result.begin(), result.end()), result.end());
   sort(result.begin(), result.end());
   return result;
 }

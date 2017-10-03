@@ -210,8 +210,6 @@ int main(int argc, const char* argv[]) {
           for(int i = 0; i < lmatches.size(); i ++)
             matches.push_back(lmatches[i]);
       }
-      std::sort(matches.begin(), matches.end(), lessDupMatch<double>);
-      matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
       std::sort(matches.begin(), matches.end());
       float zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
@@ -310,8 +308,6 @@ int main(int argc, const char* argv[]) {
         std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
       }
       float zr(zrs);
-      std::sort(matches.begin(), matches.end(), lessDupMatch<double>);
-      matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
       std::sort(matches.begin(), matches.end());
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
