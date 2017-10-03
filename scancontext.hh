@@ -208,7 +208,7 @@ private:
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(12, .95, .8, .0625, .125, 2., .5, .1);
+  init(12, .95, .8, .0625, .125, 2., .125, .1);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -242,7 +242,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
 #pragma omp for
 #endif
     for(int j = 0; j < shapebase.size(); j ++) {
-      cerr << "*";
+      cerr << ".";
       fflush(stderr);
       for(int k = 0; k < points.size(); k ++) {
         Vec3 aj(shapebase[j]), bk(points[k]);
@@ -412,23 +412,27 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
 #pragma omp critical
 #endif
             {
-              bool flag  = false;
-              int  idxf  = - 1;
+              int idxf(- 1);
               // eliminate similar matches.
               for(int kk = 0; kk < result.size(); kk ++) {
                 Vec3   test(work.offset - result[kk].offset);
                 Mat3x3 roterr(work.rot * result[kk].rot.transpose());
                 T      rotdnorm(0);
                 for(int l = 0; l < work.rot.rows(); l ++)
-                  rotdnorm += pow(roterr(l, l) - T(1), T(2));
-                if(sqrt(test.dot(test) /
-                        (work.offset.dot(work.offset) *
-                         result[kk].offset.dot(result[kk].offset))) +
-                   sqrt(rotdnorm) +
-                   min(pow(T(1) - work.ratio / result[kk].ratio, T(2)),
-                       pow(T(1) - result[kk].ratio / work.ratio, T(2)))
-                    <= T(7) * threshc) {
-                  flag = true;
+                  rotdnorm += pow(abs(roterr(l, l)) - T(1), T(2));
+                rotdnorm  = sqrt(rotdnorm) / T(3);
+                rotdnorm += sqrt(test.dot(test) / 
+                                 (work.offset.dot(work.offset) *
+                                  result[kk].offset.dot(result[kk].offset)))
+                            / T(3);
+                rotdnorm +=
+                   min(min(pow(T(1) - work.ratio / result[kk].ratio, T(2)),
+                           pow(T(1) - result[kk].ratio / work.ratio, T(2))),
+                       T(1));
+                if(!(rotdnorm <= threshc &&
+                     T(0) <= roterr(0, 0) &&
+                     T(0) <= roterr(1, 1) &&
+                     T(0) <= roterr(2, 2)) ) {
                   vector<match_t<T>> workbuf;
                   workbuf.push_back(result[kk]);
                   workbuf.push_back(work);
@@ -442,7 +446,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
               }
               if(idxf >= 0)
                 result[idxf] = work;
-              else if(!flag)
+              else
                 result.push_back(work);
             }
           }
