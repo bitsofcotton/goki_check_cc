@@ -78,7 +78,10 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     
     #include "fisheye.hh"
     PseudoBump<float> bump;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpped(bump.getPseudoBump(input));
+    std::vector<Eigen::Matrix<float, 3, 1> > points;
+    std::vector<Eigen::Matrix<int,   3, 1> > delaunay;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumps;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBumpVec(input, points, delaunay, bumps));
     
     #include "tilt.hh"
     tilter<float> tilt;
