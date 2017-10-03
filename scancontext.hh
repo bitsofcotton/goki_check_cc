@@ -14,6 +14,7 @@ using std::cos;
 using std::sin;
 using std::pow;
 using std::sort;
+using std::unique;
 using std::min;
 using std::max;
 using std::cerr;
@@ -30,11 +31,10 @@ public:
     score = other.score;
     return *this;
   }
+  bool operator < (const lfmatch_t<T>& x1) const {
+    return score > x1.score;
+  }
 };
-
-template <typename T> int cmplfwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
-  return x0.score > x1.score;
-}
 
 template <typename T> int cmplfrwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
   return x0.pt[0] < x1.pt[0] || (x0.pt[0] == x1.pt[0] && x0.pt[1] < x1.pt[1]);
@@ -111,7 +111,7 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
       pt[2] *= T(60);
       match.push_back(m);
     }
-  sort(match.begin(), match.end(), cmplfwrap<T>);
+  sort(match.begin(), match.end());
   // XXX add me lowpoly:
   vector<lfmatch_t<T> > result(match);
   sort(result.begin(), result.end(), cmplfrwrap<T>);
@@ -127,8 +127,12 @@ public:
   T                      rpoints;
   vector<int>            dstpoints;
   vector<int>            srcpoints;
+  T                      threshc;
   match_t() {
-    ;
+    threshc = T(0);
+  }
+  match_t(const T& threshc) {
+    this->threshc = threshc;
   }
   match_t(const match_t<T>& other) {
     *this = other;
@@ -142,7 +146,28 @@ public:
     rpoints   = other.rpoints;
     dstpoints = other.dstpoints;
     srcpoints = other.srcpoints;
+    threshc   = other.threshc;
     return *this;
+  }
+  // XXX configure us:
+  bool operator < (const match_t<T>& x1) const {
+    // return abs(ratio) > abs(x1.ratio) || (ratio == x1.ratio && rpoints > x1.rpoints);
+    // return abs(ratio) > abs(x1.ratio) || (ratio == x1.ratio && rdepth > x1.rdepth) || (ratio == x1.ratio && rdepth == x1.rdepth && rpoints > x1.rpoints);
+    return rpoints > x1.rpoints || (rpoints == x1.rpoints && rdepth > x1.rdepth);
+  }
+  bool operator == (const match_t<T>& x) const {
+    const auto test(offset - x.offset);
+    const auto roterr(rot * x.rot.transpose());
+          T      rotdnorm(0);
+    for(int l = 0; l < rot.rows(); l ++)
+      rotdnorm += pow(roterr(l, l) - T(1), T(2));
+    rotdnorm  = sqrt(rotdnorm) / T(3);
+    rotdnorm += sqrt(test.dot(test) / 
+                     (offset.dot(offset) * x.offset.dot(x.offset))) / T(3);
+    rotdnorm +=
+      min(min(pow(T(1) - ratio   / x.ratio, T(2)),
+              pow(T(1) - x.ratio / ratio,   T(2))), T(1));
+    return rotdnorm <= threshc;
   }
 };
 
@@ -164,19 +189,10 @@ public:
     mbufN = other.mbufN;
     return *this;
   }
+  bool operator < (const msub_t<T>& x1) const {
+    return mbufN > x1.mbufN || (mbufN == x1.mbufN && mbufj < x1.mbufj) || (mbufN == x1.mbufN && mbufj == x1.mbufj && mbufk < x1.mbufk);
+  }
 };
-
-template <typename T> int cmpwrap(const match_t<T>& x0, const match_t<T>& x1) {
-  // XXX configure me:
-  // return abs(x0.ratio) > abs(x1.ratio) || (x0.ratio == x1.ratio && x0.rpoints > x1.rpoints);
-  // return abs(x0.ratio) > abs(x1.ratio) || (x0.ratio == x1.ratio && x0.rdepth > x1.rdepth) || (x0.ratio == x1.ratio && x0.rdepth == x1.rdepth && x0.rpoints > x1.rpoints);
-  return x0.rpoints > x1.rpoints || (x0.rpoints == x1.rpoints && x0.rdepth > x1.rdepth);
-}
-
-template <typename T> int cmpsubwrap(const msub_t<T>& x0, const msub_t<T>& x1) {
-  return x0.mbufN > x1.mbufN || (x0.mbufN == x1.mbufN && x0.mbufj < x1.mbufj) || (x0.mbufN == x1.mbufN && x0.mbufj == x1.mbufj && x0.mbufk < x1.mbufk);
-}
-
 
 template <typename T> class matchPartialPartial {
 public:
@@ -303,11 +319,11 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
       cerr << " : " << msub.size() << endl;
       if(!msub.size())
         continue;
-      sort(msub.begin(), msub.end(), cmpsubwrap<T>);
+      sort(msub.begin(), msub.end());
       int k0(0);
       for(; k0 < msub.size(); k0 ++) {
-        match_t<T> work;
-        work.rot = drot0;
+        match_t<T> work(threshc);
+        work.rot = Mat(drot0);
         for(int k = 0; k < ddiv.size(); k ++) {
           Mat3x3 lrot;
           const T theta(ddiv[k] * msub[k0].mbufN);
@@ -409,50 +425,16 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
           work.rdepth = T(1) / sqrt(err);
           if(sqrt(err) < thresh) {
 #if defined(_OPENMP)
-#pragma omp critical
+#pragma omp atomic
 #endif
-            {
-              int idxf(- 1);
-              // eliminate similar matches.
-              for(int kk = 0; kk < result.size(); kk ++) {
-                Vec3   test(work.offset - result[kk].offset);
-                Mat3x3 roterr(work.rot * result[kk].rot.transpose());
-                T      rotdnorm(0);
-                for(int l = 0; l < work.rot.rows(); l ++)
-                  rotdnorm += pow(roterr(l, l) - T(1), T(2));
-                // XXX checkme:
-                rotdnorm  = sqrt(sqrt(rotdnorm)) / T(3);
-                rotdnorm += sqrt(test.dot(test) / 
-                                 (work.offset.dot(work.offset) *
-                                  result[kk].offset.dot(result[kk].offset)))
-                            / T(3);
-                rotdnorm +=
-                   min(min(pow(T(1) - work.ratio / result[kk].ratio, T(2)),
-                           pow(T(1) - result[kk].ratio / work.ratio, T(2))),
-                       T(1));
-                if(rotdnorm <= threshc) {
-                  vector<match_t<T>> workbuf;
-                  workbuf.push_back(result[kk]);
-                  workbuf.push_back(work);
-                  sort(workbuf.begin(), workbuf.end(), cmpwrap<T>);
-                  if(workbuf[0].rpoints == work.rpoints &&
-                     workbuf[0].rdepth  == work.rdepth) {
-                    idxf = kk;
-                    break;
-                  }
-                }
-              }
-              if(idxf >= 0)
-                result[idxf] = work;
-              else
-                result.push_back(work);
-            }
+            result.push_back(work);
           }
         }
       }
     }
   }
-  sort(result.begin(), result.end(), cmpwrap<T>);
+  sort(result.begin(), result.end());
+  result.erase(unique(result.begin(), result.end()), result.end());
   return result;
 }
 

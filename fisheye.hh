@@ -209,7 +209,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     const T ry(cos(Pi / T(2) * (i + 1) / T(ndiv)));
     const T dy(result.rows() / 2 - result.rows() / 2 * ry);
     // XXX : inverse of t?
-    const T t(T(1) + sqrt(T(2) * (T(1) - ry)));
+    const T t(T(1) / (T(1) + sqrt(T(2) * (T(1) - ry))));
     for(int j = dy; j < result.rows() - dy + 1; j ++)
       for(int k = 0; k < result.cols(); k ++) {
         const int j1((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
