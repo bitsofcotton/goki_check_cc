@@ -18,13 +18,16 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * * nloop   : 傾けながら z 軸を補正していく際のループ回数です
 * * ndiv    : 傾ける際の最小の角度の分割数です
 * tilt.hh
-* * z_atio : [0,1] から [0,z_atio] への線形写像。
+* * z_ratio : [0,1] から [0,z_atio] への線形写像。
 * scancontext.hh
+* * matchPartialPartial::ndiv    : 合致する角度の分割数です
 * * matchPartialPartial::thresh  : 平行なベクトルのための誤差です。1 - &epsilon;
 * * matchPartialPartial::threshl : 平行なベクトルのノルムのための誤差です。 1 - &epsilon;
-* * matchPartialPartial::threshN : 平行なベクトルを検出する際の角度のノルムの閾値です。
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
 * * matchPartialPartial::threshr : 検出される最小の画像倍率です。
+* * matchPartialPartial::threshN : 平行なベクトルを検出する際の角度のノルムの閾値です。
+* * matchPartialPartial::threshc : 合致が同じかどうか判定する閾値です。
+* * matchPartialPartial::r_max_theta : 回転の際に残る最小の z 軸の比率です。
 
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。
@@ -57,8 +60,11 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     ./tools lpoly input.ppm output-match.ppm output.obj
     
     # list matches.
-    ./tools match input-matchbase.ppm output-base input-to-bematched.ppm ref-to-be-matched.ppm ref-matchbase.ppm
-
+    ./tools match input-matchbase.ppm output-base input-tobematched.ppm
+    
+    # list matches 2d - 3d.
+    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj
+    
 # ライブラリとしての使い方
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
     
@@ -87,10 +93,9 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     #include "scancontext.hh"
     lowFreq<float> lf;
     matchPartialPartial<float> statmatch;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(input, 300));
-    std::vector<Eigen::Matrix<float, 3, 1> > shape2(lf.getLowFreq(input2, 300));
-    statmatch.init(shape0, .85, .25, .125, .3);
-    std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(input, 300));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(input2, 300));
+    std::vector<match_t<float> > matches(statmatch.match(shape0, shape1));
     // match operations.
     
     // If you need, please scope with namespace block.
@@ -117,5 +122,5 @@ PseudoBump はもっともらしいバンプマップを返しますが、正し
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable12.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable12.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable15.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable15.tar.gz
