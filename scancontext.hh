@@ -208,7 +208,7 @@ private:
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(12, .95, .8, .0625, .125, 2., .25, .1);
+  init(12, .95, .8, .0625, .125, 2., .75, .1);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -420,7 +420,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
                 T      rotdnorm(0);
                 for(int l = 0; l < work.rot.rows(); l ++)
                   rotdnorm += pow(roterr(l, l) - T(1), T(2));
-                rotdnorm  = sqrt(rotdnorm) / T(3);
+                rotdnorm  = rotdnorm / T(3);
                 rotdnorm += sqrt(test.dot(test) / 
                                  (work.offset.dot(work.offset) *
                                   result[kk].offset.dot(result[kk].offset)))
