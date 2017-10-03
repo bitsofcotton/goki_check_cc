@@ -434,14 +434,16 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
                   workbuf.push_back(work);
                   sort(workbuf.begin(), workbuf.end(), cmpwrap<T>);
                   if(workbuf[0].rpoints == work.rpoints &&
-                     workbuf[0].rdepth  == work.rdepth)
+                     workbuf[0].rdepth  == work.rdepth) {
                     idxf = kk;
+                    break;
+                  }
                 }
               }
-              if(!flag)
-                result.push_back(work);
-              else if(idxf >= 0)
+              if(idxf >= 0)
                 result[idxf] = work;
+              else if(!flag)
+                result.push_back(work);
             }
           }
         }
