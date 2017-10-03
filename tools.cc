@@ -210,6 +210,8 @@ int main(int argc, const char* argv[]) {
           for(int i = 0; i < lmatches.size(); i ++)
             matches.push_back(lmatches[i]);
       }
+      std::sort(matches.begin(), matches.end(), lessDupMatch<double>);
+      matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
       std::sort(matches.begin(), matches.end());
       float zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
@@ -228,7 +230,8 @@ int main(int argc, const char* argv[]) {
             buf[idx2] = matches[n].srcpoints[hull1[idx][idx2]];
           mhull1.push_back(buf);
         }
-        cerr << "Writing " << n << " / " << matches.size() << "(" << float(1) / matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
+        cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
+        cerr << matches[n].rot << endl;
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = tilt.tilt(showMatch<double>(mout[idx].template cast<double>(), shape1, mhull1), mbump.template cast<double>(), matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3).template cast<float>();
         normalize<float>(outs, 1.);
@@ -307,25 +310,28 @@ int main(int argc, const char* argv[]) {
         std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
       }
       float zr(zrs);
+      std::sort(matches.begin(), matches.end(), lessDupMatch<double>);
+      matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
       std::sort(matches.begin(), matches.end());
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<double> tilt;
         reDig<double>  redig;
         tilt.initialize(zr * sqrt((data[0].rows() * data[0].cols()) / (data[0].rows() * data[0].cols())));
-        cerr << "Writing " << n << " / " << matches.size() << "(" << float(1) / matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
+        cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
         
+        std::vector<Eigen::Matrix<int, 3, 1> > ch(loadBumpSimpleMesh<double>(datapoly, matches[n].dstpoints));
+
         vector<Eigen::Matrix<double, 3, 1> > shape3d;
         for(int idx = 0; idx < datapoly.size(); idx ++)
           shape3d.push_back(matches[n].rot * matches[n].ratio * datapoly[idx] + matches[n].offset);
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = showMatch<double>(zero.template cast<double>(), shape3d, polynorms).template cast<float>();
+          outs[idx] = showMatch<double>(zero.template cast<double>(), shape3d, ch).template cast<float>();
         normalize<float>(outs, 1.);
         std::string outfile;
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-src.ppm");
         savep2or3<float>(outfile.c_str(), outs, false);
         
-        std::vector<Eigen::Matrix<int, 3, 1> > ch(loadBumpSimpleMesh<double>(datapoly, matches[n].dstpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mch;
         for(int idx = 0; idx < ch.size(); idx ++) {
           Eigen::Matrix<int, 3, 1> buf;

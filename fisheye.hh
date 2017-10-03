@@ -208,8 +208,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     const Mat workl(getPseudoBumpSub(tilter.tilt(workc, work, 3, 4, (i + 1) / T(ndiv) + T(1)), rstp));
     const T ry(cos(Pi / T(2) * (i + 1) / T(ndiv)));
     const T dy(result.rows() / 2 - result.rows() / 2 * ry);
-    // XXX : inverse of t?
-    const T t(T(1) / (T(1) + sqrt(T(2) * (T(1) - ry))));
+    const T t0(T(1) - sqrt(T(2) * (T(1) - ry)));
+    const T t1(T(1) + sqrt(T(2) * (T(1) - ry)));
     for(int j = dy; j < result.rows() - dy + 1; j ++)
       for(int k = 0; k < result.cols(); k ++) {
         const int j1((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
@@ -218,12 +218,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         const int jc0(min(max(j0, 0), int(result.rows() - 1)));
         const int jj1(max(int(result.rows() - 1 - j), 0));
         const int jj0(max(int(min(result.rows() - 1 - (j + 1), result.rows() - 1)), 0));
-        T x0(worku(jj0, k) / t);
-        if(x0 < T(0) || (T(0) <= workl(jj0, k) * t && workl(jj0, k) * t < x0))
-          x0 = t * workl(jj0, k);
-        T x1(worku(jj1, k) / t);
-        if(x1 < T(0) || (T(0) <= workl(jj1, k) * t && workl(jj1, k) * t < x1))
-          x1 = t * workl(jj1, k);
+        T x0(worku(jj0, k) * t1);
+        if(x0 < T(0) || (T(0) <= workl(jj0, k) * t0 && workl(jj0, k) * t0 < x0))
+          x0 = workl(jj0, k) * t0;
+        T x1(worku(jj1, k) * t1);
+        if(x1 < T(0) || (T(0) <= workl(jj1, k) * t0 && workl(jj1, k) * t0 < x1))
+          x1 = workl(jj1, k) * t0;
         if(x0 < T(0) || x1 < T(0))
           continue;
         for(int l = jc0; l < jc1; l ++) {

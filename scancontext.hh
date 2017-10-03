@@ -36,10 +36,6 @@ public:
   }
 };
 
-template <typename T> int cmplfrwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
-  return x0.pt[0] < x1.pt[0] || (x0.pt[0] == x1.pt[0] && x0.pt[1] < x1.pt[1]);
-}
-
 template <typename T> class lowFreq {
 public:
   typedef complex<T> U;
@@ -112,10 +108,8 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
       match.push_back(m);
     }
   sort(match.begin(), match.end());
+  return match;
   // XXX add me lowpoly:
-  vector<lfmatch_t<T> > result(match);
-  sort(result.begin(), result.end(), cmplfrwrap<T>);
-  return result;
 }
 
 template <typename T> class match_t {
@@ -151,9 +145,7 @@ public:
   }
   // XXX configure us:
   bool operator < (const match_t<T>& x1) const {
-    // return abs(ratio) > abs(x1.ratio) || (ratio == x1.ratio && rpoints > x1.rpoints);
-    // return abs(ratio) > abs(x1.ratio) || (ratio == x1.ratio && rdepth > x1.rdepth) || (ratio == x1.ratio && rdepth == x1.rdepth && rpoints > x1.rpoints);
-    return rpoints > x1.rpoints || (rpoints == x1.rpoints && rdepth > x1.rdepth);
+    return rdepth < x1.rdepth || (rdepth == x1.rdepth && rpoints > x1.rpoints) || (rdepth == x1.rdepth && rpoints == x1.rpoints && ratio > x1.ratio);
   }
   bool operator == (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -163,13 +155,29 @@ public:
       rotdnorm += pow(roterr(l, l) - T(1), T(2));
     rotdnorm  = sqrt(rotdnorm) / T(3);
     rotdnorm += sqrt(test.dot(test) / 
-                     (offset.dot(offset) * x.offset.dot(x.offset))) / T(3);
+                    (offset.dot(offset) * x.offset.dot(x.offset))) / T(3);
     rotdnorm +=
       min(min(pow(T(1) - ratio   / x.ratio, T(2)),
               pow(T(1) - x.ratio / ratio,   T(2))), T(1));
     return rotdnorm <= threshc;
   }
 };
+
+template <typename T> bool lessDupMatch(const match_t<T>& x0, const match_t<T>& x1) {
+    const auto test(x0.offset - x1.offset);
+    const auto roterr(x0.rot * x1.rot.transpose());
+          T    rotdnorm(0);
+    for(int l = 0; l < x0.rot.rows(); l ++)
+      rotdnorm += pow(roterr(l, l) - T(1), T(2));
+    rotdnorm  = sqrt(rotdnorm) / T(3);
+    rotdnorm += sqrt(test.dot(test) / 
+                    (x0.offset.dot(x0.offset) * x1.offset.dot(x1.offset)))
+                / T(3);
+    rotdnorm +=
+      min(min(pow(T(1) - x0.ratio / x1.ratio, T(2)),
+              pow(T(1) - x1.ratio / x0.ratio, T(2))), T(1));
+    return rotdnorm - x0.threshc < T(0);
+}
 
 template <typename T> class msub_t {
 public:
@@ -205,7 +213,7 @@ public:
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
-  void init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc, const T& r_max_theta);
+  void init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
 private:
@@ -218,223 +226,216 @@ private:
   T   threshp;
   T   threshr;
   T   threshc;
-  T   r_max_theta;
 };
 
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(12, .95, .8, .0625, .125, 2., .75, .1);
+  init(12, .2, .2, .0625, .125, .125, .125);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
   ;
 }
 
-template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc, const T& r_max_theta) {
+template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc) {
   this->ndiv        = ndiv;
-  this->thresh      = abs(T(1) - thresh);
-  this->threshl     = abs(T(1) - threshl);
-  this->threshN     = threshN;
+  this->thresh      = thresh;
+  this->threshl     = threshl;
   this->threshp     = threshp;
   this->threshr     = threshr;
+  this->threshN     = threshN;
   this->threshc     = threshc;
-  this->r_max_theta = r_max_theta;
   return;
 }
 
 template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points) {
   vector<match_t<T> > result;
-  Mat3x3 drot0;
-  for(int k = 0; k < drot0.rows(); k ++)
-    for(int l = 0; l < drot0.cols(); l ++)
-      drot0(k, l) = (k == l ? T(1) : T(0));
-  for(int i = 0; i < 3; i ++) {
-    Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
-    // init table.
-    cerr << "making table (" << i << "/3)" << endl;
+  for(int bxchg = 0; bxchg < 1; bxchg ++) {
+    Mat3x3 drot0;
+    for(int k = 0; k < drot0.rows(); k ++)
+      for(int l = 0; l < drot0.cols(); l ++)
+        drot0(k, l) = (k == l ? T(1) : T(0));
+    for(int i = 0; i < 3; i ++) {
+      Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
+      // init table.
+      cerr << "making table (" << i << "/3)" << endl;
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for
 #endif
-    for(int j = 0; j < shapebase.size(); j ++) {
-      cerr << ".";
-      fflush(stderr);
-      for(int k = 0; k < points.size(); k ++) {
-        Vec3 aj(shapebase[j]), bk(points[k]);
-        aj /= sqrt(aj.dot(aj));
-        bk /= sqrt(bk.dot(bk));
-        for(int l = 0; l < table(j, k).size(); l ++) {
-          const T a(bk[(l + i) % 3]);
-          const T b(bk[(l + i + 1) % 3]);
-          const T c(aj[(l + i) % 3]);
-          table(j, k)[l] = sqrt(- T(1));
-          if(a * a + b * b < c * c)
-            continue;
-          const T theta0(T(2) * atan2(  sqrt(a * a + b * b - c * c) - b, a + c));
-          const T theta1(T(2) * atan2(- sqrt(a * a + b * b - c * c) - b, a + c));
-          if(isfinite(theta0) &&
-             abs((cos(theta0) * a - sin(theta0) * b) - c) < thresh)
-            table(j, k)[l] = theta0;
-          else if(isfinite(theta1) &&
-             abs((cos(theta1) * a - sin(theta1) * b) - c) < thresh)
-            table(j, k)[l] = theta1;
-          const T& theta(table(j, k)[l]);
-          bk[(l + i    ) % 3] = cos(theta) * a - sin(theta) * b;
-          bk[(l + i + 1) % 3] = sin(theta) * a + cos(theta) * b;
+      for(int j = 0; j < shapebase.size(); j ++) {
+        cerr << ".";
+        fflush(stderr);
+        for(int k = 0; k < points.size(); k ++) {
+          Vec3 aj(shapebase[j]), bk(points[k]);
+          aj /= sqrt(aj.dot(aj));
+          bk /= sqrt(bk.dot(bk));
+          for(int l = 0; l < table(j, k).size(); l ++) {
+            const T a(bk[(l + i) % 3]);
+            const T b(bk[(l + i + 1) % 3]);
+            const T c(aj[(l + i) % 3]);
+            table(j, k)[l] = sqrt(- T(1));
+            if(a * a + b * b < c * c)
+              continue;
+            const T theta0(T(2) * atan2(  sqrt(a * a + b * b - c * c) - b, a + c));
+            const T theta1(T(2) * atan2(- sqrt(a * a + b * b - c * c) - b, a + c));
+            if(isfinite(theta0) &&
+               abs((cos(theta0) * a - sin(theta0) * b) - c) < thresh)
+              table(j, k)[l] = theta0;
+            else if(isfinite(theta1) &&
+               abs((cos(theta1) * a - sin(theta1) * b) - c) < thresh)
+              table(j, k)[l] = theta1;
+            const T& theta(table(j, k)[l]);
+            bk[(l + i    ) % 3] = cos(theta) * a - sin(theta) * b;
+            bk[(l + i + 1) % 3] = sin(theta) * a + cos(theta) * b;
+          }
+          const Vec3 err(aj - aj.dot(bk) * bk / bk.dot(bk));
+          if(thresh * thresh < err.dot(err))
+            table(j, k)[0] = table(j, k)[1] = sqrt(- T(1));
         }
-        const Vec3 err(aj - aj.dot(bk) * bk / bk.dot(bk));
-        if(thresh * thresh < err.dot(err))
-          table(j, k)[0] = table(j, k)[1] = sqrt(- T(1));
       }
-    }
-    // matches.
+      // matches.
 #if defined(_OPENMP)
 #pragma omp for
 #endif
-    for(int nd = 0; nd < ndiv + 1; nd ++) {
-      cerr << "matching table (" << i << "/3)" << " : " << nd << "/" << ndiv + 1;
-      Eigen::Matrix<T, 2, 1> ddiv;
-      ddiv[0] = cos(2. * Pi * nd / ndiv);
-      ddiv[1] = sin(2. * Pi * nd / ndiv);
-      if(nd == ndiv)
-        ddiv *= T(0);
-      vector<msub_t<T> > msub;
-      for(int k = 0; k < points.size(); k ++) {
-        for(int j = 0; j < shapebase.size(); j ++) {
-          T ldepth(1);
-          if(nd < ndiv)
-            ldepth = table(j, k).dot(ddiv) / sqrt(table(j, k).dot(table(j, k))) - T(1);
-          else
-            ldepth = sqrt(table(j, k).dot(table(j, k)));
-          if(isfinite(ldepth) && abs(ldepth) <= thresh) {
-            msub_t<T> workm;
-            workm.mbufj = j;
-            workm.mbufk = k;
-            workm.mbufN = sqrt(table(j, k).dot(table(j, k)));
-            msub.push_back(workm);
-          }
-        }
-      }
-      cerr << " : " << msub.size() << endl;
-      if(!msub.size())
-        continue;
-      sort(msub.begin(), msub.end());
-      int k0(0);
-      for(; k0 < msub.size(); k0 ++) {
-        match_t<T> work(threshc);
-        work.rot = Mat(drot0);
-        for(int k = 0; k < ddiv.size(); k ++) {
-          Mat3x3 lrot;
-          const T theta(ddiv[k] * msub[k0].mbufN);
-          lrot((k + i    ) % 3, (k + i    ) % 3) =   cos(theta);
-          lrot((k + i + 1) % 3, (k + i    ) % 3) =   sin(theta);
-          lrot((k + i    ) % 3, (k + i + 1) % 3) = - sin(theta);
-          lrot((k + i + 1) % 3, (k + i + 1) % 3) =   cos(theta);
-          lrot((k + i + 2) % 3, (k + i    ) % 3) = T(0);
-          lrot((k + i + 2) % 3, (k + i + 1) % 3) = T(0);
-          lrot((k + i + 2) % 3, (k + i + 2) % 3) = T(1);
-          lrot((k + i    ) % 3, (k + i + 2) % 3) = T(0);
-          lrot((k + i + 1) % 3, (k + i + 2) % 3) = T(0);
-          work.rot = lrot * work.rot;
-        }
-        if(abs(work.rot((i + 2) % 3, (i + 2) % 3)) < r_max_theta)
-          continue;
-        bool flagk[points.size()];
-        bool flagj[shapebase.size()];
-        for(int kk = 0; kk < points.size(); kk ++)
-          flagk[kk] = false;
-        for(int kk = 0; kk < shapebase.size(); kk ++)
-          flagj[kk] = false;
-        const Vec3 ajk0(shapebase[msub[k0].mbufj]);
-        const Vec3 bkk0(work.rot * points[msub[k0].mbufk]);
-        const T    t0(ajk0.dot(bkk0) / bkk0.dot(bkk0));
-        int  kk(k0 + 1);
-        for(; kk < msub.size(); kk ++) {
-          bool flagt(false);
-          for(; kk < msub.size(); kk ++)
-            if(!flagj[msub[kk].mbufj] &&
-               !flagk[msub[kk].mbufk] &&
-               abs(msub[k0].mbufN - msub[kk].mbufN) / msub[kk].mbufN < threshN) {
-              const Vec3 aj0(shapebase[msub[kk].mbufj]);
-              const Vec3 bk(work.rot * points[msub[kk].mbufk]);
-              Vec3 aj(aj0);
-              aj /= sqrt(aj.dot(aj));
-              aj -= aj.dot(bk) * bk / bk.dot(bk);
-              if(!isfinite(aj.dot(aj)) || thresh * thresh < aj.dot(aj))
-                continue;
-              const T t(aj0.dot(bk) / bk.dot(bk));
-              if(!isfinite(t) || threshl < max(abs(t0 / t - T(1)),
-                                               abs(t / t0 - T(1))))
-                continue;
-              flagt = true;
-              break;
+      for(int nd = 0; nd < ndiv; nd ++) {
+        cerr << "matching table (" << i << "/3)" << " : " << nd << "/" << ndiv;
+        Eigen::Matrix<T, 2, 1> ddiv;
+        ddiv[0] = cos(2. * Pi * nd / ndiv);
+        ddiv[1] = sin(2. * Pi * nd / ndiv);
+        vector<msub_t<T> > msub;
+        for(int k = 0; k < points.size(); k ++) {
+          for(int j = 0; j < shapebase.size(); j ++) {
+            const T lnorm(sqrt(table(j, k).dot(table(j, k))));
+            const T ldepth(table(j, k).dot(ddiv) / lnorm);
+            if(lnorm <= thresh || (isfinite(ldepth) && abs(ldepth) <= thresh)) {
+              msub_t<T> workm;
+              workm.mbufj = j;
+              workm.mbufk = k;
+              workm.mbufN = sqrt(table(j, k).dot(table(j, k)));
+              msub.push_back(workm);
             }
-          if(!flagt || msub.size() <= kk)
-            break;
-          work.dstpoints.push_back(int(msub[kk].mbufj));
-          work.srcpoints.push_back(int(msub[kk].mbufk));
-          flagj[msub[kk].mbufj] = true;
-          flagk[msub[kk].mbufk] = true;
+          }
         }
-        // if there's a match.
-        work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
-        if(threshp <= work.rpoints) {
-          cerr << "*";
-          fflush(stderr);
-          work.offset[0] = T(0);
-          work.offset[1] = T(0);
-          work.offset[2] = T(0);
-          for(int k = 0; k < work.dstpoints.size(); k ++)
-            work.offset += shapebase[work.dstpoints[k]];
-          work.offset /= work.dstpoints.size();
-          // maximize parallel parts.
-          Mat2x2 A;
-          Vec2   b;
-          b[0]       = b[1] = T(0);
-          A(0, 0)    = T(0);
-          A(0, 1)    = T(0);
-          A(1, 1)    = T(0);
-          for(int jj = 0; jj < work.dstpoints.size(); jj ++) {
-            A(0, 0) += work.offset.dot(work.offset);
-            A(0, 1) += work.offset.dot(work.rot * points[work.srcpoints[jj]]);
-            A(1, 1) += points[work.srcpoints[jj]].dot(points[work.srcpoints[jj]]);
-            b[0]    += shapebase[work.dstpoints[jj]].dot(work.offset);
-            b[1]    += shapebase[work.dstpoints[jj]].dot(work.rot * points[work.srcpoints[jj]]);
+        cerr << " : " << msub.size() << endl;
+        if(!msub.size())
+          continue;
+        sort(msub.begin(), msub.end());
+        for(int k0 = 0; k0 < msub.size(); k0 ++) {
+          match_t<T> work(threshc);
+          work.rot = drot0;
+          for(int k = 0; k < ddiv.size(); k ++) {
+            Mat3x3 lrot;
+            const T theta(ddiv[k] * msub[k0].mbufN);
+            lrot((k + i    ) % 3, (k + i    ) % 3) =   cos(theta);
+            lrot((k + i + 1) % 3, (k + i    ) % 3) =   sin(theta);
+            lrot((k + i    ) % 3, (k + i + 1) % 3) = - sin(theta);
+            lrot((k + i + 1) % 3, (k + i + 1) % 3) =   cos(theta);
+            lrot((k + i + 2) % 3, (k + i    ) % 3) = T(0);
+            lrot((k + i + 2) % 3, (k + i + 1) % 3) = T(0);
+            lrot((k + i + 2) % 3, (k + i + 2) % 3) = T(1);
+            lrot((k + i    ) % 3, (k + i + 2) % 3) = T(0);
+            lrot((k + i + 1) % 3, (k + i + 2) % 3) = T(0);
+            work.rot = lrot * work.rot;
           }
-          A(1, 0) = A(0, 1);
-          Eigen::RealSchur<Mat2x2> schur;
-          schur.compute(A, true);
-          const Mat2x2 U(schur.matrixU());
-          const Mat2x2 L(schur.matrixT());
-          b     = U.transpose() * b;
-          b[0] /= L(0, 0);
-          b[1] /= L(1, 1);
-          b     = U * b;
-          work.offset *= b[0];
-          work.ratio   = b[1];
-          if(abs(work.ratio) < threshr)
-            continue;
-          T err(0);
-          for(int k = 0; k < work.dstpoints.size(); k ++) {
-            const Vec3 a(shapebase[work.dstpoints[k]]);
-            const Vec3 b(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset);
-            err += (a - b).dot(a - b) / a.dot(a) / b.dot(b);
+          bool flagk[points.size()];
+          bool flagj[shapebase.size()];
+          for(int kk = 0; kk < points.size(); kk ++)
+            flagk[kk] = false;
+          for(int kk = 0; kk < shapebase.size(); kk ++)
+            flagj[kk] = false;
+          const Vec3 ajk0(shapebase[msub[k0].mbufj]);
+          const Vec3 bkk0(work.rot * points[msub[k0].mbufk]);
+          const T    t0(ajk0.dot(bkk0) / bkk0.dot(bkk0));
+          int  kk(k0 + 1);
+          for(; kk < msub.size(); kk ++) {
+            bool flagt(false);
+            for(; kk < msub.size(); kk ++)
+              if(!flagj[msub[kk].mbufj] &&
+                 !flagk[msub[kk].mbufk] &&
+                 abs(msub[k0].mbufN - msub[kk].mbufN) / msub[kk].mbufN < threshN) {
+                const Vec3 aj0(shapebase[msub[kk].mbufj]);
+                const Vec3 bk(work.rot * points[msub[kk].mbufk]);
+                Vec3 aj(aj0);
+                aj /= sqrt(aj.dot(aj));
+                aj -= aj.dot(bk) * bk / bk.dot(bk);
+                if(!isfinite(aj.dot(aj)) || thresh * thresh < aj.dot(aj) / aj0.dot(aj0))
+                  continue;
+                const T t(aj0.dot(bk) / bk.dot(bk));
+                if(!isfinite(t) || threshl < max(abs(t0 / t - T(1)),
+                                                 abs(t / t0 - T(1))))
+                  continue;
+                flagt = true;
+                break;
+              }
+            if(!flagt || msub.size() <= kk)
+              break;
+            work.dstpoints.push_back(int(msub[kk].mbufj));
+            work.srcpoints.push_back(int(msub[kk].mbufk));
+            flagj[msub[kk].mbufj] = true;
+            flagk[msub[kk].mbufk] = true;
           }
-          err /= work.dstpoints.size();
-          work.rdepth = T(1) / sqrt(err);
-          if(sqrt(err) < thresh) {
+          // if there's a match.
+          work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
+          if(threshp <= work.rpoints) {
+            work.offset[0] = T(0);
+            work.offset[1] = T(0);
+            work.offset[2] = T(0);
+            for(int k = 0; k < work.dstpoints.size(); k ++)
+              work.offset += shapebase[work.dstpoints[k]];
+            work.offset /= work.dstpoints.size();
+            // maximize parallel parts.
+            Mat2x2 A;
+            Vec2   b;
+            b[0]       = b[1] = T(0);
+            A(0, 0)    = T(0);
+            A(0, 1)    = T(0);
+            A(1, 1)    = T(0);
+            for(int jj = 0; jj < work.dstpoints.size(); jj ++) {
+              A(0, 0) += work.offset.dot(work.offset);
+              A(0, 1) += work.offset.dot(work.rot * points[work.srcpoints[jj]]);
+              A(1, 1) += points[work.srcpoints[jj]].dot(points[work.srcpoints[jj]]);
+              b[0]    += shapebase[work.dstpoints[jj]].dot(work.offset);
+              b[1]    += shapebase[work.dstpoints[jj]].dot(work.rot * points[work.srcpoints[jj]]);
+            }
+            A(1, 0) = A(0, 1);
+            Eigen::RealSchur<Mat2x2> schur;
+            schur.compute(A, true);
+            const Mat2x2 U(schur.matrixU());
+            const Mat2x2 L(schur.matrixT());
+            b     = U.transpose() * b;
+            b[0] /= L(0, 0);
+            b[1] /= L(1, 1);
+            b     = U * b;
+            work.offset *= b[0];
+            work.ratio   = b[1];
+            if(abs(work.ratio) < threshr || T(1) / threshr < abs(work.ratio))
+              continue;
+            T err(0);
+            for(int k = 0; k < work.dstpoints.size(); k ++) {
+              const Vec3 a(shapebase[work.dstpoints[k]]);
+              const Vec3 b(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset);
+              err += (a - b).dot(a - b) / a.dot(a) / b.dot(b);
+            }
+            err /= work.dstpoints.size();
+            work.rdepth = sqrt(err);
+            if(sqrt(err) < thresh) {
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
-            result.push_back(work);
+              result.push_back(work);
+              cerr << "*";
+              fflush(stderr);
+            }
           }
         }
       }
     }
   }
-  sort(result.begin(), result.end());
+  sort(result.begin(), result.end(), lessDupMatch<T>);
   result.erase(unique(result.begin(), result.end()), result.end());
+  sort(result.begin(), result.end());
   return result;
 }
 
