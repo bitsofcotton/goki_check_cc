@@ -20,13 +20,16 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * * ndiv    : tilt angle base.
 * * rdist   : ratio of distance for camera and plane.
 * tilt.hh
-* * z_atio : [0,1] to [0,z_atio].
+* * z_ratio : [0,1] to [0,z_atio].
 * scancontext.hh
+* * matchPartialPartial::ndiv    : number of divides that match angles.
 * * matchPartialPartial::thresh  : threshold to detect parallel vectors.
 * * matchPartialPartial::threshl : threshold to detect parallel vectors norm.
-* * matchPartialPartial::threshN : threshold to detect angle norm for match.
 * * matchPartialPartial::threshp : threshold for matched points.
 * * matchPartialPartial::threshr : threshold for matched size ratios.
+* * matchPartialPartial::threshN : threshold to detect angle norm for match.
+* * matchPartialPartial::threshc : threshold for eliminating duplicates.
+* * matchPartialPartial::r_max_theta : threshold for z-axis residue.
 
 # Context
 This program is inspired from re-focus photo softwares.  
@@ -60,7 +63,10 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     ./tools lpoly input.ppm output-match.ppm output.obj
     
     # list matches.
-    ./tools match input-matchbase.ppm output-base input-to-bematched.ppm ref-to-be-matched.ppm ref-matchbase.ppm
+    ./tools match input-matchbase.ppm output-base input-tobematched.ppm
+    
+    # list matches 2d - 3d.
+    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj
 
 # How to use as library (sample code).
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
@@ -90,10 +96,9 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     #include "scancontext.hh"
     lowFreq<float> lf;
     matchPartialPartial<float> statmatch;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape(lf.getLowFreq(input, 300));
-    std::vector<Eigen::Matrix<float, 3, 1> > shape2(lf.getLowFreq(input2, 300));
-    statmatch.init(shape0, .85, .25, .125, .3);
-    std::vector<match_t<float> > matches(statmatch.match(shape1, 20));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(input, 300));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(input2, 300));
+    std::vector<match_t<float> > matches(statmatch.match(shape0, shape1));
     // match operations.
     
     // If you need, please scope with namespace block.
@@ -119,5 +124,5 @@ PseudoBump makes a pseudo plausible things.
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable12.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable12.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable15.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable15.tar.gz
