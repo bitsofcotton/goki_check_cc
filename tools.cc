@@ -106,7 +106,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .995);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .99);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<float>(outfile.c_str(), out, false);
@@ -154,6 +154,12 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> data1[3], bump0, bump1;
       if(!loadp2or3<float>(data1, argv[4]))
         return - 2;
+      // XXX: configure me.
+      float zrs(1.);
+      float zre(.25);
+      int   zrl(4);
+      int   nshow(6);
+      float emph(.75);
       PseudoBump<double> bump;
       bump.vmax = 150;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
@@ -162,23 +168,9 @@ int main(int argc, const char* argv[]) {
       bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0, sute, true).template cast<float>();
       bump.vmax = 60;
       bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1, sute, true).template cast<float>();
-      // XXX: configure me.
-      float thresh_para(.95);
-      float thresh_len(.8);
-      float thresh_n(200.);
-      float thresh_points(.0625);
-      float thresh_r(.125);
-      float zrs(1.);
-      float zre(.25);
-      int   zrl(4);
-      // bump to bump match.
-      float r_max_theta(.01);
-      int   div(20);
-      int   nshow(6);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
-      float emph(.75);
       mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < 3; j ++)
@@ -214,8 +206,7 @@ int main(int argc, const char* argv[]) {
             sshape0[i][2] *= zr;
           for(int i = 0; i < sshape1.size(); i ++)
             sshape1[i][2] *= zr2;
-          statmatch.init(sshape0, thresh_para, thresh_len, thresh_points, thresh_r, thresh_n);
-          std::vector<match_t<double> > lmatches(statmatch.match(sshape1, div, r_max_theta));
+          std::vector<match_t<double> > lmatches(statmatch.match(sshape0, sshape1));
           for(int i = 0; i < lmatches.size(); i ++)
             matches.push_back(lmatches[i]);
       }
@@ -277,11 +268,16 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
       if(!loadobj<double>(datapoly, polynorms, argv[4]))
         return - 2;
-      // XXX magic number:
+      // XXX configure me:
       if(datapoly.size() > 2000) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
       }
+      float zrs(1.);
+      float zre(.25);
+      int   zrl(4);
+      int   nshow(6);
+      float emph(.75);
       PseudoBump<double> bumper;
       bumper.vmax = 60;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
@@ -298,20 +294,6 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < 3; j ++)
           I3(i, j) = (i == j ? float(1) : float(0));
-      
-      // XXX: configure me.
-      float thresh_para(.95);
-      float thresh_len(.8);
-      float thresh_n(200.);
-      float thresh_points(.0625);
-      float thresh_r(.125);
-      float zrs(1.);
-      float zre(.25);
-      int   zrl(4);
-      float r_max_theta(0);
-      int   div(20);
-      int   nshow(6);
-      float emph(.75);
       matchPartialPartial<double> statmatch;
       std::vector<match_t<double> > matches;
       for(float zr = zrs;
@@ -321,8 +303,7 @@ int main(int argc, const char* argv[]) {
         std::vector<Eigen::Matrix<double, 3, 1> > sshape(shape);
         for(int i = 0; i < shape.size(); i ++)
           sshape[i][2] *= zr;
-        statmatch.init(sshape, thresh_para, thresh_len, thresh_points, thresh_r, thresh_n);
-        std::vector<match_t<double> > lmatches(statmatch.match(datapoly, div, r_max_theta));
+        std::vector<match_t<double> > lmatches(statmatch.match(sshape, datapoly));
         std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
       }
       float zr(zrs);

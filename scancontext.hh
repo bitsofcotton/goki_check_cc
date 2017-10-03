@@ -33,7 +33,6 @@ public:
 };
 
 template <typename T> int cmplfwrap(const lfmatch_t<T>& x0, const lfmatch_t<T>& x1) {
-  // fixed. 2017/08/20.
   return x0.score > x1.score;
 }
 
@@ -190,41 +189,45 @@ public:
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
-  void init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN);
+  void init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc, const T& r_max_theta);
   
-  vector<match_t<T> > match(const vector<Vec3>& points, const int& ndiv = 120, const T& r_max_theta = T(0));
+  vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
 private:
   U I;
   T Pi;
-  // thresh, threshp in [0, 1]
+  int ndiv;
   T thresh;
   T threshl;
   T threshN;
   T threshp;
   T threshr;
-  vector<Vec3> shapebase;
+  T threshc;
+  T r_max_theta;
 };
 
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
+  init(12, .95, .8, .0625, .125, 2., .3, .1);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
   ;
 }
 
-template <typename T> void matchPartialPartial<T>::init(const vector<Vec3>& shapebase, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN) {
-  this->shapebase = shapebase;
-  this->thresh    = abs(T(1) - thresh);
-  this->threshl   = abs(T(1) - threshl);
-  this->threshN   = threshN;
-  this->threshp   = threshp;
-  this->threshr   = threshr;
+template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc, const T& r_max_theta) {
+  this->ndiv        = ndiv;
+  this->thresh      = abs(T(1) - thresh);
+  this->threshl     = abs(T(1) - threshl);
+  this->threshN     = threshN;
+  this->threshp     = threshp;
+  this->threshr     = threshr;
+  this->threshc     = threshc;
+  this->r_max_theta = r_max_theta;
   return;
 }
 
-template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& points, const int& ndiv, const T& r_max_theta) {
+template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points) {
   vector<match_t<T> > result;
   for(int i = 0; i < 3; i ++) {
     Mat3x3 drot0;
@@ -418,12 +421,11 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
                 T      rotdnorm(0);
                 for(int l = 0; l < work.rot.rows(); l ++)
                   rotdnorm += pow(roterr(l, l) - T(1), T(2));
-                // XXX magic number:
                 if(sqrt(test.dot(test) / work.offset.dot(work.offset) +
                         rotdnorm +
                         pow(max(T(1) - work.ratio / result[kk].ratio,
                                 T(1) - result[kk].ratio / work.ratio), T(2)))
-                    <= T(7) * T(.2)) {
+                    <= T(7) * threshc) {
                   flag = true;
                   break;
                 }
