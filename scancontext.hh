@@ -420,7 +420,8 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
                 T      rotdnorm(0);
                 for(int l = 0; l < work.rot.rows(); l ++)
                   rotdnorm += pow(roterr(l, l) - T(1), T(2));
-                rotdnorm  = rotdnorm / T(3);
+                // XXX checkme:
+                rotdnorm  = sqrt(sqrt(rotdnorm)) / T(3);
                 rotdnorm += sqrt(test.dot(test) / 
                                  (work.offset.dot(work.offset) *
                                   result[kk].offset.dot(result[kk].offset)))
