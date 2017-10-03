@@ -107,7 +107,7 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
         }
       m.score = csum / count;
       pt /= count;
-      // XXX checkme:
+      // XXX magic number:
       pt[2] *= T(60);
       match.push_back(m);
     }
@@ -193,22 +193,22 @@ public:
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
 private:
-  U I;
-  T Pi;
+  U   I;
+  T   Pi;
   int ndiv;
-  T thresh;
-  T threshl;
-  T threshN;
-  T threshp;
-  T threshr;
-  T threshc;
-  T r_max_theta;
+  T   thresh;
+  T   threshl;
+  T   threshN;
+  T   threshp;
+  T   threshr;
+  T   threshc;
+  T   r_max_theta;
 };
 
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(12, .95, .8, .0625, .125, 2., .3, .1);
+  init(12, .95, .8, .0625, .125, 2., .5, .1);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -229,11 +229,11 @@ template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T
 
 template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points) {
   vector<match_t<T> > result;
+  Mat3x3 drot0;
+  for(int k = 0; k < drot0.rows(); k ++)
+    for(int l = 0; l < drot0.cols(); l ++)
+      drot0(k, l) = (k == l ? T(1) : T(0));
   for(int i = 0; i < 3; i ++) {
-    Mat3x3 drot0;
-    for(int k = 0; k < drot0.rows(); k ++)
-      for(int l = 0; l < drot0.cols(); l ++)
-        drot0(k, l) = (k == l ? T(1) : T(0));
     Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
     // init table.
     cerr << "making table (" << i << "/3)" << endl;
@@ -335,7 +335,6 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         const T    t0(ajk0.dot(bkk0) / bkk0.dot(bkk0));
         int  kk(k0 + 1);
         for(; kk < msub.size(); kk ++) {
-          T    err(thresh * T(2));
           bool flagt(false);
           for(; kk < msub.size(); kk ++)
             if(!flagj[msub[kk].mbufj] &&
@@ -413,7 +412,8 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
 #pragma omp critical
 #endif
             {
-              bool flag = false;
+              bool flag  = false;
+              int  idxf  = - 1;
               // eliminate similar matches.
               for(int kk = 0; kk < result.size(); kk ++) {
                 Vec3   test(work.offset - result[kk].offset);
@@ -421,17 +421,27 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
                 T      rotdnorm(0);
                 for(int l = 0; l < work.rot.rows(); l ++)
                   rotdnorm += pow(roterr(l, l) - T(1), T(2));
-                if(sqrt(test.dot(test) / work.offset.dot(work.offset) +
-                        rotdnorm +
-                        pow(max(T(1) - work.ratio / result[kk].ratio,
-                                T(1) - result[kk].ratio / work.ratio), T(2)))
+                if(sqrt(test.dot(test) /
+                        (work.offset.dot(work.offset) *
+                         result[kk].offset.dot(result[kk].offset))) +
+                   sqrt(rotdnorm) +
+                   min(pow(T(1) - work.ratio / result[kk].ratio, T(2)),
+                       pow(T(1) - result[kk].ratio / work.ratio, T(2)))
                     <= T(7) * threshc) {
                   flag = true;
-                  break;
+                  vector<match_t<T>> workbuf;
+                  workbuf.push_back(result[kk]);
+                  workbuf.push_back(work);
+                  sort(workbuf.begin(), workbuf.end(), cmpwrap<T>);
+                  if(workbuf[0].rpoints == work.rpoints &&
+                     workbuf[0].rdepth  == work.rdepth)
+                    idxf = kk;
                 }
               }
               if(!flag)
                 result.push_back(work);
+              else if(idxf >= 0)
+                result[idxf] = work;
             }
           }
         }
@@ -553,9 +563,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     const int  k(hull[ii][2]);
     const Vec3 dst0((dst[match.dstpoints[i]] + dst[match.dstpoints[j]] + dst[match.dstpoints[k]]) / T(3));
     const Vec3 src0((src[match.srcpoints[i]] + src[match.srcpoints[j]] + src[match.srcpoints[k]]) / T(3));
-    const Vec3& p0(dst[match.dstpoints[i]]);
-    const Vec3& p1(dst[match.dstpoints[j]]);
-    const Vec3& p2(dst[match.dstpoints[k]]);
+    const Vec3& p0(src[match.srcpoints[i]]);
+    const Vec3& p1(src[match.srcpoints[j]]);
+    const Vec3& p2(src[match.srcpoints[k]]);
     for(int l = 0; l < triangles.size(); l ++) {
       if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
         for(int ll = 0; ll < 3; ll ++) {

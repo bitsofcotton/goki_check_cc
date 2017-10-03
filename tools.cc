@@ -155,11 +155,11 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data1, argv[4]))
         return - 2;
       // XXX: configure me.
-      float zrs(1.);
-      float zre(.25);
-      int   zrl(4);
+      float zrs(1.5);
+      float zre(.5);
+      int   zrl(3);
       int   nshow(6);
-      float emph(.75);
+      float emph(.25);
       PseudoBump<double> bump;
       bump.vmax = 150;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
@@ -273,11 +273,11 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
       }
-      float zrs(1.);
-      float zre(.25);
-      int   zrl(4);
+      float zrs(1.5);
+      float zre(.5);
+      int   zrl(3);
       int   nshow(6);
-      float emph(.75);
+      float emph(.25);
       PseudoBump<double> bumper;
       bumper.vmax = 60;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
