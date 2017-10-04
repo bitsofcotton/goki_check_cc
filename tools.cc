@@ -82,7 +82,7 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps;
-      const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay, bumps, true).template cast<float>());
+      const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay, bumps, !true).template cast<float>());
       data[0] = data[1] = data[2] = bumps.template cast<float>();
       for(int i = 0; i < points.size(); i ++)
         points[i][2] *= double(20);
@@ -206,19 +206,8 @@ int main(int argc, const char* argv[]) {
             sshape0[i][2] *= zr;
           for(int i = 0; i < sshape1.size(); i ++)
             sshape1[i][2] *= zr2;
-          std::vector<match_t<double> > lmatches(statmatch.match(sshape0, sshape1));
-          for(int i = 0; i < lmatches.size(); i ++) {
-            bool flag(false);
-            for(int j = 0; j < matches.size(); j ++)
-              if(matches[j] == lmatches[i]) {
-                flag = true;
-                break;
-              }
-            if(!flag)
-              matches.push_back(lmatches[i]);
-          }
+          statmatch.match(sshape0, sshape1, matches);
       }
-      std::sort(matches.begin(), matches.end());
       float zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
@@ -312,11 +301,9 @@ int main(int argc, const char* argv[]) {
         std::vector<Eigen::Matrix<double, 3, 1> > sshape(shape);
         for(int i = 0; i < shape.size(); i ++)
           sshape[i][2] *= zr;
-        std::vector<match_t<double> > lmatches(statmatch.match(sshape, datapoly));
-        std::copy(lmatches.begin(), lmatches.end(), std::back_inserter(matches));
+        statmatch.match(sshape, datapoly, matches);
       }
       float zr(zrs);
-      std::sort(matches.begin(), matches.end());
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<double> tilt;

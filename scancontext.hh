@@ -122,11 +122,14 @@ public:
   T                      rpoints;
   vector<int>            dstpoints;
   vector<int>            srcpoints;
+  T                      thresh;
   T                      threshc;
   match_t() {
+    thresh  = T(0);
     threshc = T(0);
   }
-  match_t(const T& threshc) {
+  match_t(const T& thresh, const T& threshc) {
+    this->thresh  = thresh;
     this->threshc = threshc;
   }
   match_t(const match_t<T>& other) {
@@ -134,6 +137,8 @@ public:
     return;
   }
   match_t<T>& operator = (const match_t<T>& other) {
+    thresh    = other.thresh;
+    threshc   = other.threshc;
     rot       = other.rot;
     offset    = other.offset;
     ratio     = other.ratio;
@@ -153,13 +158,17 @@ public:
     const auto roterr(rot * x.rot.transpose());
           T    rotdnorm(0);
     for(int l = 0; l < rot.rows(); l ++)
-      rotdnorm += acos(roterr(l, l));
-    rotdnorm += acos(sqrt(test.dot(test) / 
-                     (offset.dot(offset) * x.offset.dot(x.offset))));
-    rotdnorm +=
-      min(min(pow(T(1) - ratio   / x.ratio, T(2)),
-              pow(T(1) - x.ratio / ratio,   T(2))), T(1));
-    return rotdnorm <= threshc * T(5);
+      if(!(abs(acos(roterr(l, l))) <= thresh))
+        return false;
+    if(!(acos(sqrt(test.dot(test) / 
+              (offset.dot(offset) * x.offset.dot(x.offset))))
+         <= threshc))
+      return false;
+    if(!(min(pow(T(1) - ratio   / x.ratio, T(2)),
+             pow(T(1) - x.ratio / ratio,   T(2)))
+         <= threshc))
+      return false;
+    return true;
   }
 };
 
@@ -200,6 +209,7 @@ public:
   void init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
+  void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
 private:
   U   I;
   T   Pi;
@@ -235,6 +245,11 @@ template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T
 
 template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points) {
   vector<match_t<T> > result;
+  match(shapebase, points, result);
+  return result;
+}
+
+template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
   for(int bxchg = 0; bxchg < 1; bxchg ++) {
     Mat3x3 drot0;
     for(int k = 0; k < drot0.rows(); k ++)
@@ -294,7 +309,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
             const T lnorm(sqrt(table(j, k).dot(table(j, k))));
             const T ldepth(abs(acos(table(j, k).dot(ddiv) / lnorm)));
             if(lnorm <= thresh ||
-               (isfinite(ldepth) && abs(ldepth) <= T(.5) / ndiv)) {
+               (isfinite(ldepth) && abs(ldepth) <= Pi / ndiv)) {
               msub_t<T> workm;
               workm.mbufj = j;
               workm.mbufk = k;
@@ -308,7 +323,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
         sort(msub.begin(), msub.end());
         for(int k0 = 0; k0 < msub.size(); k0 ++) {
           int k1(k0);
-          match_t<T> work(threshc);
+          match_t<T> work(Pi / ndiv, threshc);
           work.rot = drot0;
           for(int k = 0; k < ddiv.size(); k ++) {
             Mat3x3 lrot;
@@ -445,7 +460,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
     }
   }
   sort(result.begin(), result.end());
-  return result;
+  return;
 }
 
 
