@@ -248,7 +248,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     result = Mat(input.rows(), input.cols());
     for(int i = 0; i < result.rows(); i ++)
       for(int j = 0; j < result.cols(); j ++)
-        result(i, j) = max(resx(i, j), resy(i, j));
+        result(i, j) = min(resx(i, j), resy(i, j));
   }
   Mat sute(result);
   for(int i = 0; i < sute.cols(); i ++)
