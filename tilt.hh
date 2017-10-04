@@ -111,7 +111,7 @@ template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& 
   for(int i = 0; i < 3; i ++)
     work(i, 3) = 0.;
   for(int i = 0; i < 3;  i ++) {
-    work(2, i)  = bump(int(work(0, i)), int(work(1, i))) * sqrt(T(in.rows() * in.cols())) * z_ratio;
+    work(2, i)  = - bump(int(work(0, i)), int(work(1, i))) * sqrt(T(in.rows() * in.cols())) * z_ratio;
     work(0, 3) += in(int(work(0, i)), int(work(1, i)));
   }
   work(0, 3) /= 3.;
