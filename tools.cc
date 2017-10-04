@@ -207,8 +207,16 @@ int main(int argc, const char* argv[]) {
           for(int i = 0; i < sshape1.size(); i ++)
             sshape1[i][2] *= zr2;
           std::vector<match_t<double> > lmatches(statmatch.match(sshape0, sshape1));
-          for(int i = 0; i < lmatches.size(); i ++)
-            matches.push_back(lmatches[i]);
+          for(int i = 0; i < lmatches.size(); i ++) {
+            bool flag(false);
+            for(int j = 0; j < matches.size(); j ++)
+              if(matches[j] == lmatches[i]) {
+                flag = true;
+                break;
+              }
+            if(!flag)
+              matches.push_back(lmatches[i]);
+          }
       }
       std::sort(matches.begin(), matches.end());
       float zr(zrs);

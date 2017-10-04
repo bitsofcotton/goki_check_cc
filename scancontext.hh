@@ -11,6 +11,7 @@ using std::sqrt;
 using std::atan2;
 using std::abs;
 using std::cos;
+using std::acos;
 using std::sin;
 using std::pow;
 using std::sort;
@@ -152,14 +153,13 @@ public:
     const auto roterr(rot * x.rot.transpose());
           T    rotdnorm(0);
     for(int l = 0; l < rot.rows(); l ++)
-      rotdnorm += pow(roterr(l, l) - T(1), T(2));
-    rotdnorm  = sqrt(rotdnorm) / T(3);
-    rotdnorm += sqrt(test.dot(test) / 
-                     (offset.dot(offset) * x.offset.dot(x.offset))) / T(3);
+      rotdnorm += acos(roterr(l, l));
+    rotdnorm += acos(sqrt(test.dot(test) / 
+                     (offset.dot(offset) * x.offset.dot(x.offset))));
     rotdnorm +=
       min(min(pow(T(1) - ratio   / x.ratio, T(2)),
               pow(T(1) - x.ratio / ratio,   T(2))), T(1));
-    return rotdnorm <= threshc;
+    return rotdnorm <= threshc * T(5);
   }
 };
 
@@ -215,7 +215,7 @@ private:
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(12, .2, .2, .0625, .125, .125, .125);
+  init(12, .2, .2, .0625, .125, .125, .25);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -286,14 +286,15 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
       for(int nd = 0; nd < ndiv; nd ++) {
         cerr << "matching table (" << i << "/3)" << " : " << nd << "/" << ndiv;
         Eigen::Matrix<T, 2, 1> ddiv;
-        ddiv[0] = cos(2. * Pi * nd / ndiv);
-        ddiv[1] = sin(2. * Pi * nd / ndiv);
+        ddiv[0] = cos(2. * Pi * nd / T(ndiv));
+        ddiv[1] = sin(2. * Pi * nd / T(ndiv));
         vector<msub_t<T> > msub;
-        for(int k = 0; k < points.size(); k ++) {
+        for(int k = 0; k < points.size(); k ++)
           for(int j = 0; j < shapebase.size(); j ++) {
             const T lnorm(sqrt(table(j, k).dot(table(j, k))));
-            const T ldepth(table(j, k).dot(ddiv) / lnorm);
-            if(lnorm <= thresh || (isfinite(ldepth) && abs(ldepth) <= thresh)) {
+            const T ldepth(abs(acos(table(j, k).dot(ddiv) / lnorm)));
+            if(lnorm <= thresh ||
+               (isfinite(ldepth) && abs(ldepth) <= T(.5) / ndiv)) {
               msub_t<T> workm;
               workm.mbufj = j;
               workm.mbufk = k;
@@ -301,12 +302,12 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
               msub.push_back(workm);
             }
           }
-        }
         cerr << " : " << msub.size() << endl;
         if(!msub.size())
           continue;
         sort(msub.begin(), msub.end());
         for(int k0 = 0; k0 < msub.size(); k0 ++) {
+          int k1(k0);
           match_t<T> work(threshc);
           work.rot = drot0;
           for(int k = 0; k < ddiv.size(); k ++) {
@@ -359,15 +360,31 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
             work.srcpoints.push_back(int(msub[kk].mbufk));
             flagj[msub[kk].mbufj] = true;
             flagk[msub[kk].mbufk] = true;
+            k1 = kk;
           }
           // if there's a match.
           work.rpoints = work.dstpoints.size() / T(min(shapebase.size(), points.size()));
           if(threshp <= work.rpoints) {
+            work.rot = drot0;
+            for(int k = 0; k < ddiv.size(); k ++) {
+              Mat3x3 lrot;
+              const T theta(ddiv[k] * (msub[k0].mbufN + msub[k1].mbufN) / T(2));
+              lrot((k + i    ) % 3, (k + i    ) % 3) =   cos(theta);
+              lrot((k + i + 1) % 3, (k + i    ) % 3) =   sin(theta);
+              lrot((k + i    ) % 3, (k + i + 1) % 3) = - sin(theta);
+              lrot((k + i + 1) % 3, (k + i + 1) % 3) =   cos(theta);
+              lrot((k + i + 2) % 3, (k + i    ) % 3) = T(0);
+              lrot((k + i + 2) % 3, (k + i + 1) % 3) = T(0);
+              lrot((k + i + 2) % 3, (k + i + 2) % 3) = T(1);
+              lrot((k + i    ) % 3, (k + i + 2) % 3) = T(0);
+              lrot((k + i + 1) % 3, (k + i + 2) % 3) = T(0);
+              work.rot = lrot * work.rot;
+            }
             work.offset[0] = T(0);
             work.offset[1] = T(0);
             work.offset[2] = T(0);
             for(int k = 0; k < work.dstpoints.size(); k ++)
-              work.offset += shapebase[work.dstpoints[k]];
+              work.offset += shapebase[work.dstpoints[k]] - points[work.srcpoints[k]];
             work.offset /= work.dstpoints.size();
             // maximize parallel parts.
             Mat2x2 A;
