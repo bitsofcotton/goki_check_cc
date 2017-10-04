@@ -115,7 +115,7 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
   if(output.is_open()) {
     for(int i = 0; i < data.size(); i ++)
       // XXX magic number:
-      output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] * T(8) << endl;
+      output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] * T(8) << endl;
     for(int i = 0; i < polys.size(); i ++)
       output << "f " << polys[i][0] + 1 << " " << polys[i][1] + 1 << " " << polys[i][2] + 1 << endl;
     output.close();
@@ -141,8 +141,8 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
         sub >> buf[1];
         sub >> buf[2];
         data.push_back(buf);
-      } else if(i < work.size() && work[i] == 'f') {
-        stringstream sub(work.substr(i + 1, work.size() - (i + 1)));
+      } else if(i + 1 < work.size() && work[i] == 'f' && work[i + 1] == ' ') {
+        stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
         Eigen::Matrix<int, 3, 1> wbuf;
         int  widx(0);
         bool flag(false);
@@ -155,16 +155,16 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
             break;
           if(widx > 2)
             flag = true;
-          widx %= 3;
           if(flag)
             polys.push_back(wbuf);
+          widx %= 3;
           sub.ignore(20, ' ');
         }
       }
     }
     for(int i = 0; i < polys.size(); i ++)
       for(int j = 0; j < polys[i].size(); j ++)
-        polys[i][j] = ((polys[i][j] % (2 * data.size())) + 2 * data.size()) % data.size();
+        polys[i][j] = abs(int(polys[i][j] % (2 * data.size())) - int(data.size()));
     input.close();
   } else {
     cerr << "Unable to open file: " << filename << endl;

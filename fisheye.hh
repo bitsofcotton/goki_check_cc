@@ -184,7 +184,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         if(isfinite(n2) && zval[s] < n2 &&
            (cthresh / msl.size() <= lr ||
             cthresh / msr.size() <= rr) ) {
-          result(s, i) = zz / T(lrf.rows());
+          result(s, i) = lrf.rows() - zz / T(lrf.rows());
           zval[s]      = n2;
         }
       }
@@ -242,9 +242,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   Mat result;
   if(y_only)
     result = getPseudoBumpLoop(input);
-  else
-    result = getPseudoBumpLoop(input.transpose()).transpose() +
-             getPseudoBumpLoop(input);
+  else {
+    const Mat resx(getPseudoBumpLoop(input.transpose()).transpose());
+    const Mat resy(getPseudoBumpLoop(input));
+    result = Mat(input.rows(), input.cols());
+    for(int i = 0; i < result.rows(); i ++)
+      for(int j = 0; j < result.cols(); j ++)
+        result(i, j) = max(resx(i, j), resy(i, j));
+  }
   Mat sute(result);
   for(int i = 0; i < sute.cols(); i ++)
     sute.col(i) = complementLine(sute.col(i));

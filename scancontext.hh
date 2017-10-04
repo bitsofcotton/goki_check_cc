@@ -122,14 +122,14 @@ public:
   T                      rpoints;
   vector<int>            dstpoints;
   vector<int>            srcpoints;
-  T                      thresh;
+  T                      threshs;
   T                      threshc;
   match_t() {
-    thresh  = T(0);
+    threshs = T(0);
     threshc = T(0);
   }
-  match_t(const T& thresh, const T& threshc) {
-    this->thresh  = thresh;
+  match_t(const T& threshs, const T& threshc) {
+    this->threshs = threshs;
     this->threshc = threshc;
   }
   match_t(const match_t<T>& other) {
@@ -137,8 +137,6 @@ public:
     return;
   }
   match_t<T>& operator = (const match_t<T>& other) {
-    thresh    = other.thresh;
-    threshc   = other.threshc;
     rot       = other.rot;
     offset    = other.offset;
     ratio     = other.ratio;
@@ -146,6 +144,7 @@ public:
     rpoints   = other.rpoints;
     dstpoints = other.dstpoints;
     srcpoints = other.srcpoints;
+    threshs   = other.threshs;
     threshc   = other.threshc;
     return *this;
   }
@@ -156,16 +155,17 @@ public:
   bool operator == (const match_t<T>& x) const {
     const auto test(offset - x.offset);
     const auto roterr(rot * x.rot.transpose());
+    const T    Pi(T(4) * atan2(T(1), T(1)));
           T    rotdnorm(0);
     for(int l = 0; l < rot.rows(); l ++)
-      if(!(abs(acos(roterr(l, l))) <= thresh))
+      if(!(abs(acos(roterr(l, l))) / Pi <= threshs))
         return false;
-    if(!(acos(sqrt(test.dot(test) / 
-              (offset.dot(offset) * x.offset.dot(x.offset))))
+    if(!(sqrt(test.dot(test) / 
+              (offset.dot(offset) * x.offset.dot(x.offset)))
          <= threshc))
       return false;
-    if(!(min(pow(T(1) - ratio   / x.ratio, T(2)),
-             pow(T(1) - x.ratio / ratio,   T(2)))
+    if(!(max(T(1) - ratio   / x.ratio,
+             T(1) - x.ratio / ratio)
          <= threshc))
       return false;
     return true;
@@ -206,7 +206,7 @@ public:
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
-  void init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc);
+  void init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc, const T& threshs);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
@@ -220,19 +220,20 @@ private:
   T   threshp;
   T   threshr;
   T   threshc;
+  T   threshs;
 };
 
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(12, .2, .2, .0625, .125, .125, .25);
+  init(12, .01, .2, .0625, .125, .125, .25, .25);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
   ;
 }
 
-template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc) {
+template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& thresh, const T& threshl, const T& threshp, const T& threshr, const T& threshN, const T& threshc, const T& threshs) {
   this->ndiv        = ndiv;
   this->thresh      = thresh;
   this->threshl     = threshl;
@@ -240,6 +241,7 @@ template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T
   this->threshr     = threshr;
   this->threshN     = threshN;
   this->threshc     = threshc;
+  this->threshs     = threshs;
   return;
 }
 
@@ -307,8 +309,10 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         for(int k = 0; k < points.size(); k ++)
           for(int j = 0; j < shapebase.size(); j ++) {
             const T lnorm(sqrt(table(j, k).dot(table(j, k))));
-            const T ldepth(abs(acos(table(j, k).dot(ddiv) / lnorm)));
-            if(lnorm <= thresh ||
+            const T ldepth(max(abs(table(j, k)[0] * ddiv[0] - T(1)),
+                               abs(table(j, k)[1] * ddiv[1] - T(1)))
+                           / lnorm);
+            if(lnorm <= Pi / (ndiv * 2) ||
                (isfinite(ldepth) && abs(ldepth) <= Pi / ndiv)) {
               msub_t<T> workm;
               workm.mbufj = j;
@@ -323,7 +327,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         sort(msub.begin(), msub.end());
         for(int k0 = 0; k0 < msub.size(); k0 ++) {
           int k1(k0);
-          match_t<T> work(Pi / ndiv, threshc);
+          match_t<T> work(threshs, threshc);
           work.rot = drot0;
           for(int k = 0; k < ddiv.size(); k ++) {
             Mat3x3 lrot;
@@ -436,7 +440,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             }
             err /= work.dstpoints.size();
             work.rdepth = sqrt(err);
-            if(sqrt(err) < thresh) {
+            if(work.rdepth < thresh) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
