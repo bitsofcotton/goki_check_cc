@@ -74,7 +74,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 12, 16, 800, 2, 12, T(2.));
+  initialize(20, 12, 16, 800, 2, 6, T(2.));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -180,7 +180,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         const T   lr(msl[msl.size() - 1] * msl[msl.size() - 1] / (msl.dot(msl) -
  msl[msl.size() - 1] * msl[msl.size() - 1]));
         const T   rr(msr[0] * msr[0] / (msr.dot(msr) - msr[0] * msr[0]));
-        const T   n2(abs(msl[msl.size() - 1] - msr[0]));
+        const T   n2(abs(msl[msl.size() - 1] - msr[0]) / sqrt(c.dot(c)));
         if(isfinite(n2) && zval[s] < n2 &&
            (cthresh / msl.size() <= lr ||
             cthresh / msr.size() <= rr) ) {
