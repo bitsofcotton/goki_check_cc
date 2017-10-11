@@ -21,13 +21,10 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * * z_ratio : [0,1] から [0,z_atio] への線形写像。
 * scancontext.hh
 * * matchPartialPartial::ndiv    : 合致する角度の分割数です
-* * matchPartialPartial::thresh  : 平行なベクトルのための誤差です。1 - &epsilon;
-* * matchPartialPartial::threshl : 平行なベクトルのノルムのための誤差です。 1 - &epsilon;
+* * matchPartialPartial::thresh  : 合致を集めてくる際の平行なベクトルのための誤差です。
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
 * * matchPartialPartial::threshr : 検出される最小の画像倍率です。
-* * matchPartialPartial::threshN : 平行なベクトルを検出する際の角度のノルムの閾値です。
-* * matchPartialPartial::threshc : 合致が同じかどうか判定する閾値です。
-* * matchPartialPartial::r_max_theta : 回転の際に残る最小の z 軸の比率です。
+* * matchPartialPartial::threshs : 合致が同じかどうか判定する閾値です。
 
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。
@@ -122,5 +119,5 @@ PseudoBump はもっともらしいバンプマップを返しますが、正し
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable15.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable15.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable18.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable18.tar.gz
