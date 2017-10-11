@@ -24,12 +24,9 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * scancontext.hh
 * * matchPartialPartial::ndiv    : number of divides that match angles.
 * * matchPartialPartial::thresh  : threshold to detect parallel vectors.
-* * matchPartialPartial::threshl : threshold to detect parallel vectors norm.
 * * matchPartialPartial::threshp : threshold for matched points.
 * * matchPartialPartial::threshr : threshold for matched size ratios.
-* * matchPartialPartial::threshN : threshold to detect angle norm for match.
-* * matchPartialPartial::threshc : threshold for eliminating duplicates.
-* * matchPartialPartial::r_max_theta : threshold for z-axis residue.
+* * matchPartialPartial::threshs : threshold for operator ==.
 
 # Context
 This program is inspired from re-focus photo softwares.  
@@ -124,5 +121,5 @@ PseudoBump makes a pseudo plausible things.
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable15.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable15.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable18.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable18.tar.gz
