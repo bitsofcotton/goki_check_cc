@@ -155,8 +155,8 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data1, argv[4]))
         return - 2;
       // XXX: configure me.
-      float zrs(1.5);
-      float zre(.5);
+      float zrs(1.5 / 1e3);
+      float zre(.5  / 1e3);
       int   zrl(3);
       int   nshow(6);
       float emph(.25);
@@ -214,21 +214,21 @@ int main(int argc, const char* argv[]) {
         tilter<double> tilt;
         reDig<double>  redig;
         tilt.initialize(zr * sqrt((data1[0].rows() * data1[0].cols()) / (data[0].rows() * data[0].cols())));
-        std::vector<Eigen::Matrix<int, 3, 1> > hull1(loadBumpSimpleMesh<double>(shape1, matches[n].srcpoints));
+        std::vector<Eigen::Matrix<int, 3, 1> > hull(loadBumpSimpleMesh<double>(shape1, matches[n].srcpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
-        for(int idx = 0; idx < hull1.size(); idx ++) {
+        for(int idx = 0; idx < hull.size(); idx ++) {
           Eigen::Matrix<int, 3, 1> buf;
-          for(int idx2 = 0; idx2 < hull1[idx].size(); idx2 ++)
-            buf[idx2] = matches[n].dstpoints[hull1[idx][idx2]];
+          for(int idx2 = 0; idx2 < hull[idx].size(); idx2 ++)
+            buf[idx2] = matches[n].dstpoints[hull[idx][idx2]];
           mhull0.push_back(buf);
-          for(int idx2 = 0; idx2 < hull1[idx].size(); idx2 ++)
-            buf[idx2] = matches[n].srcpoints[hull1[idx][idx2]];
+          for(int idx2 = 0; idx2 < hull[idx].size(); idx2 ++)
+            buf[idx2] = matches[n].srcpoints[hull[idx][idx2]];
           mhull1.push_back(buf);
         }
         cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
-        cerr << matches[n].rot << endl;
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = tilt.tilt(showMatch<double>(mout[idx].template cast<double>(), shape1, mhull1), mbump.template cast<double>(), matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3).template cast<float>();
+          // outs[idx] = showMatch<double>(mout[idx].template cast<double>(), shape1, mhull1).template cast<float>();
         normalize<float>(outs, 1.);
         std::string outfile;
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-src.ppm");
@@ -247,12 +247,12 @@ int main(int argc, const char* argv[]) {
         savep2or3<float>(outfile.c_str(), outs3, false);
         
         for(int idx = 0; idx < 3; idx ++)
-          outs4[idx] = redig.emphasis(data[idx].template cast<double>(), bump0.template cast<double>(), shape0, shape1, matches[n], hull1, float(1.) - emph).template cast<float>();
+          outs4[idx] = redig.emphasis(data[idx].template cast<double>(), bump0.template cast<double>(), shape0, shape1, matches[n], hull, float(1.) - emph).template cast<float>();
         normalize<float>(outs4, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");
         savep2or3<float>(outfile.c_str(), outs4, false);
         for(int idx = 0; idx < 3; idx ++)
-          outs5[idx] = redig.emphasis(data[idx].template cast<double>(), bump1.template cast<double>(), shape0, shape1, matches[n], hull1, float(1.) + emph).template cast<float>();
+          outs5[idx] = redig.emphasis(data[idx].template cast<double>(), bump1.template cast<double>(), shape0, shape1, matches[n], hull, float(1.) + emph).template cast<float>();
         normalize<float>(outs5, 1.);
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-2.ppm");
         savep2or3<float>(outfile.c_str(), outs5, false);
