@@ -4,7 +4,6 @@
 #include <Eigen/LU>
 #include <cmath>
 #include <vector>
-#include "edgedetect.hh"
 #include "tilt.hh"
 
 using std::sqrt;
@@ -86,7 +85,6 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > lowFreq<T>::getLowFreq(con
 
 template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const int& npoints) {
   vector<lfmatch_t<T> > match;
-  edgedetect<T> differ;
   const T guard(T(npoints) / T(data.rows() * data.cols()));
   for(int i = 0; i < data.rows() * sqrt(guard); i ++)
     for(int j = 0; j < data.cols() * sqrt(guard); j ++) {
@@ -226,7 +224,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(16, .25, .125, .125, .25);
+  init(16, .25, .125, .125, .0625);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -264,6 +262,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
   gp /= points.size();
   for(int i = 0; i < 3; i ++) {
     Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
+    Eigen::Matrix<Eigen::Matrix<bool, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> flipt(shapebase.size(), points.size());
     // init table.
     cerr << "making table (" << i << "/3)" << endl;
 #if defined(_OPENMP)
@@ -282,6 +281,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
           const T b(bk[(l + i + 1) % 3]);
           const T c(aj[(l + i    ) % 3]);
           table(j, k)[l] = sqrt(- T(1));
+          flipt(j, k)[l] = false;
           if(a * a + b * b < c * c)
             continue;
           T theta(   T(2) * atan2(sqrt(a * a + b * b - c * c) - b, a + c));
@@ -300,7 +300,20 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
                abs(cos(theta1) * a - sin(theta1) * b - c) <
                abs(cos(theta)  * a - sin(theta)  * b - c)))
             theta = theta1;
-          table(j, k)[l] = theta - floor(theta / Pi + T(.5)) * Pi;
+          theta += Pi;
+          theta -= floor(theta / (T(2) * Pi) + T(.5)) * T(2) * Pi;
+          theta -= Pi;
+          // XXX checkme:
+          if(abs(theta) > Pi / T(2)) {
+            if(theta > T(0))
+              theta -= Pi;
+            else
+              theta += Pi;
+            flipt(j, k)[l] = true;
+          }
+          table(j, k)[l] = theta;
+          if(flipt(j, k)[l])
+            theta += Pi;
           bk[(l + i    ) % 3] = cos(theta) * a - sin(theta) * b;
           bk[(l + i + 1) % 3] = sin(theta) * a + cos(theta) * b;
         }
@@ -338,7 +351,9 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         work.rot = drot0;
         for(int k = 0; k < ddiv.size(); k ++) {
           Mat3x3 lrot;
-          const T theta(ddiv[k] * msub[k0].mbufN);
+          T theta(ddiv[k] * msub[k0].mbufN);
+          if(flipt(msub[k0].mbufj, msub[k0].mbufk)[k])
+            theta += Pi;
           lrot((k + i    ) % 3, (k + i    ) % 3) =   cos(theta);
           lrot((k + i + 1) % 3, (k + i    ) % 3) =   sin(theta);
           lrot((k + i    ) % 3, (k + i + 1) % 3) = - sin(theta);
@@ -360,7 +375,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         const Vec3 bkk0(work.rot * (points[msub[k0].mbufk] - gp));
         const T    t0(ajk0.dot(bkk0) / bkk0.dot(bkk0));
         const Vec3 lerr0(ajk0 - bkk0 * t0);
-        if(!isfinite(t0) || thresh < lerr0.dot(lerr0) / (ajk0.dot(ajk0) + bkk0.dot(bkk0) * t0 * t0))
+        if(!isfinite(t0) || thresh * thresh < lerr0.dot(lerr0) / (ajk0.dot(ajk0) + bkk0.dot(bkk0) * t0 * t0))
           continue;
         for(int kk = k0 + 1; kk < msub.size(); kk ++)
           if(!flagj[msub[kk].mbufj] &&
@@ -368,7 +383,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             const Vec3 aj(shapebase[msub[kk].mbufj]          - gs);
             const Vec3 bk(work.rot * (points[msub[kk].mbufk] - gp));
             const Vec3 lerr(aj - bk * t0);
-            if(thresh < lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t0 * t0))
+            if(thresh * thresh < lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t0 * t0))
               continue;
             work.dstpoints.push_back(msub[kk].mbufj);
             work.srcpoints.push_back(msub[kk].mbufk);

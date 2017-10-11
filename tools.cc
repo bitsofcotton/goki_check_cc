@@ -155,8 +155,8 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data1, argv[4]))
         return - 2;
       // XXX: configure me.
-      float zrs(1.5 / 1e3);
-      float zre(.5  / 1e3);
+      float zrs(1.5);
+      float zre(.5);
       int   zrl(3);
       int   nshow(6);
       float emph(.25);
@@ -165,9 +165,9 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay0, delaunay1;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sute;
-      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0, sute, true).template cast<float>();
+      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0, sute, !true).template cast<float>();
       bump.vmax = 60;
-      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1, sute, true).template cast<float>();
+      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1, sute, !true).template cast<float>();
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
@@ -226,6 +226,7 @@ int main(int argc, const char* argv[]) {
           mhull1.push_back(buf);
         }
         cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
+        cerr << matches[n].rot << endl;
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = tilt.tilt(showMatch<double>(mout[idx].template cast<double>(), shape1, mhull1), mbump.template cast<double>(), matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3).template cast<float>();
           // outs[idx] = showMatch<double>(mout[idx].template cast<double>(), shape1, mhull1).template cast<float>();
@@ -281,7 +282,7 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int, 3, 1> > poly;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sute;
-      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly, sute, true).template cast<float>();
+      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly, sute, !true).template cast<float>();
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());
