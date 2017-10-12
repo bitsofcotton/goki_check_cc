@@ -262,7 +262,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
   gp /= points.size();
   for(int i = 0; i < 3; i ++) {
     Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
-    Eigen::Matrix<Eigen::Matrix<bool, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> flipt(shapebase.size(), points.size());
     // init table.
     cerr << "making table (" << i << "/3)" << endl;
 #if defined(_OPENMP)
@@ -281,7 +280,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
           const T b(bk[(l + i + 1) % 3]);
           const T c(aj[(l + i    ) % 3]);
           table(j, k)[l] = sqrt(- T(1));
-          flipt(j, k)[l] = false;
           if(a * a + b * b < c * c)
             continue;
           T theta(   T(2) * atan2(sqrt(a * a + b * b - c * c) - b, a + c));
@@ -303,17 +301,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
           theta += Pi;
           theta -= floor(theta / (T(2) * Pi) + T(.5)) * T(2) * Pi;
           theta -= Pi;
-          // XXX checkme:
-          if(abs(theta) > Pi / T(2)) {
-            if(theta > T(0))
-              theta -= Pi;
-            else
-              theta += Pi;
-            flipt(j, k)[l] = true;
-          }
           table(j, k)[l] = theta;
-          if(flipt(j, k)[l])
-            theta += Pi;
           bk[(l + i    ) % 3] = cos(theta) * a - sin(theta) * b;
           bk[(l + i + 1) % 3] = sin(theta) * a + cos(theta) * b;
         }
@@ -332,9 +320,12 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       for(int k = 0; k < points.size(); k ++)
         for(int j = 0; j < shapebase.size(); j ++) {
           const T lnorm(sqrt(table(j, k).dot(table(j, k))));
-          const T ldepth(acos(table(j, k).dot(ddiv) / lnorm));
+          const T ldepth(cos(table(j, k)[0] / lnorm) * cos(ddiv[0]) +
+                         sin(table(j, k)[0] / lnorm) * sin(ddiv[0]) +
+                         cos(table(j, k)[1] / lnorm) * cos(ddiv[1]) +
+                         sin(table(j, k)[1] / lnorm) * sin(ddiv[1]) - T(2));
           if(isfinite(lnorm) && (lnorm <= Pi / ndiv ||
-              (isfinite(ldepth) && ldepth <= Pi / ndiv) ) ) {
+              (isfinite(ldepth) && ldepth <= T(1) / ndiv) ) ) {
             msub_t<T> workm;
             workm.mbufj = j;
             workm.mbufk = k;
@@ -352,8 +343,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         for(int k = 0; k < ddiv.size(); k ++) {
           Mat3x3 lrot;
           T theta(ddiv[k] * msub[k0].mbufN);
-          if(flipt(msub[k0].mbufj, msub[k0].mbufk)[k])
-            theta += Pi;
           lrot((k + i    ) % 3, (k + i    ) % 3) =   cos(theta);
           lrot((k + i + 1) % 3, (k + i    ) % 3) =   sin(theta);
           lrot((k + i    ) % 3, (k + i + 1) % 3) = - sin(theta);
