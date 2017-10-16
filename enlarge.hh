@@ -97,19 +97,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       A(3, 3) = T(0);
       A /= T(2);
       const T orig((rw(i, j * 2) + rw(i, j * 2 + 1)) / T(2));
-      b[0] = b[1] = b[2] = b[3] = orig;
-      // XXX fixme determinant error rate.
-      if(abs(A.determinant()) != T(0))
-        b = A.inverse()   * b;
-      else
-        b = A.transpose() * b / T(4);
-      Vec bb(4);
-      bb[0] = bb[1] = bb[2] = bb[3] = T(1);
-      bb = A.transpose() * bb / T(4);
-      result(i * 2 + 0, j * 2 + 0) = b[0] * bb[0];
-      result(i * 2 + 0, j * 2 + 1) = b[1] * bb[1];
-      result(i * 2 + 1, j * 2 + 0) = b[2] * bb[2];
-      result(i * 2 + 1, j * 2 + 1) = b[3] * bb[3];
+      b[0] = b[1] = b[2] = b[3] = T(1);
+      b = A.transpose() * b / T(4);
+      result(i * 2 + 0, j * 2 + 0) = b[0];
+      result(i * 2 + 0, j * 2 + 1) = b[1];
+      result(i * 2 + 1, j * 2 + 0) = b[2];
+      result(i * 2 + 1, j * 2 + 1) = b[3];
     }
   return result;
 }
@@ -149,11 +142,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 #pragma omp parallel for
 #endif
       for(int i = 0; i < data.cols(); i ++) {
-        const T lr(pow(T(2) * Pi, T(4)) * data.rows());
+        const T lr(pow(T(2) * Pi * data.rows(), T(2)));
         ff[i] /= lr * T(2);
         xx[i] /= lr * T(2);
         for(int j = 0; j < data.rows(); j ++) {
-          const T delta((co(j, i) < T(0) ? - T(1) : T(1)) * abs(xx[i] * co(j, i) + ff[i] * dd(j, i)));
+          const T delta(xx[i] * co(j, i) + ff[i] * dd(j, i));
           result(j * 2 + 0, i) = data(j, i) - delta;
           result(j * 2 + 1, i) = data(j, i) + delta;
         }
@@ -189,12 +182,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         T   ff(dbuf.transpose() * F);
         T   xx(dbuf.transpose() * X);
         Vec co(Dop * dbuf / T(2));
-        const T lr(pow(T(2) * Pi, T(4)) * width0);
+        const T lr(pow(T(2) * Pi * width0, T(2)));
         ff /= lr * T(2);
         xx /= lr * T(2);
         for(int j = 0; j < width; j ++) {
           const int jj(width0 / 2 - width / 2 + j);
-          const T delta((co[jj] < T(0) ? - T(1) : T(1)) * abs(xx * co[jj] + ff * dd[jj]));
+          const T delta(xx * co[jj] + ff * dd[jj]);
           if(j * 2 < result.rows() && i * 2 + j * 2 + 0 < result.cols())
             result(j * 2 + 0, i * 2 + j * 2 + 0) = data(j, i + j) - delta;
           if(j * 2 + 1 < result.rows() && i * 2 + j * 2 + 1 < result.cols())
@@ -217,13 +210,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         T   ff(dbuf.transpose() * F);
         T   xx(dbuf.transpose() * X);
         Vec co(Dop * dbuf / T(2));
-        const T lr(pow(T(2) * Pi * width0, T(4)));
+        const T lr(pow(T(2) * Pi * width0, T(2)));
         ff /= lr * T(2);
         xx /= lr * T(2);
         for(int j = 0; j < width; j ++) {
           const int jj(width0 / 2 - width / 2 + j);
-          const T delta((co[jj] < T(0) ? - T(1) : T(1)) * abs(xx * co[jj] + ff *
- dd[jj]));
+          const T delta(xx * co[jj] + ff * dd[jj]);
           if(i * 2 + j * 2 < result.rows() && j * 2 + 0 < result.cols())
             result(i * 2 + j * 2 + 0, j * 2 + 0) = data(i + j, j) - delta;
           if(i * 2 + j * 2 + 1 < result.rows() && j * 2 + 1 < result.cols())
@@ -453,7 +445,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
                                 enlarge2ds(data, ENLARGE_Y,  true),
                                 enlarge2ds(data, ENLARGE_D,  true),
                                 enlarge2ds(data, ENLARGE_DD, true)));
-      buf *= pow(T(2) * Pi, T(2));
       result = Mat(data.rows() * 2 - 1, data.cols() * 2 - 1);
       for(int i = 0; i < result.cols(); i ++)
         result(0, i) = data(0, i / 2);
@@ -464,11 +455,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
           if(i * 2 < buf.rows() && j * 2 < buf.cols()) {
             result(i * 2 + 0, j * 2 + 0) = data(i, j) + buf(i * 2 + 0, j * 2 + 0);
             if(j * 2 + 1 < buf.cols())
-              result(i * 2 + 0, j * 2 + 1) = data(i, j) + buf(i * 2 + 0, j * 2 + 1);
+              result(i * 2 + 0, j * 2 + 1) = result(i * 2, j * 2) + buf(i * 2 + 0, j * 2 + 1);
             if(i * 2 + 1 < buf.rows())
-              result(i * 2 + 1, j * 2 + 0) = data(i, j) + buf(i * 2 + 1, j * 2 + 0);
+              result(i * 2 + 1, j * 2 + 0) = result(i * 2, j * 2) + buf(i * 2 + 1, j * 2 + 0);
             if(i * 2 + 1 < buf.rows() && j * 2 + 1 < buf.cols())
-              result(i * 2 + 1, j * 2 + 1) = data(i, j) + buf(i * 2 + 1, j * 2 + 1);
+              result(i * 2 + 1, j * 2 + 1) = (result(i * 2, j * 2) + result(i * 2, j * 2 + 1) + result(i * 2 + 1, j * 2)) / T(3) + buf(i * 2 + 1, j * 2 + 1);
         }
     }
     break;
