@@ -217,7 +217,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         T   ff(dbuf.transpose() * F);
         T   xx(dbuf.transpose() * X);
         Vec co(Dop * dbuf / T(2));
-        const T lr(pow(T(2) * Pi * width0, T(2)));
+        const T lr(pow(T(2) * Pi * width0, T(4)));
         ff /= lr * T(2);
         xx /= lr * T(2);
         for(int j = 0; j < width; j ++) {
@@ -371,6 +371,7 @@ public:
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2exds<T>::enlarge2ds(const Mat& data, const direction_t& dir, const bool diff) {
   Mat result;
+  const T Pi(T(4) * atan2(T(1), T(1)));
   switch(dir) {
   case ENLARGE_X:
     result = enlarge2ds(data.transpose(), ENLARGE_Y, diff).transpose();
@@ -430,8 +431,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         buf.col(i) = data.col(data.cols() - 1 - i);
       buf = enlarge2ds(buf, ENLARGE_D, diff);
       result = Mat(buf.rows(), buf.cols());
-      for(int i = 0; i < buf.cols(); i ++)
-        result.col(i) = buf.col(buf.cols() - 1 - i);
+      for(int i = 0; i < buf.cols() - 1; i ++)
+        result.col(i) = buf.col(buf.cols() - 2 - i);
+      result.col(buf.cols() - 1) *= T(0);
     }
     break;
   case ENLARGE_BOTH:
@@ -451,6 +453,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
                                 enlarge2ds(data, ENLARGE_Y,  true),
                                 enlarge2ds(data, ENLARGE_D,  true),
                                 enlarge2ds(data, ENLARGE_DD, true)));
+      buf *= pow(T(2) * Pi, T(2));
       result = Mat(data.rows() * 2 - 1, data.cols() * 2 - 1);
       for(int i = 0; i < result.cols(); i ++)
         result(0, i) = data(0, i / 2);
