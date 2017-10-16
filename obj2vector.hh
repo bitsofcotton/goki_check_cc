@@ -131,7 +131,7 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
   input.open(filename);
   if(input.is_open()) {
     string work;
-    while(getline(input, work)) {
+    while(getline(input, work) && !input.eof() && !input.bad()) {
       int i = 0;
       for(; i < work.size() && work[i] == ' '; i ++);
       if(i + 1 < work.size() && work[i] == 'v' && work[i + 1] == ' ') {

@@ -58,8 +58,8 @@ public:
   Mat getPseudoBumpVecSub(const Mat& input, const bool& y_only = false);
   Mat getPseudoBumpVec(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& bumps, const bool& y_only = false);
 private:
-  T sgn(const T& x);
-  Vec getLineAxis(Vec p, Vec c, const int& w, const int& h);
+  T    sgn(const T& x);
+  Vec  getLineAxis(Vec p, Vec c, const int& w, const int& h);
   Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> prepareLineAxis(const Vec& p0, const Vec& p1, const int& z0, const int& rstp);
   T    getImgPt(const Mat& img, const T& y, const T& x);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
@@ -74,7 +74,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 12, 16, 800, 2, 12, T(2.));
+  initialize(8, 12, 16, 800, 4, 60, T(2.));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -103,6 +103,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   MatU Iopb(Dopb.rows(), Dopb.cols());
   U I(sqrt(complex<T>(- 1)));
 #if defined(_OPENMP)
+#pragma omp parallel
 #pragma omp for
 #endif
   for(int i = 0; i < Dopb.rows(); i ++)
@@ -274,12 +275,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     vector<Vec3> workpoints;
     vector<Eigen::Matrix<int, 3, 1> > workdels;
     Mat merge(getPseudoBumpVecSub(mats));
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
     for(int i = 0; i < merge.rows(); i ++)
       for(int j = 0; j < merge.cols(); j ++)
         for(int ii = i * ratio; ii < min((i + 1) * ratio, int(bumps.rows())); ii ++)
           for(int jj = j * ratio; jj < min((j + 1) * ratio, int(bumps.cols())); jj ++)
             // XXX checkme (intensity ratio).
-            bumps(ii, jj) += merge(i, j) / sqrt(ratio);
+            bumps(ii, jj) += merge(i, j);
   }
   complement(bumps, crowd, vmax, points, delaunays);
   vector<Vec3> ppoints(points);
@@ -547,6 +551,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::shrink(const Mat& in) {
   Mat res((in.rows() + rrstp - 1) / rrstp, (in.cols() + rrstp - 1) / rrstp);
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
   for(int i = 0; i < res.rows(); i ++)
     for(int j = 0; j < res.cols(); j ++) {
       res(i, j) = T(0);

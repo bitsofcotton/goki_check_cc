@@ -20,7 +20,6 @@ template <typename T> class tilter {
 public:
   typedef Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Matrix<T, 3, 3>                           Mat3x3;
-  typedef Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Matrix<T, 3, 1>                           Vec3;
   typedef Matrix<T, 2, 1>                           Vec2;
   typedef Matrix<T, 3, 5>                           Triangles;
@@ -286,6 +285,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
         Vec2 midgeom;
         midgeom[0] = y;
         midgeom[1] = x;
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
         if(onTriangle(z, tri, midgeom)
            && zb(y, x) < z) {
             result(y, x)  = tri(0, 3);

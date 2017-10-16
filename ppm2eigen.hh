@@ -66,11 +66,11 @@ template <typename T> bool loadp2or3(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyn
   if(input.is_open()) {
     try {
       getline(input, line);
-      while(line[0] == '#' && getline(input, line)) ;
+      while(line[0] == '#' && getline(input, line) && !input.eof() && !input.bad()) ;
       getline(input, line2);
-      while(line2[0] == '#' && getline(input, line2)) ;
+      while(line2[0] == '#' && getline(input, line2) && !input.eof() && !input.bad()) ;
       getline(input, line3);
-      while(line3[0] == '#' && getline(input, line3)) ;
+      while(line3[0] == '#' && getline(input, line3) && !input.eof() && !input.bad()) ;
       istringstream iline2(line2);
       int w, h;
       iline2 >> w;

@@ -41,12 +41,11 @@ template <typename T> class lowFreq {
 public:
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
   lowFreq();
   ~lowFreq();
   
-  vector<Eigen::Matrix<T, 3, 1> > getLowFreq(const Mat& data, const int& npoints = 60);
+  vector<Vec3> getLowFreq(const Mat& data, const int& npoints = 60);
   Mat getLowFreqImage(const Mat& data, const int& npoints = 60);
 private:
   vector<lfmatch_t<T> > prepareCost(const Mat& data, const int& npoints);
@@ -66,6 +65,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lowFreq<T
   Mat result(data);
   vector<lfmatch_t<T> > match(prepareCost(data, npoints));
   result *= T(0);
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
   for(int k = 0; k < match.size(); k ++) {
     const Eigen::Matrix<T, 3, 1>& pt(match[k].pt);
     result(int(pt[0]), int(pt[1])) = pt[2];
@@ -200,9 +202,7 @@ public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, 2, 2>                           Mat2x2;
-  typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
   typedef Eigen::Matrix<T, 3, 1>              Vec3;
-  typedef Eigen::Matrix<T, 2, 1>              Vec2;
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
@@ -288,19 +288,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
                abs(cos(theta1) * a - sin(theta1) * b - c) <
                abs(cos(theta)  * a - sin(theta)  * b - c)))
             theta = theta1;
-          theta1 = theta1 + Pi;
-          if(!isfinite(theta) || (isfinite(theta1) &&
-               abs(cos(theta1) * a - sin(theta1) * b - c) <
-               abs(cos(theta)  * a - sin(theta)  * b - c)))
-            theta = theta1;
-          theta1 = theta + Pi;
-          if(!isfinite(theta) || (isfinite(theta1) &&
-               abs(cos(theta1) * a - sin(theta1) * b - c) <
-               abs(cos(theta)  * a - sin(theta)  * b - c)))
-            theta = theta1;
-          theta += Pi;
           theta -= floor(theta / (T(2) * Pi) + T(.5)) * T(2) * Pi;
-          theta -= Pi;
           table(j, k)[l] = theta;
           bk[(l + i    ) % 3] = cos(theta) * a - sin(theta) * b;
           bk[(l + i + 1) % 3] = sin(theta) * a + cos(theta) * b;
@@ -373,7 +361,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             const Vec3 bk(work.rot * (points[msub[kk].mbufk] - gp));
             const Vec3 lerr(aj - bk * t0);
             if(thresh * thresh < lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t0 * t0))
-              continue;
+              break;
             work.dstpoints.push_back(msub[kk].mbufj);
             work.srcpoints.push_back(msub[kk].mbufk);
             flagj[msub[kk].mbufj] = true;
@@ -453,7 +441,6 @@ template <typename T> class matchWholePartial {
 public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
-  typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
   typedef Eigen::Matrix<T, 3, 1>              Vec3;
   typedef complex<T> U;
   matchWholePartial();
@@ -507,7 +494,6 @@ public:
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
   typedef Eigen::Matrix<T, 3, 1>              Vec3;
-  typedef Eigen::Matrix<T, 2, 1>              Vec2;
   typedef Eigen::Matrix<int, 3, 1>            Veci3;
   
   reDig();
@@ -659,6 +645,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch
   for(int i = 0; i < map.rows(); i ++)
     for(int j = 0; j < map.cols(); j ++)
       map(i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp paralell for
+#endif
   for(int k = 0; k < prefpoints.size(); k ++) {
     drawMatchLine<T>(map,
                      refpoints[prefpoints[k][0]],

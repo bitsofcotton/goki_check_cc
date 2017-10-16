@@ -18,6 +18,7 @@ void usage() {
 }
 
 int main(int argc, const char* argv[]) {
+  std::ios::sync_with_stdio(false);
   if(argc < 4) {
     usage();
     return 0;

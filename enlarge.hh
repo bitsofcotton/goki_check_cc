@@ -13,10 +13,6 @@ template <typename T> T autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
   if(npad <= 0)
     npad = (data[0].rows() + data[0].cols()) * 4;
   vector<T> stat;
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for
-#endif
   for(int i = 0; i < size; i ++)
     for(int j = 0; j < data[i].rows(); j ++)
       for(int k = 0; k < data[i].cols(); k ++)
@@ -27,7 +23,7 @@ template <typename T> T autoLevel(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynami
   if(MM == mm)
     MM = mm + 1.;
 #if defined(_OPENMP)
-#pragma omp for
+#pragma omp parallel for
 #endif
   for(int k = 0; k < size; k ++) {
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> buf(data[k].rows(), data[k].cols());
@@ -79,8 +75,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 #if defined(_OPENMP)
 #pragma omp parallel for
 #endif
-  for(int i = 1; i < rw.rows() / 2 * 2 - 2; i ++)
-    for(int j = 1; j < rh.cols() / 2 * 2 - 2; j ++) {
+  for(int i = 1; i < rw.rows() - 1; i ++)
+    for(int j = 1; j < rh.cols() - 1; j ++) {
       Mat A(4, 4);
       Vec b(4);
       A(0, 0) = rw(i, j * 2)     / T(2);
@@ -91,24 +87,29 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       A(1, 1) = rh(i * 2,     j) / T(2);
       A(1, 2) = rh(i * 2 + 1, j) / T(2);
       A(1, 3) = rh(i * 2 + 1, j) / T(2);
-      A(2, 0) = rdr(i * 2,     j * 2);
+      A(2, 0) = rdr(i * 2,    j * 2);
       A(2, 1) = T(0);
       A(2, 2) = T(0);
       A(2, 3) = rdr(i * 2 + 1, j * 2 + 1);
       A(3, 0) = T(0);
-      A(3, 1) = (rdl(i * 2 - 1, j * 2 + 1) + rdl(i * 2, j * 2 + 2)) / T(2);
-      A(3, 2) = (rdl(i * 2 + 1, j * 2 - 1) + rdl(i * 2 + 2, j * 2)) / T(2);
+      A(3, 1) = rdl(i * 2, j * 2 + 1);
+      A(3, 2) = rdl(i * 2 + 1, j * 2);
       A(3, 3) = T(0);
-      b[0] = b[1] = b[2] = b[3] = T(1);
-      // XXX fixme:
-      if(abs(A.determinant()) > T(3))
-        b = A.inverse() * b;
+      A /= T(2);
+      const T orig((rw(i, j * 2) + rw(i, j * 2 + 1)) / T(2));
+      b[0] = b[1] = b[2] = b[3] = orig;
+      // XXX fixme determinant error rate.
+      if(abs(A.determinant()) != T(0))
+        b = A.inverse()   * b;
       else
-        b = A.transpose() * b / T(3);
-      result(i * 2 + 0, j * 2 + 0) = b[0];
-      result(i * 2 + 0, j * 2 + 1) = b[1];
-      result(i * 2 + 1, j * 2 + 0) = b[2];
-      result(i * 2 + 1, j * 2 + 1) = b[3];
+        b = A.transpose() * b / T(4);
+      Vec bb(4);
+      bb[0] = bb[1] = bb[2] = bb[3] = T(1);
+      bb = A.transpose() * bb / T(4);
+      result(i * 2 + 0, j * 2 + 0) = b[0] * bb[0];
+      result(i * 2 + 0, j * 2 + 1) = b[1] * bb[1];
+      result(i * 2 + 1, j * 2 + 0) = b[2] * bb[2];
+      result(i * 2 + 1, j * 2 + 1) = b[3] * bb[3];
     }
   return result;
 }
@@ -148,7 +149,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 #pragma omp parallel for
 #endif
       for(int i = 0; i < data.cols(); i ++) {
-        const T lr(pow(T(2) * Pi * data.rows(), T(2)));
+        const T lr(pow(T(2) * Pi, T(4)) * data.rows());
         ff[i] /= lr * T(2);
         xx[i] /= lr * T(2);
         for(int j = 0; j < data.rows(); j ++) {
@@ -188,7 +189,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         T   ff(dbuf.transpose() * F);
         T   xx(dbuf.transpose() * X);
         Vec co(Dop * dbuf / T(2));
-        const T lr(pow(T(2) * Pi * width0, T(2)));
+        const T lr(pow(T(2) * Pi, T(4)) * width0);
         ff /= lr * T(2);
         xx /= lr * T(2);
         for(int j = 0; j < width; j ++) {
