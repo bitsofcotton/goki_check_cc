@@ -279,30 +279,30 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     vector<Vec3> workpoints;
     vector<Eigen::Matrix<int, 3, 1> > workdels;
     const Mat merge0(getPseudoBumpVecSub(mats));
-    Mat merge1(input.rows(), mats.cols());
+    Mat merge1(input.rows(), input.cols());
     const int r01(merge1.rows() / merge0.rows());
+    const int b01(merge1.cols() / merge0.cols());
     for(int i = 0; i < merge1.rows(); i ++)
       for(int j = 0; j < merge1.cols(); j ++)
-        if(i % r01 == r01 / 2 || i == merge1.rows() - 1)
+        if((i % r01 == r01 / 2 || i == merge1.rows() - 1) &&
+           (j % b01 == b01 / 2 || j == merge1.cols() - 1))
           merge1(i, j) = merge0(min(i / r01, int(merge0.rows() - 1)),
-                                min(j      , int(merge0.cols() - 1)));
+                                min(j / b01, int(merge0.cols() - 1)));
         else
           merge1(i, j) = - T(1);
+    Mat merge2(merge1);
     for(int i = 0; i < merge1.cols(); i ++)
-      merge1.col(i) = complementLine(merge1.col(i));
-    Mat merge2(input.rows(), input.cols());
-    const int r12(merge2.cols() / merge1.cols());
-    for(int j = 0; j < merge2.cols(); j ++)
-      for(int i = 0; i < merge2.rows(); i ++)
-        if(j % r12 == r12 / 2 || j == merge2.cols() - 1)
-          merge2(i, j) = merge1(min(i,       int(merge1.rows() - 1)),
-                                min(j / r12, int(merge1.cols() - 1)));
-        else
-          merge2(i, j) = - T(1);
+      if(i % b01 == b01 / 2 || i == merge1.cols() - 1)
+        merge1.col(i) = complementLine(merge1.col(i));
     for(int i = 0; i < merge2.rows(); i ++)
-      merge2.row(i) = complementLine(merge2.row(i));
+      if(i % r01 == r01 / 2 || i == merge2.rows() - 1)
+        merge2.row(i) = complementLine(merge2.row(i));
+    for(int i = 0; i < merge1.rows(); i ++)
+      merge1.row(i) = complementLine(merge1.row(i));
+    for(int i = 0; i < merge2.cols(); i ++)
+      merge2.col(i) = complementLine(merge2.col(i));
     // XXX fixme ratio of add:
-    bumps += merge2 * sqrt(T(count));
+    bumps += (merge1 + merge2) * sqrt(T(count)) / T(2);
   }
   complement(bumps, crowd, vmax, points, delaunays);
   vector<Vec3> ppoints(points);
@@ -499,16 +499,8 @@ template <typename T> void PseudoBump<T>::complement(const Mat& in, const int& c
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complementLine(const Vec& line, const T& rratio) {
   vector<int> ptsi;
   vector<T>   pts;
-  bool flag = true;
   for(int i = 0; i < line.size(); i ++)
     if(T(0) <= line[i]) {
-      if(!i)
-        flag = false;
-      else if(flag) {
-        ptsi.push_back(- i);
-        pts.push_back(line[i]);
-        flag = false;
-      }
       ptsi.push_back(i);
       pts.push_back(line[i]);
     }
@@ -518,6 +510,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
       result[i] = T(.5);
     return result;
   }
+  ptsi.insert(ptsi.begin(), ptsi[1]);
+  pts.insert(pts.begin(), pts[1]);
   ptsi.push_back(line.size() + (line.size() - ptsi[ptsi.size() - 2]));
   pts.push_back(pts[pts.size() - 2]);
   int rng[3];
@@ -562,7 +556,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
           work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
       result[i] += work * pts[rng[ii]];
     }
-    result[i] = max(min(result[i], T(1)), T(0));
+    result[i] = max(min(result[i], T(2)), - T(1));
   }
   return result;
 }
