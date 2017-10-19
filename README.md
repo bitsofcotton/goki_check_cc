@@ -30,8 +30,8 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 
 # Context
 This program is inspired from re-focus photo softwares.  
-And around this, there's preceders that many approach to get bump maps with certain conditions
-(such as multiple camera conditions, or, with layered objects, or, spherical, or, etcetc).
+And around this, there's many preceders that many approach to get bump maps with certain conditions
+(such as multiple camera conditions, or, with layered objects, or, spherical, or, from movie, etcetc).
 (And I have no clue which is a correct official page, no hyperlink from here.).   
 This get bump maps in a different way.
 
@@ -121,5 +121,5 @@ PseudoBump makes a pseudo plausible things.
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable18.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable18.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release2.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release2.tar.gz
