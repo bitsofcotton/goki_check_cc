@@ -29,8 +29,8 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。
 また、この分野に関して、様々な(これと異なる)付帯条件での先行がたくさんありました。
-(例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるものなど。
- ただし、正しい公式ページがどれなのかわからないために、リンクは差し控えさせていただきます。)
+(例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるもの、
+ 動画から生成するものなどです。ただし、正しい公式ページがどれなのかわからないために、リンクは差し控えさせていただきます。)
 
 # 状態
 回転のある場合の全体の一致の実装をしています。
@@ -119,5 +119,5 @@ PseudoBump はもっともらしいバンプマップを返しますが、正し
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-stable18.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-stable18.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release2.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release2.tar.gz
