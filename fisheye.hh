@@ -294,7 +294,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     const int r12(merge2.cols() / merge1.cols());
     for(int j = 0; j < merge2.cols(); j ++)
       for(int i = 0; i < merge2.rows(); i ++)
-        if(j % r12 == r12 / 2 || j == merge2.cols())
+        if(j % r12 == r12 / 2 || j == merge2.cols() - 1)
           merge2(i, j) = merge1(min(i,       int(merge1.rows() - 1)),
                                 min(j / r12, int(merge1.cols() - 1)));
         else
