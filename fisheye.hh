@@ -513,13 +513,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
       pts.push_back(line[i]);
     }
   Vec result(line);
-  if(ptsi.size() <= 0) {
+  if(ptsi.size() < 2) {
     for(int i = 0; i < line.size(); i ++)
       result[i] = T(.5);
     return result;
   }
-  ptsi.push_back(ptsi[ptsi.size() - 1] + 2. * (line.size() - ptsi[ptsi.size() - 1]));
-  pts.push_back(pts[pts.size() - 1]);
+  ptsi.push_back(line.size() + (line.size() - ptsi[ptsi.size() - 2]));
+  pts.push_back(pts[pts.size() - 2]);
   int rng[3];
   rng[0] = rng[1] = rng[2] = 0;
   for(int i = 0; i < line.size(); i ++) {
