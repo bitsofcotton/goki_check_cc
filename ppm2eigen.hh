@@ -21,7 +21,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb2l(con
   auto V(T( .615  ) * rgb[0] + T(-.51499) * rgb[1] + T(-.10001) * rgb[2]);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(rgb[0].rows(), rgb[0].cols());
 #if defined(_OPENMP)
-#pragma omp parallel for
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < rgb[0].rows(); j ++)
     for(int k = 0; k < rgb[0].cols(); k ++)

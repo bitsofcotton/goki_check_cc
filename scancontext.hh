@@ -44,11 +44,13 @@ public:
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
   lowFreq();
   ~lowFreq();
+  void init(const T& zr);
   
   vector<Vec3> getLowFreq(const Mat& data, const int& npoints = 60);
   Mat getLowFreqImage(const Mat& data, const int& npoints = 60);
 private:
   vector<lfmatch_t<T> > prepareCost(const Mat& data, const int& npoints);
+  T zr;
   T Pi;
   U I;
 };
@@ -56,9 +58,16 @@ private:
 template <typename T> lowFreq<T>::lowFreq() {
   Pi          = atan2(T(1), T(1)) * T(4);
   I           = sqrt(U(- 1));
+  init(60);
 }
 
 template <typename T> lowFreq<T>::~lowFreq() {
+  ;
+}
+
+template <typename T> void lowFreq<T>::init(const T& zr) {
+  this->zr = zr;
+  return;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lowFreq<T>::getLowFreqImage(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const int& npoints) {
@@ -66,7 +75,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lowFreq<T
   vector<lfmatch_t<T> > match(prepareCost(data, npoints));
   result *= T(0);
 #if defined(_OPENMP)
-#pragma omp parallel for
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int k = 0; k < match.size(); k ++) {
     const Eigen::Matrix<T, 3, 1>& pt(match[k].pt);
@@ -104,9 +113,8 @@ template <typename T> vector<lfmatch_t<T> > lowFreq<T>::prepareCost(const Eigen:
           count ++;
         }
       m.score = csum / count;
-      pt /= count;
-      // XXX magic number:
-      pt[2] *= T(60);
+      pt    /= count;
+      pt[2] *= zr;
       match.push_back(m);
     }
   sort(match.begin(), match.end());
@@ -265,8 +273,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
     // init table.
     cerr << "making table (" << i << "/3)" << endl;
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int j = 0; j < shapebase.size(); j ++) {
       fflush(stderr);
@@ -297,7 +304,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
     }
     // matches.
 #if defined(_OPENMP)
-#pragma omp for
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int nd = 0; nd < ndiv; nd ++) {
       cerr << "matching table (" << nd << "/" << ndiv << ")";
@@ -646,7 +653,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch
     for(int j = 0; j < map.cols(); j ++)
       map(i, j) = T(0);
 #if defined(_OPENMP)
-#pragma omp paralell for
+#pragma omp paralell for schedule(static, 1)
 #endif
   for(int k = 0; k < prefpoints.size(); k ++) {
     drawMatchLine<T>(map,

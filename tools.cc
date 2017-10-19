@@ -83,7 +83,7 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps;
-      const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay, bumps, !true).template cast<float>());
+      const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay, bumps, ! true).template cast<float>());
       data[0] = data[1] = data[2] = bumps.template cast<float>();
       for(int i = 0; i < points.size(); i ++)
         points[i][2] *= double(20);
@@ -166,9 +166,9 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay0, delaunay1;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sute;
-      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0, sute, !true).template cast<float>();
+      bump0 = bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape0, delaunay0, sute, ! true).template cast<float>();
       bump.vmax = 60;
-      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1, sute, !true).template cast<float>();
+      bump1 = bump.getPseudoBumpVec(rgb2l(data1).template cast<double>(), shape1, delaunay1, sute, ! true).template cast<float>();
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
@@ -268,7 +268,7 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
       if(!loadobj<double>(datapoly, polynorms, argv[4]))
         return - 2;
-      // XXX configure me:
+      // XXX: configure me:
       if(datapoly.size() > 2000) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
@@ -283,7 +283,7 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int, 3, 1> > poly;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sute;
-      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly, sute, !true).template cast<float>();
+      bump = bumper.getPseudoBumpVec(rgb2l(data).template cast<double>(), shape, poly, sute, ! true).template cast<float>();
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = float(0);
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());

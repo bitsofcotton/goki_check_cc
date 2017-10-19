@@ -46,6 +46,9 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const
   vector<Eigen::Matrix<int, 3, 1> > res;
   tilter<T> tilt;
   cerr << "Delaunay(" << dstpoints.size() << ")";
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < dstpoints.size(); i ++) {
     cerr << ".";
     fflush(stderr);
@@ -102,20 +105,25 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const
             idx[1] = j;
             idx[2] = k;
           }
-          res.push_back(idx);
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+          {
+            res.push_back(idx);
+          }
         }
       }
   }
   return res;
 }
 
-template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename) {
+template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const T& zr = T(8)) {
   ofstream output;
   output.open(filename, std::ios::out);
   if(output.is_open()) {
     for(int i = 0; i < data.size(); i ++)
-      // XXX magic number:
-      output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] * T(8) << endl;
+      output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] * zr << endl;
+    // xchg with clockwise/counter clockwise.
     for(int i = 0; i < polys.size(); i ++)
       output << "f " << polys[i][0] + 1 << " " << polys[i][1] + 1 << " " << polys[i][2] + 1 << endl;
     output.close();
