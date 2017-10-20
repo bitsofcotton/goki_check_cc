@@ -79,14 +79,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     for(int j = 1; j < rh.cols() - 1; j ++) {
       Mat A(4, 4);
       Vec b(4);
-      A(0, 0) = rw(i, j * 2)     / T(2);
-      A(0, 1) = rw(i, j * 2 + 1) / T(2);
-      A(0, 2) = rw(i, j * 2)     / T(2);
-      A(0, 3) = rw(i, j * 2 + 1) / T(2);
-      A(1, 0) = rh(i * 2,     j) / T(2);
-      A(1, 1) = rh(i * 2,     j) / T(2);
-      A(1, 2) = rh(i * 2 + 1, j) / T(2);
-      A(1, 3) = rh(i * 2 + 1, j) / T(2);
+      A(0, 0) = rw(i, j * 2);
+      A(0, 1) = rw(i, j * 2 + 1);
+      A(0, 2) = rw(i, j * 2);
+      A(0, 3) = rw(i, j * 2 + 1);
+      A(1, 0) = rh(i * 2,     j);
+      A(1, 1) = rh(i * 2,     j);
+      A(1, 2) = rh(i * 2 + 1, j);
+      A(1, 3) = rh(i * 2 + 1, j);
       A(2, 0) = rdr(i * 2,    j * 2);
       A(2, 1) = T(0);
       A(2, 2) = T(0);
@@ -98,7 +98,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       A /= T(2);
       const T orig((rw(i, j * 2) + rw(i, j * 2 + 1)) / T(2));
       b[0] = b[1] = b[2] = b[3] = T(1);
-      b = A.transpose() * b / T(4);
+      b = A.transpose() * b / T(3);
       result(i * 2 + 0, j * 2 + 0) = b[0];
       result(i * 2 + 0, j * 2 + 1) = b[1];
       result(i * 2 + 1, j * 2 + 0) = b[2];
@@ -137,7 +137,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       Mat dd(D * data);
       Vec ff(data.transpose() * F);
       Vec xx(data.transpose() * X);
-      Mat co(Dop * data / T(2));
+      Mat co(Dop * data);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -182,7 +182,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         Vec dd(D * dbuf);
         T   ff(dbuf.transpose() * F);
         T   xx(dbuf.transpose() * X);
-        Vec co(Dop * dbuf / T(2));
+        Vec co(Dop * dbuf);
         const T lr(pow(T(2) * Pi * width0, T(2)));
         ff /= lr * T(2);
         xx /= lr * T(2);
@@ -212,7 +212,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         Vec dd(D * dbuf);
         T   ff(dbuf.transpose() * F);
         T   xx(dbuf.transpose() * X);
-        Vec co(Dop * dbuf / T(2));
+        Vec co(Dop * dbuf);
         const T lr(pow(T(2) * Pi * width0, T(2)));
         ff /= lr * T(2);
         xx /= lr * T(2);

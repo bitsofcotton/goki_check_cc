@@ -315,12 +315,12 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       for(int k = 0; k < points.size(); k ++)
         for(int j = 0; j < shapebase.size(); j ++) {
           const T lnorm(sqrt(table(j, k).dot(table(j, k))));
-          const T ldepth(cos(table(j, k)[0] / lnorm) * cos(ddiv[0]) +
-                         sin(table(j, k)[0] / lnorm) * sin(ddiv[0]) +
-                         cos(table(j, k)[1] / lnorm) * cos(ddiv[1]) +
-                         sin(table(j, k)[1] / lnorm) * sin(ddiv[1]) - T(2));
+          const T ldepth(min(cos(table(j, k)[0] / lnorm) * cos(ddiv[0]) +
+                             sin(table(j, k)[0] / lnorm) * sin(ddiv[0]),
+                             cos(table(j, k)[1] / lnorm) * cos(ddiv[1]) +
+                             sin(table(j, k)[1] / lnorm) * sin(ddiv[1])) - T(1));
           if(isfinite(lnorm) && (lnorm <= Pi / ndiv ||
-              (isfinite(ldepth) && ldepth <= T(1) / ndiv) ) ) {
+              (isfinite(ldepth) && abs(ldepth) <= T(1) / ndiv) ) ) {
             msub_t<T> workm;
             workm.mbufj = j;
             workm.mbufk = k;
