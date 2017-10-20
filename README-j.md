@@ -119,5 +119,5 @@ PseudoBump はもっともらしいバンプマップを返しますが、正し
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release2.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release2.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release3.tar.gz
+* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release3.tar.gz
