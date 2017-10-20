@@ -524,7 +524,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
   for(int i = 0; i < line.size(); i ++) {
     if(result[i] >= T(0))
       continue;
-    for(; rng[1] < ptsi.size() && ptsi[rng[1]] < i; rng[1] ++) ;
+    for(; rng[1] < ptsi.size() - 1 && ptsi[rng[1]] < i; rng[1] ++) ;
     rng[0] = rng[1] - 1;
     rng[2] = rng[1] + 1;
     const T ratio((ptsi[rng[2]] - ptsi[rng[1]]) /
