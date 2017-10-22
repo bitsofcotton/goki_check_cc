@@ -40,6 +40,15 @@ template <typename T> int clockwise(const Eigen::Matrix<T, 3, 1>& p0, const Eige
   return det < T(0) ? - 1 : 1;
 }
 
+template <typename T> bool isSameLine2(const Eigen::Matrix<T, 3, 1>& a, const Eigen::Matrix<T, 3, 1>& b, const Eigen::Matrix<T, 3, 1>& c, const T& rerr = T(1e-8)) {
+  Eigen::Matrix<T, 3, 1> bcn(b - c);
+  bcn[2] = T(0);
+  Eigen::Matrix<T, 3, 1> err(a);
+  err[2] = T(0);
+  err   -= err.dot(bcn) * bcn / bcn.dot(bcn);
+  return err.dot(err) <= rerr;
+}
+
 // N.B. delaunay trianglation algorithm best works but this is brute force.
 // XXX: terrible inefficient temporary stub.
 template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const vector<Eigen::Matrix<T, 3, 1> >& dst, const vector<int>& dstpoints, const T epsilon = T(1e-5)) {
@@ -54,6 +63,8 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const
     fflush(stderr);
     for(int j = i + 1; j < dstpoints.size(); j ++)
       for(int k = j + 1; k < dstpoints.size(); k ++) {
+        if(isSameLine2<T>(dst[dstpoints[i]], dst[dstpoints[j]], dst[dstpoints[k]]))
+          continue;
         Eigen::Matrix<T, 4, 4> dc;
         auto g((dst[dstpoints[i]] +
                 dst[dstpoints[j]] +
@@ -145,8 +156,8 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
       if(i + 1 < work.size() && work[i] == 'v' && work[i + 1] == ' ') {
         stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
         Eigen::Matrix<T, 3, 1> buf;
-        sub >> buf[0];
         sub >> buf[1];
+        sub >> buf[0];
         sub >> buf[2];
         data.push_back(buf);
       } else if(i + 1 < work.size() && work[i] == 'f' && work[i + 1] == ' ') {
@@ -159,20 +170,22 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
           if(wbuf[widx] >= 0)
             wbuf[widx] --;
           widx ++;
-          if(sub.eof() || sub.bad())
-            break;
           if(widx > 2)
             flag = true;
           if(flag)
             polys.push_back(wbuf);
           widx %= 3;
+          if(sub.eof() || sub.bad())
+            break;
           sub.ignore(20, ' ');
         }
       }
     }
+/*
     for(int i = 0; i < polys.size(); i ++)
       for(int j = 0; j < polys[i].size(); j ++)
         polys[i][j] = abs(int(polys[i][j] % (2 * data.size())) - int(data.size()));
+*/
     input.close();
   } else {
     cerr << "Unable to open file: " << filename << endl;

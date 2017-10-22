@@ -20,6 +20,7 @@ using std::max;
 using std::min;
 using std::cos;
 using std::sqrt;
+using std::log;
 using std::isfinite;
 
 template <typename T> int cmpbump(const Eigen::Matrix<T, 3, 1>& x0, const Eigen::Matrix<T, 3, 1>& x1) {
@@ -38,8 +39,10 @@ public:
   T      cutoff;
   T      cutz;
   T      cthresh;
+  T      cthresh2;
   T      corrnl;
   int    crowd;
+  int    stpmax;
   int    vmax;
   int    nloop;
   int    ndiv;
@@ -58,7 +61,7 @@ public:
   void correctSubPseudoBump(Mat& result, const Mat& workl, const Mat& worku, const int& j, const int& k, const T& ry, const T& t0, const T& t1);
   Mat  getPseudoBumpSub(const Mat& work, const int& rstp);
   Mat  getPseudoBumpLoop(const Mat& work);
-  Mat  getPseudoBumpVecSub(const Mat& input, const bool& y_only = false);
+  Mat  getPseudoBumpVecSub(const Mat& input, const bool& y_only = false, const bool& alevel = true);
   Mat  getPseudoBumpVec(const Mat& input, vector<Vec3>& points, vector<Eigen::Matrix<int, 3, 1> >& delaunays, Mat& bumps, const bool& y_only = false);
 private:
   T    sgn(const T& x);
@@ -77,7 +80,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(12, 12, 16, 800, 2, 6, T(2.));
+  initialize(20, 12, 15, 400, 1, 3, T(2.));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -85,24 +88,26 @@ template <typename T> PseudoBump<T>::~PseudoBump() {
 }
 
 template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& crowd, const int& vmax, const int& nloop, const int& ndiv, const T& rdist) {
-  this->Pi      = 4. * atan2(T(1.), T(1.));
-  this->z_max   = z_max;
-  this->stp     = stp;
-  this->rstp    = stp;
-  this->rrstp   = rstp / 4;
+  this->Pi       = T(4) * atan2(T(1), T(1));
+  this->z_max    = z_max;
+  this->stp      = stp;
+  this->rstp     = stp;
+  this->rrstp    = 2;
   assert(1 < this->rrstp);
-  this->crowd   = crowd;
-  this->vmax    = vmax;
-  this->nloop   = nloop;
-  this->ndiv    = ndiv;
+  this->crowd    = crowd;
+  this->stpmax   = max(1, int(log(T(crowd) / (rstp / 2) / 2) / log(T(rrstp))));
+  this->vmax     = vmax;
+  this->nloop    = nloop;
+  this->ndiv     = ndiv;
   assert(nloop / T(ndiv) < T(1));
-  this->roff    = 1. / 6.;
-  this->cdist   = - 1.;
-  this->rdist   = rdist * (- this->cdist);
-  this->cutoff  = T(.5);
-  this->cutz    = T(.12);
-  this->cthresh = sqrt(T(stp / 2)) / T(stp / 2);
-  this->corrnl  = T(.8);
+  this->roff     = 1. / 6.;
+  this->cdist    = - 1.;
+  this->rdist    = rdist * (- this->cdist);
+  this->cutoff   = T(.5);
+  this->cutz     = T(.05);
+  this->cthresh  = sqrt(T(stp / 2)) / T(stp / 2);
+  this->cthresh2 = T(.01);
+  this->corrnl   = T(.8);
   MatU Dopb(stp / 2 + 1, stp / 2 + 1);
   MatU Iopb(Dopb.rows(), Dopb.cols());
   U I(sqrt(complex<T>(- 1)));
@@ -135,23 +140,19 @@ template <typename T> T PseudoBump<T>::sgn(const T& x) {
 template <typename T> void PseudoBump<T>::correctSubPseudoBump(Mat& result, const Mat& workl, const Mat& worku, const int& j, const int& k, const T& ry, const T& t0, const T& t1) {
   const int j1((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
   const int j0((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
-  const int jc1(min(max(j1, 0), int(result.rows() - 1)));
-  const int jc0(min(max(j0, 0), int(result.rows() - 1)));
-  const int jj1(max(int(result.rows() - 1 - j), 0));
-  const int jj0(max(int(min(result.rows() - 1 - (j + 1), result.rows() - 1)), 0));
-  T x0(worku(jj0, k) * t1);
-  if(x0 < T(0) || (T(0) <= workl(jj0, k) * t0 && workl(jj0, k) * t0 < x0))
-    x0 = workl(jj0, k) * t0;
-  T x1(worku(jj1, k) * t1);
-  if(x1 < T(0) || (T(0) <= workl(jj1, k) * t0 && workl(jj1, k) * t0 < x1))
-    x1 = workl(jj1, k) * t0;
+  const int jj1(max(int(result.rows() - 1 - j),       0));
+  const int jj0(max(int(result.rows() - 1 - (j + 1)), 0));
+  const T x0(max(worku(jj0, k) * t1, workl(jj0, k) * t0));
+  const T x1(max(worku(jj1, k) * t1, workl(jj1, k) * t0));
   if(x0 < T(0) || x1 < T(0))
     return;
-  for(int l = jc0; l < jc1; l ++) {
-    const T t((l - j0) / T(j1 - j0));
+  for(int l =  max(0, min(j0, int(result.rows() - 1)));
+          l <= max(0, min(j1, int(result.rows() - 1)));
+          l ++) {
+    const T t(j1 == j0 ? T(1) : (l - j0) * (j1 - j0));
     const T buf((x0 * t + x1 * (T(1) - t)) * ry);
     if(result(l, k) < T(0))
-      result(l, k) = buf;
+      result(l, k) = min(max(buf, T(0)), T(1));
   }
   return;
 }
@@ -211,14 +212,19 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
  msl[msl.size() - 1] * msl[msl.size() - 1]));
         const T   rr(msr[0] * msr[0] / (msr.dot(msr) - msr[0] * msr[0]));
         const T   n2(abs(msl[msl.size() - 1] - msr[0]) / sqrt(c.dot(c)));
+        // If left and right differential abs are in good condition
+        // and, edge is clear than before:
         if(isfinite(n2) && zval[s] < n2 &&
-           (cthresh <= lr || cthresh <= rr) ) {
-          // XXX select me:
+           (cthresh <= lr || cthresh <= rr) &&
+           cthresh2 <= (abs(T(1) - sqrt(max(lr / rr, rr / lr))) ) ) {
+          // N.B. If increase zz, increase distance from camera.
+          //      And, zz->0 is treated as distant in tilter.
           // result(s, i) = T(1) - zz / T(lrf.rows());
-          result(s, i) = (zz + 1) / T(lrf.rows());
+          result(s, i) = (T(1) + zz) / T(lrf.rows());
           zval[s]      = n2;
         }
       }
+      // if we get is too near or too far, eliminate the focuses.
       for(int s = 0; s < result.rows(); s ++)
         if(result(s, i) <= cutz || T(1) - cutz <= result(s, i))
           result(s, i) = - T(1);
@@ -235,26 +241,25 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     Mat work(result);
     for(int j = 0; j < work.cols(); j ++)
       work.col(j) = complementLine(work.col(j));
-    const Mat worku(getPseudoBumpSub( tilter.tilt(input,   work, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
-    const Mat worku2(getPseudoBumpSub(tilter.tilt(input, - work, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
-    const Mat workl(getPseudoBumpSub( tilter.tilt(input,   work, 3, 4, (i + 1) / T(ndiv) + T(1)), rstp));
-    const Mat workl2(getPseudoBumpSub(tilter.tilt(input, - work, 3, 4, (i + 1) / T(ndiv) + T(1)), rstp));
+    const Mat worku(getPseudoBumpSub(tilter.tilt(input, work, 1, 4, (i + 1) / T(ndiv) + T(1)), rstp));
+    const Mat workl(getPseudoBumpSub(tilter.tilt(input, work, 3, 4, (i + 1) / T(ndiv) + T(1)), rstp));
     const T ry(cos(Pi / T(2) * (i + 1) / T(ndiv)));
     const T dy(result.rows() / 2 - result.rows() / 2 * ry);
-    const T t0(T(1) - sqrt(T(2) * (T(1) - ry)));
-    const T t1(T(1) + sqrt(T(2) * (T(1) - ry)));
+    const T t0(abs(T(1) - sqrt(T(2) * (T(1) - ry))));
+    const T t1(abs(T(1) + sqrt(T(2) * (T(1) - ry))));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int j = dy; j < int(result.rows()) - int(dy) + 1; j ++)
       for(int k = 0; k < result.cols(); k ++)
-        correctSubPseudoBump(result, workl,  worku,  j, k, ry, t0, t1);
+        correctSubPseudoBump(result, workl, worku, j, k, ry, t0, t1);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int j = dy; j < int(result.rows()) - int(dy) + 1; j ++)
-      for(int k = 0; k < result.cols(); k ++)
-        correctSubPseudoBump(result, worku2, workl2, j, k, ry, t0, t1);
+    // if we get is too near or too far, eliminate the focuses (retry).
+    for(int s = 0; s < result.rows(); s ++)
+      if(result(s, i) <= cutz || T(1) - cutz <= result(s, i))
+        result(s, i) = - T(1);
   }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -264,17 +269,17 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, const bool& y_only) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVecSub(const Mat& input, const bool& y_only, const bool& alevel) {
   Mat result;
   if(y_only) {
     Mat mats(input);
     result = getPseudoBumpLoop(mats);
     int ratio(1);
     int count(1);
-    while(rrstp * rrstp * 8 < min(mats.rows(), mats.cols())) {
+    while(rrstp * rrstp * 8 < min(mats.rows(), mats.cols()) &&
+          count ++ <= stpmax) {
       mats   = shrink(mats, y_only);
       ratio *= rrstp;
-      count ++;
       const Mat merge0(getPseudoBumpVecSub(mats, y_only));
       const int mrh(result.rows() / ratio);
             Mat merge(result.rows(), result.cols());
@@ -290,14 +295,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = pow(result(i, j), corrnl);
-      result += merge / T(count) / rrstp;
+      result += merge / T(count);
     }
   } else {
-    const Mat resx(getPseudoBumpVecSub(input.transpose(), true).transpose());
-    const Mat resy(getPseudoBumpVecSub(input,             true));
+    const Mat resx(getPseudoBumpVecSub(input.transpose(), true, false).transpose());
+    const Mat resy(getPseudoBumpVecSub(input,             true, false));
     result = (resx + resy) / T(2);
   }
-  autoLevel<T>(&result, 1);
+  if(alevel)
+    autoLevel<T>(&result, 1);
   return result;
 }
 
@@ -403,7 +409,6 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
       Vec cpoint(3);
       cpoint[0] = (s / (stp - 1.) - 1. / 2.) * rstp + center[0];
       cpoint[1] = (s / (stp - 1.) - 1. / 2.) * rstp + center[1];
-      // XXX checkme:
       cpoint[2] = (zi + 1) / T(z0) * rdist;
       result(zi, 0).col(s) = getLineAxis(cpoint, camera0, T(ww), T(hh)) - center;
       result(zi, 1).col(s) = getLineAxis(cpoint, camera1, T(ww), T(hh)) - center;
@@ -472,13 +477,9 @@ template <typename T> void PseudoBump<T>::complement(const Mat& in, const int& c
     }
   sort(geoms.begin(), geoms.end(), cmpbump<T>);
   if(vmax < geoms.size()) {
-    const int diff(vmax);
-    geoms.erase(geoms.begin() + diff / 2, geoms.end() - diff / 2);
-/*
-    const int diff(geoms.size8) - vmax);
+    const int diff(geoms.size() - vmax);
     geoms.erase(geoms.end() - diff / 2, geoms.end());
     geoms.erase(geoms.begin(), geoms.begin() + diff / 2);
-*/
   }
   Vec work(3);
   work[0] = 0;
