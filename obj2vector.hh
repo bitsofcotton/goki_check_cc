@@ -133,7 +133,7 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
   output.open(filename, std::ios::out);
   if(output.is_open()) {
     for(int i = 0; i < data.size(); i ++)
-      output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] * zr << endl;
+      output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] * zr << endl;
     // xchg with clockwise/counter clockwise.
     for(int i = 0; i < polys.size(); i ++)
       output << "f " << polys[i][0] + 1 << " " << polys[i][1] + 1 << " " << polys[i][2] + 1 << endl;
@@ -181,11 +181,9 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
         }
       }
     }
-/*
     for(int i = 0; i < polys.size(); i ++)
       for(int j = 0; j < polys[i].size(); j ++)
-        polys[i][j] = abs(int(polys[i][j] % (2 * data.size())) - int(data.size()));
-*/
+        polys[i][j] = abs(int((polys[i][j] + data.size()) % (2 * data.size())) - int(data.size()));
     input.close();
   } else {
     cerr << "Unable to open file: " << filename << endl;

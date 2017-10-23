@@ -85,8 +85,6 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps;
       const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data).template cast<double>(), points, delaunay, bumps, true).template cast<float>());
       data[0] = data[1] = data[2] = bumps.template cast<float>();
-      for(int i = 0; i < points.size(); i ++)
-        points[i][2] *= double(20);
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
         std::cout << points[i].transpose() << std::endl;
@@ -94,7 +92,7 @@ int main(int argc, const char* argv[]) {
       outs[0] = outs[1] = outs[2] = b_mesh.template cast<float>();
       normalize<float>(outs, 1.);
       savep2or3<float>(argv[4], outs, false);
-      saveobj(points, delaunay, argv[5]);
+      saveobj(points, delaunay, argv[5], sqrt(double(data[0].rows() * data[0].cols()) / double(3)));
     }
     break;
   case 6:
@@ -103,6 +101,7 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(bump, argv[4]))
         return - 2;
       tilter<float> tilt;
+      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())));
       const int M_TILT = 32;
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
@@ -156,8 +155,8 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(data1, argv[4]))
         return - 2;
       // XXX: configure me.
-      float zrs(1.5);
-      float zre(.5);
+      float zrs(1.5 * sqrt(data[0].rows() * data[0].cols()));
+      float zre( .5 * sqrt(data[0].rows() * data[0].cols()));
       int   zrl(3);
       int   nshow(6);
       float emph(.25);
@@ -273,8 +272,8 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
       }
-      float zrs(1.5);
-      float zre(.5);
+      float zrs(1.5 * sqrt(double(data[0].rows() * data[0].cols())));
+      float zre( .5 * sqrt(double(data[0].rows() * data[0].cols())));
       int   zrl(3);
       int   nshow(6);
       float emph(.25);
