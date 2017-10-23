@@ -16,6 +16,10 @@ for idx in range(2, len(argv)):
   line = argv[idx]
   print line
   root, ext = os.path.splitext(line)
+  if(ext != ".ppm"):
+    subprocess.call(["convert", line, "-compress", "none", line + ".ppm"])
+    line = line + ".ppm"
+    root, ext = os.path.splitext(line)
   if(not os.path.exists(root + "-enl1" + ext)):
     subprocess.call([argv[1], "enlarge", line, root + "-enl0" + ext], env=my_env)
     subprocess.call(["convert", root + "-enl0" + ext, "-resize", "75%", "-unsharp", "10x4+1+0", "-compress", "none", root + "-enl1" + ext])
