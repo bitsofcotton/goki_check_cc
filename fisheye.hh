@@ -34,14 +34,14 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& vmax, const int& guard, const int& ndiv, const T& rdist);
+  void initialize(const int& z_max, const int& stp, const int& vmax, const int& guard, const int& ndiv, const int& nlast);
   Mat  getPseudoBumpLoop(const Mat& work);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumps);
   
   int vmax;
   
 private:
-  void correctSubPseudoBump(Mat& result, const Mat& worklo, const Mat& workup, const Mat& workle, const Mat& workri, const int& j, const int& k, const T& ry, const T& t0, const T& t1);
+  void correctSubPseudoBump(Mat& result, const Mat& worku, const Mat& workl, const int& j, const int& k, const T& ry, const T& t0, const T& t1);
   Mat  getPseudoBumpSub(const Mat& work);
 private:
   Vec  getLineAxis(Vec p, Vec c, const int& w, const int& h);
@@ -56,10 +56,11 @@ private:
   T   rstp;
   int guard;
   int ndiv;
-  T   rdist;
+  int nlast;
   
   T   roff;
   T   cdist;
+  T   rdist;
   
   int ww;
   int hh;
@@ -67,39 +68,37 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(12, 18, 800, 8, 8, 60);
+  initialize(12, 6, 800, 8, 8, 12);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& vmax, const int& guard, const int& ndiv, const T& rdist) {
-  this->Pi     = T(4) * atan2(T(1), T(1));
-  this->z_max  = z_max;
-  this->stp    = stp;
-  this->rstp   = stp;
-  this->vmax   = vmax;
-  this->guard  = guard;
-  this->ndiv   = ndiv;
-  this->roff   =   T(1) / T(6);
-  this->cdist  = - T(1);
-  this->rdist  =   T(2);
-  this->cdist *= rdist;
-  this->rdist *= rdist;
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& vmax, const int& guard, const int& ndiv, const int& nlast) {
+  this->Pi    = T(4) * atan2(T(1), T(1));
+  this->z_max = z_max;
+  this->stp   = stp;
+  this->rstp  = stp;
+  this->vmax  = vmax;
+  this->guard = guard;
+  this->ndiv  = ndiv;
+  this->nlast = nlast;
+  this->roff  = T(1) / T(6);
+  // N.B. ray is from infinite far, so same side of these.
+  this->cdist = T(2);
+  this->rdist = T(1);
   return;
 };
 
 // correct sub bump with tilted sub bump.
-template <typename T> void PseudoBump<T>::correctSubPseudoBump(Mat& result, const Mat& worklo, const Mat& workup, const Mat& workle, const Mat& workri, const int& j, const int& k, const T& ry, const T& t0, const T& t1) {
+template <typename T> void PseudoBump<T>::correctSubPseudoBump(Mat& result, const Mat& worku, const Mat& workl, const int& j, const int& k, const T& ry, const T& t0, const T& t1) {
   const int j1((result.rows() / 2 - 1 -  j     ) / ry + result.rows() / 2);
   const int j0((result.rows() / 2 - 1 - (j + 1)) / ry + result.rows() / 2);
   const int jj1(max(int(result.rows() - 1 -  j),      0));
   const int jj0(max(int(result.rows() - 1 - (j + 1)), 0));
-  const T x0(max(max(workup(jj0, k) * t1, workri(jj0, k) * t1),
-                 max(worklo(jj0, k) * t0, workle(jj0, k) * t0)));
-  const T x1(max(max(workup(jj1, k) * t1, workri(jj1, k) * t1),
-                 max(worklo(jj1, k) * t0, workle(jj1, k) * t0)));
+  const T x0(max(worku(jj0, k) * t1, workl(jj0, k) * t0));
+  const T x1(max(worku(jj1, k) * t1, workl(jj1, k) * t0));
   if(x0 < T(0) || x1 < T(0))
     return;
   for(int l =  max(0, min(j0, int(result.rows() - 1)));
@@ -176,12 +175,29 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           cc[idx]  = c[u];
           ccx[idx] = cx[u];
         }
+        Vec cl(c.size() / 2 + 1);
+        Vec cr(cl.size()), cxl(cl.size()), cxr(cl.size());
+        for(int u = 0; u < cl.size(); u ++) {
+          cl[u]  = c[u];
+          cxl[u] = cx[u];
+          cr[u]  = c[u - cl.size() + c.size()];
+          cxr[u] = cx[u - cl.size() + cx.size()];
+        }
+        Vec ccl(c.size() / 4 + 1);
+        Vec ccr(ccl.size()), ccxl(ccl.size()), ccxr(ccl.size());
+        for(int u = 0; u < ccl.size(); u ++) {
+          ccl[u]  = cc[u];
+          ccxl[u] = ccx[u];
+          ccr[u]  = cc[u - ccl.size() + cc.size()];
+          ccxr[u] = ccx[u - ccl.size() + ccx.size()];
+        }
         // N.B. simply take the ratio of local and far difference on two eyes.
-        const T n2(cc.dot(cc) / c.dot(c) + ccx.dot(ccx) / cx.dot(cx));
+        const T n2(ccl.dot( ccl)  / cl.dot( cl)  + ccr.dot( ccr)  / cr.dot(cr) +
+                   ccxl.dot(ccxl) / cxl.dot(cxl) + ccxr.dot(ccxr) / cxr.dot(cxr));
         if(isfinite(n2) && (n2 < zval[s] || zz == 0)) {
-          // N.B. If increase zz, increase distance from camera.
+          // N.B. If increase zz, decrease the distance from camera.
           //      And, zz->0 is treated as distant in tilter.
-          result(s, i) = T(1) - zz / T(lrf.rows());
+          result(s, i) = (T(1) + zz) / T(lrf.rows());
           zval[s]      = n2;
         }
       }
@@ -199,28 +215,41 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     work.col(j) = complementLine(work.col(j));
   for(int j = 0; j < work.rows(); j ++)
     work.row(j) = complementLine(work.row(j));
-  const Mat workle(getPseudoBumpSub(tilter.tilt(input.transpose(), work.transpose(), 1, 4, 1 / T(ndiv) + T(1))).transpose());
-  const Mat workri(getPseudoBumpSub(tilter.tilt(input.transpose(), work.transpose(), 3, 4, 1 / T(ndiv) + T(1))).transpose());
+  const Mat workle(getPseudoBumpSub(tilter.tilt(input.transpose(), work.transpose(), 1, 4, 1 / T(ndiv) + T(1))));
+  const Mat workri(getPseudoBumpSub(tilter.tilt(input.transpose(), work.transpose(), 3, 4, 1 / T(ndiv) + T(1))));
   const Mat workup(getPseudoBumpSub(tilter.tilt(input, work, 1, 4, 1 / T(ndiv) + T(1))));
   const Mat worklo(getPseudoBumpSub(tilter.tilt(input, work, 3, 4, 1 / T(ndiv) + T(1))));
-  const T ry(cos(Pi / T(2) * 1 / T(ndiv)));
+  const T ry(cos(Pi / T(2) / T(ndiv)));
   const T dy(result.rows() / 2 - result.rows() / 2 * ry);
+  const T dx(result.cols() / 2 - result.cols() / 2 * ry);
   const T t0(abs(T(1) - sqrt(T(2) * (T(1) - ry))));
   const T t1(abs(T(1) + sqrt(T(2) * (T(1) - ry))));
+  Mat rbuf2(result.transpose());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = dy; j < int(result.rows()) - int(dy) + 1; j ++)
     for(int k = 0; k < result.cols(); k ++)
-      correctSubPseudoBump(result, worklo, workup, workle, workri,
-                           j, k, ry, t0, t1);
+      correctSubPseudoBump(result, worklo, workup, j, k, ry, t0, t1);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = dx; j < int(rbuf2.rows()) - int(dx) + 1; j ++)
+    for(int k = 0; k < result.rows(); k ++)
+      correctSubPseudoBump(rbuf2, workle, workri, j, k, ry, t0, t1);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = 0; j < result.rows(); j ++)
+    for(int k = 0; k < result.cols(); k ++)
+      result(j, k) = max(result(j, k), rbuf2(k, j));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < result.cols(); i ++)
     result.col(i) = complementLine(result.col(i));
 #if defined(_OPENMP)
-#prgma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < result.rows(); i ++)
     result.row(i) = complementLine(result.row(i));
@@ -231,6 +260,35 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 // bump with multiple scale and merge, then, get vectored result.
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumps) {
   bumps = getPseudoBumpLoop(in);
+  for(int i = 0;
+      nlast <= min(in.rows(), in.cols()) / int(pow(2., i + 1));
+      i ++) {
+    Mat shrink(in.rows() / int(pow(2, i + 1)),
+               in.cols() / int(pow(2, i + 1)));
+    for(int j = 0; j < shrink.rows(); j ++)
+      for(int k = 0; k < shrink.cols(); k ++) {
+        shrink(j, k) = T(0);
+        for(int jj = pow(2, i + 1) * j;
+                jj < min(int(in.rows()), int(pow(2, i + 1) * (j + 1)));
+                jj ++)
+          for(int kk = pow(2, i + 1) * k;
+                  kk < min(int(in.cols()), int(pow(2, i + 1) * (k + 1)));
+                  kk ++)
+            shrink(j, k) += in(jj, kk);
+      }
+    shrink = getPseudoBumpLoop(shrink);
+    for(int j = 0; j <= shrink.rows(); j ++)
+      for(int k = 0; k <= shrink.cols(); k ++)
+        for(int jj = pow(2, i + 1) * j;
+                jj < min(int(in.rows()), int(pow(2, i + 1) * (j + 1)));
+                jj ++)
+          for(int kk = pow(2, i + 1) * k;
+                  kk < min(int(in.cols()), int(pow(2, i + 1) * (k + 1)));
+                  kk ++)
+            bumps(jj, kk) = shrink(min(j, int(shrink.rows() - 1)),
+                                   min(k, int(shrink.cols() - 1))) / T(2) +
+                            (bumps(jj, kk) / T(2) + T(.5));
+  }
   complement(bumps, vmax, guard, geoms, delaunay);
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < result.rows(); i ++)
@@ -296,9 +354,7 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
       Vec cpoint(3);
       cpoint[0] = (s / (stp - 1.) - 1. / 2.) * rstp + center[0];
       cpoint[1] = (s / (stp - 1.) - 1. / 2.) * rstp + center[1];
-      // XXX : linear -> exp scale.
-      // cpoint[2] = (zi + 1) / T(z_max) * rdist;
-      cpoint[2] = exp((zi + 1) / T(z_max)) / exp(T(1)) * rdist;
+      cpoint[2] = (zi + 1) / T(z_max) * rdist;
       result(zi, 0).col(s) = getLineAxis(cpoint, camera0, T(ww), T(hh)) - center;
       result(zi, 1).col(s) = getLineAxis(cpoint, camera1, T(ww), T(hh)) - center;
     }

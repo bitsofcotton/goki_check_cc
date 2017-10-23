@@ -35,6 +35,7 @@ public:
   Mat tiltsub(const Mat& in, const vector<Triangles>& triangles, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& origin, const Vec3& moveto, const T& rto);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5));
   bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5));
+  
 private:
   T    sgn(const T& x);
   Vec3 rotate0(const Vec3& work, const Mat3x3& rot, const Vec3& origin);
