@@ -101,7 +101,6 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<float>(bump, argv[4]))
         return - 2;
       tilter<float> tilt;
-      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())));
       const int M_TILT = 32;
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> out[3];
