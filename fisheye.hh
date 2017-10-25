@@ -50,6 +50,7 @@ private:
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   void complement(const Mat& in, const int& vmax, const int& guard, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   Vec  complementLine(const Vec& line, const T& rratio = T(.5));
+  void autoLevel(Mat& data, int npad = - 1);
   
   int z_max;
   int stp;
@@ -253,7 +254,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 #endif
   for(int i = 0; i < result.rows(); i ++)
     result.row(i) = complementLine(result.row(i));
-  autoLevel<T>(&result, 1);
+  autoLevel(result);
   return result;
 }
 
@@ -287,7 +288,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
                   kk ++)
             bumps(jj, kk) = shrink(min(j, int(shrink.rows() - 1)),
                                    min(k, int(shrink.cols() - 1))) / T(2) +
-                            (bumps(jj, kk) / T(2) + T(.5));
+                            (bumps(jj, kk) / T(2));
   }
   complement(bumps, vmax, guard, geoms, delaunay);
   Mat result(in.rows(), in.cols());
@@ -313,7 +314,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
                           geoms[delaunay[i][2]][2]) / T(3);
       }
   }
-  autoLevel<T>(&result, 1);
+  autoLevel(result);
   return result;
 }
 
@@ -462,6 +463,27 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
     result[i] = max(min(result[i], T(1)), T(0));
   }
   return result;
+}
+
+template <typename T> void PseudoBump<T>::autoLevel(Mat& data, int npad) {
+  if(npad <= 0)
+    npad = (data.rows() + data.cols()) * 8;
+  vector<T> stat;
+  for(int j = 0; j < data.rows(); j ++)
+    for(int k = 0; k < data.cols(); k ++)
+      stat.push_back(data(j, k));
+  sort(stat.begin(), stat.end());
+  const T mm(stat[npad]);
+  T MM(stat[stat.size() - 1 - npad]);
+  if(MM == mm)
+    MM = mm + 1.;
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < data.rows(); i ++)
+    for(int j = 0; j < data.cols(); j ++)
+      data(i, j) = (max(min(data(i, j), MM), mm) - mm) / (MM - mm);
+  return;
 }
 
 #define _2D3D_PSEUDO_

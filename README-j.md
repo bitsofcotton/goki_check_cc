@@ -41,9 +41,6 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     # enlarge
     ./tools enlarge input.ppm output.ppm
     
-    # enlarge for left differential
-    ./tools enlargeds input.ppm output.ppm
-    
     # detect edges with absolute differential with dft value.
     ./tools collect input.ppm output.ppm
     
@@ -67,14 +64,10 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     #include "enlarge.hh"
     enlarger2ex<float> enlarger;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.enlarge2(input, enlarger2ex<float>::ENLARGE_QUAD));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.compute(input, enlarger.ENLARGE_BOTH));
     
-    enlarger2exds<float> enlargerds;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlargedds(enlargerds.enlarge2ds(input, enlarger2exds<float>::ENLARGE_BOTH));
-    
-    #include "edgedetect.hh"
-    edgedetect<float> detect;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.detect(input, edgedetect<float>::COLLECT_QUAD));
+    enlarger2ex<float> detect;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.compute(input, detect.COLLECT_BOTH));
     
     #include "fisheye.hh"
     PseudoBump<float> bump;
