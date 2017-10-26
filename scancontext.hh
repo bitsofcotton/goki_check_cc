@@ -12,12 +12,9 @@ using std::abs;
 using std::cos;
 using std::acos;
 using std::sin;
-using std::pow;
 using std::sort;
-using std::unique;
 using std::min;
 using std::max;
-using std::floor;
 using std::cerr;
 using std::endl;
 using std::flush;
@@ -131,14 +128,11 @@ public:
   T                      rpoints;
   vector<int>            dstpoints;
   vector<int>            srcpoints;
-  T                      threshs;
   T                      threshc;
   match_t() {
-    threshs = T(0);
     threshc = T(0);
   }
-  match_t(const T& threshs, const T& threshc) {
-    this->threshs = threshs;
+  match_t(const T& threshc) {
     this->threshc = threshc;
   }
   match_t(const match_t<T>& other) {
@@ -153,30 +147,26 @@ public:
     rpoints   = other.rpoints;
     dstpoints = other.dstpoints;
     srcpoints = other.srcpoints;
-    threshs   = other.threshs;
     threshc   = other.threshc;
     return *this;
   }
   // XXX configure us:
   bool operator < (const match_t<T>& x1) const {
     return rpoints > x1.rpoints || (rpoints == x1.rpoints && rdepth < x1.rdepth) || (rpoints == x1.rpoints && rdepth == x1.rdepth && ratio > x1.ratio);
-    // return rdepth < x1.rdepth || (rdepth == x1.rdepth && rpoints > x1.rpoints) || (rdepth == x1.rdepth && rpoints == x1.rpoints && ratio > x1.ratio);
   }
   bool operator == (const match_t<T>& x) const {
     const auto test(offset - x.offset);
     const auto roterr(rot * x.rot.transpose());
     const T    Pi(T(4) * atan2(T(1), T(1)));
-          T    rotdnorm(0);
     for(int l = 0; l < rot.rows(); l ++)
-      if(!(abs(acos(roterr(l, l))) / Pi <= threshs))
+      if(!(abs(T(1) - roterr(l, l)) <= threshc))
         return false;
     if(!(sqrt(test.dot(test) / 
-              (offset.dot(offset) * x.offset.dot(x.offset)))
+              (offset.dot(offset) + x.offset.dot(x.offset)))
          <= threshc))
       return false;
-    if(!(max(T(1) - ratio   / x.ratio,
-             T(1) - x.ratio / ratio)
-         <= threshc))
+    if(0 <= ratio * x.ratio &&
+       !(abs((ratio - x.ratio) / sqrt(ratio * x.ratio)) <= threshc))
       return false;
     return true;
   }
@@ -210,7 +200,7 @@ public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, 2, 2>                           Mat2x2;
-  typedef Eigen::Matrix<T, 3, 1>              Vec3;
+  typedef Eigen::Matrix<T, 3, 1>                           Vec3;
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
@@ -232,7 +222,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(16, .25, .125, .125, .0625);
+  init(16, .5, .25, .25, .25);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -294,8 +284,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
                abs(cos(theta1) * a - sin(theta1) * b - c) <
                abs(cos(theta)  * a - sin(theta)  * b - c)))
             theta = theta1;
-          theta -= floor(theta / (T(2) * Pi) + T(.5)) * T(2) * Pi;
-          table(j, k)[l] = theta;
+          table(j, k)[l]      = theta;
           bk[(l + i    ) % 3] = cos(theta) * a - sin(theta) * b;
           bk[(l + i + 1) % 3] = sin(theta) * a + cos(theta) * b;
         }
@@ -313,13 +302,16 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       vector<msub_t<T> > msub;
       for(int k = 0; k < points.size(); k ++)
         for(int j = 0; j < shapebase.size(); j ++) {
+          const T lnorm0(sin(table(j, k)[0]) * sin(table(j, k)[0]) +
+                         sin(table(j, k)[1]) * sin(table(j, k)[1]));
           const T lnorm(sqrt(table(j, k).dot(table(j, k))));
           const T ldepth(min(cos(table(j, k)[0] / lnorm) * cos(ddiv[0]) +
                              sin(table(j, k)[0] / lnorm) * sin(ddiv[0]),
                              cos(table(j, k)[1] / lnorm) * cos(ddiv[1]) +
                              sin(table(j, k)[1] / lnorm) * sin(ddiv[1])) - T(1));
-          if(isfinite(lnorm) && (lnorm <= Pi / ndiv ||
-              (isfinite(ldepth) && abs(ldepth) <= T(1) / ndiv) ) ) {
+          if(isfinite(lnorm) &&
+             ((isfinite(lnorm0) && lnorm0 <= T(1) / ndiv) ||
+              (isfinite(ldepth) && abs(ldepth) <= T(1) / ndiv)) ) {
             msub_t<T> workm;
             workm.mbufj = j;
             workm.mbufk = k;
@@ -332,7 +324,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         continue;
       sort(msub.begin(), msub.end());
       for(int k0 = 0; k0 < msub.size(); k0 ++) {
-        match_t<T> work(threshs, threshs);
+        match_t<T> work(threshs);
         work.rot = drot0;
         for(int k = 0; k < ddiv.size(); k ++) {
           Mat3x3 lrot;
@@ -391,15 +383,15 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             denom += (work.rot * (points[work.srcpoints[k]] - gp) - pbar).dot(work.rot * (points[work.srcpoints[k]] - gp) - pbar);
           }
           work.ratio = num / denom;
+          if(abs(work.ratio) < threshr || T(1) / threshr < abs(work.ratio))
+            continue;
           work.offset[0] = T(0);
           work.offset[1] = T(0);
           work.offset[2] = T(0);
           for(int k = 0; k < work.dstpoints.size(); k ++)
             work.offset += shapebase[work.dstpoints[k]] - work.rot * points[work.srcpoints[k]] * work.ratio;
           work.offset /= work.dstpoints.size();
-          if(abs(work.ratio) < threshr || T(1) / threshr < abs(work.ratio))
-            continue;
-          work.rdepth = T(0);
+          work.rdepth  = T(0);
           for(int k = 0; k < work.dstpoints.size(); k ++) {
             const Vec3& aj(shapebase[msub[k].mbufj]);
             const Vec3  bk(work.rot * points[msub[k].mbufk] * work.ratio + work.offset);
@@ -445,19 +437,20 @@ template <typename T> class matchWholePartial {
 public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
-  typedef Eigen::Matrix<T, 3, 1>              Vec3;
+  typedef Eigen::Matrix<T, 3, 1>                           Vec3;
   typedef complex<T> U;
   matchWholePartial();
   ~matchWholePartial();
-  void init(const vector<vector<Vec3> >& shapebase, const T& thresh, const T& threshp);
+  void init(const int& ndiv, const T& thresh, const T& threshp, const T& threshr, const T& threshs);
 
-  vector<match_t<T> > match(const vector<Vec3>& points);
+  vector<vector<match_t<T> > > match(const vector<vector<Vec3> >& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins);
 private:
   U I;
   T Pi;
   T thresh;
-  vector<matchPartialPartial<T> > matches;
-  vector<vector<Vec3> >           shapebase;
+  T threshp;
+  T threshr;
+  T threshs;
 };
 
 template <typename T> matchWholePartial<T>::matchWholePartial() {
@@ -469,35 +462,34 @@ template <typename T> matchWholePartial<T>::~matchWholePartial() {
   ;
 }
 
-template <typename T> void matchWholePartial<T>::init(const vector<vector<Vec3> >& shapebase, const T& thresh, const T& threshp) {
-  for(int i = 0; i < shapebase.size(); i ++) {
-    matchPartialPartial<T> work;
-    work.init(shapebase[i]);
-    matches.push_back(work);
-  }
+template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& thresh, const T& threshp, const T& threshr, const T& threshs) {
   this->thresh  = thresh;
   this->threshp = threshp;
+  this->threshr = threshr;
+  this->threshs = threshs;
   return;
 }
 
-template <typename T> vector<match_t<T> > matchWholePartial<T>::match(const vector<Vec3>& points) {
-  cerr << "matching partial polys..." << endl;
+template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<vector<Vec3> >& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins) {
+  assert(shapebase.size() == points.size() && points.size() == origins.size());
   vector<vector<match_t<T> > > pmatches;
-  for(int i = 0; i < matches.size(); i ++)
-    pmatches.push_back(matches[i].match(points));
-  cerr << "detecting possible whole matches..." << endl;
-  vector<match_t<T> > result;
+  for(int i = 0; i < shapebase.size(); i ++) {
+    cerr << "matching partial polys : " << i << "/" << shapebase.size() << endl;
+    matchPartialPartial<T> pmatch(thresh, threshp, threshr, threshs);
+    pmatches.push_back(pmatch.match(shapebase, points));
+  }
+  cerr << "detecting possible whole matches (not implemented now.)..." << endl;
+  vector<vector<match_t<T> > > result;
   return result;
 }
 
 
-template <typename T> class tilter;
 template <typename T> class reDig {
 public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
-  typedef Eigen::Matrix<T, 3, 1>              Vec3;
+  typedef Eigen::Matrix<T,   3, 1>            Vec3;
   typedef Eigen::Matrix<int, 3, 1>            Veci3;
   
   reDig();
