@@ -332,11 +332,8 @@ template <typename T> void PseudoBump<T>::complement(const Mat& in, const int& v
   avg /= T((in.rows() / guard) * (in.cols() / guard));
   sort(geoms.begin(), geoms.end(), cmpbump<T>);
   // XXX lowpoly is needed.
-  if(vmax < geoms.size()) {
-    const int diff((geoms.size() - vmax) / 2);
-    geoms.erase(geoms.end() - diff, geoms.end());
-    geoms.erase(geoms.begin(), geoms.begin() + diff);
-  }
+  if(vmax < geoms.size())
+    geoms.erase(geoms.begin() + vmax / 2, geoms.end() - vmax / 2);
   Vec work(3);
   work[0] = 0;
   work[1] = 0;

@@ -12,12 +12,9 @@ using std::abs;
 using std::cos;
 using std::acos;
 using std::sin;
-using std::pow;
 using std::sort;
-using std::unique;
 using std::min;
 using std::max;
-using std::floor;
 using std::cerr;
 using std::endl;
 using std::flush;
@@ -131,14 +128,11 @@ public:
   T                      rpoints;
   vector<int>            dstpoints;
   vector<int>            srcpoints;
-  T                      threshs;
   T                      threshc;
   match_t() {
-    threshs = T(0);
     threshc = T(0);
   }
-  match_t(const T& threshs, const T& threshc) {
-    this->threshs = threshs;
+  match_t(const T& threshc) {
     this->threshc = threshc;
   }
   match_t(const match_t<T>& other) {
@@ -153,7 +147,6 @@ public:
     rpoints   = other.rpoints;
     dstpoints = other.dstpoints;
     srcpoints = other.srcpoints;
-    threshs   = other.threshs;
     threshc   = other.threshc;
     return *this;
   }
@@ -166,15 +159,14 @@ public:
     const auto roterr(rot * x.rot.transpose());
     const T    Pi(T(4) * atan2(T(1), T(1)));
     for(int l = 0; l < rot.rows(); l ++)
-      if(!(abs(acos(roterr(l, l))) / Pi <= threshs))
+      if(!(abs(T(1) - roterr(l, l)) <= threshc))
         return false;
     if(!(sqrt(test.dot(test) / 
               (offset.dot(offset) + x.offset.dot(x.offset)))
          <= threshc))
       return false;
-    if(!(max(T(1) - ratio   / x.ratio,
-             T(1) - x.ratio / ratio)
-         <= threshc))
+    if(0 <= ratio * x.ratio &&
+       !(abs((ratio - x.ratio) / sqrt(ratio * x.ratio)) <= threshc))
       return false;
     return true;
   }
@@ -230,7 +222,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(16, .25, .125, .125, .0625);
+  init(16, .5, .25, .25, .25);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -332,7 +324,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         continue;
       sort(msub.begin(), msub.end());
       for(int k0 = 0; k0 < msub.size(); k0 ++) {
-        match_t<T> work(threshs, threshs);
+        match_t<T> work(threshs);
         work.rot = drot0;
         for(int k = 0; k < ddiv.size(); k ++) {
           Mat3x3 lrot;

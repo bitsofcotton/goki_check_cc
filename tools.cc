@@ -146,7 +146,7 @@ int main(int argc, const char* argv[]) {
       double zrs(1.5 * sqrt(data[0].rows() * data[0].cols()));
       double zre( .5 * sqrt(data[0].rows() * data[0].cols()));
       int   zrl(3);
-      int   nshow(6);
+      int   nshow(8);
       double emph(.25);
       PseudoBump<double> bump;
       bump.vmax = 150;
@@ -263,7 +263,7 @@ int main(int argc, const char* argv[]) {
       double zrs(1.5 * sqrt(double(data[0].rows() * data[0].cols())));
       double zre( .5 * sqrt(double(data[0].rows() * data[0].cols())));
       int   zrl(3);
-      int   nshow(6);
+      int   nshow(8);
       double emph(.25);
       PseudoBump<double> bumper;
       bumper.vmax = 60;
