@@ -14,11 +14,8 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * fisheye.hh
 * * z_max   : z-index resolution.
 * * stp     : number of points to be used in detecting edges.
-* * crowd   : box size for reducing crowded point return.
+* * rstp    : width or height to be used in detecting edges in the picture.
 * * vmax    : max points to be returned in pseudoBumpVec.
-* * nloop   : number of loops with tilting and bumps.
-* * ndiv    : tilt angle base.
-* * rdist   : ratio of distance for camera and plane.
 * tilt.hh
 * * z_ratio : [0,1] to [0,z_atio].
 * scancontext.hh
