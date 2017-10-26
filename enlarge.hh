@@ -120,9 +120,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       const Mat dcache(Dop * data);
       const Mat work(compute(dcache, ENLARGE_Y));
             Mat work2(data.rows() * 2, data.cols());
-      for(int i = 0; i < work2.cols(); i ++)
-        for(int j = 0; j < work2.rows(); j ++)
-          work2(j, i) = dcache(j / 2, i);
+      for(int j = 0; j < work2.rows(); j ++)
+        work2.row(j) = dcache.row(j / 2);
       initPattern(work.rows(), false);
       result = Iop * (work - work2);
     }

@@ -20,7 +20,7 @@ using std::max;
 using std::floor;
 using std::cerr;
 using std::endl;
-using std::fflush;
+using std::flush;
 using std::vector;
 
 template <typename T> class lfmatch_t {
@@ -276,7 +276,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int j = 0; j < shapebase.size(); j ++) {
-      fflush(stderr);
       for(int k = 0; k < points.size(); k ++) {
         Vec3 aj(shapebase[j] - gs);
         Vec3 bk(points[k]    - gp);
@@ -408,8 +407,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
           }
           work.rdepth /= work.dstpoints.size();
           if(work.rdepth < thresh) {
-            cerr << ".";
-            fflush(stderr);
+            cerr << "." << flush;
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
@@ -429,8 +427,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
                   result[idx] = work;
               } else {
                 result.push_back(work);
-                cerr << "*";
-                fflush(stderr);
+                cerr << "*" << flush;
               }
               sort(result.begin(), result.end());
             }
@@ -531,8 +528,7 @@ template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
-  cerr << " making triangles";
-  fflush(stderr);
+  cerr << " making triangles" << flush;
   tilter<T> tilt;
   vector<typename tilter<T>::Triangles> triangles;
   for(int i = 0; i < dstimg.rows() - 1; i ++)

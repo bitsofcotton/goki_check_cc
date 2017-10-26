@@ -9,6 +9,7 @@
 
 using std::cerr;
 using std::cout;
+using std::flush;
 using std::endl;
 using std::isfinite;
 using std::string;
@@ -59,8 +60,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < dstpoints.size(); i ++) {
-    cerr << ".";
-    fflush(stderr);
+    cerr << "." << flush;
     for(int j = i + 1; j < dstpoints.size(); j ++)
       for(int k = j + 1; k < dstpoints.size(); k ++) {
         if(isSameLine2<T>(dst[dstpoints[i]], dst[dstpoints[j]], dst[dstpoints[k]]))

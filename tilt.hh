@@ -12,7 +12,7 @@ using std::ceil;
 using std::sqrt;
 using std::cerr;
 using std::endl;
-using std::fflush;
+using std::flush;
 using std::vector;
 using std::abs;
 
@@ -236,8 +236,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     cerr << "tilt: size mismatch..." << endl;
     return Mat();
   }
-  cerr << " making triangles";
-  fflush(stderr);
+  cerr << " making triangles" << flush;
   vector<Triangles> triangles;
   for(int i = 0; i < in.rows() - 1; i ++)
     for(int j = 0; j < in.cols() - 1; j ++) {
@@ -259,8 +258,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     rotriangles[j].col(1) += moveto;
     rotriangles[j].col(2) += moveto;
   }
-  cerr << " draw";
-  fflush(stderr);
+  cerr << " draw" << flush;
   Mat zb(in.rows(), in.cols());
   for(int j = 0; j < zb.rows(); j ++)
     for(int k = 0; k < zb.cols(); k ++)
