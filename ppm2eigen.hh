@@ -159,6 +159,7 @@ template <typename T> void normalize(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyn
         data[k](i, j) -= mm;
     data[k] *= upper / (MM - mm);
   }
+  return;
 }
 
 #define _PPM2EIGEN_
