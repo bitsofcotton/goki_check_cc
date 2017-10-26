@@ -33,7 +33,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& vmax, const int& ndiv);
+  void initialize(const int& z_max, const int& stp, const int& rstp, const int& vmax, const int& ndiv);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumps);
   Mat  getPseudoBumpSub(const Mat& work);
   
@@ -63,18 +63,18 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(30, 16, 800, 8);
+  initialize(30, 16, 4, 800, 8);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& vmax, const int& ndiv) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& vmax, const int& ndiv) {
   this->Pi    = T(4) * atan2(T(1), T(1));
   this->z_max = z_max;
   this->stp   = stp;
-  this->rstp  = stp * 4;
+  this->rstp  = stp * rstp;
   this->vmax  = vmax;
   this->guard = rstp / 2;
   this->ndiv  = ndiv;
