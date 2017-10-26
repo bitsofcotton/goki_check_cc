@@ -81,7 +81,7 @@ int main(int argc, const char* argv[]) {
       outs[0] = outs[1] = outs[2] = b_mesh;
       normalize<double>(outs, 1.);
       savep2or3<double>(argv[4], outs, false);
-      saveobj(points, delaunay, argv[5], sqrt(double(data[0].rows() * data[0].cols()) / double(16)));
+      saveobj(points, delaunay, argv[5], sqrt(double(data[0].rows() * data[0].cols()) / double(4)));
     }
     break;
   case 6:
