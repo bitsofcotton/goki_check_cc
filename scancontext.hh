@@ -11,6 +11,7 @@ using std::atan2;
 using std::abs;
 using std::cos;
 using std::sin;
+using std::pow;
 using std::sort;
 using std::min;
 using std::max;
@@ -313,16 +314,16 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       vector<msub_t<T> > msub;
       for(int k = 0; k < points.size(); k ++)
         for(int j = 0; j < shapebase.size(); j ++) {
-          const T lnorm0(sin(table(j, k)[0]) * sin(table(j, k)[0]) +
-                         sin(table(j, k)[1]) * sin(table(j, k)[1]));
+          const T lnorm0(pow(sin(table(j, k)[0] / T(2)), T(2)) +
+                         pow(sin(table(j, k)[1] / T(2)), T(2)));
           const T lnorm(sqrt(table(j, k).dot(table(j, k))));
           const T ldepth(min(cos(table(j, k)[0] / lnorm) * cos(ddiv[0]) +
                              sin(table(j, k)[0] / lnorm) * sin(ddiv[0]),
                              cos(table(j, k)[1] / lnorm) * cos(ddiv[1]) +
                              sin(table(j, k)[1] / lnorm) * sin(ddiv[1])) - T(1));
           if(isfinite(lnorm) &&
-             ((isfinite(lnorm0) && lnorm0 <= T(1) / ndiv) ||
-              (isfinite(ldepth) && abs(ldepth) <= T(1) / ndiv)) ) {
+             ((isfinite(lnorm0) && lnorm0      <= T(2) / ndiv) ||
+              (isfinite(ldepth) && abs(ldepth) <= T(2) / ndiv)) ) {
             msub_t<T> workm;
             workm.mbufj = j;
             workm.mbufk = k;
@@ -611,7 +612,8 @@ template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen:
     for(; i != int(lref1[0]) &&
           (i < 0 || map.rows() <= i ||
            lref0[1] + tilt * ii < 0 ||
-           map.rows() <= lref0[1] + tilt * ii);
+           map.rows() <= lref0[1] + tilt * ii) &&
+          abs(tilt * ii) <= abs(lref0[1]) + T(map.rows());
           i += sgndelta, ii += sgndelta);
     for(; i != int(lref1[0]) &&
           0 <= lref0[1] + tilt * ii &&
@@ -632,7 +634,8 @@ template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen:
     for(; j != int(lref1[1]) &&
           (j < 0 || map.cols() <= j ||
            lref0[0] + tilt * jj < 0 ||
-           map.cols() <= lref0[0] + tilt * jj);
+           map.cols() <= lref0[0] + tilt * jj) &&
+          abs(tilt * jj) <= abs(lref0[0]) + T(map.rows());
           j += sgndelta, jj += sgndelta);
     for(; j != int(lref1[1]) &&
           0 <= lref0[0] + tilt * jj &&
