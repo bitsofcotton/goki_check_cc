@@ -7,7 +7,6 @@
 using std::max;
 using std::min;
 using std::cerr;
-using std::cout;
 using std::endl;
 using std::string;
 using std::ifstream;
@@ -120,9 +119,9 @@ template <typename T> bool savep2or3(const char* filename, Eigen::Matrix<T, Eige
   if(output.is_open()) {
     try {
       if(gray)
-        output << "P2" << endl;
+        output << "P2" << "\n";
       else
-        output << "P3" << endl;
+        output << "P3" << "\n";
       output << data[0].cols() << " " << data[0].rows() << "\n";
       output << 255 << "\n";
       for(int i = 0; i < data[0].rows(); i ++)

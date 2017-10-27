@@ -104,8 +104,8 @@ int main(int argc, const char* argv[]) {
     break;
   case 8:
     {
-      lowFreq<double>    lf;
-      std::vector<Eigen::Matrix<double, 3, 1> > points(lf.getLowFreq(rgb2l(data), 600));
+      lowFreq<double> lf;
+      std::vector<Eigen::Matrix<double, 3, 1> > points(lf.getLowFreq(rgb2l(data), min(int(data[0].rows() * data[0].cols() / 16), 800)));
       std::vector<int> dstpoints;
       for(int i = 0; i < points.size(); i ++)
         dstpoints.push_back(i);
@@ -122,7 +122,7 @@ int main(int argc, const char* argv[]) {
   case 11:
     {
       std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
-      std::vector<Eigen::Matrix<int, 3, 1> > polynorms;
+      std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
       if(!loadobj<double>(datapoly, polynorms, argv[4]))
         return - 1;
       for(int i = 0; i < datapoly.size(); i ++) {
@@ -143,19 +143,27 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<double>(data1, argv[4]))
         return - 2;
       // XXX: configure me.
-      double zrs(1.5 * sqrt(data[0].rows() * data[0].cols()));
-      double zre( .5 * sqrt(data[0].rows() * data[0].cols()));
-      int   zrl(3);
-      int   nshow(8);
+      double zrs(1.5);
+      double zre( .5);
+      int    zrl(3);
+      int    nshow(8);
       double emph(.25);
       PseudoBump<double> bump;
-      bump.vmax = 150;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay0, delaunay1;
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sute;
-      bump0 = bump.getPseudoBumpVec(rgb2l(data), shape0, delaunay0, sute);
-      bump.vmax = 60;
-      bump1 = bump.getPseudoBumpVec(rgb2l(data1), shape1, delaunay1, sute);
+      bump0 = bump.getPseudoBumpSub(rgb2l(data));
+      bump1 = bump.getPseudoBumpSub(rgb2l(data1));
+      lowFreq<double> lf;
+      shape0    = lf.getLowFreq(bump0, min(int(bump0.rows() * bump0.cols() / 16), 800));
+      vector<int> idx;
+      for(int i = 0; i < shape0.size(); i ++)
+        idx.push_back(i);
+      delaunay0 = loadBumpSimpleMesh<double>(shape0, idx);
+      shape1    = lf.getLowFreq(bump1, min(int(sqrt(double(bump1.rows() * bump1.cols())) / 16), int(sqrt(double(800 * 16)) / 16)));
+      idx = vector<int>();
+      for(int i = 0; i < shape1.size(); i ++)
+        idx.push_back(i);
+      delaunay1 = loadBumpSimpleMesh<double>(shape1, idx);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
@@ -201,7 +209,7 @@ int main(int argc, const char* argv[]) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<double> tilt;
         reDig<double>  redig;
-        tilt.initialize(zr * sqrt((data1[0].rows() * data1[0].cols()) / (data[0].rows() * data[0].cols())));
+        tilt.initialize(zr / (data[0].rows() * data[0].cols()));
         std::vector<Eigen::Matrix<int, 3, 1> > hull(loadBumpSimpleMesh<double>(shape1, matches[n].srcpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
         for(int idx = 0; idx < hull.size(); idx ++) {
@@ -260,17 +268,21 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
       }
-      double zrs(1.5 * sqrt(double(data[0].rows() * data[0].cols())));
-      double zre( .5 * sqrt(double(data[0].rows() * data[0].cols())));
-      int   zrl(3);
-      int   nshow(8);
+      double zrs(1.5);
+      double zre( .5);
+      int    zrl(3);
+      int    nshow(8);
       double emph(.25);
       PseudoBump<double> bumper;
-      bumper.vmax = 60;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int, 3, 1> > poly;
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sute;
-      bump = bumper.getPseudoBumpVec(rgb2l(data),shape, poly, sute);
+      bump = bumper.getPseudoBumpSub(rgb2l(data));
+      lowFreq<double> lf;
+      shape = lf.getLowFreq(bump, min(int(bump.rows() * bump.cols() / 16), 800));
+      vector<int> idx;
+      for(int i = 0; i < shape.size(); i ++)
+        idx.push_back(i);
+      poly = loadBumpSimpleMesh<double>(shape, idx);
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = double(0);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());
@@ -297,7 +309,7 @@ int main(int argc, const char* argv[]) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<double> tilt;
         reDig<double>  redig;
-        tilt.initialize(zr * sqrt((data[0].rows() * data[0].cols()) / (data[0].rows() * data[0].cols())));
+        tilt.initialize(zr / sqrt((data[0].rows() * data[0].cols()) / (data[0].rows() * data[0].cols())));
         cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
         
         std::vector<Eigen::Matrix<int, 3, 1> > ch(loadBumpSimpleMesh<double>(datapoly, matches[n].dstpoints));

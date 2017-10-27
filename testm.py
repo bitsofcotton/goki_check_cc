@@ -2,12 +2,11 @@
 
 import os
 import sys
-import glob
 import subprocess
 
 argv = sys.argv
 
-if(len(argv) < 2):
+if(len(argv) < 4):
   print "not much arguments."
   exit(- 1)
 
