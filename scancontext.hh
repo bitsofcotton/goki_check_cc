@@ -390,8 +390,10 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
           pbar /= work.srcpoints.size();
           T num(0), denom(0);
           for(int k = 0; k < work.dstpoints.size(); k ++) {
-            num   += (shapebase[work.dstpoints[k]] - gs - sbar).dot(work.rot * (points[work.srcpoints[k]] - gp) - pbar);
-            denom += (work.rot * (points[work.srcpoints[k]] - gp) - pbar).dot(work.rot * (points[work.srcpoints[k]] - gp) - pbar);
+            const Vec3 shapek(shapebase[work.dstpoints[k]] - gs - sbar);
+            const Vec3 pointk(work.rot * (points[work.srcpoints[k]] - gp) - pbar);
+            num   += shapek.dot(pointk);
+            denom += pointk.dot(pointk);
           }
           work.ratio = num / denom;
           if(abs(work.ratio) < threshr || T(1) / threshr < abs(work.ratio))
@@ -404,8 +406,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
           work.offset /= work.dstpoints.size();
           work.rdepth  = T(0);
           for(int k = 0; k < work.dstpoints.size(); k ++) {
-            const Vec3& aj(shapebase[msub[k].mbufj]);
-            const Vec3  bk(work.rot * points[msub[k].mbufk] * work.ratio + work.offset);
+            const Vec3& aj(shapebase[work.dstpoints[k]]);
+            const Vec3  bk(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset);
             work.rdepth += (aj - bk).dot(aj - bk) / (aj.dot(aj) + bk.dot(bk));
           }
           work.rdepth /= work.dstpoints.size();
