@@ -210,7 +210,7 @@ int main(int argc, const char* argv[]) {
         tilter<double> tilt;
         reDig<double>  redig;
         tilt.initialize(zr / (data[0].rows() * data[0].cols()));
-        std::vector<Eigen::Matrix<int, 3, 1> > hull(loadBumpSimpleMesh<double>(shape1, matches[n].srcpoints));
+        std::vector<Eigen::Matrix<int, 3, 1> > hull(loadBumpSimpleMesh<double>(shape0, matches[n].dstpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
         for(int idx = 0; idx < hull.size(); idx ++) {
           Eigen::Matrix<int, 3, 1> buf;
@@ -225,7 +225,6 @@ int main(int argc, const char* argv[]) {
         cerr << matches[n].rot << endl;
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = tilt.tilt(showMatch<double>(mout[idx], shape1, mhull1), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
-          // outs[idx] = showMatch<double>(mout[idx], shape1, mhull1);
         normalize<double>(outs, 1.);
         std::string outfile;
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-src.ppm");
