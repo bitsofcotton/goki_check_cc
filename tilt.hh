@@ -58,7 +58,7 @@ template <typename T> tilter<T>::~tilter() {
 
 template <typename T> void tilter<T>::initialize(const T& z_ratio) {
   this->z_ratio = z_ratio;
-  Pi            = atan2(T(1.), T(1.)) * T(4.);
+  Pi            = atan2(T(1), T(1)) * T(4);
   thresh        = 1e-8;
   return;
 }

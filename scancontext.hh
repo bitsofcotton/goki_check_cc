@@ -10,7 +10,6 @@ using std::sqrt;
 using std::atan2;
 using std::abs;
 using std::cos;
-using std::acos;
 using std::sin;
 using std::sort;
 using std::min;
@@ -53,9 +52,9 @@ private:
 };
 
 template <typename T> lowFreq<T>::lowFreq() {
-  Pi          = atan2(T(1), T(1)) * T(4);
-  I           = sqrt(U(- 1));
-  init(60);
+  Pi = atan2(T(1), T(1)) * T(4);
+  I  = sqrt(U(- 1));
+  init(8);
 }
 
 template <typename T> lowFreq<T>::~lowFreq() {
@@ -128,26 +127,31 @@ public:
   T                      rpoints;
   vector<int>            dstpoints;
   vector<int>            srcpoints;
-  T                      threshc;
+  T                      thresh;
+  Eigen::Matrix<T, 2, 1> threshsize;
   match_t() {
-    threshc = T(0);
+    thresh = T(0);
+    threshsize[0] = threshsize[1] = T(0);
   }
-  match_t(const T& threshc) {
-    this->threshc = threshc;
+  match_t(const T& thresh, const T& h, const T& w) {
+    this->thresh        = thresh;
+    this->threshsize[0] = h;
+    this->threshsize[1] = w;
   }
   match_t(const match_t<T>& other) {
     *this = other;
     return;
   }
   match_t<T>& operator = (const match_t<T>& other) {
-    rot       = other.rot;
-    offset    = other.offset;
-    ratio     = other.ratio;
-    rdepth    = other.rdepth;
-    rpoints   = other.rpoints;
-    dstpoints = other.dstpoints;
-    srcpoints = other.srcpoints;
-    threshc   = other.threshc;
+    rot        = other.rot;
+    offset     = other.offset;
+    ratio      = other.ratio;
+    rdepth     = other.rdepth;
+    rpoints    = other.rpoints;
+    dstpoints  = other.dstpoints;
+    srcpoints  = other.srcpoints;
+    thresh     = other.thresh;
+    threshsize = other.threshsize;
     return *this;
   }
   // XXX configure us:
@@ -157,16 +161,16 @@ public:
   bool operator == (const match_t<T>& x) const {
     const auto test(offset - x.offset);
     const auto roterr(rot * x.rot.transpose());
-    const T    Pi(T(4) * atan2(T(1), T(1)));
     for(int l = 0; l < rot.rows(); l ++)
-      if(!(abs(T(1) - roterr(l, l)) <= threshc))
+      if(!(abs(T(1) - roterr(l, l)) <= thresh))
         return false;
     if(!(sqrt(test.dot(test) / 
-              (offset.dot(offset) + x.offset.dot(x.offset)))
-         <= threshc))
+              (offset.dot(offset) + x.offset.dot(x.offset))) /
+           sqrt(threshsize[0] * threshsize[1])
+         <= thresh))
       return false;
     if(0 <= ratio * x.ratio &&
-       !(abs((ratio - x.ratio) / sqrt(ratio * x.ratio)) <= threshc))
+       !(abs((ratio - x.ratio) / sqrt(ratio * x.ratio)) <= thresh))
       return false;
     return true;
   }
@@ -222,7 +226,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(16, .5, .25, .25, .25);
+  init(16, .25, .25, .25, .4);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -249,14 +253,21 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
   for(int k = 0; k < drot0.rows(); k ++)
     for(int l = 0; l < drot0.cols(); l ++)
       drot0(k, l) = (k == l ? T(1) : T(0));
-  Vec3 gs, gp;
+  Vec3 gs, gp, gd;
   gs[0] = gs[1] = gs[2] = T(0);
   gp[0] = gp[1] = gp[2] = T(0);
-  for(int i = 0; i < shapebase.size(); i ++)
-    gs += shapebase[i];
+  gd[0] = gd[1] = gd[2] = T(0);
+  for(int i = 0; i < shapebase.size(); i ++) {
+    gs   += shapebase[i];
+    gd[0] = max(gd[0], abs(shapebase[i][0]));
+    gd[1] = max(gd[1], abs(shapebase[i][1]));
+  }
   gs /= shapebase.size();
-  for(int i = 0; i < points.size(); i ++)
-    gp += points[i];
+  for(int i = 0; i < points.size(); i ++) {
+    gp   += points[i];
+    gd[0] = max(gd[0], abs(points[i][0]));
+    gd[1] = max(gd[1], abs(points[i][1]));
+  }
   gp /= points.size();
   for(int i = 0; i < 3; i ++) {
     Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
@@ -324,7 +335,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         continue;
       sort(msub.begin(), msub.end());
       for(int k0 = 0; k0 < msub.size(); k0 ++) {
-        match_t<T> work(threshs);
+        match_t<T> work(threshs, abs(gd[0]), abs(gd[1]));
         work.rot = drot0;
         for(int k = 0; k < ddiv.size(); k ++) {
           Mat3x3 lrot;
@@ -350,7 +361,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         const Vec3 bkk0(work.rot * (points[msub[k0].mbufk] - gp));
         const T    t0(ajk0.dot(bkk0) / bkk0.dot(bkk0));
         const Vec3 lerr0(ajk0 - bkk0 * t0);
-        if(!isfinite(t0) || thresh * thresh < lerr0.dot(lerr0) / (ajk0.dot(ajk0) + bkk0.dot(bkk0) * t0 * t0))
+        if(!isfinite(t0) || thresh < lerr0.dot(lerr0) / (ajk0.dot(ajk0) + bkk0.dot(bkk0) * t0 * t0))
           continue;
         for(int kk = k0 + 1; kk < msub.size(); kk ++)
           if(!flagj[msub[kk].mbufj] &&
@@ -358,7 +369,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             const Vec3 aj(shapebase[msub[kk].mbufj]          - gs);
             const Vec3 bk(work.rot * (points[msub[kk].mbufk] - gp));
             const Vec3 lerr(aj - bk * t0);
-            if(thresh * thresh < lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t0 * t0))
+            if(thresh < lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t0 * t0))
               break;
             work.dstpoints.push_back(msub[kk].mbufj);
             work.srcpoints.push_back(msub[kk].mbufk);
@@ -398,7 +409,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             work.rdepth += (aj - bk).dot(aj - bk) / (aj.dot(aj) + bk.dot(bk));
           }
           work.rdepth /= work.dstpoints.size();
-          if(work.rdepth < thresh) {
+          if(work.rdepth < thresh * sqrt(T(3))) {
             cerr << "." << flush;
 #if defined(_OPENMP)
 #pragma omp critical

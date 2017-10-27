@@ -4,7 +4,7 @@ CXX=	clang++
 CXXFLAGS+=	-I/usr/local/include/eigen3
 #CXXFLAGS+=	-fopenmp -lgomp
 CXXFLAGS+=	-std=c++11
-CXXFLAGS+=	-Ofast -mtune=native
+CXXFLAGS+=	-Ofast -g0 -mtune=native
 #CXXFLAGS+=	-O2 -g2 -mtune=native
 LDFLAGS+=	-lstdc++
 

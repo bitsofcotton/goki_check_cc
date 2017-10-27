@@ -5,7 +5,8 @@
 
 using std::complex;
 using std::abs;
-using std::pow;
+using std::sqrt;
+using std::exp;
 using std::vector;
 using std::sort;
 

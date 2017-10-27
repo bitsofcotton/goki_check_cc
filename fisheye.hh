@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include "enlarge.hh"
 #include "tilt.hh"
 #include "obj2vector.hh"
 
@@ -20,6 +19,8 @@ using std::cos;
 using std::sqrt;
 using std::log;
 using std::isfinite;
+using std::cerr;
+using std::flush;
 
 template <typename T> int cmpbump(const Eigen::Matrix<T, 3, 1>& x0, const Eigen::Matrix<T, 3, 1>& x1) {
   return x0[2] < x1[2];
@@ -117,8 +118,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p1x[0] = workh.rows() / 2;
   p1x[1] = workh.cols();
   p1x[2] = 0;
-  cerr << " bump";
-  cerr.flush();
+  cerr << " bump" << flush;
   Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> lrf( prepareLineAxis(p0,  p1, workv.cols(), workv.rows()));
   Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> lrfx(prepareLineAxis(p0x, p1x, workh.cols(), workh.rows()));
 #if defined(_OPENMP)
@@ -132,8 +132,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     p1[0] = work.rows();
     p1[1] = i;
     p1[2] = 0;
-    cerr << ".";
-    cerr.flush();
+    cerr << "." << flush;
     for(int j = 0; j < result.rows(); j ++)
       result(j, i) = - T(1);
     Vec zval(result.rows());
