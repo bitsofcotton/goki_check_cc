@@ -139,7 +139,7 @@ int main(int argc, const char* argv[]) {
     break;
   case 9:
     {
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3], bump0, bump1;
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3];
       if(!loadp2or3<double>(data1, argv[4]))
         return - 2;
       // XXX: configure me:
@@ -149,14 +149,13 @@ int main(int argc, const char* argv[]) {
       int    nshow(8);
       double emph(.25);
       PseudoBump<double> bump;
-      std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
-      bump0 = bump.getPseudoBumpSub(rgb2l(data));
-      bump1 = bump.getPseudoBumpSub(rgb2l(data1));
-      // bump0 = rgb2l(data);
-      // bump1 = rgb2l(data1);
+      auto bump0(bump.getPseudoBumpSub(rgb2l(data)));
+      auto bump1(bump.getPseudoBumpSub(rgb2l(data1)));
+      // auto bump0(rgb2l(data));
+      // auto bump1(rgb2l(data1));
       lowFreq<double> lf;
-      shape0 = lf.getLowFreq(bump0, min(int(bump0.rows() * bump0.cols()), 3200));
-      shape1 = lf.getLowFreq(bump1, min(int(bump1.rows() * bump1.cols()) / 16, 800));
+      auto shape0(lf.getLowFreq(bump0, min(int(bump0.rows() * bump0.cols()), 800)));
+      auto shape1(lf.getLowFreq(bump1, min(int(bump1.rows() * bump1.cols()) / 64, 200)));
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
@@ -199,12 +198,12 @@ int main(int argc, const char* argv[]) {
       }
       double zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
+        cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<double> tilt;
         reDig<double>  redig;
         tilt.initialize(zr / (data[0].rows() * data[0].cols()));
-        cerr << matches[n].dstpoints.size() << "matched points." << endl;
-        std::vector<Eigen::Matrix<int, 3, 1> > hull(loadBumpSimpleMesh<double>(shape0, matches[n].dstpoints));
+        auto hull(loadBumpSimpleMesh<double>(shape0, matches[n].dstpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
         for(int idx = 0; idx < hull.size(); idx ++) {
           Eigen::Matrix<int, 3, 1> buf;
@@ -215,8 +214,6 @@ int main(int argc, const char* argv[]) {
             buf[idx2] = matches[n].srcpoints[hull[idx][idx2]];
           mhull1.push_back(buf);
         }
-        cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
-        cerr << matches[n].rot << endl;
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = tilt.tilt(showMatch<double>(mout[idx], shape1, mhull1), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
         normalize<double>(outs, 1.);
@@ -251,7 +248,6 @@ int main(int argc, const char* argv[]) {
     return 0;
   case 10:
     {
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
       std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
       if(!loadobj<double>(datapoly, polynorms, argv[4]))
@@ -267,15 +263,9 @@ int main(int argc, const char* argv[]) {
       int    nshow(8);
       double emph(.25);
       PseudoBump<double> bumper;
-      std::vector<Eigen::Matrix<double, 3, 1> > shape;
-      std::vector<Eigen::Matrix<int, 3, 1> > poly;
-      bump = bumper.getPseudoBumpSub(rgb2l(data));
+      auto bump(bumper.getPseudoBumpSub(rgb2l(data)));
       lowFreq<double> lf;
-      shape = lf.getLowFreq(bump, min(int(bump.rows() * bump.cols() / 16), 800));
-      vector<int> idx;
-      for(int i = 0; i < shape.size(); i ++)
-        idx.push_back(i);
-      poly = loadBumpSimpleMesh<double>(shape, idx);
+      auto shape(lf.getLowFreq(bump, min(int(bump.rows() * bump.cols() / 16), 800)));
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = double(0);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());
@@ -303,9 +293,9 @@ int main(int argc, const char* argv[]) {
         tilter<double> tilt;
         reDig<double>  redig;
         tilt.initialize(zr / sqrt((data[0].rows() * data[0].cols()) / (data[0].rows() * data[0].cols())));
-        cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].rpoints << ", " << matches[n].ratio << ")" << endl;
+        cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         
-        std::vector<Eigen::Matrix<int, 3, 1> > ch(loadBumpSimpleMesh<double>(datapoly, matches[n].dstpoints));
+        auto ch(loadBumpSimpleMesh<double>(shape, matches[n].dstpoints));
 
         vector<Eigen::Matrix<double, 3, 1> > shape3d;
         for(int idx = 0; idx < datapoly.size(); idx ++)
