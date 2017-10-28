@@ -24,7 +24,7 @@ using std::min;
 using std::max;
 using std::abs;
 
-template <typename T> int clockwise(const Eigen::Matrix<T, 3, 1>& p0, const Eigen::Matrix<T, 3, 1>& p1, const Eigen::Matrix<T, 3, 1>& p2, const T& epsilon = T(0)) {
+template <typename T> int clockwise(const Eigen::Matrix<T, 3, 1>& p0, const Eigen::Matrix<T, 3, 1>& p1, const Eigen::Matrix<T, 3, 1>& p2, const T& epsilon = T(1e-4)) {
   Eigen::Matrix<T, 3, 3> dc0;
   dc0(0, 0) = T(1);
   dc0(0, 1) = p0[0];
@@ -36,9 +36,29 @@ template <typename T> int clockwise(const Eigen::Matrix<T, 3, 1>& p0, const Eige
   dc0(2, 1) = p2[0];
   dc0(2, 2) = p2[1];
   const T det(dc0.determinant());
-  if(abs(det) <= epsilon)
+  if(abs(det) <= pow(epsilon, T(3)))
     return 0;
   return det < T(0) ? - 1 : 1;
+}
+
+template <typename T> bool isCrossing(const Eigen::Matrix<T, 3, 1>& p0, const Eigen::Matrix<T, 3, 1>& p1, const Eigen::Matrix<T, 3, 1>& q0, const Eigen::Matrix<T, 3, 1>& q1, const T& err = T(1e-4)) {
+  // t * p0 + (1 - t) * p1 == s * q0 + (1 - s) * q1
+  // <=> p1 + (p0 - p1) t == q1 + (q0 - q1) s
+  // <=> [(p0 - p1), (q1 - q0)][t, s] == q1 - p1.
+  // <=> Ax==b.
+  Eigen::Matrix<T, 2, 2> A;
+  Eigen::Matrix<T, 2, 1> b;
+  A(0, 0) = p0[0] - p1[0];
+  A(1, 0) = p0[1] - p1[1];
+  A(0, 1) = q1[0] - q0[0];
+  A(1, 1) = q1[1] - q0[1];
+  b[0]    = q1[0] - p1[0];
+  b[1]    = q1[1] - p1[1];
+  if(abs(A.determinant()) <= pow(err, T(2)))
+    return false;
+  auto x(A.inverse() * b);
+  return (err <= x[0] && x[0] <= T(1) - err) &&
+         (err <= x[1] && x[1] <= T(1) - err);
 }
 
 template <typename T> bool isSameLine2(const Eigen::Matrix<T, 3, 1>& a, const Eigen::Matrix<T, 3, 1>& b, const Eigen::Matrix<T, 3, 1>& c, const T& rerr = T(1e-8)) {
@@ -120,7 +140,17 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const
 #pragma omp critical
 #endif
           {
+            for(int i = 0; i < res.size(); i ++)
+              for(int j = 0; j < res[i].size(); j ++)
+                for(int k = 0; k < idx.size(); k ++)
+                  if(isCrossing(dst[dstpoints[res[i][(j + 0) % 3]]],
+                                dst[dstpoints[res[i][(j + 1) % 3]]],
+                                dst[dstpoints[idx[(k + 0) % 3]]],
+                                dst[dstpoints[idx[(k + 1) % 3]]]))
+                    goto fixnext;
             res.push_back(idx);
+           fixnext:
+            ;
           }
         }
       }
