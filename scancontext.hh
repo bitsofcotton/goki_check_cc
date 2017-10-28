@@ -9,6 +9,7 @@
 using std::sqrt;
 using std::atan2;
 using std::abs;
+using std::log;
 using std::cos;
 using std::sin;
 using std::sort;
@@ -221,7 +222,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(20, .0625, .25, .25, .125, .75);
+  init(20, .0125, .25, .25, .125, .75);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -412,7 +413,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             }
             work.rdepth /= work.dstpoints.size();
             // XXX configure thresh with me:
-            work.rdepth /= sqrt(T(work.dstpoints.size()));
+            work.rdepth /= log(T(1) + T(work.dstpoints.size()));
             if(isfinite(work.rdepth) && work.rdepth <= thresh) {
 #if defined(_OPENMP)
 #pragma omp critical
