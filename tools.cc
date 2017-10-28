@@ -155,7 +155,7 @@ int main(int argc, const char* argv[]) {
       // auto bump1(rgb2l(data1));
       lowFreq<double> lf;
       auto shape0(lf.getLowFreq(bump0, min(int(bump0.rows() * bump0.cols()), 800)));
-      auto shape1(lf.getLowFreq(bump1, min(int(bump1.rows() * bump1.cols()) / 64, 200)));
+      auto shape1(lf.getLowFreq(bump1, min(int(bump1.rows() * bump1.cols()) / 64, 60)));
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
@@ -180,6 +180,7 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = double(0);
       matchPartialPartial<double> statmatch;
+      statmatch.threshr = double(.75);
       std::vector<match_t<double> > matches;
       for(double zr = zrs;
           (zrs / zre < double(1) && zr < zre) || 
