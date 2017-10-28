@@ -142,7 +142,7 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3], bump0, bump1;
       if(!loadp2or3<double>(data1, argv[4]))
         return - 2;
-      // XXX: configure me.
+      // XXX: configure me:
       double zrs(1.5);
       double zre( .5);
       int    zrl(3);

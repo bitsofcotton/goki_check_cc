@@ -196,16 +196,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       }
     }
   }
+  Mat result2(result.transpose());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < result.cols(); i ++)
-    result.col(i) = complementLine(result.col(i));
+  for(int i = 0; i < result.cols(); i ++) {
+    result.col(i)  = complementLine(result.col(i));
+    result2.row(i) = complementLine(result2.row(i));
+  }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < result.rows(); i ++)
-    result.row(i) = complementLine(result.row(i));
+  for(int i = 0; i < result.rows(); i ++) {
+    result.row(i)  = complementLine(result.row(i));
+    result2.col(i) = complementLine(result2.col(i));
+  }
+  result += result2.transpose();
   autoLevel(result);
   return result;
 }
