@@ -107,8 +107,8 @@ These program's match3d assumes input file as bump map and .obj 3d file.
 These program's match assumes one of vertices is full and another is lowPoly, but lowFreq implementation now, it worse generate lowPoly.
 
 # Known bugs
-PseudoBump makes a pseudo plausible things.
-matchPartialPartial matches stable to whole points, so it is in fact needed to match stable to certain connected parts, then, no care to another parts.
+PseudoBump makes a pseudo plausible things.  
+matchPartialPartial matches stable to whole points, so it is in fact needed to match stable to certain simply connected parts, then, no care to another parts.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
