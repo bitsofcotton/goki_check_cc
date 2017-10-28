@@ -204,15 +204,17 @@ public:
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
-private:
-  U   I;
-  T   Pi;
+  
   int ndiv;
   T   thresh;
   T   threshp;
   T   threshr;
   T   thresht;
   T   threshs;
+  
+private:
+  U   I;
+  T   Pi;
 };
 
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
@@ -301,7 +303,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
 #endif
     for(int nd = 0; nd <= ndiv; nd ++) {
       cerr << "." << flush;
-      for(int nd2 = 1; nd2 < ndiv; nd2 ++) {
+      for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
         Eigen::Matrix<T, 4, 1> ddiv;
         if(nd < ndiv) {
           ddiv[0]  = cos(2 * Pi * nd / ndiv);
@@ -409,9 +411,9 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
               work.rdepth += (aj - bk).dot(aj - bk) / (aj.dot(aj) + bk.dot(bk));
             }
             work.rdepth /= work.dstpoints.size();
+            // XXX configure thresh with me:
             work.rdepth /= sqrt(T(work.dstpoints.size()));
-            work.rdepth /= abs(work.ratio);
-            if(isfinite(work.rdepth) && work.rdepth <= thresh * sqrt(T(3))) {
+            if(isfinite(work.rdepth) && work.rdepth <= thresh) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
@@ -446,7 +448,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       }
     }
   }
-  sort(result.begin(), result.end());
   return;
 }
 
