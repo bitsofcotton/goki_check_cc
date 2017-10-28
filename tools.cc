@@ -155,7 +155,7 @@ int main(int argc, const char* argv[]) {
       // bump0 = rgb2l(data);
       // bump1 = rgb2l(data1);
       lowFreq<double> lf;
-      shape0 = lf.getLowFreq(bump0, bump0.rows() * bump0.cols());
+      shape0 = lf.getLowFreq(bump0, min(int(bump0.rows() * bump0.cols()), 3200));
       shape1 = lf.getLowFreq(bump1, min(int(bump1.rows() * bump1.cols()) / 16, 800));
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
@@ -203,6 +203,7 @@ int main(int argc, const char* argv[]) {
         tilter<double> tilt;
         reDig<double>  redig;
         tilt.initialize(zr / (data[0].rows() * data[0].cols()));
+        cerr << matches[n].dstpoints.size() << "matched points." << endl;
         std::vector<Eigen::Matrix<int, 3, 1> > hull(loadBumpSimpleMesh<double>(shape0, matches[n].dstpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
         for(int idx = 0; idx < hull.size(); idx ++) {
