@@ -190,10 +190,12 @@ public:
   }
   // XXX configure us:
   bool operator < (const match_t<T>& x1) const {
-    // return rpoints > x1.rpoints || (rpoints == x1.rpoints && rdepth < x1.rdepth) || (rpoints == x1.rpoints && rdepth == x1.rdepth && max(ratio, T(1) / ratio) < max(x1.ratio, T(1) / x1.ratio));
+    return rpoints > x1.rpoints || (rpoints == x1.rpoints && rdepth < x1.rdepth) || (rpoints == x1.rpoints && rdepth == x1.rdepth && max(ratio, T(1) / ratio) < max(x1.ratio, T(1) / x1.ratio));
+/*
     const T rratio(max(   ratio, T(1) /    ratio));
     const T xratio(max(x1.ratio, T(1) / x1.ratio));
     return rpoints > x1.rpoints || (rpoints == x1.rpoints && rratio < xratio) || (rpoints == x1.rpoints && rratio == xratio && rdepth < x1.rdepth);
+*/
   }
   bool operator == (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -240,7 +242,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(20, .125, .25, .25, .75);
+  init(20, .0625, .25, .25, .75);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -430,7 +432,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
               const Vec3  bk(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset);
               work.rdepth += (aj - bk).dot(aj - bk) / (aj.dot(aj) + bk.dot(bk));
             }
-            work.rdepth /= work.dstpoints.size();
+            work.rdepth /= work.dstpoints.size() * work.ratio;
             if(isfinite(work.rdepth) && work.rdepth <= thresh * sqrt(T(3))) {
 #if defined(_OPENMP)
 #pragma omp critical
