@@ -150,20 +150,13 @@ int main(int argc, const char* argv[]) {
       double emph(.25);
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
-      std::vector<Eigen::Matrix<int,    3, 1> > delaunay0, delaunay1;
       bump0 = bump.getPseudoBumpSub(rgb2l(data));
       bump1 = bump.getPseudoBumpSub(rgb2l(data1));
+      // bump0 = rgb2l(data);
+      // bump1 = rgb2l(data1);
       lowFreq<double> lf;
-      shape0    = lf.getLowFreq(bump0, min(int(bump0.rows() * bump0.cols() / 16), 800));
-      vector<int> idx;
-      for(int i = 0; i < shape0.size(); i ++)
-        idx.push_back(i);
-      delaunay0 = loadBumpSimpleMesh<double>(shape0, idx);
-      shape1    = lf.getLowFreq(bump1, min(int(sqrt(double(bump1.rows() * bump1.cols())) / 16), int(sqrt(double(800 * 16)) / 16)));
-      idx = vector<int>();
-      for(int i = 0; i < shape1.size(); i ++)
-        idx.push_back(i);
-      delaunay1 = loadBumpSimpleMesh<double>(shape1, idx);
+      shape0 = lf.getLowFreq(bump0, bump0.rows() * bump0.cols());
+      shape1 = lf.getLowFreq(bump1, min(int(bump1.rows() * bump1.cols()) / 16, 800));
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
