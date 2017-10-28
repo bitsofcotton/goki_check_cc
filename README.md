@@ -21,6 +21,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * scancontext.hh
 * * matchPartialPartial::ndiv    : number of divides that match angles.
 * * matchPartialPartial::thresh  : threshold to detect parallel vectors.
+* * matchPartialPartial::thresht : threshold to detect parallel vectors length ratio.
 * * matchPartialPartial::threshp : threshold for matched points.
 * * matchPartialPartial::threshr : threshold for matched size ratios.
 * * matchPartialPartial::threshs : threshold for operator ==.
@@ -107,6 +108,7 @@ These program's match assumes one of vertices is full and another is lowPoly, bu
 
 # Known bugs
 PseudoBump makes a pseudo plausible things.
+matchPartialPartial matches stable to whole points, so it is in fact needed to match stable to certain connected parts, then, no care to another parts.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
