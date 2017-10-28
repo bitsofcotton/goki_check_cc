@@ -19,6 +19,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * scancontext.hh
 * * matchPartialPartial::ndiv    : 合致する角度の分割数です
 * * matchPartialPartial::thresh  : 合致を集めてくる際の平行なベクトルのための誤差です。
+* * matchPartialPartial::thresht : 合致を集めてくる際の平行なベクトルの長さの比率に対する誤差です。
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
 * * matchPartialPartial::threshr : 検出される最小の画像倍率です。
 * * matchPartialPartial::threshs : 合致が同じかどうか判定する閾値です。
@@ -104,7 +105,8 @@ match3d は入力にバンプマップと .obj ファイルを仮定していま
 match は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定していますが、現行の実装では、lowFreq の出力がよろしくない結果を返します。
 
 # バグ
-PseudoBump はもっともらしいバンプマップを返しますが、正しくない場合があります。
+PseudoBump はもっともらしいバンプマップを返しますが、正しくない場合があります。  
+matchPartialPartial クラスは全体に対して安定な合致を返しますが、実際に必要なのは、単連結な部分に対して安定で、その他の部分に対して関連しない合致です。
 
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
