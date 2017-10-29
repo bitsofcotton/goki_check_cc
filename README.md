@@ -21,6 +21,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * scancontext.hh
 * * matchPartialPartial::ndiv    : number of divides that match angles.
 * * matchPartialPartial::thresh  : threshold to detect parallel vectors.
+* * matchPartialPartial::thresht : threshold to detect parallel vectors length ratio.
 * * matchPartialPartial::threshp : threshold for matched points.
 * * matchPartialPartial::threshr : threshold for matched size ratios.
 * * matchPartialPartial::threshs : threshold for operator ==.
@@ -92,7 +93,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     // but include guard definition may harms.
 
 # Demos
-http://services.limpid-intensity.info/ have a sample interface to working demos.
+https://services.limpid-intensity.info/ have a sample interface to working demos.
 Please bookmark output directory page after sending images, then please wait some minutes.  
 N.B. a file per 5 minutes, sha 256 order.  
 N.B. up to 20 Mo total upload size.
@@ -106,10 +107,11 @@ These program's match3d assumes input file as bump map and .obj 3d file.
 These program's match assumes one of vertices is full and another is lowPoly, but lowFreq implementation now, it worse generate lowPoly.
 
 # Known bugs
-PseudoBump makes a pseudo plausible things.
+PseudoBump makes a pseudo plausible things.  
+matchPartialPartial matches stable to whole points, so it is in fact needed to match stable to certain simply connected parts, then, no care to another parts.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release3.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release3.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
+* https://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz

@@ -19,6 +19,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * scancontext.hh
 * * matchPartialPartial::ndiv    : 合致する角度の分割数です
 * * matchPartialPartial::thresh  : 合致を集めてくる際の平行なベクトルのための誤差です。
+* * matchPartialPartial::thresht : 合致を集めてくる際の平行なベクトルの長さの比率に対する誤差です。
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
 * * matchPartialPartial::threshr : 検出される最小の画像倍率です。
 * * matchPartialPartial::threshs : 合致が同じかどうか判定する閾値です。
@@ -89,7 +90,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     // but include guard definition may harms.
 
 # デモ
-http://services.limpid-intensity.info/ にサンプルがあります。  
+https://services.limpid-intensity.info/ にサンプルがあります。  
 画像をアップロードした後、リンク先のページをブックマークしてください。その後、計算終了までに空いていて数分かかります。  
 N.B. 5分に一回バッチが回ります。アップロード順ではなく sha256 の名前順です。  
 N.B. アップロードのサイズを 20Mo までに制限してあります。
@@ -104,10 +105,11 @@ match3d は入力にバンプマップと .obj ファイルを仮定していま
 match は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定していますが、現行の実装では、lowFreq の出力がよろしくない結果を返します。
 
 # バグ
-PseudoBump はもっともらしいバンプマップを返しますが、正しくない場合があります。
+PseudoBump はもっともらしいバンプマップを返しますが、正しくない場合があります。  
+matchPartialPartial クラスは全体に対して安定な合致を返しますが、実際に必要なのは、単連結な部分に対して安定で、その他の部分に対して関連しない合致です。
 
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release3.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release3.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
+* https://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
