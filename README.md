@@ -93,7 +93,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     // but include guard definition may harms.
 
 # Demos
-http://services.limpid-intensity.info/ have a sample interface to working demos.
+https://services.limpid-intensity.info/ have a sample interface to working demos.
 Please bookmark output directory page after sending images, then please wait some minutes.  
 N.B. a file per 5 minutes, sha 256 order.  
 N.B. up to 20 Mo total upload size.
@@ -114,4 +114,4 @@ matchPartialPartial matches stable to whole points, so it is in fact needed to m
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
 * https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release3.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release3.tar.gz
+* https://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release3.tar.gz
