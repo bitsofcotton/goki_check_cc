@@ -90,7 +90,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     // but include guard definition may harms.
 
 # デモ
-http://services.limpid-intensity.info/ にサンプルがあります。  
+https://services.limpid-intensity.info/ にサンプルがあります。  
 画像をアップロードした後、リンク先のページをブックマークしてください。その後、計算終了までに空いていて数分かかります。  
 N.B. 5分に一回バッチが回ります。アップロード順ではなく sha256 の名前順です。  
 N.B. アップロードのサイズを 20Mo までに制限してあります。
@@ -112,4 +112,4 @@ matchPartialPartial クラスは全体に対して安定な合致を返します
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
 * https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release3.tar.gz
-* http://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release3.tar.gz
+* https://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release3.tar.gz
