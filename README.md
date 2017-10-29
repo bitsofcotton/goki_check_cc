@@ -113,5 +113,5 @@ matchPartialPartial matches stable to whole points, so it is in fact needed to m
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-release3.tar.gz
-* https://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-release3.tar.gz
+* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
+* https://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
