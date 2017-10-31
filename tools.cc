@@ -81,7 +81,7 @@ int main(int argc, const char* argv[]) {
       outs[0] = outs[1] = outs[2] = b_mesh;
       normalize<double>(outs, 1.);
       savep2or3<double>(argv[4], outs, false);
-      saveobj(points, delaunay, argv[5], sqrt(double(data[0].rows() * data[0].cols()) / double(4)));
+      saveobj(points, delaunay, argv[5], double(4));
     }
     break;
   case 6:
@@ -94,7 +94,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .99);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .975);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);

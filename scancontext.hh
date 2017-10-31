@@ -222,7 +222,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(20, .0125, .25, .25, .125, .75);
+  init(20, .000325, .25, .25, .125, .75);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -366,6 +366,9 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             flagk[kk] = false;
           for(int t1 = t0; t1 < msub.size(); t1 ++)
             if(!flagj[msub[t1].j] && !flagk[msub[t1].k] &&
+               // N.B. abar:=sum(aj)/n, bbar:=P*sum(bk)/n,
+               //   get condition sum||aj-abar||, sum||bk-bbar|| -> 0
+               //   with this imcomplete set.
                abs(msub[t0].t - msub[t1].t) / abs(msub[t0].t) <= thresht) {
               work.dstpoints.push_back(msub[t1].j);
               work.srcpoints.push_back(msub[t1].k);
