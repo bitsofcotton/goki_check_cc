@@ -24,7 +24,10 @@ public:
     DETECT_BOTH,
     COLLECT_X,
     COLLECT_Y,
-    COLLECT_BOTH } direction_t;
+    COLLECT_BOTH,
+    IDETECT_X,
+    IDETECT_Y,
+    IDETECT_BOTH } direction_t;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
@@ -80,6 +83,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   case COLLECT_BOTH:
     result = (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / 2.;
     break;
+  case IDETECT_BOTH:
+    result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / 2.;
+    break;
   case ENLARGE_X:
     result = compute(data.transpose(), ENLARGE_Y).transpose();
     break;
@@ -91,6 +97,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case COLLECT_X:
     result = compute(data.transpose(), COLLECT_Y).transpose();
+    break;
+  case IDETECT_X:
+    result = compute(data.transpose(), IDETECT_Y).transpose();
     break;
   case ENLARGE_Y:
     {
@@ -136,6 +145,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     for(int i = 0; i < result.rows(); i ++)
       for(int j = 0; j < result.cols(); j ++)
         result(i, j) = abs(result(i, j));
+    break;
+  case IDETECT_Y:
+    {
+      initPattern(data.rows(), false);
+      Vec avg(data.cols());
+      for(int i = 0; i < data.cols(); i ++) {
+        avg[i]  = T(0);
+        for(int j = 0; j < data.rows(); j ++)
+          avg[i] += data(j, i);
+        avg[i] /= data.rows();
+      }
+      result = Iop * data;
+      for(int i = 0; i < data.cols(); i ++)
+        for(int j = 0; j < data.rows(); j ++)
+          result(j, i) += avg[i] * j * j / data.rows() / data.rows();
+    }
     break;
   default:
     ;
