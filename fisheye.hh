@@ -58,6 +58,8 @@ private:
   T   rdist;
   
   T   Pi;
+  Mat Dop;
+  Mat Dop2;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
@@ -77,6 +79,15 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   // N.B. ray is from infinite far, so same side of these.
   this->cdist   = T(2);
   this->rdist   = T(1);
+  Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
+  for(int i = 0; i < DFT.rows(); i ++)
+    for(int j = 0; j < DFT.cols(); j ++) {
+      DFT( i, j) = exp(complex<T>(- 2.) * Pi * sqrt(complex<T>(- 1)) * complex<T>(i * j / T(stp)));
+      IDFT(i, j) = exp(complex<T>(  2.) * Pi * sqrt(complex<T>(- 1)) * complex<T>(i * j / T(stp))) / T(stp);
+    }
+  for(int i = 0; i < DFT.rows(); i ++)
+    DFT.row(i) *= complex<T>(2.) * Pi * sqrt(complex<T>(- 1)) * T(i) / T(DFT.rows());
+  Dop = (IDFT * DFT).real();
   return;
 };
 
@@ -84,23 +95,14 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpSub(const Mat& work) {
   Mat result(work.rows(), work.cols());
   Mat workv(work.rows() * stp, work.cols());
-  Mat workh(work.rows(), work.cols() * stp);
   for(int i = 0; i < workv.rows(); i ++)
     if(i % stp == stp / 2)
       workv.row(i) = work.row(i / stp);
     else
       for(int j = 0; j < workv.cols(); j ++)
         workv(i, j) = - T(1);
-  for(int i = 0; i < workh.cols(); i ++)
-    if(i % stp == stp / 2)
-      workh.col(i) = work.col(i / stp);
-    else
-      for(int j = 0; j < workh.rows(); j ++)
-        workh(j, i) = - T(1);
   for(int i = 0; i < workv.cols(); i ++)
     workv.col(i) = complementLine(workv.col(i));
-  for(int i = 0; i < workh.rows(); i ++)
-    workh.row(i) = complementLine(workh.row(i));
   Vec p0(3), p1(3), p0x(3), p1x(3);
   p0[0]  = 0;
   p0[1]  = workv.cols() / 2;
@@ -108,15 +110,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p1[0]  = workv.rows();
   p1[1]  = workv.cols() / 2;
   p1[2]  = 0;
-  p0x[0] = workh.rows() / 2;
-  p0x[1] = 0;
-  p0x[2] = 0;
-  p1x[0] = workh.rows() / 2;
-  p1x[1] = workh.cols();
-  p1x[2] = 0;
   cerr << " bump" << flush;
-  Eigen::Matrix<Mat, Eigen::Dynamic, 1> cf( prepareLineAxis(p0,  p1,  workv.cols(), workv.rows()));
-  Eigen::Matrix<Mat, Eigen::Dynamic, 1> cfx(prepareLineAxis(p0x, p1x, workh.cols(), workh.rows()));
+  Eigen::Matrix<Mat, Eigen::Dynamic, 1> cf(prepareLineAxis(p0,  p1,  workv.cols(), workv.rows()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -137,48 +132,36 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int s = 0; s < result.rows(); s ++) {
       Vec pt(indiv(p0, p1, s / T(result.rows())));
       for(int zz = 0; zz < cf.size(); zz ++) {
-        Vec c(cf[zz].cols()), cx(cfx[zz].cols());
-        for(int u = 0; u < c.size(); u ++) {
-          c[u]   = getImgPt(workv, cf[ zz](0, u) + pt[0] * stp + stp / 2,
-                                   cf[ zz](1, u) + pt[1]);
-          cx[u]  = getImgPt(workh, cfx[zz](0, u) + pt[0],
-                                   cfx[zz](1, u) + pt[1] * stp + stp / 2);
-        }
+        Vec c(cf[zz].cols());
+        for(int u = 0; u < c.size(); u ++)
+          c[u] = getImgPt(workv, cf[zz](0, u) + pt[0] * stp + stp / 2,
+                                 cf[zz](1, u) + pt[1]);
+        c = Dop * c;
         Vec cc(c.size() / 4 * 2 + 1);
-        Vec ccx(cc.size());
         for(int u =  c.size() / 2 - c.size() / 4;
                 u <= c.size() / 2 + c.size() / 4;
                 u ++) {
           const int idx(u - c.size() / 2 + c.size() / 4);
           cc[idx]  = c[u];
-          ccx[idx] = cx[u];
         }
         Vec cl(c.size() / 2 + 1);
-        Vec cr(cl.size()), cxl(cl.size()), cxr(cl.size());
+        Vec cr(cl.size());
         for(int u = 0; u < cl.size(); u ++) {
-          cl[ u] = c[ u];
-          cxl[u] = cx[u];
-          cr[ u] = c[ u - cl.size() + c.size()];
-          cxr[u] = cx[u - cl.size() + cx.size()];
+          cl[u] = c[u];
+          cr[u] = c[u - cl.size() + c.size()];
         }
         Vec ccl(c.size() / 4 + 1);
-        Vec ccr(ccl.size()), ccxl(ccl.size()), ccxr(ccl.size());
+        Vec ccr(ccl.size());
         for(int u = 0; u < ccl.size(); u ++) {
-          ccl[ u] = cc[ u - ccl.size() + cc.size() / 2 + 1];
-          ccxl[u] = ccx[u - ccl.size() + cc.size() / 2 + 1];
-          ccr[ u] = cc[ u - ccl.size() + cc.size() / 2 + cc.size() / 4 + 2];
-          ccxr[u] = ccx[u - ccl.size() + cc.size() / 2 + cc.size() / 4 + 2];
+          ccl[u] = cc[u - ccl.size() + cc.size() / 2 + 1];
+          ccr[u] = cc[u - ccl.size() + cc.size() / 2 + cc.size() / 4 + 2];
         }
         // N.B. simply take the ratio of local and far difference with an eye,
         //      on left side and right side and center, then ratio it.
         const T n2((ccl.dot( ccl)  / cl.dot( cl)  +
                     ccr.dot( ccr)  / cr.dot( cr)) /
                    (cc.dot( cc)  / c.dot( c)) +
-                    cc.dot( cc)  / c.dot( c)  +
-                   (ccxl.dot(ccxl) / cxl.dot(cxl) +
-                    ccxr.dot(ccxr) / cxr.dot(cxr)) /
-                   (ccx.dot(ccx) / cx.dot(cx)) +
-                    ccx.dot(ccx) / cx.dot(cx));
+                    cc.dot( cc)  / c.dot( c));
         if(isfinite(n2) && zval[s] < n2) {
           // N.B. If increase zz, decrease the distance from camera.
           //      And, zz->0 is treated as distant in tilter.
