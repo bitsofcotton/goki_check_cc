@@ -103,7 +103,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < M_TILT; i ++) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> out[3];
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .975);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .99);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
