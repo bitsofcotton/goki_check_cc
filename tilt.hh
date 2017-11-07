@@ -216,8 +216,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   R1(2, 1) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
   Vec3 pcenter;
-  pcenter[0] = in.rows() / 2;
-  pcenter[1] = in.cols() / 2;
+  pcenter[0] = (in.rows() - 1) / 2.;
+  pcenter[1] = (in.cols() - 1) / 2.;
   pcenter[2] = 0.;
   Vec3 move0, move1;
   move0[0] = T(in.rows() - 1);

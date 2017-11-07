@@ -43,19 +43,17 @@ public:
 
 private:
   Vec  getLineAxis(Vec p, Vec c, const int& w, const int& h);
-  Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> prepareLineAxis(const Vec& p0, const Vec& p1, const int& ww, const int& hh);
+  Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& p0, const Vec& p1, const int& ww, const int& hh);
   T    getImgPt(const Mat& img, const T& y, const T& x);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   Vec  complementLine(const Vec& line, const T& rratio = T(.5));
   void autoLevel(Mat& data, int npad = - 1);
+  void gamma(Mat& data, const T& g);
   
   int z_max;
   int stp;
   T   rstp;
   
-  int guard;
-  
-  T   roff;
   T   cdist;
   T   rdist;
   
@@ -71,16 +69,14 @@ template <typename T> PseudoBump<T>::~PseudoBump() {
 }
 
 template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& vmax) {
-  this->Pi    = T(4) * atan2(T(1), T(1));
-  this->z_max = z_max;
-  this->stp   = stp;
-  this->rstp  = stp * rstp;
-  this->vmax  = vmax;
-  this->guard = rstp / 2;
-  this->roff  = T(1) / T(6);
+  this->Pi      = T(4) * atan2(T(1), T(1));
+  this->z_max   = z_max;
+  this->stp     = stp;
+  this->rstp    = stp * rstp;
+  this->vmax    = vmax;
   // N.B. ray is from infinite far, so same side of these.
-  this->cdist = T(2);
-  this->rdist = T(1);
+  this->cdist   = T(2);
+  this->rdist   = T(1);
   return;
 };
 
@@ -119,8 +115,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p1x[1] = workh.cols();
   p1x[2] = 0;
   cerr << " bump" << flush;
-  Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> lrf( prepareLineAxis(p0,  p1, workv.cols(), workv.rows()));
-  Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> lrfx(prepareLineAxis(p0x, p1x, workh.cols(), workh.rows()));
+  Eigen::Matrix<Mat, Eigen::Dynamic, 1> cf( prepareLineAxis(p0,  p1,  workv.cols(), workv.rows()));
+  Eigen::Matrix<Mat, Eigen::Dynamic, 1> cfx(prepareLineAxis(p0x, p1x, workh.cols(), workh.rows()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -140,17 +136,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       zval[j] = T(0);
     for(int s = 0; s < result.rows(); s ++) {
       Vec pt(indiv(p0, p1, s / T(result.rows())));
-      for(int zz = 0; zz < lrf.rows(); zz ++) {
-        Vec c(lrf(zz, 0).cols()), cx(lrfx(zz, 0).cols());
+      for(int zz = 0; zz < cf.size(); zz ++) {
+        Vec c(cf[zz].cols()), cx(cfx[zz].cols());
         for(int u = 0; u < c.size(); u ++) {
-          c[u]   = getImgPt(workv, lrf( zz, 0)(0, u) + pt[0] * stp + stp / 2,
-                                   lrf( zz, 0)(1, u) + pt[1]);
-          c[u]  -= getImgPt(workv, lrf( zz, 1)(0, u) + pt[0] * stp + stp / 2,
-                                   lrf( zz, 1)(1, u) + pt[1]);
-          cx[u]  = getImgPt(workh, lrfx(zz, 0)(0, u) + pt[0],
-                                   lrfx(zz, 0)(1, u) + pt[1] * stp + stp / 2);
-          cx[u] -= getImgPt(workh, lrfx(zz, 1)(0, u) + pt[0],
-                                   lrfx(zz, 1)(1, u) + pt[1] * stp + stp / 2);
+          c[u]   = getImgPt(workv, cf[ zz](0, u) + pt[0] * stp + stp / 2,
+                                   cf[ zz](1, u) + pt[1]);
+          cx[u]  = getImgPt(workh, cfx[zz](0, u) + pt[0],
+                                   cfx[zz](1, u) + pt[1] * stp + stp / 2);
         }
         Vec cc(c.size() / 4 * 2 + 1);
         Vec ccx(cc.size());
@@ -177,7 +169,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           ccr[ u] = cc[ u - ccl.size() + cc.size() / 2 + cc.size() / 4 + 2];
           ccxr[u] = ccx[u - ccl.size() + cc.size() / 2 + cc.size() / 4 + 2];
         }
-        // N.B. simply take the ratio of local and far difference on two eyes
+        // N.B. simply take the ratio of local and far difference with an eye,
         //      on left side and right side and center, then ratio it.
         const T n2((ccl.dot( ccl)  / cl.dot( cl)  +
                     ccr.dot( ccr)  / cr.dot( cr)) /
@@ -190,28 +182,24 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         if(isfinite(n2) && zval[s] < n2) {
           // N.B. If increase zz, decrease the distance from camera.
           //      And, zz->0 is treated as distant in tilter.
-          result(s, i) = (T(1) + zz) / T(lrf.rows());
+          result(s, i) = (T(1) + zz) / T(cf.size());
           zval[s]      = n2;
         }
       }
     }
   }
-  Mat result2(result.transpose());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < result.cols(); i ++) {
+  for(int i = 0; i < result.cols(); i ++)
     result.col(i)  = complementLine(result.col(i));
-    result2.row(i) = complementLine(result2.row(i));
-  }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < result.rows(); i ++) {
+  for(int i = 0; i < result.rows(); i ++)
     result.row(i)  = complementLine(result.row(i));
-    result2.col(i) = complementLine(result2.col(i));
-  }
-  result += result2.transpose();
+  // XXX don't know why this works well.
+  gamma(result, T(4));
   autoLevel(result);
   return result;
 }
@@ -266,31 +254,27 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getLine
   return work;
 }
 
-template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::prepareLineAxis(const Vec& p0, const Vec& p1, const int& ww, const int& hh) {
+template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, 1> PseudoBump<T>::prepareLineAxis(const Vec& p0, const Vec& p1, const int& ww, const int& hh) {
   Vec dir(p1 - p0);
   dir /= sqrt(dir.dot(dir));
-  Vec camera0(3);
-  camera0[0] = dir[0] * roff;
-  camera0[1] = dir[1] * roff;
-  camera0[2] = cdist;
-  Vec camera1(- camera0);
-  camera1[2] = cdist;
+  Vec camera(3);
+  camera[0] = T(0);
+  camera[1] = T(0);
+  camera[2] = cdist;
   const Vec center(indiv(p0, p1, T(1) / T(2)));
   
-  Eigen::Matrix<Mat, Eigen::Dynamic, Eigen::Dynamic> result(z_max, 2);
+  Eigen::Matrix<Mat, Eigen::Dynamic, 1> result(z_max);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int zi = 0; zi < z_max; zi ++) {
-    result(zi, 0) = Mat(3, stp);
-    result(zi, 1) = Mat(3, stp);
+    result[zi] = Mat(3, stp);
     for(int s = 0; s < stp; s ++) {
       Vec cpoint(3);
       cpoint[0] = (s / (stp - 1.) - 1. / 2.) * rstp + center[0];
       cpoint[1] = (s / (stp - 1.) - 1. / 2.) * rstp + center[1];
       cpoint[2] = (zi + 1) / T(z_max) * rdist;
-      result(zi, 0).col(s) = getLineAxis(cpoint, camera0, T(ww), T(hh)) - center;
-      result(zi, 1).col(s) = getLineAxis(cpoint, camera1, T(ww), T(hh)) - center;
+      result[zi].col(s) = getLineAxis(cpoint, camera, T(ww), T(hh)) - center;
     }
   }
   return result;
@@ -376,6 +360,16 @@ template <typename T> void PseudoBump<T>::autoLevel(Mat& data, int npad) {
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++)
       data(i, j) = (max(min(data(i, j), MM), mm) - mm) / (MM - mm);
+  return;
+}
+
+template <typename T> void PseudoBump<T>::gamma(Mat& in, const T& g) {
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < in.rows(); i ++)
+    for(int j = 0; j < in.cols(); j ++)
+      in(i, j) = pow(in(i, j), T(1) / g);
   return;
 }
 
