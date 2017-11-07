@@ -45,7 +45,7 @@ public:
   ~lowFreq();
   void init(const T& zr);
   
-  vector<Vec3> getLowFreq(const Mat& data, const int& npoints = 60);
+  vector<Vec3> getLowFreq(const Mat& data, const int& npoints = 800);
 private:
   T zr;
   T Pi;
@@ -55,7 +55,7 @@ private:
 template <typename T> lowFreq<T>::lowFreq() {
   Pi = atan2(T(1), T(1)) * T(4);
   I  = sqrt(U(- 1));
-  init(80);
+  init(20);
 }
 
 template <typename T> lowFreq<T>::~lowFreq() {

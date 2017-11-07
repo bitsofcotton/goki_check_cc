@@ -12,7 +12,7 @@
 using namespace std;
 
 void usage() {
-  cout << "Usage: tools (enlarge|bump|collect|tilt|lpoly|3poly|match|match3d) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|bump|collect|idetect|tilt|lpoly|3poly|match|match3d) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -29,6 +29,8 @@ int main(int argc, const char* argv[]) {
     mode = 2;
   else if(strcmp(argv[1], "collect") == 0)
     mode = 4;
+  else if(strcmp(argv[1], "idetect") == 0)
+    mode = 5;
   else if(strcmp(argv[1], "tilt") == 0)
     mode = 6;
   else if(strcmp(argv[1], "lpoly") == 0)
@@ -64,6 +66,13 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> detect;
       for(int i = 0; i < 3; i ++)
         data[i] = detect.compute(data[i], enlarger2ex<double>::COLLECT_BOTH);
+    }
+    break;
+  case 5:
+    {
+      enlarger2ex<double> idetector;
+      for(int i = 0; i < 3; i ++)
+        data[i] = idetector.compute(data[i], enlarger2ex<double>::IDETECT_BOTH);
     }
     break;
   case 2:
@@ -105,7 +114,7 @@ int main(int argc, const char* argv[]) {
   case 8:
     {
       lowFreq<double> lf;
-      std::vector<Eigen::Matrix<double, 3, 1> > points(lf.getLowFreq(rgb2l(data), min(int(data[0].rows() * data[0].cols() / 16), 800)));
+      auto points(lf.getLowFreq(rgb2l(data)));
       std::vector<int> dstpoints;
       for(int i = 0; i < points.size(); i ++)
         dstpoints.push_back(i);
@@ -154,8 +163,8 @@ int main(int argc, const char* argv[]) {
       // auto bump0(rgb2l(data));
       // auto bump1(rgb2l(data1));
       lowFreq<double> lf;
-      auto shape0(lf.getLowFreq(bump0, min(int(bump0.rows() * bump0.cols()), 800)));
-      auto shape1(lf.getLowFreq(bump1, min(int(bump1.rows() * bump1.cols()) / 64, 60)));
+      auto shape0(lf.getLowFreq(bump0));
+      auto shape1(lf.getLowFreq(bump1));
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
@@ -266,7 +275,7 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bumper;
       auto bump(bumper.getPseudoBumpSub(rgb2l(data)));
       lowFreq<double> lf;
-      auto shape(lf.getLowFreq(bump, min(int(bump.rows() * bump.cols() / 16), 800)));
+      auto shape(lf.getLowFreq(bump));
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = double(0);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());
