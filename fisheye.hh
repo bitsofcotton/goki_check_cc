@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include "enlarge.hh"
 #include "tilt.hh"
 #include "obj2vector.hh"
 #include "scancontext.hh"
@@ -48,7 +49,6 @@ private:
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   Vec  complementLine(const Vec& line, const T& rratio = T(.5));
   void autoLevel(Mat& data, int npad = - 1);
-  void gamma(Mat& data, const T& g);
   
   int z_max;
   int stp;
@@ -56,14 +56,14 @@ private:
   
   T   cdist;
   T   rdist;
+  T   crt;
   
   T   Pi;
   Mat Dop;
-  Mat Dop2;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(30, 16, 4, 800);
+  initialize(30, 16, 20, 400);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -76,6 +76,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->stp     = stp;
   this->rstp    = stp * rstp;
   this->vmax    = vmax;
+  this->crt     = T(.4);
   // N.B. ray is from infinite far, so same side of these.
   this->cdist   = T(2);
   this->rdist   = T(1);
@@ -103,7 +104,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         workv(i, j) = - T(1);
   for(int i = 0; i < workv.cols(); i ++)
     workv.col(i) = complementLine(workv.col(i));
-  Vec p0(3), p1(3), p0x(3), p1x(3);
+  Vec p0(3), p1(3);
   p0[0]  = 0;
   p0[1]  = workv.cols() / 2;
   p0[2]  = 0;
@@ -111,7 +112,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p1[1]  = workv.cols() / 2;
   p1[2]  = 0;
   cerr << " bump" << flush;
-  Eigen::Matrix<Mat, Eigen::Dynamic, 1> cf(prepareLineAxis(p0,  p1,  workv.cols(), workv.rows()));
+  Eigen::Matrix<Mat, Eigen::Dynamic, 1> cf(prepareLineAxis(p0, p1, workv.cols(), workv.rows()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -134,35 +135,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       for(int zz = 0; zz < cf.size(); zz ++) {
         Vec c(cf[zz].cols());
         for(int u = 0; u < c.size(); u ++)
-          c[u] = getImgPt(workv, cf[zz](0, u) + pt[0] * stp + stp / 2,
-                                 cf[zz](1, u) + pt[1]);
+          c[u] = getImgPt(workv, (cf[zz](0, u) + pt[0]) * stp + stp / 2, pt[1]);
         c = Dop * c;
-        Vec cc(c.size() / 4 * 2 + 1);
-        for(int u =  c.size() / 2 - c.size() / 4;
-                u <= c.size() / 2 + c.size() / 4;
-                u ++) {
-          const int idx(u - c.size() / 2 + c.size() / 4);
-          cc[idx]  = c[u];
-        }
         Vec cl(c.size() / 2 + 1);
         Vec cr(cl.size());
         for(int u = 0; u < cl.size(); u ++) {
           cl[u] = c[u];
           cr[u] = c[u - cl.size() + c.size()];
         }
-        Vec ccl(c.size() / 4 + 1);
-        Vec ccr(ccl.size());
-        for(int u = 0; u < ccl.size(); u ++) {
-          ccl[u] = cc[u - ccl.size() + cc.size() / 2 + 1];
-          ccr[u] = cc[u - ccl.size() + cc.size() / 2 + cc.size() / 4 + 2];
-        }
         // N.B. simply take the ratio of local and far difference with an eye,
         //      on left side and right side and center, then ratio it.
-        const T n2((ccl.dot( ccl)  / cl.dot( cl)  +
-                    ccr.dot( ccr)  / cr.dot( cr)) /
-                   (cc.dot( cc)  / c.dot( c)) +
-                    cc.dot( cc)  / c.dot( c));
-        if(isfinite(n2) && zval[s] < n2) {
+        const T n2((abs(cl[cl.size() - 1]) / sqrt(cl.dot(cl)) +
+                    abs(cr[0])             / sqrt(cr.dot(cr)) +
+                    abs(c[c.size() / 2])   / sqrt( c.dot(c))  * T(2)) /
+                   cf[zz](0, 0) / cf[zz](0, 0));
+        const T r2(abs(cl[cl.size() - 1] / cr[0]));
+        if(isfinite(n2) && zval[s] <= n2 && min(r2, T(1) / r2) <= crt) {
           // N.B. If increase zz, decrease the distance from camera.
           //      And, zz->0 is treated as distant in tilter.
           result(s, i) = (T(1) + zz) / T(cf.size());
@@ -181,8 +169,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 #endif
   for(int i = 0; i < result.rows(); i ++)
     result.row(i)  = complementLine(result.row(i));
-  // XXX don't know why this works well.
-  gamma(result, T(4));
   autoLevel(result);
   return result;
 }
@@ -343,16 +329,6 @@ template <typename T> void PseudoBump<T>::autoLevel(Mat& data, int npad) {
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++)
       data(i, j) = (max(min(data(i, j), MM), mm) - mm) / (MM - mm);
-  return;
-}
-
-template <typename T> void PseudoBump<T>::gamma(Mat& in, const T& g) {
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < in.rows(); i ++)
-    for(int j = 0; j < in.cols(); j ++)
-      in(i, j) = pow(in(i, j), T(1) / g);
   return;
 }
 

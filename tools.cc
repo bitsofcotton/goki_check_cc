@@ -77,6 +77,7 @@ int main(int argc, const char* argv[]) {
     break;
   case 2:
     {
+      // XXX don't know why when false detect occur works better in tilt than not occur.
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
@@ -95,17 +96,16 @@ int main(int argc, const char* argv[]) {
     break;
   case 6:
     {
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump[3];
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump[3], out[3];
       if(!loadp2or3<double>(bump, argv[4]))
         return - 2;
       tilter<double> tilt;
-      const int M_TILT = 32;
-      for(int i = 0; i < M_TILT; i ++) {
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> out[3];
+      tilt.initialize(.03125);
+      for(int i = 0; i < 2; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, .99);
+          out[j] = tilt.tilt(data[j], bump[0], i * 2 + 1, 4, .95);
         std::string outfile(argv[3]);
-        outfile += std::string("-") + std::to_string(i + 1) + std::string(".ppm");
+        outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
       }
       return 0;
