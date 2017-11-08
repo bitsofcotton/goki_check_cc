@@ -3,6 +3,8 @@ These program aims to get context(s) from a still image.
 And then, aiming to get scene from roughly prepared dictionaries, and, reproduce the scene with another prepared dictionaries, and, get a copy of image produced 3D model into a dictionary.  
 Now, implementing bone enabled match.
 
+N.B. if the image is from the photo, it better depths preceders like defocus and so on. This implement is F=&infin; and y-axis polarized form because of theoretical interest.
+
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
 # How to use
