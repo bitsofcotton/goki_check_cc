@@ -28,7 +28,8 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 写真の後でのピント調整プログラムに刺激されました。
 また、この分野に関して、様々な(これと異なる)付帯条件での先行がたくさんありました。
 (例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるもの、
- 動画から生成するものなどです。ただし、正しい公式ページがどれなのかわからないために、リンクは差し控えさせていただきます。)
+ 動画から生成するものなどです。)
+検索結果に defocus photo アルゴリズムがありました。 http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf 。これはほとんどの場合のカメラ撮影について、goki_check_cc よりも正確です。goki_check_cc は異なる仮定を用いていますが、一般的に使用されるカメラ撮影の場合には、事前のいくつかの変換が必要です。
 
 # 状態
 回転のある場合の全体の一致の実装をしています。
@@ -111,5 +112,5 @@ matchPartialPartial クラスは全体に対して安定な合致を返します
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
-* https://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
+* https://konbu.sakura.ne.jp/files/
+* https://files.limpid-intensity.info/
