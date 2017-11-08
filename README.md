@@ -30,8 +30,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 This program is inspired from re-focus photo softwares.  
 And around this, there's many preceders that many approach to get bump maps with certain conditions
 (such as multiple camera conditions, or, with layered objects, or, spherical, or, from movie, etcetc).
-(And I have no clue which is a correct official page, no hyperlink from here.).   
-This get bump maps in a different way.
+There's a defocus photo algorithms http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf some words with googled. So it's accurate for most cameras, goki_check_cc is standing on another hypothesis that is not widely  used (in another words, some transform or special camera is needed for photos...).
 
 # Status
 Searching bone-enabled 3d model simple format. Writing whole to rotated partials match.
@@ -113,5 +112,5 @@ matchPartialPartial matches stable to whole points, so it is in fact needed to m
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
-* https://files.limpid-intensity.info/goki_check_cc-1.01-lack-rotate-R2-20171028.tar.gz
+* https://konbu.sakura.ne.jp/files/
+* https://files.limpid-intensity.info/
