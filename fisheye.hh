@@ -38,14 +38,14 @@ public:
   ~PseudoBump();
   void initialize(const int& z_max, const int& stp, const int& rstp, const int& vmax);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumps);
-  Mat  getPseudoBumpSub(const Mat& work);
   
   int vmax;
 
 private:
+  Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf);
   Vec  getLineAxis(Vec p, Vec c, const int& w, const int& h);
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& p0, const Vec& p1, const int& ww, const int& hh);
-  T    getImgPt(const Mat& img, const T& y, const T& x);
+  T    getImgPt(const Vec& img, const T& y);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   Vec  complementLine(const Vec& line, const T& rratio = T(.5));
   void autoLevel(Mat& data, int npad = - 1);
@@ -56,14 +56,13 @@ private:
   
   T   cdist;
   T   rdist;
-  T   crt;
   
   T   Pi;
   Mat Dop;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(30, 16, 20, 400);
+  initialize(30, 16, 20, 800);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -76,7 +75,6 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->stp     = stp;
   this->rstp    = stp * rstp;
   this->vmax    = vmax;
-  this->crt     = T(.4);
   // N.B. ray is from infinite far, so same side of these.
   this->cdist   = T(2);
   this->rdist   = T(1);
@@ -93,89 +91,110 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
 };
 
 // bump it with abs(d/dt local color) / abs(d/dt color) >> 0.
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpSub(const Mat& work) {
-  Mat result(work.rows(), work.cols());
-  Mat workv(work.rows() * stp, work.cols());
-  for(int i = 0; i < workv.rows(); i ++)
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf) {
+  cerr << "." << flush;
+  Vec result(work.size());
+  Vec workv(work.size() * stp);
+  for(int i = 0; i < workv.size(); i ++)
     if(i % stp == stp / 2)
-      workv.row(i) = work.row(i / stp);
+      workv[i] = work[i / stp];
     else
-      for(int j = 0; j < workv.cols(); j ++)
-        workv(i, j) = - T(1);
-  for(int i = 0; i < workv.cols(); i ++)
-    workv.col(i) = complementLine(workv.col(i));
+      workv[i] = - T(1);
+  workv = complementLine(workv);
   Vec p0(3), p1(3);
   p0[0]  = 0;
-  p0[1]  = workv.cols() / 2;
+  p0[1]  = 0;
   p0[2]  = 0;
-  p1[0]  = workv.rows();
-  p1[1]  = workv.cols() / 2;
+  p1[0]  = result.size();
+  p1[1]  = 0;
   p1[2]  = 0;
-  cerr << " bump" << flush;
-  Eigen::Matrix<Mat, Eigen::Dynamic, 1> cf(prepareLineAxis(p0, p1, workv.cols(), workv.rows()));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < result.cols(); i ++) {
-    Vec p0(3), p1(3);
-    p0[0] = 0;
-    p0[1] = i;
-    p0[2] = 0;
-    p1[0] = work.rows();
-    p1[1] = i;
-    p1[2] = 0;
-    cerr << "." << flush;
-    for(int j = 0; j < result.rows(); j ++)
-      result(j, i) = - T(1);
-    Vec zval(result.rows());
-    for(int j = 0; j < zval.size(); j ++)
-      zval[j] = T(0);
-    for(int s = 0; s < result.rows(); s ++) {
-      Vec pt(indiv(p0, p1, s / T(result.rows())));
-      for(int zz = 0; zz < cf.size(); zz ++) {
-        Vec c(cf[zz].cols());
-        for(int u = 0; u < c.size(); u ++)
-          c[u] = getImgPt(workv, (cf[zz](0, u) + pt[0]) * stp + stp / 2, pt[1]);
-        c = Dop * c;
-        Vec cl(c.size() / 2 + 1);
-        Vec cr(cl.size());
-        for(int u = 0; u < cl.size(); u ++) {
-          cl[u] = c[u];
-          cr[u] = c[u - cl.size() + c.size()];
-        }
-        // N.B. simply take the ratio of local and far difference with an eye,
-        //      on left side and right side and center, then ratio it.
-        const T n2((abs(cl[cl.size() - 1]) / sqrt(cl.dot(cl)) +
-                    abs(cr[0])             / sqrt(cr.dot(cr)) +
-                    abs(c[c.size() / 2])   / sqrt( c.dot(c))  * T(2)) /
-                   cf[zz](0, 0) / cf[zz](0, 0));
-        const T r2(abs(cl[cl.size() - 1] / cr[0]));
-        if(isfinite(n2) && zval[s] <= n2 && min(r2, T(1) / r2) <= crt) {
-          // N.B. If increase zz, decrease the distance from camera.
-          //      And, zz->0 is treated as distant in tilter.
-          result(s, i) = (T(1) + zz) / T(cf.size());
-          zval[s]      = n2;
-        }
+  for(int j = 0; j < result.size(); j ++)
+    result[j] = - T(1);
+  Vec zval(result.size());
+  for(int j = 0; j < zval.size(); j ++)
+    zval[j] = T(0);
+  for(int s = 0; s < result.size(); s ++) {
+    Vec pt(indiv(p0, p1, s / T(result.size())));
+    for(int zz = 0; zz < cf.size(); zz ++) {
+      Vec c(cf[zz].cols());
+      for(int u = 0; u < c.size(); u ++)
+        c[u] = getImgPt(workv, (cf[zz](0, u) + pt[0]) * stp + stp / 2);
+      c = Dop * c;
+      Vec cl(c.size() / 2 + 1);
+      Vec cr(cl.size());
+      for(int u = 0; u < cl.size(); u ++) {
+        cl[u] = c[u];
+        cr[u] = c[u - cl.size() + c.size()];
+      }
+      // N.B. simply take the ratio of local and far difference with an eye,
+      //      on left side and right side and center, then ratio it.
+      const T n2((abs(cl[cl.size() - 1]) / sqrt(cl.dot(cl)) +
+                  abs(cr[0])             / sqrt(cr.dot(cr)) +
+                  abs(c[c.size() / 2])   / sqrt( c.dot(c))  * T(2)) /
+                 cf[zz](0, 0) / cf[zz](0, 0));
+      const T r2(abs(cl[cl.size() - 1] / cr[0]));
+      if(isfinite(n2) && zval[s] <= n2) {
+        // N.B. If increase zz, decrease the distance from camera.
+        //      And, zz->0 is treated as distant in tilter.
+        result[s] = (T(1) + zz) / T(cf.size());
+        zval[s]   = n2;
       }
     }
   }
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < result.cols(); i ++)
-    result.col(i)  = complementLine(result.col(i));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < result.rows(); i ++)
-    result.row(i)  = complementLine(result.row(i));
-  autoLevel(result);
-  return result;
+  return complementLine(result);
 }
 
 // get bump with multiple scale and vectored result.
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumps) {
-  bumps = getPseudoBumpSub(in);
+  cerr << "bump" << flush;
+  bumps = Mat(in.rows(), in.cols());
+  for(int i = 0; i < bumps.rows(); i ++)
+    for(int j = 0; j < bumps.cols(); j ++)
+      bumps(i, j) = - T(1) / z_max;
+  Vec p0(3), p1(3);
+  p0[0]  = 0;
+  p0[1]  = 0;
+  p0[2]  = 0;
+  p1[0]  = bumps.rows() / 2 * 6 * 3;
+  p1[1]  = 0;
+  p1[2]  = 0;
+  auto cf(prepareLineAxis(p0, p1, p1[0], 1));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 1; i <= bumps.rows() / 2; i ++) {
+    if(!(0 <= in.rows() / 2 - i && in.rows() / 2 + i < in.rows() &&
+         0 <= in.cols() / 2 - i && in.cols() / 2 + i < in.cols()))
+      continue;
+    Vec work(bumps.rows() / 2 * 6 * 3);
+    for(int j = 0; j < i; j ++) {
+      work[j + i * 0] = in(in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j);
+      work[j + i * 1] = in(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2);
+      work[j + i * 2] = in(in.rows() / 2     + j, in.cols() / 2 - i     + j / 2);
+      work[j + i * 3] = in(in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j);
+      work[j + i * 4] = in(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2);
+      work[j + i * 5] = in(in.rows() / 2     - j, in.cols() / 2 + i     - j / 2);
+    }
+    for(int j = i * 6; j < work.size(); j ++)
+      work[j] = work[j % (i * 6)];
+    work = getPseudoBumpSub(work, cf);
+    const int ii(int(in.rows()) / 2 * 3 / i / 2 * i * 6);
+    bumps(in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1) = work[0 + i * 0 + ii];
+    bumps(in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1) = work[i - 1 + i * 2 + ii];
+    for(int j = 0; j < i; j ++) {
+      bumps(in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j    ) = work[j + i * 0 + ii];
+      bumps(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2) = work[j + i * 1 + ii];
+      // XXX
+      bumps(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2 + 1) = work[j + i * 1 + ii];
+      bumps(in.rows() / 2     + j, in.cols() / 2 - i     + j / 2) = work[j + i * 2 + ii];
+      bumps(in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j    ) = work[j + i * 3 + ii];
+      bumps(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2) = work[j + i * 4 + ii];
+      // XXX
+      bumps(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2 + 1) = work[j + i * 4 + ii];
+      bumps(in.rows() / 2     - j, in.cols() / 2 + i     - j / 2) = work[j + i * 5 + ii];
+    }
+  }
+  autoLevel(bumps);
   lowFreq<T> lf;
   geoms = lf.getLowFreq(bumps, vmax);
   vector<int> idxs;
@@ -197,9 +216,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         q[0] = j;
         q[1] = k;
         q[2] = 0;
-        if(tilt.sameSide2(p0, p1, p2, q) &&
-           tilt.sameSide2(p1, p2, p0, q) &&
-           tilt.sameSide2(p2, p0, p1, q))
+        if(tilt.sameSide2(p0, p1, p2, q, true, T(.5)) &&
+           tilt.sameSide2(p1, p2, p0, q, true, T(.5)) &&
+           tilt.sameSide2(p2, p0, p1, q, true, T(.5)))
           result(j, k) = (geoms[delaunay[i][0]][2] + 
                           geoms[delaunay[i][1]][2] +
                           geoms[delaunay[i][2]][2]) / T(3);
@@ -249,12 +268,10 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
   return result;
 }
 
-template <typename T> T PseudoBump<T>::getImgPt(const Mat& img, const T& y, const T& x) {
-  const int& w(img.cols());
-  const int& h(img.rows());
-  const int  xx(abs((int(x + .5) + 3 * w) % (2 * w) - w) % w);
+template <typename T> T PseudoBump<T>::getImgPt(const Vec& img, const T& y) {
+  const int& h(img.size());
   const int  yy(abs((int(y + .5) + 3 * h) % (2 * h) - h) % h);
-  return img(yy, xx);
+  return img[yy];
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::indiv(const Vec& p0, const Vec& p1, const T& pt) {

@@ -77,7 +77,6 @@ int main(int argc, const char* argv[]) {
     break;
   case 2:
     {
-      // XXX don't know why when false detect occur works better in tilt than not occur.
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
@@ -96,14 +95,20 @@ int main(int argc, const char* argv[]) {
     break;
   case 6:
     {
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump[3], out[3];
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump[3], out[3], zero;
       if(!loadp2or3<double>(bump, argv[4]))
         return - 2;
+      zero = bump[0] * double(0);
+      for(int i = 0; i < bump[0].rows(); i ++)
+        for(int j = 0; j < bump[0].cols(); j ++)
+          if(bump[0](i, j) == double(0))
+            data[0](i, j) = data[1](i, j) = data[2](i, j) = double(0);
       tilter<double> tilt;
-      tilt.initialize(.03125);
-      for(int i = 0; i < 2; i ++) {
+      const int M_TILT(16);
+      tilt.initialize(.3125);
+      for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i * 2 + 1, 4, .95);
+          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .98), zero, - i, M_TILT, .98);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
@@ -158,13 +163,11 @@ int main(int argc, const char* argv[]) {
       int    nshow(8);
       double emph(.25);
       PseudoBump<double> bump;
-      auto bump0(bump.getPseudoBumpSub(rgb2l(data)));
-      auto bump1(bump.getPseudoBumpSub(rgb2l(data1)));
-      // auto bump0(rgb2l(data));
-      // auto bump1(rgb2l(data1));
-      lowFreq<double> lf;
-      auto shape0(lf.getLowFreq(bump0));
-      auto shape1(lf.getLowFreq(bump1));
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sutei;
+      std::vector<Eigen::Matrix<int,    3, 1> > sute;
+      std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
+      auto bump0(bump.getPseudoBumpVec(rgb2l(data),  shape0, sute, sutei));
+      auto bump1(bump.getPseudoBumpVec(rgb2l(data1), shape1, sute, sutei));
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
@@ -273,9 +276,10 @@ int main(int argc, const char* argv[]) {
       int    nshow(8);
       double emph(.25);
       PseudoBump<double> bumper;
-      auto bump(bumper.getPseudoBumpSub(rgb2l(data)));
-      lowFreq<double> lf;
-      auto shape(lf.getLowFreq(bump));
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sutei;
+      std::vector<Eigen::Matrix<double, 3, 1> > shape;
+      std::vector<Eigen::Matrix<int,    3, 1> > sute;
+      auto bump(bumper.getPseudoBumpVec(rgb2l(data), shape, sute, sutei));
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = double(0);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());

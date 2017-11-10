@@ -55,7 +55,7 @@ private:
 template <typename T> lowFreq<T>::lowFreq() {
   Pi = atan2(T(1), T(1)) * T(4);
   I  = sqrt(U(- 1));
-  init(20);
+  init(60);
 }
 
 template <typename T> lowFreq<T>::~lowFreq() {

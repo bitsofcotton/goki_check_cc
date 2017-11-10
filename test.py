@@ -28,5 +28,5 @@ for idx in range(2, len(argv)):
   if(not os.path.exists(root + "-tilt-1" + ext) and not os.path.exists(root + ".mp4")):
     subprocess.call([argv[1], "tilt", line, root + "-tilt", root + "-bump" + ext])
   if(not os.path.exists(root + ".mp4")):
-    os.system("ffmpeg -r 4 -loop 1 -i " + root + "-tilt-%d.ppm" + " -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -c:v libx264 -preset veryfast -pix_fmt yuv420p -t 00:00:8 " + root + ".mp4 && rm -f " + root + "-tilt-*.ppm")
+    os.system("ffmpeg -r 16 -loop 1 -i " + root + "-tilt-%d.ppm" + " -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -c:v libx264 -preset veryfast -pix_fmt yuv420p -t 00:00:8 " + root + ".mp4 && rm -f " + root + "-tilt-*.ppm")
 
