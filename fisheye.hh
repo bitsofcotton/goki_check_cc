@@ -36,7 +36,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& rstp, const int& vmax);
+  void initialize(const int& z_max, const int& stp, const int& vmax);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumps);
   
   int vmax;
@@ -44,7 +44,7 @@ public:
 private:
   Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf);
   Vec  getLineAxis(Vec p, Vec c, const int& w, const int& h);
-  Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& p0, const Vec& p1, const int& ww, const int& hh);
+  Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& p0, const Vec& p1, const int& hh, const int& ww, const int& rstp);
   T    getImgPt(const Vec& img, const T& y);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   Vec  complementLine(const Vec& line, const T& rratio = T(.5));
@@ -52,32 +52,24 @@ private:
   
   int z_max;
   int stp;
-  T   rstp;
-  
-  T   cdist;
-  T   rdist;
   
   T   Pi;
   Mat Dop;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(30, 16, 20, 800);
+  initialize(20, 15, 200);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp, const int& vmax) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& vmax) {
   this->Pi      = T(4) * atan2(T(1), T(1));
   this->z_max   = z_max;
   this->stp     = stp;
-  this->rstp    = stp * rstp;
   this->vmax    = vmax;
-  // N.B. ray is from infinite far, so same side of these.
-  this->cdist   = T(2);
-  this->rdist   = T(1);
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
@@ -86,7 +78,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
     }
   for(int i = 0; i < DFT.rows(); i ++)
     DFT.row(i) *= complex<T>(2.) * Pi * sqrt(complex<T>(- 1)) * T(i) / T(DFT.rows());
-  Dop = (IDFT * DFT).real();
+  Dop  = (IDFT * DFT).real();
   return;
 };
 
@@ -105,7 +97,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   p0[0]  = 0;
   p0[1]  = 0;
   p0[2]  = 0;
-  p1[0]  = result.size();
+  p1[0]  = result.size() * stp;
   p1[1]  = 0;
   p1[2]  = 0;
   for(int j = 0; j < result.size(); j ++)
@@ -118,22 +110,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
     for(int zz = 0; zz < cf.size(); zz ++) {
       Vec c(cf[zz].cols());
       for(int u = 0; u < c.size(); u ++)
-        c[u] = getImgPt(workv, (cf[zz](0, u) + pt[0]) * stp + stp / 2);
-      c = Dop * c;
-      Vec cl(c.size() / 2 + 1);
-      Vec cr(cl.size());
-      for(int u = 0; u < cl.size(); u ++) {
-        cl[u] = c[u];
-        cr[u] = c[u - cl.size() + c.size()];
-      }
-      // N.B. simply take the ratio of local and far difference with an eye,
-      //      on left side and right side and center, then ratio it.
-      const T n2((abs(cl[cl.size() - 1]) / sqrt(cl.dot(cl)) +
-                  abs(cr[0])             / sqrt(cr.dot(cr)) +
-                  abs(c[c.size() / 2])   / sqrt( c.dot(c))  * T(2)) /
-                 cf[zz](0, 0) / cf[zz](0, 0));
-      const T r2(abs(cl[cl.size() - 1] / cr[0]));
-      if(isfinite(n2) && zval[s] <= n2) {
+        c[u] = getImgPt(workv, cf[zz](0, u) + pt[0] + stp / 2);
+      const T n2(Dop.row(c.size() / 2).dot(c) / sqrt(c.dot(c)));
+      if(isfinite(n2) && zval[s] < n2) {
         // N.B. If increase zz, decrease the distance from camera.
         //      And, zz->0 is treated as distant in tilter.
         result[s] = (T(1) + zz) / T(cf.size());
@@ -155,10 +134,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p0[0]  = 0;
   p0[1]  = 0;
   p0[2]  = 0;
-  p1[0]  = bumps.rows() / 2 * 6 * 3;
+  p1[0]  = bumps.rows() / 2 * 6 * stp;
   p1[1]  = 0;
   p1[2]  = 0;
-  auto cf(prepareLineAxis(p0, p1, p1[0], 1));
+  auto cf(prepareLineAxis(p0, p1, p1[0], 1, p1[0] / 18 / stp));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -167,36 +146,42 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
          0 <= in.cols() / 2 - i && in.cols() / 2 + i < in.cols()))
       continue;
     Vec work(bumps.rows() / 2 * 6 * 3);
+    for(int j = 0; j < work.size(); j ++)
+      work[j] = - T(1);
     for(int j = 0; j < i; j ++) {
-      work[j + i * 0] = in(in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j);
-      work[j + i * 1] = in(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2);
-      work[j + i * 2] = in(in.rows() / 2     + j, in.cols() / 2 - i     + j / 2);
-      work[j + i * 3] = in(in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j);
-      work[j + i * 4] = in(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2);
-      work[j + i * 5] = in(in.rows() / 2     - j, in.cols() / 2 + i     - j / 2);
+      work[(j + i * 0) * bumps.rows() / 2 / i] = in(in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j);
+      work[(j + i * 1) * bumps.rows() / 2 / i] = in(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2);
+      work[(j + i * 2) * bumps.rows() / 2 / i] = in(in.rows() / 2     + j, in.cols() / 2 - i     + j / 2);
+      work[(j + i * 3) * bumps.rows() / 2 / i] = in(in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j);
+      work[(j + i * 4) * bumps.rows() / 2 / i] = in(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2);
+      work[(j + i * 5) * bumps.rows() / 2 / i] = in(in.rows() / 2     - j, in.cols() / 2 + i     - j / 2);
     }
-    for(int j = i * 6; j < work.size(); j ++)
-      work[j] = work[j % (i * 6)];
+    for(int j = 6 * bumps.rows() / 2; j < work.size(); j ++)
+      work[j] = work[j % (6 * bumps.rows() / 2)];
     work = getPseudoBumpSub(work, cf);
-    const int ii(int(in.rows()) / 2 * 3 / i / 2 * i * 6);
-    bumps(in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1) = work[0 + i * 0 + ii];
-    bumps(in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1) = work[i - 1 + i * 2 + ii];
+    bumps(in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1) = work[(0 +     i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
+    bumps(in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1) = work[(i - 1 + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
     for(int j = 0; j < i; j ++) {
-      bumps(in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j    ) = work[j + i * 0 + ii];
-      bumps(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2) = work[j + i * 1 + ii];
+      bumps(in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j    ) = work[(j + i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
+      bumps(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2) = work[(j + i * 1) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
       // XXX
-      bumps(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2 + 1) = work[j + i * 1 + ii];
-      bumps(in.rows() / 2     + j, in.cols() / 2 - i     + j / 2) = work[j + i * 2 + ii];
-      bumps(in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j    ) = work[j + i * 3 + ii];
-      bumps(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2) = work[j + i * 4 + ii];
+      bumps(in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2 + 1) = work[(j + i * 1) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
+      bumps(in.rows() / 2     + j, in.cols() / 2 - i     + j / 2) = work[(j + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
+      bumps(in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j    ) = work[(j + i * 3) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
+      bumps(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2) = work[(j + i * 4) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
       // XXX
-      bumps(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2 + 1) = work[j + i * 4 + ii];
-      bumps(in.rows() / 2     - j, in.cols() / 2 + i     - j / 2) = work[j + i * 5 + ii];
+      bumps(in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2 + 1) = work[(j + i * 4) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
+      bumps(in.rows() / 2     - j, in.cols() / 2 + i     - j / 2) = work[(j + i * 5) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
     }
   }
   autoLevel(bumps);
   lowFreq<T> lf;
   geoms = lf.getLowFreq(bumps, vmax);
+  vector<Eigen::Matrix<T, 3, 1> > gwork;
+  for(int i = 0; i < geoms.size(); i ++)
+    if(geoms[i][2] != T(0))
+      gwork.push_back(geoms[i]);
+  geoms = gwork;
   vector<int> idxs;
   for(int i = 0; i < geoms.size(); i ++)
     idxs.push_back(i);
@@ -242,7 +227,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getLine
   return work;
 }
 
-template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, 1> PseudoBump<T>::prepareLineAxis(const Vec& p0, const Vec& p1, const int& ww, const int& hh) {
+template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, 1> PseudoBump<T>::prepareLineAxis(const Vec& p0, const Vec& p1, const int& hh, const int& ww, const int& rstp) {
+  // N.B. ray is from infinite far, so same side of these.
+  const T cdist( 1);
+  const T rdist0(0);
+  const T rdist1(1);
+  
   Vec dir(p1 - p0);
   dir /= sqrt(dir.dot(dir));
   Vec camera(3);
@@ -259,9 +249,9 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
     result[zi] = Mat(3, stp);
     for(int s = 0; s < stp; s ++) {
       Vec cpoint(3);
-      cpoint[0] = (s / (stp - 1.) - 1. / 2.) * rstp + center[0];
-      cpoint[1] = (s / (stp - 1.) - 1. / 2.) * rstp + center[1];
-      cpoint[2] = (zi + 1) / T(z_max) * rdist;
+      cpoint[0] = (s / (stp - 1.) - 1. / 2.) * stp * rstp + center[0];
+      cpoint[1] = (s / (stp - 1.) - 1. / 2.) * stp * rstp + center[1];
+      cpoint[2] = rdist0 + (zi + 1) / T(z_max) * (rdist1 - rdist0);
       result[zi].col(s) = getLineAxis(cpoint, camera, T(ww), T(hh)) - center;
     }
   }
