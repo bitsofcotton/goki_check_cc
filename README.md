@@ -1,6 +1,5 @@
 # Goki Check
-These program aims to get context(s) from a still image.  
-And then, aiming to get scene from roughly prepared dictionaries, and, reproduce the scene with another prepared dictionaries, and, get a copy of image produced 3D model into a dictionary.  
+These program aims to get geometry and context(s) from a still image.  
 Now, implementing bone enabled match.
 
 N.B. if the image is from the photo, it better depths preceders like defocus and so on. This implement is F=&infin; and y-axis polarized form because of theoretical interest.
@@ -32,7 +31,8 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 This program is inspired from re-focus photo softwares.  
 And around this, there's many preceders that many approach to get bump maps with certain conditions
 (such as multiple camera conditions, or, with layered objects, or, spherical, or, from movie, etcetc).
-There's a defocus photo algorithms http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf some words with googled. So it's accurate for most cameras, goki_check_cc is standing on another hypothesis that is not widely  used (in another words, some transform or special camera is needed for photos...).
+There's a defocus photo algorithms http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf some words with googled. So it's accurate for most cameras, goki_check_cc is standing on another hypothesis that is not widely  used (in another words, some transform or special camera is needed for photos...).  
+There's preceders to match 3D to 2D with many approaches. (s.t. detecting topology of junction point, or, machine learning, and so on.)
 
 # Status
 Searching bone-enabled 3d model simple format. Writing whole to rotated partials match.
@@ -109,7 +109,7 @@ These program's match assumes one of vertices is full and another is lowPoly, bu
 
 # Known bugs
 PseudoBump makes a pseudo plausible things.  
-matchPartialPartial matches stable to whole points, so it is in fact needed to match stable to certain simply connected parts, then, no care to another parts.
+matchPartialPartial matches stable to whole points, so it is in fact needed to match stable to certain simply connected parts, then, do not care to another parts.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
