@@ -19,6 +19,7 @@ public:
     ENLARGE_FY,
     ENLARGE_BOTH,
     ENLARGE_FBOTH,
+    ENLARGE_3BOTH,
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
@@ -77,6 +78,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       result = (rw + rh) / 2.;
     }
     break;
+  case ENLARGE_3BOTH:
+    {
+      result = Mat(data.rows() * 2, data.cols() * 2);
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = data(i / 2, j / 2);
+      result += compute(data, ENLARGE_BOTH) +
+                compute(data, ENLARGE_FBOTH) / T(2);
+    }
+    break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X) + compute(data, DETECT_Y)) / 2.;
     break;
@@ -132,8 +143,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
             Mat work2(data.rows() * 2, data.cols());
       for(int j = 0; j < work2.rows(); j ++)
         work2.row(j) = dcache.row(j / 2);
-      initPattern(work.rows(), false);
-      result = Iop * (work - work2);
+      result = work - work2;
     }
     break;
   case DETECT_Y:

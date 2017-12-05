@@ -52,13 +52,8 @@ int main(int argc, const char* argv[]) {
   case 0:
     {
       enlarger2ex<double> enlarger;
-      for(int i = 0; i < 3; i ++) {
-        // Complement most efficient two term.
-        const auto work(data[i]);
-        data[i] =
-          enlarger.compute(data[i], enlarger.ENLARGE_BOTH)  +
-          enlarger.compute(data[i], enlarger.ENLARGE_FBOTH);
-      }
+      for(int i = 0; i < 3; i ++)
+        data[i] = enlarger.compute(data[i], enlarger.ENLARGE_3BOTH);
     }
     break;
   case 4:
@@ -161,7 +156,7 @@ int main(int argc, const char* argv[]) {
       double zre( .5);
       int    zrl(3);
       int    nshow(8);
-      double emph(.25);
+      double emph(.95);
       PseudoBump<double> bump;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sutei;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
@@ -274,7 +269,7 @@ int main(int argc, const char* argv[]) {
       double zre( .5);
       int    zrl(3);
       int    nshow(8);
-      double emph(.25);
+      double emph(.95);
       PseudoBump<double> bumper;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sutei;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
