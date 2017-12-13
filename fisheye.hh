@@ -58,7 +58,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 15, 200);
+  initialize(20, 15, 300);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -130,14 +130,20 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   for(int i = 0; i < bumps.rows(); i ++)
     for(int j = 0; j < bumps.cols(); j ++)
       bumps(i, j) = - T(1) / z_max;
-  Vec p0(3), p1(3);
-  p0[0]  = 0;
-  p0[1]  = 0;
-  p0[2]  = 0;
-  p1[0]  = bumps.rows() / 2 * 6 * stp;
-  p1[1]  = 0;
-  p1[2]  = 0;
-  auto cf(prepareLineAxis(p0, p1, p1[0], 1, p1[0] / 18 / stp));
+  vector<Eigen::Matrix<Mat, Eigen::Dynamic, 1> > cf;
+  // this is NOT a good idea to get each regions.
+  for(int i = 0; !i ||
+                 6 < bumps.rows() / 2 * 6 * stp / pow(2, i) / 18 / stp; i ++) {
+    Vec p0(3), p1(3);
+    p0[0]  = 0;
+    p0[1]  = 0;
+    p0[2]  = 0;
+    p1[0]  = bumps.rows() / 2 * 6 * stp / pow(2, i);
+    p1[1]  = 0;
+    p1[2]  = 0;
+    auto cfv(prepareLineAxis(p0, p1, p1[0], 1, p1[0] / 18 / stp));
+    cf.push_back(cfv);
+  }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -158,7 +164,31 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     }
     for(int j = 6 * bumps.rows() / 2; j < work.size(); j ++)
       work[j] = work[j % (6 * bumps.rows() / 2)];
-    work = getPseudoBumpSub(work, cf);
+    work = complementLine(work);
+    Vec res(work.size());
+    for(int j = 0; j < res.size(); j ++)
+      res[j] = T(0);
+    for(int j = 0; j < cf.size(); j ++) {
+      Vec lwork(work.size() / pow(2, j));
+      for(int k = 0; k < lwork.size(); k ++) {
+        int cnt(0);
+        for(int l = 0; l < pow(2, j) && k * pow(2, j) + l < work.size(); l ++) {
+          lwork[k] += work[k * pow(2, j) + l];
+          cnt ++;
+        }
+        if(cnt)
+          lwork[k] /= cnt;
+        else
+          lwork[k]  = T(0);
+      }
+      lwork = getPseudoBumpSub(lwork, cf[j]);
+      Vec buf(work.size());
+      for(int k = 0; k < lwork.size(); k ++)
+        for(int l = 0; l < pow(2, j) && k * pow(2, j) + l < work.size(); l ++)
+          buf[k * pow(2, j) + l] = l == pow(2, j) / 2 ? lwork[k] : - T(1);
+      res += complementLine(buf);
+    }
+    work = res;
     bumps(in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1) = work[(0 +     i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
     bumps(in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1) = work[(i - 1 + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
     for(int j = 0; j < i; j ++) {

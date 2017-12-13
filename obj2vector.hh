@@ -61,7 +61,7 @@ template <typename T> bool isCrossing(const Eigen::Matrix<T, 3, 1>& p0, const Ei
          (err <= x[1] && x[1] <= T(1) - err);
 }
 
-template <typename T> bool isSameLine2(const Eigen::Matrix<T, 3, 1>& a, const Eigen::Matrix<T, 3, 1>& b, const Eigen::Matrix<T, 3, 1>& c, const T& rerr = T(1e-8)) {
+template <typename T> bool isSameLine2(const Eigen::Matrix<T, 3, 1>& a, const Eigen::Matrix<T, 3, 1>& b, const Eigen::Matrix<T, 3, 1>& c, const T& rerr = T(1e-6)) {
   Eigen::Matrix<T, 3, 1> bcn(b - c);
   bcn[2] = T(0);
   Eigen::Matrix<T, 3, 1> err(a);
