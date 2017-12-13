@@ -167,9 +167,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       work[j] = work[j % (6 * bumps.rows() / 2)];
     work = complementLine(work);
     Vec res(work.size());
-    for(int j = int(log(T(bumps.rows())) / log(T(2))) - int(log(T(bumps.rows() / i) / log(T(2)))); j < res.size(); j ++)
+    for(int j = 0; j < res.size(); j ++)
       res[j] = T(0);
-    for(int j = 0; j < cf.size(); j ++) {
+    for(int j = max(int(log(T(bumps.rows())) / log(T(2))) - int(log(T(bumps.rows() / i) / log(T(2)))) - 1, 0); j < cf.size(); j ++) {
       Vec lwork(work.size() / pow(2, j));
       for(int k = 0; k < lwork.size(); k ++) {
         int cnt(0);
