@@ -94,10 +94,6 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<double>(bump, argv[4]))
         return - 2;
       zero = bump[0] * double(0);
-      for(int i = 0; i < bump[0].rows(); i ++)
-        for(int j = 0; j < bump[0].cols(); j ++)
-          if(bump[0](i, j) == double(0))
-            data[0](i, j) = data[1](i, j) = data[2](i, j) = double(0);
       tilter<double> tilt;
       const int M_TILT(16);
       tilt.initialize(.3125);

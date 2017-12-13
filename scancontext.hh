@@ -556,8 +556,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   for(int i = 0; i < triangles.size() * 3; i ++)
     checked[i] = false;
   
+  cerr << "emphasis(" << hull.size() << ")" << flush;
   for(int ii = 0; ii < hull.size(); ii ++) {
-    cerr << "emphasis: " << ii << "/" << hull.size() << endl;
+    cerr << "." << flush;
     const int  i(hull[ii][0]);
     const int  j(hull[ii][1]);
     const int  k(hull[ii][2]);

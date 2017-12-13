@@ -170,9 +170,9 @@ template <typename T> bool tilter<T>::onTriangle(T& z, const Eigen::Matrix<T, 3,
     tritri(0, i) = tri(0, i);
     tritri(1, i) = tri(1, i);
   }
-  return (sameSide2(tritri.col(0), tritri.col(1), tritri.col(2), geom, true, T(.25)) &&
-          sameSide2(tritri.col(1), tritri.col(2), tritri.col(0), geom, true, T(.25)) &&
-          sameSide2(tritri.col(2), tritri.col(0), tritri.col(1), geom, true, T(.25)));
+  return (sameSide2(tritri.col(0), tritri.col(1), tritri.col(2), geom, true, T(.125)) &&
+          sameSide2(tritri.col(1), tritri.col(2), tritri.col(0), geom, true, T(.125)) &&
+          sameSide2(tritri.col(2), tritri.col(0), tritri.col(1), geom, true, T(.125)));
 }
 
 template <typename T> bool tilter<T>::scale(Mat3x3& A, Vec3& b, const Mat3x3& vorig, const Mat3x3& vto) {
@@ -262,7 +262,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   Mat zb(in.rows(), in.cols());
   for(int j = 0; j < zb.rows(); j ++)
     for(int k = 0; k < zb.cols(); k ++)
-      zb(j, k) = - T(200000);
+      zb(j, k) = - T(1e8);
   // able to boost with divide and conquer.
   for(int j = 0; j < rotriangles.size(); j ++) {
     Triangles& tri = rotriangles[j];

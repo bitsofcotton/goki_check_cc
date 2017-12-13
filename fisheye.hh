@@ -144,6 +144,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     auto cfv(prepareLineAxis(p0, p1, p1[0], 1, p1[0] / 18 / stp));
     cf.push_back(cfv);
   }
+  T avg0(0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -189,6 +190,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       res += complementLine(buf);
     }
     work = res;
+    if(avg0 == T(0)) {
+      for(int j = 0; j < work.size(); j ++)
+        avg0 += work[j];
+      avg0 /= work.size();
+    } else {
+      T avg1(0);
+      for(int j = 0; j < work.size(); j ++)
+        avg1 += work[j];
+      avg1 /= work.size();
+      for(int j = 0; j < work.size(); j ++)
+        work[j] += avg0 - avg1;
+    }
     bumps(in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1) = work[(0 +     i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
     bumps(in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1) = work[(i - 1 + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2];
     for(int j = 0; j < i; j ++) {
