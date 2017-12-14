@@ -156,25 +156,29 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 1; i <= sqrt(T(2)) * max(bumps.rows(), bumps.cols()) / 2; i ++) {
-    Vec work(bumps.rows() / 2 * 6 * 3);
+    Vec work(max(bumps.rows(), bumps.cols()) / 2 * 6 * 3);
+    const int i0(work.size() / 6 / 3);
+    const int i1(i0 * 6);
+    if(i0 <= 0)
+      break;
     for(int j = 0; j < work.size(); j ++)
       work[j] = - T(1);
     for(int j = 0; j < i; j ++) {
-      work[(j + i * 0) * bumps.rows() / 2 / i] = getImgPt(in, in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j);
-      work[(j + i * 1) * bumps.rows() / 2 / i] = getImgPt(in, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2);
-      work[(j + i * 2) * bumps.rows() / 2 / i] = getImgPt(in, in.rows() / 2     + j, in.cols() / 2 - i     + j / 2);
-      work[(j + i * 3) * bumps.rows() / 2 / i] = getImgPt(in, in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j);
-      work[(j + i * 4) * bumps.rows() / 2 / i] = getImgPt(in, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2);
-      work[(j + i * 5) * bumps.rows() / 2 / i] = getImgPt(in, in.rows() / 2     - j, in.cols() / 2 + i     - j / 2);
+      work[(j + i * 0) * i0 / i] = getImgPt(in, in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j);
+      work[(j + i * 1) * i0 / i] = getImgPt(in, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2);
+      work[(j + i * 2) * i0 / i] = getImgPt(in, in.rows() / 2     + j, in.cols() / 2 - i     + j / 2);
+      work[(j + i * 3) * i0 / i] = getImgPt(in, in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j);
+      work[(j + i * 4) * i0 / i] = getImgPt(in, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2);
+      work[(j + i * 5) * i0 / i] = getImgPt(in, in.rows() / 2     - j, in.cols() / 2 + i     - j / 2);
     }
-    for(int j = 6 * bumps.rows() / 2; j < work.size(); j ++)
-      work[j] = work[j % (6 * bumps.rows() / 2)];
+    for(int j = i1; j < work.size(); j ++)
+      work[j] = work[j % i1];
     work = complementLine(work);
     Vec res(work.size());
     for(int j = 0; j < res.size(); j ++)
       res[j] = T(0);
     for(int j = 0; j < cf.size(); j ++) {
-      Vec lwork(work.size() / pow(2, j));
+      Vec lwork((work.size() + pow(2, j) - 1) / pow(2, j));
       for(int k = 0; k < lwork.size(); k ++) {
         int cnt(0);
         for(int l = 0; l < pow(2, j) && k * pow(2, j) + l < work.size(); l ++) {
@@ -206,21 +210,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       for(int j = 0; j < work.size(); j ++)
         work[j] += avg0 - avg1;
     }
-    setImgPt(bumps, in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1, work[(0 +     i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-    setImgPt(bumps, in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1, work[(i - 1 + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+    setImgPt(bumps, in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1, work[(0 +     i * 0) * i0 / i + i1]);
+    setImgPt(bumps, in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1, work[(i - 1 + i * 2) * i0 / i + i1]);
     for(int j = 0; j < i; j ++) {
-      setImgPt(bumps, in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j    , work[(j + i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-      setImgPt(bumps, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2, work[(j + i * 1) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+      setImgPt(bumps, in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j    , work[(j + i * 0) * i0 / i + i1]);
+      setImgPt(bumps, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2, work[(j + i * 1) * i0 / i + i1]);
       // XXX
-      setImgPt(bumps, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2 + 1, work[(j + i * 1) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-      setImgPt(bumps, in.rows() / 2     + j, in.cols() / 2 - i     + j / 2, work[(j + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-      setImgPt(bumps, in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j    , work[(j + i * 3) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-      setImgPt(bumps, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2, work[(j + i * 4) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+      setImgPt(bumps, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2 + 1, work[(j + i * 1) * i0 / i + i1]);
+      setImgPt(bumps, in.rows() / 2     + j, in.cols() / 2 - i     + j / 2, work[(j + i * 2) * i0 / i + i1]);
+      setImgPt(bumps, in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j    , work[(j + i * 3) * i0 / i + i1]);
+      setImgPt(bumps, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2, work[(j + i * 4) * i0 / i + i1]);
       // XXX
-      setImgPt(bumps, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2 + 1, work[(j + i * 4) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-      setImgPt(bumps, in.rows() / 2     - j, in.cols() / 2 + i     - j / 2, work[(j + i * 5) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+      setImgPt(bumps, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2 + 1, work[(j + i * 4) * i0 / i + i1]);
+      setImgPt(bumps, in.rows() / 2     - j, in.cols() / 2 + i     - j / 2, work[(j + i * 5) * i0 / i + i1]);
     }
   }
+  bumps = - bumps;
   autoLevel(bumps);
   lowFreq<T> lf;
   geoms = lf.getLowFreq(bumps, vmax);

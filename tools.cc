@@ -77,22 +77,20 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps;
       const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data), points, delaunay, bumps));
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero, out[3];
-      zero   = bumps * double(0);
-      out[1] = rgb2l(data);
-      out[2] = bumps;
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero(bumps * double(0)), out(bumps);
+      auto idl(rgb2l(data));
       tilter<double> tilt;
       const int M_TILT(6);
       tilt.initialize(.3125);
       for(int i = 0; i < M_TILT; i ++) {
-        out[0] = tilt.tilt(tilt.tilt(out[1], data[0], i, M_TILT, .98), zero, - i, M_TILT, .98);
+        auto work(tilt.tilt(tilt.tilt(idl, bumps, i, M_TILT, .98), zero, - i, M_TILT, .98));
         const double err(.0025);
-        for(int j = 0; j < out[1].rows(); j ++)
-          for(int k = 0; k < out[1].cols(); k ++)
-            if(abs(out[0](j, k) - out[1](j, k)) <= err)
-              out[2](j, k) = - double(1);
+        for(int j = 0; j < work.rows(); j ++)
+          for(int k = 0; k < work.cols(); k ++)
+            if(abs(work(j, k) - out(j, k)) <= err)
+              out(j, k) = - double(1);
       }
-      bumps = out[2];
+      bumps = out;
       const auto& in(bumps);
       for(int i = 1; i <= sqrt(double(2)) * max(bumps.rows(), bumps.cols()) / 2; i ++) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> work(bumps.rows() / 2 * 6 * 3);
