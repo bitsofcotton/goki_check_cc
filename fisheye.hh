@@ -116,7 +116,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       Vec rc(c);
       for(int u = 0; u < c.size(); u ++)
         rc[u] = c[c.size() - 1 - u];
-      const T n2(Dop.row(c.size() / 2).dot(c + rc) / sqrt(c.dot(c)));
+      const T n2(max(Dop.row(c.size() / 2).dot(c)  / sqrt(c.dot(c)),
+                     Dop.row(c.size() / 2).dot(rc) / sqrt(c.dot(c))));
       if(isfinite(n2) && zval[s] < n2) {
         // N.B. If increase zz, decrease the distance from camera.
         //      And, zz->0 is treated as distant in tilter.
