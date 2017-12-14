@@ -40,16 +40,16 @@ public:
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumps);
   
   int vmax;
+  Vec  complementLine(const Vec& line, const T& rratio = T(.5));
+  T    getImgPt(const Mat& img, const int& y, const int& x);
+  void setImgPt(Mat& img, const int& y, const int& x, const T& v);
 
 private:
   Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf);
   Vec  getLineAxis(Vec p, Vec c, const int& w, const int& h);
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& p0, const Vec& p1, const int& hh, const int& ww, const int& rstp);
   T    getImgPt(const Vec& img, const T& y);
-  T    getImgPt(const Mat& img, const int& y, const int& x);
-  void setImgPt(Mat& img, const int& y, const int& x, const T& v);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
-  Vec  complementLine(const Vec& line, const T& rratio = T(.5));
   void autoLevel(Mat& data, int npad = - 1);
   
   int z_max;

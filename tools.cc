@@ -77,6 +77,53 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps;
       const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data), points, delaunay, bumps));
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero, out[3];
+      zero   = bumps * double(0);
+      out[1] = rgb2l(data);
+      out[2] = bumps;
+      tilter<double> tilt;
+      const int M_TILT(6);
+      tilt.initialize(.3125);
+      for(int i = 0; i < M_TILT; i ++) {
+        out[0] = tilt.tilt(tilt.tilt(out[1], data[0], i, M_TILT, .98), zero, - i, M_TILT, .98);
+        const double err(.0025);
+        for(int j = 0; j < out[1].rows(); j ++)
+          for(int k = 0; k < out[1].cols(); k ++)
+            if(abs(out[0](j, k) - out[1](j, k)) <= err)
+              out[2](j, k) = - double(1);
+      }
+      bumps = out[2];
+      const auto& in(bumps);
+      for(int i = 1; i <= sqrt(double(2)) * max(bumps.rows(), bumps.cols()) / 2; i ++) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> work(bumps.rows() / 2 * 6 * 3);
+        for(int j = 0; j < work.size(); j ++)
+          work[j] = - double(1);
+        for(int j = 0; j < i; j ++) {
+          work[(j + i * 0) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2 - i, in.cols() / 2 + i / 2 - j);
+          work[(j + i * 1) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2);
+          work[(j + i * 2) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2     + j, in.cols() / 2 - i     + j / 2);
+          work[(j + i * 3) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2 + i, in.cols() / 2 - i / 2 + j);
+          work[(j + i * 4) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2);
+          work[(j + i * 5) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2     - j, in.cols() / 2 + i     - j / 2);
+        }
+        for(int j = 6 * bumps.rows() / 2; j < work.size(); j ++)
+          work[j] = work[j % (6 * bumps.rows() / 2)];
+        work = bump.complementLine(work);
+        bump.setImgPt(bumps, in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1, work[(0 +     i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+        bump.setImgPt(bumps, in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1, work[(i - 1 + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+        for(int j = 0; j < i; j ++) {
+          bump.setImgPt(bumps, in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j    , work[(j + i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+          bump.setImgPt(bumps, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2, work[(j + i * 1) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+          // XXX
+          bump.setImgPt(bumps, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2 + 1, work[(j + i * 1) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+          bump.setImgPt(bumps, in.rows() / 2     + j, in.cols() / 2 - i     + j / 2, work[(j + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+          bump.setImgPt(bumps, in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j    , work[(j + i * 3) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+          bump.setImgPt(bumps, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2, work[(j + i * 4) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+          // XXX
+          bump.setImgPt(bumps, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2 + 1, work[(j + i * 4) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+          bump.setImgPt(bumps, in.rows() / 2     - j, in.cols() / 2 + i     - j / 2, work[(j + i * 5) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
+        }
+      }
       data[0] = data[1] = data[2] = bumps;
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
