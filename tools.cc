@@ -77,51 +77,6 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps;
       const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data), points, delaunay, bumps));
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero(bumps * double(0)), out(bumps);
-      auto idl(rgb2l(data));
-      tilter<double> tilt;
-      const int M_TILT(6);
-      tilt.initialize(.3125);
-      for(int i = 0; i < M_TILT; i ++) {
-        auto work(tilt.tilt(tilt.tilt(idl, bumps, i, M_TILT, .98), zero, - i, M_TILT, .98));
-        const double err(.0025);
-        for(int j = 0; j < work.rows(); j ++)
-          for(int k = 0; k < work.cols(); k ++)
-            if(abs(work(j, k) - out(j, k)) <= err)
-              out(j, k) = - double(1);
-      }
-      bumps = out;
-      const auto& in(bumps);
-      for(int i = 1; i <= sqrt(double(2)) * max(bumps.rows(), bumps.cols()) / 2; i ++) {
-        Eigen::Matrix<double, Eigen::Dynamic, 1> work(bumps.rows() / 2 * 6 * 3);
-        for(int j = 0; j < work.size(); j ++)
-          work[j] = - double(1);
-        for(int j = 0; j < i; j ++) {
-          work[(j + i * 0) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2 - i, in.cols() / 2 + i / 2 - j);
-          work[(j + i * 1) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2);
-          work[(j + i * 2) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2     + j, in.cols() / 2 - i     + j / 2);
-          work[(j + i * 3) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2 + i, in.cols() / 2 - i / 2 + j);
-          work[(j + i * 4) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2);
-          work[(j + i * 5) * bumps.rows() / 2 / i] = bump.getImgPt(in, in.rows() / 2     - j, in.cols() / 2 + i     - j / 2);
-        }
-        for(int j = 6 * bumps.rows() / 2; j < work.size(); j ++)
-          work[j] = work[j % (6 * bumps.rows() / 2)];
-        work = bump.complementLine(work);
-        bump.setImgPt(bumps, in.rows() / 2 - i, in.cols() / 2 + i / 2 + 1, work[(0 +     i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-        bump.setImgPt(bumps, in.rows() / 2 + i, in.cols() / 2 - i / 2 - 1, work[(i - 1 + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-        for(int j = 0; j < i; j ++) {
-          bump.setImgPt(bumps, in.rows() / 2 - i,     in.cols() / 2 + i / 2 - j    , work[(j + i * 0) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-          bump.setImgPt(bumps, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2, work[(j + i * 1) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-          // XXX
-          bump.setImgPt(bumps, in.rows() / 2 - i + j, in.cols() / 2 - i / 2 - j / 2 + 1, work[(j + i * 1) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-          bump.setImgPt(bumps, in.rows() / 2     + j, in.cols() / 2 - i     + j / 2, work[(j + i * 2) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-          bump.setImgPt(bumps, in.rows() / 2 + i,     in.cols() / 2 - i / 2 + j    , work[(j + i * 3) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-          bump.setImgPt(bumps, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2, work[(j + i * 4) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-          // XXX
-          bump.setImgPt(bumps, in.rows() / 2 + i - j, in.cols() / 2 + i / 2 + j / 2 + 1, work[(j + i * 4) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-          bump.setImgPt(bumps, in.rows() / 2     - j, in.cols() / 2 + i     - j / 2, work[(j + i * 5) * bumps.rows() / 2 / i + 6 * bumps.rows() / 2]);
-        }
-      }
       data[0] = data[1] = data[2] = bumps;
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
@@ -144,7 +99,7 @@ int main(int argc, const char* argv[]) {
       tilt.initialize(.3125);
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .98), zero, - i, M_TILT, .98);
+          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .975), zero, - i, M_TILT, .975);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
