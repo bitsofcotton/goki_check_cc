@@ -190,11 +190,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     cf.push_back(cfv);
   }
   vector<Vec2i> corners;
-  // corners.push_back(Vec2i(0, 0));
-  corners.push_back(Vec2i(- in.rows() / 2, - in.cols() / 2));
-  corners.push_back(Vec2i(- in.rows() / 2,   in.cols() / 2));
-  corners.push_back(Vec2i(  in.rows() / 2, - in.cols() / 2));
-  corners.push_back(Vec2i(  in.rows() / 2,   in.cols() / 2));
+  corners.push_back(Vec2i(0, - in.cols() / 2));
+  corners.push_back(Vec2i(0,   in.cols() / 2));
   bumpp = Mat(in * T(0));
   for(int ic = 0; ic < corners.size(); ic ++) {
     Mat bumps(in * T(0));
