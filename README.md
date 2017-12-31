@@ -1,8 +1,8 @@
 # Goki Check
-These program aims to get geometry and context(s) from a still image.  
+These program aims to get geometry and context(s) from A still image in deterministic way.  
 Now, implementing bone enabled match.
 
-N.B. if the image is from the photo, it better depths preceders like defocus and so on. This implement is F=&infin; and y-axis polarized form because of theoretical interest.
+N.B. if the image is from the photo, it better depths preceders like defocus and so on. This implement assumes F=&infin; form because of the theoretical interest (pseudoBumpSub function so).
 
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
@@ -95,17 +95,16 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     // but include guard definition may harms.
 
 # Demos
-https://services.limpid-intensity.info/ have a sample interface to working demos.
+https://services.limpid-intensity.info/ have a sample interface working demos.
 Please bookmark output directory page after sending images, then please wait some minutes.  
-N.B. a file per 5 minutes, sha 256 order.  
-N.B. up to 20 Mo total upload size.
+N.B. a file per 5 minutes, up to 20 Mo total upload size.
 
 # Tips
-These program's enlarge and enlarge-ds is based on pseudo DFT half space plausible one.  
+These program's enlarge is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
-These program's bump assumes F=∞ and y-axis polarized graphics.   
-These program's match assumes input file as bump map. And, that matches including z-depth.  
-These program's match3d assumes input file as bump map and .obj 3d file.  
+These program's bump assumes F=∞ graphics.   
+These program's match matches with calculated pseudo z-depth.  
+These program's match3d assumes input file as a bump map and .obj 3d file.  
 These program's match assumes one of vertices is full and another is lowPoly, but lowFreq implementation now, it worse generate lowPoly.
 
 # Known bugs
