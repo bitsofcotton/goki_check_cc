@@ -37,17 +37,12 @@ public:
   enlarger2ex();
   Mat compute(const Mat& data, const direction_t& dir);
 private:
-  void seedPattern(const int&, const int&, const int&);
   void initPattern(const int& size, const bool& flag = true);
   U    I;
   T    Pi;
-  MatU B;
-  MatU G;
   Mat  D;
   Mat  Dop;
   Mat  Iop;
-  Vec  F;
-  Vec  X;
 };
 
 template <typename T> enlarger2ex<T>::enlarger2ex() {
@@ -114,25 +109,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case ENLARGE_Y:
     {
-      result = Mat(data.rows() * 2, data.cols());
       cerr << " enlarge_y";
       initPattern(data.rows());
-      Mat dd(D * data);
-      Vec ff(data.transpose() * F);
-      Vec xx(data.transpose() * X);
-      Mat co(Dop * data);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.cols(); i ++) {
-        ff[i] /= T(2);
-        xx[i] /= T(2);
-        for(int j = 0; j < data.rows(); j ++) {
-          const T delta(xx[i] * co(j, i) + ff[i] * dd(j, i));
-          result(j * 2 + 0, i) = data(j, i) - delta;
-          result(j * 2 + 1, i) = data(j, i) + delta;
-        }
-      }
+      result = D * data;
     }
     break;
   case ENLARGE_FY:
@@ -178,77 +157,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   return result;
 }
 
-template <typename T> void enlarger2ex<T>::seedPattern(const int& freqidx, const int& stage, const int& row) {
-  for(int i = 0; i < B.cols(); i ++) {
-    U   ee(0), eth(0);
-    int tt;
-    if(stage == 2) {
-      ee  = exp(- I * Pi * U(i) * U(freqidx) / U(B.cols()));
-      eth = exp(- I * Pi *        U(freqidx) / U(B.cols()));
-      tt  = i;
-    } else if(stage == i % 2) {
-      ee  = exp(- I * Pi * U(i - stage) * U(freqidx) / U(B.cols()));
-      eth = exp(- I * Pi *                U(freqidx) / U(B.cols()));
-      tt  = (i - stage) / 2 * 2;
-    } else
-      continue;
-    const U c0((U(- 2. * tt) * ee + U(tt) - ee) * eth);
-    const U c1( U(  2. * tt) * ee - U(tt));
-    B(row, tt) = (c0 + c1) * ee / sqrt(T(2) * T(B.cols()));
-    G(row, tt) = (c0 - c1) * ee / sqrt(T(2) * T(B.cols()));
-  }
-  return;
-}
-
 template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bool& flag) {
-  if(flag) {
-    int wp = size / 4 * 4;
-    B = MatU(wp, wp);
-    G = MatU(wp, wp);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < wp; i ++)
-      for(int j = 0; j < wp; j ++) {
-        B(i, j) = U(0);
-        G(i, j) = U(0);
-      }
-    int i = 0;
-    for(int j = 0; j < wp / 2; j ++)
-      seedPattern(j,         2, i ++);
-    for(int j = 0; j < wp / 4; j ++)
-      seedPattern(j * 2,     0, i ++);
-    for(int j = 0; j < wp / 4; j ++)
-      seedPattern(j * 2 + 1, 1, i ++);
-    MatU B0(B.inverse() * G);
-    D = Mat(size, size);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < size; i ++)
-      for(int j = 0; j < size; j ++) {
-        const int idx = (j - i + size + wp / 4) % size;
-        if(0 <= idx && idx < wp)
-          D(i, j) = B0(wp / 4, idx).real() / sqrt(T(size * 2));
-        else
-          D(i, j) = T(0);
-      }
-    F = Vec(size);
-    X = Vec(size);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < size; i ++) {
-      U ee( exp(- I * Pi * U(i * size / 2. / size)));
-      U eth(exp(- I * Pi * U(    size / 2. / size)));
-      U c0((U(- 2. * i) * ee + U(i) - ee) * eth);
-      U c1( U(  2. * i) * ee - U(i));
-      F[i] = ((c0 + c1) * ee).real() / sqrt(T(size * 2));
-      X[i] = ((c0 - c1) * ee).real() / sqrt(T(size * 2));
-    }
-    F /= T(2) * Pi * size;
-    X /= T(2) * Pi * size;
-  }
   MatU DFT( size, size);
   MatU IDFT(size, size);
 #if defined(_OPENMP)
@@ -274,6 +183,28 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bo
     Ibuf.row(i) /= U(- 2.) * Pi * I * U(i / T(size));
   Dop =   (IDFT * Dbuf).real().template cast<T>();
   Iop = - (IDFT * Ibuf).real().template cast<T>();
+  if(flag) {
+    MatU DFTc(DFT.rows(), DFT.cols());
+    for(int i = 0; i < DFTc.rows(); i ++) {
+      // XXX checkme with enlarge.wxm, DFT space plausible one:
+      const int ii(DFTc.rows() - i);
+      // This can be tricky, this sees IDFT as DFT and both same theta.
+      DFTc.row(i) = sin(U(ii * Pi / DFTc.rows())) / (cos(U(ii * Pi / DFTc.rows())) - U(1)) * (DFT.row(i).imag().template cast<U>() + I * DFT.row(i).real().template cast<U>());
+    }
+    // This also can be tricky, this sees delta and delta must be smaller
+    // but the amount isn't known.
+    const Mat Dc((IDFT * (DFT - DFTc)).real().template cast<T>() / pow(T(2) * Pi, T(2)));
+    D = Mat(Dc.rows() * 2, Dc.cols());
+    for(int i = 0; i < D.rows(); i ++) {
+      for(int j = 0; j < D.cols(); j ++)
+        D(i, j) = i / 2 == j ? T(1) : T(0);
+      // XXX select me: i % 2 or ! (i % 2) .
+      if(i % 2)
+        D.row(i) += Dc.row(i / 2);
+      else
+        D.row(i) -= Dc.row(i / 2);
+    }
+  }
   return;
 }
 
