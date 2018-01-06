@@ -187,7 +187,7 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bo
     MatU DFTc(DFT.rows(), DFT.cols());
     for(int i = 0; i < DFTc.rows(); i ++) {
       // XXX checkme with enlarge.wxm, DFT space plausible one:
-      const int ii(DFTc.rows() - i);
+      const int ii(i + 1);
       // This can be tricky, this sees IDFT as DFT and both same theta.
       DFTc.row(i) = sin(U(ii * Pi / DFTc.rows())) / (cos(U(ii * Pi / DFTc.rows())) - U(1)) * (DFT.row(i).imag().template cast<U>() + I * DFT.row(i).real().template cast<U>());
     }
