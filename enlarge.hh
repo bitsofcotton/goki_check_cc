@@ -74,14 +74,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     }
     break;
   case ENLARGE_3BOTH:
-    {
-      result = Mat(data.rows() * 2, data.cols() * 2);
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = data(i / 2, j / 2);
-      result += compute(data, ENLARGE_BOTH) +
-                compute(data, ENLARGE_FBOTH) / T(2);
-    }
+    result = compute(data, ENLARGE_BOTH) +
+             compute(data, ENLARGE_FBOTH) / T(2);
     break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X) + compute(data, DETECT_Y)) / 2.;
@@ -193,7 +187,7 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bo
     }
     // This also can be tricky, this sees delta and delta must be smaller
     // but the amount isn't known.
-    const Mat Dc((IDFT * (DFT - DFTc)).real().template cast<T>() / pow(T(2) * Pi, T(2)));
+    const Mat Dc((IDFT * (DFT - DFTc)).real().template cast<T>() / pow(T(2) * Pi, T(2)) / T(2));
     D = Mat(Dc.rows() * 2, Dc.cols());
     for(int i = 0; i < D.rows(); i ++) {
       for(int j = 0; j < D.cols(); j ++)
