@@ -102,11 +102,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     result = compute(data.transpose(), IDETECT_Y).transpose();
     break;
   case ENLARGE_Y:
-    {
-      cerr << " enlarge_y";
-      initPattern(data.rows());
-      result = D * data;
-    }
+    cerr << " enlarge_y";
+    initPattern(data.rows());
+    result = D * data;
     break;
   case ENLARGE_FY:
     {
@@ -178,25 +176,24 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bo
   Dop =   (IDFT * Dbuf).real().template cast<T>();
   Iop = - (IDFT * Ibuf).real().template cast<T>();
   if(flag) {
-    MatU DFTc(DFT.rows(), DFT.cols());
-    for(int i = 0; i < DFTc.rows(); i ++) {
+    MatU DFTa(DFT);
+    MatU DFTb(DFT);
+    for(int i = 0; i < DFT.rows(); i ++) {
       // XXX checkme with enlarge.wxm, DFT space plausible one:
-      const int ii(i + 1);
+      const T ii(i + .5);
       // This can be tricky, this sees IDFT as DFT and both same theta.
-      DFTc.row(i) = sin(U(ii * Pi / DFTc.rows())) / (cos(U(ii * Pi / DFTc.rows())) - U(1)) * (DFT.row(i).imag().template cast<U>() + I * DFT.row(i).real().template cast<U>());
+      DFTa.row(i) *= (T(1) - sin(U(ii * Pi / DFTa.rows())) / (cos(U(ii * Pi / DFTa.rows())) - U(1))) * I;
+      DFTb.row(i) *= sin(U(ii * Pi / DFTb.rows())) / (cos(U(ii * Pi / DFTb.rows())) - U(1)) * I;
     }
-    // This also can be tricky, this sees delta and delta must be smaller
-    // but the amount isn't known.
-    const Mat Dc((IDFT * (DFT - DFTc)).real().template cast<T>() / pow(T(2) * Pi, T(2)) / T(2));
-    D = Mat(Dc.rows() * 2, Dc.cols());
-    for(int i = 0; i < D.rows(); i ++) {
-      for(int j = 0; j < D.cols(); j ++)
-        D(i, j) = i / 2 == j ? T(1) : T(0);
-      // XXX select me: i % 2 or ! (i % 2) .
-      if(i % 2)
-        D.row(i) += Dc.row(i / 2);
-      else
-        D.row(i) -= Dc.row(i / 2);
+    // This also can be tricky, this sees delta of b(t).
+    const Mat Da((IDFT * DFTa).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * T(2)));
+    const Mat Db((IDFT * DFTb).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * T(2)));
+    D = Mat(DFT.rows() * 2, DFT.cols());
+    for(int i = 0; i < DFT.rows(); i ++) {
+      D.row(i * 2 + 0) = Da.row(i);
+      D.row(i * 2 + 1) = Db.row(i);
+      D(i * 2 + 0, i) += T(1);
+      D(i * 2 + 1, i) += T(1);
     }
   }
   return;
