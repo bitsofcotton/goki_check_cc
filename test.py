@@ -26,7 +26,8 @@ for idx in range(2, len(argv)):
     p = subprocess.Popen(["identify", "-format", "%wx%h", root + "-enl" + ext], stdout=subprocess.PIPE)
     szorig = p.communicate("\n")[0] + "+0+0"
     subprocess.call(["convert", root + "-enl-d-margin" + ext, "-gravity", "center", "-crop", szorig, root + "-enl-d-crop" + ext])
-    subprocess.call(["convert", root + "-enl" + ext, root + "-enl-d-crop" + ext, "-evaluate-sequence", "mean", "-resize", "75%", root + "-enl-last" + ext])
+    #subprocess.call(["convert", root + "-enl" + ext, root + "-enl-d-crop" + ext, "-evaluate-sequence", "mean", "-resize", "75%", root + "-enl-last" + ext])
+    subprocess.call(["convert", root + "-enl" + ext, root + "-enl-d-crop" + ext, "-evaluate-sequence", "mean", root + "-enl-last" + ext])
   if(not os.path.exists(root + "-collect" + ext)):
     subprocess.call([argv[1], "collect", line, root + "-collect" + ext])
   if(not os.path.exists(root + "-bump-blur" + ext)):
