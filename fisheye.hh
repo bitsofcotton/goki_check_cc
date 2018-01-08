@@ -41,7 +41,7 @@ public:
   void initialize(const int& z_max, const int& stp);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   
-  Vec  complementLine(const Vec& line, const T& rratio = T(.5));
+  Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard= int(1));
   T    getImgPt(const Mat& img, const int& y, const int& x);
   void setImgPt(Mat& img, const int& y, const int& x, const T& v);
 
@@ -276,6 +276,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
             result(ii, jj) = (result(ii, jj) + comp(ii, jj)) / T(2);
     }
   }
+  result = autoLevel(result);
   
   /*
    * Get complemented.
@@ -283,29 +284,27 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   {
     enlarger2ex<T> detect;
     const Mat rdet(detect.compute(result, detect.COLLECT_BOTH));
-    vector<T> rstat;
+    T rint(0);
     for(int i = 0; i < rdet.rows(); i ++)
       for(int j = 0; j < rdet.cols(); j ++)
-        rstat.push_back(rdet(i, j));
-    sort(rstat.begin(), rstat.end());
-    T rint(0);
-    for(int i = 0; i < rstat.size(); i ++)
-      rint += rstat[i];
-    rint *= rrint / rstat.size();
+        rint += rdet(i, j);
+    rint *= rrint / T(rdet.rows() * rdet.cols());
     for(int i = 0; i < result.rows(); i ++)
       for(int j = 0; j < result.cols(); j ++)
         if(rdet(i, j) < rint)
           result(i, j) = - T(1);
     Mat rr(result.rows(), result.cols());
     Mat rc(result.rows(), result.cols());
+    const T   crr(.5);
+    const int guard(ioff);
     for(int i = 0; i < result.rows(); i ++)
-      rr.row(i) = complementLine(result.row(i));
+      rr.row(i) = complementLine(result.row(i), crr, guard);
     for(int i = 0; i < result.cols(); i ++)
-      rr.col(i) = complementLine(rr.col(i));
+      rr.col(i) = complementLine(rr.col(i), crr, guard);
     for(int i = 0; i < result.cols(); i ++)
-      rc.col(i) = complementLine(result.col(i));
+      rc.col(i) = complementLine(result.col(i), crr, guard);
     for(int i = 0; i < result.rows(); i ++)
-      rc.row(i) = complementLine(rc.row(i));
+      rc.row(i) = complementLine(rc.row(i), crr, guard);
     result = autoLevel(rr + rc);
   }
   
@@ -431,7 +430,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::indiv(c
   return (p1 - p0) * pt + p0;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complementLine(const Vec& line, const T& rratio) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complementLine(const Vec& line, const T& rratio, const int& guard) {
   vector<int> ptsi;
   vector<T>   pts;
   for(int i = 0; i < line.size(); i ++)
@@ -452,8 +451,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
     if(result[i] >= T(0))
       continue;
     for(; rng[1] < ptsi.size() - 2 && ptsi[rng[1]] < i; rng[1] ++) ;
-    rng[0] = rng[1] - 1;
-    rng[2] = rng[1] + 1;
+    rng[0] = rng[2] = rng[1];
+    while(0 < rng[0] && ptsi[rng[1]] - ptsi[rng[0]] <= guard)
+      rng[0] --;
+    while(rng[2] < ptsi.size() - 1 && ptsi[rng[2]] - ptsi[rng[1]] <= guard)
+      rng[2] ++;
+    if(rng[0] == rng[1]) rng[0] --;
+    if(rng[2] == rng[1]) rng[2] ++;
     const T ratio((ptsi[rng[2]] - ptsi[rng[1]]) /
                   (ptsi[rng[1]] - ptsi[rng[0]]));
     if(ratio < rratio || T(1) / ratio < rratio) {
