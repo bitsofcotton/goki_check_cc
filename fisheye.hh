@@ -176,7 +176,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
    * Get hex tile based bumpmap.
    */
   // XXX configure me:
-  const int ioff(8);
+  const int ioff(4);
   Vec p0(3), p1(3);
   p0[0]  = 0;
   p0[1]  = 0;
@@ -188,7 +188,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   vector<Vec2i> corners;
   corners.push_back(Vec2i(0, - in.cols() / 2));
   corners.push_back(Vec2i(0,   in.cols() / 2));
-  Mat result(in * T(0));
+  
+  Mat result(in.rows(), in.cols());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = T(0);
   for(int ic = 0; ic < corners.size(); ic ++) {
     Mat bumps(in * T(0));
     Vec work(int(sqrt(2) * max(bumps.rows(), bumps.cols()) * 6 * 3));
@@ -251,22 +255,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     }
     result -= bumps;
   }
-  result = autoLevel(result);
   
   /*
-   * Complement bump map.
+   * Complement bump map with tilt in hextile way.
    */
   const Mat zero(result * T(0));
-  const T   psi(.9999);
-  const int nloop(3);
+  // XXX configure me:
+  const T   psi(.999);
+  const int nloop(7);
   for(int i = 0; i < nloop; i ++) {
     tilter<T> tilt;
-    for(int j = 0; j < 4; j ++) {
-      Mat comp(tilt.tilt(tilt.tilt(result, result, j, 4, psi), zero, - j, 4, psi));
+    for(int j = 0; j < 6; j ++) {
+      Mat comp(tilt.tilt(tilt.tilt(result, result, j * 2 + 1, 12, psi), zero, - j * 2 - 1, 12, psi));
       for(int ii = 0; ii < result.rows(); ii ++)
         for(int jj = 0; jj < result.cols(); jj ++)
           if(abs(result(ii, jj)) < abs(comp(ii, jj)))
-            result(ii, jj) = comp(ii, jj);
+            result(ii, jj) = (result(ii, jj) + comp(ii, jj)) / T(2);
     }
   }
   result = autoLevel(result);
@@ -291,8 +295,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         Eigen::Matrix<T, 3, 1> work;
         work[0] = i * vbox;
         work[1] = j * vbox;
-        work[2] = max(exp(T(1)), avg / cnt * z_max * exp(T(1))) / z_max + exp(T(2));
-        work[2] = - log(work[2]) * sqrt(T(result.rows() * result.cols()));
+        work[2] = avg / cnt - T(.5);
+        const T sgnwork2(work[2] < T(0) ? - T(1) : T(1));
+        work[2] = min(max(sgnwork2 * max(exp(T(1)), abs(work[2]) * z_max * exp(T(1))) / z_max + exp(T(2)), exp(T(1))), exp(T(3)));
+        work[2] = log(work[2]) * sqrt(T(result.rows() * result.cols())) / T(2);
         geoms.push_back(work);
       }
     }
