@@ -30,8 +30,8 @@ for idx in range(2, len(argv)):
     subprocess.call(["convert", root + "-enl" + ext, root + "-enl-d-crop" + ext, "-evaluate-sequence", "mean", root + "-enl-last" + ext])
   if(not os.path.exists(root + "-collect" + ext)):
     subprocess.call([argv[1], "collect", line, root + "-collect" + ext])
-  if(not os.path.exists(root + "-bump-blur" + ext)):
-    subprocess.call([argv[1], "bump", line, root + "-bump" + ext, root + "-bump-blur" + ext, root + ".obj"])
+  if(not os.path.exists(root + "-bump" + ext)):
+    subprocess.call([argv[1], "bump", line, root + "-bump" + ext, root + ".obj"])
   if(not os.path.exists(root + "-emph" + ext)):
     subprocess.call(["convert", root + "-bump" + ext, "-blur", "2x2", "-alpha", "on", "-channel", "a", "-evaluate", "set", "30%", root + "-bump-test.png"])
     subprocess.call(["convert", line, root + "-bump-test.png", "-compose", "Multiply", "-composite", root + "-emph" + ext])

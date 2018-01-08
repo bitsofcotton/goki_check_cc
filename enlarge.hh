@@ -9,6 +9,7 @@ using std::sqrt;
 using std::exp;
 using std::vector;
 using std::sort;
+using std::conj;
 
 template <typename T> class enlarger2ex {
 public:
@@ -181,13 +182,14 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bo
     for(int i = 0; i < DFT.rows(); i ++) {
       // XXX checkme with enlarge.wxm, DFT space plausible one:
       const T ii(i + .5);
+      const U r(sin(U(ii * Pi / DFTb.rows())) / (cos(U(ii * Pi / DFTb.rows())) - U(1)));
       // This can be tricky, this sees IDFT as DFT and both same theta.
-      DFTa.row(i) *= (T(1) - sin(U(ii * Pi / DFTa.rows())) / (cos(U(ii * Pi / DFTa.rows())) - U(1))) * I;
-      DFTb.row(i) *= sin(U(ii * Pi / DFTb.rows())) / (cos(U(ii * Pi / DFTb.rows())) - U(1)) * I;
+      DFTa.row(i) = (T(1) - r) * I * DFT.row(i).conjugate();
+      DFTb.row(i) =         r  * I * DFT.row(i).conjugate();
     }
     // This also can be tricky, this sees delta of b(t).
-    const Mat Da((IDFT * DFTa).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * T(2)));
-    const Mat Db((IDFT * DFTb).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * T(2)));
+    const Mat Da((IDFT * DFTa).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * sqrt(T(8))));
+    const Mat Db((IDFT * DFTb).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * sqrt(T(8))));
     D = Mat(DFT.rows() * 2, DFT.cols());
     for(int i = 0; i < DFT.rows(); i ++) {
       D.row(i * 2 + 0) = Da.row(i);
