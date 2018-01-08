@@ -47,6 +47,7 @@ public:
 
 private:
   Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const int& lower = 0, int upper = - 1);
+  Mat  getPseudoBump(const Mat& in);
   Vec  getLineAxis(Vec p, Vec c, const int& w, const int& h);
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& p0, const Vec& p1, const int& hh, const int& ww, const int& rstp);
   T    getImgPt(const Vec& img, const T& y);
@@ -170,9 +171,7 @@ template <typename T> Eigen::Matrix<int, 2, 1> PseudoBump<T>::getHexGeom(const V
   return result;
 }
 
-// get bump with multiple scale and vectored result.
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
-  cerr << "bump" << flush;
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
   /*
    * Get hex tile based bumpmap.
    */
@@ -281,38 +280,88 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   /*
    * Get complemented.
    */
-  {
-    enlarger2ex<T> detect;
-    const Mat rdet(detect.compute(result, detect.COLLECT_BOTH));
-    T rint(0);
-    for(int i = 0; i < rdet.rows(); i ++)
-      for(int j = 0; j < rdet.cols(); j ++)
-        rint += rdet(i, j);
-    rint *= rrint / T(rdet.rows() * rdet.cols());
-    for(int i = 0; i < result.rows(); i ++)
-      for(int j = 0; j < result.cols(); j ++)
-        if(rdet(i, j) < rint)
-          result(i, j) = - T(1);
-    Mat rr(result.rows(), result.cols());
-    Mat rc(result.rows(), result.cols());
-    const T   crr(.5);
-    const int guard(ioff);
-    for(int i = 0; i < result.rows(); i ++)
-      rr.row(i) = complementLine(result.row(i), crr, guard);
-    for(int i = 0; i < result.cols(); i ++)
-      rr.col(i) = complementLine(rr.col(i), crr, guard);
-    for(int i = 0; i < result.cols(); i ++)
-      rc.col(i) = complementLine(result.col(i), crr, guard);
-    for(int i = 0; i < result.rows(); i ++)
-      rc.row(i) = complementLine(rc.row(i), crr, guard);
-    result = autoLevel(rr + rc);
+  enlarger2ex<T> detect;
+  const Mat rdet(detect.compute(result, detect.COLLECT_BOTH));
+  T rint(0);
+  for(int i = 0; i < rdet.rows(); i ++)
+    for(int j = 0; j < rdet.cols(); j ++)
+      rint += rdet(i, j);
+  rint *= rrint / T(rdet.rows() * rdet.cols());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      if(rdet(i, j) < rint)
+        result(i, j) = - T(1);
+  Mat rr(result.rows(), result.cols());
+  Mat rc(result.rows(), result.cols());
+  const T   crr(.5);
+  const int guard(ioff);
+  for(int i = 0; i < result.rows(); i ++)
+    rr.row(i) = complementLine(result.row(i), crr, guard);
+  for(int i = 0; i < result.cols(); i ++)
+    rr.col(i) = complementLine(rr.col(i), crr, guard);
+  for(int i = 0; i < result.cols(); i ++)
+    rc.col(i) = complementLine(result.col(i), crr, guard);
+  for(int i = 0; i < result.rows(); i ++)
+    rc.row(i) = complementLine(rc.row(i), crr, guard);
+  return autoLevel(rr + rc);
+}
+  
+// get bump with multiple scale and vectored result.
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
+  cerr << "bump" << flush;
+  /*
+   * get each scale bumps.
+   */
+  Mat result(in.rows(), in.cols());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = T(0);
+  Mat buf(in);
+  while(16 < min(buf.rows(), buf.cols())) {
+    // halfen.
+    Mat work((buf.rows() + 1) / 2, (buf.cols() + 1) / 2);
+    for(int i = 0; i < work.rows(); i ++)
+      for(int j = 0; j < work.cols(); j ++) {
+        work(i, j) = T(0);
+        int cnt(0);
+        for(int ii = i * 2; ii < min((i + 1) * 2, int(buf.rows())); ii ++)
+          for(int jj = j * 2; jj < min((j + 1) * 2, int(buf.cols())); jj ++) {
+            work(i, j) += buf(ii, jj);
+            cnt ++;
+          }
+        if(cnt)
+          work(i, j) /= cnt;
+        else
+          work(i, j)  = T(0);
+      }
+    buf = work;
+    work = getPseudoBump(buf);
+    Mat work2(in.rows(), in.cols());
+    for(int i = 0; i < work2.rows(); i ++)
+      for(int j = 0; j < work2.cols(); j ++)
+        if(!(i % (work2.rows() / buf.rows())) &&
+           !(j % (work2.cols() / buf.cols())))
+          work2(i, j) = work(i * buf.rows() / work2.rows(),
+                             j * buf.cols() / work2.cols());
+        else
+          work2(i, j) = - T(1);
+    Mat work3(work2);
+    for(int i = 0; i < work2.rows(); i ++)
+      work2.row(i) = complementLine(work2.row(i));
+    for(int i = 0; i < work2.cols(); i ++)
+      work2.col(i) = complementLine(work2.col(i));
+    for(int i = 0; i < work3.cols(); i ++)
+      work3.col(i) = complementLine(work3.col(i));
+    for(int i = 0; i < work3.rows(); i ++)
+      work3.row(i) = complementLine(work3.row(i));
+    result += work2 + work3;
   }
   
   /*
    * Get vector based bumps.
    */
   geoms  = vector<Eigen::Matrix<T, 3, 1> >();
-  const int& vbox(ioff);
+  const int vbox(4);
   for(int i = 0; i < result.rows() / vbox + 1; i ++)
     for(int j = 0; j < result.cols() / vbox + 1; j ++) {
       T   avg(0);
