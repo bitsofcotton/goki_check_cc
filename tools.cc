@@ -75,17 +75,13 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps;
-      const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> b_mesh(bump.getPseudoBumpVec(rgb2l(data), points, delaunay, bumps));
+      const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps(bump.getPseudoBumpVec(rgb2l(data), points, delaunay));
       data[0] = data[1] = data[2] = bumps;
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
         std::cout << points[i].transpose() << std::endl;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3];
-      outs[0] = outs[1] = outs[2] = b_mesh;
-      normalize<double>(outs, 1.);
-      savep2or3<double>(argv[4], outs, false);
-      saveobj(points, delaunay, argv[5], double(4));
+      saveobj(points, delaunay, argv[4]);
     }
     break;
   case 6:
@@ -154,11 +150,10 @@ int main(int argc, const char* argv[]) {
       int    nshow(8);
       double emph(.95);
       PseudoBump<double> bump;
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sutei;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
-      auto bump0(bump.getPseudoBumpVec(rgb2l(data),  shape0, sute, sutei));
-      auto bump1(bump.getPseudoBumpVec(rgb2l(data1), shape1, sute, sutei));
+      auto bump0(bump.getPseudoBumpVec(rgb2l(data),  shape0, sute));
+      auto bump1(bump.getPseudoBumpVec(rgb2l(data1), shape1, sute));
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
       Eigen::Matrix<double, 3, 3> I3;
@@ -267,10 +262,9 @@ int main(int argc, const char* argv[]) {
       int    nshow(8);
       double emph(.95);
       PseudoBump<double> bumper;
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> sutei;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
-      auto bump(bumper.getPseudoBumpVec(rgb2l(data), shape, sute, sutei));
+      auto bump(bumper.getPseudoBumpVec(rgb2l(data), shape, sute));
       Eigen::Matrix<double, 3, 1> zero3;
       zero3[0] = zero3[1] = zero3[2] = double(0);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());

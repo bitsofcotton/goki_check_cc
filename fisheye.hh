@@ -6,15 +6,15 @@
 #include <algorithm>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include "enlarge.hh"
+
 #include "tilt.hh"
-#include "obj2vector.hh"
-#include "scancontext.hh"
 
 using std::complex;
 using std::abs;
 using std::vector;
 using std::sort;
+using std::pair;
+using std::make_pair;
 using std::max;
 using std::min;
 using std::cos;
@@ -37,10 +37,9 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& vmax);
-  Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumpp);
+  void initialize(const int& z_max, const int& stp);
+  Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   
-  int vmax;
   Vec  complementLine(const Vec& line, const T& rratio = T(.5));
   T    getImgPt(const Mat& img, const int& y, const int& x);
   void setImgPt(Mat& img, const int& y, const int& x, const T& v);
@@ -51,7 +50,7 @@ private:
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& p0, const Vec& p1, const int& hh, const int& ww, const int& rstp);
   T    getImgPt(const Vec& img, const T& y);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
-  void autoLevel(Mat& data, int npad = - 1);
+  Mat  autoLevel(const Mat& data, int npad = - 1);
   Vec2i getHexGeom(const Vec2i& center, const int& idx, const int& Midx, const int& h, const int& w);
   
   int z_max;
@@ -62,18 +61,17 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 15, 800);
+  initialize(20, 15);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& vmax) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp) {
   this->Pi      = T(4) * atan2(T(1), T(1));
   this->z_max   = z_max;
   this->stp     = stp;
-  this->vmax    = vmax;
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
@@ -120,8 +118,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       Vec rc(c);
       for(int u = 0; u < c.size(); u ++)
         rc[u] = c[c.size() - 1 - u];
-      const T n2(max(abs(Dop.row(c.size() / 2).dot(c))  / sqrt(c.dot(c)),
-                     abs(Dop.row(c.size() / 2).dot(rc)) / sqrt(c.dot(c))));
+      const T n2(abs(Dop.row(c.size() / 2).dot(c))  / sqrt(c.dot(c)) +
+                   abs(Dop.row(c.size() / 2).dot(rc)) / sqrt(c.dot(c)));
       if(isfinite(n2) && zval[s] < n2) {
         // N.B. If increase zz, decrease the distance from camera.
         //      And, zz->0 is treated as distant in tilter.
@@ -172,34 +170,32 @@ template <typename T> Eigen::Matrix<int, 2, 1> PseudoBump<T>::getHexGeom(const V
 }
 
 // get bump with multiple scale and vectored result.
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, Mat& bumpp) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
   cerr << "bump" << flush;
-  vector<Eigen::Matrix<Mat, Eigen::Dynamic, 1> > cf;
-  // this is NOT a good idea to get each regions.
-  for(int i = 0; !i ||
-                 6 < max(in.rows(), in.cols()) / 2 * 6 *
-                       stp / pow(2, i) / 18 / stp; i ++) {
-    Vec p0(3), p1(3);
-    p0[0]  = 0;
-    p0[1]  = 0;
-    p0[2]  = 0;
-    p1[0]  = max(in.rows(), in.cols()) / 2 * 6 * stp / pow(2, i);
-    p1[1]  = 0;
-    p1[2]  = 0;
-    auto cfv(prepareLineAxis(p0, p1, p1[0], 1, p1[0] / 18 / stp));
-    cf.push_back(cfv);
-  }
+  /*
+   * Get hex tile based bumpmap.
+   */
+  // XXX configure me:
+  const int ioff(8);
+  Vec p0(3), p1(3);
+  p0[0]  = 0;
+  p0[1]  = 0;
+  p0[2]  = 0;
+  p1[0]  = max(in.rows(), in.cols()) / 2 * 6 * stp / ioff;
+  p1[1]  = 0;
+  p1[2]  = 0;
+  auto cf(prepareLineAxis(p0, p1, p1[0], 1, p1[0] / 18 / stp));
   vector<Vec2i> corners;
   corners.push_back(Vec2i(0, - in.cols() / 2));
   corners.push_back(Vec2i(0,   in.cols() / 2));
-  bumpp = Mat(in * T(0));
+  Mat result(in * T(0));
   for(int ic = 0; ic < corners.size(); ic ++) {
     Mat bumps(in * T(0));
+    Vec work(int(sqrt(2) * max(bumps.rows(), bumps.cols()) * 6 * 3));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 1; i < sqrt(T(2)) * max(bumps.rows(), bumps.cols()); i ++) {
-      Vec work(int(sqrt(2) * max(bumps.rows(), bumps.cols()) * 6 * 3));
       const int i0(work.size() / 6 / 3);
       const int i1(i0 * 6);
       if(i0 <= 0)
@@ -221,75 +217,105 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       for(int j = i1; j < work.size(); j ++)
         work[j] = work[j % i1];
       work = complementLine(work);
-      Vec res(work.size());
-      for(int j = 0; j < res.size(); j ++)
-        res[j] = T(0);
-      for(int j = 0; j < cf.size(); j ++) {
-        Vec lwork((work.size() + pow(2, j) - 1) / pow(2, j));
-        for(int k = 0; k < lwork.size(); k ++) {
-          int cnt(0);
-          for(int l = 0; l < pow(2, j) && k * pow(2, j) + l < work.size(); l ++) {
-            lwork[k] += work[k * pow(2, j) + l];
+      Vec lwork((work.size() + ioff - 1) / ioff);
+      for(int k = 0; k < lwork.size(); k ++) {
+        int cnt(0);
+        lwork[k] = T(0);
+        for(int l = 0; l < ioff && k * ioff + l < work.size(); l ++) {
+            lwork[k] += work[k * ioff + l];
             cnt ++;
           }
           if(cnt)
             lwork[k] /= cnt;
           else
             lwork[k]  = T(0);
-        }
-        lwork = getPseudoBumpSub(lwork, cf[j],
-                  (i1 + int(min(ii, jj) * i1 / i / 6)) / pow(2, j),
-                  (i1 + int(max(ii, jj) * i1 / i / 6)) / pow(2, j) + 1);
-        Vec buf(work.size());
-        for(int k = 0; k < lwork.size(); k ++)
-          for(int l = 0; l < pow(2, j) && k * pow(2, j) + l < work.size(); l ++)
-            buf[k * pow(2, j) + l] =
-              l == pow(2, j) / 2 ? lwork[k] : - T(1);
-        res += complementLine(buf);
       }
-      work = res;
+      lwork = getPseudoBumpSub(lwork, cf,
+               (i1 + int(min(ii, jj) * i1 / i / 6)) / ioff,
+               (i1 + int(max(ii, jj) * i1 / i / 6)) / ioff + 1);
+      Vec res(work.size());
+      for(int k = 0; k < lwork.size(); k ++)
+        for(int l = 0; l < ioff && k * ioff + l < work.size(); l ++)
+          res[k * ioff + l] =
+            l == ioff / 2 ? lwork[k] : - T(1);
+      res = complementLine(res);
       for(int j = 0; j < i * 6; j ++) {
         Vec2i geom(getHexGeom(corners[ic], j, i * 6, in.rows(), in.cols()));
-        setImgPt(bumps, geom[0], geom[1], work[i1 + int(j * i1 / i / 6)]);
+        const T& buf(res[i1 + int(j * i1 / i / 6)]);
+        setImgPt(bumps, geom[0], geom[1], buf);
+        if(j / i == 1)
+          setImgPt(bumps, geom[0], geom[1] - 1, buf);
+        if(j / i == 4)
+          setImgPt(bumps, geom[0], geom[1] + 1, buf);
       }
     }
-    bumpp -= bumps;
+    result -= bumps;
   }
-  autoLevel(bumpp);
-  lowFreq<T> lf;
-  geoms = lf.getLowFreq(bumpp, vmax);
-  vector<Eigen::Matrix<T, 3, 1> > gwork;
-  for(int i = 0; i < geoms.size(); i ++)
-    if(geoms[i][2] != T(0))
-      gwork.push_back(geoms[i]);
-  geoms = gwork;
-  vector<int> idxs;
-  for(int i = 0; i < geoms.size(); i ++)
-    idxs.push_back(i);
-  delaunay = loadBumpSimpleMesh<T>(geoms, idxs);
-  Mat result(bumpp.rows(), bumpp.cols());
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = T(0);
-  tilter<T> tilt;
-  for(int i = 0; i < delaunay.size(); i ++) {
-    const Vec3& p0(geoms[delaunay[i][0]]);
-    const Vec3& p1(geoms[delaunay[i][1]]);
-    const Vec3& p2(geoms[delaunay[i][2]]);
-    for(int j = 0; j < result.rows(); j ++)
-      for(int k = 0; k < result.cols(); k ++) {
-        Vec3 q;
-        q[0] = j;
-        q[1] = k;
-        q[2] = 0;
-        if(tilt.sameSide2(p0, p1, p2, q, true, T(.5)) &&
-           tilt.sameSide2(p1, p2, p0, q, true, T(.5)) &&
-           tilt.sameSide2(p2, p0, p1, q, true, T(.5)))
-          result(j, k) = (geoms[delaunay[i][0]][2] + 
-                          geoms[delaunay[i][1]][2] +
-                          geoms[delaunay[i][2]][2]) / T(3);
+  result = autoLevel(result);
+  
+  /*
+   * Complement bump map.
+   */
+  const Mat zero(result * T(0));
+  const T   psi(.9999);
+  const int nloop(3);
+  for(int i = 0; i < nloop; i ++) {
+    tilter<T> tilt;
+    for(int j = 0; j < 4; j ++) {
+      Mat comp(tilt.tilt(tilt.tilt(result, result, j, 4, psi), zero, - j, 4, psi));
+      for(int ii = 0; ii < result.rows(); ii ++)
+        for(int jj = 0; jj < result.cols(); jj ++)
+          if(abs(result(ii, jj)) < abs(comp(ii, jj)))
+            result(ii, jj) = comp(ii, jj);
+    }
+  }
+  result = autoLevel(result);
+  
+  /*
+   * Get vector based bumps.
+   */
+  geoms  = vector<Eigen::Matrix<T, 3, 1> >();
+  const int& vbox(ioff);
+  for(int i = 0; i < result.rows() / vbox + 1; i ++)
+    for(int j = 0; j < result.cols() / vbox + 1; j ++) {
+      T   avg(0);
+      int cnt(0);
+      for(int ii = i * vbox; ii < min((i + 1) * vbox, int(result.rows())); ii ++)
+        for(int jj = j * vbox; jj < min((j + 1) * vbox, int(result.cols())); jj ++) {
+          avg += result(ii, jj);
+          cnt ++;
+        }
+      if(! cnt)
+        geoms.push_back(geoms[geoms.size() - 1]);
+      else {
+        Eigen::Matrix<T, 3, 1> work;
+        work[0] = i * vbox;
+        work[1] = j * vbox;
+        work[2] = max(exp(T(1)), avg / cnt * z_max * exp(T(1))) / z_max + exp(T(2));
+        work[2] = - log(work[2]) * sqrt(T(result.rows() * result.cols()));
+        geoms.push_back(work);
       }
-  }
+    }
+  Eigen::Matrix<T, 3, 1> avg;
+  avg[0] = avg[1] = avg[2] = T(0);
+  for(int i = 0; i < geoms.size(); i ++)
+    avg += geoms[i];
+  avg /= geoms.size();
+  for(int i = 0; i < geoms.size(); i ++)
+    geoms[i] -= avg;
+  delaunay = vector<Eigen::Matrix<int, 3, 1> >();
+  for(int i = 1; i < result.rows() / vbox + 1; i ++)
+    for(int j = 0; j < result.cols() / vbox; j ++) {
+      Eigen::Matrix<int, 3, 1> work, work2;
+      work[0]  = (i - 1) * (result.cols() / vbox + 1) + j;
+      work[1]  =  i      * (result.cols() / vbox + 1) + j;
+      work[2]  =  i      * (result.cols() / vbox + 1) + j + 1;
+      work2[0] = (i - 1) * (result.cols() / vbox + 1) + j;
+      work2[2] = (i - 1) * (result.cols() / vbox + 1) + j + 1;
+      work2[1] =  i      * (result.cols() / vbox + 1) + j + 1;
+      delaunay.push_back(work);
+      delaunay.push_back(work2);
+    }
   return result;
 }
 
@@ -415,9 +441,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
   return result;
 }
 
-template <typename T> void PseudoBump<T>::autoLevel(Mat& data, int npad) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::autoLevel(const Mat& data, int npad) {
   if(npad <= 0)
-    npad = (data.rows() + data.cols()) * 8;
+    npad = 0;
   vector<T> stat;
   for(int j = 0; j < data.rows(); j ++)
     for(int k = 0; k < data.cols(); k ++)
@@ -427,13 +453,14 @@ template <typename T> void PseudoBump<T>::autoLevel(Mat& data, int npad) {
   T MM(stat[stat.size() - 1 - npad]);
   if(MM == mm)
     MM = mm + 1.;
+  Mat result(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++)
-      data(i, j) = (max(min(data(i, j), MM), mm) - mm) / (MM - mm);
-  return;
+      result(i, j) = (max(min(data(i, j), MM), mm) - mm) / (MM - mm);
+  return result;
 }
 
 #define _2D3D_PSEUDO_
