@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
+#include "enlarge.hh"
 #include "tilt.hh"
 
 using std::complex;
@@ -257,12 +258,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   }
   
   /*
-   * Complement bump map with tilt in hextile way.
+   * Complement bump map with tilt in a hextile way.
+   * Get a little thick result.
    */
   const Mat zero(result * T(0));
   // XXX configure me:
   const T   psi(.999);
-  const int nloop(7);
+  const int nloop(6);
+  const T   rrint(.5);
   for(int i = 0; i < nloop; i ++) {
     tilter<T> tilt;
     for(int j = 0; j < 6; j ++) {
@@ -273,7 +276,38 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
             result(ii, jj) = (result(ii, jj) + comp(ii, jj)) / T(2);
     }
   }
-  result = autoLevel(result);
+  
+  /*
+   * Get complemented.
+   */
+  {
+    enlarger2ex<T> detect;
+    const Mat rdet(detect.compute(result, detect.COLLECT_BOTH));
+    vector<T> rstat;
+    for(int i = 0; i < rdet.rows(); i ++)
+      for(int j = 0; j < rdet.cols(); j ++)
+        rstat.push_back(rdet(i, j));
+    sort(rstat.begin(), rstat.end());
+    T rint(0);
+    for(int i = 0; i < rstat.size(); i ++)
+      rint += rstat[i];
+    rint *= rrint / rstat.size();
+    for(int i = 0; i < result.rows(); i ++)
+      for(int j = 0; j < result.cols(); j ++)
+        if(rdet(i, j) < rint)
+          result(i, j) = - T(1);
+    Mat rr(result.rows(), result.cols());
+    Mat rc(result.rows(), result.cols());
+    for(int i = 0; i < result.rows(); i ++)
+      rr.row(i) = complementLine(result.row(i));
+    for(int i = 0; i < result.cols(); i ++)
+      rr.col(i) = complementLine(rr.col(i));
+    for(int i = 0; i < result.cols(); i ++)
+      rc.col(i) = complementLine(result.col(i));
+    for(int i = 0; i < result.rows(); i ++)
+      rc.row(i) = complementLine(rc.row(i));
+    result = autoLevel(rr + rc);
+  }
   
   /*
    * Get vector based bumps.

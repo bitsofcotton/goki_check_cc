@@ -48,7 +48,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     ./tools collect input.ppm output.ppm
     
     # make 2d to 3d pseudo bumpmap
-    ./tools bump input.ppm output.ppm output-delaunay.ppm output.obj
+    ./tools bump input.ppm output.ppm output.obj
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
@@ -76,8 +76,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     PseudoBump<float> bump;
     std::vector<Eigen::Matrix<float, 3, 1> > points;
     std::vector<Eigen::Matrix<int,   3, 1> > delaunay;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumps;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBumpVec(input, points, delaunay, bumps));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBumpVec(input, points, delaunay));
     
     #include "tilt.hh"
     tilter<float> tilt;
