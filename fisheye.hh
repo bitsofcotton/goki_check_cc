@@ -452,7 +452,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
       continue;
     for(; rng[1] < ptsi.size() - 2 && ptsi[rng[1]] < i; rng[1] ++) ;
     rng[0] = rng[2] = rng[1];
-    while(1 < rng[0] && ptsi[rng[1]] - ptsi[rng[0]] <= guard)
+    while(0 < rng[0] && ptsi[rng[1]] - ptsi[rng[0]] <= guard)
       rng[0] --;
     while(rng[2] < ptsi.size() - 1 && ptsi[rng[2]] - ptsi[rng[1]] <= guard)
       rng[2] ++;
