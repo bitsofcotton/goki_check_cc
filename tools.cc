@@ -92,7 +92,8 @@ int main(int argc, const char* argv[]) {
       zero = bump[0] * double(0);
       tilter<double> tilt;
       const int M_TILT(16);
-      tilt.initialize(.3125);
+      // tilt.initialize(.3125);
+      tilt.initialize(.5);
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
           out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .975), zero, - i, M_TILT, .975);
