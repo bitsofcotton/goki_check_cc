@@ -268,7 +268,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
    */
   const Mat zero(result * T(0));
   // XXX configure me:
-  const T   psi(.995);
+  const T   psi(.999);
   const int nloop(6);
   const T   rrint(.5);
   for(int i = 0; i < nloop; i ++) {
