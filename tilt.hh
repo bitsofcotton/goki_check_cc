@@ -48,7 +48,7 @@ private:
 };
 
 template <typename T> tilter<T>::tilter() {
-  initialize(.75);
+  initialize(.5);
   return;
 }
 

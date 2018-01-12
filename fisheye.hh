@@ -53,7 +53,7 @@ private:
   T    getImgPt(const Vec& img, const T& y);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   Mat  autoLevel(const Mat& data, int npad = - 1);
-  Vec2i getHexGeom(const Vec2i& center, const int& idx, const int& Midx, const int& h, const int& w);
+  Vec2i getHexGeom(const Vec2i& center, const int& idx, const int& Midx);
   
   int z_max;
   int stp;
@@ -86,12 +86,14 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   return;
 };
 
-// bump it with abs(d/dt local color) / ||local color|| >> 0.
+// bump it with max abs(d/dt local color) >> 0.
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const int& lower, int upper) {
   cerr << "." << flush;
   if(upper <= 0)
     upper = work.size();
-  Vec result(work.size());
+  if(upper <= lower)
+    upper = lower + 1;
+  Vec  result(work.size());
   Vec workv(work.size() * stp);
   for(int i = 0; i < workv.size(); i ++)
     if(i % stp == stp / 2)
@@ -120,8 +122,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       Vec rc(c);
       for(int u = 0; u < c.size(); u ++)
         rc[u] = c[c.size() - 1 - u];
-      const T n2(abs(Dop.row(c.size() / 2).dot(c))  / sqrt(c.dot(c)) +
-                   abs(Dop.row(c.size() / 2).dot(rc)) / sqrt(c.dot(c)));
+      const T n2(abs(Dop.row( c.size() / 2).dot( c)) +
+                 abs(Dop.row(rc.size() / 2).dot(rc)) );
       if(isfinite(n2) && zval[s] < n2) {
         // N.B. If increase zz, decrease the distance from camera.
         //      And, zz->0 is treated as distant in tilter.
@@ -134,12 +136,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
 }
 
 // Hextile.
-template <typename T> Eigen::Matrix<int, 2, 1> PseudoBump<T>::getHexGeom(const Vec2i& center, const int& idx, const int& Midx, const int& h, const int& w) {
+template <typename T> Eigen::Matrix<int, 2, 1> PseudoBump<T>::getHexGeom(const Vec2i& center, const int& idx, const int& Midx) {
   Vec2i result(center);
   const int i(Midx / 6);
   const int j(idx % i);
-  result[0] += h / 2;
-  result[1] += w / 2;
   switch(idx / i) {
   case 0:
     result[0] += - i;
@@ -178,16 +178,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   // XXX configure me:
   const int ioff(4);
   Vec p0(3), p1(3);
-  p0[0]  = 0;
-  p0[1]  = 0;
-  p0[2]  = 0;
-  p1[0]  = max(in.rows(), in.cols()) / 2 * 6 * stp / ioff;
-  p1[1]  = 0;
-  p1[2]  = 0;
+  p0[0] = 0;
+  p0[1] = 0;
+  p0[2] = 0;
+  p1[0] = max(in.rows(), in.cols()) / 2 * 6 * stp / ioff;
+  p1[1] = 0;
+  p1[2] = 0;
   auto cf(prepareLineAxis(p0, p1, p1[0], 1, p1[0] / 18 / stp));
   vector<Vec2i> corners;
-  corners.push_back(Vec2i(0, - in.cols() / 2));
-  corners.push_back(Vec2i(0,   in.cols() / 2));
+  corners.push_back(Vec2i(0,             0));
+  corners.push_back(Vec2i(in.rows() / 2, 0));
+  corners.push_back(Vec2i(in.rows(),     0));
+  corners.push_back(Vec2i(0,             in.cols() / 2));
+  corners.push_back(Vec2i(in.rows(),     in.cols() / 2));
+  corners.push_back(Vec2i(0,             in.cols()));
+  corners.push_back(Vec2i(in.rows() / 2, in.cols()));
+  corners.push_back(Vec2i(in.rows(),     in.cols()));
   
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < result.rows(); i ++)
@@ -208,7 +214,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         work[j] = - T(1);
       int ii(- 1), jj(- 1);
       for(int j = 0; j < i * 6; j ++) {
-        Vec2i geom(getHexGeom(corners[ic], j, i * 6, in.rows(), in.cols()));
+        Vec2i geom(getHexGeom(corners[ic], j, i * 6));
         if(0 <= geom[0] && geom[0] < in.rows() &&
            0 <= geom[1] && geom[1] < in.cols()) {
           if(ii < 0)
@@ -244,7 +250,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
             l == ioff / 2 ? lwork[k] : - T(1);
       res = complementLine(res);
       for(int j = 0; j < i * 6; j ++) {
-        Vec2i geom(getHexGeom(corners[ic], j, i * 6, in.rows(), in.cols()));
+        Vec2i geom(getHexGeom(corners[ic], j, i * 6));
         const T& buf(res[i1 + int(j * i1 / i / 6)]);
         setImgPt(bumps, geom[0], geom[1], buf);
         if(j / i == 1)
@@ -317,7 +323,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = T(0);
   Mat buf(in);
-  while(16 < min(buf.rows(), buf.cols())) {
+  while(64 < min(buf.rows(), buf.cols())) {
     // halfen.
     Mat work((buf.rows() + 1) / 2, (buf.cols() + 1) / 2);
     for(int i = 0; i < work.rows(); i ++)
@@ -361,7 +367,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
    * Get vector based bumps.
    */
   geoms  = vector<Eigen::Matrix<T, 3, 1> >();
-  const int vbox(4);
+  const int vbox(16);
   for(int i = 0; i < result.rows() / vbox + 1; i ++)
     for(int j = 0; j < result.cols() / vbox + 1; j ++) {
       T   avg(0);
