@@ -222,7 +222,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(20, .000325, .25, .25, .125, .75);
+  init(20, .00125, .25, .25, .125, .75);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -254,18 +254,20 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
   gs[0] = gs[1] = gs[2] = T(0);
   gp[0] = gp[1] = gp[2] = T(0);
   gd[0] = gd[1] = gd[2] = T(0);
-  for(int i = 0; i < shapebase.size(); i ++) {
-    gs   += shapebase[i];
-    gd[0] = max(gd[0], abs(shapebase[i][0]));
-    gd[1] = max(gd[1], abs(shapebase[i][1]));
-  }
+  for(int i = 0; i < shapebase.size(); i ++)
+    gs += shapebase[i];
   gs /= shapebase.size();
-  for(int i = 0; i < points.size(); i ++) {
-    gp   += points[i];
-    gd[0] = max(gd[0], abs(points[i][0]));
-    gd[1] = max(gd[1], abs(points[i][1]));
-  }
+  for(int i = 0; i < points.size(); i ++)
+    gp += points[i];
   gp /= points.size();
+  for(int i = 0; i < shapebase.size(); i ++) {
+    gd[0] = max(gd[0], abs((shapebase[i] - gs)[0]));
+    gd[1] = max(gd[1], abs((shapebase[i] - gs)[1]));
+  }
+  for(int i = 0; i < points.size(); i ++) {
+    gd[0] = max(gd[0], abs((points[i] - gp)[0]));
+    gd[1] = max(gd[1], abs((points[i] - gp)[1]));
+  }
   for(int i = 0; i < 3; i ++) {
     Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
     // init table.
@@ -309,8 +311,9 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         if(nd < ndiv) {
           ddiv[0]  = cos(2 * Pi * nd / ndiv);
           ddiv[2]  = sin(2 * Pi * nd / ndiv);
-          ddiv[0] *= Pi * sqrt(T(2)) * nd2 / ndiv;
-          ddiv[2] *= Pi * sqrt(T(2)) * nd2 / ndiv;
+          const T Mddiv(max(abs(ddiv[0]), abs(ddiv[2])));
+          ddiv[0] *= Pi / Mddiv * nd2 / ndiv;
+          ddiv[2] *= Pi / Mddiv * nd2 / ndiv;
           ddiv[1]  = ddiv[0];
           ddiv[3]  = ddiv[2];
           ddiv[0]  = cos(ddiv[0]);
