@@ -268,7 +268,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
    */
   const Mat zero(result * T(0));
   // XXX configure me:
-  const T   psi(.999);
+  const T   psi(.9999);
   const int nloop(6);
   const T   rrint(.5);
   for(int i = 0; i < nloop; i ++) {
@@ -366,8 +366,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   /*
    * Get vector based bumps.
    */
-  geoms  = vector<Eigen::Matrix<T, 3, 1> >();
+  geoms = vector<Eigen::Matrix<T, 3, 1> >();
   const int vbox(16);
+  T aavg(0);
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      aavg += result(i, j);
+  aavg /= result.rows() * result.cols();
   for(int i = 0; i < result.rows() / vbox + 1; i ++)
     for(int j = 0; j < result.cols() / vbox + 1; j ++) {
       T   avg(0);
@@ -381,12 +386,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         geoms.push_back(geoms[geoms.size() - 1]);
       else {
         Eigen::Matrix<T, 3, 1> work;
-        work[0] = i * vbox;
-        work[1] = j * vbox;
-        work[2] = avg / cnt - T(.5);
-        const T sgnwork2(work[2] < T(0) ? - T(1) : T(1));
-        work[2] = min(max(sgnwork2 * max(exp(T(1)), abs(work[2]) * z_max * exp(T(1))) / z_max + exp(T(2)), exp(T(1))), exp(T(3)));
-        work[2] = log(work[2]) * sqrt(T(result.rows() * result.cols())) / T(2);
+        work[0]  = i * vbox;
+        work[1]  = j * vbox;
+        work[2]  = (avg / cnt - aavg) / T(2);
+        const T sgnw2(work[2] < T(0) ? - T(1) : T(1));
+        work[2]  = log(min(max(abs(work[2]) * exp(T(1)) + exp(T(1)),
+                               exp(T(1))), T(2) * exp(T(1))) ) - T(1);
+        work[2] *= sgnw2 * sqrt(sqrt(T(result.rows() * result.cols()))) * T(4);
         geoms.push_back(work);
       }
     }
