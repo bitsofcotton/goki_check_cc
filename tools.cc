@@ -12,7 +12,7 @@
 using namespace std;
 
 void usage() {
-  cout << "Usage: tools (enlarge|bump|collect|idetect|tilt|lpoly|3poly|match|match3d) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|bump|collect|tilt|lpoly|match|match3d) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -29,14 +29,10 @@ int main(int argc, const char* argv[]) {
     mode = 2;
   else if(strcmp(argv[1], "collect") == 0)
     mode = 4;
-  else if(strcmp(argv[1], "idetect") == 0)
-    mode = 5;
   else if(strcmp(argv[1], "tilt") == 0)
     mode = 6;
   else if(strcmp(argv[1], "lpoly") == 0)
     mode = 8;
-  else if(strcmp(argv[1], "3poly") == 0)
-    mode = 11;
   else if(strcmp(argv[1], "match") == 0)
     mode = 9;
   else if(strcmp(argv[1], "match3d") == 0)
@@ -61,13 +57,6 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> detect;
       for(int i = 0; i < 3; i ++)
         data[i] = detect.compute(data[i], enlarger2ex<double>::COLLECT_BOTH);
-    }
-    break;
-  case 5:
-    {
-      enlarger2ex<double> idetector;
-      for(int i = 0; i < 3; i ++)
-        data[i] = idetector.compute(data[i], enlarger2ex<double>::IDETECT_BOTH);
     }
     break;
   case 2:
@@ -145,8 +134,8 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<double>(data1, argv[4]))
         return - 2;
       // XXX: configure me:
-      double zrs(1.5);
-      double zre( .5);
+      double zrs(1.2);
+      double zre( .8);
       int    zrl(3);
       int    nshow(8);
       double emph(.95);
@@ -257,8 +246,8 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
       }
-      double zrs(1.5);
-      double zre( .5);
+      double zrs(1.2);
+      double zre( .8);
       int    zrl(3);
       int    nshow(8);
       double emph(.95);

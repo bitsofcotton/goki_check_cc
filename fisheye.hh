@@ -402,7 +402,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     avg += geoms[i];
   avg /= geoms.size();
   for(int i = 0; i < geoms.size(); i ++)
-    geoms[i] -= avg;
+    geoms[i][2] -= avg[2];
   delaunay = vector<Eigen::Matrix<int, 3, 1> >();
   for(int i = 1; i < result.rows() / vbox + 1; i ++)
     for(int j = 0; j < result.cols() / vbox; j ++) {
