@@ -554,7 +554,7 @@ template <typename T> void reDig<T>::init() {
 template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio) {
   const Vec3 a(refdst);
   const Vec3 b(match.rot * src * match.ratio + match.offset);
-  return dst + (b - a) * (exp(ratio) - T(1)) / exp(T(1));
+  return dst + (b - a) * ratio;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
@@ -595,10 +595,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
             checked[l * 3 + ll]  = true;
           }
         }
-        triangles[l].col(4) = tilt.solveN(triangles[l].col(0), triangles[l].col(1), triangles[l].col(2));
       }
-      triangles[l](1, 3)  = triangles[l].col(4).dot(triangles[l].col(0));
     }
+  }
+  const T zr(sqrt(T(dstimg.rows() * dstimg.cols())));
+  for(int i = 0; i < triangles.size(); i ++) {
+    cerr << "." << flush;
+    for(int k = 0; k < 3; k ++)
+      triangles[i](2, k) *= zr;
+    triangles[i].col(4) = tilt.solveN(triangles[i].col(0), triangles[i].col(1), triangles[i].col(2));
+    triangles[i](1, 3)  = triangles[i].col(4).dot(triangles[i].col(0));
   }
   
   Mat I3(3, 3);
@@ -609,7 +615,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     zero3[i] = T(0);
   }
   delete[] checked;
-  return tilt.tiltsub(dstimg, triangles, I3, I3, zero3, zero3, T(1));
+  auto rmatch(~ match);
+  return tilt.tiltsub(dstimg, triangles, rmatch.rot, I3, zero3, rmatch.offset, rmatch.ratio);
 }
 
 template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph, const T& epsilon = T(1e-4)) {

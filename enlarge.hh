@@ -179,17 +179,26 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bo
   if(flag) {
     MatU DFTa(DFT);
     MatU DFTb(DFT);
+    MatU DFTRa(DFT);
+    MatU DFTRb(DFT);
     for(int i = 0; i < DFT.rows(); i ++) {
       // XXX checkme with enlarge.wxm, DFT space plausible one:
       const T ii(i + .5);
       const U r(sin(U(ii * Pi / DFTb.rows())) / (cos(U(ii * Pi / DFTb.rows())) - U(1)));
       // This can be tricky, this sees IDFT as DFT and both same theta.
-      DFTa.row(i) = (T(1) - r) * I * DFT.row(i).conjugate();
-      DFTb.row(i) =         r  * I * DFT.row(i).conjugate();
+      DFTa.row(i)  = (T(1) - r) * I * DFT.row(i).conjugate();
+      DFTb.row(i)  =         r  * I * DFT.row(i).conjugate();
+      DFTRa.row(i) = (T(1) - r) * I * DFT.row(DFT.rows() - i - 1).conjugate();
+      DFTRb.row(i) =         r  * I * DFT.row(DFT.rows() - i - 1).conjugate();
+    }
+    MatU DFTRRa(DFTRa), DFTRRb(DFTRb);
+    for(int i = 0; i < DFTRa.rows(); i ++) {
+      DFTRRa.row(i) = DFTRa.row(DFTRa.rows() - i - 1);
+      DFTRRb.row(i) = DFTRb.row(DFTRb.rows() - i - 1);
     }
     // This also can be tricky, this sees delta of b(t).
-    const Mat Da((IDFT * DFTa).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * sqrt(T(8))));
-    const Mat Db((IDFT * DFTb).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * sqrt(T(8))));
+    const Mat Da((IDFT * (DFTa + DFTRRa)).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * sqrt(T(8))) / T(2));
+    const Mat Db((IDFT * (DFTb + DFTRRb)).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * sqrt(T(8))) / T(2));
     D = Mat(DFT.rows() * 2, DFT.cols());
     for(int i = 0; i < DFT.rows(); i ++) {
       D.row(i * 2 + 0) = Da.row(i);

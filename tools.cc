@@ -80,10 +80,11 @@ int main(int argc, const char* argv[]) {
         return - 2;
       zero = bump[0] * double(0);
       tilter<double> tilt;
+      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())));
       const int M_TILT(16);
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .975), zero, - i, M_TILT, .975);
+          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .99), zero, - i, M_TILT, .99);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
@@ -139,7 +140,7 @@ int main(int argc, const char* argv[]) {
       const int    nemph(4);
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
-        emph.push_back(double(i) / nemph);
+        emph.push_back(double(i) / nemph / double(8));
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
@@ -162,7 +163,6 @@ int main(int argc, const char* argv[]) {
         for(int j = min(mout[0].cols(), data1[0].cols()); j < mout[0].cols(); j ++)
           mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = double(0);
       }
-      
       for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
         for(int j = 0; j < mout[0].cols(); j ++)
           mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = double(0);
@@ -190,8 +190,6 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
-        tilter<double> tilt;
-        reDig<double>  redig;
         auto hull(loadBumpSimpleMesh<double>(shape0, matches[n].dstpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
         for(int idx = 0; idx < hull.size(); idx ++) {
@@ -203,6 +201,8 @@ int main(int argc, const char* argv[]) {
             buf[idx2] = matches[n].srcpoints[hull[idx][idx2]];
           mhull1.push_back(buf);
         }
+        tilter<double> tilt;
+        tilt.initialize(sqrt(double(mout[0].rows() * mout[0].cols())));
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = tilt.tilt(showMatch<double>(mout[idx], shape1, mhull1), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
         normalize<double>(outs, 1.);
@@ -223,13 +223,13 @@ int main(int argc, const char* argv[]) {
         savep2or3<double>(outfile.c_str(), outs3, false);
         
         match_t<double> rmatchn(~ matches[n]);
+        reDig<double>   redig;
         for(int kk = 0; kk < emph.size(); kk ++) {
           for(int idx = 0; idx < 3; idx ++) {
-            outs4[idx] = tilt.tilt(redig.emphasis(data[idx], bump0, shape1, shape0, rmatchn, hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk]))), bump0, rmatchn.rot, I3, rmatchn.offset, rmatchn.ratio, zero3);
-            outs5[idx] = tilt.tilt(redig.emphasis(mout[idx], mbump, shape0, shape1, matches[n], hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk]))), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
+            outs4[idx] = redig.emphasis(mout[idx], mbump, shape1, shape0, rmatchn,    hull, emph[kk]);
+            outs5[idx] = redig.emphasis(data[idx], bump0, shape0, shape1, matches[n], hull, emph[kk]);
           }
-          normalize<double>(outs4, 1.);
-          outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-") + std::to_string(kk) + std::string(".ppm");
+          outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-a-") + std::to_string(kk) + std::string(".ppm");
           savep2or3<double>(outfile.c_str(), outs4, false);
           outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-b-") + std::to_string(kk) + std::string(".ppm");
           savep2or3<double>(outfile.c_str(), outs5, false);
