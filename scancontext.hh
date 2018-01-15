@@ -153,6 +153,18 @@ public:
   match_t(const match_t<T>& other) {
     *this = other;
   }
+  match_t<T>  operator ~ () const {
+    match_t<T> result;
+    result.rot    = rot.transpose();
+    result.offset = - offset;
+    result.ratio  = T(1) / ratio;
+    result.rdepth = rdepth;
+    result.dstpoints  = srcpoints;
+    result.srcpoints  = dstpoints;
+    result.thresh     = thresh;
+    result.threshsize = threshsize;
+    return result;
+  }
   match_t<T>& operator = (const match_t<T>& other) {
     rot        = other.rot;
     offset     = other.offset;
@@ -542,7 +554,7 @@ template <typename T> void reDig<T>::init() {
 template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio) {
   const Vec3 a(refdst);
   const Vec3 b(match.rot * src * match.ratio + match.offset);
-  return dst + (b - a) * (exp(ratio) - exp(T(1))) / exp(T(1));
+  return dst + (b - a) * (exp(ratio) - T(1)) / exp(T(1));
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
