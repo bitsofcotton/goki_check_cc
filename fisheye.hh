@@ -273,6 +273,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   const T   rrint(.5);
   for(int i = 0; i < nloop; i ++) {
     tilter<T> tilt;
+    tilt.initialize(sqrt(T(result.rows() * result.cols())));
     for(int j = 0; j < 6; j ++) {
       Mat comp(tilt.tilt(tilt.tilt(result, result, j * 2 + 1, 12, psi), zero, - j * 2 - 1, 12, psi));
       for(int ii = 0; ii < result.rows(); ii ++)

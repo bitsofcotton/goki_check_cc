@@ -48,7 +48,7 @@ private:
 };
 
 template <typename T> tilter<T>::tilter() {
-  initialize(.5);
+  initialize(1.);
   return;
 }
 
@@ -111,7 +111,7 @@ template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& 
   for(int i = 0; i < 3; i ++)
     work(i, 3) = 0.;
   for(int i = 0; i < 3;  i ++) {
-    work(2, i)  = bump(int(work(0, i)), int(work(1, i))) * sqrt(T(in.rows() * in.cols())) * z_ratio;
+    work(2, i)  = bump(int(work(0, i)), int(work(1, i))) * z_ratio;
     work(0, 3) += in(int(work(0, i)), int(work(1, i)));
   }
   work(0, 3) /= 3.;
@@ -271,9 +271,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
       gs[k][0] = tri(0, k);
       gs[k][1] = tri(1, k);
     }
-    int ll = int(min(min(gs[0][0], gs[1][0]), gs[2][0]));
+    int ll = int( min(min(gs[0][0], gs[1][0]), gs[2][0]));
     int rr = ceil(max(max(gs[0][0], gs[1][0]), gs[2][0])) + 1;
-    int bb = int(min(min(gs[0][1], gs[1][1]), gs[2][1]));
+    int bb = int( min(min(gs[0][1], gs[1][1]), gs[2][1]));
     int tt = ceil(max(max(gs[0][1], gs[1][1]), gs[2][1])) + 1;
     for(int y = max(0, ll); y < min(rr, int(in.rows())); y ++)
       for(int x = max(0, bb); x < min(tt, int(in.cols())); x ++) {
@@ -281,10 +281,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
         Vec2 midgeom;
         midgeom[0] = y;
         midgeom[1] = x;
-        if(onTriangle(z, tri, midgeom)
-           && zb(y, x) < z) {
-            result(y, x)  = tri(0, 3);
-            zb(y, x)      = z;
+        if(onTriangle(z, tri, midgeom) && isfinite(z) && zb(y, x) < z) {
+          result(y, x) = tri(0, 3);
+          zb(y, x)     = z;
         }
       }
   }
