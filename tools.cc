@@ -225,7 +225,7 @@ int main(int argc, const char* argv[]) {
         match_t<double> rmatchn(~ matches[n]);
         for(int kk = 0; kk < emph.size(); kk ++) {
           for(int idx = 0; idx < 3; idx ++) {
-            outs4[idx]  =              emph[kk]  * redig.emphasis(data[idx], bump0, shape1, shape0, rmatchn, hull, log(exp(double(1)) * (double(1) + emph[kk])));
+            outs4[idx]  =              emph[kk]  * redig.emphasis(data[idx], bump0, shape1, shape0, rmatchn, hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk])));
             outs4[idx] += (double(1) - emph[kk]) * tilt.tilt(redig.emphasis(mout[idx], mbump, shape0, shape1, matches[n], hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk]))), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
           }
           normalize<double>(outs4, 1.);
