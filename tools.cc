@@ -189,7 +189,7 @@ int main(int argc, const char* argv[]) {
       double zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3];
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
         tilter<double> tilt;
         reDig<double>  redig;
         auto hull(loadBumpSimpleMesh<double>(shape0, matches[n].dstpoints));
@@ -225,12 +225,14 @@ int main(int argc, const char* argv[]) {
         match_t<double> rmatchn(~ matches[n]);
         for(int kk = 0; kk < emph.size(); kk ++) {
           for(int idx = 0; idx < 3; idx ++) {
-            outs4[idx]  =              emph[kk]  * redig.emphasis(data[idx], bump0, shape1, shape0, rmatchn, hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk])));
-            outs4[idx] += (double(1) - emph[kk]) * tilt.tilt(redig.emphasis(mout[idx], mbump, shape0, shape1, matches[n], hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk]))), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
+            outs4[idx] = tilt.tilt(redig.emphasis(data[idx], bump0, shape1, shape0, rmatchn, hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk]))), bump0, rmatchn.rot, I3, rmatchn.offset, rmatchn.ratio, zero3);
+            outs5[idx] = tilt.tilt(redig.emphasis(mout[idx], mbump, shape0, shape1, matches[n], hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk]))), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
           }
           normalize<double>(outs4, 1.);
           outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-") + std::to_string(kk) + std::string(".ppm");
           savep2or3<double>(outfile.c_str(), outs4, false);
+          outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-b-") + std::to_string(kk) + std::string(".ppm");
+          savep2or3<double>(outfile.c_str(), outs5, false);
         }
       }
     }
