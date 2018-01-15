@@ -81,8 +81,6 @@ int main(int argc, const char* argv[]) {
       zero = bump[0] * double(0);
       tilter<double> tilt;
       const int M_TILT(16);
-      // tilt.initialize(.3125);
-      tilt.initialize(.5);
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
           out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .975), zero, - i, M_TILT, .975);
@@ -140,7 +138,7 @@ int main(int argc, const char* argv[]) {
       const int    nshow(8);
       const int    nemph(4);
       std::vector<double> emph;
-      for(int i = 0; i < nemph; i ++)
+      for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph);
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
@@ -194,7 +192,6 @@ int main(int argc, const char* argv[]) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3];
         tilter<double> tilt;
         reDig<double>  redig;
-        tilt.initialize(zr / (data[0].rows() * data[0].cols()));
         auto hull(loadBumpSimpleMesh<double>(shape0, matches[n].dstpoints));
         std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
         for(int idx = 0; idx < hull.size(); idx ++) {
@@ -225,10 +222,11 @@ int main(int argc, const char* argv[]) {
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-match.ppm");
         savep2or3<double>(outfile.c_str(), outs3, false);
         
+        match_t<double> rmatchn(~ matches[n]);
         for(int kk = 0; kk < emph.size(); kk ++) {
           for(int idx = 0; idx < 3; idx ++) {
-            outs4[idx]  =              emph[kk]  * redig.emphasis(data[idx], bump0, shape0, shape1, matches[n], hull, emph[kk]);
-            outs4[idx] += (double(1) - emph[kk]) * tilt.tilt(redig.emphasis(mout[idx], bump1, shape1, shape0, matches[n], hull, double(1) - emph[kk]), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
+            outs4[idx]  =              emph[kk]  * redig.emphasis(data[idx], bump0, shape1, shape0, rmatchn, hull, log(exp(double(1)) * (double(1) + emph[kk])));
+            outs4[idx] += (double(1) - emph[kk]) * tilt.tilt(redig.emphasis(mout[idx], mbump, shape0, shape1, matches[n], hull, log(exp(double(1)) * exp(double(1)) * (double(1) - emph[kk]))), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
           }
           normalize<double>(outs4, 1.);
           outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-") + std::to_string(kk) + std::string(".ppm");
@@ -282,9 +280,7 @@ int main(int argc, const char* argv[]) {
       double zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
-        tilter<double> tilt;
         reDig<double>  redig;
-        tilt.initialize(zr / sqrt((data[0].rows() * data[0].cols()) / (data[0].rows() * data[0].cols())));
         cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         
         auto ch(loadBumpSimpleMesh<double>(shape, matches[n].dstpoints));
