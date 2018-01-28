@@ -39,11 +39,12 @@ public:
   PseudoBump();
   ~PseudoBump();
   void initialize(const int& z_max, const int& stp);
-  Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
+  Mat  getPseudoBumpVec(const Mat& in0, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   
   Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard= int(1));
   T    getImgPt(const Mat& img, const int& y, const int& x);
   void setImgPt(Mat& img, const int& y, const int& x, const T& v);
+  Mat  autoLevel(const Mat& data, int npad = - 1);
 
 private:
   Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const int& lower = 0, int upper = - 1);
@@ -52,8 +53,8 @@ private:
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& p0, const Vec& p1, const int& hh, const int& ww, const int& rstp);
   T    getImgPt(const Vec& img, const T& y);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
-  Mat  autoLevel(const Mat& data, int npad = - 1);
   Vec2i getHexGeom(const Vec2i& center, const int& idx, const int& Midx);
+  Mat  eliminateBorder(const Mat& in, const int& ioff, const T& rrint = T(.5));
   
   int z_max;
   int stp;
@@ -171,12 +172,18 @@ template <typename T> Eigen::Matrix<int, 2, 1> PseudoBump<T>::getHexGeom(const V
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in0) {
+  // XXX configure me:
+  const int ioff(4);
+  
+  /*
+   * eliminate border line.
+   */
+  Mat in(eliminateBorder(in0, ioff));
+
   /*
    * Get hex tile based bumpmap.
    */
-  // XXX configure me:
-  const int ioff(4);
   Vec p0(3), p1(3);
   p0[0] = 0;
   p0[1] = 0;
@@ -270,7 +277,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   // XXX configure me:
   const T   psi(.9999);
   const int nloop(6);
-  const T   rrint(.5);
   for(int i = 0; i < nloop; i ++) {
     tilter<T> tilt;
     tilt.initialize(sqrt(T(result.rows() * result.cols())));
@@ -282,35 +288,28 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
             result(ii, jj) = (result(ii, jj) + comp(ii, jj)) / T(2);
     }
   }
-  result = autoLevel(result);
   
   /*
    * Get complemented.
    */
-  enlarger2ex<T> detect;
-  const Mat rdet(detect.compute(result, detect.COLLECT_BOTH));
-  T rint(0);
-  for(int i = 0; i < rdet.rows(); i ++)
-    for(int j = 0; j < rdet.cols(); j ++)
-      rint += rdet(i, j);
-  rint *= rrint / T(rdet.rows() * rdet.cols());
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      if(rdet(i, j) < rint)
-        result(i, j) = - T(1);
-  Mat rr(result.rows(), result.cols());
-  Mat rc(result.rows(), result.cols());
-  const T   crr(.5);
-  const int guard(ioff);
-  for(int i = 0; i < result.rows(); i ++)
-    rr.row(i) = complementLine(result.row(i), crr, guard);
-  for(int i = 0; i < result.cols(); i ++)
-    rr.col(i) = complementLine(rr.col(i), crr, guard);
-  for(int i = 0; i < result.cols(); i ++)
-    rc.col(i) = complementLine(result.col(i), crr, guard);
-  for(int i = 0; i < result.rows(); i ++)
-    rc.row(i) = complementLine(rc.row(i), crr, guard);
-  return autoLevel(rr + rc);
+  result = autoLevel(eliminateBorder(autoLevel(result), ioff));
+  
+  /*
+   * Complement bump map with tilt in a hextile way.
+   * Get a little thick result.
+   */
+  for(int i = 0; i < nloop; i ++) {
+    tilter<T> tilt;
+    tilt.initialize(sqrt(T(result.rows() * result.cols())));
+    for(int j = 0; j < 6; j ++) {
+      Mat comp(tilt.tilt(tilt.tilt(result, result, j * 2 + 1, 12, psi), zero, - j * 2 - 1, 12, psi));
+      for(int ii = 0; ii < result.rows(); ii ++)
+        for(int jj = 0; jj < result.cols(); jj ++)
+          if(abs(result(ii, jj)) < abs(comp(ii, jj)))
+            result(ii, jj) = (result(ii, jj) + comp(ii, jj)) / T(2);
+    }
+  }
+  return autoLevel(result);
 }
   
 // get bump with multiple scale and vectored result.
@@ -568,6 +567,35 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       result(i, j) = (max(min(data(i, j), MM), mm) - mm) / (MM - mm);
   return result;
 }
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::eliminateBorder(const Mat& in, const int& ioff, const T& rrint) {
+  enlarger2ex<double> detect;
+  const Mat rdet(detect.compute(in, detect.COLLECT_BOTH));
+  Mat result(in);
+  T rint(0);
+  for(int i = 0; i < rdet.rows(); i ++)
+    for(int j = 0; j < rdet.cols(); j ++)
+      rint += rdet(i, j);
+  rint *= rrint / T(rdet.rows() * rdet.cols());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      if(rdet(i, j) < rint)
+        result(i, j) = - T(1);
+  Mat rr(result.rows(), result.cols());
+  Mat rc(result.rows(), result.cols());
+  const T   crr(.5);
+  const int guard(ioff);
+  for(int i = 0; i < result.rows(); i ++)
+    rr.row(i) = complementLine(result.row(i), crr, guard);
+  for(int i = 0; i < result.cols(); i ++)
+    rr.col(i) = complementLine(rr.col(i), crr, guard);
+  for(int i = 0; i < result.cols(); i ++)
+    rc.col(i) = complementLine(result.col(i), crr, guard);
+  for(int i = 0; i < result.rows(); i ++)
+    rc.row(i) = complementLine(rc.row(i), crr, guard);
+  return (rr + rc) / T(2);
+}
+
 
 #define _2D3D_PSEUDO_
 #endif
