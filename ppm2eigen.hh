@@ -15,6 +15,10 @@ using std::istringstream;
 using std::ofstream;
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb2l(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb[3]) {
+  // CIE 1931 XYZ from wikipedia.org
+  auto Y(rgb[0] + .81240/.17697 * rgb[1] + .010630/.17697 * rgb[2]);
+  return Y;
+/*
   auto Y(T( .299  ) * rgb[0] + T( .587  ) * rgb[1] + T(.114   ) * rgb[2]);
   auto U(T(-.14713) * rgb[0] + T(-.28886) * rgb[1] + T(.436   ) * rgb[2]);
   auto V(T( .615  ) * rgb[0] + T(-.51499) * rgb[1] + T(-.10001) * rgb[2]);
@@ -26,6 +30,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb2l(con
     for(int k = 0; k < rgb[0].cols(); k ++)
       result(j, k) = sqrt(Y(j, k) * Y(j, k) + U(j, k) * U(j, k) + V(j, k) * V(j, k));
   return result;
+*/
 }
 
 template <typename T> bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* datas) {
@@ -143,7 +148,7 @@ template <typename T> bool savep2or3(const char* filename, Eigen::Matrix<T, Eige
 }
 
 template <typename T> void normalize(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> data[3], const T& upper) {
-  T MM(0), mm(0);
+  T MM(data[0](0, 0)), mm(data[0](0, 0));
   for(int k = 0; k < 3; k ++)
     for(int i = 0; i < data[k].rows(); i ++)
       for(int j = 0; j < data[k].cols(); j ++) {

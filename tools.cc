@@ -12,7 +12,7 @@
 using namespace std;
 
 void usage() {
-  cout << "Usage: tools (enlarge|bump|collect|tilt|lpoly|match|match3d) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|bump|bump2|rbump2|collect|tilt|lpoly|match|match3d) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -27,6 +27,10 @@ int main(int argc, const char* argv[]) {
     mode = 0;
   else if(strcmp(argv[1], "bump") == 0)
     mode = 2;
+  else if(strcmp(argv[1], "bump2") == 0)
+    mode = 3;
+  else if(strcmp(argv[1], "rbump2") == 0)
+    mode = 5;
   else if(strcmp(argv[1], "collect") == 0)
     mode = 4;
   else if(strcmp(argv[1], "tilt") == 0)
@@ -71,6 +75,33 @@ int main(int argc, const char* argv[]) {
         std::cout << points[i].transpose() << std::endl;
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3];
       saveobj(points, delaunay, argv[4]);
+    }
+    break;
+  case 3:
+    {
+      PseudoBump<double> bump;
+      std::vector<Eigen::Matrix<double, 3, 1> > points;
+      std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
+      auto bumps(bump.getPseudoBumpVec(rgb2l(data), points, delaunay));
+      auto X(.49000/.17697 * data[0] + .31000/.17697  * data[1] + .20000/.17697 * data[2]);
+      auto Z(                          .010000/.17697 * data[1] + .99000/.17697 * data[2]);
+      data[0] = X     / 8.;
+      data[1] = bumps / 8.;
+      data[2] = Z     / 8.;
+    }
+    if(!savep2or3<double>(argv[3], data, ! true))
+      return - 3;
+    return 0;
+    break;
+  case 5:
+    {
+      auto R(  .41847    * data[0] - .15866   * data[1] - .082835 * data[2]);
+      auto G(- .091169   * data[0] + .25243   * data[1] + .015708 * data[2]);
+      auto B(  .00092090 * data[0] - .0025498 * data[1] + .17860  * data[2]);
+      PseudoBump<double> bump;
+      data[0] = R;
+      data[1] = G;
+      data[2] = B;
     }
     break;
   case 6:
