@@ -38,8 +38,8 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp);
-  Mat  getPseudoBumpVec(const Mat& in0, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
+  void initialize(const int& z_max, const int& stp, const T& rthresh);
+  Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   
   Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard= int(1));
   T    getImgPt(const Mat& img, const int& y, const int& x);
@@ -54,27 +54,30 @@ private:
   T    getImgPt(const Vec& img, const T& y);
   Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   Vec2i getHexGeom(const Vec2i& center, const int& idx, const int& Midx);
-  Mat  eliminateBorder(const Mat& in, const int& ioff, const T& rrint = T(.5));
   
   int z_max;
   int stp;
+  T   rthresh;
+  int ioff;
   
   T   Pi;
   Mat Dop;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 15);
+  initialize(20, 15, 2.);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp) {
-  this->Pi      = T(4) * atan2(T(1), T(1));
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& rthresh) {
   this->z_max   = z_max;
   this->stp     = stp;
+  this->rthresh = rthresh;
+  this->ioff    = 4;
+  this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
@@ -87,7 +90,6 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   return;
 };
 
-// bump it with max abs(d/dt local color) >> 0.
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const int& lower, int upper) {
   cerr << "." << flush;
   if(upper <= 0)
@@ -117,6 +119,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   for(int s = lower; s < upper; s ++) {
     Vec pt(indiv(p0, p1, s / T(result.size())));
     for(int zz = 0; zz < cf.size(); zz ++) {
+      // d/dt (local color):
       Vec c(cf[zz].cols());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(workv, cf[zz](0, u) + pt[0] + stp / 2);
@@ -125,7 +128,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
         rc[u] = c[c.size() - 1 - u];
       const T n2(abs(Dop.row( c.size() / 2).dot( c)) +
                  abs(Dop.row(rc.size() / 2).dot(rc)) );
-      if(isfinite(n2) && zval[s] < n2) {
+      // ||local color|| >> ||near local color||
+      // for suppress pseudo detect.
+      T ci(0), co(0);
+      for(int u = 0; u < c.size() / 3; u ++)
+        co += c[u] * c[u] + c[c.size() - u - 1] * c[c.size() - u - 1];
+      for(int u = c.size() / 3; u < c.size(); u ++)
+        ci += c[u] * c[u];
+      const T r2(co / ci);
+      if(isfinite(n2) && zval[s] < n2 && isfinite(r2) && r2 < rthresh) {
         // N.B. If increase zz, decrease the distance from camera.
         //      And, zz->0 is treated as distant in tilter.
         result[s] = (T(1) + zz) / T(cf.size());
@@ -172,15 +183,7 @@ template <typename T> Eigen::Matrix<int, 2, 1> PseudoBump<T>::getHexGeom(const V
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in0) {
-  // XXX configure me:
-  const int ioff(4);
-  
-  /*
-   * eliminate border line.
-   */
-  Mat in(eliminateBorder(in0, ioff));
-
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
   /*
    * Get hex tile based bumpmap.
    */
@@ -266,50 +269,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           setImgPt(bumps, geom[0], geom[1] + 1, buf);
       }
     }
-    result -= bumps;
+    result += bumps;
   }
-  
-  /*
-   * Complement bump map with tilt in a hextile way.
-   * Get a little thick result.
-   */
-  const Mat zero(result * T(0));
-  // XXX configure me:
-  const T   psi(.9999);
-  const int nloop(6);
-  for(int i = 0; i < nloop; i ++) {
-    tilter<T> tilt;
-    tilt.initialize(sqrt(T(result.rows() * result.cols())));
-    for(int j = 0; j < 6; j ++) {
-      Mat comp(tilt.tilt(tilt.tilt(result, result, j * 2 + 1, 12, psi), zero, - j * 2 - 1, 12, psi));
-      for(int ii = 0; ii < result.rows(); ii ++)
-        for(int jj = 0; jj < result.cols(); jj ++)
-          if(abs(result(ii, jj)) < abs(comp(ii, jj)))
-            result(ii, jj) = (result(ii, jj) + comp(ii, jj)) / T(2);
-    }
-  }
-  
-  /*
-   * Get complemented.
-   */
-  result = autoLevel(eliminateBorder(autoLevel(result), ioff));
-  
-  /*
-   * Complement bump map with tilt in a hextile way.
-   * Get a little thick result.
-   */
-  for(int i = 0; i < nloop; i ++) {
-    tilter<T> tilt;
-    tilt.initialize(sqrt(T(result.rows() * result.cols())));
-    for(int j = 0; j < 6; j ++) {
-      Mat comp(tilt.tilt(tilt.tilt(result, result, j * 2 + 1, 12, psi), zero, - j * 2 - 1, 12, psi));
-      for(int ii = 0; ii < result.rows(); ii ++)
-        for(int jj = 0; jj < result.cols(); jj ++)
-          if(abs(result(ii, jj)) < abs(comp(ii, jj)))
-            result(ii, jj) = (result(ii, jj) + comp(ii, jj)) / T(2);
-    }
-  }
-  return autoLevel(result);
+  return result;
 }
   
 // get bump with multiple scale and vectored result.
@@ -340,7 +302,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         else
           work(i, j)  = T(0);
       }
-    buf = work;
+    buf  = work;
     work = getPseudoBump(buf);
     Mat work2(in.rows(), in.cols());
     for(int i = 0; i < work2.rows(); i ++)
@@ -360,8 +322,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       work3.col(i) = complementLine(work3.col(i));
     for(int i = 0; i < work3.rows(); i ++)
       work3.row(i) = complementLine(work3.row(i));
-    result += work2 + work3;
+    result += (work2 + work3);
   }
+  result = autoLevel(result, result.rows() + result.cols());
   
   /*
    * Get vector based bumps.
@@ -392,7 +355,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         const T sgnw2(work[2] < T(0) ? - T(1) : T(1));
         work[2]  = log(min(max(abs(work[2]) * exp(T(1)) + exp(T(1)),
                                exp(T(1))), T(2) * exp(T(1))) ) - T(1);
-        work[2] *= sgnw2 * sqrt(sqrt(T(result.rows() * result.cols()))) * T(4);
+        work[2] *= sgnw2 * sqrt(T(result.rows() * result.cols()));
         geoms.push_back(work);
       }
     }
@@ -506,13 +469,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
   pts.insert(pts.begin(), pts[1]);
   ptsi.push_back(line.size() + (line.size() - ptsi[ptsi.size() - 3]));
   pts.push_back(pts[pts.size() - 3]);
-  int rng[3];
+  int rng[3], next(0);
   rng[0] = rng[1] = rng[2] = 1;
-  for(int i = 0; i < line.size(); i ++) {
+  int i;
+  for(i = 0; i < line.size(); i ++) {
     if(result[i] >= T(0))
       continue;
     for(; rng[1] < ptsi.size() - 2 && ptsi[rng[1]] < i; rng[1] ++) ;
     rng[0] = rng[2] = rng[1];
+    next   = ptsi[rng[1] + 1];
     while(0 < rng[0] && ptsi[rng[1]] - ptsi[rng[0]] <= guard)
       rng[0] --;
     while(rng[2] < ptsi.size() - 1 && ptsi[rng[2]] - ptsi[rng[1]] <= guard)
@@ -533,15 +498,17 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
             break;
       }
     }
-    result[i] = 0.;
-    for(int ii = 0; ii < 3; ii ++) {
-      T work(1);
-      for(int jj = 0; jj < 3; jj ++)
-        if(ptsi[rng[ii]] != ptsi[rng[jj]])
-          work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
-      result[i] += work * pts[rng[ii]];
+    for(; i < min(next, int(line.size())); i ++) {
+      result[i] = 0.;
+      for(int ii = 0; ii < 3; ii ++) {
+        T work(1);
+        for(int jj = 0; jj < 3; jj ++)
+          if(ptsi[rng[ii]] != ptsi[rng[jj]])
+            work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
+        result[i] += work * pts[rng[ii]];
+      }
+      result[i] = max(min(result[i], T(2)), - T(1));
     }
-    result[i] = max(min(result[i], T(2)), - T(1));
   }
   return result;
 }
@@ -567,35 +534,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       result(i, j) = (max(min(data(i, j), MM), mm) - mm) / (MM - mm);
   return result;
 }
-
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::eliminateBorder(const Mat& in, const int& ioff, const T& rrint) {
-  enlarger2ex<double> detect;
-  const Mat rdet(detect.compute(in, detect.COLLECT_BOTH));
-  Mat result(in);
-  T rint(0);
-  for(int i = 0; i < rdet.rows(); i ++)
-    for(int j = 0; j < rdet.cols(); j ++)
-      rint += rdet(i, j);
-  rint *= rrint / T(rdet.rows() * rdet.cols());
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      if(rdet(i, j) < rint)
-        result(i, j) = - T(1);
-  Mat rr(result.rows(), result.cols());
-  Mat rc(result.rows(), result.cols());
-  const T   crr(.5);
-  const int guard(ioff);
-  for(int i = 0; i < result.rows(); i ++)
-    rr.row(i) = complementLine(result.row(i), crr, guard);
-  for(int i = 0; i < result.cols(); i ++)
-    rr.col(i) = complementLine(rr.col(i), crr, guard);
-  for(int i = 0; i < result.cols(); i ++)
-    rc.col(i) = complementLine(result.col(i), crr, guard);
-  for(int i = 0; i < result.rows(); i ++)
-    rc.row(i) = complementLine(rc.row(i), crr, guard);
-  return (rr + rc) / T(2);
-}
-
 
 #define _2D3D_PSEUDO_
 #endif
