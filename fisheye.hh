@@ -59,6 +59,7 @@ private:
   int stp;
   T   rthresh;
   int ioff;
+  int lloop;
   
   T   Pi;
   Mat Dop;
@@ -77,6 +78,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->stp     = stp;
   this->rthresh = rthresh;
   this->ioff    = 4;
+  this->lloop   = 4;
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -85,7 +87,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
       IDFT(i, j) = exp(complex<T>(  2.) * Pi * sqrt(complex<T>(- 1)) * complex<T>(i * j / T(stp))) / T(stp);
     }
   for(int i = 0; i < DFT.rows(); i ++)
-    DFT.row(i) *= complex<T>(2.) * Pi * sqrt(complex<T>(- 1)) * T(i) / T(DFT.rows());
+    DFT.row(i) *= complex<T>(2.) * Pi * sqrt(complex<T>(- 1)) * T(i) / T(DFT.rows()) * T(8);
   Dop  = (IDFT * DFT).real();
   return;
 };
@@ -237,11 +239,17 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       for(int j = i1; j < work.size(); j ++)
         work[j] = work[j % i1];
       work = complementLine(work);
-      Vec lwork((work.size() + ioff - 1) / ioff);
-      for(int k = 0; k < lwork.size(); k ++) {
-        int cnt(0);
-        lwork[k] = T(0);
-        for(int l = 0; l < ioff && k * ioff + l < work.size(); l ++) {
+      for(int jjj = 0; jjj < lloop; jjj ++) {
+        if(jjj)
+          for(int kk = 0; kk < work.size(); kk ++)
+            if(kk % int(pow(2, jjj)))
+              work[kk] = - T(1);
+        work = complementLine(work);
+        Vec lwork((work.size() + ioff - 1) / ioff);
+        for(int k = 0; k < lwork.size(); k ++) {
+          int cnt(0);
+          lwork[k] = T(0);
+          for(int l = 0; l < ioff && k * ioff + l < work.size(); l ++) {
             lwork[k] += work[k * ioff + l];
             cnt ++;
           }
@@ -249,24 +257,26 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
             lwork[k] /= cnt;
           else
             lwork[k]  = T(0);
-      }
-      lwork = getPseudoBumpSub(lwork, cf,
-               (i1 + int(min(ii, jj) * i1 / i / 6)) / ioff,
-               (i1 + int(max(ii, jj) * i1 / i / 6)) / ioff + 1);
-      Vec res(work.size());
-      for(int k = 0; k < lwork.size(); k ++)
-        for(int l = 0; l < ioff && k * ioff + l < work.size(); l ++)
-          res[k * ioff + l] =
-            l == ioff / 2 ? lwork[k] : - T(1);
-      res = complementLine(res);
-      for(int j = 0; j < i * 6; j ++) {
-        Vec2i geom(getHexGeom(corners[ic], j, i * 6));
-        const T& buf(res[i1 + int(j * i1 / i / 6)]);
-        setImgPt(bumps, geom[0], geom[1], buf);
-        if(j / i == 1)
-          setImgPt(bumps, geom[0], geom[1] - 1, buf);
-        if(j / i == 4)
-          setImgPt(bumps, geom[0], geom[1] + 1, buf);
+        }
+        lwork = getPseudoBumpSub(lwork, cf,
+                 (i1 + int(min(ii, jj) * i1 / i / 6)) / ioff,
+                 (i1 + int(max(ii, jj) * i1 / i / 6)) / ioff + 1);
+        Vec res(work.size());
+        for(int k = 0; k < lwork.size(); k ++)
+          for(int l = 0; l < ioff && k * ioff + l < work.size(); l ++)
+            res[k * ioff + l] =
+              l == ioff / 2 ? lwork[k] : - T(1);
+        res = complementLine(res);
+        for(int j = 0; j < i * 6; j ++) {
+          Vec2i geom(getHexGeom(corners[ic], j, i * 6));
+          // XXX may have a glitch.
+          const T buf((res[i1 + int(j * i1 / i / 6)] + getImgPt(bumps, geom[0], geom[1])) / T(2));
+          setImgPt(bumps, geom[0], geom[1], buf);
+          if(j / i == 1)
+            setImgPt(bumps, geom[0], geom[1] - 1, buf);
+          if(j / i == 4)
+            setImgPt(bumps, geom[0], geom[1] + 1, buf);
+        }
       }
     }
     result += bumps;
@@ -277,55 +287,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 // get bump with multiple scale and vectored result.
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
   cerr << "bump" << flush;
-  /*
-   * get each scale bumps.
-   */
-  Mat result(in.rows(), in.cols());
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = T(0);
-  Mat buf(in);
-  while(64 < min(buf.rows(), buf.cols())) {
-    // halfen.
-    Mat work((buf.rows() + 1) / 2, (buf.cols() + 1) / 2);
-    for(int i = 0; i < work.rows(); i ++)
-      for(int j = 0; j < work.cols(); j ++) {
-        work(i, j) = T(0);
-        int cnt(0);
-        for(int ii = i * 2; ii < min((i + 1) * 2, int(buf.rows())); ii ++)
-          for(int jj = j * 2; jj < min((j + 1) * 2, int(buf.cols())); jj ++) {
-            work(i, j) += buf(ii, jj);
-            cnt ++;
-          }
-        if(cnt)
-          work(i, j) /= cnt;
-        else
-          work(i, j)  = T(0);
-      }
-    buf  = work;
-    work = getPseudoBump(buf);
-    Mat work2(in.rows(), in.cols());
-    for(int i = 0; i < work2.rows(); i ++)
-      for(int j = 0; j < work2.cols(); j ++)
-        if(!(i % (work2.rows() / buf.rows())) &&
-           !(j % (work2.cols() / buf.cols())))
-          work2(i, j) = work(i * buf.rows() / work2.rows(),
-                             j * buf.cols() / work2.cols());
-        else
-          work2(i, j) = - T(1);
-    Mat work3(work2);
-    for(int i = 0; i < work2.rows(); i ++)
-      work2.row(i) = complementLine(work2.row(i));
-    for(int i = 0; i < work2.cols(); i ++)
-      work2.col(i) = complementLine(work2.col(i));
-    for(int i = 0; i < work3.cols(); i ++)
-      work3.col(i) = complementLine(work3.col(i));
-    for(int i = 0; i < work3.rows(); i ++)
-      work3.row(i) = complementLine(work3.row(i));
-    result += (work2 + work3);
-  }
-  result = autoLevel(result, result.rows() + result.cols());
-  
+  Mat result(autoLevel(getPseudoBump(in)));
+
   /*
    * Get vector based bumps.
    */
@@ -355,7 +318,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         const T sgnw2(work[2] < T(0) ? - T(1) : T(1));
         work[2]  = log(min(max(abs(work[2]) * exp(T(1)) + exp(T(1)),
                                exp(T(1))), T(2) * exp(T(1))) ) - T(1);
-        work[2] *= sgnw2 * sqrt(T(result.rows() * result.cols()));
+        work[2] *= - sgnw2 * sqrt(T(result.rows() * result.cols()));
         geoms.push_back(work);
       }
     }
@@ -477,7 +440,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
       continue;
     for(; rng[1] < ptsi.size() - 2 && ptsi[rng[1]] < i; rng[1] ++) ;
     rng[0] = rng[2] = rng[1];
-    next   = ptsi[rng[1] + 1];
+    next   = ptsi[rng[1]];
     while(0 < rng[0] && ptsi[rng[1]] - ptsi[rng[0]] <= guard)
       rng[0] --;
     while(rng[2] < ptsi.size() - 1 && ptsi[rng[2]] - ptsi[rng[1]] <= guard)
