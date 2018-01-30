@@ -40,7 +40,7 @@ public:
   ~PseudoBump();
   void initialize(const int& z_max, const int& stp, const T& rthresh);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, const bool& elim = false);
-  Mat  eliminateBorder(const Mat& img, const T& ratio = T(.05));
+  Mat  eliminateBorder(const Mat& img, const T& ratio = T(.05), const bool& complement = false);
   
 private:
   Vec   complementLine(const Vec& line, const T& rratio = T(.5), const int& guard= int(1));
@@ -302,7 +302,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     result = eliminateBorder(result);
   result = autoLevel(getPseudoBump(autoLevel(result)));
   if(elim)
-    result = autoLevel(eliminateBorder(result));
+    result = autoLevel(eliminateBorder(autoLevel(eliminateBorder(result)), .05, true));
 
   /*
    * Get vector based bumps.
@@ -498,7 +498,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::eliminateBorder(const Mat& img, const T& ratio) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::eliminateBorder(const Mat& img, const T& ratio, const bool& complement) {
   enlarger2ex<T> detect;
   vector<T>      stat;
   const Mat refd(detect.compute(img, detect.COLLECT_BOTH));
@@ -516,7 +516,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
       break;
   for(int i = 0; i < refd.rows(); i ++)
     for(int j = 0; j < refd.cols(); j ++)
-      if(refd(i, j) < stat[li] || stat[ui] < refd(i, j))
+      if((!complement && (refd(i, j) < stat[li] || stat[ui] < refd(i, j))) ||
+         ( complement && stat[li] < refd(i, j) && refd(i, j) < stat[ui]))
         result(i, j) = - T(1);
   Mat r2(result);
   for(int i = 0; i < result.rows(); i ++)
