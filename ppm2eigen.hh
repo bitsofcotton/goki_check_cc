@@ -16,21 +16,18 @@ using std::ofstream;
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb2l(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb[3]) {
   // CIE 1931 XYZ from wikipedia.org
-  auto Y(rgb[0] + .81240/.17697 * rgb[1] + .010630/.17697 * rgb[2]);
+  auto X(.49000/.17697 * rgb[0] + .31000/.17697  * rgb[1] + .30000/.17697  * rgb[2]);
+  auto Y(.17697/.17697 * rgb[0] + .81240/.17697  * rgb[1] + .010630/.17697 * rgb[2]);
+  auto Z(                         .010000/.17697 * rgb[1] + .99000/.17697  * rgb[2]);
   return Y;
-/*
-  auto Y(T( .299  ) * rgb[0] + T( .587  ) * rgb[1] + T(.114   ) * rgb[2]);
-  auto U(T(-.14713) * rgb[0] + T(-.28886) * rgb[1] + T(.436   ) * rgb[2]);
-  auto V(T( .615  ) * rgb[0] + T(-.51499) * rgb[1] + T(-.10001) * rgb[2]);
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(rgb[0].rows(), rgb[0].cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < rgb[0].rows(); j ++)
     for(int k = 0; k < rgb[0].cols(); k ++)
-      result(j, k) = sqrt(Y(j, k) * Y(j, k) + U(j, k) * U(j, k) + V(j, k) * V(j, k));
+      result(j, k) = sqrt(X(j, k) * X(j, k) + Y(j, k) * Y(j, k) + Z(j, k) * Z(j, k));
   return result;
-*/
 }
 
 template <typename T> bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* datas) {
