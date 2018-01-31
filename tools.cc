@@ -7,7 +7,7 @@
 #include "enlarge.hh"
 #include "fisheye.hh"
 #include "tilt.hh"
-#include "scancontext.hh"
+#include "match.hh"
 
 using namespace std;
 
@@ -68,7 +68,7 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
-      const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps(bump.getPseudoBumpVec(rgb2l(data), points, delaunay, true));
+      const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bumps(bump.getPseudoBumpVec(rgb2l(data), points, delaunay));
       data[0] = data[1] = data[2] = bumps;
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)

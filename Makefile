@@ -15,5 +15,5 @@ all:	tools
 clean:
 	@rm -rf ${CLEANFILES}
 
-tools.o:        tools.cc enlarge.hh fisheye.hh obj2vector.hh ppm2eigen.hh scancontext.hh tilt.hh
+tools.o:        tools.cc enlarge.hh fisheye.hh obj2vector.hh ppm2eigen.hh match.hh tilt.hh
 
