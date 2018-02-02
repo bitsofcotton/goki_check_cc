@@ -62,6 +62,9 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     # list matches 2d - 3d.
     ./tools match3d input-matchbase.ppm output-base input-tobematched.obj
     
+    # list matches 2d - 2d with hidden 3d.
+    ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm hidden-object.obj
+    
 # ライブラリとしての使い方
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
     

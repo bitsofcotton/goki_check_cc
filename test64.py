@@ -21,3 +21,4 @@ for idx in range(2, len(argv)):
   if(not os.path.exists(root + "-bump" + ext)):
     subprocess.call([argv[1], "bump2", line, root + "-bump" + ext])
     subprocess.call(["convert", "-resize", "128x", "-resize", "x128<", "-resize", "50%", "-gravity", "center", "-crop", "64x64+0+0", root + "-bump" + ext, root + "-bump-small" + ".jpeg"])
+
