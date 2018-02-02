@@ -34,8 +34,9 @@ public:
   void  initialize(const int& z_max, const int& stp, const T& rthresh);
   Mat   getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   
+  int vbox;
+  
 private:
-  Mat   circularComplement(const Mat& in);
   Vec   complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
   Mat   autoLevel(const Mat& data, int npad = - 1);
   Vec   getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const int& lower = 0, int upper = - 1);
@@ -52,7 +53,6 @@ private:
   int stp;
   T   rthresh;
   int lloop;
-  int vbox;
   T   cdist;
   T   zdist;
   T   rz;
@@ -267,7 +267,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
   cerr << "bump" << flush;
   Mat result(autoLevel(getPseudoBump(autoLevel(in))));
-  //result = autoLevel(circularComplement(result));
   
   /*
    * Get vector based bumps.
@@ -460,43 +459,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++)
       result(i, j) = (max(min(data(i, j), MM), mm) - mm) / (MM - mm);
-  return result;
-}
-
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::circularComplement(const Mat& in) {
-  // for each pixel, with constant R circle, highest 2 points line complement.
-  Mat result(in);
-  const int compr(3);
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++) {
-      vector<pair<T, pair<int, int> > > stat;
-      for(int ii = max(0, i - compr); ii < min(int(result.rows()), i + compr); ii ++)
-        for(int jj = max(0, j - compr); jj < min(int(result.cols()), j + compr); jj ++)
-          if(pow(i - ii, T(2)) + pow(j - jj, T(2)) < compr * compr)
-            stat.push_back(make_pair(in(ii, jj), make_pair(ii, jj)));
-      sort(stat.begin(), stat.end());
-      int k(stat.size() - 2);
-      for( ; 0 <= k; k --) {
-        const pair<int, int>& g0(stat[stat.size() - 1].second);
-        const pair<int, int>  gx(make_pair(i, j));
-        const pair<int, int>& g2(stat[k].second);
-        if((g2.second - g0.second) * (g2.first - gx.first) - (g2.second - gx.second) * (g2.first - g0.first) < compr)
-          break;
-      }
-      if(0 <= k) {
-        const pair<int, int>& g0(stat[stat.size() - 1].second);
-        const pair<int, int>  gx(make_pair(i, j));
-        const pair<int, int>& g2(stat[k].second);
-        const T& G0(stat[stat.size() - 1].first);
-        const T& G2(stat[k].first);
-        T t(1);
-        if(abs(g2.second - g0.second) < abs(g2.first - g0.first))
-          t = (gx.first  - g0.first)  / (g2.first  - g0.first);
-        else
-          t = (gx.second - g0.second) / (g2.second - g0.second);
-        result(i, j) = G0 + (G2 - G0) * t;
-      }
-    }
   return result;
 }
 
