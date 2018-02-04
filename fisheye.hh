@@ -31,28 +31,27 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void  initialize(const int& z_max, const int& stp, const T& rthresh);
-  Mat   getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
+  void initialize(const int& z_max, const int& stp, const T& rthresh);
+  Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
+  Mat  getPseudoBump(const Mat& in);
   
-  int vbox;
+  int  vbox;
   
 private:
-  Vec   complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
-  Mat   autoLevel(const Mat& data, int npad = - 1);
-  Vec   getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const int& lower = 0, int upper = - 1);
-  Mat   getPseudoBump(const Mat& in);
-  Vec   getLineAxis(Vec p, Vec c);
+  Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
+  Mat  autoLevel(const Mat& data, int npad = - 1);
+  Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const int& lower = 0, int upper = - 1);
+  Vec  getLineAxis(Vec p, Vec c);
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& d, const int& rstp);
-  T     getImgPt(const Vec& img, const T& y);
-  T     getImgPt(const Mat& img, const int& y, const int& x);
-  void  setImgPt(Mat& img, const int& y, const int& x, const T& v);
-  Vec   indiv(const Vec& p0, const Vec& p1, const T& pt);
-  Vec2i getHexGeom(const Vec2i& center, const int& idx, const int& Midx);
+  T    getImgPt(const Vec& img, const T& y);
+  T    getImgPt(const Mat& img, const int& y, const int& x);
+  void setImgPt(Mat& img, const int& y, const int& x, const T& v);
+  Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   
   int z_max;
   int stp;
+  T   rstp;
   T   rthresh;
-  int lloop;
   T   cdist;
   T   zdist;
   T   rz;
@@ -62,7 +61,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 15, 2.);
+  initialize(20, 19, 16.);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -72,8 +71,8 @@ template <typename T> PseudoBump<T>::~PseudoBump() {
 template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& rthresh) {
   this->z_max   = z_max;
   this->stp     = stp;
+  this->rstp    = stp / T(12);
   this->rthresh = rthresh;
-  this->lloop   = 4;
   this->vbox    = 1;
   this->cdist   = T(1);
   this->zdist   = T(1);
@@ -125,15 +124,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       Vec rc(c);
       for(int u = 0; u < c.size(); u ++)
         rc[u] = c[c.size() - 1 - u];
-      const T n2(abs(Dop.row( c.size() / 2).dot( c)) +
-                 abs(Dop.row(rc.size() / 2).dot(rc)) );
+      const T    n2(Dop.row(c.size() / 2).dot(c - rc));
+      const Vec& dc(c);
       // ||local color|| >> ||near local color||
       // for suppress pseudo detect.
       T ci(0), co(0);
-      for(int u = 0; u < c.size() / 3; u ++)
-        co += c[u] * c[u] + c[c.size() - u - 1] * c[c.size() - u - 1];
-      for(int u = c.size() / 3; u < c.size(); u ++)
-        ci += c[u] * c[u];
+      for(int u = 0; u < dc.size(); u ++)
+        co += dc[u] * dc[u];
+      for(int u = dc.size() / 4; u < dc.size() * 3 / 4; u ++)
+        ci += dc[u] * dc[u];
       const T r2(co / ci);
       if(isfinite(n2) && zval[s] < n2 && isfinite(r2) && r2 < rthresh) {
         // N.B. If increase zz, decrease the distance from camera.
@@ -146,120 +145,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   return result;
 }
 
-// Hextile.
-template <typename T> Eigen::Matrix<int, 2, 1> PseudoBump<T>::getHexGeom(const Vec2i& center, const int& idx, const int& Midx) {
-  Vec2i result(center);
-  const int i(Midx / 6);
-  const int j(idx % i);
-  switch(idx / i) {
-  case 0:
-    result[0] += - i;
-    result[1] +=   i / 2 - j;
-    break;
-  case 1:
-    result[0] += - i     + j;
-    result[1] += - i / 2 - j / 2;
-    break;
-  case 2:
-    result[0] +=           j;
-    result[1] += - i     + j / 2;
-    break;
-  case 3:
-    result[0] +=   i;
-    result[1] += - i / 2 + j     - 1;
-    break;
-  case 4:
-    result[0] +=   i     - j;
-    result[1] +=   i / 2 + j / 2 - 1;
-    break;
-  case 5:
-    result[0] +=         - j;
-    result[1] +=   i     - j / 2 - 1;
-    break;
-  default:
-    result[0] = result[1] = - 1;
-  }
-  return result;
-}
-
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
-  /*
-   * Get hex tile based bumpmap.
-   */
   Vec p0(3), p1(3);
   p0[0] = 0;
   p0[1] = 0;
   p0[2] = 0;
+  p1[0] = in.rows();
   p1[1] = 0;
   p1[2] = 0;
-  vector<Eigen::Matrix<Mat, Eigen::Dynamic, 1> > cfs;
-  for(int i = 0; i < lloop; i ++) {
-    p1[0] = max(in.rows(), in.cols()) / 2 * 6 * 3;
-    cfs.push_back(prepareLineAxis(p0 - p1, p1[0] / 18 * stp * (i + 1) / lloop));
-  }
-  // XXX fixme:
-  vector<Vec2i> corners;
-  corners.push_back(Vec2i(0, 0));
-  
+  auto cf(prepareLineAxis(p0 - p1, p1[0] * rstp));
   Mat result(in.rows(), in.cols());
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = T(0);
-  for(int ic = 0; ic < corners.size(); ic ++) {
-    Mat bumps(in * T(0));
-    Vec work(int(sqrt(2) * max(bumps.rows(), bumps.cols()) * 6 * 3));
-    Vec bwork(work.size());
-    for(int i = 0; i < bwork.size(); i ++)
-      bwork[i] = T(0);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 1; i < sqrt(T(2)) * max(bumps.rows(), bumps.cols()); i ++) {
-      const int i0(work.size() / 6 / 3);
-      const int i1(i0 * 6);
-      if(i0 <= 0)
-        break;
-      for(int j = 0; j < work.size(); j ++)
-        work[j] = - T(1);
-      int ii(- 1), jj(- 1);
-      for(int j = 0; j < i * 6; j ++) {
-        Vec2i geom(getHexGeom(corners[ic], j, i * 6));
-        if(0 <= geom[0] && geom[0] < in.rows() &&
-           0 <= geom[1] && geom[1] < in.cols()) {
-          if(ii < 0)
-            ii = j;
-          jj = j;
-        }
-        work[int(j * i1 / i / 6)] = getImgPt(in, geom[0], geom[1]);
-      }
-      if(jj < 0 || ii < 0) continue;
-      for(int j = i1; j < work.size(); j ++)
-        work[j] = work[j % i1];
-      work = complementLine(work);
-      Vec res(work * T(0));
-      for(int k = 0; k < cfs.size(); k ++) {
-        const Vec local(complementLine(getPseudoBumpSub(work, cfs[k], i1, i1 * 2)) * (k + 1));
-        if(bwork.dot(local) >= T(0)) {
-          bwork = local;
-          res  += local;
-        } else
-          res  -= local;
-      }
-      for(int j = 0; j < i * 6; j ++) {
-        Vec2i geom(getHexGeom(corners[ic], j, i * 6));
-        T buf(0);
-        for(int k = i1 + int(j * i1 / i / 6); k < i1 + int((j + 1) * i1 / i / 6); k ++)
-          buf += res[k];
-        buf /= int((j + 1) * i1 / i / 6) - int(j * i1 / i / 6);
-        setImgPt(bumps, geom[0], geom[1], buf);
-        if(j / i == 1)
-          setImgPt(bumps, geom[0], geom[1] - 1, buf);
-        if(j / i == 4)
-          setImgPt(bumps, geom[0], geom[1] + 1, buf);
-      }
-    }
-    result += bumps;
-  }
+  for(int i = 0; i < result.cols(); i ++)
+    result.col(i) = getPseudoBumpSub(in.col(i), cf, 0, result.rows());
   return result;
 }
 
