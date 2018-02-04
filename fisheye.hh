@@ -31,7 +31,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const T& rthresh);
+  void initialize(const int& z_max, const int& stp, const int& rstp);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   Mat  getPseudoBump(const Mat& in);
   
@@ -46,12 +46,10 @@ private:
   T    getImgPt(const Vec& img, const T& y);
   T    getImgPt(const Mat& img, const int& y, const int& x);
   void setImgPt(Mat& img, const int& y, const int& x, const T& v);
-  Vec  indiv(const Vec& p0, const Vec& p1, const T& pt);
   
   int z_max;
   int stp;
   T   rstp;
-  T   rthresh;
   T   cdist;
   T   zdist;
   T   rz;
@@ -61,18 +59,17 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 19, 16.);
+  initialize(20, 121, 60);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& rthresh) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp) {
   this->z_max   = z_max;
   this->stp     = stp;
-  this->rstp    = stp / T(12);
-  this->rthresh = rthresh;
+  this->rstp    = stp / T(rstp);
   this->vbox    = 1;
   this->cdist   = T(1);
   this->zdist   = T(1);
@@ -115,7 +112,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   for(int j = 0; j < zval.size(); j ++)
     zval[j] = T(0);
   for(int s = lower; s < upper; s ++) {
-    Vec pt(indiv(p0, p1, s / T(result.size())));
+    Vec pt(p0 + (p1 - p0) * s / T(result.size()));
     for(int zz = 0; zz < cf.size(); zz ++) {
       // d/dt (local color):
       Vec c(cf[zz].cols());
@@ -124,17 +121,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       Vec rc(c);
       for(int u = 0; u < c.size(); u ++)
         rc[u] = c[c.size() - 1 - u];
-      const T    n2(Dop.row(c.size() / 2).dot(c - rc));
-      const Vec& dc(c);
-      // ||local color|| >> ||near local color||
-      // for suppress pseudo detect.
-      T ci(0), co(0);
-      for(int u = 0; u < dc.size(); u ++)
-        co += dc[u] * dc[u];
-      for(int u = dc.size() / 4; u < dc.size() * 3 / 4; u ++)
-        ci += dc[u] * dc[u];
-      const T r2(co / ci);
-      if(isfinite(n2) && zval[s] < n2 && isfinite(r2) && r2 < rthresh) {
+      const T n2(Dop.row(c.size() / 2).dot(c - rc));
+      if(isfinite(n2) && zval[s] < n2) {
         // N.B. If increase zz, decrease the distance from camera.
         //      And, zz->0 is treated as distant in tilter.
         result[s] = (T(1) + zz) / T(cf.size());
@@ -150,13 +138,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p0[0] = 0;
   p0[1] = 0;
   p0[2] = 0;
-  p1[0] = in.rows();
+  p1[0] = sqrt(T(in.rows() * in.cols()));
   p1[1] = 0;
   p1[2] = 0;
   auto cf(prepareLineAxis(p0 - p1, p1[0] * rstp));
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < result.cols(); i ++)
     result.col(i) = getPseudoBumpSub(in.col(i), cf, 0, result.rows());
+  // XXX checkme:
+  for(int i = 0; i < result.rows(); i ++)
+    result.row(i) += getPseudoBumpSub(in.row(i), cf, 0, result.cols());
   return result;
 }
 
@@ -189,7 +180,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         Eigen::Matrix<T, 3, 1> work;
         work[0]  = i * vbox;
         work[1]  = j * vbox;
-        // XXX fixme: sign.
         work[2]  = (avg / cnt - aavg) / T(2) * sqrt(T(result.rows() * result.cols())) * rz;
         geoms.push_back(work);
       }
@@ -275,10 +265,6 @@ template <typename T> void PseudoBump<T>::setImgPt(Mat& img, const int& y, const
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::indiv(const Vec& p0, const Vec& p1, const T& pt) {
-  return (p1 - p0) * pt + p0;
-}
-
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complementLine(const Vec& line, const T& rratio, const int& guard) {
   vector<int> ptsi;
   vector<T>   pts;
@@ -331,7 +317,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
             work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
         result[i] += work * pts[rng[ii]];
       }
-      result[i] = max(min(result[i], T(2)), - T(1));
+      // XXX checkme:
+      // result[i] = max(min(result[i], T(2)), - T(1));
     }
   }
   return result;
