@@ -38,12 +38,15 @@ public:
   enlarger2ex();
   Mat compute(const Mat& data, const direction_t& dir);
 private:
-  void initPattern(const int& size, const bool& flag = true);
+  void initPattern(const int& size);
   U    I;
   T    Pi;
   Mat  D;
   Mat  Dop;
   Mat  Iop;
+  Mat  bD;
+  Mat  bDop;
+  Mat  bIop;
 };
 
 template <typename T> enlarger2ex<T>::enlarger2ex() {
@@ -109,7 +112,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case ENLARGE_FY:
     {
-      initPattern(data.rows(), false);
+      initPattern(data.rows());
       const Mat dcache(Dop * data);
       const Mat work(compute(dcache, ENLARGE_Y));
             Mat work2(data.rows() * 2, data.cols());
@@ -119,7 +122,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     }
     break;
   case DETECT_Y:
-    initPattern(data.rows(), false);
+    initPattern(data.rows());
     result = Dop * data;
     break;
   case COLLECT_Y:
@@ -130,7 +133,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case IDETECT_Y:
     {
-      initPattern(data.rows(), false);
+      initPattern(data.rows());
       Vec avg(data.cols());
       for(int i = 0; i < data.cols(); i ++) {
         avg[i]  = T(0);
@@ -150,7 +153,21 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   return result;
 }
 
-template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bool& flag) {
+template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
+  if(Dop.rows() == size)
+    return;
+  if(bDop.rows() == size) {
+    Mat work(bD);
+    bD   = D;
+    D    = work;
+    work = bDop;
+    bDop = Dop;
+    Dop  = work;
+    work = bIop;
+    bIop = Iop;
+    Iop  = work;
+    return;
+  }
   MatU DFT( size, size);
   MatU IDFT(size, size);
 #if defined(_OPENMP)
@@ -176,7 +193,7 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size, const bo
     Ibuf.row(i) /= U(- 2.) * Pi * I * U(i / T(size));
   Dop =   (IDFT * Dbuf).real().template cast<T>();
   Iop = - (IDFT * Ibuf).real().template cast<T>();
-  if(flag) {
+  {
     MatU DFTa(DFT);
     MatU DFTb(DFT);
     MatU DFTRa(DFT);
