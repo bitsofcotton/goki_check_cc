@@ -7,8 +7,6 @@ using std::complex;
 using std::abs;
 using std::sqrt;
 using std::exp;
-using std::vector;
-using std::sort;
 using std::conj;
 
 template <typename T> class enlarger2ex {

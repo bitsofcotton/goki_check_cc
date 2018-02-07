@@ -11,6 +11,17 @@
 
 using namespace std;
 
+// XXX: configure me:
+const double zrs(1.2);
+const double zre( .8);
+const int    zrl(3);
+const int    nshow(8);
+const int    nemph(4);
+const int    vbox(8);
+const double threshr(.75);
+const int    M_TILT(16);
+const int    Mpoly(2000);
+
 void usage() {
   cout << "Usage: tools (enlarge|bump|bump2|rbump2|collect|tilt|lpoly|match|match3d|match2dh3d) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
@@ -18,6 +29,12 @@ void usage() {
 
 int main(int argc, const char* argv[]) {
   std::ios::sync_with_stdio(false);
+  Eigen::Matrix<double, 3, 3> I3;
+  Eigen::Matrix<double, 3, 1> zero3;
+  for(int i = 0; i < 3; i ++)
+    for(int j = 0; j < 3; j ++)
+      I3(i, j) = (i == j ? double(1) : double(0));
+  zero3[0] = zero3[1] = zero3[2] = double(0);
   if(argc < 4) {
     usage();
     return 0;
@@ -73,12 +90,10 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
-      auto bumps(bump.getPseudoBumpVec(rgb2l(data), points, delaunay));
-      data[0] = data[1] = data[2] = bumps;
+      data[0] = data[1] = data[2] = bump.getPseudoBumpVec(rgb2l(data), points, delaunay);
       std::cout << "Handled points:" << std::endl;
       for(int i = 0; i < points.size(); i ++)
         std::cout << points[i].transpose() << std::endl;
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3];
       saveobj(points, delaunay, argv[4]);
     }
     break;
@@ -88,17 +103,16 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
-      auto bumps(bump.getPseudoBumpVec(rgb2l(data), points, delaunay));
       auto X(.49000/.17697 * data[0] + .31000/.17697  * data[1] + .20000/.17697 * data[2]);
       auto Z(                          .010000/.17697 * data[1] + .99000/.17697 * data[2]);
       data[0] = X     / 8.;
-      data[1] = bumps / 8.;
+      data[1] = bump.getPseudoBumpVec(rgb2l(data), points, delaunay) / 8.;
       data[2] = Z     / 8.;
     }
+    // with no auto-level.
     if(!savep2or3<double>(argv[3], data, ! true))
       return - 3;
     return 0;
-    break;
   case 5:
     {
       // reverse bump2.
@@ -113,13 +127,12 @@ int main(int argc, const char* argv[]) {
   case 6:
     {
       // tilt.
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump[3], out[3], zero;
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump[3], out[3];
       if(!loadp2or3<double>(bump, argv[4]))
         return - 2;
-      zero = bump[0] * double(0);
+      auto zero(bump[0] * double(0));
       tilter<double> tilt;
       tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())));
-      const int M_TILT(16);
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
           out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .99), zero, - i, M_TILT, .99);
@@ -154,28 +167,17 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3];
       if(!loadp2or3<double>(data1, argv[4]))
         return - 2;
-      // XXX: configure me:
-      const double zrs(1.2);
-      const double zre( .8);
-      const int    zrl(3);
-      const int    nshow(8);
-      const int    nemph(4);
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph / double(8));
       PseudoBump<double> bump;
-      bump.vbox = 8;
+      bump.vbox = vbox;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto bump0(bump.getPseudoBumpVec(rgb2l(data),  shape0, sute));
       auto bump1(bump.getPseudoBumpVec(rgb2l(data1), shape1, sute));
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3];
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mbump;
-      Eigen::Matrix<double, 3, 3> I3;
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3], mbump;
       mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
-      for(int i = 0; i < 3; i ++)
-        for(int j = 0; j < 3; j ++)
-          I3(i, j) = (i == j ? double(1) : double(0));
       for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
         for(int j = 0; j < min(mout[0].cols(), data1[0].cols()); j ++) {
           mout[0](i, j) = data1[0](i, j);
@@ -189,10 +191,8 @@ int main(int argc, const char* argv[]) {
       for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
         for(int j = 0; j < mout[0].cols(); j ++)
           mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = double(0);
-      Eigen::Matrix<double, 3, 1> zero3;
-      zero3[0] = zero3[1] = zero3[2] = double(0);
       matchPartialPartial<double> statmatch;
-      statmatch.threshr = double(.75);
+      statmatch.threshr = threshr;
       std::vector<match_t<double> > matches;
       for(double zr = zrs;
           (zrs / zre < double(1) && zr < zre) || 
@@ -268,31 +268,19 @@ int main(int argc, const char* argv[]) {
       if(!loadobj<double>(datapoly, polynorms, argv[4]))
         return - 2;
       // XXX: configure me:
-      const int Mpoly(2000);
-      const double zrs(1.2);
-      const double zre( .8);
-      const int    zrl(3);
-      const int    nshow(8);
-      const double emph(.95);
       if(datapoly.size() > Mpoly) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
       }
+      std::vector<double> emph;
+      for(int i = 0; i <= nemph; i ++)
+        emph.push_back(double(i) / nemph / double(8));
       PseudoBump<double> bumper;
-      bumper.vbox = 8;
+      bumper.vbox = vbox;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       auto bump(bumper.getPseudoBumpVec(rgb2l(data), shape, sute));
-      Eigen::Matrix<double, 3, 1> zero3;
-      zero3[0] = zero3[1] = zero3[2] = double(0);
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero(data[0].rows(), data[0].cols());
-      for(int i = 0; i < zero.rows(); i ++)
-        for(int j = 0; j < zero.cols(); j ++)
-          zero(i, j) = double(0);
-      Eigen::Matrix<double, 3, 3> I3;
-      for(int i = 0; i < 3; i ++)
-        for(int j = 0; j < 3; j ++)
-          I3(i, j) = (i == j ? double(1) : double(0));
+      auto zero(data[0] * double(0));
       matchPartialPartial<double> statmatch;
       std::vector<match_t<double> > matches;
       for(double zr = zrs;
@@ -306,8 +294,7 @@ int main(int argc, const char* argv[]) {
       }
       double zr(zrs);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
-        reDig<double>  redig;
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3];
         cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         
         auto ch(loadBumpSimpleMesh<double>(shape, matches[n].dstpoints));
@@ -341,16 +328,15 @@ int main(int argc, const char* argv[]) {
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-match.ppm");
         savep2or3<double>(outfile.c_str(), outs3, false);
         
-        for(int idx = 0; idx < 3; idx ++)
-          outs4[idx] = redig.emphasis(data[idx], bump, shape, datapoly, matches[n], ch, double(1) - emph);
-        normalize<double>(outs4, 1.);
-        outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-0.ppm");
-        savep2or3<double>(outfile.c_str(), outs4, false);
-        for(int idx = 0; idx < 3; idx ++)
-          outs5[idx] = redig.emphasis(data[idx], bump, shape, datapoly, matches[n], ch, double(1) + emph);
-        normalize<double>(outs5, 1.);
-        outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-2.ppm");
-        savep2or3<double>(outfile.c_str(), outs5, false);
+        match_t<double> rmatchn(~ matches[n]);
+        reDig<double>   redig;
+        for(int kk = 0; kk < emph.size(); kk ++) {
+          for(int idx = 0; idx < 3; idx ++) {
+            outs4[idx] = redig.emphasis(data[idx], bump, shape, datapoly, matches[n], ch, emph[kk]);
+          }
+          outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-") + std::to_string(kk) + std::string(".ppm");
+          savep2or3<double>(outfile.c_str(), outs4, false);
+        }
       }
     }
     return 0;
@@ -360,6 +346,7 @@ int main(int argc, const char* argv[]) {
     }
     break;
   default:
+    usage();
     break;
   }
   normalize<double>(data, 1.);

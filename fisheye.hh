@@ -11,13 +11,10 @@ using std::complex;
 using std::abs;
 using std::vector;
 using std::sort;
-using std::pair;
-using std::make_pair;
 using std::max;
 using std::min;
-using std::cos;
 using std::sqrt;
-using std::log;
+using std::exp;
 using std::isfinite;
 using std::cerr;
 using std::flush;
@@ -35,6 +32,7 @@ public:
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   Mat  getPseudoBump(const Mat& in);
   
+  int  nloop;
   int  vbox;
   
 private:
@@ -59,7 +57,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 121, 60);
+  initialize(30, 31, 15);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -70,9 +68,10 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp / T(rstp);
-  this->vbox    = 1;
+  this->nloop   = 3;
+  this->vbox    = 4;
   this->cdist   = T(1);
-  this->zdist   = T(1);
+  this->zdist   = sqrt(T(z_max));
   this->rz      = T(1) / T(6);
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
@@ -130,7 +129,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       }
     }
   }
-  return result;
+  return complementLine(result);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
@@ -143,18 +142,42 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p1[2] = 0;
   auto cf(prepareLineAxis(p0 - p1, p1[0] * rstp));
   Mat result(in.rows(), in.cols());
-  for(int i = 0; i < result.cols(); i ++)
+  for(int i = 0; i < result.cols(); i ++) {
     result.col(i) = getPseudoBumpSub(in.col(i), cf, 0, result.rows());
+    for(int j = 1; j <= nloop && 32 < in.rows() / pow(2, j); j ++) {
+      Vec work(in.rows());
+      for(int k = 0; k < work.size(); k ++)
+        work[k] = - T(1);
+      for(int k = 0; k * pow(2, j) + pow(2, j - 1) < work.size(); k ++) {
+        work[int(k * pow(2, j) + pow(2, j - 1))] = T(0);
+        for(int kk = 0; kk < pow(2, j); kk ++)
+          work[int(k * pow(2, j) + pow(2, j - 1))] += in(int(k * pow(2, j) + kk) % in.rows(), i);
+      }
+      result.col(i) += getPseudoBumpSub(complementLine(work), cf, 0, result.rows());
+    }
+  }
   // XXX checkme:
-  for(int i = 0; i < result.rows(); i ++)
+  for(int i = 0; i < result.rows(); i ++) {
     result.row(i) += getPseudoBumpSub(in.row(i), cf, 0, result.cols());
+    for(int j = 1; j <= nloop && 32 < in.cols() / pow(2, j); j ++) {
+      Vec work(in.cols());
+      for(int k = 0; k < work.size(); k ++)
+        work[k] = - T(1);
+      for(int k = 0; k * pow(2, j) + pow(2, j - 1) < work.size(); k ++) {
+        work[int(k * pow(2, j) + pow(2, j - 1))] = T(0);
+        for(int kk = 0; kk < pow(2, j); kk ++)
+          work[int(k * pow(2, j) + pow(2, j - 1))] += in(i, int(k * pow(2, j) + kk) % in.cols());
+      }
+      result.row(i) += getPseudoBumpSub(complementLine(work), cf, 0, result.cols());
+    }
+  }
   return result;
 }
 
 // get bump with multiple scale and vectored result.
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
   cerr << "bump" << flush;
-  Mat result(autoLevel(getPseudoBump(autoLevel(in))));
+  const Mat result(autoLevel(getPseudoBump(autoLevel(in))));
   
   /*
    * Get vector based bumps.
