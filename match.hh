@@ -20,6 +20,8 @@ using std::cerr;
 using std::endl;
 using std::flush;
 using std::vector;
+using std::complex;
+using std::isfinite;
 
 template <typename T> class lfmatch_t {
 public:

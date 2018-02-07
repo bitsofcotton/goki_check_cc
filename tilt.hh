@@ -15,6 +15,7 @@ using std::endl;
 using std::flush;
 using std::vector;
 using std::abs;
+using std::isfinite;
 
 template <typename T> class tilter {
 public:

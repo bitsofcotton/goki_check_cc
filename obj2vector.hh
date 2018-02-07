@@ -8,20 +8,14 @@
 #include "tilt.hh"
 
 using std::cerr;
-using std::cout;
 using std::flush;
 using std::endl;
-using std::isfinite;
 using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::getline;
-using std::istringstream;
 using std::stringstream;
 using std::vector;
-using std::floor;
-using std::min;
-using std::max;
 using std::abs;
 
 template <typename T> int clockwise(const Eigen::Matrix<T, 3, 1>& p0, const Eigen::Matrix<T, 3, 1>& p1, const Eigen::Matrix<T, 3, 1>& p2, const T& epsilon = T(1e-4)) {
