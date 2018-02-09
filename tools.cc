@@ -267,7 +267,6 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
       if(!loadobj<double>(datapoly, polynorms, argv[4]))
         return - 2;
-      // XXX: configure me:
       if(datapoly.size() > Mpoly) {
         std::cerr << "Too many vertices." << std::endl;
         return - 2;
