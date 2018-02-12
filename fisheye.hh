@@ -39,7 +39,7 @@ public:
 private:
   Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
   Mat  autoLevel(const Mat& data, int npad = - 1);
-  Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf);
+  Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const bool& pm = false);
   T    getImgPt(const Vec& img, const T& y);
   Vec  getLineAxis(Vec p, Vec c);
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& d, const int& rstp);
@@ -55,7 +55,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 61, 800);
+  initialize(20, 61, 400);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -69,8 +69,8 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->nloop   = 3;
   this->vbox    = 4;
   this->cdist   = T(1);
-  this->zdist   = sqrt(T(z_max));
-  this->rz      = T(1) / T(6);
+  this->zdist   = T(1);
+  this->rz      = T(1) / T(3);
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -87,7 +87,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const bool& pm) {
   cerr << "." << flush;
   Vec result(work.size());
   Vec workv(work.size() * stp);
@@ -116,7 +116,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       Vec c(cf[zz].cols());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(workv, cf[zz](0, u) + pt[0] + stp / 2);
-      const T n2(Dcop.dot(c) / sqrt(c.dot(c)));
+      T n2(Dcop.dot(c) / sqrt(c.dot(c)));
+      if(pm)
+        n2 = - n2;
       if(isfinite(n2) && zval[s] < n2) {
         // N.B. If increase zz, decrease the distance from camera.
         //      And, zz->0 is treated as distant in tilter.
@@ -156,7 +158,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   auto cf(prepareLineAxis(p0 - p1, p1[0] * rstp));
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < result.cols(); i ++) {
-    result.col(i) = getPseudoBumpSub(in.col(i), cf);
+    result.col(i)  = getPseudoBumpSub(in.col(i), cf, false);
+    result.col(i) += getPseudoBumpSub(in.col(i), cf, true);
     for(int j = 1; j <= nloop && 32 < in.rows() / pow(2, j); j ++) {
       Vec work(in.rows());
       for(int k = 0; k < work.size(); k ++)
@@ -167,12 +170,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
           work[int(k * pow(2, j) + pow(2, j - 1))] += in(int(k * pow(2, j) + kk) % in.rows(), i);
       }
       // XXX ratio isn't configured.
-      result.col(i) += getPseudoBumpSub(complementLine(work), cf);
+      result.col(i) += getPseudoBumpSub(complementLine(work), cf, false);
+      result.col(i) += getPseudoBumpSub(complementLine(work), cf, true);
     }
   }
   // XXX checkme:
   for(int i = 0; i < result.rows(); i ++) {
-    result.row(i) += getPseudoBumpSub(in.row(i), cf);
+    result.row(i) += getPseudoBumpSub(in.row(i), cf, false);
+    result.row(i) += getPseudoBumpSub(in.row(i), cf, true);
     for(int j = 1; j <= nloop && 32 < in.cols() / pow(2, j); j ++) {
       Vec work(in.cols());
       for(int k = 0; k < work.size(); k ++)
@@ -182,7 +187,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         for(int kk = 0; kk < pow(2, j); kk ++)
           work[int(k * pow(2, j) + pow(2, j - 1))] += in(i, int(k * pow(2, j) + kk) % in.cols());
       }
-      result.row(i) += getPseudoBumpSub(complementLine(work), cf);
+      result.row(i) += getPseudoBumpSub(complementLine(work), cf, false);
+      result.row(i) += getPseudoBumpSub(complementLine(work), cf, true);
     }
   }
   return result;
