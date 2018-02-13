@@ -51,7 +51,7 @@ private:
   T   zdist;
   
   T   Pi;
-  Vec Dcop;
+  Vec Dop;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
@@ -80,10 +80,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
     }
   for(int i = 0; i < DFT.rows(); i ++)
     DFT.row(i) *= complex<T>(2.) * Pi * sqrt(complex<T>(- 1)) * T(i) / T(DFT.rows()) * T(8);
-  const Vec work((IDFT * DFT).real().row(DFT.rows() / 2));
-  Dcop = work;
-  for(int i = 0; i < work.size(); i ++)
-    Dcop[i] -= work[work.size() - i - 1];
+  Dop = (IDFT * DFT).real().row(DFT.rows() / 2);
   return;
 }
 
@@ -116,7 +113,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       Vec c(cf[zz].cols());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(workv, cf[zz](0, u) + pt[0] + stp / 2);
-      T n2(Dcop.dot(c) / sqrt(c.dot(c)));
+      T n2(Dop.dot(c) / sqrt(c.dot(c)));
       if(pm)
         n2 = - n2;
       if(isfinite(n2) && zval[s] < n2) {
