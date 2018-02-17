@@ -236,7 +236,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(20, .00125, .25, .25, .125, .75);
+  init(8, .00125, .25, .25, .125, .75);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -318,24 +318,14 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int nd = 0; nd <= ndiv; nd ++) {
+    for(int nd = 0; nd < ndiv; nd ++) {
       cerr << "." << flush;
       for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
         Eigen::Matrix<T, 4, 1> ddiv;
-        if(nd < ndiv) {
-          ddiv[0]  = cos(2 * Pi * nd / ndiv);
-          ddiv[2]  = sin(2 * Pi * nd / ndiv);
-          const T Mddiv(max(abs(ddiv[0]), abs(ddiv[2])));
-          ddiv[0] *= Pi / Mddiv * nd2 / ndiv;
-          ddiv[2] *= Pi / Mddiv * nd2 / ndiv;
-          ddiv[1]  = ddiv[0];
-          ddiv[3]  = ddiv[2];
-          ddiv[0]  = cos(ddiv[0]);
-          ddiv[1]  = sin(ddiv[1]);
-          ddiv[2]  = cos(ddiv[2]);
-          ddiv[3]  = sin(ddiv[3]);
-        } else
-          ddiv[0] = ddiv[1] = ddiv[2] = ddiv[3] = T(0);
+        ddiv[0]  = cos(2 * Pi * nd  / ndiv);
+        ddiv[1]  = sin(2 * Pi * nd  / ndiv);
+        ddiv[2]  = cos(2 * Pi * nd2 / ndiv);
+        ddiv[3]  = sin(2 * Pi * nd2 / ndiv);
         Mat3x3 drot1(drot0);
         for(int k = 0; k < ddiv.size() / 2; k ++) {
           Mat3x3 lrot;

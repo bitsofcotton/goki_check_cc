@@ -156,11 +156,27 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
   ofstream output;
   output.open(filename, std::ios::out);
   if(output.is_open()) {
-    for(int i = 0; i < data.size(); i ++)
+    double Mh(1), Mw(1);
+    int lfs(0);
+    for(int fslash(0) ; filename[fslash]; fslash ++)
+      if(filename[fslash] == '/')
+        lfs = fslash;
+    if(lfs) lfs ++;
+    output << "mtllib " << &filename[lfs] << ".mtl" << endl;
+    for(int i = 0; i < data.size(); i ++) {
       output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] * zr << endl;
+      Mh = max(data[i][1], Mh);
+      Mw = max(data[i][0], Mw);
+    }
+    for(int i = 0; i < data.size(); i ++)
+      output << "vt " << data[i][1] / Mh << " " << 1. - data[i][0] / Mw << endl;
+    output << "usemtl material0" << endl;
     // xchg with clockwise/counter clockwise.
-    for(int i = 0; i < polys.size(); i ++)
-      output << "f " << polys[i][0] + 1 << " " << polys[i][1] + 1 << " " << polys[i][2] + 1 << endl;
+    for(int i = 0; i < polys.size(); i ++) {
+      output << "f " << polys[i][0] + 1 << "/" << polys[i][0] + 1 << "/" << polys[i][0] + 1;
+      output << " "  << polys[i][1] + 1 << "/" << polys[i][1] + 1 << "/" << polys[i][1] + 1;
+      output << " "  << polys[i][2] + 1 << "/" << polys[i][2] + 1 << "/" << polys[i][2] + 1 << endl;
+    }
     output.close();
   } else {
     cerr << "Unable to open file: " << filename << endl;
