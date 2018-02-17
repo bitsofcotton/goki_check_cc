@@ -55,7 +55,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 61, 400);
+  initialize(20, 61, 800);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -67,12 +67,10 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->stp     = stp;
   this->rstp    = stp / T(rstp);
   this->nloop   = 3;
-  this->vbox    = 4;
-  //this->vbox    = 1;
+  this->vbox    = 8;
   this->cdist   = T(1);
   this->zdist   = T(1);
   this->rz      = T(1) / T(3);
-  //this->rz      = T(1) / T(6);
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -222,7 +220,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
         Eigen::Matrix<T, 3, 1> work;
         work[0]  = i * vbox;
         work[1]  = j * vbox;
-        work[2]  = (avg / cnt - aavg) / T(2) * sqrt(T(result.rows() * result.cols())) * rz;
+        work[2]  = - (avg / cnt - aavg) / T(2) * sqrt(T(result.rows() * result.cols())) * rz;
         geoms.push_back(work);
       }
     }
