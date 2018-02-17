@@ -68,9 +68,11 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->rstp    = stp / T(rstp);
   this->nloop   = 3;
   this->vbox    = 4;
+  //this->vbox    = 1;
   this->cdist   = T(1);
   this->zdist   = T(1);
   this->rz      = T(1) / T(3);
+  //this->rz      = T(1) / T(6);
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)

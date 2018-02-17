@@ -35,8 +35,10 @@ for idx in range(2, len(argv)):
   if(not os.path.exists(root + "-emph" + ext)):
     subprocess.call(["convert", root + "-bump" + ext, "-blur", "2x2", "-alpha", "on", "-channel", "a", "-evaluate", "set", "30%", root + "-bump-test.png"])
     subprocess.call(["convert", line, root + "-bump-test.png", "-compose", "Multiply", "-composite", root + "-emph" + ext])
-  if(not os.path.exists(root + "-tilt-1" + ext) and not os.path.exists(root + ".mp4")):
-    subprocess.call([argv[1], "tilt", line, root + "-tilt", root + "-bump" + ext])
-  if(not os.path.exists(root + ".mp4")):
-    os.system("ffmpeg -r 16 -loop 1 -i \"" + root + "-tilt-%d.ppm\"" + " -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -c:v libx264 -preset veryfast -pix_fmt yuv420p -t 00:00:8 \"" + root + ".mp4\" && rm -f " + root + "-tilt-*.ppm")
+  if(not os.path.exists(os.path.dirname(root) + "/material.mtl")):
+    subprocess.call(["cp", os.path.dirname(argv[1]) + "/material.mtl", root + ".obj.mtl"])
+    f = open(root + ".obj.mtl", "a")
+    f.write("map_Ka " + line + "\n")
+    f.write("map_Kd " + line + "\n")
+    f.close()
 
