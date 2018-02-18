@@ -32,7 +32,6 @@ public:
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, const bool& elim0 = true);
   Mat  getPseudoBump(Mat in, const bool& elim0 = true);
   
-  int  nloop;
   int  vbox;
   T    rz;
   
@@ -55,7 +54,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 61, 800);
+  initialize(40, 41, 600);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -66,10 +65,10 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp / T(rstp);
-  this->nloop   = 3;
   this->vbox    = 8;
   this->cdist   = T(1);
-  this->zdist   = T(1);
+  // this->zdist   = T(1);
+  this->zdist   = T(z_max) / T(2);
   this->rz      = T(1) / T(3);
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
@@ -157,36 +156,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   for(int i = 0; i < result.cols(); i ++) {
     result.col(i)  = getPseudoBumpSub(in.col(i), cf, false);
     result.col(i) += getPseudoBumpSub(in.col(i), cf, true);
-    for(int j = 1; j <= nloop && 32 < in.rows() / pow(2, j); j ++) {
-      Vec work(in.rows());
-      for(int k = 0; k < work.size(); k ++)
-        work[k] = - T(1);
-      for(int k = 0; k * pow(2, j) + pow(2, j - 1) < work.size(); k ++) {
-        work[int(k * pow(2, j) + pow(2, j - 1))] = T(0);
-        for(int kk = 0; kk < pow(2, j); kk ++)
-          work[int(k * pow(2, j) + pow(2, j - 1))] += in(int(k * pow(2, j) + kk) % in.rows(), i);
-      }
-      // XXX ratio isn't configured.
-      result.col(i) += getPseudoBumpSub(complementLine(work), cf, false);
-      result.col(i) += getPseudoBumpSub(complementLine(work), cf, true);
-    }
   }
   // XXX checkme:
   for(int i = 0; i < result.rows(); i ++) {
     result.row(i) += getPseudoBumpSub(in.row(i), cf, false);
     result.row(i) += getPseudoBumpSub(in.row(i), cf, true);
-    for(int j = 1; j <= nloop && 32 < in.cols() / pow(2, j); j ++) {
-      Vec work(in.cols());
-      for(int k = 0; k < work.size(); k ++)
-        work[k] = - T(1);
-      for(int k = 0; k * pow(2, j) + pow(2, j - 1) < work.size(); k ++) {
-        work[int(k * pow(2, j) + pow(2, j - 1))] = T(0);
-        for(int kk = 0; kk < pow(2, j); kk ++)
-          work[int(k * pow(2, j) + pow(2, j - 1))] += in(i, int(k * pow(2, j) + kk) % in.cols());
-      }
-      result.row(i) += getPseudoBumpSub(complementLine(work), cf, false);
-      result.row(i) += getPseudoBumpSub(complementLine(work), cf, true);
-    }
   }
   return result;
 }
