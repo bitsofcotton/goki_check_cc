@@ -28,7 +28,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const T& z_rmax, const int& stp, const int& rstp);
+  void initialize(const int& z_max, const int& stp, const int& rstp);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, const bool& elim0 = true);
   Mat  getPseudoBump(Mat in, const bool& elim0 = true);
   
@@ -38,7 +38,7 @@ public:
 private:
   Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
   Mat  autoLevel(const Mat& data, int npad = - 1);
-  Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const bool& pm = false);
+  Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf);
   T    getImgPt(const Vec& img, const T& y);
   Vec  getLineAxis(Vec p, Vec c);
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& d, const int& rstp);
@@ -46,6 +46,8 @@ private:
   int z_max;
   int stp;
   T   rstp;
+  
+  int nloop;
   T   cdist;
   T   zdist;
   
@@ -54,22 +56,22 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(40, T(8), 41, 600);
+  initialize(60, 41, 600);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const T& z_rmax, const int& stp, const int& rstp) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp) {
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp / T(rstp);
   this->vbox    = 8;
   this->cdist   = T(1);
-  this->zdist   = z_rmax;
-  // this->rz      = T(1) / T(3);
-  this->rz      = T(1) / T(6);
+  this->zdist   = z_max;
+  this->rz      = T(1) / T(3);
+  this->nloop   = sqrt(z_max) / 2;
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -83,7 +85,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const T& 
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf, const bool& pm) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf) {
   cerr << "." << flush;
   Vec result(work.size());
   Vec workv(work.size() * stp);
@@ -101,29 +103,33 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   p1[1]  = 0;
   p1[2]  = 0;
   for(int j = 0; j < result.size(); j ++)
-    result[j] = - T(1);
+    result[j] = T(0);
   Vec zval(result.size());
-  for(int j = 0; j < zval.size(); j ++)
-    zval[j] = T(0);
+  Vec rsub(result.size());
   for(int s = 0; s < work.size(); s ++) {
     const Vec pt(p0 + (p1 - p0) * s / T(result.size()));
-    for(int zz = 0; zz < cf.size(); zz ++) {
-      // d/dt (local color) / ||local color||:
-      Vec c(cf[zz].cols());
-      for(int u = 0; u < c.size(); u ++)
-        c[u] = getImgPt(workv, cf[zz](0, u) + pt[0] + stp / 2);
-      T n2(Dop.dot(c) / sqrt(c.dot(c)));
-      if(pm)
-        n2 = - n2;
-      if(isfinite(n2) && zval[s] < n2) {
-        // N.B. If increase zz, decrease the distance from camera.
-        //      And, zz->0 is treated as distant in tilter.
-        result[s] = (T(1) + zz) / T(cf.size());
-        zval[s]   = n2;
+    for(int nl = 0; nl < nloop; nl ++) {
+      for(int j = 0; j < zval.size(); j ++) {
+        zval[j] =   T(0);
+        rsub[j] = - T(1);
       }
+      for(int zz = nl * cf.size() / nloop; zz < min(int((nl + 1) * cf.size() / nloop), int(cf.size())); zz ++) {
+        // d/dt (local color) / ||local color||:
+        Vec c(cf[zz].cols());
+        for(int u = 0; u < c.size(); u ++)
+          c[u] = getImgPt(workv, cf[zz](0, u) + pt[0] + stp / 2);
+        const T n2(abs(Dop.dot(c) / sqrt(c.dot(c))));
+        if(isfinite(n2) && zval[s] < n2) {
+          // N.B. If increase zz, decrease the distance from camera.
+          //      And, zz->0 is treated as distant in tilter.
+          rsub[s] = (T(1) + zz) / T(cf.size());
+          zval[s] = n2;
+        }
+      }
+      result += complementLine(rsub);
     }
   }
-  return complementLine(result);
+  return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(Mat in, const bool& elim0) {
@@ -153,15 +159,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   p1[2] = 0;
   auto cf(prepareLineAxis(p0 - p1, p1[0] * rstp));
   Mat result(in.rows(), in.cols());
-  for(int i = 0; i < result.cols(); i ++) {
-    result.col(i)  = getPseudoBumpSub(in.col(i), cf, false);
-    result.col(i) += getPseudoBumpSub(in.col(i), cf, true);
-  }
+  for(int i = 0; i < result.cols(); i ++)
+    result.col(i)  = getPseudoBumpSub(in.col(i), cf);
   // XXX checkme:
-  for(int i = 0; i < result.rows(); i ++) {
-    result.row(i) += getPseudoBumpSub(in.row(i), cf, false);
-    result.row(i) += getPseudoBumpSub(in.row(i), cf, true);
-  }
+  for(int i = 0; i < result.rows(); i ++)
+    result.row(i) += getPseudoBumpSub(in.row(i), cf);
   return result;
 }
 
