@@ -7,6 +7,7 @@ using std::complex;
 using std::abs;
 using std::sqrt;
 using std::exp;
+using std::pow;
 using std::conj;
 
 template <typename T> class enlarger2ex {
@@ -37,6 +38,7 @@ public:
   Mat compute(const Mat& data, const direction_t& dir);
 private:
   void initPattern(const int& size);
+  Mat effectInCollect(const Mat& data, const Mat& enlarged);
   U    I;
   T    Pi;
   Mat  D;
@@ -62,7 +64,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       rh = compute(data, ENLARGE_Y);
       rw = compute(rw,   ENLARGE_Y);
       rh = compute(rh,   ENLARGE_X);
-      result = (rw + rh) / 2.;
+      result = effectInCollect(data, (rw + rh) / 2.);
     }
     break;
   case ENLARGE_FBOTH:
@@ -72,7 +74,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       rh = compute(data, ENLARGE_FY);
       rw = compute(rw,   ENLARGE_FY);
       rh = compute(rh,   ENLARGE_FX);
-      result = (rw + rh) / 2.;
+      result = effectInCollect(data, (rw + rh) / 2.);
     }
     break;
   case ENLARGE_3BOTH:
@@ -223,6 +225,24 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
     }
   }
   return;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::effectInCollect(const Mat& data, const Mat& enlarged) {
+  const Mat intensity(compute(data, COLLECT_BOTH));
+  T M(0);
+  for(int i = 0; i < intensity.rows(); i ++)
+    for(int j = 0; j < intensity.cols(); j ++)
+      M = max(M, intensity(i, j));
+  M /= T(2);
+  Mat result(enlarged.rows(), enlarged.cols());
+  for(int i = 0; i < intensity.rows(); i ++)
+    for(int j = 0; j < intensity.cols(); j ++) {
+      result(i * 2,     j * 2)     = data(i, j) + (enlarged(i * 2,     j * 2)     - data(i, j)) * intensity(i, j) / M;
+      result(i * 2 + 1, j * 2)     = data(i, j) + (enlarged(i * 2 + 1, j * 2)     - data(i, j)) * intensity(i, j) / M;
+      result(i * 2,     j * 2 + 1) = data(i, j) + (enlarged(i * 2,     j * 2 + 1) - data(i, j)) * intensity(i, j) / M;
+      result(i * 2 + 1, j * 2 + 1) = data(i, j) + (enlarged(i * 2 + 1, j * 2 + 1) - data(i, j)) * intensity(i, j) / M;
+    }
+  return result;
 }
 
 #define _ENLARGE2X_
