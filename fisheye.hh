@@ -28,7 +28,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& rstp);
+  void initialize(const int& z_max, const T& z_rmax, const int& stp, const int& rstp);
   Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, const bool& elim0 = true);
   Mat  getPseudoBump(Mat in, const bool& elim0 = true);
   
@@ -54,21 +54,20 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(40, 41, 600);
+  initialize(40, T(8), 41, 600);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& rstp) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const T& z_rmax, const int& stp, const int& rstp) {
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp / T(rstp);
   this->vbox    = 8;
   this->cdist   = T(1);
-  // this->zdist   = T(1);
-  this->zdist   = T(z_max) / T(2);
+  this->zdist   = z_rmax;
   this->rz      = T(1) / T(3);
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);

@@ -132,10 +132,9 @@ int main(int argc, const char* argv[]) {
         return - 2;
       auto zero(bump[0] * double(0));
       tilter<double> tilt;
-      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())));
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .99), zero, - i, M_TILT, .99);
+          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .95), zero, - i, M_TILT, .99);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
@@ -225,7 +224,6 @@ int main(int argc, const char* argv[]) {
           mhull1.push_back(buf);
         }
         tilter<double> tilt;
-        tilt.initialize(sqrt(double(mout[0].rows() * mout[0].cols())));
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = tilt.tilt(showMatch<double>(mout[idx], shape1, mhull1), mbump, matches[n].rot, I3, matches[n].offset, matches[n].ratio, zero3);
         normalize<double>(outs, 1.);
