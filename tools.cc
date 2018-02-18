@@ -23,7 +23,7 @@ const int    M_TILT(16);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|bump|bump2|rbump2|collect|tilt|lpoly|match|match3d|match2dh3d) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|bump|bump2|rbump2|collect|tilt|lpoly|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -60,6 +60,8 @@ int main(int argc, const char* argv[]) {
     mode = 10;
   else if(strcmp(argv[1], "match2dh3d") == 0)
     mode = 11;
+  else if(strcmp(argv[1], "maskobj") == 0)
+    mode = 12;
   if(mode < 0) {
     usage();
     return - 1;
@@ -342,6 +344,36 @@ int main(int argc, const char* argv[]) {
       // 2d - 2d match with hidden 3d model.
     }
     break;
+  case 12:
+    {
+      // maskobj.
+      std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
+      std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
+      if(argc < 5 || !loadobj<double>(datapoly, polynorms, argv[3]))
+        return - 2;
+      std::vector<int> elim, elimp;
+      for(int i = 0; i < datapoly.size(); i ++) {
+        const int y(std::max(std::min(int(datapoly[i][0]), int(data[0].rows() - 1)), 0));
+        const int x(std::max(std::min(int(datapoly[i][1]), int(data[0].cols() - 1)), 0));
+        double sum(0);
+        for(int yy = std::max(std::min(y - 2, int(data[0].rows() - 1)), 0); yy < std::min(y + 2, int(data[0].rows())); yy ++)
+          for(int xx = std::max(std::min(x - 2, int(data[0].cols() - 1)), 0); xx < std::min(x + 2, int(data[0].cols())); xx ++)
+            sum += data[0](yy, xx);
+        if(sum > .5)
+          elim.push_back(i);
+      }
+      for(int i = 0; i < polynorms.size(); i ++)
+        if(std::binary_search(elim.begin(), elim.end(), polynorms[i][0]) ||
+           std::binary_search(elim.begin(), elim.end(), polynorms[i][1]) ||
+           std::binary_search(elim.begin(), elim.end(), polynorms[i][2]))
+          elimp.push_back(i);
+      for(int i = 0, j = 0; i < elimp.size(); i ++) {
+        polynorms.erase(polynorms.begin() + (elimp[i] - j), polynorms.begin() + (elimp[i] - j + 1));
+        j ++;
+      }
+      saveobj(datapoly, polynorms, argv[4]);
+    }
+    return 0;
   default:
     usage();
     break;
