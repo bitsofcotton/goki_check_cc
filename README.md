@@ -60,10 +60,10 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     ./tools lpoly input.ppm output-match.ppm output.obj
     
     # list matches.
-    ./tools match input-matchbase.ppm output-base input-tobematched.ppm
+    ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm
     
     # list matches 2d - 3d.
-    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj
+    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj matchbase-bump.ppm
     
     # list matches 2d - 2d with hidden 3d.
     ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm hidden-3dmodel.obj
@@ -80,7 +80,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     
     #include "fisheye.hh"
     PseudoBump<float> bump;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBumpVec(input));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBump(input));
     
     #include "tilt.hh"
     tilter<float> tilt;
