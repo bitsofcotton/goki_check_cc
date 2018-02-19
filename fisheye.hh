@@ -29,7 +29,7 @@ public:
   PseudoBump();
   ~PseudoBump();
   void initialize(const int& z_max, const int& stp, const int& rstp);
-  Mat  getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, const bool& elim0 = true);
+  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
   Mat  getPseudoBump(Mat in, const bool& elim0 = true);
   
   int  vbox;
@@ -56,7 +56,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(60, 41, 600);
+  initialize(60, 61, 600);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -67,11 +67,11 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp / T(rstp);
-  this->vbox    = 8;
   this->cdist   = T(1);
   this->zdist   = z_max;
-  this->rz      = T(1) / T(3);
   this->nloop   = sqrt(z_max) / 2;
+  this->rz      = T(1) / T(3);
+  this->vbox    = 4;
   this->Pi      = T(4) * atan2(T(1), T(1));
   Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -106,13 +106,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
     result[j] = T(0);
   Vec zval(result.size());
   Vec rsub(result.size());
-  for(int s = 0; s < work.size(); s ++) {
-    const Vec pt(p0 + (p1 - p0) * s / T(result.size()));
-    for(int nl = 0; nl < nloop; nl ++) {
-      for(int j = 0; j < zval.size(); j ++) {
-        zval[j] =   T(0);
-        rsub[j] = - T(1);
-      }
+  for(int nl = 0; nl < nloop; nl ++) {
+    for(int j = 0; j < zval.size(); j ++) {
+      zval[j] =   T(0);
+      rsub[j] = - T(1);
+    }
+    for(int s = 0; s < work.size(); s ++) {
+      const Vec pt(p0 + (p1 - p0) * s / T(result.size()));
       for(int zz = nl * cf.size() / nloop; zz < min(int((nl + 1) * cf.size() / nloop), int(cf.size())); zz ++) {
         // d/dt (local color) / ||local color||:
         Vec c(cf[zz].cols());
@@ -122,12 +122,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
         if(isfinite(n2) && zval[s] < n2) {
           // N.B. If increase zz, decrease the distance from camera.
           //      And, zz->0 is treated as distant in tilter.
-          rsub[s] = (T(1) + zz) / T(cf.size());
+          rsub[s] = (T(1) + zz - nl * cf.size() / nloop) / (T(cf.size()) / nloop);
           zval[s] = n2;
         }
       }
-      result += complementLine(rsub);
     }
+    result += complementLine(rsub);
+    // XXX checkme:
+    result *= pow(T(cf.size()) / nloop, T(1) / nloop);
   }
   return result;
 }
@@ -164,41 +166,37 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   // XXX checkme:
   for(int i = 0; i < result.rows(); i ++)
     result.row(i) += getPseudoBumpSub(in.row(i), cf);
-  return result;
+  return autoLevel(result);
 }
 
 // get bump with multiple scale and vectored result.
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, const bool& elim0) {
-  cerr << "bump" << flush;
-  const Mat result(autoLevel(getPseudoBump(autoLevel(in), elim0)));
-  
+template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
   /*
    * Get vector based bumps.
    */
   geoms = vector<Eigen::Matrix<T, 3, 1> >();
   T aavg(0);
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      aavg += result(i, j);
-  aavg /= result.rows() * result.cols();
-  for(int i = 0; i < result.rows() / vbox + 1; i ++)
-    for(int j = 0; j < result.cols() / vbox + 1; j ++) {
-      T   avg(0);
-      int cnt(0);
-      for(int ii = i * vbox; ii < min((i + 1) * vbox, int(result.rows())); ii ++)
-        for(int jj = j * vbox; jj < min((j + 1) * vbox, int(result.cols())); jj ++) {
-          avg += result(ii, jj);
-          cnt ++;
-        }
-      if(! cnt)
-        geoms.push_back(geoms[geoms.size() - 1]);
-      else {
-        Eigen::Matrix<T, 3, 1> work;
-        work[0]  = i * vbox;
-        work[1]  = j * vbox;
-        work[2]  = - (avg / cnt - aavg) / T(2) * sqrt(T(result.rows() * result.cols())) * rz;
-        geoms.push_back(work);
+  for(int i = 0; i < in.rows(); i ++)
+    for(int j = 0; j < in.cols(); j ++)
+      aavg += in(i, j);
+  aavg /= in.rows() * in.cols();
+  for(int i = 0; i < in.rows() / vbox + 1; i ++)
+    for(int j = 0; j < in.cols() / vbox + 1; j ++) {
+      if(in.rows() < (i + 1) * vbox ||
+         in.cols() < (j + 1) * vbox) {
+        if(geoms.size() >= 1)
+          geoms.push_back(geoms[geoms.size() - 1]);
+        continue;
       }
+      T avg(0);
+      for(int ii = i * vbox; ii < (i + 1) * vbox; ii ++)
+        for(int jj = j * vbox; jj < (j + 1) * vbox; jj ++)
+          avg += in(ii, jj);
+      Eigen::Matrix<T, 3, 1> work;
+      work[0] = i * vbox;
+      work[1] = j * vbox;
+      work[2] = - (avg / vbox / vbox - aavg) / T(2) * sqrt(T(in.rows() * in.cols())) * rz;
+      geoms.push_back(work);
     }
   Eigen::Matrix<T, 3, 1> avg;
   avg[0] = avg[1] = avg[2] = T(0);
@@ -208,19 +206,19 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   for(int i = 0; i < geoms.size(); i ++)
     geoms[i][2] -= avg[2];
   delaunay = vector<Eigen::Matrix<int, 3, 1> >();
-  for(int i = 1; i < result.rows() / vbox + 1; i ++)
-    for(int j = 0; j < result.cols() / vbox; j ++) {
+  for(int i = 1; i < in.rows() / vbox + 1; i ++)
+    for(int j = 0; j < in.cols() / vbox; j ++) {
       Eigen::Matrix<int, 3, 1> work, work2;
-      work[0]  = (i - 1) * (result.cols() / vbox + 1) + j;
-      work[1]  =  i      * (result.cols() / vbox + 1) + j;
-      work[2]  =  i      * (result.cols() / vbox + 1) + j + 1;
-      work2[0] = (i - 1) * (result.cols() / vbox + 1) + j;
-      work2[2] = (i - 1) * (result.cols() / vbox + 1) + j + 1;
-      work2[1] =  i      * (result.cols() / vbox + 1) + j + 1;
+      work[0]  = (i - 1) * (in.cols() / vbox + 1) + j;
+      work[1]  =  i      * (in.cols() / vbox + 1) + j;
+      work[2]  =  i      * (in.cols() / vbox + 1) + j + 1;
+      work2[0] = (i - 1) * (in.cols() / vbox + 1) + j;
+      work2[2] = (i - 1) * (in.cols() / vbox + 1) + j + 1;
+      work2[1] =  i      * (in.cols() / vbox + 1) + j + 1;
       delaunay.push_back(work);
       delaunay.push_back(work2);
     }
-  return result;
+  return;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getLineAxis(Vec p, Vec c) {

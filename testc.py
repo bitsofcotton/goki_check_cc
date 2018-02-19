@@ -24,7 +24,10 @@ if(ext2 != ".ppm"):
   line2 = line2 + ".ppm"
 
 if(not os.path.exists(root + "-bump" + ext)):
-  subprocess.call([argv[1], "bump", line, root + "-bump" + ext, root + ".obj"])
+  subprocess.call([argv[1], "bump", line, root + "-bump" + ext])
+  subprocess.call(["convert", root + "-bump" + ext, "-blur", "8x8", "-compress", "none", root + "-bump-blur.ppm"])
+if(not os.path.exists(root + ".obj")):
+  subprocess.call([argv[1], "obj", root + "-bump-blur.ppm", root + ".obj"])
 if(not os.path.exists(root + "-mask.obj.mtl")):
   subprocess.call(["cp", os.path.dirname(argv[1]) + "/material.mtl", root + ".obj.mtl"])
   f = open(root + ".obj.mtl", "a")
