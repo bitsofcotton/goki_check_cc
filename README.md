@@ -50,7 +50,7 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     # make 2d to 3d pseudo bumpmap
     ./tools bump input.ppm output.ppm
     
-    # bumpmap 2 .obj file.
+    # bumpmap to .obj file.
     ./tools obj input-bump.ppm output.obj
     
     # make tilts from original and bumpmap images.
