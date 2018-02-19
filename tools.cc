@@ -23,7 +23,7 @@ const int    M_TILT(16);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|bump|bump2|rbump2|collect|tilt|lpoly|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|bump|obj|bump2|rbump2|collect|tilt|lpoly|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -44,6 +44,8 @@ int main(int argc, const char* argv[]) {
     mode = 0;
   else if(strcmp(argv[1], "bump") == 0)
     mode = 2;
+  else if(strcmp(argv[1], "obj") == 0)
+    mode = 7;
   else if(strcmp(argv[1], "bump2") == 0)
     mode = 3;
   else if(strcmp(argv[1], "rbump2") == 0)
@@ -90,25 +92,27 @@ int main(int argc, const char* argv[]) {
     {
       // bump.
       PseudoBump<double> bump;
-      std::vector<Eigen::Matrix<double, 3, 1> > points;
-      std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
-      data[0] = data[1] = data[2] = bump.getPseudoBumpVec(rgb2l(data), points, delaunay);
-      std::cout << "Handled points:" << std::endl;
-      for(int i = 0; i < points.size(); i ++)
-        std::cout << points[i].transpose() << std::endl;
-      saveobj(points, delaunay, argv[4]);
+      data[0] = data[1] = data[2] = bump.getPseudoBump(rgb2l(data));
     }
     break;
+  case 7:
+    {
+      // obj.
+      PseudoBump<double> bump;
+      std::vector<Eigen::Matrix<double, 3, 1> > points;
+      std::vector<Eigen::Matrix<int,    3, 1> > facets;
+      bump.getPseudoVec(data[0], points, facets);
+      saveobj(points, facets, argv[3]);
+    }
+    return 0;
   case 3:
     {
       // bump2 for training output.
       PseudoBump<double> bump;
-      std::vector<Eigen::Matrix<double, 3, 1> > points;
-      std::vector<Eigen::Matrix<int,    3, 1> > delaunay;
       auto X(.49000/.17697 * data[0] + .31000/.17697  * data[1] + .20000/.17697 * data[2]);
       auto Z(                          .010000/.17697 * data[1] + .99000/.17697 * data[2]);
       data[0] = X     / 8.;
-      data[1] = bump.getPseudoBumpVec(rgb2l(data), points, delaunay) / 8.;
+      data[1] = bump.getPseudoBump(rgb2l(data)) / 8.;
       data[2] = Z     / 8.;
     }
     // with no auto-level.
@@ -166,7 +170,12 @@ int main(int argc, const char* argv[]) {
     {
       // 2d - 2d match with hidden calculated 3d.
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3];
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bdata[3], bdata1[3];
       if(!loadp2or3<double>(data1, argv[4]))
+        return - 2;
+      if(!loadp2or3<double>(bdata, argv[5]))
+        return - 2;
+      if(!loadp2or3<double>(bdata1, argv[6]))
         return - 2;
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
@@ -175,8 +184,10 @@ int main(int argc, const char* argv[]) {
       bump.vbox = vbox;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
-      auto bump0(bump.getPseudoBumpVec(rgb2l(data),  shape0, sute));
-      auto bump1(bump.getPseudoBumpVec(rgb2l(data1), shape1, sute));
+      auto& bump0(bdata[0]);
+      auto& bump1(bdata1[0]);
+      bump.getPseudoVec(bump0,  shape0, sute);
+      bump.getPseudoVec(bump1, shape1, sute);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3], mbump;
       mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
       for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
@@ -265,7 +276,10 @@ int main(int argc, const char* argv[]) {
       // 3d - 2d match.
       std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
       std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump0[3];
       if(!loadobj<double>(datapoly, polynorms, argv[4]))
+        return - 2;
+      if(!loadp2or3<double>(bump0, argv[5]))
         return - 2;
       if(datapoly.size() > Mpoly) {
         std::cerr << "Too many vertices." << std::endl;
@@ -278,7 +292,8 @@ int main(int argc, const char* argv[]) {
       bumper.vbox = vbox;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
-      auto bump(bumper.getPseudoBumpVec(rgb2l(data), shape, sute));
+      auto& bump(bump0[0]);
+      bumper.getPseudoVec(bump, shape, sute);
       auto zero(data[0] * double(0));
       matchPartialPartial<double> statmatch;
       std::vector<match_t<double> > matches;
