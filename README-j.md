@@ -48,7 +48,10 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     ./tools collect input.ppm output.ppm
     
     # make 2d to 3d pseudo bumpmap
-    ./tools bump input.ppm output.ppm output.obj
+    ./tools bump input.ppm output.ppm
+    
+    # bumpmap to .obj file
+    ./tools obj input-bump.ppm output.obj
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
@@ -77,9 +80,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     #include "fisheye.hh"
     PseudoBump<float> bump;
-    std::vector<Eigen::Matrix<float, 3, 1> > points;
-    std::vector<Eigen::Matrix<int,   3, 1> > delaunay;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBumpVec(input, points, delaunay));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBump(input));
     
     #include "tilt.hh"
     tilter<float> tilt;
