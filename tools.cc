@@ -181,13 +181,12 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph / double(8));
       PseudoBump<double> bump;
-      bump.vbox = vbox;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
       auto& bump1(bdata1[0]);
-      bump.getPseudoVec(bump0,  shape0, sute);
-      bump.getPseudoVec(bump1, shape1, sute);
+      bump.getPseudoVec(bump0, shape0, sute, vbox);
+      bump.getPseudoVec(bump1, shape1, sute, vbox);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3], mbump;
       mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
       for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
@@ -289,11 +288,10 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph / double(8));
       PseudoBump<double> bumper;
-      bumper.vbox = vbox;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       auto& bump(bump0[0]);
-      bumper.getPseudoVec(bump, shape, sute);
+      bumper.getPseudoVec(bump, shape, sute, vbox);
       auto zero(data[0] * double(0));
       matchPartialPartial<double> statmatch;
       std::vector<match_t<double> > matches;

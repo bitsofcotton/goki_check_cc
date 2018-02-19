@@ -23,23 +23,19 @@ template <typename T> class PseudoBump {
 public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
-  typedef Eigen::Matrix<T,   3, 1> Vec3;
-  typedef Eigen::Matrix<int, 2, 1> Vec2i;
+  typedef Eigen::Matrix<T, 3, 1> Vec3;
   
   PseudoBump();
   ~PseudoBump();
   void initialize(const int& z_max, const int& stp, const int& rstp);
-  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay);
+  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, const int& vbox = 4, const T& rz = T(1) / T(3));
   Mat  getPseudoBump(Mat in, const bool& elim0 = true);
-  
-  int  vbox;
-  T    rz;
   
 private:
   Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
   Mat  autoLevel(const Mat& data, int npad = - 1);
   Vec  getPseudoBumpSub(const Vec& work, const Eigen::Matrix<Mat, Eigen::Dynamic, 1>& cf);
-  T    getImgPt(const Vec& img, const T& y);
+  const T& getImgPt(const Vec& img, const T& y);
   Vec  getLineAxis(Vec p, Vec c);
   Eigen::Matrix<Mat, Eigen::Dynamic, 1> prepareLineAxis(const Vec& d, const int& rstp);
   
@@ -56,7 +52,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(60, 61, 600);
+  initialize(40, 61, 600);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -67,13 +63,12 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->z_max   = z_max;
   this->stp     = stp;
   this->rstp    = stp / T(rstp);
+  this->nloop   = sqrt(z_max) / 2;
   this->cdist   = T(1);
   this->zdist   = z_max;
-  this->nloop   = sqrt(z_max) / 2;
-  this->rz      = T(1) / T(3);
-  this->vbox    = 4;
   this->Pi      = T(4) * atan2(T(1), T(1));
-  Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> DFT(stp, stp), IDFT(stp, stp);
+  Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic>  DFT(stp, stp);
+  Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
       DFT( i, j) = exp(complex<T>(- 2.) * Pi * sqrt(complex<T>(- 1)) * complex<T>(i * j / T(stp)));
@@ -111,6 +106,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       zval[j] =   T(0);
       rsub[j] = - T(1);
     }
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
     for(int s = 0; s < work.size(); s ++) {
       const Vec pt(p0 + (p1 - p0) * s / T(result.size()));
       for(int zz = nl * cf.size() / nloop; zz < min(int((nl + 1) * cf.size() / nloop), int(cf.size())); zz ++) {
@@ -122,14 +120,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
         if(isfinite(n2) && zval[s] < n2) {
           // N.B. If increase zz, decrease the distance from camera.
           //      And, zz->0 is treated as distant in tilter.
-          rsub[s] = (T(1) + zz - nl * cf.size() / nloop) / (T(cf.size()) / nloop);
+          rsub[s] = T(1) - zz / T(cf.size());
           zval[s] = n2;
         }
       }
     }
-    result += complementLine(rsub);
-    // XXX checkme:
-    result *= pow(T(cf.size()) / nloop, T(1) / nloop);
+    // N.B. invert sign.
+    result -= complementLine(rsub);
   }
   return result;
 }
@@ -170,7 +167,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 }
 
 // get bump with multiple scale and vectored result.
-template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay) {
+template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Eigen::Matrix<int, 3, 1> >& delaunay, const int& vbox, const T& rz) {
   /*
    * Get vector based bumps.
    */
@@ -257,7 +254,7 @@ template <typename T> Eigen::Matrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dyna
   return result;
 }
 
-template <typename T> T PseudoBump<T>::getImgPt(const Vec& img, const T& y) {
+template <typename T> const T& PseudoBump<T>::getImgPt(const Vec& img, const T& y) {
   const int& h(img.size());
   const int  yy(abs((int(y + .5) + 3 * h) % (2 * h) - h) % h);
   return img[yy];
@@ -315,8 +312,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
             work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
         result[i] += work * pts[rng[ii]];
       }
-      // XXX checkme:
-      // result[i] = max(min(result[i], T(2)), - T(1));
     }
   }
   return result;
