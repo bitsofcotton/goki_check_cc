@@ -108,12 +108,21 @@ int main(int argc, const char* argv[]) {
         stream >> ratio;
         for(int i = 0; i < points.size(); i ++)
           points[i] *= ratio;
+        if(5 < argc) {
+          std::stringstream stream(argv[5]);
+          stream >> ratio;
+          double M(points[0][2]), m(points[0][2]);
+          for(int i = 1; i < points.size(); i ++) {
+            M = std::max(points[i][2], M);
+            m = std::min(points[i][2], m);
+          }
+          if(M == m) M += 1.;
+          for(int i = 0; i < points.size(); i ++)
+            points[i][2] *= ratio / (M - m);
+        }
       }
-      double lz(0);
-      for(int i = 0; i < points.size(); i ++)
-        lz = max(lz, abs(points[i][2]));
       if(4 < argc)
-        saveobj(points, facets, argv[3], true, lz + double(2));
+        saveobj(points, facets, argv[3], true, double(2));
       else
         saveobj(points, facets, argv[3], false);
     }
@@ -409,11 +418,20 @@ int main(int argc, const char* argv[]) {
         stream >> ratio;
         for(int i = 0; i < datapoly.size(); i ++)
           datapoly[i] *= ratio;
+        if(6 < argc) {
+          std::stringstream stream(argv[6]);
+          stream >> ratio;
+          double M(datapoly[0][2]), m(datapoly[0][2]);
+          for(int i = 1; i < datapoly.size(); i ++) {
+            M = std::max(datapoly[i][2], M);
+            m = std::min(datapoly[i][2], m);
+          }
+          if(M == m) M += 1.;
+          for(int i = 0; i < datapoly.size(); i ++)
+            datapoly[i][2] *= ratio / (M - m);
+        }
       }
-      double lz(0);
-      for(int i = 0; i < datapoly.size(); i ++)
-        lz = max(lz, abs(datapoly[i][2]));
-      saveobj(datapoly, polynorms, argv[4], true, lz + double(2));
+      saveobj(datapoly, polynorms, argv[4], true, double(2));
     }
     return 0;
   default:
