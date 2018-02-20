@@ -20,7 +20,7 @@ for idx in range(2, len(argv)):
     root, ext = os.path.splitext(line)
   if(not os.path.exists(root + "-bump" + ext)):
     subprocess.call([argv[1], "bump", line, root + "-bump" + ext])
-    subprocess.call(["convert", root + "-bump" + ext, "-blur", "8x8", "-compress", "none", root + "-bump-blur.ppm"])
+    subprocess.call(["convert", root + "-bump" + ext, "-blur", "16x16", "-compress", "none", root + "-bump-blur.ppm"])
   if(not os.path.exists(root + ".obj")):
     subprocess.call([argv[1], "obj", root + "-bump-blur.ppm", root + ".obj", ".1"])
   if(not os.path.exists(root + "-emph" + ext)):
