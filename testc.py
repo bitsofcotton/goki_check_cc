@@ -25,7 +25,7 @@ if(ext2 != ".ppm"):
 
 if(not os.path.exists(root + "-bump" + ext)):
   subprocess.call([argv[1], "bump", line, root + "-bump" + ext])
-  subprocess.call(["convert", root + "-bump" + ext, "-blur", "8x8", "-compress", "none", root + "-bump-blur.ppm"])
+  subprocess.call(["convert", root + "-bump" + ext, "-blur", "16x16", "-compress", "none", root + "-bump-blur.ppm"])
 if(not os.path.exists(root + ".obj")):
   subprocess.call([argv[1], "obj", root + "-bump-blur.ppm", root + ".obj"])
 if(not os.path.exists(root + "-mask.obj.mtl")):
@@ -36,4 +36,5 @@ if(not os.path.exists(root + "-mask.obj.mtl")):
   f.close()
   subprocess.call([argv[1], "maskobj", line2, root + ".obj", root + "-mask.obj", ".1"])
   subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
+  subprocess.call([argv[1], "obj", root + "-bump-blur.ppm", root + ".obj", ".1"])
 

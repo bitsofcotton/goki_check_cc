@@ -172,13 +172,13 @@ template <typename T> void getEdge(vector<int>& idxs, const vector<Eigen::Matrix
       return data[i][0] < data[j][0];
       break;
     case 1:
-      return data[i][1] > data[j][1];
+      return data[i][1] < data[j][1];
       break;
     case 2:
       return data[i][0] > data[j][0];
       break;
     case 3:
-      return data[i][1] < data[j][1];
+      return data[i][1] > data[j][1];
       break;
     }
     return false;
@@ -228,12 +228,12 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
         getEdge(outer, data, i);
       outer.push_back(outer[0]);
       for(int i = 0; i < outer.size() - 1; i ++) {
-        output << "f " << data.size() + outer[i + 0] + 1;
-        output << " "  << data.size() + outer[i + 1] + 1;
+        output << "f " << data.size() + outer[i + 1] + 1;
+        output << " "  << data.size() + outer[i + 0] + 1;
         output << " "  << outer[i + 1] + 1 << endl;
         output << "f " << data.size() + outer[i + 0] + 1;
-        output << " "  << outer[i + 1] + 1;
-        output << " "  << outer[i + 0] + 1 << endl;
+        output << " "  << outer[i + 0] + 1;
+        output << " "  << outer[i + 1] + 1 << endl;
       }
     }
     output.close();
