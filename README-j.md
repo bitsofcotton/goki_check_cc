@@ -1,9 +1,6 @@
 # Goki Check
 静止画像からあらかじめ想定される文脈を座標と共に得ることが目的のプログラムです。このプログラムは決定論的な手法を用いています。  
-現在は骨子情報のある固いオブジェクト同士の合致を実装しています。
-
-N.B. 深度情報を計算するにあたり、通常のカメラで撮影したものに関しては先行の defocus ソフトウェアなどの方がより正確で良い結果を返します。
-この実装は理論的興味によるもので、F=&infin; の場合を仮定しています。
+古い情報に関しては、https://sourceforge.net/p/gokicheck/wiki/Home/ を参照してください。
 
 # 使い方
 Makefile を Eigen と stdc++ を使えるように変更してください。  
@@ -14,10 +11,9 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * fisheye.hh
 * * z_max   : 出力する z 軸の解像度です。
 * * stp     : ぼやけ具合を検出する際に使用される点の数です。
-* * rstp    : ぼやけ具合を検出する際に使用される実際の画像の幅もしくは高さです。
-* * vmax    : pseudoBumpVec で返される点の最大数です。(若干上下します)
+* * rstp    : ぼやけ具合を検出する際に使用される実際の画像のピクセル数の基準です。stp / rstp ピクセルが基準です。
 * tilt.hh
-* * z_ratio : [0,1] から [0,z_atio] への線形写像。
+* * z_ratio : [0,1] から [0,z_atio] への線形写像です。
 * scancontext.hh
 * * matchPartialPartial::ndiv    : 合致する角度の分割数です
 * * matchPartialPartial::thresh  : 合致を集めてくる際の平行なベクトルのための誤差です。
@@ -29,14 +25,13 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。
 また、この分野に関して、様々な(これと異なる)付帯条件での先行がたくさんありました。
-(例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるもの、
- 動画から生成するものなどです。)
+(例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるもの、動画から生成するものなどです。)
 検索結果に defocus photo アルゴリズムがありました。 http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf 。これはほとんどの場合のカメラ撮影について、goki_check_cc よりも正確です。goki_check_cc は異なる仮定を用いていますが、一般的に使用されるカメラ撮影の場合には、事前のいくつかの変換が必要です。  
-また、合致の分野に対して、様々な(これと異なる)付帯条件での先行がたくさんありました。(例えば、トポロジを検出して端を合致するものや、機械学習を使うものなどです。)  
+また、合致の分野に対して、様々な(これと異なる)付帯条件での先行がたくさんありました。(例えば、トポロジを検出して端を合致するものや、機械学習を使うもの、および座標変換の変数を点の数で固定するものなどです。)  
 さらに検索中です。
 
 # 状態
-回転のある場合の全体の一致の実装をしています。
+回転のある場合の全体の一致の実装をしています。また、実装のチェックをしています。
 
 # 使い方
     make tools
@@ -52,6 +47,9 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     # bumpmap to .obj file
     ./tools obj input-bump.ppm output.obj
+    
+    # mask .obj files.
+    ./tools maskobj input-mask.ppm input.obj output.obj
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
@@ -94,8 +92,8 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     std::vector<match_t<float> > matches(statmatch.match(shape0, shape1));
     // match operations.
     
-    // If you need, please scope with namespace block.
-    // but include guard definition may harms.
+    // 必要であれば namespace ブロックでスコープしてください。
+    // ただし、インクルードガードの定義が有害な場合があります。
 
 # デモ
 https://services.limpid-intensity.info/ にサンプルがあります。  
