@@ -34,6 +34,6 @@ if(not os.path.exists(root + "-mask.obj.mtl")):
   f.write("map_Ka " + line + "\n")
   f.write("map_Kd " + line + "\n")
   f.close()
-  subprocess.call([argv[1], "maskobj", line2, root + ".obj", root + "-mask.obj"])
+  subprocess.call([argv[1], "maskobj", line2, root + ".obj", root + "-mask.obj", ".1"])
   subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
 
