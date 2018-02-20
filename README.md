@@ -1,7 +1,5 @@
 # Goki Check
 These program aims to get geometry and context(s) from A still image in a deterministic way.  
-Now, implementing bone enabled match.
-
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
 # How to use
