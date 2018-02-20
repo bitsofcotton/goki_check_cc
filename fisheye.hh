@@ -181,8 +181,13 @@ template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
          in.cols() < (j + 1) * vbox) {
-        if(geoms.size() >= 1)
-          geoms.push_back(geoms[geoms.size() - 1]);
+        if(geoms.size() >= 1) {
+          Eigen::Matrix<T, 3, 1> gbuf;
+          gbuf[0] = i * vbox;
+          gbuf[1] = j * vbox;
+          gbuf[2] = geoms[geoms.size() - 1][2];
+          geoms.push_back(gbuf);
+        }
         continue;
       }
       T avg(0);
