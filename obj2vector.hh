@@ -157,10 +157,10 @@ template <typename T> void getEdge(vector<int>& idxs, const vector<Eigen::Matrix
   for(int i = 0; i < data.size(); i ++) {
     bool flag(true);
     for(int j = 0; j < data.size(); j ++)
-      if((type % 4 == 0 && data[i][0] == data[j][0] && data[i][1] < data[j][1]) ||
-         (type % 4 == 1 && data[i][1] == data[j][1] && data[i][0] > data[j][0]) ||
-         (type % 4 == 2 && data[i][0] == data[j][0] && data[i][1] > data[j][1]) ||
-         (type % 4 == 3 && data[i][1] == data[j][1] && data[i][0] < data[j][0])) {
+      if((type % 4 == 0 && data[i][0] == data[j][0] && data[i][1] > data[j][1]) ||
+         (type % 4 == 1 && data[i][1] == data[j][1] && data[i][0] < data[j][0]) ||
+         (type % 4 == 2 && data[i][0] == data[j][0] && data[i][1] < data[j][1]) ||
+         (type % 4 == 3 && data[i][1] == data[j][1] && data[i][0] > data[j][0])) {
         flag = false;
         break;
       }
@@ -188,7 +188,7 @@ template <typename T> void getEdge(vector<int>& idxs, const vector<Eigen::Matrix
 }
 
 
-template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& addstand = false, const T& zs = T(20)) {
+template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& addstand = false, const T& zs = T(2)) {
   ofstream output;
   output.open(filename, std::ios::out);
   if(output.is_open()) {
@@ -200,14 +200,18 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
     if(lfs) lfs ++;
     output << "mtllib " << &filename[lfs] << ".mtl" << endl;
     for(int i = 0; i < data.size(); i ++) {
-      output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
       Mh = max(data[i][1], Mh);
       Mw = max(data[i][0], Mw);
       lz = min(data[i][2], lz);
     }
-    if(addstand)
+    if(addstand) {
       for(int i = 0; i < data.size(); i ++)
-        output << "v " << data[i][1] << " " << - data[i][0] << " " << lz - zs << endl;
+        output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + zs - lz << endl;
+      for(int i = 0; i < data.size(); i ++)
+        output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << 0 << endl;
+    } else
+      for(int i = 0; i < data.size(); i ++)
+        output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
     for(int i = 0; i < data.size(); i ++)
       output << "vt " << data[i][1] / Mh << " " << 1. - data[i][0] / Mw << endl;
     output << "usemtl material0" << endl;
@@ -228,12 +232,12 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
         getEdge(outer, data, i);
       outer.push_back(outer[0]);
       for(int i = 0; i < outer.size() - 1; i ++) {
-        output << "f " << data.size() + outer[i + 1] + 1;
-        output << " "  << data.size() + outer[i + 0] + 1;
+        output << "f " << data.size() + outer[i + 0] + 1;
+        output << " "  << data.size() + outer[i + 1] + 1;
         output << " "  << outer[i + 1] + 1 << endl;
         output << "f " << data.size() + outer[i + 0] + 1;
-        output << " "  << outer[i + 0] + 1;
-        output << " "  << outer[i + 1] + 1 << endl;
+        output << " "  << outer[i + 1] + 1;
+        output << " "  << outer[i + 0] + 1 << endl;
       }
     }
     output.close();

@@ -112,7 +112,10 @@ int main(int argc, const char* argv[]) {
       double lz(0);
       for(int i = 0; i < points.size(); i ++)
         lz = max(lz, abs(points[i][2]));
-      saveobj(points, facets, argv[3], true, lz + double(2));
+      if(4 < argc)
+        saveobj(points, facets, argv[3], true, lz + double(2));
+      else
+        saveobj(points, facets, argv[3], false);
     }
     return 0;
   case 3:
