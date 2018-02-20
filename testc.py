@@ -19,9 +19,8 @@ if(ext != ".ppm"):
 
 line2 = argv[3]
 root2, ext2 = os.path.splitext(line2)
-if(ext2 != ".ppm"):
-  subprocess.call(["convert", argv[3], "-compress", "none", argv[3] + ".ppm"])
-  line2 = line2 + ".ppm"
+subprocess.call(["convert", argv[3], "-type", "Grayscale", "-negate", "-morphology", "Close", "Diamond", "-morphology", "Thicken:-1", "ConvexHull", "-morphology", "Close", "Diamond", "-blur", "4x4", "-negate", "-type", "TrueColor", "-compress", "none", argv[3] + ".ppm"])
+line2 = line2 + ".ppm"
 
 if(not os.path.exists(root + "-bump" + ext)):
   subprocess.call([argv[1], "bump", line, root + "-bump" + ext])
@@ -34,7 +33,7 @@ if(not os.path.exists(root + "-mask.obj.mtl")):
   f.write("map_Ka " + line + "\n")
   f.write("map_Kd " + line + "\n")
   f.close()
-  subprocess.call([argv[1], "maskobj", line2, root + ".obj", root + "-mask.obj", ".1"])
+  subprocess.call([argv[1], "maskobj", line2, root + ".obj", root + "-mask.obj", ".05", "2."])
   subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
-  subprocess.call([argv[1], "obj", root + "-bump-blur.ppm", root + ".obj", ".1"])
+  subprocess.call([argv[1], "obj", root + "-bump-blur.ppm", root + ".obj", ".05", "2."])
 

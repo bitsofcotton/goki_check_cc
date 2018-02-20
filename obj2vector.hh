@@ -202,7 +202,7 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
     for(int i = 0; i < data.size(); i ++) {
       Mh = max(data[i][1], Mh);
       Mw = max(data[i][0], Mw);
-      lz = min(data[i][2], lz);
+      lz = min(- data[i][2], lz);
     }
     if(addstand) {
       for(int i = 0; i < data.size(); i ++)
