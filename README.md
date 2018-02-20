@@ -1,8 +1,6 @@
 # Goki Check
-These program aims to get geometry and context(s) from A still image in deterministic way.  
+These program aims to get geometry and context(s) from A still image in a deterministic way.  
 Now, implementing bone enabled match.
-
-N.B. if the image is from the photo, it better depths preceders like defocus and so on. This implement assumes F=&infin; form because of the theoretical interest (pseudoBumpSub function so).
 
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
@@ -15,8 +13,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * fisheye.hh
 * * z_max   : z-index resolution.
 * * stp     : number of points to be used in detecting edges.
-* * rstp    : width or height to be used in detecting edges in the picture.
-* * vmax    : max points to be returned in pseudoBumpVec.
+* * rstp    : stp / rstp pixels are base number of pixels for re-pinting.
 * tilt.hh
 * * z_ratio : [0,1] to [0,z_atio].
 * scancontext.hh
@@ -37,6 +34,7 @@ Searching the Internet more...
 
 # Status
 Searching bone-enabled 3d model simple format. Writing whole to rotated partials match.
+And checking implementation.
 
 # Usage
     make tools
@@ -52,6 +50,9 @@ Searching bone-enabled 3d model simple format. Writing whole to rotated partials
     
     # bumpmap to .obj file.
     ./tools obj input-bump.ppm output.obj
+    
+    # mask bumpmapped obj files.
+    ./tools maskobj input-mask.ppm input.obj output.obj
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
