@@ -152,11 +152,47 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const
   return res;
 }
 
-template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const T& zr = T(1)) {
+template <typename T> void getEdge(vector<int>& idxs, const vector<Eigen::Matrix<T, 3, 1> >& data, const int& type) {
+  vector<int> buf;
+  for(int i = 0; i < data.size(); i ++) {
+    bool flag(true);
+    for(int j = 0; j < data.size(); j ++)
+      if((type % 4 == 0 && data[i][0] == data[j][0] && data[i][1] < data[j][1]) ||
+         (type % 4 == 1 && data[i][1] == data[j][1] && data[i][0] > data[j][0]) ||
+         (type % 4 == 2 && data[i][0] == data[j][0] && data[i][1] > data[j][1]) ||
+         (type % 4 == 3 && data[i][1] == data[j][1] && data[i][0] < data[j][0])) {
+        flag = false;
+        break;
+      }
+    if(flag)
+      buf.push_back(i);
+  }
+  sort(buf.begin(), buf.end(), [&](const int& i, const int& j) { switch(type % 4) {
+    case 0:
+      return data[i][0] < data[j][0];
+      break;
+    case 1:
+      return data[i][1] > data[j][1];
+      break;
+    case 2:
+      return data[i][0] > data[j][0];
+      break;
+    case 3:
+      return data[i][1] < data[j][1];
+      break;
+    }
+    return false;
+  });
+  idxs.insert(idxs.end(), buf.begin(), buf.end());
+  return;
+}
+
+
+template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& addstand = false, const T& zs = T(20)) {
   ofstream output;
   output.open(filename, std::ios::out);
   if(output.is_open()) {
-    double Mh(1), Mw(1);
+    double Mh(1), Mw(1), lz(0);
     int lfs(0);
     for(int fslash(0) ; filename[fslash]; fslash ++)
       if(filename[fslash] == '/')
@@ -164,10 +200,14 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
     if(lfs) lfs ++;
     output << "mtllib " << &filename[lfs] << ".mtl" << endl;
     for(int i = 0; i < data.size(); i ++) {
-      output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] * zr << endl;
+      output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
       Mh = max(data[i][1], Mh);
       Mw = max(data[i][0], Mw);
+      lz = min(data[i][2], lz);
     }
+    if(addstand)
+      for(int i = 0; i < data.size(); i ++)
+        output << "v " << data[i][1] << " " << - data[i][0] << " " << lz - zs << endl;
     for(int i = 0; i < data.size(); i ++)
       output << "vt " << data[i][1] / Mh << " " << 1. - data[i][0] / Mw << endl;
     output << "usemtl material0" << endl;
@@ -176,6 +216,25 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
       output << "f " << polys[i][0] + 1 << "/" << polys[i][0] + 1 << "/" << polys[i][0] + 1;
       output << " "  << polys[i][1] + 1 << "/" << polys[i][1] + 1 << "/" << polys[i][1] + 1;
       output << " "  << polys[i][2] + 1 << "/" << polys[i][2] + 1 << "/" << polys[i][2] + 1 << endl;
+      if(addstand) {
+        output << "f " << data.size() + polys[i][0] + 1;
+        output << " "  << data.size() + polys[i][2] + 1;
+        output << " "  << data.size() + polys[i][1] + 1 << endl;
+      }
+    }
+    if(addstand) {
+      vector<int> outer;
+      for(int i = 0; i < 4; i ++)
+        getEdge(outer, data, i);
+      outer.push_back(outer[0]);
+      for(int i = 0; i < outer.size() - 1; i ++) {
+        output << "f " << data.size() + outer[i + 0] + 1;
+        output << " "  << data.size() + outer[i + 1] + 1;
+        output << " "  << outer[i + 1] + 1 << endl;
+        output << "f " << data.size() + outer[i + 0] + 1;
+        output << " "  << outer[i + 1] + 1;
+        output << " "  << outer[i + 0] + 1 << endl;
+      }
     }
     output.close();
   } else {

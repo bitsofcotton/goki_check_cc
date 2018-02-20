@@ -102,7 +102,17 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
       bump.getPseudoVec(data[0], points, facets);
-      saveobj(points, facets, argv[3]);
+      if(4 < argc) {
+        double ratio;
+        std::stringstream stream(argv[4]);
+        stream >> ratio;
+        for(int i = 0; i < points.size(); i ++)
+          points[i] *= ratio;
+      }
+      double lz(0);
+      for(int i = 0; i < points.size(); i ++)
+        lz = max(lz, abs(points[i][2]));
+      saveobj(points, facets, argv[3], true, lz + double(2));
     }
     return 0;
   case 3:
@@ -364,27 +374,43 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
       if(argc < 5 || !loadobj<double>(datapoly, polynorms, argv[3]))
         return - 2;
-      std::vector<int> elim, elimp;
-      for(int i = 0; i < datapoly.size(); i ++) {
+      std::vector<int> elim, elimp, after;
+      for(int i = 0, ii = 0; i < datapoly.size(); i ++) {
         const int y(std::max(std::min(int(datapoly[i][0]), int(data[0].rows() - 1)), 0));
         const int x(std::max(std::min(int(datapoly[i][1]), int(data[0].cols() - 1)), 0));
-        double sum(0);
-        for(int yy = std::max(std::min(y - 2, int(data[0].rows() - 1)), 0); yy < std::min(y + 2, int(data[0].rows())); yy ++)
-          for(int xx = std::max(std::min(x - 2, int(data[0].cols() - 1)), 0); xx < std::min(x + 2, int(data[0].cols())); xx ++)
-            sum += data[0](yy, xx);
-        if(sum > .5)
+        if(data[0](y, x) > .5) {
           elim.push_back(i);
+          after.push_back(- 1);
+        } else
+          after.push_back(ii ++);
       }
       for(int i = 0; i < polynorms.size(); i ++)
         if(std::binary_search(elim.begin(), elim.end(), polynorms[i][0]) ||
            std::binary_search(elim.begin(), elim.end(), polynorms[i][1]) ||
            std::binary_search(elim.begin(), elim.end(), polynorms[i][2]))
           elimp.push_back(i);
+      for(int i = 0, j = 0; i < elim.size(); i ++) {
+        datapoly.erase(datapoly.begin() + (elim[i] - j), datapoly.begin() + (elim[i] - j + 1));
+        j ++;
+      }
+      for(int i = 0; i < polynorms.size(); i ++)
+        for(int j = 0; j < polynorms[i].size(); j ++)
+          polynorms[i][j] = after[polynorms[i][j]];
       for(int i = 0, j = 0; i < elimp.size(); i ++) {
         polynorms.erase(polynorms.begin() + (elimp[i] - j), polynorms.begin() + (elimp[i] - j + 1));
         j ++;
       }
-      saveobj(datapoly, polynorms, argv[4]);
+      if(5 < argc) {
+        double ratio;
+        std::stringstream stream(argv[5]);
+        stream >> ratio;
+        for(int i = 0; i < datapoly.size(); i ++)
+          datapoly[i] *= ratio;
+      }
+      double lz(0);
+      for(int i = 0; i < datapoly.size(); i ++)
+        lz = max(lz, abs(datapoly[i][2]));
+      saveobj(datapoly, polynorms, argv[4], true, lz + double(2));
     }
     return 0;
   default:
