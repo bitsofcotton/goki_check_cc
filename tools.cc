@@ -18,12 +18,13 @@ const int    zrl(3);
 const int    nshow(8);
 const int    nemph(4);
 const int    vbox(8);
+const int    objvbox(2);
 const double threshr(.75);
 const int    M_TILT(16);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|bump|obj|bump2|rbump2|collect|tilt|lpoly|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|lpoly|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -52,6 +53,8 @@ int main(int argc, const char* argv[]) {
     mode = 5;
   else if(strcmp(argv[1], "collect") == 0)
     mode = 4;
+  else if(strcmp(argv[1], "idetect") == 0)
+    mode = 1;
   else if(strcmp(argv[1], "tilt") == 0)
     mode = 6;
   else if(strcmp(argv[1], "lpoly") == 0)
@@ -85,14 +88,28 @@ int main(int argc, const char* argv[]) {
       // collect.
       enlarger2ex<double> detect;
       for(int i = 0; i < 3; i ++)
-        data[i] = detect.compute(data[i], enlarger2ex<double>::COLLECT_BOTH);
+        data[i] = detect.compute(data[i], detect.COLLECT_BOTH);
+    }
+    break;
+  case 1:
+    {
+      // idetect.
+      enlarger2ex<double> idetect;
+      for(int i = 0; i < 3; i ++)
+        data[i] = idetect.compute(data[i], idetect.IDETECT_BOTH);
     }
     break;
   case 2:
     {
       // bump.
-      PseudoBump<double> bump;
-      data[0] = data[1] = data[2] = bump.getPseudoBump(rgb2l(data));
+      PseudoBump<double>  bump;
+      enlarger2ex<double> collector;
+      data[0] = bump.getPseudoBump(rgb2l(data));
+      data[1] = collector.compute(rgb2l(data), collector.COLLECT_BOTH);
+      for(int i = 0; i < data[0].rows(); i ++)
+        for(int j = 0; j < data[0].cols(); j ++)
+          data[0](i, j) /= double(1) + data[1](i, j);
+      data[1] = data[2] = data[0];
     }
     break;
   case 7:
@@ -101,30 +118,8 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
-      bump.getPseudoVec(data[0], points, facets);
-      if(4 < argc) {
-        double ratio;
-        std::stringstream stream(argv[4]);
-        stream >> ratio;
-        for(int i = 0; i < points.size(); i ++)
-          points[i] *= ratio;
-        if(5 < argc) {
-          std::stringstream stream(argv[5]);
-          stream >> ratio;
-          double M(points[0][2]), m(points[0][2]);
-          for(int i = 1; i < points.size(); i ++) {
-            M = std::max(points[i][2], M);
-            m = std::min(points[i][2], m);
-          }
-          if(M == m) M += 1.;
-          for(int i = 0; i < points.size(); i ++)
-            points[i][2] *= ratio / (M - m);
-        }
-      }
-      if(4 < argc)
-        saveobj(points, facets, argv[3], true, double(2));
-      else
-        saveobj(points, facets, argv[3], false);
+      bump.getPseudoVec(data[0], points, facets, objvbox);
+      saveobj(points, facets, argv[3]);
     }
     return 0;
   case 3:
@@ -382,56 +377,30 @@ int main(int argc, const char* argv[]) {
   case 12:
     {
       // maskobj.
-      std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
-      std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
-      if(argc < 5 || !loadobj<double>(datapoly, polynorms, argv[3]))
+      std::vector<Eigen::Matrix<double, 3, 1> > points;
+      std::vector<Eigen::Matrix<int, 3, 1> >    polys;
+      if(argc < 6 || !loadobj<double>(points, polys, argv[3])) {
+        usage();
         return - 2;
-      std::vector<int> elim, elimp, after;
-      for(int i = 0, ii = 0; i < datapoly.size(); i ++) {
-        const int y(std::max(std::min(int(datapoly[i][0]), int(data[0].rows() - 1)), 0));
-        const int x(std::max(std::min(int(datapoly[i][1]), int(data[0].cols() - 1)), 0));
-        if(data[0](y, x) > .5) {
-          elim.push_back(i);
-          after.push_back(- 1);
-        } else
-          after.push_back(ii ++);
       }
-      for(int i = 0; i < polynorms.size(); i ++)
-        if(std::binary_search(elim.begin(), elim.end(), polynorms[i][0]) ||
-           std::binary_search(elim.begin(), elim.end(), polynorms[i][1]) ||
-           std::binary_search(elim.begin(), elim.end(), polynorms[i][2]))
-          elimp.push_back(i);
-      for(int i = 0, j = 0; i < elim.size(); i ++) {
-        datapoly.erase(datapoly.begin() + (elim[i] - j), datapoly.begin() + (elim[i] - j + 1));
-        j ++;
+      maskVectors<double>(points, polys, data[0]);
+      auto edges(getEdges<double>(data[0], points, objvbox));
+      double ratio;
+      std::stringstream stream(argv[5]);
+      stream >> ratio;
+      for(int i = 0; i < points.size(); i ++)
+        points[i] *= ratio;
+      std::stringstream stream2(argv[6]);
+      stream2 >> ratio;
+      double M(points[0][2]), m(points[0][2]);
+      for(int i = 1; i < points.size(); i ++) {
+        M = std::max(points[i][2], M);
+        m = std::min(points[i][2], m);
       }
-      for(int i = 0; i < polynorms.size(); i ++)
-        for(int j = 0; j < polynorms[i].size(); j ++)
-          polynorms[i][j] = after[polynorms[i][j]];
-      for(int i = 0, j = 0; i < elimp.size(); i ++) {
-        polynorms.erase(polynorms.begin() + (elimp[i] - j), polynorms.begin() + (elimp[i] - j + 1));
-        j ++;
-      }
-      if(5 < argc) {
-        double ratio;
-        std::stringstream stream(argv[5]);
-        stream >> ratio;
-        for(int i = 0; i < datapoly.size(); i ++)
-          datapoly[i] *= ratio;
-        if(6 < argc) {
-          std::stringstream stream(argv[6]);
-          stream >> ratio;
-          double M(datapoly[0][2]), m(datapoly[0][2]);
-          for(int i = 1; i < datapoly.size(); i ++) {
-            M = std::max(datapoly[i][2], M);
-            m = std::min(datapoly[i][2], m);
-          }
-          if(M == m) M += 1.;
-          for(int i = 0; i < datapoly.size(); i ++)
-            datapoly[i][2] *= ratio / (M - m);
-        }
-      }
-      saveobj(datapoly, polynorms, argv[4], true, double(2));
+      if(M == m) M += 1.;
+      for(int i = 0; i < points.size(); i ++)
+        points[i][2] *= ratio / (M - m);
+      saveobj(points, polys, argv[4], true, edges);
     }
     return 0;
   default:
