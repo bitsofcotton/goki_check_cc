@@ -50,8 +50,8 @@ And checking implementation.
     # bumpmap to .obj file.
     ./tools obj input-bump.ppm output.obj
     
-    # mask bumpmapped obj files.
-    ./tools maskobj input-mask.ppm input.obj output.obj
+    # mask bumpmapped obj files and add support.
+    ./tools maskobj input-mask.ppm input.obj output.obj size-ratio thin-or-thickness-size
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
