@@ -16,7 +16,11 @@ using std::ofstream;
 using std::getline;
 using std::stringstream;
 using std::vector;
+using std::binary_search;
 using std::abs;
+using std::pair;
+using std::make_pair;
+using std::unique;
 
 template <typename T> int clockwise(const Eigen::Matrix<T, 3, 1>& p0, const Eigen::Matrix<T, 3, 1>& p1, const Eigen::Matrix<T, 3, 1>& p2, const T& epsilon = T(1e-4)) {
   Eigen::Matrix<T, 3, 3> dc0;
@@ -152,43 +156,187 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const
   return res;
 }
 
-template <typename T> void getEdge(vector<int>& idxs, const vector<Eigen::Matrix<T, 3, 1> >& data, const int& type) {
-  vector<int> buf;
-  for(int i = 0; i < data.size(); i ++) {
-    bool flag(true);
-    for(int j = 0; j < data.size(); j ++)
-      if((type % 4 == 0 && data[i][0] == data[j][0] && data[i][1] > data[j][1]) ||
-         (type % 4 == 1 && data[i][1] == data[j][1] && data[i][0] < data[j][0]) ||
-         (type % 4 == 2 && data[i][0] == data[j][0] && data[i][1] < data[j][1]) ||
-         (type % 4 == 3 && data[i][1] == data[j][1] && data[i][0] > data[j][0])) {
-        flag = false;
-        break;
-      }
-    if(flag)
-      buf.push_back(i);
+template <typename T> void maskVectors(vector<Eigen::Matrix<T, 3, 1> >& points, vector<Eigen::Matrix<int, 3, 1> >& polys, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data) {
+  std::vector<int> elim, elimp, after;
+  for(int i = 0, ii = 0; i < points.size(); i ++) {
+    const int y(std::max(std::min(int(points[i][0]), int(data.rows() - 1)), 0));
+    const int x(std::max(std::min(int(points[i][1]), int(data.cols() - 1)), 0));
+    if(data(y, x) > .5) {
+      elim.push_back(i);
+      after.push_back(- 1);
+    } else
+      after.push_back(ii ++);
   }
-  sort(buf.begin(), buf.end(), [&](const int& i, const int& j) { switch(type % 4) {
-    case 0:
-      return data[i][0] < data[j][0];
-      break;
-    case 1:
-      return data[i][1] < data[j][1];
-      break;
-    case 2:
-      return data[i][0] > data[j][0];
-      break;
-    case 3:
-      return data[i][1] > data[j][1];
-      break;
-    }
-    return false;
-  });
-  idxs.insert(idxs.end(), buf.begin(), buf.end());
+  for(int i = 0; i < polys.size(); i ++)
+    if(std::binary_search(elim.begin(), elim.end(), polys[i][0]) ||
+       std::binary_search(elim.begin(), elim.end(), polys[i][1]) ||
+       std::binary_search(elim.begin(), elim.end(), polys[i][2]))
+      elimp.push_back(i);
+  for(int i = 0, j = 0; i < elim.size(); i ++) {
+    points.erase(points.begin() + (elim[i] - j), points.begin() + (elim[i] - j + 1));
+    j ++;
+  }
+  for(int i = 0; i < polys.size(); i ++)
+    for(int j = 0; j < polys[i].size(); j ++)
+      polys[i][j] = after[polys[i][j]];
+  for(int i = 0, j = 0; i < elimp.size(); i ++) {
+    polys.erase(polys.begin() + (elimp[i] - j), polys.begin() + (elimp[i] - j + 1));
+    j ++;
+  }
   return;
 }
 
+template <typename T> void floodfill(Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic>& checked, vector<pair<int, int> >& store, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& mask, const int& y, const int& x) {
+  assert(mask.rows() == checked.rows() && mask.cols() == checked.cols());
+  vector<pair<int, int> > tries;
+  tries.push_back(make_pair(+ 1,   0));
+  tries.push_back(make_pair(  0, + 1));
+  tries.push_back(make_pair(- 1,   0));
+  tries.push_back(make_pair(  0, - 1));
+  vector<pair<int, int> > stack;
+  stack.push_back(make_pair(y, x));
+  while(stack.size()) {
+    const auto pop(stack[stack.size() - 1]);
+    stack.pop_back();
+    const int& yy(pop.first);
+    const int& xx(pop.second);
+    if(! (0 <= yy && yy < checked.rows() && 0 <= xx && xx < checked.cols()) )
+      store.push_back(pop);
+    else if(!checked(yy, xx)) {
+      checked(yy, xx) = true;
+      if(T(.5) < mask(yy, xx))
+        store.push_back(pop);
+      else
+        for(int i = 0; i < tries.size(); i ++)
+          stack.push_back(make_pair(yy + tries[i].first, xx + tries[i].second));
+    }
+  }
+  return;
+}
 
-template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& addstand = false, const T& zs = T(2)) {
+// N.B. mask 2 vector but this takes almost bruteforce.
+// XXX there must exists good libraries, but I cannot find with License and Eigen STL pair.
+// XXX but this is terrible slow.
+template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& mask, const vector<Eigen::Matrix<T, 3, 1> >& points, const int& vbox) {
+  cerr << "getEdges" << flush;
+  Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> checked(mask.rows(), mask.cols());
+  for(int i = 0; i < checked.rows(); i ++)
+    for(int j = 0; j < checked.cols(); j ++)
+      checked(i, j) = false;
+  vector<pair<int, int> > store;
+  for(int i = 0; i < checked.rows(); i ++)
+    for(int j = 0; j < checked.cols(); j ++)
+      if(mask(i, j) < T(.5))
+        floodfill(checked, store, mask, i, j);
+      else
+        checked(i, j) = true;
+  if(!store.size()) {
+    for(int i = 0; i < checked.rows(); i ++) {
+      store.push_back(make_pair(i, 0));
+      store.push_back(make_pair(i, checked.cols() - 1));
+    }
+    for(int i = 0; i < checked.cols(); i ++) {
+      store.push_back(make_pair(0,                  i));
+      store.push_back(make_pair(checked.rows() - 1, i));
+    }
+  }
+  sort(store.begin(), store.end());
+  store.erase(unique(store.begin(), store.end()), store.end());
+  cerr << " with " << store.size() << " edge points " << flush;
+  
+  vector<vector<int> > result;
+  // stored indices.
+  vector<int>          se;
+  for( ; se.size() < store.size(); ) {
+    // tree index.
+    vector<int> e;
+    int i(0);
+    for( ; i < store.size(); i ++)
+      if(!binary_search(se.begin(), se.end(), i))
+        break;
+    if(store.size() <= i)
+      break;
+    // get edge point tree.
+    for( ; i < store.size(); ) {
+      // get nearest points.
+      vector<int> si;
+      for(int j = 0; j < store.size(); j ++)
+        if(!binary_search(se.begin(), se.end(), j) &&
+           abs(store[i].first  - store[j].first)  <= 1 &&
+           abs(store[i].second - store[j].second) <= 1 &&
+           !(store[i].first  == store[j].first &&
+             store[i].second == store[j].second))
+          si.push_back(j);
+      if(!si.size())
+        break;
+      // normal vector direction.
+      sort(si.begin(), si.end());
+      int j(0);
+      for( ; j < si.size(); j ++) {
+        const auto& sti(store[i]);
+        const auto& stj(store[si[j]]);
+        if(0 < abs(sti.first - stj.first)) {
+          if(0 < abs(sti.second - stj.second)) {
+            // 45 degree.
+            if((sti.first  - stj.first) *
+               (sti.second - stj.second) > 0) {
+              if(0 <= sti.first  && sti.first  < mask.rows() &&
+                 0 <= sti.second && sti.second < mask.cols() &&
+                 mask(sti.first, stj.second) < T(.5))
+                break;
+            } else if(0 <= sti.first  && sti.first  < mask.rows() &&
+                      0 <= sti.second && sti.second < mask.cols() &&
+                      mask(stj.first, sti.second) < T(.5))
+              break;
+          } else if(0 <= stj.first && stj.first < mask.rows() &&
+                    0 <= sti.second + (stj.first - sti.first) &&
+                         sti.second + (stj.first - sti.first) < mask.cols() &&
+                    mask(stj.first,
+                         sti.second + (stj.first - sti.first)) < T(.5))
+            break;
+          // it is guaranteed 0 < abs(sti.second - stj.second) from addition.
+        } else if(0 <= stj.second && stj.second < mask.cols() &&
+                  0 <= sti.first - (stj.second - sti.second) &&
+                       sti.first - (stj.second - sti.second) < mask.rows() &&
+                  mask(sti.first - (stj.second - sti.second),
+                       stj.second) < T(.5))
+          break;
+      }
+      if(si.size() <= j)
+        j = 0;
+      // store.
+      e.push_back(si[j]);
+      se.push_back(si[j]);
+      i = si[j];
+      sort(se.begin(), se.end());
+    }
+    if(1 < e.size()) {
+      result.push_back(vector<int>());
+      // apply to points index.
+      for(int i = 0; i < e.size(); i ++) {
+        const auto& s(store[e[i]]);
+        vector<pair<T, int> > distances;
+        for(int j = 0; j < points.size(); j ++)
+          distances.push_back(make_pair(
+                                sqrt(pow(T(s.first  - points[j][0]), T(2)) +
+                                     pow(T(s.second - points[j][1]), T(2))),
+                                j));
+        sort(distances.begin(), distances.end());
+        result[result.size() - 1].push_back(distances[0].second);
+      }
+      const auto& head(points[result[result.size() - 1][0]]);
+      const auto& tail(points[result[result.size() - 1][result[result.size() - 1].size() - 1]]);
+      const auto  delta(head - tail);
+      if(sqrt(delta[0] * delta[0] + delta[1] * delta[1]) <= T(2))
+        result.push_back(result[0]);
+    } else
+      se.push_back(i);
+    cerr << "." << flush;
+  }
+  return result;
+}
+
+template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2)) {
   ofstream output;
   output.open(filename, std::ios::out);
   if(output.is_open()) {
@@ -226,20 +374,21 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
         output << " "  << data.size() + polys[i][1] + 1 << endl;
       }
     }
-    if(addstand) {
-      vector<int> outer;
-      for(int i = 0; i < 4; i ++)
-        getEdge(outer, data, i);
-      outer.push_back(outer[0]);
-      for(int i = 0; i < outer.size() - 1; i ++) {
-        output << "f " << data.size() + outer[i + 0] + 1;
-        output << " "  << data.size() + outer[i + 1] + 1;
-        output << " "  << outer[i + 1] + 1 << endl;
-        output << "f " << data.size() + outer[i + 0] + 1;
-        output << " "  << outer[i + 1] + 1;
-        output << " "  << outer[i + 0] + 1 << endl;
+    if(addstand && edges.size())
+      cerr << edges.size() << "parts found." << endl;
+      for(int ii = 0; ii < edges.size(); ii ++) if(edges[ii].size()) {
+        const vector<int>& outer(edges[ii]);
+        for(int i = 0; i < outer.size() - 1; i ++) {
+          const int& i0(i);
+          const int  i1(i + 1);
+          output << "f " << data.size() + outer[i0] + 1;
+          output << " "  << data.size() + outer[i1] + 1;
+          output << " "  << outer[i1] + 1 << endl;
+          output << "f " << data.size() + outer[i0] + 1;
+          output << " "  << outer[i1] + 1;
+          output << " "  << outer[i0] + 1 << endl;
+        }
       }
-    }
     output.close();
   } else {
     cerr << "Unable to open file: " << filename << endl;
