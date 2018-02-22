@@ -49,7 +49,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     # bumpmap to .obj file
     ./tools obj input-bump.ppm output.obj
     
-    # mask .obj files.
+    # mask .obj files and add support.
     ./tools maskobj input-mask.ppm input.obj output.obj size-ratio thin-or-thickness-size
     
     # make tilts from original and bumpmap images.
