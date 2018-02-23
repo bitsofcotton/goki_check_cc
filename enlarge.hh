@@ -3,6 +3,8 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 
+using std::cerr;
+using std::flush;
 using std::complex;
 using std::abs;
 using std::sqrt;
@@ -35,9 +37,10 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   enlarger2ex();
   Mat compute(const Mat& data, const direction_t& dir);
+  
 private:
   void initPattern(const int& size);
-  Mat effectInCollect(const Mat& data, const Mat& enlarged);
+  void effectInCollectY(Mat& data, const Mat& data0);
   U    I;
   T    Pi;
   Mat  D;
@@ -49,32 +52,26 @@ private:
 };
 
 template <typename T> enlarger2ex<T>::enlarger2ex() {
-  I  = sqrt(U(- 1.));
-  Pi = atan2(T(1), T(1)) * T(4);
+  I    = sqrt(U(- 1.));
+  Pi   = atan2(T(1), T(1)) * T(4);
+  D    = Mat();
+  Dop  = Mat();
+  Iop  = Mat();
+  bD   = Mat();
+  bDop = Mat();
+  bIop = Mat();
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
   Mat result;
   switch(dir) {
   case ENLARGE_BOTH:
-    {
-      Mat rw, rh;
-      rw = compute(data, ENLARGE_X);
-      rh = compute(data, ENLARGE_Y);
-      rw = compute(rw,   ENLARGE_Y);
-      rh = compute(rh,   ENLARGE_X);
-      result = effectInCollect(data, (rw + rh) / 2.);
-    }
+    result = (compute(compute(data, ENLARGE_X), ENLARGE_Y) +
+              compute(compute(data, ENLARGE_Y), ENLARGE_X)) / T(2);
     break;
   case ENLARGE_FBOTH:
-    {
-      Mat rw, rh;
-      rw = compute(data, ENLARGE_FX);
-      rh = compute(data, ENLARGE_FY);
-      rw = compute(rw,   ENLARGE_FY);
-      rh = compute(rh,   ENLARGE_FX);
-      result = effectInCollect(data, (rw + rh) / 2.);
-    }
+    result = (compute(compute(data, ENLARGE_FX), ENLARGE_FY) +
+              compute(compute(data, ENLARGE_FY), ENLARGE_FX)) / T(2);
     break;
   case ENLARGE_3BOTH:
     result = compute(data, ENLARGE_BOTH) +
@@ -105,19 +102,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     result = compute(data.transpose(), IDETECT_Y).transpose();
     break;
   case ENLARGE_Y:
-    cerr << " enlarge_y";
-    initPattern(data.rows());
-    result = D * data;
+    {
+      initPattern(data.rows());
+      result = D * data;
+      effectInCollectY(result, data);
+      for(int i = 0; i < result.rows(); i ++)
+        result.row(i) += data.row(i / 2);
+    }
     break;
   case ENLARGE_FY:
     {
       initPattern(data.rows());
       const Mat dcache(Dop * data);
-      const Mat work(compute(dcache, ENLARGE_Y));
-            Mat work2(data.rows() * 2, data.cols());
-      for(int j = 0; j < work2.rows(); j ++)
-        work2.row(j) = dcache.row(j / 2);
-      result = work - work2;
+      result = compute(dcache, ENLARGE_Y);
+      for(int j = 0; j < result.rows(); j ++)
+        result.row(j) -= dcache.row(j / 2);
+      effectInCollectY(result, dcache);
     }
     break;
   case DETECT_Y:
@@ -153,6 +153,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 }
 
 template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
+  cerr << " initPat" << flush;
   if(Dop.rows() == size)
     return;
   if(bDop.rows() == size) {
@@ -167,6 +168,7 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
     Iop  = work;
     return;
   }
+  cerr << " new" << flush;
   MatU DFT( size, size);
   MatU IDFT(size, size);
 #if defined(_OPENMP)
@@ -193,55 +195,38 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   Dop =   (IDFT * Dbuf).real().template cast<T>();
   Iop = - (IDFT * Ibuf).real().template cast<T>();
   {
-    MatU DFTa(DFT);
-    MatU DFTb(DFT);
-    MatU DFTRa(DFT);
-    MatU DFTRb(DFT);
+    // XXX refer enlarge.wxm, so this is only the average of each half thetas.
+    U    r(0);
     for(int i = 0; i < DFT.rows(); i ++) {
-      // XXX checkme with enlarge.wxm, DFT space plausible one:
-      const T ii(i + .5);
-      const U r(sin(U(ii * Pi / DFTb.rows())) / (cos(U(ii * Pi / DFTb.rows())) - U(1)));
-      // This can be tricky, this sees IDFT as DFT and both same theta.
-      DFTa.row(i)  = (T(1) - r) * I * DFT.row(i).conjugate();
-      DFTb.row(i)  =         r  * I * DFT.row(i).conjugate();
-      DFTRa.row(i) = (T(1) - r) * I * DFT.row(DFT.rows() - i - 1).conjugate();
-      DFTRb.row(i) =         r  * I * DFT.row(DFT.rows() - i - 1).conjugate();
+      const U phase(T(2) * (i + .5) * Pi / DFT.rows());
+      r += exp(phase) / (exp(phase) - U(1));
     }
-    MatU DFTRRa(DFTRa), DFTRRb(DFTRb);
-    for(int i = 0; i < DFTRa.rows(); i ++) {
-      DFTRRa.row(i) = DFTRa.row(DFTRa.rows() - i - 1);
-      DFTRRb.row(i) = DFTRb.row(DFTRb.rows() - i - 1);
-    }
-    // This also can be tricky, this sees delta of b(t).
-    const Mat Da((IDFT * (DFTa + DFTRRa)).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * sqrt(T(8))) / T(2));
-    const Mat Db((IDFT * (DFTb + DFTRRb)).real().template cast<T>() / (T(2) * Pi * sqrt(T(DFT.rows())) * sqrt(T(8))) / T(2));
+    r /= abs(r);
+    const T   n2(Pi);
+    const Mat Da((IDFT * DFT *         r ).real().template cast<T>() / n2);
+    const Mat Db((IDFT * DFT * (T(1) - r)).real().template cast<T>() / n2);
     D = Mat(DFT.rows() * 2, DFT.cols());
     for(int i = 0; i < DFT.rows(); i ++) {
       D.row(i * 2 + 0) = Da.row(i);
       D.row(i * 2 + 1) = Db.row(i);
-      D(i * 2 + 0, i) += T(1);
-      D(i * 2 + 1, i) += T(1);
     }
   }
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::effectInCollect(const Mat& data, const Mat& enlarged) {
-  const Mat intensity(compute(data, COLLECT_BOTH));
-  T M(0);
-  for(int i = 0; i < intensity.rows(); i ++)
-    for(int j = 0; j < intensity.cols(); j ++)
-      M = max(M, intensity(i, j));
-  M /= T(2);
-  Mat result(enlarged.rows(), enlarged.cols());
-  for(int i = 0; i < intensity.rows(); i ++)
-    for(int j = 0; j < intensity.cols(); j ++) {
-      result(i * 2,     j * 2)     = data(i, j) + (enlarged(i * 2,     j * 2)     - data(i, j)) * intensity(i, j) / M;
-      result(i * 2 + 1, j * 2)     = data(i, j) + (enlarged(i * 2 + 1, j * 2)     - data(i, j)) * intensity(i, j) / M;
-      result(i * 2,     j * 2 + 1) = data(i, j) + (enlarged(i * 2,     j * 2 + 1) - data(i, j)) * intensity(i, j) / M;
-      result(i * 2 + 1, j * 2 + 1) = data(i, j) + (enlarged(i * 2 + 1, j * 2 + 1) - data(i, j)) * intensity(i, j) / M;
+template <typename T> void enlarger2ex<T>::effectInCollectY(Mat& data, const Mat& data0) {
+  assert(data.rows() == data0.rows() * 2 &&
+         data.cols() == data0.cols());
+  const Mat coll(compute(data0, COLLECT_Y));
+  T M(coll(0, 0));
+  for(int i = 0; i < coll.rows(); i ++)
+    for(int j = 0; j < coll.cols(); j ++) {
+      data(i * 2,     j) *= coll(i, j);
+      data(i * 2 + 1, j) *= coll(i, j);
+      M = max(coll(i, j), M);
     }
-  return result;
+  data /= M;
+  return;
 }
 
 #define _ENLARGE2X_
