@@ -53,7 +53,6 @@ public:
   
 private:
   void initPattern(const int& size);
-  void effectInCollectY(Mat& data, const Mat& data0);
   U    I;
   T    Pi;
   Mat  D;
@@ -88,7 +87,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case ENLARGE_3BOTH:
     result = compute(data, ENLARGE_BOTH) +
-             compute(data, ENLARGE_FBOTH) / T(2);
+             compute(data, ENLARGE_FBOTH) / T(2) / T(3);
     break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X) + compute(data, DETECT_Y)) / 2.;
@@ -118,7 +117,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     {
       initPattern(data.rows());
       result = D * data;
-      effectInCollectY(result, data);
       for(int i = 0; i < result.rows(); i ++)
         result.row(i) += data.row(i / 2);
     }
@@ -127,10 +125,20 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     {
       initPattern(data.rows());
       const Mat dcache(Dop * data);
+      T ndc(0), nd(0);
+      for(int i = 1; i < data.rows(); i ++)
+        for(int j = 0; j < data.cols(); j ++)
+          nd = max(abs(data(i, j) - data(i - 1, j)), nd);
+      for(int i = 0; i < data.rows(); i ++)
+        for(int j = 1; j < data.cols(); j ++)
+          nd = max(abs(data(i, j) - data(i, j - 1)), nd);
+      for(int i = 0; i < dcache.rows(); i ++)
+        for(int j = 0; j < dcache.cols(); j ++)
+          ndc = max(abs(dcache(i, j)), ndc);
       result = compute(dcache, ENLARGE_Y);
-      for(int j = 0; j < result.rows(); j ++)
-        result.row(j) -= dcache.row(j / 2);
-      effectInCollectY(result, dcache);
+      for(int i = 0; i < result.rows(); i ++)
+        result.row(i) += dcache.row(i / 2);
+      result *= nd / ndc;
     }
     break;
   case DETECT_Y:
@@ -207,37 +215,25 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   Dop =   (IDFT * Dbuf).real().template cast<T>();
   Iop = - (IDFT * Ibuf).real().template cast<T>();
   {
-    // XXX refer enlarge.wxm, so this is only the average of each half thetas.
-    U    r(0);
+    MatU DFTa(DFT), DFTb(DFT);
     for(int i = 0; i < DFT.rows(); i ++) {
       const U phase(T(2) * (i + .5) * Pi / DFT.rows());
-      r += exp(phase) / (exp(phase) - U(1));
+      // N.B. refer enlarge.wxm, ideally U(1) but it is flat,
+      //      uses with skewness with U(.5) and U(2).
+      const T r((sqrt(exp(phase) / (exp(phase) - U(.5)) *
+                      exp(phase) / (exp(phase) - U(2.)))).real());
+      DFTa.row(i) *= U(       r);
+      DFTb.row(i) *= U(T(1) - r);
     }
-    r /= abs(r);
-    const T   n2(Pi);
-    const Mat Da((IDFT * DFT *         r ).real().template cast<T>() / n2);
-    const Mat Db((IDFT * DFT * (T(1) - r)).real().template cast<T>() / n2);
+    const Mat Da((IDFT * DFTa).real().template cast<T>());
+    const Mat Db((IDFT * DFTb).real().template cast<T>());
     D = Mat(DFT.rows() * 2, DFT.cols());
     for(int i = 0; i < DFT.rows(); i ++) {
       D.row(i * 2 + 0) = Da.row(i);
       D.row(i * 2 + 1) = Db.row(i);
     }
+    D /= T(2) * Pi * T(2);
   }
-  return;
-}
-
-template <typename T> void enlarger2ex<T>::effectInCollectY(Mat& data, const Mat& data0) {
-  assert(data.rows() == data0.rows() * 2 &&
-         data.cols() == data0.cols());
-  const Mat coll(compute(data0, COLLECT_Y));
-  T M(coll(0, 0));
-  for(int i = 0; i < coll.rows(); i ++)
-    for(int j = 0; j < coll.cols(); j ++) {
-      data(i * 2,     j) *= coll(i, j);
-      data(i * 2 + 1, j) *= coll(i, j);
-      M = max(coll(i, j), M);
-    }
-  data /= M;
   return;
 }
 

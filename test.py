@@ -18,14 +18,14 @@ if(argv[2] == "match"):
   root1, ext1 = os.path.splitext(argv[4])
   if(ext0 != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
+  subprocess.call([argv[1], "bump", root0 + ".ppm", root0 + "-bump0.ppm"])
+  subprocess.call(["convert", root0 + "-bump0.ppm", "-blur", "8x8", "-compress", "none", root0 + "-bump.ppm"])
   if(ext1 == ".obj"):
     subprocess.call([argv[1], "match3d", root0 + ".ppm", "match3dbase-" + root0 + "-" + root1 + "-", root1 + ".obj", root0 + "-bump.ppm"])
   else:
     if(ext1 != ".ppm"):
       subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
-    subprocess.call([argv[1], "bump", root0 + ".ppm", root0 + "-bump0.ppm"])
     subprocess.call([argv[1], "bump", root1 + ".ppm", root1 + "-bump0.ppm"])
-    subprocess.call(["convert", root0 + "-bump0.ppm", "-blur", "8x8", "-compress", "none", root0 + "-bump.ppm"])
     subprocess.call(["convert", root1 + "-bump0.ppm", "-blur", "8x8", "-compress", "none", root1 + "-bump.ppm"])
     subprocess.call([argv[1], "match", root0 + ".ppm", "matchbase-" + root0 + "-" + root1 + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm"])
   exit(0)
@@ -61,9 +61,9 @@ for line in argv[3:]:
     f.write("map_Kd " + line + "\n\n")
     f.close()
   elif(argv[2] == "tilt"):
-    subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base-", root + "-bump.ppm"])
+    subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base", root + "-bump.ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "8", "-an", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "30", root + ".mp4"])
   elif(argv[2] == "64"):
-    subprocess.call([argv[1], "bump2", root + ".ppm", root + "-bump64,ppm"])
+    subprocess.call([argv[1], "bump2", root + ".ppm", root + "-bump64.ppm"])
     subprocess.call(["convert", "-resize", "128x", "-resize", "x128<", "-resize", "50%", "-gravity", "center", "-crop", "64x64+0+0", root + "-bump64.ppm", root + "-bump64e" + ".jpeg"])
 

@@ -12,9 +12,6 @@
 using namespace std;
 
 // XXX: configure me:
-const double zrs(1.2);
-const double zre( .8);
-const int    zrl(3);
 const int    nshow(8);
 const int    nemph(4);
 const int    vbox(8);
@@ -224,22 +221,7 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<double> statmatch;
       statmatch.threshr = threshr;
       std::vector<match_t<double> > matches;
-      for(double zr = zrs;
-          (zrs / zre < double(1) && zr < zre) || 
-          (zre / zrs < double(1) && zre < zr);
-          zr *= pow(zre / zrs, double(1) / double(zrl)))
-        for(double zr2 = zrs;
-            (zrs / zre < double(1) && zr2 < zre) ||
-            (zre / zrs < double(1) && zre < zr2);
-            zr2 *= pow(zre / zrs, double(1) / double(zrl))) {
-          std::vector<Eigen::Matrix<double, 3, 1> > sshape0(shape0), sshape1(shape1);
-          for(int i = 0; i < sshape0.size(); i ++)
-            sshape0[i][2] *= zr;
-          for(int i = 0; i < sshape1.size(); i ++)
-            sshape1[i][2] *= zr2;
-          statmatch.match(sshape0, sshape1, matches);
-      }
-      double zr(zrs);
+      statmatch.match(shape0, shape1, matches);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
@@ -312,18 +294,10 @@ int main(int argc, const char* argv[]) {
       auto& bump(bump0[0]);
       bumper.getPseudoVec(bump, shape, sute, vbox);
       auto zero(data[0] * double(0));
-      matchPartialPartial<double> statmatch;
+      matchPartialPartial<double>   statmatch;
       std::vector<match_t<double> > matches;
-      for(double zr = zrs;
-          (zrs / zre < double(1) && zr < zre) || 
-          (zre / zrs < double(1) && zre < zr);
-          zr *= pow(zre / zrs, double(1) / double(zrl))) {
-        std::vector<Eigen::Matrix<double, 3, 1> > sshape(shape);
-        for(int i = 0; i < shape.size(); i ++)
-          sshape[i][2] *= zr;
-        statmatch.match(sshape, datapoly, matches);
-      }
-      double zr(zrs);
+      std::vector<Eigen::Matrix<double, 3, 1> > sshape(shape);
+      statmatch.match(shape, datapoly, matches);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3];
         cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
