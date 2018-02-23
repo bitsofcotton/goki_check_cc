@@ -11,7 +11,6 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * fisheye.hh
 * * z_max  : 出力する z 軸の解像度です。
 * * stp    : ぼやけ具合を検出する際に使用される点の数です。
-* * renl   : 1 pixel が renl pixel に内部で拡大されます。
 * * nslide : 窓をスライドして z 軸に対するぼやけ具合の極値の総和を撮る際の窓のサイズです。
 * tilt.hh
 * * z_ratio : [0,1] から [0,z_atio] への線形写像です。
