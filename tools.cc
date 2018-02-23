@@ -21,6 +21,7 @@ const int    vbox(8);
 const int    objvbox(2);
 const double threshr(.75);
 const int    M_TILT(16);
+const double psi(.95);
 const int    Mpoly(2000);
 
 void usage() {
@@ -155,9 +156,10 @@ int main(int argc, const char* argv[]) {
         return - 2;
       auto zero(bump[0] * double(0));
       tilter<double> tilt;
+      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())) / double(3));
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, .95), zero, - i, M_TILT, .99);
+          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, psi), zero, - i, M_TILT, psi);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);

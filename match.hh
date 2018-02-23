@@ -1,3 +1,16 @@
+/* BSD 3-Clause License:
+ * Copyright (c) 2018, bitsofcotton.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ *
+ *    Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ *    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation or other materials provided with the distribution.
+ *    Neither the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #if !defined(_SCAN_CONTEXT_)
 
 #include <Eigen/Core>
@@ -283,49 +296,18 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
     gd[1] = max(gd[1], abs((points[i] - gp)[1]));
   }
   for(int i = 0; i < 3; i ++) {
-    Eigen::Matrix<Eigen::Matrix<T, 2, 1>, Eigen::Dynamic, Eigen::Dynamic> table(shapebase.size(), points.size());
-    // init table.
-    cerr << "making table (" << i << "/3)" << flush;
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int j = 0; j < shapebase.size(); j ++) {
-      for(int k = 0; k < points.size(); k ++) {
-        Vec3 aj(shapebase[j] - gs);
-        Vec3 bk(points[k]    - gp);
-        aj /= sqrt(aj.dot(aj));
-        bk /= sqrt(bk.dot(bk));
-        for(int l = 0; l < table(j, k).size(); l ++) {
-          const T a(bk[(l + i    ) % 3]);
-          const T b(bk[(l + i + 1) % 3]);
-          const T c(aj[(l + i    ) % 3]);
-          table(j, k)[l] = sqrt(- T(1));
-          if(a * a + b * b < c * c)
-            continue;
-          T theta(   T(2) * atan2(sqrt(a * a + b * b - c * c) - b, a + c));
-          T theta1(- T(2) * atan2(sqrt(a * a + b * b - c * c) + b, a + c));
-          if(!isfinite(theta) || (isfinite(theta1) && 
-               abs(cos(theta1) * a - sin(theta1) * b - c) <
-               abs(cos(theta)  * a - sin(theta)  * b - c)))
-            theta = theta1;
-          table(j, k)[l]      = theta;
-          bk[(l + i    ) % 3] = cos(theta) * a - sin(theta) * b;
-          bk[(l + i + 1) % 3] = sin(theta) * a + cos(theta) * b;
-        }
-      }
-    }
     cerr << " matching" << flush;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int nd = 0; nd < ndiv; nd ++) {
       cerr << "." << flush;
+      Eigen::Matrix<T, 4, 1> ddiv;
+      ddiv[0] = cos(2 * Pi * nd / ndiv);
+      ddiv[1] = sin(2 * Pi * nd / ndiv);
       for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
-        Eigen::Matrix<T, 4, 1> ddiv;
-        ddiv[0]  = cos(2 * Pi * nd  / ndiv);
-        ddiv[1]  = sin(2 * Pi * nd  / ndiv);
-        ddiv[2]  = cos(2 * Pi * nd2 / ndiv);
-        ddiv[3]  = sin(2 * Pi * nd2 / ndiv);
+        ddiv[2] = cos(2 * Pi * nd2 / ndiv);
+        ddiv[3] = sin(2 * Pi * nd2 / ndiv);
         Mat3x3 drot1(drot0);
         for(int k = 0; k < ddiv.size() / 2; k ++) {
           Mat3x3 lrot;
@@ -371,6 +353,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
           bool flagk[points.size()];
           for(int kk = 0; kk < points.size(); kk ++)
             flagk[kk] = false;
+          int tt(t0);
           for(int t1 = t0; t1 < msub.size(); t1 ++)
             if(!flagj[msub[t1].j] && !flagk[msub[t1].k] &&
                // N.B. abar:=sum(aj)/n, bbar:=P*sum(bk)/n,
@@ -381,11 +364,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
               work.srcpoints.push_back(msub[t1].k);
               flagj[msub[t1].j] = true;
               flagk[msub[t1].k] = true;
+              tt = t1;
             }
-          int tt(t0);
-          for( ; tt < msub.size() &&
-                 abs(msub[t0].t - msub[tt].t) / abs(msub[t0].t) < thresht;
-                 tt ++) ;
           t0 = tt;
           if(threshp <= work.dstpoints.size() /
                           T(min(shapebase.size(), points.size()))) {
@@ -406,9 +386,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
               denom += pointk.dot(pointk);
             }
             work.ratio = num / denom;
-            if(abs(work.ratio) < threshr || T(1) / threshr < abs(work.ratio) ||
-               !isfinite(work.ratio))
-              continue;
             work.offset[0] = T(0);
             work.offset[1] = T(0);
             work.offset[2] = T(0);
@@ -422,40 +399,26 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
               work.rdepth += (aj - bk).dot(aj - bk) / (aj.dot(aj) + bk.dot(bk));
             }
             work.rdepth /= work.dstpoints.size();
-            // XXX configure thresh with me:
-            work.rdepth /= log(T(1) + T(work.dstpoints.size()));
-            if(isfinite(work.rdepth) && work.rdepth <= thresh) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-              {
-                int  idx(- 1);
-                bool flag(false);
-                for(int k = 0; k < result.size(); k ++)
-                  if(result[k] == work) {
-                    flag = true;
-                    if(work < result[k]) {
-                      idx = k;
-                      break;
-                    }
-                 }
-                if(flag) {
-                  if(idx >= 0)
-                    result[idx] = work;
-                } else {
-                  result.push_back(work);
-                  cerr << "*" << flush;
+            {
+              int  idx(- 1);
+              // we can't use STL because of operator < implementation.
+              for(int k = 0; k < result.size(); k ++)
+                if(result[k] == work && work < result[k]) {
+                  idx = k;
+                  break;
                 }
-                sort(result.begin(), result.end());
-                // partial erase dups.
-                auto dup(unique(result.begin(), result.end()));
-                result.erase(dup, result.end());
+              if(idx >= 0)
+                result[idx] = work;
+              else {
+                result.push_back(work);
+                cerr << "*" << flush;
               }
             }
           }
         }
-        if(nd == ndiv)
-          break;
       }
     }
   }
