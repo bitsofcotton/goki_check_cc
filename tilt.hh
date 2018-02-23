@@ -1,3 +1,16 @@
+/* BSD 3-Clause License:
+ * Copyright (c) 2018, bitsofcotton.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ *
+ *    Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ *    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation or other materials provided with the distribution.
+ *    Neither the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #if !defined(_TILT_)
 
 #include <Eigen/Core>
@@ -19,21 +32,21 @@ using std::isfinite;
 
 template <typename T> class tilter {
 public:
-  typedef Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Matrix<T, 3, 3>                           Mat3x3;
-  typedef Matrix<T, 3, 1>                           Vec3;
-  typedef Matrix<T, 2, 1>                           Vec2;
-  typedef Matrix<T, 3, 5>                           Triangles;
+  typedef Matrix<T, Dynamic, Dynamic> Mat;
+  typedef Matrix<T, 3, 3>             Mat3x3;
+  typedef Matrix<T, 3, 1>             Vec3;
+  typedef Matrix<T, 2, 1>             Vec2;
+  typedef Matrix<T, 3, 5>             Triangles;
   
   tilter();
   ~tilter();
   void initialize(const T& z_ratio);
   
-  Mat tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
-  Mat tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto, const Vec3& origin0);
+  Mat  tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
+  Mat  tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto, const Vec3& origin0);
   Vec3 solveN(const Vec3& p, const Vec3& q, const Vec3& r);
   Eigen::Matrix<T, 3, 5> makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
-  Mat tiltsub(const Mat& in, const vector<Triangles>& triangles, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& origin, const Vec3& moveto, const T& rto);
+  Mat  tiltsub(const Mat& in, const vector<Triangles>& triangles, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& origin, const Vec3& moveto, const T& rto);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5));
   bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5));
   
@@ -42,7 +55,6 @@ private:
   Vec3 rotate0(const Vec3& work, const Mat3x3& rot, const Vec3& origin);
   Eigen::Matrix<T, 3, 5> rotate(const Eigen::Matrix<T, 3, 5>& triangle, const Mat3x3& rot, const Vec3& origin, const T& rr);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
-  bool scale(Mat3x3& A, Vec3& b, const Mat3x3& vorig, const Mat3x3& vto);
   T   Pi;
   T   z_ratio;
   T   thresh;
@@ -76,20 +88,14 @@ template <typename T> T tilter<T>::sgn(const T& x) {
 template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::solveN(const Vec3& p, const Vec3& q, const Vec3& r) {
   const Vec3 pq(q - p);
   const Vec3 pr(r - p);
-  const Vec3 prorth(pr - pr.dot(pq) * pq / pq.dot(pq));
-  Vec3 nn;
-  for(int i = 0; i < nn.size(); i ++) {
-    for(int j = 0; j < nn.size(); j ++)
-      nn[j] = (i == j ? T(1) : T(0));
-    nn -= pq.dot(nn) * pq / pq.dot(pq) + prorth.dot(nn) * prorth / prorth.dot(prorth);
-    if(nn.dot(nn) > 0)
-      break;
-  }
-  if(nn.dot(nn) == 0) {
-    cerr << "internal error." << endl;
-    return nn;
-  }
-  return nn / sqrt(nn.dot(nn));
+        Vec3 n;
+  n[0] =   (pq[1] * pr[2] - pq[2] * pr[1]);
+  n[1] = - (pq[0] * pr[2] - pq[2] * pr[0]);
+  n[2] =   (pq[0] * pr[1] - pq[1] * pr[0]);
+  if(n.dot(n) > 0)
+    return n / n.dot(n);
+  cerr << "internal error." << endl;
+  return n;
 }
 
 template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
@@ -176,23 +182,6 @@ template <typename T> bool tilter<T>::onTriangle(T& z, const Eigen::Matrix<T, 3,
           sameSide2(tritri.col(2), tritri.col(0), tritri.col(1), geom, true, T(.125)));
 }
 
-template <typename T> bool tilter<T>::scale(Mat3x3& A, Vec3& b, const Mat3x3& vorig, const Mat3x3& vto) {
-  b = vto.col(0) - vorig.col(0);
-  Mat3x3 vdorig, vdto;
-  vdorig.col(0) = vorig.col(1) - vorig.col(0);
-  vdorig.col(1) = vorig.col(2) - vorig.col(0);
-  vdorig(0, 2)  = 0.;
-  vdorig(1, 2)  = 0.;
-  vdorig(2, 2)  = 1.;
-  vdto.col(0)   = vto.col(1)   - vto.col(0);
-  vdto.col(1)   = vto.col(2)   - vto.col(0);
-  vdto(0, 2)    = 0.;
-  vdto(1, 2)    = 0.;
-  vdto(2, 2)    = 1.;
-  A = vdto * vdorig.inverse();
-  return true;
-} 
-
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
   const T theta(2. * Pi * idx / samples);
   const T lpsi(Pi / 2. - psi * Pi / 2.);
@@ -233,10 +222,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto, const Vec3& origin0) {
-  if(in.rows() != bump.rows() || in.cols() != bump.cols()) {
-    cerr << "tilt: size mismatch..." << endl;
-    return Mat();
-  }
+  assert(in.rows() == bump.rows() && in.cols() == bump.cols());
   cerr << " making triangles" << flush;
   vector<Triangles> triangles;
   for(int i = 0; i < in.rows() - 1; i ++)
