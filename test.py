@@ -38,7 +38,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl0.ppm"])
-    subprocess.call(["convert", root + "-enl0.ppm", "-resize", "75%", root + "-enl-75" + ext])
+    subprocess.call(["convert", root + "-enl0.ppm", "-resize", "75%", "-channel", "RGB", "-auto-level", root + "-75" + ext])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump0.ppm"])
     subprocess.call(["convert", root + "-bump0.ppm", "-blur", "16x16", "-compress", "none", root + "-bump.ppm"])

@@ -78,7 +78,7 @@ int main(int argc, const char* argv[]) {
       // enlarge.
       enlarger2ex<double> enlarger;
       for(int i = 0; i < 3; i ++)
-        data[i] = enlarger.compute(data[i], enlarger.ENLARGE_3BOTH);
+        data[i] = enlarger.compute(data[i], enlarger.ENLARGE_BOTH);
     }
     break;
   case 4:

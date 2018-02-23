@@ -436,7 +436,7 @@ public:
   ~matchWholePartial();
   void init(const int& ndiv, const T& thresh, const T& threshp, const T& threshr, const T& threshs);
 
-  vector<vector<match_t<T> > > match(const vector<vector<Vec3> >& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins);
+  vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins);
 private:
   U I;
   T Pi;
@@ -463,13 +463,13 @@ template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& 
   return;
 }
 
-template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<vector<Vec3> >& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins) {
-  assert(shapebase.size() == points.size() && points.size() == origins.size());
+template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins) {
+  assert(points.size() == origins.size());
   vector<vector<match_t<T> > > pmatches;
-  for(int i = 0; i < shapebase.size(); i ++) {
+  matchPartialPartial<T> pmatch(thresh, threshp, threshr, threshs);
+  for(int i = 0; i < points.size(); i ++) {
     cerr << "matching partial polys : " << i << "/" << shapebase.size() << endl;
-    matchPartialPartial<T> pmatch(thresh, threshp, threshr, threshs);
-    pmatches.push_back(pmatch.match(shapebase, points));
+    pmatches.push_back(pmatch.match(shapebase, points[i]));
   }
   cerr << "detecting possible whole matches (not implemented now.)..." << endl;
   vector<vector<match_t<T> > > result;
@@ -507,8 +507,8 @@ template <typename T> void reDig<T>::init() {
 }
 
 template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio) {
-  const Vec3 a(refdst);
-  const Vec3 b(match.rot * src * match.ratio + match.offset);
+  const Vec3& a(refdst);
+  const Vec3  b(match.rot * src * match.ratio + match.offset);
   return dst + (b - a) * ratio;
 }
 
@@ -639,7 +639,7 @@ template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen:
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const vector<Eigen::Matrix<T, 3, 1> >& refpoints, const vector<Eigen::Matrix<int, 3, 1> >& prefpoints, const T& emph = T(.8)) {
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(input), map(input.rows(), input.cols());
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> map(input.rows(), input.cols());
   for(int i = 0; i < map.rows(); i ++)
     for(int j = 0; j < map.cols(); j ++)
       map(i, j) = T(0);
@@ -660,7 +660,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch
                      refpoints[prefpoints[k][0]],
                      emph);
   }
-  return result + map;
+  return input + map;
 }
 
 #define _SCAN_CONTEXT_
