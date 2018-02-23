@@ -126,13 +126,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
     }
     // N.B. this is not checked in theoretical way.
     // with sliding window, sum up window maximum.
-    for(int j = 0; j < z_max - Dop2z.cols(); j ++) {
+    for(int j = 0; j < n2.size() - Dop2z.cols(); j ++) {
       Vec zsub(Dop2z.cols());
       for(int k = 0; k < zsub.size(); k ++)
         zsub[k] = n2[k + j];
       zsub = Dop2z * zsub;
       T m(0);
-      T score(- z_max * 2);
+      T score(- n2.size() * 2);
       for(int zz = 0; zz < zsub.size(); zz ++)
         if(zsub[zz] < m) {
           score = zz / T(cf.size());
@@ -178,7 +178,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   return autoLevel(result);
 }
 
-// get bump with multiple scale and vectored result.
+// get bump with multiple scale and vectorized result.
 template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox, const T& rz) {
   // get vectorize.
   geoms = vector<Vec3>();
@@ -257,13 +257,13 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int zi = 0; zi < z_max; zi ++) {
+  for(int zi = 0; zi < result.size(); zi ++) {
     result[zi] = Vec(stp);
-    for(int s = 0; s < stp; s ++) {
+    for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
       // XXX cpoint[0] scale checkme.
       cpoint[0] = (s / T(stp - 1) - 1 / T(2)) * T(2);
-      cpoint[1] = (zi + 1) / T(z_max + 1);
+      cpoint[1] = (zi + 1) / T(result.size() + 1);
       result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp;
     }
   }
@@ -341,7 +341,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int k = 0; k < data.cols(); k ++)
       stat.push_back(data(j, k));
   sort(stat.begin(), stat.end());
-  const T mm(stat[npad]);
+  const T& mm(stat[npad]);
   T MM(stat[stat.size() - 1 - npad]);
   if(MM == mm)
     MM = mm + 1.;

@@ -53,6 +53,7 @@ public:
   
 private:
   void initPattern(const int& size);
+  Mat  effectInCollectY(const Mat& data, const Mat& data0);
   U    I;
   T    Pi;
   Mat  D;
@@ -116,7 +117,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   case ENLARGE_Y:
     {
       initPattern(data.rows());
-      result = D * data;
+      result = effectInCollectY(D * data, data);
       for(int i = 0; i < result.rows(); i ++)
         result.row(i) += data.row(i / 2);
     }
@@ -135,7 +136,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       for(int i = 0; i < dcache.rows(); i ++)
         for(int j = 0; j < dcache.cols(); j ++)
           ndc = max(abs(dcache(i, j)), ndc);
-      result = compute(dcache, ENLARGE_Y);
+      result = effectInCollectY(compute(dcache, ENLARGE_Y), dcache);
       for(int i = 0; i < result.rows(); i ++)
         result.row(i) += dcache.row(i / 2);
       result *= nd / ndc;
@@ -217,13 +218,14 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   {
     MatU DFTa(DFT), DFTb(DFT);
     for(int i = 0; i < DFT.rows(); i ++) {
+      // Get half space information.
       const U phase(T(2) * (i + .5) * Pi / DFT.rows());
-      // N.B. refer enlarge.wxm, ideally U(1) but it is flat,
-      //      uses with skewness with U(.5) and U(2).
-      const T r((sqrt(exp(phase) / (exp(phase) - U(.5)) *
-                      exp(phase) / (exp(phase) - U(2.)))).real());
-      DFTa.row(i) *= U(       r);
-      DFTb.row(i) *= U(T(1) - r);
+      // N.B. refer enlarge.wxm, uses each freq, ideally U(1) but it is flat,
+      //      this uses limit of geometric mean of U(1+epsilon), U(1-epsilon).
+      const U r(sqrt(T(1) - T(2) * cos(phase) + cos(T(2) * phase)) /
+                (T(2) - T(2) * cos(phase)));
+      DFTa.row(i) *= (U(1) - r).real();
+      DFTb.row(i) *=         r.real();
     }
     const Mat Da((IDFT * DFTa).real().template cast<T>());
     const Mat Db((IDFT * DFTb).real().template cast<T>());
@@ -232,9 +234,24 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
       D.row(i * 2 + 0) = Da.row(i);
       D.row(i * 2 + 1) = Db.row(i);
     }
-    D /= T(2) * Pi * T(2);
+    D /= T(2);
   }
   return;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::effectInCollectY(const Mat& data, const Mat& data0) {
+  assert(data.rows() == data0.rows() * 2 &&
+         data.cols() == data0.cols());
+  const Mat c(compute(data0, COLLECT_Y));
+        Mat result(data.rows(), data.cols());
+  T M(0);
+  for(int i = 0; i < c.rows(); i ++)
+    for(int j = 0; j < c.cols(); j ++) {
+      result(i * 2 + 0, j) = data(i * 2 + 0, j) * c(i, j);
+      result(i * 2 + 1, j) = data(i * 2 + 1, j) * c(i, j);
+      M = max(M, c(i, j));
+    }
+  return result / M;
 }
 
 #define _ENLARGE2X_
