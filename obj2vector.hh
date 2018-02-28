@@ -274,18 +274,12 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
       for( ; j < si.size(); j ++) {
         const auto& sti(store[i]);
         const auto& stj(store[si[j]]);
-        if(0 < abs(sti.first  - stj.first) &&
-           0 < abs(sti.second - stj.second) ) {
-          // 45 degree.
-          if(0 <= sti.first  && sti.first  < mask.rows() &&
-             0 <= sti.second && sti.second < mask.cols() &&
-             mask(stj.first, sti.second) < T(.5))
-            break;
-        } else if(0 <= stj.second && stj.second < mask.rows() &&
-                  0 <= sti.first + (stj.second - sti.second) &&
-                       sti.first + (stj.second - sti.second) < mask.cols() &&
-                  mask(sti.first + (stj.second - sti.second),
-                       sti.second) < T(.5))
+        if(0 <= sti.first  + (stj.second - sti.second) &&
+                sti.first  + (stj.second - sti.second) < mask.cols() &&
+           0 <= sti.second + (stj.first  - sti.first)  &&
+                sti.second + (stj.first  - sti.first)  < mask.rows() &&
+           mask(sti.first  + (stj.second - sti.second),
+                sti.second + (stj.first  - sti.first)) < T(.5))
           break;
       }
       if(si.size() <= j)
@@ -299,6 +293,7 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
     if(1 < e.size()) {
       result.push_back(vector<int>());
       // apply to points index.
+      vector<int> pj;
       for(int i = 0; i < e.size(); i ++) {
         const auto& s(store[e[i]]);
         vector<pair<T, int> > distances;
@@ -308,9 +303,12 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
                                   pow(T(s.second - points[j][1]), T(2)),
                                 j));
         sort(distances.begin(), distances.end());
-        result[result.size() - 1].push_back(distances[0].second);
+        if(distances.size() && !binary_search(pj.begin(), pj.end(), distances[0].second)) {
+          result[result.size() - 1].push_back(distances[0].second);
+          pj.push_back(distances[0].second);
+        }
       }
-      result.push_back(result[0]);
+      result[result.size() - 1].push_back(result[result.size() - 1][0]);
     } else
       se.push_back(i);
     cerr << "." << flush;
@@ -364,11 +362,11 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
           const int& i0(i);
           const int  i1(i + 1);
           output << "f " << data.size() + outer[i0] + 1;
-          output << " "  << data.size() + outer[i1] + 1;
-          output << " "  << outer[i1] + 1 << endl;
-          output << "f " << data.size() + outer[i0] + 1;
           output << " "  << outer[i1] + 1;
-          output << " "  << outer[i0] + 1 << endl;
+          output << " "  << data.size() + outer[i1] + 1 << endl;
+          output << "f " << data.size() + outer[i0] + 1;
+          output << " "  << outer[i0] + 1;
+          output << " "  << outer[i1] + 1 << endl;
         }
       }
     output.close();
