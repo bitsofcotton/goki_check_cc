@@ -274,12 +274,12 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
       for( ; j < si.size(); j ++) {
         const auto& sti(store[i]);
         const auto& stj(store[si[j]]);
-        if(0 <= sti.first  + (stj.second - sti.second) &&
-                sti.first  + (stj.second - sti.second) < mask.cols() &&
-           0 <= sti.second + (stj.first  - sti.first)  &&
-                sti.second + (stj.first  - sti.first)  < mask.rows() &&
-           mask(sti.first  + (stj.second - sti.second),
-                sti.second + (stj.first  - sti.first)) < T(.5))
+        const T y(stj.first  - sti.first);
+        const T x(stj.second - stj.second);
+        const T x2(x - y + sti.second);
+        const T y2(x + y + sti.first);
+        if(0 <= x2 && x2 < mask.cols() && 0 <= y2 < mask.rows() &&
+           mask(y2, x2) < T(.5))
           break;
       }
       if(si.size() <= j)
