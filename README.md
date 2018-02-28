@@ -12,6 +12,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * * z_max  : z-index resolution.
 * * stp    : number of points to be used in detecting edges.
 * * nslide : sliding window for z-axis extreme values to sum up.
+* * zdist  : camera z-axis ratio.
 * tilt.hh
 * * z_ratio : [0,1] to [0,z_atio].
 * scancontext.hh
