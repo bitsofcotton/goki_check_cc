@@ -45,7 +45,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& nslide);
+  void initialize(const int& z_max, const int& stp, const int& nslide, const int& zdist);
   void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4, const T& rz = T(1) / T(3));
   Mat  getPseudoBump(Mat in, const bool& elim0 = true);
   
@@ -58,6 +58,7 @@ private:
   const T& getImgPt(const Vec& img, const T& y);
   
   int z_max;
+  int zdist;
   
   T   Pi;
   Vec Dop;
@@ -65,18 +66,18 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(60, 21, 12);
+  initialize(40, 81, 20, 80);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nslide) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nslide, const int& zdist) {
   this->z_max = z_max;
-  assert(1 < z_max);
-  assert(0 < stp);
-  assert(0 < nslide && nslide < z_max);
+  this->zdist = zdist;
+  assert(1 < z_max && 0 < stp && 0 < zdist &&
+         0 < nslide && nslide < z_max);
   this->Pi    = T(4) * atan2(T(1), T(1));
   {
     MatU DFT(stp, stp), IDFT(stp, stp);
@@ -241,16 +242,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getLine
   // virtually : z = p[1], p[1] = 0, all y axis := 0.
   // <c + (p - c) * t, [0, 0, 1]> = z
   const T t((p[1] - c[1]) / (- c[1]));
-  return (p - c) * t + c;
+  return c + (p - c) * t;
 }
 
 template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>::prepareLineAxis(const T& rstp) {
-  const int& stp(Dop.size());
-  
   // N.B. ray is from infinite far, so same side of these.
   Vec camera(2);
   camera[0] = T(0);
-  camera[1] = T(1);
+  camera[1] = T(zdist);
   
   vector<Vec> result;
   result.resize(z_max);
@@ -258,13 +257,13 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int zi = 0; zi < result.size(); zi ++) {
-    result[zi] = Vec(stp);
+    result[zi] = Vec(Dop.size());
     for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
       // XXX cpoint[0] scale checkme.
-      cpoint[0] = (s / T(stp - 1) - 1 / T(2)) * T(2);
-      cpoint[1] = (zi + 1) / T(result.size() + 1);
-      result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp;
+      cpoint[0] = (s / T(Dop.size() - 1) - 1 / T(2)) * T(2);
+      cpoint[1] = (zi + 1) / T(result.size() + 1) * zdist;
+      result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp / zdist;
     }
   }
   return result;
