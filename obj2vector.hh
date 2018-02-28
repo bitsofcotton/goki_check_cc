@@ -278,7 +278,7 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
         const T x(stj.second - stj.second);
         const T x2(x - y + sti.second);
         const T y2(x + y + sti.first);
-        if(0 <= x2 && x2 < mask.cols() && 0 <= y2 < mask.rows() &&
+        if(0 <= x2 && x2 < mask.cols() && 0 <= y2 && y2 < mask.rows() &&
            mask(y2, x2) < T(.5))
           break;
       }
