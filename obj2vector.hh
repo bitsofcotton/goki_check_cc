@@ -241,18 +241,6 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
     for(int j = 0; j < checked.cols(); j ++)
       if(mask(i, j) < T(.5))
         floodfill(checked, store, mask, i, j);
-      else
-        checked(i, j) = true;
-  if(!store.size()) {
-    for(int i = 0; i < checked.rows(); i ++) {
-      store.push_back(make_pair(i, 0));
-      store.push_back(make_pair(i, checked.cols() - 1));
-    }
-    for(int i = 0; i < checked.cols(); i ++) {
-      store.push_back(make_pair(0,                  i));
-      store.push_back(make_pair(checked.rows() - 1, i));
-    }
-  }
   sort(store.begin(), store.end());
   store.erase(unique(store.begin(), store.end()), store.end());
   cerr << " with " << store.size() << " edge points " << flush;
@@ -263,7 +251,7 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
   for( ; se.size() < store.size(); ) {
     // tree index.
     vector<int> e;
-    int i(0);
+    int         i(0);
     for( ; i < store.size(); i ++)
       if(!binary_search(se.begin(), se.end(), i))
         break;
@@ -276,9 +264,7 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
       for(int j = 0; j < store.size(); j ++)
         if(!binary_search(se.begin(), se.end(), j) &&
            abs(store[i].first  - store[j].first)  <= 1 &&
-           abs(store[i].second - store[j].second) <= 1 &&
-           !(store[i].first  == store[j].first &&
-             store[i].second == store[j].second))
+           abs(store[i].second - store[j].second) <= 1)
           si.push_back(j);
       if(!si.size())
         break;
@@ -288,39 +274,26 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
       for( ; j < si.size(); j ++) {
         const auto& sti(store[i]);
         const auto& stj(store[si[j]]);
-        if(0 < abs(sti.first - stj.first)) {
-          if(0 < abs(sti.second - stj.second)) {
-            // 45 degree.
-            if((sti.first  - stj.first) *
-               (sti.second - stj.second) > 0) {
-              if(0 <= sti.first  && sti.first  < mask.rows() &&
-                 0 <= sti.second && sti.second < mask.cols() &&
-                 mask(sti.first, stj.second) < T(.5))
-                break;
-            } else if(0 <= sti.first  && sti.first  < mask.rows() &&
-                      0 <= sti.second && sti.second < mask.cols() &&
-                      mask(stj.first, sti.second) < T(.5))
-              break;
-          } else if(0 <= stj.first && stj.first < mask.rows() &&
-                    0 <= sti.second + (stj.first - sti.first) &&
-                         sti.second + (stj.first - sti.first) < mask.cols() &&
-                    mask(stj.first,
-                         sti.second + (stj.first - sti.first)) < T(.5))
+        if(0 < abs(sti.first  - stj.first) &&
+           0 < abs(sti.second - stj.second) ) {
+          // 45 degree.
+          if(0 <= sti.first  && sti.first  < mask.rows() &&
+             0 <= sti.second && sti.second < mask.cols() &&
+             mask(stj.first, sti.second) < T(.5))
             break;
-          // it is guaranteed 0 < abs(sti.second - stj.second) from addition.
-        } else if(0 <= stj.second && stj.second < mask.cols() &&
-                  0 <= sti.first - (stj.second - sti.second) &&
-                       sti.first - (stj.second - sti.second) < mask.rows() &&
-                  mask(sti.first - (stj.second - sti.second),
-                       stj.second) < T(.5))
+        } else if(0 <= stj.second && stj.second < mask.rows() &&
+                  0 <= sti.first + (stj.second - sti.second) &&
+                       sti.first + (stj.second - sti.second) < mask.cols() &&
+                  mask(sti.first + (stj.second - sti.second),
+                       sti.second) < T(.5))
           break;
       }
       if(si.size() <= j)
         j = 0;
       // store.
-      e.push_back(si[j]);
-      se.push_back(si[j]);
       i = si[j];
+      e.push_back(i);
+      se.push_back(i);
       sort(se.begin(), se.end());
     }
     if(1 < e.size()) {
@@ -331,17 +304,13 @@ template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen
         vector<pair<T, int> > distances;
         for(int j = 0; j < points.size(); j ++)
           distances.push_back(make_pair(
-                                sqrt(pow(T(s.first  - points[j][0]), T(2)) +
-                                     pow(T(s.second - points[j][1]), T(2))),
+                                pow(T(s.first  - points[j][0]), T(2)) +
+                                  pow(T(s.second - points[j][1]), T(2)),
                                 j));
         sort(distances.begin(), distances.end());
         result[result.size() - 1].push_back(distances[0].second);
       }
-      const auto& head(points[result[result.size() - 1][0]]);
-      const auto& tail(points[result[result.size() - 1][result[result.size() - 1].size() - 1]]);
-      const auto  delta(head - tail);
-      if(sqrt(delta[0] * delta[0] + delta[1] * delta[1]) <= T(2))
-        result.push_back(result[0]);
+      result.push_back(result[0]);
     } else
       se.push_back(i);
     cerr << "." << flush;
