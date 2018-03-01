@@ -394,8 +394,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             work.offset /= work.dstpoints.size();
             work.rdepth  = T(0);
             for(int k = 0; k < work.dstpoints.size(); k ++) {
-              const Vec3& aj(shapebase[work.dstpoints[k]] - sbar);
-              const Vec3  bk(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset - sbar);
+              const Vec3 aj(shapebase[work.dstpoints[k]] - sbar);
+              const Vec3 bk(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset - sbar);
               work.rdepth += (aj - bk).dot(aj - bk) / (aj.dot(aj) + bk.dot(bk));
             }
             work.rdepth /= work.dstpoints.size();
@@ -489,7 +489,7 @@ public:
   ~reDig();
   void init();
   Vec3 emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
-  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
+  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
   Mat  replace(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const vector<Vec3>& srcrep, const match_t<T>& match2, const vector<Veci3>& hullrep);
   bool takeShape(vector<Vec3>& points, vector<Veci3>& tris, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
 };
@@ -512,7 +512,7 @@ template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst
   return dst + (b - a) * ratio;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
   cerr << " making triangles" << flush;
   tilter<T> tilt;
   vector<typename tilter<T>::Triangles> triangles;
@@ -571,7 +571,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   }
   delete[] checked;
   auto rmatch(~ match);
-  return tilt.tiltsub(dstimg, triangles, rmatch.rot, I3, zero3, rmatch.offset, rmatch.ratio);
+  // XXX inverse ratio, but better works.
+  return (srcimg * ratio + tilt.tiltsub(dstimg, triangles, rmatch.rot, I3, zero3, rmatch.offset, rmatch.ratio) * (T(1) - ratio)) / T(2);
 }
 
 template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph, const T& epsilon = T(1e-4)) {

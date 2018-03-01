@@ -27,7 +27,6 @@ void usage() {
 }
 
 int main(int argc, const char* argv[]) {
-  std::ios::sync_with_stdio(false);
   Eigen::Matrix<double, 3, 3> I3;
   Eigen::Matrix<double, 3, 1> zero3;
   for(int i = 0; i < 3; i ++)
@@ -195,7 +194,7 @@ int main(int argc, const char* argv[]) {
         return - 2;
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
-        emph.push_back(double(i) / nemph / double(8));
+        emph.push_back(double(i) / nemph);
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
@@ -260,8 +259,8 @@ int main(int argc, const char* argv[]) {
         reDig<double>   redig;
         for(int kk = 0; kk < emph.size(); kk ++) {
           for(int idx = 0; idx < 3; idx ++) {
-            outs4[idx] = redig.emphasis(mout[idx], mbump, shape1, shape0, rmatchn,    hull, emph[kk]);
-            outs5[idx] = redig.emphasis(data[idx], bump0, shape0, shape1, matches[n], hull, emph[kk]);
+            outs4[idx] = redig.emphasis(mout[idx], mbump, data[idx], shape1, shape0, rmatchn,    hull, emph[kk]);
+            outs5[idx] = redig.emphasis(data[idx], bump0, mout[idx], shape0, shape1, matches[n], hull, emph[kk]);
           }
           outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-a-") + std::to_string(kk) + std::string(".ppm");
           savep2or3<double>(outfile.c_str(), outs4, false);
@@ -287,7 +286,7 @@ int main(int argc, const char* argv[]) {
       }
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
-        emph.push_back(double(i) / nemph / double(8));
+        emph.push_back(double(i) / nemph);
       PseudoBump<double> bumper;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
@@ -337,7 +336,7 @@ int main(int argc, const char* argv[]) {
         reDig<double>   redig;
         for(int kk = 0; kk < emph.size(); kk ++) {
           for(int idx = 0; idx < 3; idx ++) {
-            outs4[idx] = redig.emphasis(data[idx], bump, shape, datapoly, matches[n], ch, emph[kk]);
+            outs4[idx] = redig.emphasis(data[idx], bump, zero, shape, datapoly, matches[n], ch, emph[kk]);
           }
           outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-emphasis-") + std::to_string(kk) + std::string(".ppm");
           savep2or3<double>(outfile.c_str(), outs4, false);
