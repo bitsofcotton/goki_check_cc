@@ -110,8 +110,10 @@ These program's match matches with calculated pseudo z-depth.
 These program's match3d assumes input file as a bump map and .obj 3d file.  
 These program's match assumes one of vertices is full and another is lowPoly, but lowFreq implementation now, it worse generate lowPoly.
 
+# Specification
+PseudoBump generates the bumpmap that is pseudo plausible one.
+
 # Known bugs
-PseudoBump makes a pseudo plausible things.  
 matchPartialPartial matches stable to whole points, so it is in fact needed to match stable to certain simply connected parts, then, do not care to another parts.
 
 # Another downloads
