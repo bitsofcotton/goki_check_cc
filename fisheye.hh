@@ -107,11 +107,8 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const vector<Vec>& cf) {
   cerr << "." << flush;
   Vec result(work.size());
-  Vec rsub(work.size());
-  for(int j = 0; j < rsub.size(); j ++) {
-    result[j] =   T(0);
-    rsub[j]   = - T(1);
-  }
+  for(int j = 0; j < result.size(); j ++)
+    result[j] = T(0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -145,10 +142,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
             score = zz / T(cf.size());
             m     = n2[zz];
           }
-      rsub[s] += score;
+      result[s] += score;
     }
   }
-  return complementLine(rsub);
+  return complementLine(result);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(Mat in, const bool& elim0) {
@@ -170,7 +167,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   }
 
   auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
-  Mat  result(in.rows(), in.cols());
+  Mat result(in.rows(), in.cols());
   for(int i = 0; i < result.cols(); i ++)
     result.col(i)  = getPseudoBumpSub(in.col(i), cf);
   // XXX checkme : cross bump.
@@ -209,7 +206,7 @@ template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec
       work[0] = i * vbox;
       work[1] = j * vbox;
       const T intens(avg / vbox / vbox - aavg);
-      work[2] = intens * sqrt(T(in.rows() * in.cols())) * rz;
+      work[2] = - intens * sqrt(T(in.rows() * in.cols())) * rz;
       geoms.push_back(work);
     }
   Vec3 avg;
