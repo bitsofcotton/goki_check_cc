@@ -104,7 +104,7 @@ These program's collect is based on DFT differential.
 These program's bump assumes F=∞ graphics.   
 These program's match matches with calculated pseudo z-depth.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
-These program's match assumes one of vertices is full and another is lowPoly, but lowFreq implementation now, it worse generate lowPoly.
+These program's match assumes one of vertices is full and another is lowPoly.
 
 # Specification
 PseudoBump generates the bumpmap that is pseudo plausible one.
