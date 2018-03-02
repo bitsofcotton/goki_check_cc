@@ -84,8 +84,9 @@ And checking implementation.
     #include "scancontext.hh"
     lowFreq<float> lf;
     matchPartialPartial<float> statmatch;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(input, 300));
-    std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(input2, 300));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape0;
+    std::vector<Eigen::Matrix<float, 3, 1> > shape1;
+    // init shape0, shape1.
     std::vector<match_t<float> > matches(statmatch.match(shape0, shape1));
     // match operations.
     
