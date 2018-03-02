@@ -18,9 +18,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * scancontext.hh
 * * matchPartialPartial::ndiv    : number of divides that match angles.
 * * matchPartialPartial::thresh  : threshold to detect parallel vectors.
-* * matchPartialPartial::thresht : threshold to detect parallel vectors length ratio.
 * * matchPartialPartial::threshp : threshold for matched points.
-* * matchPartialPartial::threshr : threshold for matched size ratios.
 * * matchPartialPartial::threshs : threshold for operator ==.
 
 # Context
@@ -55,9 +53,6 @@ And checking implementation.
     
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
-    
-    # make (pseudo) lowpoly and get match.ppm and .obj file.
-    ./tools lpoly input.ppm output-match.ppm output.obj
     
     # list matches.
     ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm
