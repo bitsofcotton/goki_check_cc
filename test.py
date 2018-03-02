@@ -62,7 +62,7 @@ for line in argv[3:]:
     f.close()
   elif(argv[2] == "tilt"):
     subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base", root + "-bump.ppm"])
-    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "8", "-an", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "30", root + ".mp4"])
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "64"):
     subprocess.call([argv[1], "bump2", root + ".ppm", root + "-bump64.ppm"])
     subprocess.call(["convert", "-resize", "128x", "-resize", "x128<", "-resize", "50%", "-gravity", "center", "-crop", "64x64+0+0", root + "-bump64.ppm", root + "-bump64e" + ".jpeg"])
