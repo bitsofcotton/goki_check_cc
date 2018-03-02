@@ -18,9 +18,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * scancontext.hh
 * * matchPartialPartial::ndiv    : number of divides that match angles.
 * * matchPartialPartial::thresh  : threshold to detect parallel vectors.
-* * matchPartialPartial::thresht : threshold to detect parallel vectors length ratio.
 * * matchPartialPartial::threshp : threshold for matched points.
-* * matchPartialPartial::threshr : threshold for matched size ratios.
 * * matchPartialPartial::threshs : threshold for operator ==.
 
 # Context
@@ -56,9 +54,6 @@ And checking implementation.
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
     
-    # make (pseudo) lowpoly and get match.ppm and .obj file.
-    ./tools lpoly input.ppm output-match.ppm output.obj
-    
     # list matches.
     ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm
     
@@ -89,8 +84,9 @@ And checking implementation.
     #include "scancontext.hh"
     lowFreq<float> lf;
     matchPartialPartial<float> statmatch;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(input, 300));
-    std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(input2, 300));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape0;
+    std::vector<Eigen::Matrix<float, 3, 1> > shape1;
+    // init shape0, shape1.
     std::vector<match_t<float> > matches(statmatch.match(shape0, shape1));
     // match operations.
     
@@ -108,13 +104,10 @@ These program's collect is based on DFT differential.
 These program's bump assumes F=∞ graphics.   
 These program's match matches with calculated pseudo z-depth.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
-These program's match assumes one of vertices is full and another is lowPoly, but lowFreq implementation now, it worse generate lowPoly.
+These program's match assumes one of vertices is full and another is lowPoly.
 
 # Specification
 PseudoBump generates the bumpmap that is pseudo plausible one.
-
-# Known bugs
-matchPartialPartial matches stable to whole points, so it is in fact needed to match stable to certain simply connected parts, then, do not care to another parts.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
