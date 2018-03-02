@@ -197,8 +197,7 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < mout[0].cols(); j ++)
           mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = double(0);
       matchPartialPartial<double> statmatch;
-      std::vector<match_t<double> > matches;
-      statmatch.match(shape0, shape1, matches);
+      auto matches(statmatch.match(shape0, shape1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3], outs5[3];
@@ -272,19 +271,25 @@ int main(int argc, const char* argv[]) {
       bumper.getPseudoVec(bump, shape, sute, vbox);
       auto zero(data[0] * double(0));
       matchPartialPartial<double>   statmatch;
-      std::vector<match_t<double> > matches;
-      statmatch.match(shape, datapoly, matches);
+      auto matches(statmatch.match(shape, datapoly));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3];
         cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         
         auto ch(loadBumpSimpleMesh<double>(shape, matches[n].dstpoints));
 
-        vector<Eigen::Matrix<double, 3, 1> > shape3d;
+        std::vector<Eigen::Matrix<double, 3, 1> > shape3d;
         for(int idx = 0; idx < datapoly.size(); idx ++)
           shape3d.push_back(matches[n].rot * matches[n].ratio * datapoly[idx] + matches[n].offset);
+        std::vector<Eigen::Matrix<int, 3, 1> > dch;
+        for(int idx = 0; idx < ch.size(); idx ++) {
+          Eigen::Matrix<int, 3, 1> buf;
+          for(int idx2 = 0; idx2 < ch[idx].size(); idx2 ++)
+            buf[idx2] = matches[n].srcpoints[ch[idx][idx2]];
+          dch.push_back(buf);
+        }
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = showMatch<double>(zero, shape3d, ch);
+          outs[idx] = showMatch<double>(zero, shape3d, dch);
         normalize<double>(outs, 1.);
         std::string outfile;
         outfile = std::string(argv[3]) + std::to_string(n + 1) + std::string("-src.ppm");
