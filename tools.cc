@@ -21,7 +21,7 @@ const double psi(.95);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|lpoly|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -53,8 +53,6 @@ int main(int argc, const char* argv[]) {
     mode = 1;
   else if(strcmp(argv[1], "tilt") == 0)
     mode = 6;
-  else if(strcmp(argv[1], "lpoly") == 0)
-    mode = 8;
   else if(strcmp(argv[1], "match") == 0)
     mode = 9;
   else if(strcmp(argv[1], "match3d") == 0)
@@ -160,24 +158,6 @@ int main(int argc, const char* argv[]) {
         savep2or3<double>(outfile.c_str(), out, false);
       }
       return 0;
-    }
-    break;
-  case 8:
-    {
-      // lowpoly.
-      lowFreq<double> lf;
-      auto points(lf.getLowFreq(rgb2l(data)));
-      std::vector<int> dstpoints;
-      for(int i = 0; i < points.size(); i ++)
-        dstpoints.push_back(i);
-      normalize<double>(data, 1.);
-      auto pptr(loadBumpSimpleMesh<double>(points, dstpoints));
-      for(int i = 0; i < 3; i ++)
-        data[i] = showMatch<double>(data[i], points, pptr);
-      std::cout << "Handled points:" << std::endl;
-      for(int i = 0; i < points.size(); i ++)
-        std::cout << points[i].transpose() << std::endl;
-      saveobj(points, pptr, argv[4]);
     }
     break;
   case 9:
