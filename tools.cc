@@ -12,12 +12,11 @@
 using namespace std;
 
 // XXX: configure me:
-const int    nshow(8);
+const int    nshow(4);
 const int    nemph(4);
 const int    vbox(8);
 const int    objvbox(2);
-const double threshr(.75);
-const int    M_TILT(16);
+const int    M_TILT(32);
 const double psi(.95);
 const int    Mpoly(2000);
 
@@ -152,7 +151,7 @@ int main(int argc, const char* argv[]) {
         return - 2;
       auto zero(bump[0] * double(0));
       tilter<double> tilt;
-      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())) / double(3));
+      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())));
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
           out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, psi), zero, - i, M_TILT, psi);
@@ -218,7 +217,6 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < mout[0].cols(); j ++)
           mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = double(0);
       matchPartialPartial<double> statmatch;
-      statmatch.threshr = threshr;
       std::vector<match_t<double> > matches;
       statmatch.match(shape0, shape1, matches);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
@@ -295,7 +293,6 @@ int main(int argc, const char* argv[]) {
       auto zero(data[0] * double(0));
       matchPartialPartial<double>   statmatch;
       std::vector<match_t<double> > matches;
-      std::vector<Eigen::Matrix<double, 3, 1> > sshape(shape);
       statmatch.match(shape, datapoly, matches);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> outs[3], outs2[3], outs3[3], outs4[3];

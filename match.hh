@@ -36,85 +36,6 @@ using std::vector;
 using std::complex;
 using std::isfinite;
 
-template <typename T> class lfmatch_t {
-public:
-  Eigen::Matrix<T, 3, 1> pt;
-  T                      score;
-  lfmatch_t<T>& operator = (const lfmatch_t<T>& other) {
-    pt    = other.pt;
-    score = other.score;
-    return *this;
-  }
-  bool operator < (const lfmatch_t<T>& x1) const {
-    return score > x1.score;
-  }
-};
-
-template <typename T> class lowFreq {
-public:
-  typedef complex<T> U;
-  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Eigen::Matrix<T, 3, 1>                           Vec3;
-  
-  lowFreq();
-  ~lowFreq();
-  void init(const T& zr);
-  
-  vector<Vec3> getLowFreq(const Mat& data, const int& npoints = 800);
-private:
-  T zr;
-  T Pi;
-  U I;
-};
-
-template <typename T> lowFreq<T>::lowFreq() {
-  Pi = atan2(T(1), T(1)) * T(4);
-  I  = sqrt(U(- 1));
-  init(60);
-}
-
-template <typename T> lowFreq<T>::~lowFreq() {
-  ;
-}
-
-template <typename T> void lowFreq<T>::init(const T& zr) {
-  this->zr = zr;
-  return;
-}
-
-template <typename T> vector<Eigen::Matrix<T, 3, 1> > lowFreq<T>::getLowFreq(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& data, const int& npoints) {
-  vector<lfmatch_t<T> > match;
-  const T guard(T(npoints) / T(data.rows() * data.cols()));
-  for(int i = 0; i < data.rows() * sqrt(guard); i ++)
-    for(int j = 0; j < data.cols() * sqrt(guard); j ++) {
-      lfmatch_t<T> m;
-      m.pt[0] = m.pt[1] = m.pt[2] = T(0);
-      m.score = T(0);
-      int count(0);
-      for(int ii = i / sqrt(guard); ii < min(T(data.rows()), (i + 1) / sqrt(guard)); ii ++)
-        for(int jj = j / sqrt(guard); jj < min(T(data.cols()), (j + 1) / sqrt(guard)); jj ++) {
-          m.score += data(ii, jj);
-          m.pt[0] += ii;
-          m.pt[1] += jj;
-          m.pt[2] += data(ii, jj);
-          count ++;
-        }
-      m.score /= count;
-      m.pt    /= count;
-      m.pt[2] *= zr;
-      match.push_back(m);
-    }
-  sort(match.begin(), match.end());
-  // XXX add me lowpoly:
-  vector<Eigen::Matrix<T, 3, 1> > result;
-  for(int k = 0; k < match.size(); k ++) {
-    const Eigen::Matrix<T, 3, 1>& pt(match[k].pt);
-    result.push_back(pt);
-  }
-  return result;
-}
-
-
 template <typename T> class msub_t {
 public:
   T   t;
@@ -195,7 +116,7 @@ public:
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
-    return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
+    return x1.rdepth < rdepth || (rdepth == x1.rdepth && rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -228,7 +149,7 @@ public:
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
-  void init(const int& ndiv, const T& thresh, const T& threshp, const T& threshr, const T& thresht, const T& threshs);
+  void init(const int& ndiv, const T& thresh, const T& threshp, const T& threshs);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
@@ -236,7 +157,6 @@ public:
   int ndiv;
   T   thresh;
   T   threshp;
-  T   threshr;
   T   thresht;
   T   threshs;
   
@@ -249,19 +169,18 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(8, .00125, .25, .25, .125, .75);
+  init(8, .125, .25, .25);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
   ;
 }
 
-template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& thresh, const T& threshp, const T& threshr, const T& thresht, const T& threshs) {
+template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& thresh, const T& threshp, const T& threshs) {
   this->ndiv    = ndiv;
   this->thresh  = thresh;
   this->threshp = threshp;
-  this->threshr = threshr;
-  this->thresht = thresht;
+  this->thresht = thresh;
   this->threshs = threshs;
   return;
 }
@@ -330,7 +249,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             const T    t(aj.dot(bk) / bk.dot(bk));
             const Vec3 lerr(aj - bk * t);
             const T    err(lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t * t));
-            if(err <= thresh && isfinite(t) && isfinite(err) && T(0) <= t) {
+            if(err <= thresh * thresh && isfinite(t) &&
+               isfinite(err) && T(0) <= t) {
               msub_t<T> work;
               work.t   = t;
               work.j   = j;
@@ -396,7 +316,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             for(int k = 0; k < work.dstpoints.size(); k ++) {
               const Vec3 aj(shapebase[work.dstpoints[k]] - sbar);
               const Vec3 bk(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset - sbar);
-              work.rdepth += (aj - bk).dot(aj - bk) / (aj.dot(aj) + bk.dot(bk));
+              work.rdepth += aj.dot(aj);
             }
             work.rdepth /= work.dstpoints.size();
 #if defined(_OPENMP)
@@ -434,7 +354,7 @@ public:
   typedef complex<T> U;
   matchWholePartial();
   ~matchWholePartial();
-  void init(const int& ndiv, const T& thresh, const T& threshp, const T& threshr, const T& threshs);
+  void init(const int& ndiv, const T& thresh, const T& threshp, const T& threshs);
 
   vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins);
 private:
@@ -442,7 +362,6 @@ private:
   T Pi;
   T thresh;
   T threshp;
-  T threshr;
   T threshs;
 };
 
@@ -455,10 +374,9 @@ template <typename T> matchWholePartial<T>::~matchWholePartial() {
   ;
 }
 
-template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& thresh, const T& threshp, const T& threshr, const T& threshs) {
+template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& thresh, const T& threshp, const T& threshs) {
   this->thresh  = thresh;
   this->threshp = threshp;
-  this->threshr = threshr;
   this->threshs = threshs;
   return;
 }
@@ -466,7 +384,7 @@ template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& 
 template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins) {
   assert(points.size() == origins.size());
   vector<vector<match_t<T> > > pmatches;
-  matchPartialPartial<T> pmatch(thresh, threshp, threshr, threshs);
+  matchPartialPartial<T> pmatch(thresh, threshp, threshs);
   for(int i = 0; i < points.size(); i ++) {
     cerr << "matching partial polys : " << i << "/" << shapebase.size() << endl;
     pmatches.push_back(pmatch.match(shapebase, points[i]));
