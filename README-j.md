@@ -18,7 +18,6 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * scancontext.hh
 * * matchPartialPartial::ndiv    : 合致する角度の分割数です
 * * matchPartialPartial::thresh  : 合致を集めてくる際の平行なベクトルのための誤差です。
-* * matchPartialPartial::thresht : 合致を集めてくる際の平行なベクトルの長さの比率に対する誤差です。
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
 * * matchPartialPartial::threshr : 検出される最小の画像倍率です。
 * * matchPartialPartial::threshs : 合致が同じかどうか判定する閾値です。
@@ -55,9 +54,6 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     # make tilts from original and bumpmap images.
     ./tools tilt input.ppm output-base input-bump.ppm
     
-    # make (pseudo) lowpoly and get match.ppm and .obj file.
-    ./tools lpoly input.ppm output-match.ppm output.obj
-    
     # list matches.
     ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm
     
@@ -86,10 +82,10 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .95));
     
     #include "scancontext.hh"
-    lowFreq<float> lf;
     matchPartialPartial<float> statmatch;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape0(lf.getLowFreq(input, 300));
-    std::vector<Eigen::Matrix<float, 3, 1> > shape1(lf.getLowFreq(input2, 300));
+    std::vector<Eigen::Matrix<float, 3, 1> > shape0;
+    std::vector<Eigen::Matrix<float, 3, 1> > shape1;
+    // init shape0, shape1.
     std::vector<match_t<float> > matches(statmatch.match(shape0, shape1));
     // match operations.
     
