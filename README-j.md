@@ -108,9 +108,6 @@ match は片方が稠密な頂点、もう片方が lowPoly された頂点で�
 # 仕様
 PseudoBump はもっともらしいバンプマップを返しますが、正しくない場合があります。  
 
-# バグ
-matchPartialPartial クラスは全体に対して安定な合致を返しますが、実際に必要なのは、単連結な部分に対して安定で、その他の部分に対して関連しない合致です。
-
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
