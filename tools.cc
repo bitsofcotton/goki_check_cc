@@ -26,17 +26,18 @@ void usage() {
 }
 
 template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<Eigen::Matrix<T, 3, 1> >& shape0, const std::vector<Eigen::Matrix<T, 3, 1> >& shape1, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> in0[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> in1[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump0, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump1, const std::vector<T>& emph) {
+  reDig<T>  redig;
+  tilter<T> tilt;
+  const match_t<T> rmatch(~ match);
+  auto hull(loadBumpSimpleMesh<T>(shape0, match.dstpoints));
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs[3];
+  
   Eigen::Matrix<double, 3, 3> I3;
   Eigen::Matrix<double, 3, 1> zero3;
   for(int i = 0; i < 3; i ++)
     for(int j = 0; j < 3; j ++)
       I3(i, j) = (i == j ? double(1) : double(0));
   zero3[0] = zero3[1] = zero3[2] = double(0);
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs[3];
-  
-  reDig<T> redig;
-  const match_t<T> rmatch(~ match);
-  auto hull(loadBumpSimpleMesh<T>(shape0, match.dstpoints));
   
   std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
   for(int idx = 0; idx < hull.size(); idx ++) {
@@ -48,39 +49,34 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
       buf[idx2] = match.srcpoints[hull[idx][idx2]];
     mhull1.push_back(buf);
   }
-  tilter<T> tilt;
+  
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = tilt.tilt(redig.showMatch(in1[idx], shape1, mhull1), bump1, match.rot, I3, match.offset, match.ratio, zero3);
   normalize<T>(outs, 1.);
   std::string outfile(outbase + std::string("-src.ppm"));
   savep2or3<T>(outfile.c_str(), outs, false);
   
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs2[3];
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.showMatch(in0[idx], shape0, mhull0);
-  normalize<T>(outs, 1.);
+    outs2[idx] = redig.showMatch(in0[idx], shape0, mhull0);
+  normalize<T>(outs2, 1.);
   outfile = outbase + std::string("-dst.ppm");
-  savep2or3<T>(outfile.c_str(), outs, false);
+  savep2or3<T>(outfile.c_str(), outs2, false);
   
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = tilt.tilt(redig.showMatch(in1[idx], shape1, mhull1), bump1, match.rot, I3, match.offset, match.ratio, zero3) + redig.showMatch(in0[idx], shape0, mhull0);
+    outs[idx] += outs2[idx];
   normalize<T>(outs, 1.);
   outfile = outbase + std::string("-match.ppm");
   savep2or3<T>(outfile.c_str(), outs, false);
   
-  for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.eliminate(in0[idx], shape0, mhull0);
-  normalize<T>(outs, 1.);
-  outfile = outbase + std::string("-eliminate.ppm");
-  savep2or3<T>(outfile.c_str(), outs, false);
-  
   for(int kk = 0; kk < emph.size(); kk ++) {
     for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = redig.emphasis(in1[idx], bump1, in0[idx], shape1, shape0, match, hull, emph[kk]);
+      outs[idx] = redig.emphasis(in1[idx], bump1, in0[idx], shape1, shape0, rmatch, hull, emph[kk]);
     outfile = outbase + std::string("-emph-a-") + std::to_string(kk) + std::string(".ppm");
     savep2or3<T>(outfile.c_str(), outs, false);
     
     for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = redig.emphasis(in0[idx], bump0, in1[idx], shape0, shape1, rmatch, hull, emph[kk]);
+      outs[idx] = redig.emphasis(in0[idx], bump0, in1[idx], shape0, shape1, match, hull, emph[kk]);
     outfile = outbase + std::string("-emph-b-") + std::to_string(kk) + std::string(".ppm");
     savep2or3<T>(outfile.c_str(), outs, false);
   }
@@ -219,8 +215,7 @@ int main(int argc, const char* argv[]) {
   case 9:
     {
       // 2d - 2d match with hidden calculated 3d.
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3];
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bdata[3], bdata1[3];
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3], bdata[3], bdata1[3], mout[3], bump1;
       if(!loadp2or3<double>(data1, argv[4]))
         return - 2;
       if(!loadp2or3<double>(bdata, argv[5]))
@@ -230,33 +225,31 @@ int main(int argc, const char* argv[]) {
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph);
-      PseudoBump<double> bump;
-      std::vector<Eigen::Matrix<int,    3, 1> > sute;
-      std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
-      auto& bump0(bdata[0]);
-      auto& bump1(bdata1[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox);
-      bump.getPseudoVec(bump1, shape1, sute, vbox);
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mout[3], mbump;
-      mbump = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
+      bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
       for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
         for(int j = 0; j < min(mout[0].cols(), data1[0].cols()); j ++) {
           mout[0](i, j) = data1[0](i, j);
           mout[1](i, j) = data1[1](i, j);
           mout[2](i, j) = data1[2](i, j);
-          mbump(i, j)   = bump1(i, j);
+          bump1(i, j)   = bdata1[0](i, j);
         }
         for(int j = min(mout[0].cols(), data1[0].cols()); j < mout[0].cols(); j ++)
-          mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = double(0);
+          bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
       }
       for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
         for(int j = 0; j < mout[0].cols(); j ++)
-          mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = mbump(i, j) = double(0);
+          bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+      PseudoBump<double> bump;
+      std::vector<Eigen::Matrix<int,    3, 1> > sute;
+      std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
+      auto& bump0(bdata[0]);
+      bump.getPseudoVec(bump0, shape0, sute, vbox);
+      bump.getPseudoVec(bump1, shape1, sute, vbox);
       matchPartialPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
-        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, mbump, emph);
+        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
       }
     }
     return 0;
