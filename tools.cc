@@ -50,19 +50,19 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   }
   tilter<T> tilt;
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = tilt.tilt(showMatch<T>(in1[idx], shape1, mhull1, T(0)), bump1, match.rot, I3, match.offset, match.ratio, zero3);
+    outs[idx] = tilt.tilt(redig.showMatch(in1[idx], shape1, mhull1), bump1, match.rot, I3, match.offset, match.ratio, zero3);
   normalize<T>(outs, 1.);
   std::string outfile(outbase + std::string("-src.ppm"));
   savep2or3<T>(outfile.c_str(), outs, false);
   
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = showMatch<T>(in0[idx], shape0, mhull0, T(0));
+    outs[idx] = redig.showMatch(in0[idx], shape0, mhull0);
   normalize<T>(outs, 1.);
   outfile = outbase + std::string("-dst.ppm");
   savep2or3<T>(outfile.c_str(), outs, false);
   
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = tilt.tilt(showMatch<T>(in1[idx], shape1, mhull1), bump1, rmatch.rot, I3, rmatch.offset, rmatch.ratio, zero3) + showMatch<T>(in0[idx], shape0, mhull0);
+    outs[idx] = tilt.tilt(redig.showMatch(in1[idx], shape1, mhull1), bump1, match.rot, I3, match.offset, match.ratio, zero3) + redig.showMatch(in0[idx], shape0, mhull0);
   normalize<T>(outs, 1.);
   outfile = outbase + std::string("-match.ppm");
   savep2or3<T>(outfile.c_str(), outs, false);
