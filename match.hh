@@ -23,6 +23,7 @@ using std::sqrt;
 using std::atan2;
 using std::abs;
 using std::log;
+using std::sin;
 using std::cos;
 using std::sin;
 using std::sort;
@@ -35,6 +36,8 @@ using std::flush;
 using std::vector;
 using std::complex;
 using std::isfinite;
+
+template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph, const T& epsilon = T(1e-4));
 
 template <typename T> class msub_t {
 public:
@@ -149,38 +152,43 @@ public:
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
-  void init(const int& ndiv, const T& thresh, const T& threshp, const T& threshs);
+  void init(const int& ndiv, const T& threshp, const T& threshs);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
   
+  // theta resolution.
   int ndiv;
-  T   thresh;
+  // match points thresh in [0, 1].
   T   threshp;
-  T   thresht;
+  // match operator == thresh in [0, 1].
   T   threshs;
   
 private:
   U   I;
   T   Pi;
+  // match theta  thresh in [0, 1].
+  T   thresh;
+  // match ratio  thresh in [0, 1].
+  T   thresht;
 };
 
 template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(8, .125, .25, .5);
+  init(16, .25, .25);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
   ;
 }
 
-template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& thresh, const T& threshp, const T& threshs) {
+template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& threshp, const T& threshs) {
   this->ndiv    = ndiv;
-  this->thresh  = thresh;
+  this->thresh  = sin(T(2) * Pi / ndiv) / T(2);
+  this->thresht = this->thresh;
   this->threshp = threshp;
-  this->thresht = thresh;
   this->threshs = threshs;
   return;
 }
@@ -192,10 +200,12 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
 }
 
 template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
+  // drot0 := I_3.
   Mat3x3 drot0;
   for(int k = 0; k < drot0.rows(); k ++)
     for(int l = 0; l < drot0.cols(); l ++)
       drot0(k, l) = (k == l ? T(1) : T(0));
+  // centering each.
   Vec3 gs, gp, gd;
   gs[0] = gs[1] = gs[2] = T(0);
   gp[0] = gp[1] = gp[2] = T(0);
@@ -214,128 +224,134 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
     gd[0] = max(gd[0], abs((points[i] - gp)[0]));
     gd[1] = max(gd[1], abs((points[i] - gp)[1]));
   }
-  for(int i = 0; i < 3; i ++) {
-    cerr << " matching" << flush;
+  // for each rotation:
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int nd = 0; nd < ndiv; nd ++) {
-      cerr << "." << flush;
-      Eigen::Matrix<T, 4, 1> ddiv;
-      ddiv[0] = cos(2 * Pi * nd / ndiv);
-      ddiv[1] = sin(2 * Pi * nd / ndiv);
-      for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
-        ddiv[2] = cos(2 * Pi * nd2 / ndiv);
-        ddiv[3] = sin(2 * Pi * nd2 / ndiv);
-        Mat3x3 drot1(drot0);
-        for(int k = 0; k < ddiv.size() / 2; k ++) {
-          Mat3x3 lrot;
-          lrot((k + i    ) % 3, (k + i    ) % 3) =   ddiv[k * 2 + 0];
-          lrot((k + i + 1) % 3, (k + i    ) % 3) =   ddiv[k * 2 + 1];
-          lrot((k + i    ) % 3, (k + i + 1) % 3) = - ddiv[k * 2 + 1];
-          lrot((k + i + 1) % 3, (k + i + 1) % 3) =   ddiv[k * 2 + 0];
-          lrot((k + i + 2) % 3, (k + i    ) % 3) = T(0);
-          lrot((k + i + 2) % 3, (k + i + 1) % 3) = T(0);
-          lrot((k + i + 2) % 3, (k + i + 2) % 3) = T(1);
-          lrot((k + i    ) % 3, (k + i + 2) % 3) = T(0);
-          lrot((k + i + 1) % 3, (k + i + 2) % 3) = T(0);
-          drot1 = lrot * drot1;
-        }
-        vector<msub_t<T> > msub;
-        for(int k = 0; k < points.size(); k ++)
-          for(int j = 0; j < shapebase.size(); j ++) {
-            const Vec3 aj(shapebase[j]       - gs);
-            const Vec3 bk(drot1 * (points[k] - gp));
-            const T    t(aj.dot(bk) / bk.dot(bk));
-            const Vec3 lerr(aj - bk * t);
-            const T    err(lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t * t));
-            if(err <= thresh * thresh && isfinite(t) &&
-               isfinite(err) && T(0) <= t) {
-              msub_t<T> work;
-              work.t   = t;
-              work.j   = j;
-              work.k   = k;
-              work.err = err;
-              msub.push_back(work);
-            }
+  for(int nd = 0; nd < ndiv; nd ++) {
+    Eigen::Matrix<T, 4, 1> ddiv;
+    ddiv[0] = cos(2 * Pi * nd / ndiv - Pi);
+    ddiv[1] = sin(2 * Pi * nd / ndiv - Pi);
+    // with t < 0 match.
+    for(int nd2 = 0; nd2 <= ndiv / 2; nd2 ++) {
+      ddiv[2] = cos(2 * Pi * nd2 / ndiv - Pi);
+      ddiv[3] = sin(2 * Pi * nd2 / ndiv - Pi);
+      Mat3x3 drot1(drot0);
+      for(int k = 0; k < ddiv.size() / 2; k ++) {
+        Mat3x3 lrot;
+        lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
+        lrot((k + 1) % 3, (k    ) % 3) =   ddiv[k * 2 + 1];
+        lrot((k    ) % 3, (k + 1) % 3) = - ddiv[k * 2 + 1];
+        lrot((k + 1) % 3, (k + 1) % 3) =   ddiv[k * 2 + 0];
+        lrot((k + 2) % 3, (k    ) % 3) = T(0);
+        lrot((k + 2) % 3, (k + 1) % 3) = T(0);
+        lrot((k + 2) % 3, (k + 2) % 3) = T(1);
+        lrot((k    ) % 3, (k + 2) % 3) = T(0);
+        lrot((k + 1) % 3, (k + 2) % 3) = T(0);
+        drot1 = lrot * drot1;
+      }
+      // for each near matches:
+      vector<msub_t<T> > msub;
+      for(int k = 0; k < points.size(); k ++)
+        for(int j = 0; j < shapebase.size(); j ++) {
+          const Vec3 aj(shapebase[j]       - gs);
+          const Vec3 bk(drot1 * (points[k] - gp));
+          const T    t(aj.dot(bk) / bk.dot(bk));
+          const Vec3 lerr(aj - bk * t);
+          const T    err(lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t * t));
+          if(err <= thresh * thresh && isfinite(t) && isfinite(err)) {
+            msub_t<T> work;
+            work.t   = sqrt(bk.dot(bk) / aj.dot(aj));
+            work.j   = j;
+            work.k   = k;
+            work.err = err;
+            msub.push_back(work);
           }
-        cerr << msub.size() << ":" << flush;
-        if(msub.size() /
-             T(min(shapebase.size(), points.size())) < threshp)
-          continue;
-        sort(msub.begin(), msub.end());
-        for(int t0 = 0; t0 < msub.size(); t0 ++) {
-          match_t<T> work(threshs, abs(gd[0]), abs(gd[1]));
-          work.rot = drot1;
-          bool flagj[shapebase.size()];
-          for(int kk = 0; kk < shapebase.size(); kk ++)
-            flagj[kk] = false;
-          bool flagk[points.size()];
-          for(int kk = 0; kk < points.size(); kk ++)
-            flagk[kk] = false;
-          int tt(t0);
-          for(int t1 = t0; t1 < msub.size(); t1 ++)
-            if(!flagj[msub[t1].j] && !flagk[msub[t1].k] &&
-               // N.B. abar:=sum(aj)/n, bbar:=P*sum(bk)/n,
-               //   get condition sum||aj-abar||, sum||bk-bbar|| -> 0
-               //   with this imcomplete set.
-               abs(msub[t0].t - msub[t1].t) / abs(msub[t0].t) <= thresht) {
-              work.dstpoints.push_back(msub[t1].j);
-              work.srcpoints.push_back(msub[t1].k);
-              flagj[msub[t1].j] = true;
-              flagk[msub[t1].k] = true;
-              tt = t1;
-            }
-          t0 = tt;
-          if(threshp <= work.dstpoints.size() /
-                          T(min(shapebase.size(), points.size()))) {
-            Vec3 sbar, pbar;
-            sbar[0] = sbar[1] = sbar[2] = T(0);
-            pbar[0] = pbar[1] = pbar[2] = T(0);
-            for(int k = 0; k < work.dstpoints.size(); k ++) {
-              sbar += shapebase[work.dstpoints[k]];
-              pbar += work.rot * points[work.srcpoints[k]];
-            }
-            sbar /= work.dstpoints.size();
-            pbar /= work.srcpoints.size();
-            T num(0), denom(0);
-            for(int k = 0; k < work.dstpoints.size(); k ++) {
-              const Vec3 shapek(shapebase[work.dstpoints[k]] - sbar);
-              const Vec3 pointk(work.rot * points[work.srcpoints[k]] - pbar);
-              num   += shapek.dot(pointk);
-              denom += pointk.dot(pointk);
-            }
-            work.ratio = num / denom;
-            work.offset[0] = T(0);
-            work.offset[1] = T(0);
-            work.offset[2] = T(0);
-            for(int k = 0; k < work.dstpoints.size(); k ++)
-              work.offset += shapebase[work.dstpoints[k]] - (work.rot * points[work.srcpoints[k]] * work.ratio);
-            work.offset /= work.dstpoints.size();
-            work.rdepth  = T(0);
-            for(int k = 0; k < work.dstpoints.size(); k ++) {
-              const Vec3 aj(shapebase[work.dstpoints[k]] - sbar);
-              const Vec3 bk(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset - sbar);
-              work.rdepth += aj.dot(aj);
-            }
-            work.rdepth /= work.dstpoints.size();
+        } 
+      cerr << msub.size() << ":" << flush;
+      if(msub.size() /
+           T(min(shapebase.size(), points.size())) < threshp)
+        continue;
+      sort(msub.begin(), msub.end());
+      // get nearer matches:
+      for(int t0 = 0; t0 < msub.size(); t0 ++) {
+        match_t<T> work(threshs, abs(gd[0]), abs(gd[1]));
+        work.rot = drot1;
+        bool flagj[shapebase.size()];
+        for(int kk = 0; kk < shapebase.size(); kk ++)
+          flagj[kk] = false;
+        bool flagk[points.size()];
+        for(int kk = 0; kk < points.size(); kk ++)
+          flagk[kk] = false;
+        int tt(t0);
+        for(int t1 = t0; t1 < msub.size(); t1 ++)
+          if(!flagj[msub[t1].j] && !flagk[msub[t1].k] &&
+             // N.B. abar:=sum(aj)/n, bbar:=P*sum(bk)/n,
+             //   get condition sum||aj-abar||, sum||bk-bbar|| -> 0
+             //   with this imcomplete set.
+             abs(msub[t0].t - msub[t1].t) / abs(msub[t0].t) <= thresht &&
+             T(0) <= msub[t0].t * msub[t1].t) {
+            work.dstpoints.push_back(msub[t1].j);
+            work.srcpoints.push_back(msub[t1].k);
+            flagj[msub[t1].j] = true;
+            flagk[msub[t1].k] = true;
+            tt = t1;
+          }
+        t0 = tt;
+        // if it's good:
+        if(threshp <= work.dstpoints.size() /
+                        T(min(shapebase.size(), points.size()))) {
+          Vec3 sbar, pbar;
+          sbar[0] = sbar[1] = sbar[2] = T(0);
+          pbar[0] = pbar[1] = pbar[2] = T(0);
+          for(int k = 0; k < work.dstpoints.size(); k ++) {
+            sbar += shapebase[work.dstpoints[k]];
+            pbar += work.rot * points[work.srcpoints[k]];
+          }
+          sbar /= work.dstpoints.size();
+          pbar /= work.srcpoints.size();
+          T num(0), denom(0);
+          for(int k = 0; k < work.dstpoints.size(); k ++) {
+            const Vec3 shapek(shapebase[work.dstpoints[k]] - sbar);
+            const Vec3 pointk(work.rot * points[work.srcpoints[k]] - pbar);
+            num   += shapek.dot(pointk);
+            denom += pointk.dot(pointk);
+          }
+          if(num < T(0)) {
+            work.rot = - work.rot;
+            pbar     = - pbar;
+            num      = - num;
+          }
+          work.ratio = num / denom;
+          work.offset[0] = T(0);
+          work.offset[1] = T(0);
+          work.offset[2] = T(0);
+          for(int k = 0; k < work.dstpoints.size(); k ++)
+            work.offset += shapebase[work.dstpoints[k]] - (work.rot * points[work.srcpoints[k]] * work.ratio);
+          work.offset /= work.dstpoints.size();
+          work.rdepth  = T(0);
+          for(int k = 0; k < work.dstpoints.size(); k ++) {
+            const Vec3 aj(shapebase[work.dstpoints[k]] - sbar);
+            // const Vec3 bk(work.rot * points[work.srcpoints[k]] * work.ratio + work.offset - sbar);
+            work.rdepth += aj.dot(aj);
+          }
+          work.rdepth /= work.dstpoints.size();
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-            {
-              int  idx(- 1);
-              // we can't use STL because of operator < implementation.
-              for(int k = 0; k < result.size(); k ++)
-                if(result[k] == work && work < result[k]) {
-                  idx = k;
-                  break;
-                }
-              if(idx >= 0)
-                result[idx] = work;
-              else {
-                result.push_back(work);
-                cerr << "*" << flush;
+          {
+            int  idx(- 1);
+            // we can't use STL because of operator < implementation.
+            for(int k = 0; k < result.size(); k ++)
+              if(result[k] == work && work < result[k]) {
+                idx = k;
+                break;
               }
+            if(idx >= 0)
+              result[idx] = work;
+            else {
+              result.push_back(work);
+              cerr << "*" << flush;
             }
           }
         }
@@ -408,6 +424,7 @@ public:
   void init();
   Vec3 emphasis0(const Vec3& dst, const Vec3& refdst, const Vec3& src, const match_t<T>& match, const T& ratio);
   Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
+  Mat  eliminate(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull);
   Mat  replace(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const vector<Vec3>& srcrep, const match_t<T>& match2, const vector<Veci3>& hullrep);
   bool takeShape(vector<Vec3>& points, vector<Veci3>& tris, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
 };
@@ -446,10 +463,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   
   cerr << "emphasis(" << hull.size() << ")" << flush;
   for(int ii = 0; ii < hull.size(); ii ++) {
-    cerr << "." << flush;
-    const int  i(hull[ii][0]);
-    const int  j(hull[ii][1]);
-    const int  k(hull[ii][2]);
+    const int& i(hull[ii][0]);
+    const int& j(hull[ii][1]);
+    const int& k(hull[ii][2]);
     const Vec3 dst0((dst[match.dstpoints[i]] + dst[match.dstpoints[j]] + dst[match.dstpoints[k]]) / T(3));
     const Vec3 src0((src[match.srcpoints[i]] + src[match.srcpoints[j]] + src[match.srcpoints[k]]) / T(3));
     const Vec3& p0(src[match.srcpoints[i]]);
@@ -473,7 +489,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   }
   const T zr(sqrt(T(dstimg.rows() * dstimg.cols())));
   for(int i = 0; i < triangles.size(); i ++) {
-    cerr << "." << flush;
     for(int k = 0; k < 3; k ++)
       triangles[i](2, k) *= zr;
     triangles[i].col(4) = tilt.solveN(triangles[i].col(0), triangles[i].col(1), triangles[i].col(2));
@@ -493,7 +508,24 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return (srcimg * ratio + tilt.tiltsub(dstimg, triangles, rmatch.rot, I3, zero3, rmatch.offset, rmatch.ratio) * (T(1) - ratio)) / T(2);
 }
 
-template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph, const T& epsilon = T(1e-4)) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::eliminate(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull) {
+  cerr << "eliminate(" << hull.size() << ")" << endl;
+  Mat result(dstimg);
+  for(int ii = 0; ii < hull.size(); ii ++) {
+    const int& i(hull[ii][0]);
+    const int& j(hull[ii][1]);
+    const int& k(hull[ii][2]);
+    const Vec3 diff(dst[i] - dst[j]);
+          Vec3 orth(dst[k] - dst[i]);
+    orth -= orth.dot(diff) / diff.dot(diff) * diff;
+    const T    n2orth(sqrt(orth.dot(orth)));
+    for(int l = 0; l < n2orth + 1; l ++)
+      drawMatchLine<T>(result, dst[i] + (dst[k] - dst[i]) * l / n2orth, dst[j] + (dst[k] - dst[j]) * l / n2orth, T(0));
+  }
+  return result;
+}
+
+template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph, const T& epsilon) {
   if(abs(lref1[0] - lref0[0]) <= epsilon) {
     int sgndelta(1);
     if(lref1[1] < lref0[1])
@@ -557,7 +589,7 @@ template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen:
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const vector<Eigen::Matrix<T, 3, 1> >& refpoints, const vector<Eigen::Matrix<int, 3, 1> >& prefpoints, const T& emph = T(.8)) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const vector<Eigen::Matrix<T, 3, 1> >& refpoints, const vector<Eigen::Matrix<int, 3, 1> >& prefpoints, const T& emph = T(.2)) {
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> map(input.rows(), input.cols());
   for(int i = 0; i < map.rows(); i ++)
     for(int j = 0; j < map.cols(); j ++)
