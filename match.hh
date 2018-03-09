@@ -37,8 +37,6 @@ using std::vector;
 using std::complex;
 using std::isfinite;
 
-template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph, const T& epsilon = T(1e-4));
-
 template <typename T> class msub_t {
 public:
   T   t;
@@ -119,7 +117,7 @@ public:
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
-    return x1.rdepth < rdepth || (rdepth == x1.rdepth && rratio < xratio);
+    return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -177,7 +175,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(16, .25, .25);
+  init(32, .25, .25);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -358,6 +356,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       }
     }
   }
+  sort(result.begin(), result.end());
   return;
 }
 
@@ -427,6 +426,11 @@ public:
   Mat  eliminate(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull);
   Mat  replace(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const vector<Vec3>& srcrep, const match_t<T>& match2, const vector<Veci3>& hullrep);
   bool takeShape(vector<Vec3>& points, vector<Veci3>& tris, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
+  
+  Mat  showMatch(const Mat& input, const vector<Vec3>& refpoints, const vector<Veci3>& prefpoints, const T& emph = T(.2));
+  
+private:
+  void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph, const T& epsilon = T(1e-4));
 };
 
 template <typename T> reDig<T>::reDig() {
@@ -520,12 +524,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     orth -= orth.dot(diff) / diff.dot(diff) * diff;
     const T    n2orth(sqrt(orth.dot(orth)));
     for(int l = 0; l < n2orth + 1; l ++)
-      drawMatchLine<T>(result, dst[i] + (dst[k] - dst[i]) * l / n2orth, dst[j] + (dst[k] - dst[j]) * l / n2orth, T(0));
+      drawMatchLine(result, dst[i] + (dst[k] - dst[i]) * l / n2orth, dst[j] + (dst[k] - dst[j]) * l / n2orth, T(0));
   }
   return result;
 }
 
-template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& map, const Eigen::Matrix<T, 3, 1>& lref0, const Eigen::Matrix<T, 3, 1>& lref1, const T& emph, const T& epsilon) {
+template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph, const T& epsilon) {
   if(abs(lref1[0] - lref0[0]) <= epsilon) {
     int sgndelta(1);
     if(lref1[1] < lref0[1])
@@ -589,8 +593,8 @@ template <typename T> void drawMatchLine(Eigen::Matrix<T, Eigen::Dynamic, Eigen:
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& input, const vector<Eigen::Matrix<T, 3, 1> >& refpoints, const vector<Eigen::Matrix<int, 3, 1> >& prefpoints, const T& emph = T(.2)) {
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> map(input.rows(), input.cols());
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::showMatch(const Mat& input, const vector<Vec3>& refpoints, const vector<Veci3>& prefpoints, const T& emph) {
+  Mat map(input.rows(), input.cols());
   for(int i = 0; i < map.rows(); i ++)
     for(int j = 0; j < map.cols(); j ++)
       map(i, j) = T(0);
@@ -598,18 +602,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> showMatch
 #pragma omp paralell for schedule(static, 1)
 #endif
   for(int k = 0; k < prefpoints.size(); k ++) {
-    drawMatchLine<T>(map,
-                     refpoints[prefpoints[k][0]],
-                     refpoints[prefpoints[k][1]],
-                     emph);
-    drawMatchLine<T>(map,
-                     refpoints[prefpoints[k][1]],
-                     refpoints[prefpoints[k][2]],
-                     emph);
-    drawMatchLine<T>(map,
-                     refpoints[prefpoints[k][2]],
-                     refpoints[prefpoints[k][0]],
-                     emph);
+    drawMatchLine(map,
+                  refpoints[prefpoints[k][0]],
+                  refpoints[prefpoints[k][1]],
+                  emph);
+    drawMatchLine(map,
+                  refpoints[prefpoints[k][1]],
+                  refpoints[prefpoints[k][2]],
+                  emph);
+    drawMatchLine(map,
+                  refpoints[prefpoints[k][2]],
+                  refpoints[prefpoints[k][0]],
+                  emph);
   }
   return input + map;
 }
