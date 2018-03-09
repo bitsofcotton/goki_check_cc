@@ -45,7 +45,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const int& nslide, const int& zdist);
+  void initialize(const int& z_max, const int& stp, const int& nslide);
   void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4, const T& rz = T(1) / T(3));
   Mat  getPseudoBump(Mat in, const bool& elim0 = true);
   
@@ -54,30 +54,26 @@ private:
   Mat  autoLevel(const Mat& data, int npad = - 1);
   Vec  getPseudoBumpSub(const Vec& work, const vector<Vec>& cf);
   Vec  getLineAxis(Vec p, Vec c);
-  vector<Vec> prepareLineAxis(const T& rstp);
   const T& getImgPt(const Vec& img, const T& y);
-  
-  int z_max;
-  int zdist;
+  vector<Vec> prepareLineAxis(const T& rstp);
   
   T   Pi;
+  int z_max;
   Vec Dop;
   Mat Dop2z;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(40, 81, 20, 80);
+  initialize(30, 81, 15);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nslide, const int& zdist) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const int& nslide) {
   this->z_max = z_max;
-  this->zdist = zdist;
-  assert(1 < z_max && 0 < stp && 0 < zdist &&
-         0 < nslide && nslide < z_max);
+  assert(1 < z_max && 0 < stp && 0 < nslide && nslide < z_max);
   this->Pi    = T(4) * atan2(T(1), T(1));
   {
     MatU DFT(stp, stp), IDFT(stp, stp);
@@ -133,15 +129,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       T score(- n2.size() * 2);
       for(int zz = 0; zz < zsub.size(); zz ++)
         if(zsub[zz] < m) {
-          score = zz / T(cf.size());
+          score = (j + zz) / T(cf.size());
           m     = zsub[zz];
         }
-      if(m == T(0))
+      if(m == T(0)) {
         for(int zz = 0; zz < zsub.size(); zz ++)
           if(m < n2[zz]) {
-            score = zz / T(cf.size());
+            score = (j + zz) / T(cf.size());
             m     = n2[zz];
           }
+      }
       result[s] += score;
     }
   }
@@ -246,7 +243,7 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
   // N.B. ray is from infinite far, so same side of these.
   Vec camera(2);
   camera[0] = T(0);
-  camera[1] = T(zdist);
+  camera[1] = T(Dop.size());
   
   vector<Vec> result;
   result.resize(z_max);
@@ -259,8 +256,8 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
       Vec cpoint(2);
       // XXX cpoint[0] scale checkme.
       cpoint[0] = (s / T(Dop.size() - 1) - 1 / T(2)) * T(2);
-      cpoint[1] = (zi + 1) / T(result.size() + 1) * zdist;
-      result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp / zdist;
+      cpoint[1] = (zi + 1) / T(result.size() + 1) * T(Dop.size());
+      result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp / T(Dop.size());
     }
   }
   return result;
