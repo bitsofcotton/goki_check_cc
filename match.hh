@@ -93,7 +93,7 @@ public:
   match_t<T>  operator ~ () const {
     match_t<T> result;
     result.rot    = rot.transpose();
-    result.offset = - result.rot * offset;
+    result.offset = - result.rot * offset / ratio;
     result.ratio  = T(1) / ratio;
     result.rdepth = rdepth;
     result.dstpoints  = srcpoints;
