@@ -489,7 +489,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   }
   
   const auto rmatch(~ match);
-  return (srcimg * (ratio + T(.5)) + tilt.tiltsub(dstimg, triangles, rmatch.rot, I3, zero3, rmatch.offset, rmatch.ratio) * (T(1.5) - ratio)) / T(2);
+  return (srcimg + tilt.tiltsub(dstimg, triangles, rmatch.rot, I3, zero3, rmatch.offset, rmatch.ratio)) / T(2);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::eliminate(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull) {
