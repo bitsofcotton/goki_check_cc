@@ -175,7 +175,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 }
 
 template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
-  cerr << " initPat" << flush;
+  cerr << "." << flush;
   if(Dop.rows() == size)
     return;
   Mat work(bD);

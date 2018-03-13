@@ -18,15 +18,11 @@ if(argv[2] == "match"):
   root1, ext1 = os.path.splitext(argv[4])
   if(ext0 != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
-  #subprocess.call([argv[1], "bump", root0 + ".ppm", root0 + "-bump0.ppm"])
-  #subprocess.call(["convert", root0 + "-bump0.ppm", "-blur", "8x8", "-compress", "none", root0 + "-bump.ppm"])
   if(ext1 == ".obj"):
     subprocess.call([argv[1], "match3d", root0 + ".ppm", "match3dbase-" + root0 + "-" + root1 + "-", root1 + ".obj", root0 + "-bump.ppm"])
   else:
     if(ext1 != ".ppm"):
       subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
-    #subprocess.call([argv[1], "bump", root1 + ".ppm", root1 + "-bump0.ppm"])
-    #subprocess.call(["convert", root1 + "-bump0.ppm", "-blur", "8x8", "-compress", "none", root1 + "-bump.ppm"])
     subprocess.call([argv[1], "match", root0 + ".ppm", "matchbase-" + root0 + "-" + root1 + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm"])
   exit(0)
 
@@ -41,7 +37,7 @@ for line in argv[3:]:
     subprocess.call(["convert", root + "-enl0.ppm", "-resize", "75%",  root + "-75" + ext])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump0.ppm"])
-    subprocess.call(["convert", root + "-bump0.ppm", "-blur", "16x16", "-compress", "none", root + "-bump.ppm"])
+    subprocess.call(["convert", root + "-bump0.ppm", "-blur", "4x4", "-compress", "none", root + "-bump.ppm"])
   elif(argv[2] == "emph"):
     subprocess.call(["convert", root + ".ppm", root + "-bump.ppm", "-alpha", "on", "-channel", "a", "-evaluate", "set", "30%", "-compose", "Multiply", "-composite", root + "-emph" + ext])
   elif(argv[2] == "mask"):
