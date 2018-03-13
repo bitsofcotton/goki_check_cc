@@ -148,13 +148,8 @@ int main(int argc, const char* argv[]) {
   case 2:
     {
       // bump.
-      PseudoBump<double>  bump;
-      enlarger2ex<double> collector;
+      PseudoBump<double> bump;
       data[0] = bump.getPseudoBump(rgb2l(data));
-      data[1] = collector.compute(rgb2l(data), collector.COLLECT_BOTH);
-      for(int i = 0; i < data[0].rows(); i ++)
-        for(int j = 0; j < data[0].cols(); j ++)
-          data[0](i, j) /= double(1) + data[1](i, j);
       data[1] = data[2] = data[0];
     }
     break;
