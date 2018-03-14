@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include "enlarge.hh"
 
 using std::complex;
 using std::abs;
@@ -46,7 +45,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const T& thresh);
+  void initialize(const int& z_max, const int& stp);
   void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4, const T& rz = T(1) / T(6));
   Mat  getPseudoBump(Mat in, const bool& elim0 = true);
   
@@ -60,22 +59,22 @@ private:
   
   T   Pi;
   int z_max;
-  Mat Dop;
+  Vec Dop;
   T   thresh;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(30, 81, .075);
+  initialize(40, 121);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& thresh) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp) {
   this->z_max  = z_max;
-  this->thresh = thresh;
-  assert(1 < z_max && 0 < stp && T(0) <= thresh && thresh < T(1));
+  this->thresh = T(1);
+  assert(1 < z_max && 0 < stp && T(0) <= thresh);
   this->Pi     = T(4) * atan2(T(1), T(1));
   MatU DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -85,7 +84,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
     }
   for(int i = 0; i < DFT.rows(); i ++)
     DFT.row(i) *= U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
-  Dop = (IDFT * DFT).real().template cast<T>();
+  Dop = (IDFT * DFT).row(IDFT.rows() / 2).real().template cast<T>();
   return;
 }
 
@@ -98,21 +97,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int s = 0; s < work.size(); s ++) {
-    T m(0);
+    T m;
     for(int zz = 0; zz < cf.size(); zz ++) {
       // d/dt (local color) / ||local color||:
       Vec c(cf[zz].size());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(work, cf[zz][u] + s);
-      const Vec dc(Dop * c);
-      T MM(abs(dc[0]));
-      for(int j = 1; j < dc.size(); j ++)
-        MM = max(MM, abs(dc[j]));
-      const T score(abs(dc[dc.size() / 2]) / MM);
-      if(m < score) {
+      const T score(Dop.dot(c));
+      if(!zz || m < score) {
         result[s] = zz / T(cf.size());
-        m         = score;
-      }
+        m = score;
+      } else if(zz && sqrt(m * score) * thresh <= abs(m - score))
+        break;
     }
   }
   return complementLine(result);
@@ -138,30 +134,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 
   auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
   Mat result(in.rows(), in.cols());
-  enlarger2ex<T> collect;
-  // XXX or use each lines' collected value?
-  auto cin(collect.compute(in, collect.COLLECT_BOTH));
-  T MM(0);
-  for(int i = 0; i < cin.rows(); i ++)
-    for(int j = 0; j < cin.cols(); j ++)
-      MM = max(cin(i, j), MM);
-  for(int i = 0; i < result.cols(); i ++) {
-    result.col(i) = getPseudoBumpSub(in.col(i), cf);
-    for(int j = 0; j < result.rows(); j ++)
-      if(cin(j, i) < MM * thresh || MM * (T(1) - thresh) < cin(j, i))
-        result(j, i) = - T(1);
-    result.col(i) = complementLine(result.col(i));
-  }
+  for(int i = 0; i < result.cols(); i ++)
+    result.col(i)  = getPseudoBumpSub(in.col(i), cf);
   // N.B. cross bump, if you don't need this, please comment out.
-  Mat result2(result.rows(), result.cols());
-  for(int i = 0; i < result2.rows(); i ++) {
-    result2.row(i) = getPseudoBumpSub(in.row(i), cf);
-    for(int j = 0; j < result2.cols(); j ++)
-      if(cin(i, j) < MM * thresh || MM * (T(1) - thresh) < cin(i, j))
-        result2(i, j) = - T(1);
-    result2.row(i) = complementLine(result2.row(i));
-  }
-  return autoLevel(result + result2);
+  for(int i = 0; i < result.rows(); i ++)
+    result.row(i) += getPseudoBumpSub(in.row(i), cf);
+  return autoLevel(result);
 }
 
 // get bump with multiple scale and vectorized result.
@@ -239,11 +217,11 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int zi = 0; zi < result.size(); zi ++) {
-    result[zi] = Vec(Dop.rows());
+    result[zi] = Vec(Dop.size());
     for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
-      cpoint[0] = (s / T(Dop.rows() - 1) - 1 / T(2));
-      cpoint[1] = (1 + zi) / T(Dop.rows()) * 2 + 2;
+      cpoint[0] = (s / T(Dop.size() - 1) - 1 / T(2));
+      cpoint[1] = (1 + zi) / T(Dop.size());
       result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp;
     }
   }
@@ -308,6 +286,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::complem
             work *= (T(i) - ptsi[rng[jj]]) / T(ptsi[rng[ii]] - ptsi[rng[jj]]);
         result[i] += work * pts[rng[ii]];
       }
+      result[i] = min(max(T(0), result[i]), T(1));
     }
   }
   return result;
