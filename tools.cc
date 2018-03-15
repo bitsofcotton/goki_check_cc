@@ -28,7 +28,7 @@ void usage() {
 template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<Eigen::Matrix<T, 3, 1> >& shape0, const std::vector<Eigen::Matrix<T, 3, 1> >& shape1, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> in0[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> in1[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump0, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump1, const std::vector<T>& emph) {
   reDig<T>  redig;
   tilter<T> tilt;
-  const match_t<T> rmatch(~ match);
+  
   auto hull(loadBumpSimpleMesh<T>(shape0, match.dstpoints));
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs[3];
   
@@ -56,28 +56,16 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   std::string outfile(outbase + std::string("-src.ppm"));
   savep2or3<T>(outfile.c_str(), outs, false);
   
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs2[3];
   for(int idx = 0; idx < 3; idx ++)
-    outs2[idx] = redig.showMatch(in0[idx], shape0, mhull0);
-  normalize<T>(outs2, 1.);
-  outfile = outbase + std::string("-dst.ppm");
-  savep2or3<T>(outfile.c_str(), outs2, false);
-  
-  for(int idx = 0; idx < 3; idx ++)
-    outs[idx] += outs2[idx];
+    outs[idx] = redig.showMatch(in0[idx], shape0, mhull0);
   normalize<T>(outs, 1.);
-  outfile = outbase + std::string("-match.ppm");
+  outfile = outbase + std::string("-dst.ppm");
   savep2or3<T>(outfile.c_str(), outs, false);
   
   for(int kk = 0; kk < emph.size(); kk ++) {
     for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = redig.emphasis(in1[idx], bump1, in0[idx], shape1, shape0, rmatch, hull, emph[kk]);
-    outfile = outbase + std::string("-emph-a-") + std::to_string(kk) + std::string(".ppm");
-    savep2or3<T>(outfile.c_str(), outs, false);
-    
-    for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = redig.emphasis(in0[idx], bump0, in1[idx], shape0, shape1, match, hull, emph[kk]);
-    outfile = outbase + std::string("-emph-b-") + std::to_string(kk) + std::string(".ppm");
+      outs[idx] = redig.emphasis(in0[idx], redig.showMatch(in1[idx], shape1, mhull1), bump1, shape0, shape1, match, hull, emph[kk]);
+    outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     savep2or3<T>(outfile.c_str(), outs, false);
   }
   return;
@@ -277,7 +265,14 @@ int main(int argc, const char* argv[]) {
       auto matches(statmatch.match(shape, datapoly));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
-        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape, datapoly, data, zero, bump, zero[0], emph);
+        std::vector<Eigen::Matrix<double, 3, 1> > mdatapoly;
+        for(int k = 0; k < datapoly.size(); k ++)
+          mdatapoly.push_back(matches[n].rot * datapoly[k] * matches[n].ratio + matches[n].offset);
+        auto match(matches[n]);
+        match.offset *= double(0);
+        match.ratio   = double(1);
+        match.rot    *= match.rot.transpose();
+        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
       }
     }
     return 0;

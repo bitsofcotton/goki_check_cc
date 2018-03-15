@@ -171,7 +171,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(32, .25, .25);
+  init(32, .25, .075);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -410,7 +410,7 @@ public:
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(.2));
   
 private:
-  void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph, const T& epsilon = T(1e-4));
+  void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
 };
 
 template <typename T> reDig<T>::reDig() {
@@ -429,14 +429,14 @@ template <typename T> Eigen::Matrix<T, 3, 1> reDig<T>::emphasis0(const Vec3& dst
   return dst + (match.rot * src * match.ratio + match.offset - refdst) * ratio;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio) {
   cerr << " making triangles" << flush;
   tilter<T> tilt;
   vector<typename tilter<T>::Triangles> triangles;
   for(int i = 0; i < dstimg.rows() - 1; i ++)
     for(int j = 0; j < dstimg.cols() - 1; j ++) {
-      triangles.push_back(tilt.makeTriangle(i, j, dstimg, dstbump, false));
-      triangles.push_back(tilt.makeTriangle(i, j, dstimg, dstbump, true));
+      triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, false));
+      triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, true));
     }
   bool *checked;
   checked = new bool[triangles.size() * 3];
@@ -448,13 +448,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     const int&  i(hull[ii][0]);
     const int&  j(hull[ii][1]);
     const int&  k(hull[ii][2]);
-    const Vec3& p0(src[match.srcpoints[i]]);
-    const Vec3& p1(src[match.srcpoints[j]]);
-    const Vec3& p2(src[match.srcpoints[k]]);
-    const Vec3  dst0((dst[match.dstpoints[i]] +
-                      dst[match.dstpoints[j]] +
-                      dst[match.dstpoints[k]]) / T(3));
-    const Vec3  src0((p0 + p1 + p2) / T(3));
+    const Vec3& p0(dst[match.dstpoints[i]]);
+    const Vec3& p1(dst[match.dstpoints[j]]);
+    const Vec3& p2(dst[match.dstpoints[k]]);
+    const Vec3  src0((src[match.srcpoints[i]] +
+                      src[match.srcpoints[j]] +
+                      src[match.srcpoints[k]]) / T(3));
+    const Vec3  dst0((p0 + p1 + p2) / T(3));
     for(int l = 0; l < triangles.size(); l ++)
       if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2]) {
         for(int ll = 0; ll < 3; ll ++) {
@@ -488,8 +488,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     zero3[i] = T(0);
   }
   
-  const auto rmatch(~ match);
-  return (srcimg + tilt.tiltsub(dstimg, triangles, rmatch.rot, I3, zero3, rmatch.offset, rmatch.ratio)) / T(2);
+  return (dstimg + tilt.tiltsub(srcimg, triangles, match.rot, I3, zero3, match.offset, match.ratio)) / T(2);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::eliminate(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull) {
@@ -504,71 +503,28 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     orth -= orth.dot(diff) / diff.dot(diff) * diff;
     const T    n2orth(sqrt(orth.dot(orth)));
     for(int l = 0; l < n2orth + 1; l ++)
-      drawMatchLine(result, dst[i] + (dst[k] - dst[i]) * l / n2orth, dst[j] + (dst[k] - dst[j]) * l / n2orth, T(0));
+      drawMatchLine(result, dst[i] + (dst[k] - dst[i]) * l / n2orth, dst[j] + (dst[k] - dst[j]) * l / n2orth);
   }
   return result;
 }
 
-template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph, const T& epsilon) {
-  if(abs(lref1[0] - lref0[0]) <= epsilon) {
-    int sgndelta(1);
-    if(lref1[1] < lref0[1])
-      sgndelta = - 1;
-    for(int i = lref0[1]; (lref1[1] - i) * sgndelta > 0; i += sgndelta)
-      map(max(0, min(int(lref0[0]), int(map.rows() - 1))),
-          max(0, min(i,             int(map.cols() - 1)))) = emph;
-  } else if(abs(lref1[1] - lref0[1]) <= epsilon) {
-    int sgndelta(1);
-    if(lref1[0] < lref0[0])
-      sgndelta = - 1;
-    for(int j = lref0[0]; (lref1[0] - j) * sgndelta > 0; j += sgndelta) {
-      map(max(0, min(j,             int(map.rows() - 1))),
-          max(0, min(int(lref0[1]), int(map.cols() - 1)))) = emph;
-    }
-  } else if(abs(lref1[1] - lref0[1]) > abs(lref1[0] - lref0[0])) {
-    const T tilt((lref1[1] - lref0[1]) / (lref1[0] - lref0[0]));
-    int sgndelta(1);
-    if(lref1[0] < lref0[0])
-      sgndelta = - 1;
-    int i = lref0[0], ii = 0;
-    for(; i != int(lref1[0]) &&
-          (i < 0 || map.rows() <= i ||
-           lref0[1] + tilt * ii < 0 ||
-           map.rows() <= lref0[1] + tilt * ii) &&
-          abs(tilt * ii) <= abs(lref0[1]) + T(map.rows());
-          i += sgndelta, ii += sgndelta);
-    for(; i != int(lref1[0]) &&
-          0 <= lref0[1] + tilt * ii &&
-               lref0[1] + tilt * ii <= map.cols();
-          i += sgndelta, ii += sgndelta)
-      for(int jj = 0; jj < abs(tilt); jj ++) {
-        int j = tilt * (ii - sgndelta) +
-                jj * (tilt * sgndelta < T(0) ? - 1 : 1);
-        map(max(0, min(i, int(map.rows() - 1))),
-            max(0, min(int(lref0[1] + j), int(map.cols() - 1)))) = emph;
-      }
-  } else {
-    const T tilt((lref1[0] - lref0[0]) / (lref1[1] - lref0[1]));
-    int sgndelta(1);
-    if(lref1[1] < lref0[1])
-      sgndelta = - 1;
-    int j = lref0[1], jj = 0;
-    for(; j != int(lref1[1]) &&
-          (j < 0 || map.cols() <= j ||
-           lref0[0] + tilt * jj < 0 ||
-           map.cols() <= lref0[0] + tilt * jj) &&
-          abs(tilt * jj) <= abs(lref0[0]) + T(map.rows());
-          j += sgndelta, jj += sgndelta);
-    for(; j != int(lref1[1]) &&
-          0 <= lref0[0] + tilt * jj &&
-               lref0[0] + tilt * jj <= map.rows();
-          j += sgndelta, jj += sgndelta)
-      for(int ii = 0; ii < abs(tilt); ii ++) {
-        int i = tilt * (jj - sgndelta) +
-                ii * (tilt * sgndelta < T(0) ? - 1 : 1);
-        map(max(0, min(int(lref0[0] + i), int(map.rows() - 1))),
-            max(0, min(j, int(map.cols() - 1)))) = emph;
-      }
+template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph) {
+  int idxm(0);
+  int idxM(1);
+  if(abs(lref1[idxM] - lref0[idxM]) < abs(lref1[idxm] - lref0[idxm])) {
+    idxm = 1;
+    idxM = 0;
+  }
+  Vec3 lm(lref1), lM(lref0);
+  if(lM[idxM] < lm[idxM]) {
+    auto buf(lm);
+    lm = lM;
+    lM = lm;
+  }
+  for(int i = 0; i <= lM[idxM] - lm[idxM]; i ++) {
+    const auto gidx(lm + (lM - lm) * i / (lM[idxM] - lm[idxM]));
+    map(max(0, min(int(gidx[0]), int(map.rows() - 1))),
+        max(0, min(int(gidx[1]), int(map.cols() - 1)))) = emph;
   }
   return;
 }
