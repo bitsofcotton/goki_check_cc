@@ -1,5 +1,5 @@
 # Goki Check
-These program aims to get geometry and context(s) from A still image in a deterministic way.  
+These program aims to get prepared model geometry in A still image in a deterministic way.  
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
 # How to use
@@ -11,15 +11,12 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * fisheye.hh
 * * z_max  : z-index resolution.
 * * stp    : number of points to be used in detecting edges.
-* * nslide : sliding window for z-axis extreme values to sum up.
-* * zdist  : camera z-axis ratio.
 * tilt.hh
 * * z_ratio : [0,1] to [0,z_atio].
 * scancontext.hh
-* * matchPartialPartial::ndiv    : number of divides that match angles.
-* * matchPartialPartial::thresh  : threshold to detect parallel vectors.
-* * matchPartialPartial::threshp : threshold for matched points.
-* * matchPartialPartial::threshs : threshold for operator ==.
+* * matchPartialPartial::ndiv    : number of divides that match angles, effects the matching errors.
+* * matchPartialPartial::threshp : ratio of threshold for matched points.
+* * matchPartialPartial::threshs : ratio of threshold for operator ==.
 
 # Context
 This program is inspired from re-focus photo softwares.  
@@ -104,7 +101,7 @@ These program's collect is based on DFT differential.
 These program's bump assumes F=∞ graphics.   
 These program's match matches with calculated pseudo z-depth.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
-These program's match assumes one of vertices is full and another is lowPoly.
+These program's match and match3d assumes one of vertices is full and another is lowPoly.
 
 # Specification
 PseudoBump generates the bumpmap that is pseudo plausible one.
