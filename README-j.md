@@ -1,5 +1,5 @@
 # Goki Check
-静止画像からあらかじめ想定される文脈を座標と共に得ることが目的のプログラムです。このプログラムは決定論的な手法を用いています。  
+静止画像からあらかじめ想定される模型を座標と共に得ることが目的のプログラムです。このプログラムは決定論的な手法を用いています。  
 古い情報に関しては、https://sourceforge.net/p/gokicheck/wiki/Home/ を参照してください。
 
 # 使い方
@@ -11,16 +11,12 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * fisheye.hh
 * * z_max  : 出力する z 軸の解像度です。
 * * stp    : ぼやけ具合を検出する際に使用される点の数です。
-* * nslide : 窓をスライドして z 軸に対するぼやけ具合の極値の総和を撮る際の窓のサイズです。
-* * zdist  : カメラの z 軸方向の距離です。
 * tilt.hh
 * * z_ratio : [0,1] から [0,z_atio] への線形写像です。
 * scancontext.hh
-* * matchPartialPartial::ndiv    : 合致する角度の分割数です
-* * matchPartialPartial::thresh  : 合致を集めてくる際の平行なベクトルのための誤差です。
-* * matchPartialPartial::threshp : 検出される最小の合致する点の数です。
-* * matchPartialPartial::threshr : 検出される最小の画像倍率です。
-* * matchPartialPartial::threshs : 合致が同じかどうか判定する閾値です。
+* * matchPartialPartial::ndiv    : 合致する角度の分割数です。合致の誤差にも影響します。
+* * matchPartialPartial::threshp : 検出される最小の合致する点の数の比率です。
+* * matchPartialPartial::threshs : 合致が同じかどうか判定する閾値の比率です。
 
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。
@@ -103,7 +99,7 @@ collect は単純に DFT 微分の後、abs をとってきています。
 bump は F=&infin; を仮定しています。  
 match は z 軸方向まで含めて合致する部分を探します。内部で深度の比率を調節してください。  
 match3d は入力にバンプマップと .obj ファイルを仮定しています。  
-match は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定しています。
+match, match3d は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定しています。
 
 # 仕様
 PseudoBump はもっともらしいバンプマップを返しますが、正しくない場合があります。  
