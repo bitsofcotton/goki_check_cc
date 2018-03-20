@@ -171,7 +171,7 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(32, .25, .075);
+  init(32, .25, .1);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {

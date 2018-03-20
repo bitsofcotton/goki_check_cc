@@ -53,6 +53,7 @@ private:
   Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
   Mat  autoLevel(const Mat& data, int npad = - 1);
   Vec  getPseudoBumpSub(const Vec& work, const vector<Vec>& cf);
+  pair<T, T> getPseudoBumpSubSub(const Vec& work, const vector<Vec>& cf, const int& s);
   Vec  getLineAxis(Vec p, Vec c);
   const T&    getImgPt(const Vec& img, const T& y);
   vector<Vec> prepareLineAxis(const T& rstp);
@@ -73,7 +74,7 @@ template <typename T> PseudoBump<T>::~PseudoBump() {
 
 template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp) {
   this->z_max  = z_max;
-  this->thresh = T(1);
+  this->thresh = T(.5);
   assert(1 < z_max && 0 < stp && T(0) <= thresh);
   this->Pi     = T(4) * atan2(T(1), T(1));
   MatU DFT(stp, stp), IDFT(stp, stp);
@@ -88,28 +89,38 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   return;
 }
 
+template <typename T> pair<T, T> PseudoBump<T>::getPseudoBumpSubSub(const Vec& work, const vector<Vec>& cf, const int& s) {
+  pair<T, T> result;
+  result.first = result.second = - T(1);
+  for(int zz = 0; zz < cf.size(); zz ++) {
+    // d/dt (local color) / ||local color||:
+    Vec c(cf[zz].size());
+    for(int u = 0; u < c.size(); u ++)
+      c[u] = getImgPt(work, cf[zz][u] + s);
+    const T score(Dop.dot(c));
+    if(T(0) <= score && result.second < score) {
+      result.first  = zz / T(cf.size());
+      result.second = score;
+    } else if(T(0) <= result.second && score < result.second * thresh)
+      break;
+  }
+  return result;
+}
+
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const vector<Vec>& cf) {
   cerr << "." << flush;
   Vec result(work.size());
   for(int j = 0; j < result.size(); j ++)
     result[j] = - T(1);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
   for(int s = 0; s < work.size(); s ++) {
-    T m;
-    for(int zz = 0; zz < cf.size(); zz ++) {
-      // d/dt (local color) / ||local color||:
-      Vec c(cf[zz].size());
-      for(int u = 0; u < c.size(); u ++)
-        c[u] = getImgPt(work, cf[zz][u] + s);
-      const T score(Dop.dot(c));
-      if(!zz || m < score) {
-        result[s] = zz / T(cf.size());
-        m = score;
-      } else if(zz && sqrt(m * score) * thresh <= abs(m - score))
-        break;
-    }
+    const auto pd(getPseudoBumpSubSub(  work, cf, s));
+    // N.B. this may be tricky but,
+    //      to negate value is equivalent to negate order in Dop.
+    const auto md(getPseudoBumpSubSub(- work, cf, s));
+    if(pd.second < md.second)
+      result[s] = md.first;
+    else
+      result[s] = pd.first;
   }
   return complementLine(result);
 }
@@ -134,9 +145,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 
   auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
   Mat result(in.rows(), in.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < result.cols(); i ++)
     result.col(i)  = getPseudoBumpSub(in.col(i), cf);
   // N.B. cross bump, if you don't need this, please comment out.
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < result.rows(); i ++)
     result.row(i) += getPseudoBumpSub(in.row(i), cf);
   return autoLevel(result);
@@ -221,6 +238,7 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
     for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
       cpoint[0] = (s / T(Dop.size() - 1) - 1 / T(2));
+      // N.B. : zi -> 0 first or zi -> 1 first effects in pseudoBumpSub thresh.
       cpoint[1] = (1 + zi) / T(Dop.size());
       result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp;
     }
