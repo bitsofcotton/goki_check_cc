@@ -47,13 +47,13 @@ public:
   ~PseudoBump();
   void initialize(const int& z_max, const int& stp, const T& thresh);
   void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4, const T& rz = T(1) / T(6));
-  Mat  getPseudoBump(Mat in, const bool& elim0 = true);
+  Mat  getPseudoBump(const Mat& in);
   
 private:
   Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
   Mat  autoLevel(const Mat& data, int npad = - 1);
   Vec  getPseudoBumpSub(const Vec& work, const vector<Vec>& cf);
-  pair<T, T> getPseudoBumpSubSub(const Vec& work, const vector<Vec>& cf, const int& s, const bool& fmM);
+  pair<T, T> getPseudoBumpSubSub(const Vec& work, const vector<Vec>& cf, const int& s);
   Vec  getLineAxis(Vec p, Vec c);
   const T&    getImgPt(const Vec& img, const T& y);
   vector<Vec> prepareLineAxis(const T& rstp);
@@ -61,6 +61,7 @@ private:
   T   Pi;
   int z_max;
   Vec Dop;
+  Vec DDDop;
   T   thresh;
 };
 
@@ -83,29 +84,34 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
       DFT( i, j) = exp(U(- 2.) * Pi * sqrt(U(- 1)) * U(i * j / T(stp)));
       IDFT(i, j) = exp(U(  2.) * Pi * sqrt(U(- 1)) * U(i * j / T(stp))) / T(stp);
     }
-  for(int i = 0; i < DFT.rows(); i ++)
-    DFT.row(i) *= U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
-  Dop = (IDFT * DFT).row(IDFT.rows() / 2).real().template cast<T>();
+  auto DDFT(DFT);
+  for(int i = 0; i < DFT.rows(); i ++) {
+    const U dtheta(U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows()));
+    DFT.row(i)  *= dtheta;
+    DDFT.row(i) *= dtheta * dtheta * dtheta;
+  }
+  Dop   = (IDFT *  DFT).row(IDFT.rows() / 2).real().template cast<T>();
+  DDDop = (IDFT * DDFT).row(IDFT.rows() / 2).real().template cast<T>();
   return;
 }
 
-template <typename T> pair<T, T> PseudoBump<T>::getPseudoBumpSubSub(const Vec& work, const vector<Vec>& cf, const int& s, const bool& fmM) {
+template <typename T> pair<T, T> PseudoBump<T>::getPseudoBumpSubSub(const Vec& work, const vector<Vec>& cf, const int& s) {
   pair<T, T> result;
-  result.first = result.second = - T(1);
-  if(fmM)
-    result.second = cf[0].size() * sqrt(Dop.dot(Dop)) * T(2);
+  result.first  = - T(1);
+  result.second = - T(1);
+  T buf(cf[0].size() * sqrt(DDDop.dot(DDDop)) * T(2));
   for(int z = 0; z < cf.size(); z ++) {
     // d/dt (local color) / ||local color||:
     Vec c(cf[z].size());
     for(int u = 0; u < c.size(); u ++)
       c[u] = getImgPt(work, cf[z][u] + s);
     const T score(Dop.dot(c));
-    if((!fmM && T(0) <= score && result.second < score) ||
-       ( fmM && T(0) <= score && score < result.second)) {
+    const T score2(abs(DDDop.dot(c)));
+    if(0 <= score && (!z || score2 <= buf)) {
       result.first  = z / T(cf.size());
       result.second = score;
-    } else if((!fmM && T(0) <= result.second && score < result.second * thresh) ||
-              ( fmM && T(0) <= result.second && result.second < score * thresh))
+      buf           = score2;
+    } else if(T(0) <= result.second && score < result.second * thresh)
       break;
   }
   return result;
@@ -114,18 +120,14 @@ template <typename T> pair<T, T> PseudoBump<T>::getPseudoBumpSubSub(const Vec& w
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const vector<Vec>& cf) {
   cerr << "." << flush;
   Vec result(work.size());
-  for(int j = 0; j < result.size(); j ++)
-    result[j] = - T(1);
   for(int s = 0; s < work.size(); s ++) {
-    const auto pd(getPseudoBumpSubSub(  work, cf, s, false));
+    const auto pd(getPseudoBumpSubSub(  work, cf, s));
     // N.B. this may be tricky but,
     //      to negate value is equivalent to negate order in Dop.
-    const auto md(getPseudoBumpSubSub(- work, cf, s, false));
+    const auto md(getPseudoBumpSubSub(- work, cf, s));
     // N.B. if differentials are flat enough, returns the most flat place.
-    if(pd.first < T(0))
-      result[s] = getPseudoBumpSubSub(- work, cf, s, true).first;
-    else if(md.first < T(0))
-      result[s] = getPseudoBumpSubSub(  work, cf, s, true).first;
+    if(pd.first < T(0) && md.first < T(0))
+      result[s] = - T(1);
     else if(pd.second < md.second)
       result[s] = md.first;
     else
@@ -134,24 +136,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   return complementLine(result);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(Mat in, const bool& elim0) {
-  if(elim0) {
-    for(int i = 0; i < in.rows(); i ++)
-      for(int j = 0; j < in.cols(); j ++)
-        if(in(i, j) == T(0))
-          in(i, j) = - T(1);
-    Mat work(in);
-    for(int i = 0; i < in.rows(); i ++)
-      in.row(i) = complementLine(in.row(i));
-    for(int i = 0; i < in.cols(); i ++)
-      in.col(i) = complementLine(in.col(i));
-    for(int i = 0; i < work.cols(); i ++)
-      work.col(i) = complementLine(work.col(i));
-    for(int i = 0; i < work.rows(); i ++)
-      work.row(i) = complementLine(work.row(i));
-    in = (in + work) / T(2);
-  }
-
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
   auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
   Mat result(in.rows(), in.cols());
 #if defined(_OPENMP)
@@ -165,7 +150,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 #endif
   for(int i = 0; i < result.rows(); i ++)
     result.row(i) += getPseudoBumpSub(in.row(i), cf);
-  return autoLevel(result);
+  return autoLevel(- result);
 }
 
 // get bump with multiple scale and vectorized result.
