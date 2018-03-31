@@ -14,8 +14,7 @@ using namespace std;
 // XXX: configure me:
 const int    nshow(4);
 const int    nemph(4);
-const int    vbox(8);
-const int    objvbox(2);
+const int    vbox(4);
 const int    M_TILT(32);
 const double psi(.95);
 const int    Mpoly(2000);
@@ -147,7 +146,7 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
-      bump.getPseudoVec(data[0], points, facets, objvbox);
+      bump.getPseudoVec(data[0], points, facets, vbox);
       saveobj(points, facets, argv[3]);
     }
     return 0;
@@ -291,7 +290,7 @@ int main(int argc, const char* argv[]) {
         return - 2;
       }
       maskVectors<double>(points, polys, data[0]);
-      auto edges(getEdges<double>(data[0], points, objvbox));
+      auto edges(getEdges<double>(data[0], points, vbox));
       double ratio;
       std::stringstream stream(argv[5]);
       stream >> ratio;

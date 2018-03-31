@@ -501,7 +501,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     const Vec3 diff(dst[i] - dst[j]);
           Vec3 orth(dst[k] - dst[i]);
     orth -= orth.dot(diff) / diff.dot(diff) * diff;
-    const T    n2orth(sqrt(orth.dot(orth)));
+    const T n2orth(sqrt(orth.dot(orth)));
     for(int l = 0; l < n2orth + 1; l ++)
       drawMatchLine(result, dst[i] + (dst[k] - dst[i]) * l / n2orth, dst[j] + (dst[k] - dst[j]) * l / n2orth);
   }

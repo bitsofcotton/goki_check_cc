@@ -53,20 +53,18 @@ private:
   Vec  complementLine(const Vec& line, const T& rratio = T(.5), const int& guard = int(1));
   Mat  autoLevel(const Mat& data, int npad = - 1);
   Vec  getPseudoBumpSub(const Vec& work, const vector<Vec>& cf);
-  pair<T, T> getPseudoBumpSubSub(const Vec& work, const vector<Vec>& cf, const int& s);
   Vec  getLineAxis(Vec p, Vec c);
   const T&    getImgPt(const Vec& img, const T& y);
   vector<Vec> prepareLineAxis(const T& rstp);
   
   T   Pi;
   int z_max;
-  Vec Dop;
   Vec DDDop;
   T   thresh;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(20, 201, T(.5));
+  initialize(12, 201, T(.0725));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -86,52 +84,31 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
     }
   auto DDFT(DFT);
   for(int i = 0; i < DFT.rows(); i ++) {
-    const U dtheta(U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows()));
-    DFT.row(i)  *= dtheta;
-    DDFT.row(i) *= dtheta * dtheta * dtheta;
+    const U rtheta(U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows()));
+    DFT.row(i) *= rtheta * rtheta * rtheta;
   }
-  Dop   = (IDFT *  DFT).row(IDFT.rows() / 2).real().template cast<T>();
-  DDDop = (IDFT * DDFT).row(IDFT.rows() / 2).real().template cast<T>();
+  DDDop = (IDFT * DFT).row(IDFT.rows() / 2).real().template cast<T>();
   return;
-}
-
-template <typename T> pair<T, T> PseudoBump<T>::getPseudoBumpSubSub(const Vec& work, const vector<Vec>& cf, const int& s) {
-  pair<T, T> result;
-  result.first  = - T(1);
-  result.second = - T(1);
-  T buf(cf[0].size() * sqrt(DDDop.dot(DDDop)) * T(2));
-  for(int z = 0; z < cf.size(); z ++) {
-    // d/dt (local color) / ||local color||:
-    Vec c(cf[z].size());
-    for(int u = 0; u < c.size(); u ++)
-      c[u] = getImgPt(work, cf[z][u] + s);
-    const T score(Dop.dot(c));
-    const T score2(abs(DDDop.dot(c)));
-    if(0 <= score && (!z || score2 <= buf)) {
-      result.first  = z / T(cf.size());
-      result.second = score;
-      buf           = score2;
-    } else if(T(0) <= result.second && score < result.second * thresh)
-      break;
-  }
-  return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const vector<Vec>& cf) {
   cerr << "." << flush;
   Vec result(work.size());
   for(int s = 0; s < work.size(); s ++) {
-    const auto pd(getPseudoBumpSubSub(  work, cf, s));
-    // N.B. this may be tricky but,
-    //      to negate value is equivalent to negate order in Dop.
-    const auto md(getPseudoBumpSubSub(- work, cf, s));
-    // N.B. if differentials are flat enough, returns the most flat place.
-    if(pd.first < T(0) && md.first < T(0))
-      result[s] = - T(1);
-    else if(pd.second < md.second)
-      result[s] = md.first;
-    else
-      result[s] = pd.first;
+    result[s] = - T(1);
+    T buf(DDDop.dot(DDDop) * T(2));
+    for(int z = 0; z < cf.size(); z ++) {
+      // d/dt (local color) / ||local color||:
+      Vec c(cf[z].size());
+      for(int u = 0; u < c.size(); u ++)
+        c[u] = getImgPt(work, cf[z][u] + s);
+      const T score(abs(DDDop.dot(c)) / sqrt(c.dot(c)));
+      if(score <= buf) {
+        result[s] = z / T(cf.size());
+        buf       = abs(score);
+      } else if(buf * (T(1) + thresh) < abs(score))
+        break;
+    }
   }
   return complementLine(result);
 }
@@ -228,12 +205,12 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int zi = 0; zi < result.size(); zi ++) {
-    result[zi] = Vec(Dop.size());
+    result[zi] = Vec(DDDop.size());
     for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
-      cpoint[0] = (s / T(Dop.size() - 1) - 1 / T(2));
+      cpoint[0] = (s / T(DDDop.size() - 1) - 1 / T(2));
       // N.B. : zi -> 0 first or zi -> 1 first effects in pseudoBumpSub thresh.
-      cpoint[1] = (1 + zi) / T(Dop.size());
+      cpoint[1] = (1 + zi) / T(DDDop.size());
       result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp;
     }
   }
