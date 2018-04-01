@@ -58,13 +58,15 @@ private:
   vector<Vec> prepareLineAxis(const T& rstp);
   
   T   Pi;
+  
   int z_max;
-  Vec DDDop;
   T   thresh;
+  Vec Dop;
+  Vec DDDop;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(12, 201, T(.0725));
+  initialize(12, 201, T(.05));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -82,12 +84,16 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
       DFT( i, j) = exp(U(- 2.) * Pi * sqrt(U(- 1)) * U(i * j / T(stp)));
       IDFT(i, j) = exp(U(  2.) * Pi * sqrt(U(- 1)) * U(i * j / T(stp))) / T(stp);
     }
-  auto DDFT(DFT);
+  auto DDDFT(DFT);
   for(int i = 0; i < DFT.rows(); i ++) {
     const U rtheta(U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows()));
-    DFT.row(i) *= rtheta * rtheta * rtheta;
+    DFT.row(i)   *= rtheta;
+    DDDFT.row(i) *= rtheta * rtheta * rtheta;
   }
-  DDDop = (IDFT * DFT).row(IDFT.rows() / 2).real().template cast<T>();
+  Dop    = (IDFT *   DFT).row(IDFT.rows() / 2).real().template cast<T>();
+  DDDop  = (IDFT * DDDFT).row(IDFT.rows() / 2).real().template cast<T>();
+  Dop   /= sqrt(  Dop.dot(  Dop));
+  DDDop /= sqrt(DDDop.dot(DDDop));
   return;
 }
 
@@ -96,17 +102,17 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   Vec result(work.size());
   for(int s = 0; s < work.size(); s ++) {
     result[s] = - T(1);
-    T buf(DDDop.dot(DDDop) * T(2));
+    T buf(2);
     for(int z = 0; z < cf.size(); z ++) {
       // d/dt (local color) / ||local color||:
       Vec c(cf[z].size());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(work, cf[z][u] + s);
-      const T score(abs(DDDop.dot(c)) / sqrt(c.dot(c)));
+      const T score(min(abs(Dop.dot(c)), abs(DDDop.dot(c))) / sqrt(c.dot(c)));
       if(score <= buf) {
         result[s] = z / T(cf.size());
-        buf       = abs(score);
-      } else if(buf * (T(1) + thresh) < abs(score))
+        buf       = score;
+      } else if(buf * (T(1) + thresh) < score)
         break;
     }
   }
@@ -205,12 +211,11 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int zi = 0; zi < result.size(); zi ++) {
-    result[zi] = Vec(DDDop.size());
+    result[zi] = Vec(Dop.size());
     for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
-      cpoint[0] = (s / T(DDDop.size() - 1) - 1 / T(2));
-      // N.B. : zi -> 0 first or zi -> 1 first effects in pseudoBumpSub thresh.
-      cpoint[1] = (1 + zi) / T(DDDop.size());
+      cpoint[0] = (s / T(Dop.size() - 1) - 1 / T(2));
+      cpoint[1] = (1 + zi) / T(Dop.size());
       result[zi][s] = getLineAxis(cpoint, camera)[0] * rstp;
     }
   }
