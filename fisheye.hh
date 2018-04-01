@@ -103,17 +103,19 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   for(int s = 0; s < work.size(); s ++) {
     result[s] = - T(1);
     T buf(2);
+    T mbuf(2);
     for(int z = 0; z < cf.size(); z ++) {
       // d/dt (local color) / ||local color||:
       Vec c(cf[z].size());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(work, cf[z][u] + s);
       const T score(min(abs(Dop.dot(c)), abs(DDDop.dot(c))) / sqrt(c.dot(c)));
-      if(score <= buf) {
+      if(score <= mbuf) {
         result[s] = z / T(cf.size());
-        buf       = score;
+        mbuf      = score;
       } else if(buf * (T(1) + thresh) < score)
         break;
+      buf = score;
     }
   }
   return complementLine(result);
