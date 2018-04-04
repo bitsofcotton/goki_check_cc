@@ -92,10 +92,8 @@ template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::solveN(const Vec3& p, co
   n[0] =   (pq[1] * pr[2] - pq[2] * pr[1]);
   n[1] = - (pq[0] * pr[2] - pq[2] * pr[0]);
   n[2] =   (pq[0] * pr[1] - pq[1] * pr[0]);
-  if(n.dot(n) > 0)
-    return n / n.dot(n);
-  cerr << "internal error." << endl;
-  return n;
+  assert(n.dot(n) > 0);
+  return n / sqrt(n.dot(n));
 }
 
 template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
@@ -223,7 +221,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto, const Vec3& origin0) {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
-  cerr << " making triangles" << flush;
+  cerr << "m" << flush;
   vector<Triangles> triangles;
   for(int i = 0; i < in.rows() - 1; i ++)
     for(int j = 0; j < in.cols() - 1; j ++) {
@@ -245,7 +243,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     rotriangles[j].col(1) += moveto;
     rotriangles[j].col(2) += moveto;
   }
-  cerr << " draw" << flush;
+  cerr << "d" << flush;
   Mat zb(in.rows(), in.cols());
   for(int j = 0; j < zb.rows(); j ++)
     for(int k = 0; k < zb.cols(); k ++)
