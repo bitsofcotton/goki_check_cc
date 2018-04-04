@@ -27,6 +27,8 @@ void usage() {
 template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<Eigen::Matrix<T, 3, 1> >& shape0, const std::vector<Eigen::Matrix<T, 3, 1> >& shape1, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> in0[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> in1[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump0, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump1, const std::vector<T>& emph) {
   reDig<T>  redig;
   tilter<T> tilt;
+  // generated bump map is inverted.
+  tilt.initialize(- sqrt(double(bump1.rows() * bump1.cols())) / double(6));
   
   auto hull(loadBumpSimpleMesh<T>(shape0, match.dstpoints));
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs[3];
@@ -49,8 +51,11 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     mhull1.push_back(buf);
   }
   
-  for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = tilt.tilt(redig.showMatch(in1[idx], shape1, mhull1), bump1, match.rot, I3, match.offset, match.ratio, zero3);
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> sin1[3];
+  for(int idx = 0; idx < 3; idx ++) {
+    sin1[idx] = redig.showMatch(in1[idx], shape1, mhull1);
+    outs[idx] = tilt.tilt(sin1[idx], bump1, match.rot, I3, match.offset, match.ratio, zero3);
+  }
   normalize<T>(outs, 1.);
   std::string outfile(outbase + std::string("-src.ppm"));
   savep2or3<T>(outfile.c_str(), outs, false);
@@ -63,7 +68,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   
   for(int kk = 0; kk < emph.size(); kk ++) {
     for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = redig.emphasis(in0[idx], redig.showMatch(in1[idx], shape1, mhull1), bump1, shape0, shape1, match, hull, emph[kk]);
+      outs[idx] = redig.emphasis(in0[idx], sin1[idx], bump1, shape0, shape1, match, hull, emph[kk], tilt);
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     savep2or3<T>(outfile.c_str(), outs, false);
   }
@@ -183,7 +188,7 @@ int main(int argc, const char* argv[]) {
         return - 2;
       auto zero(bump[0] * double(0));
       tilter<double> tilt;
-      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())));
+      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())) / double(6));
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
           out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, psi), zero, - i, M_TILT, psi);
@@ -230,7 +235,7 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-        cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
+        std::cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
       }
     }
@@ -263,14 +268,13 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<double> statmatch;
       auto matches(statmatch.match(shape, datapoly));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-        cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
+        std::cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         std::vector<Eigen::Matrix<double, 3, 1> > mdatapoly;
-        for(int k = 0; k < datapoly.size(); k ++)
-          mdatapoly.push_back(matches[n].rot * datapoly[k] * matches[n].ratio + matches[n].offset);
+        const auto rmatch(~ matches[n]);
         auto match(matches[n]);
+        for(int k = 0; k < datapoly.size(); k ++)
+          mdatapoly.push_back(datapoly[k] - rmatch.offset);
         match.offset *= double(0);
-        match.ratio   = double(1);
-        match.rot    *= match.rot.transpose();
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
       }
     }
