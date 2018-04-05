@@ -6,7 +6,7 @@ CXXFLAGS+=	-I/usr/local/include/eigen3
 CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-Ofast -g0 -mtune=native
 #CXXFLAGS+=	-O2 -g2 -mtune=native
-LDFLAGS+=	-lstdc++
+LDFLAGS+=	-lc++
 
 CLEANFILES= *.o tools
 

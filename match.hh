@@ -161,6 +161,9 @@ public:
   T   threshs;
   
 private:
+  Vec3               makeG(const vector<Vec3>& in) const;
+  vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const Mat3x3& drot1) const;
+  void               complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const;
   U   I;
   T   Pi;
   // match theta  thresh in [0, 1].
@@ -195,23 +198,77 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
   return result;
 }
 
+template <typename T> Eigen::Matrix<T, 3, 1> matchPartialPartial<T>::makeG(const vector<Vec3>& in) const {
+  Vec3 result;
+  result[0] = result[1] = result[2] = T(0);
+  for(int i = 0; i < in.size(); i ++)
+    result += in[i];
+  return result / in.size();
+}
+
+template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const Mat3x3& drot1) const {
+  vector<msub_t<T> > result;
+  vector<Vec3> shapework;
+  vector<Vec3> pointswork;
+  shapework.reserve(shapebase.size());
+  pointswork.reserve(points.size());
+  for(int i = 0; i < shapebase.size(); i ++)
+    shapework.push_back(shapebase[i] - gs);
+  for(int i = 0; i < points.size(); i ++)
+    pointswork.push_back(drot1 * (points[i] - gp));
+  for(int k = 0; k < points.size(); k ++)
+    for(int j = 0; j < shapebase.size(); j ++) {
+      const Vec3& aj(shapework[j]);
+      const Vec3& bk(pointswork[k]);
+      const T     t(aj.dot(bk) / bk.dot(bk));
+      const Vec3  lerr(aj - bk * t);
+      const T     err(lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t * t));
+      // if t <= T(0), it's mirrored and this should not match.
+      if(T(0) <= t && err <= thresh * thresh && isfinite(t) && isfinite(err)) {
+        msub_t<T> work;
+        work.t   = t;
+        work.j   = j;
+        work.k   = k;
+        work.err = err;
+        result.push_back(work);
+      }
+    }
+  sort(result.begin(), result.end());
+  return result;
+}
+
+template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
+  work.rdepth = T(0);
+  T num(0);
+  T denom(0);
+  for(int k = 0; k < work.dstpoints.size(); k ++) {
+    const Vec3 shapek(shapebase[work.dstpoints[k]] - gs);
+    const Vec3 pointk(work.rot * (points[work.srcpoints[k]] - gp));
+    denom       += pointk.dot(pointk);
+    num         += shapek.dot(pointk);
+    work.rdepth += shapek.dot(shapek);
+  }
+  work.ratio     = num / denom;
+  work.rdepth   /= work.dstpoints.size();
+  work.offset[0] = T(0);
+  work.offset[1] = T(0);
+  work.offset[2] = T(0);
+  for(int k = 0; k < work.dstpoints.size(); k ++)
+    work.offset += shapebase[work.dstpoints[k]] - (work.rot * points[work.srcpoints[k]] * work.ratio);
+    work.offset /= work.dstpoints.size();
+  return;
+}
+
 template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
   // drot0 := I_3.
   Mat3x3 drot0;
   for(int k = 0; k < drot0.rows(); k ++)
     for(int l = 0; l < drot0.cols(); l ++)
       drot0(k, l) = (k == l ? T(1) : T(0));
-  // centering each.
-  Vec3 gs, gp, gd;
-  gs[0] = gs[1] = gs[2] = T(0);
-  gp[0] = gp[1] = gp[2] = T(0);
+  const Vec3 gs(makeG(shapebase));
+  const Vec3 gp(makeG(points));
+  Vec3 gd;
   gd[0] = gd[1] = gd[2] = T(0);
-  for(int i = 0; i < shapebase.size(); i ++)
-    gs += shapebase[i];
-  gs /= shapebase.size();
-  for(int i = 0; i < points.size(); i ++)
-    gp += points[i];
-  gp /= points.size();
   for(int i = 0; i < shapebase.size(); i ++) {
     const auto diff(shapebase[i] - gs);
     gd[0] = max(gd[0], abs(diff[0]));
@@ -222,18 +279,18 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
     gd[0] = max(gd[0], abs(diff[0]));
     gd[1] = max(gd[1], abs(diff[1]));
   }
-  // for each rotation:
+  // for each rotation, we can now handle t <= 0:
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int nd = 0; nd < ndiv; nd ++) {
+  for(int nd = 0; nd <= ndiv / 2; nd ++) {
     Eigen::Matrix<T, 4, 1> ddiv;
-    ddiv[0] = cos(2 * Pi * nd / ndiv - Pi);
-    ddiv[1] = sin(2 * Pi * nd / ndiv - Pi);
+    ddiv[0] = cos(2 * Pi * nd / ndiv);
+    ddiv[1] = sin(2 * Pi * nd / ndiv);
     // with t < 0 match.
-    for(int nd2 = 0; nd2 <= ndiv / 2; nd2 ++) {
-      ddiv[2] = cos(2 * Pi * nd2 / ndiv - Pi / T(2));
-      ddiv[3] = sin(2 * Pi * nd2 / ndiv - Pi / T(2));
+    for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
+      ddiv[2] = cos(2 * Pi * nd2 / ndiv);
+      ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       Mat3x3 drot1(drot0);
       for(int k = 0; k < ddiv.size() / 2; k ++) {
         Mat3x3 lrot;
@@ -249,28 +306,11 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         drot1 = lrot * drot1;
       }
       // for each near matches:
-      vector<msub_t<T> > msub;
-      for(int k = 0; k < points.size(); k ++)
-        for(int j = 0; j < shapebase.size(); j ++) {
-          const Vec3 aj(shapebase[j]       - gs );
-          const Vec3 bk(drot1 * (points[k] - gp));
-          const T    t(aj.dot(bk) / bk.dot(bk));
-          const Vec3 lerr(aj - bk * t);
-          const T    err(lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t * t));
-          if(err <= thresh * thresh && isfinite(t) && isfinite(err)) {
-            msub_t<T> work;
-            work.t   = t;
-            work.j   = j;
-            work.k   = k;
-            work.err = err;
-            msub.push_back(work);
-          }
-        } 
+      const auto msub(makeMsub(shapebase, points, gs, gp, drot1));
       cerr << msub.size() << ":" << flush;
       if(msub.size() /
            T(min(shapebase.size(), points.size())) < threshp)
         continue;
-      sort(msub.begin(), msub.end());
       // get nearer matches:
       int t0(0);
       for( ; t0 < msub.size(); t0 ++) {
@@ -301,23 +341,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         // if it's good:
         if(threshp <= work.dstpoints.size() /
                         T(min(shapebase.size(), points.size()))) {
-          work.rdepth = T(0);
-          T num(0), denom(0);
-          for(int k = 0; k < work.dstpoints.size(); k ++) {
-            const Vec3 shapek(shapebase[work.dstpoints[k]] - gs);
-            const Vec3 pointk(work.rot * (points[work.srcpoints[k]] - gp));
-            denom       += pointk.dot(pointk);
-            num         += shapek.dot(pointk);
-            work.rdepth += shapek.dot(shapek);
-          }
-          work.ratio     = num / denom;
-          work.rdepth   /= work.dstpoints.size();
-          work.offset[0] = T(0);
-          work.offset[1] = T(0);
-          work.offset[2] = T(0);
-          for(int k = 0; k < work.dstpoints.size(); k ++)
-            work.offset += shapebase[work.dstpoints[k]] - (work.rot * points[work.srcpoints[k]] * work.ratio);
-          work.offset /= work.dstpoints.size();
+          complementMatch(work, shapebase, points, gs, gp);
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
@@ -388,10 +412,10 @@ template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(c
   vector<vector<match_t<T> > > pmatches;
   matchPartialPartial<T> pmatch(thresh, threshp, threshs);
   for(int i = 0; i < points.size(); i ++) {
-    cerr << "matching partial polys : " << i << "/" << shapebase.size() << endl;
+    cerr << "matching partials : " << i << "/" << shapebase.size() << endl;
     pmatches.push_back(pmatch.match(shapebase, points[i]));
   }
-  cerr << "detecting possible whole matches (not implemented now.)..." << endl;
+  cerr << "XXX not implemented: detecting possible whole matches..." << endl;
   vector<vector<match_t<T> > > result;
   return result;
 }
@@ -434,6 +458,7 @@ template <typename T> void reDig<T>::init() {
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio, tilter<T>& tilt) {
   cerr << "m" << flush;
   vector<typename tilter<T>::Triangles> triangles;
+  triangles.reserve((srcimg.rows() - 1) * (srcimg.cols() - 1) * 2);
   for(int i = 0; i < srcimg.rows() - 1; i ++)
     for(int j = 0; j < srcimg.cols() - 1; j ++) {
       triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, false));
@@ -449,30 +474,29 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   const auto rmatch(~ match);
   const auto offset(match.rot.transpose() * match.offset);
   for(int ii = 0; ii < hull.size(); ii ++) {
-    const int&  i(hull[ii][0]);
-    const int&  j(hull[ii][1]);
-    const int&  k(hull[ii][2]);
-    const Vec3& p0(dst[match.dstpoints[i]]);
-    const Vec3& p1(dst[match.dstpoints[j]]);
-    const Vec3& p2(dst[match.dstpoints[k]]);
-    const Vec3  src00((src[match.srcpoints[i]] +
-                       src[match.srcpoints[j]] +
-                       src[match.srcpoints[k]]) / T(3));
-    const Vec3  dst00((p0 + p1 + p2) / T(3));
-    const Vec3  dst0(rmatch.ratio * rmatch.rot * dst00 + rmatch.offset);
+    const int& i(hull[ii][0]);
+    const int& j(hull[ii][1]);
+    const int& k(hull[ii][2]);
+    const Vec3 p0(rmatch.ratio * rmatch.rot * dst[match.dstpoints[i]] + rmatch.offset);
+    const Vec3 p1(rmatch.ratio * rmatch.rot * dst[match.dstpoints[j]] + rmatch.offset);
+    const Vec3 p2(rmatch.ratio * rmatch.rot * dst[match.dstpoints[k]] + rmatch.offset);
+    const Vec3 src0((src[match.srcpoints[i]] +
+                     src[match.srcpoints[j]] +
+                     src[match.srcpoints[k]]) / T(3));
+    const Vec3 dst0((dst[match.dstpoints[i]] +
+                     dst[match.dstpoints[j]] +
+                     dst[match.dstpoints[k]]) / T(3));
     for(int l = 0; l < triangles.size(); l ++)
-      if(!checked[l * 3] || !checked[l * 3 + 1] || !checked[l * 3 + 2])
-        for(int ll = 0; ll < 3; ll ++) {
-          if(checked[l * 3 + ll])
-            continue;
-          const Vec3& q(triangles[l].col(ll));
-          if(tilt.sameSide2(p0, p1, p2, q) &&
-             tilt.sameSide2(p1, p2, p0, q) &&
-             tilt.sameSide2(p2, p0, p1, q)) {
-            triangles[l].col(ll) += (dst00 * ratio - (src00 * match.ratio + offset) * (T(1) - ratio)) / match.ratio;
-            checked[l * 3 + ll] = true;
-          }
+      for(int ll = 0; ll < 3; ll ++) {
+        const Vec3& q(triangles[l].col(ll));
+        if(!checked[l * 3 + ll] &&
+           tilt.sameSide2(p0, p1, p2, q) &&
+           tilt.sameSide2(p1, p2, p0, q) &&
+           tilt.sameSide2(p2, p0, p1, q)) {
+          triangles[l].col(ll) += (dst0 * ratio - (src0 * match.ratio + offset) * (T(1) - ratio)) / match.ratio;
+          checked[l * 3 + ll] = true;
         }
+      }
   }
   delete[] checked;
   

@@ -223,6 +223,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
   cerr << "m" << flush;
   vector<Triangles> triangles;
+  triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
   for(int i = 0; i < in.rows() - 1; i ++)
     for(int j = 0; j < in.cols() - 1; j ++) {
       triangles.push_back(makeTriangle(i, j, in, bump, false));
@@ -237,6 +238,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     for(int j = 0; j < in.cols(); j ++)
       result(i, j) = 0.;
   vector<Triangles> rotriangles;
+  rotriangles.reserve(triangles.size());
   for(int j = 0; j < triangles.size(); j ++) {
     rotriangles.push_back(rotate(rotate(triangles[j], rot, origin, rto), rotrev, origin, T(1)));
     rotriangles[j].col(0) += moveto;
