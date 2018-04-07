@@ -72,6 +72,13 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     savep2or3<T>(outfile.c_str(), outs, false);
   }
+  
+  for(int kk = 0; kk < emph.size(); kk ++) {
+    for(int idx = 0; idx < 3; idx ++)
+      outs[idx] = redig.replace(in0[idx], shape1, match, hull);
+    outfile = outbase + std::string("-repl-") + std::to_string(kk) + std::string(".ppm");
+    savep2or3<T>(outfile.c_str(), outs, false);
+  }
   return;
 }
 
@@ -270,11 +277,11 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         std::vector<Eigen::Matrix<double, 3, 1> > mdatapoly;
-        const auto rmatch(~ matches[n]);
         auto match(matches[n]);
         for(int k = 0; k < datapoly.size(); k ++)
-          mdatapoly.push_back(datapoly[k] - rmatch.offset);
+          mdatapoly.push_back(match.rot * datapoly[k] + match.offset / match.ratio);
         match.offset *= double(0);
+        match.rot    *= match.rot.transpose();
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
       }
     }
