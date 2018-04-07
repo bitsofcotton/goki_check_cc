@@ -433,6 +433,7 @@ public:
   ~reDig();
   void init();
   Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio, tilter<T>& tilt);
+  Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull);
   Mat  replace(const Mat& dstimg, const Mat& dstbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const vector<Vec3>& srcrep, const match_t<T>& match2, const vector<Veci3>& hullrep);
   bool takeShape(vector<Vec3>& points, vector<Veci3>& tris, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
   
@@ -441,6 +442,7 @@ public:
   
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
+  void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
 };
 
 template <typename T> reDig<T>::reDig() {
@@ -512,6 +514,27 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return (dstimg + tilt.tiltsub(dstimg, triangles, match.rot, I3, zero3, match.offset, match.ratio)) / T(2);
 }
 
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull) {
+  Mat srcimg(dstimg * T(0));
+  vector<Vec3> tsrc;
+  T            M(0);
+  for(int i = 0; i < src.size(); i ++) {
+    tsrc.push_back(match.rot * src[i] * match.ratio + match.offset);
+    M = max(M, tsrc[i][2]);
+  }
+  if(M != T(0))
+    for(int i = 0; i < src.size(); i ++)
+      tsrc[i][2] /= M;
+  for(int ii = 0; ii < hull.size(); ii ++) {
+    const int& i(hull[ii][0]);
+    const int& j(hull[ii][1]);
+    const int& k(hull[ii][2]);
+    for(int j = 0; j < 3; j ++)
+      drawMatchTriangle(srcimg, tsrc[i], tsrc[j], tsrc[k]);
+  }
+  return eliminate(dstimg, src, hull) + srcimg;
+}
+
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::eliminate(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull) {
   cerr << "eliminate(" << hull.size() << ")" << endl;
   Mat result(dstimg);
@@ -524,7 +547,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     orth -= orth.dot(diff) / diff.dot(diff) * diff;
     const T n2orth(sqrt(orth.dot(orth)));
     for(int l = 0; l < n2orth + 1; l ++)
-      drawMatchLine(result, dst[i] + (dst[k] - dst[i]) * l / n2orth, dst[j] + (dst[k] - dst[j]) * l / n2orth);
+      drawMatchLine(result, dst[i] + (dst[k] - dst[i]) * l / n2orth, dst[j] + (dst[k] - dst[j]) * l / n2orth, T(1));
   }
   return result;
 }
@@ -545,6 +568,36 @@ template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, 
     const auto gidx(lm + (lM - lm) * i / (lM[idxM] - lm[idxM]));
     map(max(0, min(int(gidx[0]), int(map.rows() - 1))),
         max(0, min(int(gidx[1]), int(map.cols() - 1)))) = emph;
+  }
+  return;
+}
+
+template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2) {
+  int idxm(0);
+  int idxM(1);
+  if(abs(lref1[idxM] - lref0[idxM]) < abs(lref1[idxm] - lref0[idxm])) {
+    idxm = 1;
+    idxM = 0;
+  }
+  Vec3 lm(lref1), lM(lref0);
+  if(lM[idxM] < lm[idxM]) {
+    lm = lref0;
+    lM = lref1;
+  }
+  const Vec3 ldiff0(lM - lm);
+        Vec3 ldiff(lref2 - lM);
+  ldiff -= ldiff.dot(ldiff0) * ldiff / sqrt(ldiff.dot(ldiff));
+  const T    lnum(sqrt(ldiff.dot(ldiff)));
+  const Vec3 Mdiff(lref2 - lM);
+  const Vec3 mdiff(lref2 - lm);
+  for(int k = 0; k <= int(lnum); k ++) {
+    const Vec3 lMM(lM + Mdiff * k / int(lnum));
+    const Vec3 lmm(lm + mdiff * k / int(lnum));
+    for(int i = 0; i <= lMM[idxM] - lmm[idxM]; i ++) {
+      const auto gidx(lmm + (lMM - lmm) * i / (lMM[idxM] - lmm[idxM]));
+      map(max(0, min(int(gidx[0]), int(map.rows() - 1))),
+          max(0, min(int(gidx[1]), int(map.cols() - 1)))) = gidx[2];
+    }
   }
   return;
 }
