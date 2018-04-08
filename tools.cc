@@ -73,12 +73,10 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     savep2or3<T>(outfile.c_str(), outs, false);
   }
   
-  for(int kk = 0; kk < emph.size(); kk ++) {
-    for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = redig.replace(in0[idx], shape1, match, hull);
-    outfile = outbase + std::string("-repl-") + std::to_string(kk) + std::string(".ppm");
-    savep2or3<T>(outfile.c_str(), outs, false);
-  }
+  for(int idx = 0; idx < 3; idx ++)
+    outs[idx] = redig.replace(in0[idx], shape1, match, hull);
+  outfile = outbase + std::string("-repl.ppm");
+  savep2or3<T>(outfile.c_str(), outs, false);
   return;
 }
 
