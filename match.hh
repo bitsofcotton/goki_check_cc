@@ -115,10 +115,14 @@ public:
     threshsize = other.threshsize;
     return *this;
   }
+  Eigen::Matrix<T, 3, 1> transform(const Eigen::Matrix<T, 3, 1>& x) const {
+    return rot * x * ratio + offset;
+  }
   // XXX configure us:
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
+    // return rratio < xratio || (rratio == xratio && rdepth < x1.rdepth);
     return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
@@ -254,8 +258,8 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
   work.offset[1] = T(0);
   work.offset[2] = T(0);
   for(int k = 0; k < work.dstpoints.size(); k ++)
-    work.offset += shapebase[work.dstpoints[k]] - (work.rot * points[work.srcpoints[k]] * work.ratio);
-    work.offset /= work.dstpoints.size();
+    work.offset += shapebase[work.dstpoints[k]] - work.rot * points[work.srcpoints[k]] * work.ratio;
+  work.offset /= work.dstpoints.size();
   return;
 }
 
@@ -435,7 +439,7 @@ public:
   Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio, tilter<T>& tilt);
   Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull);
   Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull);
-  bool takeShape(vector<Vec3>& points, vector<Veci3>& tris, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
+  bool takeShape(vector<Vec3>& dstpoints, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(.2));
   
 private:
@@ -470,16 +474,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   for(int i = 0; i < triangles.size() * 3; i ++)
     checked[i] = false;
   
-  cerr << "emphasis(" << hull.size() << ")" << endl;
+  cerr << "e(" << hull.size() << ")" << endl;
   const auto rmatch(~ match);
-  const auto offset(match.rot * match.offset);
   for(int ii = 0; ii < hull.size(); ii ++) {
     const int& i(hull[ii][0]);
     const int& j(hull[ii][1]);
     const int& k(hull[ii][2]);
-    const Vec3 p0(rmatch.ratio * rmatch.rot * dst[match.dstpoints[i]] + rmatch.offset);
-    const Vec3 p1(rmatch.ratio * rmatch.rot * dst[match.dstpoints[j]] + rmatch.offset);
-    const Vec3 p2(rmatch.ratio * rmatch.rot * dst[match.dstpoints[k]] + rmatch.offset);
+    const Vec3 p0(rmatch.transform(dst[match.dstpoints[i]]));
+    const Vec3 p1(rmatch.transform(dst[match.dstpoints[j]]));
+    const Vec3 p2(rmatch.transform(dst[match.dstpoints[k]]));
     const Vec3 src0((src[match.srcpoints[i]] +
                      src[match.srcpoints[j]] +
                      src[match.srcpoints[k]]) / T(3));
@@ -493,7 +496,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
            tilt.sameSide2(p0, p1, p2, q) &&
            tilt.sameSide2(p1, p2, p0, q) &&
            tilt.sameSide2(p2, p0, p1, q)) {
-          triangles[l].col(ll) += (dst0 * ratio - (match.rot * src0 * match.ratio + offset) * (T(2) - ratio)) / match.ratio;
+          triangles[l].col(ll) += (dst0 - match.transform(src0)) * ratio / match.ratio;
           checked[l * 3 + ll] = true;
         }
       }
@@ -518,7 +521,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   T            M(0);
   T            m(0);
   for(int i = 0; i < src.size(); i ++) {
-    tsrc.push_back(match.rot * src[i] * match.ratio + match.offset);
+    tsrc.push_back(match.transform(src[i]));
     if(i) {
       M = max(M, tsrc[i][2]);
       m = min(m, tsrc[i][2]);
@@ -528,13 +531,33 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   if(M - m != T(0))
     for(int i = 0; i < tsrc.size(); i ++)
       tsrc[i][2] = (tsrc[i][2] - m) / (M - m);
-  for(int ii = 0; ii < hull.size(); ii ++) {
-    const int& i(hull[ii][0]);
-    const int& j(hull[ii][1]);
-    const int& k(hull[ii][2]);
-    drawMatchTriangle(result, tsrc[i], tsrc[j], tsrc[k]);
-  }
+  for(int ii = 0; ii < hull.size(); ii ++)
+    drawMatchTriangle(result, tsrc[match.srcpoints[hull[ii][0]]],
+                              tsrc[match.srcpoints[hull[ii][1]]],
+                              tsrc[match.srcpoints[hull[ii][2]]]);
   return result;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull) {
+  Mat result(dstimg);
+  // stub.
+  return result;
+}
+
+template <typename T> bool reDig<T>::takeShape(vector<Vec3>& dstpoints, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio) {
+  bool* checked = new bool[hull.size() * 3];
+  for(int i = 0; i < hull.size() * 3; i ++)
+    checked[i] = false;
+  dstpoints = dst;
+  for(int i = 0; i < hull.size(); i ++)
+    for(int j = 0; j < 3; j ++) if(!checked[j + i * 3]) {
+      const auto diff(dst[match.dstpoints[hull[i][j]]] -
+                      match.transform(src[match.srcpoints[hull[i][j]]]));
+      dstpoints[match.dstpoints[hull[i][j]]] -= diff * ratio;
+      checked[j + i * 3] = true;
+    }
+  delete[] checked;
+  return true;
 }
 
 template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph) {
@@ -563,11 +586,11 @@ template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, const Vec3& lre
         Vec3 ldiff(lref2 - lref0);
   ldiff -= ldiff.dot(ldiff0) * ldiff0 / ldiff0.dot(ldiff0);
   const T    lnum(sqrt(ldiff.dot(ldiff)) + 1);
-  for(int k = 0; k <= int(lnum); k ++) {
+  for(int k = 0; k < lnum; k ++) {
     const Vec3 l0(lref0 + (lref2 - lref0) * k / int(lnum));
     const Vec3 l1(lref1 + (lref2 - lref1) * k / int(lnum));
-    for(int i = 0; i <= abs(l0[idxM] - l1[idxM]); i ++) {
-      const auto gidx(l0 + (l1 - l0) * i / abs(l0[idxM] - l1[idxM]));
+    for(int i = 0; i <= int(abs(l0[idxM] - l1[idxM]) + 1); i ++) {
+      const auto gidx(l0 + (l1 - l0) * i / int(abs(l0[idxM] - l1[idxM]) + 1));
       map(max(0, min(int(gidx[0]), int(map.rows() - 1))),
           max(0, min(int(gidx[1]), int(map.cols() - 1)))) = gidx[2];
     }
