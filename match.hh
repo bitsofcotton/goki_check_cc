@@ -286,14 +286,12 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  //for(int nd = 0; nd <= ndiv / 2; nd ++) {
-  for(int nd = 0; nd <= T(1); nd ++) {
+  for(int nd = 0; nd <= ndiv / 2; nd ++) {
     Eigen::Matrix<T, 4, 1> ddiv;
     ddiv[0] = cos(2 * Pi * nd / ndiv);
     ddiv[1] = sin(2 * Pi * nd / ndiv);
     // with t < 0 match.
-    // for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
-    for(int nd2 = 0; nd2 < 1; nd2 ++) {
+    for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       Mat3x3 drot1(drot0);
