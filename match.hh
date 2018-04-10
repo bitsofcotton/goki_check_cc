@@ -118,11 +118,9 @@ public:
   Eigen::Matrix<T, 3, 1> transform(const Eigen::Matrix<T, 3, 1>& x) const {
     return rot * x * ratio + offset;
   }
-  // XXX configure us:
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
-    // return rratio < xratio || (rratio == xratio && rdepth < x1.rdepth);
     return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
@@ -226,7 +224,7 @@ template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const 
       const Vec3& bk(pointswork[k]);
       const T     t(aj.dot(bk) / bk.dot(bk));
       const Vec3  lerr(aj - bk * t);
-      const T     err(lerr.dot(lerr) / (aj.dot(aj) + bk.dot(bk) * t * t));
+      const T     err(lerr.dot(lerr) / sqrt(aj.dot(aj) * bk.dot(bk) * t * t));
       // if t <= T(0), it's mirrored and this should not match.
       if(T(0) <= t && err <= thresh * thresh && isfinite(t) && isfinite(err)) {
         msub_t<T> work;
@@ -253,7 +251,8 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
     work.rdepth += shapek.dot(shapek);
   }
   work.ratio     = num / denom;
-  work.rdepth   /= work.dstpoints.size();
+  // XXX configure me:
+  work.rdepth    = num / sqrt(denom * work.rdepth) / work.dstpoints.size();
   work.offset[0] = T(0);
   work.offset[1] = T(0);
   work.offset[2] = T(0);
@@ -287,12 +286,14 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int nd = 0; nd <= ndiv / 2; nd ++) {
+  //for(int nd = 0; nd <= ndiv / 2; nd ++) {
+  for(int nd = 0; nd <= T(1); nd ++) {
     Eigen::Matrix<T, 4, 1> ddiv;
     ddiv[0] = cos(2 * Pi * nd / ndiv);
     ddiv[1] = sin(2 * Pi * nd / ndiv);
     // with t < 0 match.
-    for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
+    // for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
+    for(int nd2 = 0; nd2 < 1; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       Mat3x3 drot1(drot0);
@@ -332,9 +333,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
              // N.B. abar:=sum(aj)/n, bbar:=P*sum(bk)/n,
              //   get condition sum||aj-abar||, sum||P*bk-bbar|| -> 0
              //   with this imcomplete set.
-             abs(msub[t0].t - msub[t1].t) /
-               max(abs(msub[t0].t), abs(msub[t1].t)) <= thresht &&
-             T(0) <= msub[t0].t * msub[t1].t) {
+             // N.B. t >= 0 and msub is sorted by t0 > t1.
+             (msub[t0].t - msub[t1].t) / msub[t0].t <= thresht) {
             work.dstpoints.push_back(msub[t1].j);
             work.srcpoints.push_back(msub[t1].k);
             flagj[msub[t1].j] = true;
