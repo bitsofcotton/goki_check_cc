@@ -111,3 +111,6 @@ PseudoBump generates the bumpmap that is pseudo plausible one.
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
 * https://files.limpid-intensity.info/
+
+# Pre calculated samples
+![lena pseudo bumpmap](https://files.limpid-intensity.info/lena-bump.jpeg)
