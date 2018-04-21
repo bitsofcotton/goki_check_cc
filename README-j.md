@@ -110,4 +110,4 @@ PseudoBump はもっともらしいバンプマップを返しますが、正し
 * https://files.limpid-intensity.info/
 
 # あらかじめ計算されたサンプル
-![lena pseudo bumpmap](https://files.limpid-intensity.info/lena-bump.jpeg)
+![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.jpeg)
