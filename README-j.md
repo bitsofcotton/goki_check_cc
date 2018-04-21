@@ -108,3 +108,6 @@ PseudoBump はもっともらしいバンプマップを返しますが、正し
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
 * https://files.limpid-intensity.info/
+
+# あらかじめ計算されたサンプル
+![lena pseudo bumpmap](https://files.limpid-intensity.info/lena-bump.jpeg)
