@@ -107,5 +107,4 @@ PseudoBump はもっともらしいバンプマップを返しますが、正し
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/
 * https://files.limpid-intensity.info/
