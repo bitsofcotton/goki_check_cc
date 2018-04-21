@@ -27,8 +27,9 @@ There's preceders to match 3D to 2D with many approaches. (s.t. detecting topolo
 Searching the Internet more...
 
 # Status
-Searching bone-enabled 3d model simple format. Writing whole to rotated partials match.
-And checking implementation.
+Searching bone-enabled 3d model simple format -> may be .fbx format is widely used.
+Writing whole to rotated partials match.
+Rewriting delaunay triangulation with divide and conquerer method.
 
 # Usage
     make tools
@@ -109,5 +110,4 @@ PseudoBump generates the bumpmap that is pseudo plausible one.
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://konbu.sakura.ne.jp/files/
 * https://files.limpid-intensity.info/
