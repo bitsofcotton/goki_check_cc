@@ -113,5 +113,4 @@ PseudoBump generates the bumpmap that is pseudo plausible one.
 * https://files.limpid-intensity.info/
 
 # Pre calculated samples
-lena.png (from libpng sourceforge site):
-![lena pseudo bumpmap](https://files.limpid-intensity.info/lena-bump.jpeg)
+![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.jpeg)
