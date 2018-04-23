@@ -218,6 +218,7 @@ template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const 
     shapework.push_back(shapebase[i] - gs);
   for(int i = 0; i < points.size(); i ++)
     pointswork.push_back(drot1 * (points[i] - gp));
+  result.reserve(points.size() * shapebase.size());
   for(int k = 0; k < points.size(); k ++)
     for(int j = 0; j < shapebase.size(); j ++) {
       const Vec3& aj(shapework[j]);
