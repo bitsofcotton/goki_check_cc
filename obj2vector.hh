@@ -81,87 +81,133 @@ template <typename T> bool isSameLine2(const Eigen::Matrix<T, 3, 1>& a, const Ei
   return err.dot(err) <= rerr;
 }
 
+template <typename T> bool less0(const T& x, const T& y) {
+  return x.first[0] < y.first[0] || (x.first[0] == y.first[0] && x.first[1] < y.first[1]);
+}
+
 // N.B. delaunay trianglation algorithm best works but this is brute force.
 // XXX: terrible inefficient temporary stub.
 template <typename T> vector<Eigen::Matrix<int, 3, 1> > loadBumpSimpleMesh(const vector<Eigen::Matrix<T, 3, 1> >& dst, const vector<int>& dstpoints, const T epsilon = T(1e-5)) {
   vector<Eigen::Matrix<int, 3, 1> > res;
-  tilter<T> tilt;
-  cerr << "Delaunay(" << dstpoints.size() << ")";
+  cerr << dstpoints.size() << ":" << flush;
+  if(dstpoints.size() > 40) {
+    vector<pair<Eigen::Matrix<T, 3, 1>, int> > div;
+    for(int i = 0; i < dstpoints.size(); i ++)
+      div.push_back(make_pair(dst[dstpoints[i]], dstpoints[i]));
+    sort(div.begin(), div.end(), less0<pair<Eigen::Matrix<T, 3, 1>, int> >);
+    vector<int> lo, mid, hi;
+    for(int i = 0; i < div.size() / 2; i ++)
+      lo.push_back(div[i].second);
+    for(int i = div.size() / 4; i < div.size() * 3 / 4; i ++)
+      mid.push_back(div[i].second);
+    for(int i = div.size() / 2; i < div.size(); i ++)
+      hi.push_back(div[i].second);
+    const auto left(  loadBumpSimpleMesh(dst, lo,  epsilon));
+    const auto middle(loadBumpSimpleMesh(dst, mid, epsilon));
+    const auto right( loadBumpSimpleMesh(dst, hi,  epsilon));
+    res.insert(res.end(), left.begin(),   left.end());
+    res.insert(res.end(), middle.begin(), middle.end());
+    res.insert(res.end(), right.begin(),  right.end());
+    int cnt(0);
+    for(int i = 0; i < res.size(); i ++) {
+      for(int k = i + 1; k < res.size(); k ++) {
+        for(int j = 0; j < 3; j ++)
+          for(int l = 0; l < 3; l ++)
+            if(res[i][j] == res[k][l]) {
+              if(cnt ++ < div.size() / 8) {
+                res.erase(res.begin() + i);
+                i --;
+                goto inext;
+              } else {
+                res.erase(res.begin() + k);
+                k --;
+                goto knext;
+              }
+            }
+       knext:
+        ;
+      }
+     inext:
+      ;
+    }
+  } else {
+    tilter<T> tilt;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < dstpoints.size(); i ++) {
-    cerr << "." << flush;
-    for(int j = i + 1; j < dstpoints.size(); j ++)
-      for(int k = j + 1; k < dstpoints.size(); k ++) {
-        if(isSameLine2<T>(dst[dstpoints[i]], dst[dstpoints[j]], dst[dstpoints[k]]))
-          continue;
-        Eigen::Matrix<T, 4, 4> dc;
-        auto g((dst[dstpoints[i]] +
-                dst[dstpoints[j]] +
-                dst[dstpoints[k]]) / T(3));
-        int idxs[3];
-        idxs[0] = i;
-        idxs[1] = j;
-        idxs[2] = k;
-        for(int l = 0; l < 3; l ++) {
-          dc(l, 0) = T(1);
-          dc(l, 1) = dst[dstpoints[idxs[l]]][0] - g[0];
-          dc(l, 2) = dst[dstpoints[idxs[l]]][1] - g[1];
-          dc(l, 3) = dc(l, 1) * dc(l, 1) + dc(l, 2) * dc(l, 2);
-        }
-        dc(3, 0) = T(1);
-        int cw(clockwise<T>(dst[dstpoints[i]] - g,
-                            dst[dstpoints[j]] - g,
-                            dst[dstpoints[k]] - g, epsilon));
-        bool flag(true);
-        for(int l = 0; l < dstpoints.size(); l ++) {
-          dc(3, 1) = dst[dstpoints[l]][0] - g[0];
-          dc(3, 2) = dst[dstpoints[l]][1] - g[1];
-          dc(3, 3) = dc(3, 1) * dc(3, 1) + dc(3, 2) * dc(3, 2);
-          // if one of them not meets delaunay or inside triangle, break;
-          if(cw * dc.determinant() < - epsilon ||
-             (tilt.sameSide2(dst[dstpoints[i]],
-                             dst[dstpoints[j]],
-                             dst[dstpoints[k]],
-                             dst[dstpoints[l]], false) &&
-              tilt.sameSide2(dst[dstpoints[j]],
-                             dst[dstpoints[k]],
-                             dst[dstpoints[i]],
-                             dst[dstpoints[l]], false) &&
-              tilt.sameSide2(dst[dstpoints[k]],
-                             dst[dstpoints[i]],
-                             dst[dstpoints[j]],
-                             dst[dstpoints[l]], false)) ) {
-            flag = false;
-            break;
+    for(int i = 0; i < dstpoints.size(); i ++) {
+      cerr << "." << flush;
+      for(int j = i + 1; j < dstpoints.size(); j ++)
+        for(int k = j + 1; k < dstpoints.size(); k ++) {
+          if(isSameLine2<T>(dst[dstpoints[i]], dst[dstpoints[j]], dst[dstpoints[k]]))
+            continue;
+          Eigen::Matrix<T, 4, 4> dc;
+          auto g((dst[dstpoints[i]] +
+                  dst[dstpoints[j]] +
+                  dst[dstpoints[k]]) / T(3));
+          int idxs[3];
+          idxs[0] = i;
+          idxs[1] = j;
+          idxs[2] = k;
+          for(int l = 0; l < 3; l ++) {
+            dc(l, 0) = T(1);
+            dc(l, 1) = dst[dstpoints[idxs[l]]][0] - g[0];
+            dc(l, 2) = dst[dstpoints[idxs[l]]][1] - g[1];
+            dc(l, 3) = dc(l, 1) * dc(l, 1) + dc(l, 2) * dc(l, 2);
           }
-        }
-        if(flag) {
-          Eigen::Matrix<int, 3, 1> idx;
-          idx[0] = i;
-          if(cw < 0) {
-            idx[1] = k;
-            idx[2] = j;
-          } else {
-            idx[1] = j;
-            idx[2] = k;
+          dc(3, 0) = T(1);
+          int cw(clockwise<T>(dst[dstpoints[i]] - g,
+                              dst[dstpoints[j]] - g,
+                              dst[dstpoints[k]] - g, epsilon));
+          bool flag(true);
+          for(int l = 0; l < dstpoints.size(); l ++) {
+            dc(3, 1) = dst[dstpoints[l]][0] - g[0];
+            dc(3, 2) = dst[dstpoints[l]][1] - g[1];
+            dc(3, 3) = dc(3, 1) * dc(3, 1) + dc(3, 2) * dc(3, 2);
+            // if one of them not meets delaunay or inside triangle, break;
+            if(cw * dc.determinant() < - epsilon ||
+               (tilt.sameSide2(dst[dstpoints[i]],
+                               dst[dstpoints[j]],
+                               dst[dstpoints[k]],
+                               dst[dstpoints[l]], false) &&
+                tilt.sameSide2(dst[dstpoints[j]],
+                               dst[dstpoints[k]],
+                               dst[dstpoints[i]],
+                               dst[dstpoints[l]], false) &&
+                tilt.sameSide2(dst[dstpoints[k]],
+                               dst[dstpoints[i]],
+                               dst[dstpoints[j]],
+                               dst[dstpoints[l]], false)) ) {
+              flag = false;
+              break;
+            }
           }
+          if(flag) {
+            Eigen::Matrix<int, 3, 1> idx;
+            idx[0] = i;
+            if(cw < 0) {
+              idx[1] = k;
+              idx[2] = j;
+            } else {
+              idx[1] = j;
+              idx[2] = k;
+            }
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-          {
-            for(int i = 0; i < res.size(); i ++)
-              for(int j = 0; j < res[i].size(); j ++)
-                for(int k = 0; k < idx.size(); k ++)
-                  if(isCrossing(dst[dstpoints[res[i][(j + 0) % 3]]],
-                                dst[dstpoints[res[i][(j + 1) % 3]]],
-                                dst[dstpoints[idx[(k + 0) % 3]]],
-                                dst[dstpoints[idx[(k + 1) % 3]]]))
-                    goto fixnext;
-            res.push_back(idx);
-           fixnext:
-            ;
+            {
+              for(int i = 0; i < res.size(); i ++)
+                for(int j = 0; j < res[i].size(); j ++)
+                  for(int k = 0; k < idx.size(); k ++)
+                    if(isCrossing(dst[dstpoints[res[i][(j + 0) % 3]]],
+                                  dst[dstpoints[res[i][(j + 1) % 3]]],
+                                  dst[dstpoints[idx[(k + 0) % 3]]],
+                                  dst[dstpoints[idx[(k + 1) % 3]]]))
+                      goto fixnext;
+              res.push_back(idx);
+             fixnext:
+              ;
+            }
           }
         }
       }
