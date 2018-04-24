@@ -106,8 +106,8 @@ These program's match and match3d assumes one of vertices is full and another is
 
 # Specification
 PseudoBump generates the bumpmap that is pseudo plausible one because of one image condition.  
-This is avoidable on very wide case with multiple camera conditions,
-if it fails, the image resolution or color depth resolution lacks.
+This is avoidable on very wide cases with multiple camera conditions,
+if it fails, the image resolution or color depth resolution lacks, or, because of scattering or fog things.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
