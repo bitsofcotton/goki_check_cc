@@ -105,7 +105,9 @@ These program's match3d assumes input file as a bump map and .obj 3d file.
 These program's match and match3d assumes one of vertices is full and another is lowPoly.
 
 # Specification
-PseudoBump generates the bumpmap that is pseudo plausible one.
+PseudoBump generates the bumpmap that is pseudo plausible one because of one image condition.  
+This is avoidable on very wide case with multiple camera conditions,
+if it fails, the image resolution or color depth resolution lacks.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
