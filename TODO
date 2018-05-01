@@ -1,5 +1,3 @@
-Faster implementation for delaunay.
 Rotated match with input/output.
-Various emphasis methods.
-Around dictionaries.
+Stabilize and speed up and refactor around matching/emphasising.
 

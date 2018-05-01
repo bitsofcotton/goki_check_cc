@@ -236,7 +236,7 @@ int main(int argc, const char* argv[]) {
       bump.getPseudoVec(bump0, shape0, sute, vbox);
       bump.getPseudoVec(bump1, shape1, sute, vbox);
       matchPartialPartial<double> statmatch;
-      auto matches(statmatch.match(shape0, shape1));
+      const auto matches(statmatch.match(shape0, shape1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
@@ -269,7 +269,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         zero[i] = bump * double(0);
       matchPartialPartial<double> statmatch;
-      auto matches(statmatch.match(shape, datapoly));
+      const auto matches(statmatch.match(shape, datapoly));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         std::vector<Eigen::Matrix<double, 3, 1> > mdatapoly;
@@ -279,14 +279,79 @@ int main(int argc, const char* argv[]) {
         match.offset *= double(0);
         match.rot    *= match.rot.transpose();
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
+        
+        reDig<double> redig;
+        const auto hsrc(redig.delaunay2(shape, match.srcpoints));
+        const auto hdst(match.hull(match.dstpoints, match.reverseHull(match.srcpoints, hsrc)));
+        const auto dp2(redig.takeShape(mdatapoly, shape, ~ match, hdst, hsrc, double(2)));
+        saveobj(dp2, polynorms, (std::string(argv[3]) + std::to_string(n + 1) + std::string(".obj")).c_str());;
       }
     }
     return 0;
   case 11:
     {
       // 2d - 2d match with hidden 3d model.
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3], bdata[3], bdata1[3], mout[3], bump1;
+      std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
+      std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
+      if(!loadp2or3<double>(data1, argv[4]))
+        return - 2;
+      if(!loadp2or3<double>(bdata, argv[5]))
+        return - 2;
+      if(!loadp2or3<double>(bdata1, argv[6]))
+        return - 2;
+      if(!loadobj<double>(datapoly, polynorms, argv[7]))
+        return - 2;
+      if(datapoly.size() > Mpoly) {
+        std::cerr << "Too many vertices." << std::endl;
+        return - 2;
+      }
+      std::vector<double> emph;
+      for(int i = 0; i <= nemph; i ++)
+        emph.push_back(double(i) / nemph);
+      bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
+      for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
+        for(int j = 0; j < min(mout[0].cols(), data1[0].cols()); j ++) {
+          mout[0](i, j) = data1[0](i, j);
+          mout[1](i, j) = data1[1](i, j);
+          mout[2](i, j) = data1[2](i, j);
+          bump1(i, j)   = bdata1[0](i, j);
+        }
+        for(int j = min(mout[0].cols(), data1[0].cols()); j < mout[0].cols(); j ++)
+          bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+      }
+      for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
+        for(int j = 0; j < mout[0].cols(); j ++)
+          bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+      PseudoBump<double> bump;
+      std::vector<Eigen::Matrix<int,    3, 1> > sute;
+      std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
+      auto& bump0(bdata[0]);
+      bump.getPseudoVec(bump0, shape0, sute, vbox);
+      bump.getPseudoVec(bump1, shape1, sute, vbox);
+      matchPartialPartial<double> statmatch;
+      const auto match0(statmatch.match(shape0, datapoly));
+      const auto match1(statmatch.match(shape1, datapoly));
+      for(int n = 0; n < min(int(match0.size()), nshow); n ++)
+        for(int m = 0; m < min(int(match1.size()), nshow); m ++) {
+          match_t<double> relmatch;
+          relmatch.rot    = match0[n].rot    * match1[m].rot.transpose();
+          relmatch.ratio  = match0[n].ratio  / match1[m].ratio;
+          relmatch.offset = match0[n].offset - relmatch.rot * relmatch.ratio * match1[m].offset;
+          relmatch.rdepth = match0[n].rdepth + match1[m].rdepth;
+          relmatch.dstpoints = vector<int>();
+          relmatch.srcpoints = vector<int>();
+          for(int i = 0; i < match0[n].srcpoints.size(); i ++)
+            for(int j = 0; j < match1[m].srcpoints.size(); j ++)
+              if(match0[n].srcpoints[i] == match1[m].srcpoints[j]) {
+                relmatch.dstpoints.push_back(match0[n].dstpoints[i]);
+                relmatch.srcpoints.push_back(match1[m].dstpoints[j]);
+              }
+          std::cerr << "(" << n << ", " << m << ") / (" << match0.size() << ", " << match1.size() << ") : (" << relmatch.rdepth << ", " << relmatch.ratio << ")" << endl;
+          saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), relmatch, shape0, shape1, data, mout, bump0, bump1, emph);
+        }
     }
-    break;
+    return 0;
   case 12:
     {
       // maskobj.
