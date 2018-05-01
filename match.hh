@@ -311,7 +311,6 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
     work.rdepth += shapek.dot(shapek);
   }
   work.ratio     = num / denom;
-  // XXX configure me:
   work.rdepth    = num / sqrt(denom * work.rdepth) / work.dstpoints.size();
   work.offset[0] = T(0);
   work.offset[1] = T(0);
@@ -501,7 +500,7 @@ public:
   Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio, tilter<T>& tilt);
   Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc);
   Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc);
-  bool takeShape(vector<Vec3>& dstpoints, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
+  vector<Vec3>  takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(.2));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
@@ -613,20 +612,31 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return result;
 }
 
-template <typename T> bool reDig<T>::takeShape(vector<Vec3>& dstpoints, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio) {
-  bool* checked = new bool[hull.size() * 3];
-  for(int i = 0; i < hull.size() * 3; i ++)
+template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
+  assert(hulldst.size() == hullsrc.size());
+  bool* checked = new bool[hullsrc.size() * 3];
+  for(int i = 0; i < hullsrc.size() * 3; i ++)
     checked[i] = false;
-  dstpoints = dst;
-  for(int i = 0; i < hull.size(); i ++)
-    for(int j = 0; j < 3; j ++) if(!checked[j + i * 3]) {
-      const auto diff(dst[match.dstpoints[hull[i][j]]] -
-                      match.transform(src[match.srcpoints[hull[i][j]]]));
-      dstpoints[match.dstpoints[hull[i][j]]] -= diff * ratio;
-      checked[j + i * 3] = true;
+  vector<Vec3> result(dst);
+  tilter<T> tilt;
+  for(int i = 0; i < hullsrc.size(); i ++) {
+    const auto p0(match.transform(src[hullsrc[i][0]]));
+    const auto p1(match.transform(src[hullsrc[i][1]]));
+    const auto p2(match.transform(src[hullsrc[i][2]]));
+    for(int j = 0; j < 3; j ++) {
+      const auto& q(dst[hulldst[i][j]]);
+      if(!checked[i * 3 + j] &&
+         tilt.sameSide2(p0, p1, p2, q) &&
+         tilt.sameSide2(p1, p2, p0, q) &&
+         tilt.sameSide2(p2, p0, p1, q)) {
+        const auto diff(dst[hulldst[i][j]] - match.transform(src[hullsrc[i][j]]));
+        result[hulldst[i][j]] += diff * ratio;
+        checked[i * 3 + j] = true;
+      }
     }
+  }
   delete[] checked;
-  return true;
+  return result;
 }
 
 template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph) {
@@ -694,10 +704,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   assert(orig.rows() == ref.rows() && orig.cols() == ref.cols());
   Mat result(orig.rows(), orig.cols());
   for(int i = 0; i < ref.rows() * ref.cols(); i ++) {
-    const int ly(i % orig.rows());
-    const int lx(i / orig.rows());
+    const int ly(i % ref.rows());
+    const int lx(i / ref.rows());
     const int v(ref(ly, lx) - start);
-    if(T(0) <= v && v < orig.rows() * orig.cols())
+    if(0 <= v && v < orig.rows() * orig.cols())
       result(ly, lx) = orig(v % orig.rows(), v / orig.rows());
     else
       result(ly, lx) = T(0);
