@@ -30,7 +30,6 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   // generated bump map is inverted.
   tilt.initialize(- sqrt(double(bump1.rows() * bump1.cols())) / double(6));
   
-  auto hull(loadBumpSimpleMesh<T>(shape0, match.dstpoints));
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs[3];
   
   Eigen::Matrix<double, 3, 3> I3;
@@ -40,16 +39,8 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
       I3(i, j) = (i == j ? double(1) : double(0));
   zero3[0] = zero3[1] = zero3[2] = double(0);
   
-  std::vector<Eigen::Matrix<int, 3, 1> > mhull0, mhull1;
-  for(int idx = 0; idx < hull.size(); idx ++) {
-    Eigen::Matrix<int, 3, 1> buf;
-    for(int idx2 = 0; idx2 < hull[idx].size(); idx2 ++)
-      buf[idx2] = match.dstpoints[hull[idx][idx2]];
-    mhull0.push_back(buf);
-    for(int idx2 = 0; idx2 < hull[idx].size(); idx2 ++)
-      buf[idx2] = match.srcpoints[hull[idx][idx2]];
-    mhull1.push_back(buf);
-  }
+  const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
+  const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> sin1[3];
   for(int idx = 0; idx < 3; idx ++) {
@@ -67,13 +58,16 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   savep2or3<T>(outfile.c_str(), outs, false);
   
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in0[idx], shape1, match, hull);
+    outs[idx] = redig.replace(in0[idx], shape1, match, mhull1);
   outfile = outbase + std::string("-repl.ppm");
   savep2or3<T>(outfile.c_str(), outs, false);
   
+  const auto rin0(redig.makeRefMatrix(in0[0], 1));
+  const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
   for(int kk = 0; kk < emph.size(); kk ++) {
-    for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = redig.emphasis(in0[idx], sin1[idx], bump1, shape0, shape1, match, hull, emph[kk], tilt);
+    const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1, match, mhull0, mhull1, emph[kk], tilt));
+    for(int idx = 0; idx < 3; idx ++) 
+      outs[idx] = (in0[idx] + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), sin1[idx])) / T(2);
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     savep2or3<T>(outfile.c_str(), outs, false);
   }
@@ -122,8 +116,12 @@ int main(int argc, const char* argv[]) {
     {
       // enlarge.
       enlarger2ex<double> enlarger;
-      for(int i = 0; i < 3; i ++)
-        data[i] = enlarger.compute(data[i], enlarger.ENLARGE_BOTH);
+      for(int i = 0; i < 3; i ++) {
+        data[i] = double(2) * enlarger.compute(data[i], enlarger.ENLARGE_BOTH);
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++)
+            data[i](j, k) = std::min(std::max(0., data[i](j, k)), 1.);
+      } 
     }
     break;
   case 4:

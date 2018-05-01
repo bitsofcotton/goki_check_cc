@@ -92,8 +92,9 @@ template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::solveN(const Vec3& p, co
   n[0] =   (pq[1] * pr[2] - pq[2] * pr[1]);
   n[1] = - (pq[0] * pr[2] - pq[2] * pr[0]);
   n[2] =   (pq[0] * pr[1] - pq[1] * pr[0]);
-  assert(n.dot(n) > 0);
-  return n / sqrt(n.dot(n));
+  if(n.dot(n) > 0)
+    return n / sqrt(n.dot(n));
+  return n;
 }
 
 template <typename T> Eigen::Matrix<T, 3, 5> tilter<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {

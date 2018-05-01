@@ -33,6 +33,7 @@ using std::endl;
 using std::flush;
 using std::vector;
 using std::lower_bound;
+using std::upper_bound;
 using std::distance;
 using std::sort;
 using std::unique;
@@ -114,6 +115,64 @@ public:
     thresh     = other.thresh;
     threshsize = other.threshsize;
     return *this;
+  }
+  vector<int> ptr(const vector<int>& orig, const vector<int>& p) const {
+    vector<int> res;
+    res.reserve(p.size());
+    for(int i = 0; i < p.size(); i ++)
+      if(0 <= p[i] && p[i] < orig.size())
+        res.push_back(orig[p[i]]);
+      else
+        res.push_back(- 1);
+    return res;
+  }
+  vector<int> reversePtr(const vector<int>& orig, const vector<int>& p) const {
+    vector<int> res;
+    res.reserve(p.size());
+    for(int i = 0; i < p.size(); i ++) {
+      int j0(- 1);
+      for(int j = 0; j < orig.size(); j ++)
+        if(orig[j] == p[i]) {
+          j0 = j;
+          break;
+        }
+      res.push_back(j0);
+    }
+    return res;
+  }
+  vector<Eigen::Matrix<int, 3, 1> > hull(const vector<int>& orig, const vector<Eigen::Matrix<int, 3, 1> >& p) const {
+    vector<Eigen::Matrix<int, 3, 1> > res;
+    vector<int> work;
+    res.reserve(p.size());
+    work.reserve(p.size() * 3);
+    for(int i = 0; i < p.size(); i ++)
+      for(int j = 0; j < 3; j ++)
+        work.push_back(p[i][j]);
+    work = ptr(orig, work);
+    for(int i = 0; i < p.size(); i ++) {
+      Eigen::Matrix<int, 3, 1> tmp;
+      for(int j = 0; j < 3; j ++)
+        tmp[j] = work[i * 3 + j];
+      res.push_back(tmp);
+    }
+    return res;
+  }
+  vector<Eigen::Matrix<int, 3, 1> > reverseHull(const vector<int>& orig, const vector<Eigen::Matrix<int, 3, 1> >& p) const {
+    vector<Eigen::Matrix<int, 3, 1> > res;
+    vector<int> work;
+    res.reserve(p.size());
+    work.reserve(p.size() * 3);
+    for(int i = 0; i < p.size(); i ++)
+      for(int j = 0; j < 3; j ++)
+        work.push_back(p[i][j]);
+    work = reversePtr(orig, work);
+    for(int i = 0; i < p.size(); i ++) {
+      Eigen::Matrix<int, 3, 1> tmp;
+      for(int j = 0; j < 3; j ++)
+        tmp[j] = work[i * 3 + j];
+      res.push_back(tmp);
+    }
+    return res;
   }
   Eigen::Matrix<T, 3, 1> transform(const Eigen::Matrix<T, 3, 1>& x) const {
     return rot * x * ratio + offset;
@@ -424,6 +483,10 @@ template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(c
 }
 
 
+template <typename T> bool less0(const T& x, const T& y) {
+  return x.first[0] < y.first[0] || (x.first[0] == y.first[0] && x.first[1] < y.first[1]);
+}
+
 template <typename T> class reDig {
 public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
@@ -435,15 +498,20 @@ public:
   reDig();
   ~reDig();
   void init();
-  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio, tilter<T>& tilt);
-  Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull);
-  Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull);
+  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio, tilter<T>& tilt);
+  Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc);
+  Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc);
   bool takeShape(vector<Vec3>& dstpoints, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(.2));
+  Mat  makeRefMatrix(const Mat& orig, const int& start) const;
+  Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
+  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1e-5), const int& mdiv = 300) const;
   
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
   void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
+  bool isDelaunay2(T& cw, const Vec3 p[4], const T& epsilon) const;
+  bool isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1, const T& err = T(1e-4)) const;
 };
 
 template <typename T> reDig<T>::reDig() {
@@ -458,14 +526,17 @@ template <typename T> void reDig<T>::init() {
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Eigen::Matrix<int, 3, 1> >& hull, const T& ratio, tilter<T>& tilt) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio, tilter<T>& tilt) {
   cerr << "m" << flush;
+  assert(hulldst.size() == hullsrc.size());
   vector<typename tilter<T>::Triangles> triangles;
   triangles.reserve((srcimg.rows() - 1) * (srcimg.cols() - 1) * 2);
   for(int i = 0; i < srcimg.rows() - 1; i ++)
     for(int j = 0; j < srcimg.cols() - 1; j ++) {
       triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, false));
+      triangles[triangles.size() - 1](0, 3) = srcimg(i, j);
       triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, true));
+      triangles[triangles.size() - 1](0, 3) = srcimg(i, j);
     }
   
   bool *checked;
@@ -473,21 +544,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   for(int i = 0; i < triangles.size() * 3; i ++)
     checked[i] = false;
   
-  cerr << "e(" << hull.size() << ")" << endl;
+  cerr << "e(" << hulldst.size() << ")" << endl;
   const auto rmatch(~ match);
-  for(int ii = 0; ii < hull.size(); ii ++) {
-    const int& i(hull[ii][0]);
-    const int& j(hull[ii][1]);
-    const int& k(hull[ii][2]);
-    const Vec3 p0(rmatch.transform(dst[match.dstpoints[i]]));
-    const Vec3 p1(rmatch.transform(dst[match.dstpoints[j]]));
-    const Vec3 p2(rmatch.transform(dst[match.dstpoints[k]]));
-    const Vec3 src0((src[match.srcpoints[i]] +
-                     src[match.srcpoints[j]] +
-                     src[match.srcpoints[k]]) / T(3));
-    const Vec3 dst0((dst[match.dstpoints[i]] +
-                     dst[match.dstpoints[j]] +
-                     dst[match.dstpoints[k]]) / T(3));
+  for(int i = 0; i < hulldst.size(); i ++) {
+    const Vec3 p0(rmatch.transform(dst[hulldst[i][0]]));
+    const Vec3 p1(rmatch.transform(dst[hulldst[i][1]]));
+    const Vec3 p2(rmatch.transform(dst[hulldst[i][2]]));
+    const Vec3 src0((src[hullsrc[i][0]] +
+                     src[hullsrc[i][1]] +
+                     src[hullsrc[i][2]]) / T(3));
+    const Vec3 dst0((dst[hulldst[i][0]] +
+                     dst[hulldst[i][1]] +
+                     dst[hulldst[i][2]]) / T(3));
     for(int l = 0; l < triangles.size(); l ++)
       for(int ll = 0; ll < 3; ll ++) {
         const Vec3& q(triangles[l].col(ll));
@@ -502,8 +570,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   }
   delete[] checked;
   
-  for(int i = 0; i < triangles.size(); i ++)
-    triangles[i](1, 3) = triangles[i].col(4).dot(triangles[i].col(0));
+  for(int i = 0; i < triangles.size(); i ++) {
+    triangles[i].col(4) = tilt.solveN(triangles[i].col(0), triangles[i].col(1), triangles[i].col(2));
+    triangles[i](1, 3)  = triangles[i].col(4).dot(triangles[i].col(0));
+  }
   Mat I3(3, 3);
   Vec zero3(3);
   for(int i = 0; i < 3; i ++) {
@@ -511,10 +581,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       I3(i, j) = (i == j ? T(1) : T(0));
     zero3[i] = T(0);
   }
-  return (dstimg + tilt.tiltsub(dstimg, triangles, match.rot, I3, zero3, match.offset, match.ratio)) / T(2);
+  return tilt.tiltsub(dstimg, triangles, match.rot, I3, zero3, match.offset, match.ratio);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc) {
   Mat result(dstimg);
   vector<Vec3> tsrc;
   T            M(0);
@@ -530,14 +600,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   if(M - m != T(0))
     for(int i = 0; i < tsrc.size(); i ++)
       tsrc[i][2] = (tsrc[i][2] - m) / (M - m);
-  for(int ii = 0; ii < hull.size(); ii ++)
-    drawMatchTriangle(result, tsrc[match.srcpoints[hull[ii][0]]],
-                              tsrc[match.srcpoints[hull[ii][1]]],
-                              tsrc[match.srcpoints[hull[ii][2]]]);
+  for(int ii = 0; ii < hullsrc.size(); ii ++)
+    drawMatchTriangle(result, tsrc[hullsrc[ii][0]],
+                              tsrc[hullsrc[ii][1]],
+                              tsrc[hullsrc[ii][2]]);
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hull) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc) {
   Mat result(dstimg);
   // stub.
   return result;
@@ -611,6 +681,232 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     drawMatchLine(map, dst[hull[k][2]], dst[hull[k][0]], emph);
   }
   return dstimg + map;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::makeRefMatrix(const Mat& orig, const int& start) const {
+  Mat result(orig.rows(), orig.cols());
+  for(int i = 0; i < orig.rows() * orig.cols(); i ++)
+    result(i % orig.rows(), i / orig.rows()) = i + start;
+  return result;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const {
+  assert(orig.rows() == ref.rows() && orig.cols() == ref.cols());
+  Mat result(orig.rows(), orig.cols());
+  for(int i = 0; i < ref.rows() * ref.cols(); i ++) {
+    const int ly(i % orig.rows());
+    const int lx(i / orig.rows());
+    const int v(ref(ly, lx) - start);
+    if(T(0) <= v && v < orig.rows() * orig.cols())
+      result(ly, lx) = orig(v % orig.rows(), v / orig.rows());
+    else
+      result(ly, lx) = T(0);
+  }
+  return result;
+}
+
+template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon, const int& mdiv) const {
+  vector<Veci3> res;
+  tilter<T> tilt;
+  cerr << pp.size() << ":" << flush;
+  if(pp.size() > mdiv) {
+    vector<pair<Vec3, int> > div;
+    for(int i = 0; i < pp.size(); i ++)
+      div.push_back(make_pair(p[pp[i]], pp[i]));
+    sort(div.begin(), div.end(), less0<pair<Vec3, int> >);
+    vector<int> lo, mid, hi;
+    lo.reserve( div.size() / 2);
+    mid.reserve(div.size() / 2);
+    hi.reserve( div.size() / 2);
+    for(int i = 0; i < div.size() / 2; i ++)
+      lo.push_back(div[i].second);
+    for(int i = div.size() / 4; i < div.size() * 3 / 4; i ++)
+      mid.push_back(div[i].second);
+    for(int i = div.size() / 2; i < div.size(); i ++)
+      hi.push_back(div[i].second);
+    const auto left(  delaunay2(p, lo,  epsilon));
+    const auto middle(delaunay2(p, mid, epsilon));
+    const auto right( delaunay2(p, hi,  epsilon));
+    vector<Veci3> work;
+    work.reserve(left.size() + right.size());
+    res.reserve(middle.size());
+    for(int i = 0; i < left.size(); i ++) {
+      for(int ii = 0; ii < 3; ii ++) {
+        const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[left[i][ii]], left[i][ii]), less0<pair<Vec3, int> >));
+        if(itr != div.end() && itr->second == left[i][ii] &&
+           div.size() * 3 / 8 < distance(div.begin(), itr) < div.size())
+          goto nextl;
+      }
+      work.push_back(left[i]);
+     nextl:
+      ;
+    }
+    for(int i = 0; i < right.size(); i ++) {
+      for(int ii = 0; ii < 3; ii ++) {
+        const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[right[i][ii]], right[i][ii]), less0<pair<Vec3, int> >));
+        if(itr != div.end() && itr->second == right[i][ii] &&
+           distance(div.begin(), itr) < div.size() * 5 / 8)
+          goto nextr;
+      }
+      work.push_back(right[i]);
+     nextr:
+      ;
+    }
+    for(int i = 0; i < middle.size(); i ++) {
+      for(int ii = 0; ii < 3; ii ++) {
+        const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[middle[i][ii]], middle[i][ii]), less0<pair<Vec3, int> >));
+        if(itr != div.end() && itr->second == middle[i][ii] &&
+           (distance(div.begin(), itr) < div.size() * 3 / 8 ||
+            div.size() * 5 / 8 < distance(div.begin(), itr) ) )
+          goto next;
+      }
+      res.push_back(middle[i]);
+     next:
+      ;
+    }
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+    for(int ii = 0; ii < work.size(); ii ++) {
+      const int& i(work[ii][0]);
+      const int& j(work[ii][1]);
+      const int& k(work[ii][2]);
+      T cw;
+      Eigen::Matrix<int, 3, 1> idx;
+      Vec3 q[4];
+      for(int jj = 0; jj < middle.size(); jj ++)
+        for(int i0 = 0; i0 < 3; i0 ++) {
+          for(int j0 = 0; j0 < 3; j0 ++)
+            if(isCrossing(p[work[ii][ i0      % 3]],
+                          p[work[ii][(i0 + 1) % 3]],
+                          p[middle[jj][ j0      % 3]],
+                          p[middle[jj][(j0 + 1) % 3]]))
+              goto fixnext0;
+          if(tilt.sameSide2(p[middle[jj][0]], p[middle[jj][1]], p[middle[jj][2]], p[work[ii][i0]], false) &&
+             tilt.sameSide2(p[middle[jj][1]], p[middle[jj][2]], p[middle[jj][0]], p[work[ii][i0]], false) &&
+             tilt.sameSide2(p[middle[jj][2]], p[middle[jj][0]], p[middle[jj][1]], p[work[ii][i0]], false) )
+            goto fixnext0;
+        }
+      q[0] = p[i]; q[1] = p[j]; q[2] = p[k];
+      q[3] = p[middle[0][0]];
+      isDelaunay2(cw, q, epsilon);
+      idx[0] = i;
+      if(cw < 0) {
+        idx[1] = k;
+        idx[2] = j;
+      } else {
+        idx[1] = j;
+        idx[2] = k;
+      }
+#if defined(_OPENMP)
+#pragma omp atomic
+#endif
+      res.push_back(idx);
+     fixnext0:
+      ;
+    }
+  } else {
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+    for(int i = 0; i < pp.size(); i ++)
+      for(int j = i + 1; j < pp.size(); j ++)
+        for(int k = j + 1; k < pp.size(); k ++) {
+          T cw;
+          Eigen::Matrix<int, 3, 1> idx;
+          Vec3 q[4];
+          q[0] = p[pp[i]]; q[1] = p[pp[j]]; q[2] = p[pp[k]];
+          for(int l = 0; l < pp.size(); l ++) {
+            q[3] = p[pp[l]];
+            if(!isDelaunay2(cw, q, epsilon))
+              goto fixnext;
+          }
+          idx[0] = pp[i];
+          if(cw < 0) {
+            idx[1] = pp[k];
+            idx[2] = pp[j];
+          } else {
+            idx[1] = pp[j];
+            idx[2] = pp[k];
+          }
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+          {
+            for(int i = 0; i < res.size(); i ++)
+              for(int j = 0; j < res[i].size(); j ++)
+                for(int k = 0; k < idx.size(); k ++)
+                  if(isCrossing(p[res[i][(j + 0) % 3]],
+                                p[res[i][(j + 1) % 3]],
+                                p[idx[(k + 0) % 3]],
+                                p[idx[(k + 1) % 3]]))
+                    goto fixnext;
+            res.push_back(idx);
+          }
+         fixnext:
+          ;
+        }
+  }
+  return res;
+}
+
+template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T& epsilon) const {
+  // sameline?
+  Vec3 bcn(p[1] - p[2]);
+  bcn[2] = T(0);
+  Vec3 err(p[0]);
+  err[2] = T(0);
+  err   -= err.dot(bcn) * bcn / bcn.dot(bcn);
+  if(err.dot(err) <= epsilon)
+    return false;
+  Eigen::Matrix<T, 4, 4> dc;
+  const auto g((p[0] + p[1] + p[2]) / T(3));
+  for(int i = 0; i < 4; i ++) {
+    dc(i, 0) = T(1);
+    dc(i, 1) = p[i][0] - g[0];
+    dc(i, 2) = p[i][1] - g[1];
+    dc(i, 3) = dc(i, 1) * dc(i, 1) + dc(i, 2) * dc(i, 2);
+  }
+  Eigen::Matrix<T, 3, 3> dc0;
+  for(int i = 0; i < 3; i ++) {
+    dc0(i, 0) = T(1);
+    dc0(i, 1) = p[i][0] - g[0];
+    dc0(i, 2) = p[i][1] - g[1];
+  }
+  cw = dc0.determinant();
+  if(abs(cw) <= pow(epsilon, T(3)))
+    cw = T(0);
+  else if(cw < T(0))
+    cw = - T(1);
+  else if(T(0) < cw)
+    cw =   T(1);
+  tilter<T> tilt;
+  if(cw * dc.determinant() < - epsilon ||
+     (tilt.sameSide2(p[0], p[1], p[2], p[3], false) &&
+      tilt.sameSide2(p[1], p[2], p[0], p[3], false) &&
+      tilt.sameSide2(p[2], p[0], p[1], p[3], false)) )
+    return false;
+  return true;
+}
+
+template <typename T> bool reDig<T>::isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1, const T& err) const {
+  // t * p0 + (1 - t) * p1 == s * q0 + (1 - s) * q1
+  // <=> p1 + (p0 - p1) t == q1 + (q0 - q1) s
+  // <=> [(p0 - p1), (q1 - q0)][t, s] == q1 - p1.
+  // <=> Ax==b.
+  Eigen::Matrix<T, 2, 2> A;
+  Eigen::Matrix<T, 2, 1> b;
+  A(0, 0) = p0[0] - p1[0];
+  A(1, 0) = p0[1] - p1[1];
+  A(0, 1) = q1[0] - q0[0];
+  A(1, 1) = q1[1] - q0[1];
+  b[0]    = q1[0] - p1[0];
+  b[1]    = q1[1] - p1[1];
+  if(abs(A.determinant()) <= pow(err, T(2)))
+    return false;
+  auto x(A.inverse() * b);
+  return (err <= x[0] && x[0] <= T(1) - err) &&
+         (err <= x[1] && x[1] <= T(1) - err);
 }
 
 #define _SCAN_CONTEXT_
