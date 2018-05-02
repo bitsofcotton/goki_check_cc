@@ -283,7 +283,7 @@ int main(int argc, const char* argv[]) {
         reDig<double> redig;
         const auto hsrc(redig.delaunay2(shape, match.srcpoints));
         const auto hdst(match.hull(match.dstpoints, match.reverseHull(match.srcpoints, hsrc)));
-        const auto dp2(redig.takeShape(mdatapoly, shape, ~ match, hsrc, hdst, double(2)));
+        const auto dp2(redig.takeShape(mdatapoly, shape, ~ match, hsrc, hdst, double(1)));
         saveobj(dp2, polynorms, (std::string(argv[3]) + std::to_string(n + 1) + std::string(".obj")).c_str());;
       }
     }

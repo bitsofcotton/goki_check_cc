@@ -629,7 +629,7 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const 
          tilt.sameSide2(p0, p1, p2, q) &&
          tilt.sameSide2(p1, p2, p0, q) &&
          tilt.sameSide2(p2, p0, p1, q)) {
-        const auto diff(dst[hulldst[i][j]] - match.transform(src[hullsrc[i][j]]));
+        const auto diff(match.transform(src[hullsrc[i][j]]) - dst[hulldst[i][j]]);
         result[hulldst[i][j]] += diff * ratio;
         checked[i * 3 + j] = true;
       }
