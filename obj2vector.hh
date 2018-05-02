@@ -282,8 +282,10 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
       }
     }
     for(int i = 0; i < polys.size(); i ++)
-      for(int j = 0; j < polys[i].size(); j ++)
-        polys[i][j] = ((polys[i][j] % data.size()) + data.size()) % data.size();
+      for(int j = 0; j < polys[i].size(); j ++) {
+        while(polys[i][j] < 0) polys[i][j] += data.size();
+        polys[i][j] = polys[i][j] % data.size();
+      }
     input.close();
   } else {
     cerr << "Unable to open file: " << filename << endl;
