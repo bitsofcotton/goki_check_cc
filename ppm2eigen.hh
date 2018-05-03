@@ -43,6 +43,33 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> rgb2l(con
   return result;
 }
 
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilt45(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& in, const bool& invert, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& orig = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>()) {
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> res;
+  if(invert) {
+    assert(orig.rows() + orig.cols() == in.rows() &&
+           orig.rows() + orig.cols() == in.cols());
+    res = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(orig.rows(), orig.cols());
+    for(int i = 0; i < orig.rows(); i ++)
+      for(int j = 0; j < orig.cols(); j ++)
+        res(i, j) = in(i + j, orig.rows() - i + j);
+  } else {
+    res = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(in.rows() + in.cols(), in.cols() + in.rows());
+    for(int i = - in.rows(); i < 2 * in.rows(); i ++)
+      for(int j = - in.cols(); j < 2 * in.cols(); j ++) {
+              int y(i + j);
+        const int x(in.rows() - i + j);
+        if(0 <= y && y < res.rows() && 0 <= x && x < res.cols())
+          res(y, x) = in(abs(abs((i + in.rows()) % (2 * in.rows())) - in.rows()) % in.rows(),
+                         abs(abs((j + in.cols()) % (2 * in.cols())) - in.cols()) % in.cols());
+        y ++;
+        if(0 <= y && y < res.rows() && 0 <= x && x < res.cols())
+          res(y, x) = in(abs(abs((i + in.rows()) % (2 * in.rows())) - in.rows()) % in.rows(),
+                         abs(abs((j + in.cols()) % (2 * in.cols())) - in.cols()) % in.cols());
+      }
+  }
+  return res;
+}
+
 template <typename T> bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>* datas) {
   int i = 0, j = 0, k = 0;
   char buf;

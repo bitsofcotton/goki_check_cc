@@ -115,13 +115,21 @@ int main(int argc, const char* argv[]) {
   case 0:
     {
       // enlarge.
-      enlarger2ex<double> enlarger;
+      enlarger2ex<double> enlarger, denlarger;
+      std::vector<double> stat;
       for(int i = 0; i < 3; i ++) {
-        data[i] = double(2) * enlarger.compute(data[i], enlarger.ENLARGE_BOTH);
+        const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
+        data[i] = xye + tilt45(denlarger.compute(tilt45(data[i], false), enlarger.ENLARGE_BOTH), true, xye);
         for(int j = 0; j < data[i].rows(); j ++)
           for(int k = 0; k < data[i].cols(); k ++)
-            data[i](j, k) = std::min(std::max(0., data[i](j, k)), 1.);
-      } 
+            stat.push_back(data[i](j, k));
+      }
+      std::sort(stat.begin(), stat.end());
+      const int sauto((data[0].rows() + data[0].cols()) * 4 * 4);
+      for(int i = 0; i < 3; i ++)
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++)
+            data[i](j, k) = std::max(std::min(stat[stat.size() - sauto], data[i](j, k)), stat[sauto]);
     }
     break;
   case 4:
