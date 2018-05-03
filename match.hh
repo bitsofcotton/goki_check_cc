@@ -580,7 +580,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   }
   vector<typename tilter<T>::Triangles> wt;
   wt.reserve(triangles.size() - dups.size());
-  for(int i = 0; i < dups.size(); i ++)
+  for(int i = 0; i < triangles.size(); i ++)
     if(!binary_search(dups.begin(), dups.end(), i))
       wt.emplace_back(triangles[i]);
   triangles = wt;
