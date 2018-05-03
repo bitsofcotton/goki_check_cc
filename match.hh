@@ -311,7 +311,9 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
     work.rdepth += shapek.dot(shapek);
   }
   work.ratio     = num / denom;
-  work.rdepth    = num / sqrt(denom * work.rdepth) / work.dstpoints.size();
+  // XXX configure me:
+  work.rdepth    = num / sqrt(denom * work.rdepth);
+  // work.rdepth    = num / sqrt(denom * work.rdepth) / work.dstpoints.size();
   work.offset[0] = T(0);
   work.offset[1] = T(0);
   work.offset[2] = T(0);
@@ -569,10 +571,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   }
   delete[] checked;
   
+  vector<int> dups;
   for(int i = 0; i < triangles.size(); i ++) {
+    if(!(checked[i * 3 + 0] || checked[i * 3 + 1] || checked[i * 3 + 2]))
+      dups.push_back(i);
     triangles[i].col(4) = tilt.solveN(triangles[i].col(0), triangles[i].col(1), triangles[i].col(2));
     triangles[i](1, 3)  = triangles[i].col(4).dot(triangles[i].col(0));
   }
+  for(int i = 0; i < dups.size(); i ++)
+    triangles.erase(triangles.begin() + dups[i] - i);
   Mat I3(3, 3);
   Vec zero3(3);
   for(int i = 0; i < 3; i ++) {
