@@ -51,17 +51,13 @@ template <typename T> void maskVectors(vector<Eigen::Matrix<T, 3, 1> >& points, 
        std::binary_search(elim.begin(), elim.end(), polys[i][1]) ||
        std::binary_search(elim.begin(), elim.end(), polys[i][2]))
       elimp.push_back(i);
-  for(int i = 0, j = 0; i < elim.size(); i ++) {
-    points.erase(points.begin() + (elim[i] - j), points.begin() + (elim[i] - j + 1));
-    j ++;
-  }
+  for(int i = 0, j = 0; i < elim.size(); i ++)
+    points.erase(points.begin() + (elim[i] - i));
   for(int i = 0; i < polys.size(); i ++)
     for(int j = 0; j < polys[i].size(); j ++)
       polys[i][j] = after[polys[i][j]];
-  for(int i = 0, j = 0; i < elimp.size(); i ++) {
-    polys.erase(polys.begin() + (elimp[i] - j), polys.begin() + (elimp[i] - j + 1));
-    j ++;
-  }
+  for(int i = 0; i < elimp.size(); i ++)
+    polys.erase(polys.begin() + (elimp[i] - i));
   return;
 }
 
