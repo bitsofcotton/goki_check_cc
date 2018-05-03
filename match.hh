@@ -578,8 +578,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     triangles[i].col(4) = tilt.solveN(triangles[i].col(0), triangles[i].col(1), triangles[i].col(2));
     triangles[i](1, 3)  = triangles[i].col(4).dot(triangles[i].col(0));
   }
-  for(int i = 0; i < dups.size(); i ++)
-    triangles.erase(triangles.begin() + dups[i] - i);
+  vector<typename tilter<T>::Triangles> wt;
+  wt.reserve(triangles.size() - dups.size());
+  for(int i = 0; i < triangles.size(); i ++)
+    if(!binary_search(dups.begin(), dups.end(), i))
+      wt.emplace_back(triangles[i]);
+  triangles = wt;
   Mat I3(3, 3);
   Vec zero3(3);
   for(int i = 0; i < 3; i ++) {
