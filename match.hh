@@ -567,8 +567,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
         }
       }
   }
-  delete[] checked;
-  
   vector<int> dups;
   for(int i = 0; i < triangles.size(); i ++) {
     if(!(checked[i * 3 + 0] || checked[i * 3 + 1] || checked[i * 3 + 2]))
@@ -576,6 +574,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     triangles[i].col(4) = tilt.solveN(triangles[i].col(0), triangles[i].col(1), triangles[i].col(2));
     triangles[i](1, 3)  = triangles[i].col(4).dot(triangles[i].col(0));
   }
+  delete[] checked;
+  
   vector<typename tilter<T>::Triangles> wt;
   wt.reserve(triangles.size() - dups.size());
   for(int i = 0; i < triangles.size(); i ++)
