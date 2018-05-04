@@ -54,17 +54,41 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilt45(co
         res(i, j) = in(i + j, orig.rows() - i + j);
   } else {
     res = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(in.rows() + in.cols(), in.cols() + in.rows());
-    for(int i = - in.rows(); i < 2 * in.rows(); i ++)
-      for(int j = - in.cols(); j < 2 * in.cols(); j ++) {
-              int y(i + j);
+    for(int i = - in.rows() - in.cols(); i < 2 * in.rows() + in.cols(); i ++)
+      for(int j = - in.rows() - in.cols(); j < 2 * in.cols() + in.rows(); j ++) {
+        const int y(i + j);
         const int x(in.rows() - i + j);
         if(0 <= y && y < res.rows() && 0 <= x && x < res.cols())
           res(y, x) = in(abs(abs((i + in.rows()) % (2 * in.rows())) - in.rows()) % in.rows(),
                          abs(abs((j + in.cols()) % (2 * in.cols())) - in.cols()) % in.cols());
-        y ++;
-        if(0 <= y && y < res.rows() && 0 <= x && x < res.cols())
-          res(y, x) = in(abs(abs((i + in.rows()) % (2 * in.rows())) - in.rows()) % in.rows(),
-                         abs(abs((j + in.cols()) % (2 * in.cols())) - in.cols()) % in.cols());
+      }
+    for(int i = - in.rows() - in.cols(); i < 2 * in.rows() + in.cols(); i ++)
+      for(int j = - in.rows() - in.cols(); j < 2 * in.cols() + in.rows(); j ++) {
+        const int y(i + j + 1);
+        const int x(in.rows() - i + j);
+        if(!(0 <= y && y < res.rows() && 0 <= x && x < res.cols()))
+          continue;
+        int cnt(0);
+        T   sum(0);
+        const int y0(abs(abs((i + in.rows()) % (2 * in.rows())) - in.rows()) % in.rows());
+        const int x0(abs(abs((j + in.cols()) % (2 * in.cols())) - in.cols()) % in.cols());
+        if(0 <= y0 - 1) {
+          sum += in(y0 - 1, x0);
+          cnt ++;
+        }
+        if(0 <= x0 - 1) {
+          sum += in(y0, x0 - 1);
+          cnt ++;
+        }
+        if(y0 + 1 < in.rows()) {
+          sum += in(y0 + 1, x0);
+          cnt ++;
+        }
+        if(x0 + 1 < in.cols()) {
+          sum += in(y0, x0 + 1);
+          cnt ++;
+        }
+        res(y, x) = sum / cnt;
       }
   }
   return res;
