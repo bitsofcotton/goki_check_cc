@@ -554,9 +554,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     const Vec3 src0((src[hullsrc[i][0]] +
                      src[hullsrc[i][1]] +
                      src[hullsrc[i][2]]) / T(3));
-    const Vec3 dst0((dst[hulldst[i][0]] +
-                     dst[hulldst[i][1]] +
-                     dst[hulldst[i][2]]) / T(3));
+    const Vec3 dst0((p0 + p1 + p2) / T(3));
     for(int l = 0; l < triangles.size(); l ++)
       for(int ll = 0; ll < 3; ll ++) {
         const Vec3& q(triangles[l].col(ll));
@@ -564,7 +562,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
            tilt.sameSide2(p0, p1, p2, q) &&
            tilt.sameSide2(p1, p2, p0, q) &&
            tilt.sameSide2(p2, p0, p1, q)) {
-          triangles[l].col(ll) += (dst0 - match.transform(src0)) * ratio / match.ratio;
+          triangles[l].col(ll) += (dst0 - src0) * ratio / match.ratio;
           checked[l * 3 + ll] = true;
         }
       }
@@ -640,8 +638,7 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const 
          tilt.sameSide2(p0, p1, p2, q) &&
          tilt.sameSide2(p1, p2, p0, q) &&
          tilt.sameSide2(p2, p0, p1, q)) {
-        const auto diff(match.transform(src[hullsrc[i][j]]) - dst[hulldst[i][j]]);
-        result[hulldst[i][j]] += diff * ratio;
+        result[hulldst[i][j]] += (match.transform(src[hullsrc[i][j]]) - dst[hulldst[i][j]]) * ratio;
         checked[i * 3 + j] = true;
       }
     }
