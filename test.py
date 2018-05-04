@@ -3,6 +3,7 @@
 import os
 import sys
 import subprocess
+import numpy as np
 
 argv = sys.argv
 
@@ -29,8 +30,13 @@ if(argv[2] == "match"):
       subprocess.call([argv[1], "match2dh3d", root0 + ".ppm", "match3dh2dbase-" + root0 + root1 + os.path.splitext(argv[5])[0] + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
   exit(0)
 
+pixels = 4
 for line in argv[3:]:
-  root, ext = os.path.splitext(line)
+  try:
+    pixels = int(line)
+    continue
+  except:
+    root, ext = os.path.splitext(line)
   if(ext != ".ppm"):
     subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
   if(argv[2] == "col"):
@@ -65,4 +71,10 @@ for line in argv[3:]:
   elif(argv[2] == "64"):
     subprocess.call([argv[1], "bump2", root + ".ppm", root + "-bump64.ppm"])
     subprocess.call(["convert", "-resize", "128x", "-resize", "x128<", "-resize", "50%", "-gravity", "center", "-crop", "64x64+0+0", root + "-bump64.ppm", root + "-bump64e" + ".jpeg"])
+  elif(argv[2] == "demosaic"):
+    print pixels
+    subprocess.call(["convert", line, "-resize", str(int(100. / pixels * 100) / 100.) + "%", "-compress", "none", root + "-xsmall-0.ppm"])
+    for s in range(0, int(np.log(pixels) / np.log(1.5)) + 1):
+      subprocess.call([argv[1], "enlarge", root + "-xsmall-" + str(s) + ".ppm", root + "-xsmall-" + str(s + 1) + "-base.ppm"])
+      subprocess.call(["convert", root + "-xsmall-" + str(s + 1) + "-base.ppm", "-resize", "75%", "-unsharp", str(max(int(pow(1.5, s - 1)), 1)) + "+.75+0", "-compress", "none", root + "-xsmall-" + str(s + 1) + ".ppm"])
 

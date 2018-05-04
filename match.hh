@@ -582,7 +582,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   wt.reserve(triangles.size() - dups.size());
   for(int i = 0; i < triangles.size(); i ++)
     if(!binary_search(dups.begin(), dups.end(), i))
-      wt.emplace_back(triangles[i]);
+      wt.push_back(triangles[i]);
   triangles = wt;
   Mat I3(3, 3);
   Vec zero3(3);
