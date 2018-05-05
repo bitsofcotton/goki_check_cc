@@ -43,11 +43,11 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> sin1[3];
-  for(int idx = 0; idx < 3; idx ++) {
+  for(int idx = 0; idx < 3; idx ++)
     sin1[idx] = redig.showMatch(in1[idx], shape1, mhull1);
+  normalize<T>(sin1, 1.);
+  for(int idx = 0; idx < 3; idx ++)
     outs[idx] = tilt.tilt(sin1[idx], bump1, match.rot, I3, match.offset, match.ratio, zero3);
-  }
-  normalize<T>(outs, 1.);
   std::string outfile(outbase + std::string("-src.ppm"));
   savep2or3<T>(outfile.c_str(), outs, false);
   
@@ -244,7 +244,7 @@ int main(int argc, const char* argv[]) {
       bump.getPseudoVec(bump0, shape0, sute, vbox);
       bump.getPseudoVec(bump1, shape1, sute, vbox);
       matchPartialPartial<double> statmatch;
-      const auto matches(statmatch.match(shape0, shape1));
+      const auto matches(statmatch.elim(statmatch.match(shape0, shape1), rgb2xz(data), rgb2xz(mout), bump1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
@@ -340,24 +340,16 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<double> statmatch;
       const auto match0(statmatch.match(shape0, datapoly));
       const auto match1(statmatch.match(shape1, datapoly));
-      for(int n = 0; n < min(int(match0.size()), nshow); n ++)
-        for(int m = 0; m < min(int(match1.size()), nshow); m ++) {
-          match_t<double> relmatch;
-          relmatch.rot    = match0[n].rot    * match1[m].rot.transpose();
-          relmatch.ratio  = match0[n].ratio  / match1[m].ratio;
-          relmatch.offset = match0[n].offset - relmatch.rot * relmatch.ratio * match1[m].offset;
-          relmatch.rdepth = match0[n].rdepth + match1[m].rdepth;
-          relmatch.dstpoints = vector<int>();
-          relmatch.srcpoints = vector<int>();
-          for(int i = 0; i < match0[n].srcpoints.size(); i ++)
-            for(int j = 0; j < match1[m].srcpoints.size(); j ++)
-              if(match0[n].srcpoints[i] == match1[m].srcpoints[j]) {
-                relmatch.dstpoints.push_back(match0[n].dstpoints[i]);
-                relmatch.srcpoints.push_back(match1[m].dstpoints[j]);
-              }
-          std::cerr << "(" << n << ", " << m << ") / (" << match0.size() << ", " << match1.size() << ") : (" << relmatch.rdepth << ", " << relmatch.ratio << ")" << endl;
-          saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), relmatch, shape0, shape1, data, mout, bump0, bump1, emph);
-        }
+      std::vector<match_t<double> > matches;
+      for(int n = 0; n < match0.size(); n ++)
+        for(int m = 0; m < match1.size(); m ++)
+          matches.push_back(match0[n] / match1[m]);
+      matches = statmatch.elim(matches, rgb2xz(data), rgb2xz(mout), bump1);
+      for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
+        const auto& relmatch(matches[n]);
+        std::cerr << n << " / " << matches.size() << " : (" << relmatch.rdepth << ", " << relmatch.ratio << ")" << endl;
+        saveMatches<double>(std::string(argv[3]) + std::string("-") + std::to_string(n), relmatch, shape0, shape1, data, mout, bump0, bump1, emph);
+      }
     }
     return 0;
   case 12:
