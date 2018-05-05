@@ -475,7 +475,7 @@ template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, cons
   vector<T> diffs;
   for(int i = 0; i < tsrc.rows(); i ++)
     for(int j = 0; j < tsrc.cols(); j ++)
-      if(tsrc(i, j) <= T(0))
+      if(T(0) < tsrc(i, j))
         diffs.push_back(abs(tsrc(i, j) - dst(i, j)));
   sort(diffs.begin(), diffs.end());
   vector<T> ddiffs;
