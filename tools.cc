@@ -15,7 +15,7 @@ using namespace std;
 const int    nshow(4);
 const int    nshowh(16);
 const int    nemph(4);
-const int    vbox(4);
+const int    vbox(8);
 const int    M_TILT(32);
 const double psi(.95);
 const int    Mpoly(2000);

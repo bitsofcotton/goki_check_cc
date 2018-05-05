@@ -482,7 +482,7 @@ template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, cons
   for(int i = 1; i < diffs.size(); i ++)
     ddiffs.push_back(diffs[i] - diffs[i - 1]);
   sort(ddiffs.begin(), ddiffs.end());
-  const auto ub(distance(diffs.begin(), upper_bound(diffs.begin(), diffs.end(), thresh)));
+  const auto ub(distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh)));
   return T(ub) / ddiffs.size();
 }
 
