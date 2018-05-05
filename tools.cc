@@ -13,6 +13,7 @@ using namespace std;
 
 // XXX: configure me:
 const int    nshow(4);
+const int    nshowh(16);
 const int    nemph(4);
 const int    vbox(4);
 const int    M_TILT(32);
@@ -341,8 +342,8 @@ int main(int argc, const char* argv[]) {
       const auto match0(statmatch.match(shape0, datapoly));
       const auto match1(statmatch.match(shape1, datapoly));
       std::vector<match_t<double> > matches;
-      for(int n = 0; n < match0.size(); n ++)
-        for(int m = 0; m < match1.size(); m ++)
+      for(int n = 0; n < min(int(match0.size()), nshowh); n ++)
+        for(int m = 0; m < min(int(match1.size()), nshowh); m ++)
           matches.push_back(match0[n] / match1[m]);
       matches = statmatch.elim(matches, rgb2xz(data), rgb2xz(mout), bump1);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
