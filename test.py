@@ -20,14 +20,14 @@ if(argv[2] == "match"):
   if(ext0 != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
   if(ext1 == ".obj"):
-    subprocess.call([argv[1], "match3d", root0 + ".ppm", "match3dbase-" + root0 + "-" + root1 + "-", root1 + ".obj", root0 + "-bump.ppm"])
+    subprocess.call([argv[1], "match3d", root0 + ".ppm", "match3dbase-" + root0 + "-" + root1 + "-", root1 + ".obj", root0 + "-bump.ppm", root0 + "-mask.ppm"])
   else:
     if(ext1 != ".ppm"):
       subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
     if(len(argv) < 6):
-      subprocess.call([argv[1], "match", root0 + ".ppm", "matchbase-" + root0 + "-" + root1 + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm"])
+      subprocess.call([argv[1], "match", root0 + ".ppm", "matchbase-" + root0 + "-" + root1 + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm"])
     elif(os.path.splitext(argv[5])[1] == ".obj"):
-      subprocess.call([argv[1], "match2dh3d", root0 + ".ppm", "match3dh2dbase-" + root0 + root1 + os.path.splitext(argv[5])[0] + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
+      subprocess.call([argv[1], "match2dh3d", root0 + ".ppm", "match3dh2dbase-" + root0 + root1 + os.path.splitext(argv[5])[0] + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", argv[5]])
   exit(0)
 
 pixels = 4

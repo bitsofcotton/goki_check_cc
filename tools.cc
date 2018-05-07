@@ -214,36 +214,51 @@ int main(int argc, const char* argv[]) {
   case 9:
     {
       // 2d - 2d match with hidden calculated 3d.
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3], bdata[3], bdata1[3], mout[3], bump1;
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3], bdata[3], bdata1[3], mdata[3], mdata1[3], mout[3], mmout1, bump1;
       if(!loadp2or3<double>(data1, argv[4]))
         return - 2;
       if(!loadp2or3<double>(bdata, argv[5]))
         return - 2;
       if(!loadp2or3<double>(bdata1, argv[6]))
         return - 2;
+      if(!loadp2or3<double>(mdata, argv[7]))
+        return - 2;
+      if(!loadp2or3<double>(mdata1, argv[8]))
+        return - 2;
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph);
-      bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
+      mmout1 = bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
       for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
         for(int j = 0; j < min(mout[0].cols(), data1[0].cols()); j ++) {
           mout[0](i, j) = data1[0](i, j);
           mout[1](i, j) = data1[1](i, j);
           mout[2](i, j) = data1[2](i, j);
+          mmout1(i, j)  = mdata1[0](i, j);
           bump1(i, j)   = bdata1[0](i, j);
         }
         for(int j = min(mout[0].cols(), data1[0].cols()); j < mout[0].cols(); j ++)
-          bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+          mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
       }
       for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
         for(int j = 0; j < mout[0].cols(); j ++)
-          bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+          mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
       bump.getPseudoVec(bump0, shape0, sute, vbox);
       bump.getPseudoVec(bump1, shape1, sute, vbox);
+      std::vector<int> id0, id1;
+      for(int i = 0; i < shape0.size(); i ++)
+        id0.push_back(i);
+      for(int i = 0; i < shape1.size(); i ++)
+        id1.push_back(i);
+      reDig<double> redig;
+      auto delau0(redig.delaunay2(shape0, id0));
+      auto delau1(redig.delaunay2(shape1, id1));
+      maskVectors(shape0, delau0, mdata[0]);
+      maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
       const auto matches(statmatch.elim(statmatch.match(shape0, shape1), rgb2xz(data), rgb2xz(mout), bump1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
@@ -257,10 +272,12 @@ int main(int argc, const char* argv[]) {
       // 3d - 2d match.
       std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
       std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump0[3];
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump0[3], mask0[3];
       if(!loadobj<double>(datapoly, polynorms, argv[4]))
         return - 2;
       if(!loadp2or3<double>(bump0, argv[5]))
+        return - 2;
+      if(!loadp2or3<double>(mask0, argv[6]))
         return - 2;
       if(datapoly.size() > Mpoly) {
         std::cerr << "Too many vertices." << std::endl;
@@ -274,6 +291,12 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       auto& bump(bump0[0]);
       bumper.getPseudoVec(bump, shape, sute, vbox);
+      std::vector<int> id;
+      for(int i = 0; i < shape.size(); i ++)
+        id.push_back(i);
+      reDig<double> redig;
+      auto delau(redig.delaunay2(shape, id));
+      maskVectors(shape, delau, mask0[0]);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero[3];
       for(int i = 0; i < 3; i ++)
         zero[i] = bump * double(0);
@@ -300,7 +323,7 @@ int main(int argc, const char* argv[]) {
   case 11:
     {
       // 2d - 2d match with hidden 3d model.
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3], bdata[3], bdata1[3], mout[3], bump1;
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data1[3], bdata[3], bdata1[3], mdata[3], mdata1[3], mout[3], mmout1, bump1;
       std::vector<Eigen::Matrix<double, 3, 1> > datapoly;
       std::vector<Eigen::Matrix<int, 3, 1> >    polynorms;
       if(!loadp2or3<double>(data1, argv[4]))
@@ -309,7 +332,11 @@ int main(int argc, const char* argv[]) {
         return - 2;
       if(!loadp2or3<double>(bdata1, argv[6]))
         return - 2;
-      if(!loadobj<double>(datapoly, polynorms, argv[7]))
+      if(!loadp2or3<double>(mdata, argv[7]))
+        return - 2;
+      if(!loadp2or3<double>(mdata1, argv[8]))
+        return - 2;
+      if(!loadobj<double>(datapoly, polynorms, argv[9]))
         return - 2;
       if(datapoly.size() > Mpoly) {
         std::cerr << "Too many vertices." << std::endl;
@@ -318,26 +345,37 @@ int main(int argc, const char* argv[]) {
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph);
-      bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
+      mmout1 = bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
       for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
         for(int j = 0; j < min(mout[0].cols(), data1[0].cols()); j ++) {
           mout[0](i, j) = data1[0](i, j);
           mout[1](i, j) = data1[1](i, j);
           mout[2](i, j) = data1[2](i, j);
+          mmout1(i, j)  = mdata1[0](i, j);
           bump1(i, j)   = bdata1[0](i, j);
         }
         for(int j = min(mout[0].cols(), data1[0].cols()); j < mout[0].cols(); j ++)
-          bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+          mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
       }
       for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
         for(int j = 0; j < mout[0].cols(); j ++)
-          bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+          mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
       bump.getPseudoVec(bump0, shape0, sute, vbox);
       bump.getPseudoVec(bump1, shape1, sute, vbox);
+      std::vector<int> id0, id1;
+      for(int i = 0; i < shape0.size(); i ++)
+        id0.push_back(i);
+      for(int i = 0; i < shape1.size(); i ++)
+        id1.push_back(i);
+      reDig<double> redig;
+      auto delau0(redig.delaunay2(shape0, id0));
+      auto delau1(redig.delaunay2(shape1, id1));
+      maskVectors(shape0, delau0, mdata[0]);
+      maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
       const auto match0(statmatch.match(shape0, datapoly));
       const auto match1(statmatch.match(shape1, datapoly));
