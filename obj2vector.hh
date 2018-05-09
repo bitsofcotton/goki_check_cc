@@ -90,8 +90,6 @@ template <typename T> void floodfill(Eigen::Matrix<bool, Eigen::Dynamic, Eigen::
 }
 
 // N.B. mask 2 vector but this takes almost bruteforce.
-// XXX there must exists good libraries, but I cannot find with License and Eigen STL pair.
-// XXX but this is terrible slow.
 template <typename T> vector<vector<int> > getEdges(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& mask, const vector<Eigen::Matrix<T, 3, 1> >& points, const int& vbox) {
   cerr << "getEdges" << flush;
   Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> checked(mask.rows(), mask.cols());
