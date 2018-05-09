@@ -118,19 +118,32 @@ int main(int argc, const char* argv[]) {
       // enlarge.
       enlarger2ex<double> enlarger, denlarger;
       std::vector<double> stat;
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> slide[3];
       for(int i = 0; i < 3; i ++) {
-        const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-        data[i] = xye + tilt45(denlarger.compute(tilt45(data[i], false), enlarger.ENLARGE_BOTH), true, xye);
+        slide[i] = data[i];
         for(int j = 0; j < data[i].rows(); j ++)
           for(int k = 0; k < data[i].cols(); k ++)
+            slide[i]((j + 1) % data[i].rows(), (k + 1) % data[i].cols()) = data[i](j, k);
+      }
+      for(int i = 0; i < 3; i ++) {
+        const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
+        data[i]  = xye * sqrt(double(xye.rows() * xye.cols())) + tilt45(denlarger.compute(tilt45(data[i], false), enlarger.ENLARGE_BOTH), true, xye) * double(xye.rows() + xye.cols());
+        const auto xyes(enlarger.compute(slide[i], enlarger.ENLARGE_BOTH));
+        slide[i] = xyes * sqrt(double(xyes.rows() * xyes.cols())) + tilt45(denlarger.compute(tilt45(slide[i], false), enlarger.ENLARGE_BOTH), true, xyes) * double(xyes.rows() + xyes.cols());
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++) {
             stat.push_back(data[i](j, k));
+            stat.push_back(slide[i](j, k));
+          }
       }
       std::sort(stat.begin(), stat.end());
       const int sauto((data[0].rows() + data[0].cols()) * 4 * 4);
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < data[i].rows(); j ++)
-          for(int k = 0; k < data[i].cols(); k ++)
-            data[i](j, k) = std::max(std::min(stat[stat.size() - sauto], data[i](j, k)), stat[sauto]);
+          for(int k = 0; k < data[i].cols(); k ++) {
+            data[i](j, k)  = std::max(std::min(stat[stat.size() - sauto], data[i](j, k)), stat[sauto]);
+            data[i](j, k) += std::max(std::min(stat[stat.size() - sauto], slide[i]((j + 1) % data[i].rows(), (k + 1) % data[i].cols())), stat[sauto]);
+          }
     }
     break;
   case 4:
