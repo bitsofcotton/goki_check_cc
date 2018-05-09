@@ -120,21 +120,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   case ENLARGE_FY:
     {
       initPattern(data.rows());
-      const Mat dcache(Dop * data);
-      T ndc(0), nd(0);
-      for(int i = 1; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++)
-          nd = max(abs(data(i, j) - data(i - 1, j)), nd);
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 1; j < data.cols(); j ++)
-          nd = max(abs(data(i, j) - data(i, j - 1)), nd);
-      for(int i = 0; i < dcache.rows(); i ++)
-        for(int j = 0; j < dcache.cols(); j ++)
-          ndc = max(abs(dcache(i, j)), ndc);
-      result = compute(dcache, ENLARGE_Y);
-      for(int i = 0; i < result.rows(); i ++)
-        result.row(i) += dcache.row(i / 2);
-      result *= nd / ndc;
+      result = compute(Dop * data, ENLARGE_Y);
     }
     break;
   case DETECT_Y:
