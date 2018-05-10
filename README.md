@@ -23,13 +23,12 @@ This program is inspired from re-focus photo softwares.
 And around this, there's many preceders that many approach to get bump maps with certain conditions
 (such as multiple camera conditions, or, with layered objects, or, spherical, or, from movie, etcetc).
 There's a defocus photo algorithms http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf some words with googled. So it's accurate for most cameras, goki_check_cc is standing on another hypothesis that is not widely  used (in another words, some transform or special camera is needed for photos...).  
-There's preceders to match 3D to 2D with many approaches. (s.t. detecting topology of junction point, or, machine learning, and so on.)  
+There's preceders to match 3D to 2D with many approaches. (s.t. detecting topology of junction point, or, machine learning, and so on.). And it is fater than this that PnP problem and specific point based matching.  
 Searching the Internet more...
 
 # Status
 Searching bone-enabled 3d model simple format -> may be .fbx format is widely used.
-Writing whole to rotated partials match.
-Rewriting delaunay triangulation with divide and conquerer method.
+Writing whole to rotated partials match. And checking implementation.
 
 # Usage
     make tools
