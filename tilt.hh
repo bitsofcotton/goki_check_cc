@@ -54,6 +54,7 @@ public:
   }
 };
 
+template <typename T> class match_t;
 template <typename T> class tilter {
 public:
   typedef Matrix<T, Dynamic, Dynamic> Mat;
@@ -67,7 +68,7 @@ public:
   void initialize(const T& z_ratio);
   
   Mat  tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
-  Mat  tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto, const Vec3& origin0);
+  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m);
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
   Mat  tiltsub(const Mat& in, const vector<Triangles>& triangles);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5));
@@ -225,20 +226,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   return tiltsub(in, triangles);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const Mat3x3& rot, const Mat3x3& rotrev, const Vec3& moveto, const T& rto, const Vec3& origin0) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m) {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
   vector<Triangles> triangles;
   triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
   for(int i = 0; i < in.rows() - 1; i ++)
     for(int j = 0; j < in.cols() - 1; j ++) {
-      triangles.push_back(makeTriangle(i, j, in, bump, false).rotate(rot, origin0).rotate(rotrev, origin0));
-      triangles.push_back(makeTriangle(i, j, in, bump, true).rotate(rot, origin0).rotate(rotrev, origin0));
+      triangles.push_back(makeTriangle(i, j, in, bump, false));
+      triangles.push_back(makeTriangle(i, j, in, bump, true));
     }
   for(int j = 0; j < triangles.size(); j ++) {
-    triangles[j].p        *= rto;
-    triangles[j].p.col(0) += moveto;
-    triangles[j].p.col(1) += moveto;
-    triangles[j].p.col(2) += moveto;
+    for(int k = 0; k < 3; k ++)
+      triangles[j].p.col(k) = m.transform(triangles[j].p.col(k));
     triangles[j].solveN();
   }
   return tiltsub(in, triangles);

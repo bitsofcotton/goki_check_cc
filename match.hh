@@ -463,9 +463,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vec
        I3(i, j) = T(i == j ? 1 : 0);
   cerr << "e" << flush;
   for(int i = 0; i < m.size(); i ++)
-    res[i].rdepth *= isElim(m[i], dst,
-      tilt.tilt(src, srcbump, m[i].rot, I3, m[i].offset, m[i].ratio, m[i].offset),
-      thresh);
+    res[i].rdepth *= isElim(m[i], dst, tilt.tilt(src, srcbump, m[i]), thresh);
   sort(res.begin(), res.end());
   return res;
 }
