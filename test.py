@@ -43,7 +43,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl0.ppm"])
-    subprocess.call(["convert", root + "-enl0.ppm", "-resize", "75%", "-unsharp", "0x1", root + "-75" + ext])
+    subprocess.call(["convert", root + "-enl0.ppm", "-resize", "75%", root + "-75" + ext])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "emph"):
@@ -75,5 +75,5 @@ for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(int(100. / pixels * 100) / 100.) + "%", "-compress", "none", root + "-xsmall-0.ppm"])
     for s in range(0, int(np.log(pixels) / np.log(1.5)) + 1):
       subprocess.call([argv[1], "enlarge", root + "-xsmall-" + str(s) + ".ppm", root + "-xsmall-" + str(s + 1) + "-base.ppm"])
-      subprocess.call(["convert", root + "-xsmall-" + str(s + 1) + "-base.ppm", "-resize", "75%", "-unsharp", "0x1", "-compress", "none", root + "-xsmall-" + str(s + 1) + ".ppm"])
+      subprocess.call(["convert", root + "-xsmall-" + str(s + 1) + "-base.ppm", "-resize", "75%", "-compress", "none", root + "-xsmall-" + str(s + 1) + ".ppm"])
 

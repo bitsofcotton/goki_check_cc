@@ -97,9 +97,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   for(int i = 0; i < srcimg.rows() - 1; i ++)
     for(int j = 0; j < srcimg.cols() - 1; j ++) {
       triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, false));
-      triangles[triangles.size() - 1](0, 3) = srcimg(i, j);
+      triangles[triangles.size() - 1].c = srcimg(i, j);
       triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, true));
-      triangles[triangles.size() - 1](0, 3) = srcimg(i, j);
+      triangles[triangles.size() - 1].c = srcimg(i, j);
     }
   
   bool *checked;
@@ -119,12 +119,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     const Vec3 dst0((p0 + p1 + p2) / T(3));
     for(int l = 0; l < triangles.size(); l ++)
       for(int ll = 0; ll < 3; ll ++) {
-        const Vec3& q(triangles[l].col(ll));
+        const Vec3& q(triangles[l].p.col(ll));
         if(!checked[l * 3 + ll] &&
            tilt.sameSide2(p0, p1, p2, q) &&
            tilt.sameSide2(p1, p2, p0, q) &&
            tilt.sameSide2(p2, p0, p1, q)) {
-          triangles[l].col(ll) += (dst0 - src0) * ratio / match.ratio;
+          triangles[l].p.col(ll) += (dst0 - src0) * ratio / match.ratio;
           checked[l * 3 + ll] = true;
         }
       }
@@ -133,8 +133,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   for(int i = 0; i < triangles.size(); i ++) {
     if(!(checked[i * 3 + 0] || checked[i * 3 + 1] || checked[i * 3 + 2]))
       dups.push_back(i);
-    triangles[i].col(4) = tilt.solveN(triangles[i].col(0), triangles[i].col(1), triangles[i].col(2));
-    triangles[i](1, 3)  = triangles[i].col(4).dot(triangles[i].col(0));
+    triangles[i].p.col(0) = match.transform(triangles[i].p.col(0));
+    triangles[i].p.col(1) = match.transform(triangles[i].p.col(1));
+    triangles[i].p.col(2) = match.transform(triangles[i].p.col(2));
   }
   delete[] checked;
   
@@ -142,7 +143,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   wt.reserve(triangles.size() - dups.size());
   for(int i = 0; i < triangles.size(); i ++)
     if(!binary_search(dups.begin(), dups.end(), i))
-      wt.push_back(triangles[i]);
+      wt.push_back(triangles[i].solveN());
   triangles = wt;
   Mat I3(3, 3);
   Vec zero3(3);
@@ -151,7 +152,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       I3(i, j) = (i == j ? T(1) : T(0));
     zero3[i] = T(0);
   }
-  return tilt.tiltsub(dstimg, triangles, match.rot, I3, zero3, match.offset, match.ratio);
+  return tilt.tiltsub(dstimg, triangles);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc) {

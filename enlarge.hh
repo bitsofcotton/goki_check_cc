@@ -147,7 +147,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     }
     break;
   default:
-    cerr << "XXX: unknown command in enlarger2ex (should not be reached.)" << endl;
+    cerr << "unknown command in enlarger2ex (should not be reached.)" << endl;
   }
   return result;
 }

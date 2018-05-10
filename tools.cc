@@ -19,6 +19,7 @@ const int    vbox(8);
 const int    M_TILT(32);
 const double psi(.95);
 const int    Mpoly(2000);
+const double rz(1. / 4);
 
 void usage() {
   cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
@@ -29,7 +30,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   reDig<T>  redig;
   tilter<T> tilt;
   // generated bump map is inverted.
-  tilt.initialize(- sqrt(double(bump1.rows() * bump1.cols())) / double(6));
+  tilt.initialize(- sqrt(double(bump1.rows() * bump1.cols())) * rz);
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs[3];
   
@@ -72,6 +73,25 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     savep2or3<T>(outfile.c_str(), outs, false);
   }
+  return;
+}
+
+template <typename T> void resizeDst2(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> mout[3], Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump1, Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& mmout1, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> data[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& mask, const int& h, const int& w) {
+  mmout1 = bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(h, w);
+  for(int i = 0; i < min(mout[0].rows(), data[0].rows()); i ++) {
+    for(int j = 0; j < min(mout[0].cols(), data[0].cols()); j ++) {
+      mout[0](i, j) = data[0](i, j);
+      mout[1](i, j) = data[1](i, j);
+      mout[2](i, j) = data[2](i, j);
+      mmout1(i, j)  = mask(i, j);
+      bump1(i, j)   = bump(i, j);
+    }
+    for(int j = min(mout[0].cols(), data[0].cols()); j < mout[0].cols(); j ++)
+      mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = T(0);
+  }
+  for(int i = min(mout[0].rows(), data[0].rows()); i < mout[0].rows(); i ++)
+    for(int j = 0; j < mout[0].cols(); j ++)
+      mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = T(0);
   return;
 }
 
@@ -159,7 +179,7 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
-      bump.getPseudoVec(data[0], points, facets, vbox);
+      bump.getPseudoVec(data[0], points, facets, vbox, rz);
       saveobj(points, facets, argv[3]);
     }
     return 0;
@@ -196,10 +216,10 @@ int main(int argc, const char* argv[]) {
         return - 2;
       auto zero(bump[0] * double(0));
       tilter<double> tilt;
-      tilt.initialize(sqrt(double(bump[0].rows() * bump[0].cols())) / double(6));
+      tilt.initialize(- sqrt(double(bump[0].rows() * bump[0].cols())) * rz);
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, psi), zero, - i, M_TILT, psi);
+          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, psi), zero, M_TILT - i, M_TILT, psi);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
@@ -224,27 +244,13 @@ int main(int argc, const char* argv[]) {
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph);
-      mmout1 = bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
-      for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
-        for(int j = 0; j < min(mout[0].cols(), data1[0].cols()); j ++) {
-          mout[0](i, j) = data1[0](i, j);
-          mout[1](i, j) = data1[1](i, j);
-          mout[2](i, j) = data1[2](i, j);
-          mmout1(i, j)  = mdata1[0](i, j);
-          bump1(i, j)   = bdata1[0](i, j);
-        }
-        for(int j = min(mout[0].cols(), data1[0].cols()); j < mout[0].cols(); j ++)
-          mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
-      }
-      for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
-        for(int j = 0; j < mout[0].cols(); j ++)
-          mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+      resizeDst2(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox);
-      bump.getPseudoVec(bump1, shape1, sute, vbox);
+      bump.getPseudoVec(bump0, shape0, sute, vbox, rz);
+      bump.getPseudoVec(bump1, shape1, sute, vbox, rz);
       std::vector<int> id0, id1;
       for(int i = 0; i < shape0.size(); i ++)
         id0.push_back(i);
@@ -285,7 +291,7 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       auto& bump(bump0[0]);
-      bumper.getPseudoVec(bump, shape, sute, vbox);
+      bumper.getPseudoVec(bump, shape, sute, vbox, rz);
       std::vector<int> id;
       for(int i = 0; i < shape.size(); i ++)
         id.push_back(i);
@@ -338,27 +344,13 @@ int main(int argc, const char* argv[]) {
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph);
-      mmout1 = bump1 = mout[0] = mout[1] = mout[2] = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(data[0].rows(), data[0].cols());
-      for(int i = 0; i < min(mout[0].rows(), data1[0].rows()); i ++) {
-        for(int j = 0; j < min(mout[0].cols(), data1[0].cols()); j ++) {
-          mout[0](i, j) = data1[0](i, j);
-          mout[1](i, j) = data1[1](i, j);
-          mout[2](i, j) = data1[2](i, j);
-          mmout1(i, j)  = mdata1[0](i, j);
-          bump1(i, j)   = bdata1[0](i, j);
-        }
-        for(int j = min(mout[0].cols(), data1[0].cols()); j < mout[0].cols(); j ++)
-          mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
-      }
-      for(int i = min(mout[0].rows(), data1[0].rows()); i < mout[0].rows(); i ++)
-        for(int j = 0; j < mout[0].cols(); j ++)
-          mmout1(i, j) = bump1(i, j) = mout[0](i, j) = mout[1](i, j) = mout[2](i, j) = double(0);
+      resizeDst2(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox);
-      bump.getPseudoVec(bump1, shape1, sute, vbox);
+      bump.getPseudoVec(bump0, shape0, sute, vbox, rz);
+      bump.getPseudoVec(bump1, shape1, sute, vbox, rz);
       std::vector<int> id0, id1;
       for(int i = 0; i < shape0.size(); i ++)
         id0.push_back(i);
@@ -414,7 +406,7 @@ int main(int argc, const char* argv[]) {
     return 0;
   default:
     usage();
-    break;
+    return - 1;
   }
   normalize<double>(data, 1.);
   if(!savep2or3<double>(argv[3], data, ! true))
