@@ -113,15 +113,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   case IDETECT_X:
     result = compute(data.transpose(), IDETECT_Y).transpose();
     break;
+  case ENLARGE_FY:
+    result = compute(compute(data, DETECT_Y), ENLARGE_Y);
+    break;
   case ENLARGE_Y:
     initPattern(data.rows());
     result = D * data;
-    break;
-  case ENLARGE_FY:
-    {
-      initPattern(data.rows());
-      result = compute(Dop * data, ENLARGE_Y);
-    }
     break;
   case DETECT_Y:
     initPattern(data.rows());
@@ -150,7 +147,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     }
     break;
   default:
-    ;
+    cerr << "XXX: unknown command in enlarger2ex (should not be reached.)" << endl;
   }
   return result;
 }
@@ -196,12 +193,6 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
     Ibuf.row(i) /= U(- 2.) * Pi * I * U(i / T(size));
   Dop =   (IDFT * Dbuf).real().template cast<T>();
   Iop = - (IDFT * Ibuf).real().template cast<T>();
-  const T ratio(sqrt(T(2 * 3) /
-                 (Dop.row(0).dot(Dop.row(0)) +
-                  Dop.row(Dop.rows() / 2).dot(Dop.row(Dop.rows() / 2)) +
-                  Dop.row(Dop.rows() - 1).dot(Dop.row(Dop.rows() - 1))) ) );
-  Dop *= ratio;
-  Iop *= ratio;
   {
     MatU DFTa(DFT);
     MatU DFTb(DFT);
@@ -212,12 +203,12 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
       //      this uses limit of geometric mean of U(1+epsilon), U(1-epsilon).
       const U r(sqrt(T(1) - T(2) * cos(phase) + cos(T(2) * phase)) /
                 (T(2) - T(2) * cos(phase)));
-      // XXX checkme ratio of intensity.
-      DFTa.row(i) *= (U(1) / U(2) - r.real());
-      DFTb.row(i) *= (U(1) / U(2) + r.real());
+      DFTa.row(i) *= U(1) / U(2) - r.real();
+      DFTb.row(i) *= U(1) / U(2) + r.real();
     }
-    const Mat Da((IDFT * DFTa).real().template cast<T>() * ratio);
-    const Mat Db((IDFT * DFTb).real().template cast<T>() * ratio);
+    // N.B. Da and Db norm is configured but shall not be optimal...
+    const Mat Da((IDFT * DFTa).real().template cast<T>());
+    const Mat Db((IDFT * DFTb).real().template cast<T>());
     D = Mat(DFT.rows() * 2, DFT.cols());
     for(int i = 0; i < DFT.rows(); i ++) {
       D.row(i * 2 + 0) = Da.row(i);
