@@ -49,7 +49,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     sin1[idx] = redig.showMatch(in1[idx], shape1, mhull1);
   normalize<T>(sin1, 1.);
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = tilt.tilt(sin1[idx], bump1, match.rot, I3, match.offset, match.ratio, zero3);
+    outs[idx] = tilt.tilt(sin1[idx], bump1, match.rot, I3, match.offset, match.ratio, match.offset);
   std::string outfile(outbase + std::string("-src.ppm"));
   savep2or3<T>(outfile.c_str(), outs, false);
   
