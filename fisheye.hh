@@ -45,7 +45,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp);
+  void initialize(const int& z_max, const int& stp, const T& thresh);
   void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4, const T& rz = T(1) / T(6));
   Mat  getPseudoBump(const Mat& in);
   
@@ -56,22 +56,24 @@ private:
   
   T   Pi;
   
+  T   thresh;
   int z_max;
   Vec Dop;
   Vec DDDop;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(12, 201);
+  initialize(12, 51, T(.05));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& thresh) {
   this->z_max  = z_max;
-  assert(1 < z_max && 0 < stp);
+  this->thresh = thresh;
+  assert(1 < z_max && 0 < stp && T(0) <= thresh);
   this->Pi     = T(4) * atan2(T(1), T(1));
   MatU DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -96,18 +98,23 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   cerr << "." << flush;
   Vec result(work.size());
   for(int s = 0; s < work.size(); s ++) {
+    T buf(2);
     T mbuf(2);
-    result[s] = T(0);
+    result[s] = T(1);
     for(int z = 0; z < cf.size(); z ++) {
       // d/dt (local color) / ||local color||:
       Vec c(cf[z].size());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(work, cf[z][u] + s);
-      const T score(abs(Dop.dot(c) * DDDop.dot(c)) / c.dot(c) / c.dot(c));
+      const T score(abs(Dop.dot(c) * DDDop.dot(c)) / c.dot(c));
       if(score < mbuf) {
         result[s] = z / T(cf.size());
         mbuf      = score;
-      }
+      // N.B. cf[z] increases width of differences, so if it rapidly increases,
+      //      it's on edge point.
+      } else if(buf * (T(1) + thresh) < score)
+        break;
+      buf = score;
     }
   }
   return result;
@@ -193,21 +200,22 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
   camera[1] = T(1);
   
   vector<Vec> result;
-  result.resize(z_max);
+  result.resize(z_max, Vec(Dop.size()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int zi = 0; zi < result.size(); zi ++) {
-    result[zi] = Vec(Dop.size());
     for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
       cpoint[0] = (s / T(Dop.size() - 1) - 1 / T(2));
-      cpoint[1] = (1 + zi) / T(Dop.size());
+      // [0, 1] not works well, [1, infty[ works better.
+      cpoint[1] = 1.5 + zi;
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0
       const T t(- camera[1] / (cpoint[1] - camera[1]));
-      result[zi][s] = (camera + (cpoint - camera) * t)[0] * rstp;
+      // result increases near to far on differential points.
+      result[result.size() - 1 - zi][s] = (camera + (cpoint - camera) * t)[0] * rstp;
     }
   }
   return result;
