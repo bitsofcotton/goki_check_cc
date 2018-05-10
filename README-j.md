@@ -51,13 +51,13 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     ./tools tilt input.ppm output-base input-bump.ppm
     
     # list matches.
-    ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm
+    ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm input-mask.ppm tobematched-mask.ppm
     
     # list matches 2d - 3d.
-    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj matchbase-bump.ppm
+    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj matchbase-bump.ppm matchbase-mask.ppm
     
     # list matches 2d - 2d with hidden 3d.
-    ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm hidden-object.obj
+    ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-object.obj
     
 # ライブラリとしての使い方
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
@@ -94,9 +94,9 @@ https://services.limpid-intensity.info/ にサンプルがあります。
 N.B. 5分に一回バッチが回ります。アップロードのサイズを 20Mo までに制限してあります。
 
 # Tips
-enlarge は DFT 時の半整数空間から擬似的にとってきています。  
-collect は単純に DFT 微分の後、abs をとってきています。  
-bump は F=&infin; を仮定しています。  
+enlarge は DFT 時の半整数空間から擬似的にとってきています。調整済みです。  
+collect は単純に DFT 微分の後、abs をとってきています。調整は必要ありません。  
+bump は F=&infin; を仮定しています。パラメタを適宜調整してください。  
 match は z 軸方向まで含めて合致する部分を探します。内部で深度の比率を調節してください。  
 match3d は入力にバンプマップと .obj ファイルを仮定しています。  
 match, match3d は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定しています。

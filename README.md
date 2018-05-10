@@ -53,13 +53,13 @@ Rewriting delaunay triangulation with divide and conquerer method.
     ./tools tilt input.ppm output-base input-bump.ppm
     
     # list matches.
-    ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm
+    ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm matchbase-mask.ppm tobematched-mask.ppm
     
     # list matches 2d - 3d.
-    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj matchbase-bump.ppm
+    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj matchbase-bump.ppm matchbase-mask.ppm
     
     # list matches 2d - 2d with hidden 3d.
-    ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm hidden-3dmodel.obj
+    ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-3dmodel.obj
 
 # How to use as library (sample code).
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
@@ -97,9 +97,9 @@ Please bookmark output directory page after sending images, then please wait som
 N.B. a file per 5 minutes, up to 20 Mo total upload size.
 
 # Tips
-These program's enlarge is based on pseudo DFT half space plausible one.  
-These program's collect is based on DFT differential.  
-These program's bump assumes F=∞ graphics.   
+These program's enlarge is based on pseudo DFT half space plausible one. Already configured.  
+These program's collect is based on DFT differential. No need to configure.  
+These program's bump assumes F=∞ graphics. Please configure the parameters before to use.   
 These program's match matches with calculated pseudo z-depth.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
 These program's match and match3d assumes one of vertices is full and another is lowPoly.
