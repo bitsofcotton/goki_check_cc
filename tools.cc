@@ -2,12 +2,12 @@
 #include <cmath>
 #include <iostream>
 #include <Eigen/Core>
-#include "ppm2eigen.hh"
-#include "obj2vector.hh"
+#include "fileio.hh"
 #include "enlarge.hh"
 #include "fisheye.hh"
 #include "tilt.hh"
 #include "match.hh"
+#include "redig.hh"
 
 using namespace std;
 
@@ -112,6 +112,7 @@ int main(int argc, const char* argv[]) {
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> data[3];
   if(!loadp2or3<double>(data, argv[2]))
     return - 2;
+  reDig<double> redig;
   switch(mode) {
   case 0:
     {
@@ -119,7 +120,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> enlarger, denlarger;
       for(int i = 0; i < 3; i ++) {
         const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-        data[i] = xye + tilt45(denlarger.compute(tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
+        data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
       }
     }
     break;
@@ -129,7 +130,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
-        data[i] = xye + tilt45(ddetect.compute(tilt45(data[i], false), ddetect.COLLECT_BOTH), true, xye);
+        data[i] = xye + redig.tilt45(ddetect.compute(redig.tilt45(data[i], false), ddetect.COLLECT_BOTH), true, xye);
       }
     }
     break;
@@ -139,7 +140,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> idetect, didetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(idetect.compute(data[i], idetect.IDETECT_BOTH));
-        data[i] = xye + tilt45(didetect.compute(tilt45(data[i], false), didetect.IDETECT_BOTH), true, xye);
+        data[i] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.IDETECT_BOTH), true, xye);
       }
     }
     break;
@@ -147,8 +148,8 @@ int main(int argc, const char* argv[]) {
     {
       // bump.
       PseudoBump<double> bump;
-      const auto xye(bump.getPseudoBump(rgb2l(data)));
-      data[0] = xye + tilt45(bump.getPseudoBump(tilt45(rgb2l(data), false)), true, xye);
+      const auto xye(bump.getPseudoBump(redig.rgb2l(data)));
+      data[0] = xye + redig.tilt45(bump.getPseudoBump(redig.tilt45(redig.rgb2l(data), false)), true, xye);
       data[1] = data[2] = data[0];
     }
     break;
@@ -169,7 +170,7 @@ int main(int argc, const char* argv[]) {
       auto X(.49000/.17697 * data[0] + .31000/.17697  * data[1] + .20000/.17697 * data[2]);
       auto Z(                          .010000/.17697 * data[1] + .99000/.17697 * data[2]);
       data[0] = X     / 8.;
-      data[1] = bump.getPseudoBump(rgb2l(data)) / 8.;
+      data[1] = bump.getPseudoBump(redig.rgb2l(data)) / 8.;
       data[2] = Z     / 8.;
     }
     // with no auto-level.
@@ -249,13 +250,12 @@ int main(int argc, const char* argv[]) {
         id0.push_back(i);
       for(int i = 0; i < shape1.size(); i ++)
         id1.push_back(i);
-      reDig<double> redig;
       auto delau0(redig.delaunay2(shape0, id0));
       auto delau1(redig.delaunay2(shape1, id1));
-      maskVectors(shape0, delau0, mdata[0]);
-      maskVectors(shape1, delau1, mmout1);
+      redig.maskVectors(shape0, delau0, mdata[0]);
+      redig.maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
-      const auto matches(statmatch.elim(statmatch.match(shape0, shape1), rgb2xz(data), rgb2xz(mout), bump1));
+      const auto matches(statmatch.elim(statmatch.match(shape0, shape1), redig.rgb2xz(data), redig.rgb2xz(mout), bump1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
@@ -289,9 +289,8 @@ int main(int argc, const char* argv[]) {
       std::vector<int> id;
       for(int i = 0; i < shape.size(); i ++)
         id.push_back(i);
-      reDig<double> redig;
       auto delau(redig.delaunay2(shape, id));
-      maskVectors(shape, delau, mask0[0]);
+      redig.maskVectors(shape, delau, mask0[0]);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> zero[3];
       for(int i = 0; i < 3; i ++)
         zero[i] = bump * double(0);
@@ -307,7 +306,6 @@ int main(int argc, const char* argv[]) {
         match.rot    *= match.rot.transpose();
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
         
-        reDig<double> redig;
         const auto hsrc(redig.delaunay2(shape, match.srcpoints));
         const auto hdst(match.hull(match.dstpoints, match.reverseHull(match.srcpoints, hsrc)));
         const auto dp2(redig.takeShape(mdatapoly, shape, ~ match, hsrc, hdst, double(1)));
@@ -366,11 +364,10 @@ int main(int argc, const char* argv[]) {
         id0.push_back(i);
       for(int i = 0; i < shape1.size(); i ++)
         id1.push_back(i);
-      reDig<double> redig;
       auto delau0(redig.delaunay2(shape0, id0));
       auto delau1(redig.delaunay2(shape1, id1));
-      maskVectors(shape0, delau0, mdata[0]);
-      maskVectors(shape1, delau1, mmout1);
+      redig.maskVectors(shape0, delau0, mdata[0]);
+      redig.maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
       const auto match0(statmatch.match(shape0, datapoly));
       const auto match1(statmatch.match(shape1, datapoly));
@@ -378,7 +375,7 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(match0.size()), nshowh); n ++)
         for(int m = 0; m < min(int(match1.size()), nshowh); m ++)
           matches.push_back(match0[n] / match1[m]);
-      matches = statmatch.elim(matches, rgb2xz(data), rgb2xz(mout), bump1);
+      matches = statmatch.elim(matches, redig.rgb2xz(data), redig.rgb2xz(mout), bump1);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         const auto& relmatch(matches[n]);
         std::cerr << n << " / " << matches.size() << " : (" << relmatch.rdepth << ", " << relmatch.ratio << ")" << endl;
@@ -395,8 +392,8 @@ int main(int argc, const char* argv[]) {
         usage();
         return - 2;
       }
-      maskVectors<double>(points, polys, data[0]);
-      auto edges(getEdges<double>(data[0], points, vbox));
+      redig.maskVectors(points, polys, data[0]);
+      auto edges(redig.getEdges(data[0], points, vbox));
       double ratio;
       std::stringstream stream(argv[5]);
       stream >> ratio;
