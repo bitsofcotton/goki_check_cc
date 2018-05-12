@@ -148,25 +148,6 @@ template <typename T> bool savep2or3(const char* filename, Eigen::Matrix<T, Eige
   return true;
 }
 
-template <typename T> void normalize(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> data[3], const T& upper) {
-  T MM(data[0](0, 0)), mm(data[0](0, 0));
-  for(int k = 0; k < 3; k ++)
-    for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++) {
-        MM = max(MM, data[k](i, j));
-        mm = min(mm, data[k](i, j));
-      }
-  if(MM == mm)
-    return;
-  for(int k = 0; k < 3; k ++) {
-    for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++)
-        data[k](i, j) -= mm;
-    data[k] *= upper / (MM - mm);
-  }
-  return;
-}
-
 template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2)) {
   ofstream output;
   output.open(filename, std::ios::out);

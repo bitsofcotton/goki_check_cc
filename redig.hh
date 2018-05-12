@@ -68,6 +68,7 @@ public:
   Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2xz(const Mat rgb[3]);
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
+  void normalize(Mat data[3], const T& upper);
 
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
@@ -703,6 +704,25 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       }
   }
   return res;
+}
+
+template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) {
+  T MM(data[0](0, 0)), mm(data[0](0, 0));
+  for(int k = 0; k < 3; k ++)
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++) {
+        MM = max(MM, data[k](i, j));
+        mm = min(mm, data[k](i, j));
+      }
+  if(MM == mm)
+    return;
+  for(int k = 0; k < 3; k ++) {
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++)
+        data[k](i, j) -= mm;
+    data[k] *= upper / (MM - mm);
+  }
+  return;
 }
 
 #define _REDIG_

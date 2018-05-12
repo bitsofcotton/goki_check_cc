@@ -109,7 +109,7 @@ public:
     match_t<T> result;
     result.rot    = rot   * src.rot.transpose();
     result.ratio  = ratio / src.ratio;
-    result.offset = offset - result.rot * result.ratio * src.offset;
+    result.offset = offset - result.rot * src.offset * result.ratio;
     result.rdepth = rdepth + src.rdepth;
     result.dstpoints = vector<int>();
     result.srcpoints = vector<int>();
@@ -196,7 +196,8 @@ public:
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
-    return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
+    // N.B. parallel -> max, points ratio -> max.
+    return rdepth > x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -229,7 +230,7 @@ public:
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
-  vector<match_t<T> > elim(const vector<match_t<T> >& m, const Mat& dst, const Mat& src, const Mat& srcbump, const T& thresh = T(4) / T(256));
+  vector<match_t<T> > elim(const vector<match_t<T> >& m, const Mat& dst, const Mat& src, const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh = T(4) / T(256));
   
   // theta resolution.
   int ndiv;
@@ -242,7 +243,7 @@ private:
   Vec3               makeG(const vector<Vec3>& in) const;
   vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const Mat3x3& drot1) const;
   void               complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const;
-  T                  isElim(const match_t<T>& m, const Mat& dst, const Mat& tsrc, const T& thresh);
+  T                  isElim(const match_t<T>& m, const Mat& dst, const Mat& tsrc, const vector<Vec3>& srcpts, const T& thresh);
   U   I;
   T   Pi;
   // match theta  thresh in [0, 1].
@@ -329,9 +330,7 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
     work.rdepth += shapek.dot(shapek);
   }
   work.ratio     = num / denom;
-  // XXX configure me:
-  work.rdepth    = num / sqrt(denom * work.rdepth);
-  // work.rdepth    = num / sqrt(denom * work.rdepth) / work.dstpoints.size();
+  work.rdepth    = abs(num) / sqrt(denom * work.rdepth);
   work.offset[0] = T(0);
   work.offset[1] = T(0);
   work.offset[2] = T(0);
@@ -452,7 +451,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
   return;
 }
 
-template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vector<match_t<T> >& m, const Mat& dst, const Mat& src, const Mat& srcbump, const T& thresh) {
+template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vector<match_t<T> >& m, const Mat& dst, const Mat& src, const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh) {
   vector<match_t<T> > res(m);
   tilter<T> tilt;
   Vec3 zero3;
@@ -461,27 +460,29 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vec
   for(int i = 0; i < I3.rows(); i ++)
     for(int j = 0; j < I3.cols(); j ++)
        I3(i, j) = T(i == j ? 1 : 0);
-  cerr << "e" << flush;
   for(int i = 0; i < m.size(); i ++)
-    res[i].rdepth *= isElim(m[i], dst, tilt.tilt(src, srcbump, m[i]), thresh);
+    res[i].rdepth *= isElim(m[i], dst, tilt.tilt(src, srcbump, m[i]), srcpts, thresh);
   sort(res.begin(), res.end());
   return res;
 }
 
-template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, const Mat& dst, const Mat& tsrc, const T& thresh) {
+template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, const Mat& dst, const Mat& tsrc, const vector<Vec3>& srcpts, const T& thresh) {
   assert(dst.rows() == tsrc.rows() && dst.cols() == tsrc.cols());
   vector<T> diffs;
-  for(int i = 0; i < tsrc.rows(); i ++)
-    for(int j = 0; j < tsrc.cols(); j ++)
-      if(T(0) < tsrc(i, j))
-        diffs.push_back(abs(tsrc(i, j) - dst(i, j)));
+  for(int i = 0; i < m.srcpoints.size(); i ++) {
+    const auto g(m.transform(srcpts[m.srcpoints[i]]));
+    const int  y(g[0]);
+    const int  x(g[1]);
+    if(0 <= y && y < tsrc.rows() && 0 <= x && x < tsrc.cols() &&
+       T(0) < tsrc(y, x))
+      diffs.push_back(abs(tsrc(y, x) - dst(y, x)));
+  }
   sort(diffs.begin(), diffs.end());
   vector<T> ddiffs;
   for(int i = 1; i < diffs.size(); i ++)
     ddiffs.push_back(diffs[i] - diffs[i - 1]);
   sort(ddiffs.begin(), ddiffs.end());
-  const auto ub(distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh)));
-  return T(ub) / ddiffs.size();
+  return ddiffs.size() ? distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh)) / T(ddiffs.size()) : T(0);
 }
 
 

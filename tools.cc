@@ -19,7 +19,7 @@ const int    vbox(8);
 const int    M_TILT(32);
 const double psi(.95);
 const int    Mpoly(2000);
-const double rz(1. / 4);
+const double rz(1. / 6);
 
 void usage() {
   cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
@@ -47,7 +47,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> sin1[3];
   for(int idx = 0; idx < 3; idx ++)
     sin1[idx] = redig.showMatch(in1[idx], shape1, mhull1);
-  normalize<T>(sin1, 1.);
+  redig.normalize(sin1, 1.);
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = tilt.tilt(sin1[idx], bump1, match);
   std::string outfile(outbase + std::string("-src.ppm"));
@@ -55,7 +55,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = redig.showMatch(in0[idx], shape0, mhull0);
-  normalize<T>(outs, 1.);
+  redig.normalize(outs, 1.);
   outfile = outbase + std::string("-dst.ppm");
   savep2or3<T>(outfile.c_str(), outs, false);
   
@@ -261,7 +261,7 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(shape0, delau0, mdata[0]);
       redig.maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
-      const auto matches(statmatch.elim(statmatch.match(shape0, shape1), redig.rgb2xz(data), redig.rgb2xz(mout), bump1));
+      const auto matches(statmatch.elim(statmatch.match(shape0, shape1), redig.rgb2xz(data), redig.rgb2xz(mout), bump1, shape1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
@@ -367,7 +367,7 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(match0.size()), nshowh); n ++)
         for(int m = 0; m < min(int(match1.size()), nshowh); m ++)
           matches.push_back(match0[n] / match1[m]);
-      matches = statmatch.elim(matches, redig.rgb2xz(data), redig.rgb2xz(mout), bump1);
+      matches = statmatch.elim(matches, redig.rgb2xz(data), redig.rgb2xz(mout), bump1, shape1);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         const auto& relmatch(matches[n]);
         std::cerr << n << " / " << matches.size() << " : (" << relmatch.rdepth << ", " << relmatch.ratio << ")" << endl;
@@ -408,7 +408,7 @@ int main(int argc, const char* argv[]) {
     usage();
     return - 1;
   }
-  normalize<double>(data, 1.);
+  redig.normalize(data, 1.);
   if(!savep2or3<double>(argv[3], data, ! true))
     return - 3;
   return 0;
