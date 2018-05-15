@@ -11,6 +11,10 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * fisheye.hh
 * * z_max  : z-index resolution.
 * * stp    : number of points to be used in detecting edges.
+* * thresh : local edgepoint colour difference threshold.
+* * psi    : tilting maximum value. (psi * Pi).
+* * nloop  : tilting numbers.
+* * rz     : z-axis output ratio.
 * tilt.hh
 * * z_ratio : [0,1] to [0,z_atio].
 * scancontext.hh
@@ -102,6 +106,8 @@ These program's bump assumes F=∞ graphics. Please configure the parameters bef
 These program's match matches with calculated pseudo z-depth.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
 These program's match and match3d assumes one of vertices is full and another is lowPoly.
+
+match has a bug around identity matching, fixing around this.
 
 # Specification
 PseudoBump generates the bumpmap that is pseudo plausible one because of one image condition.  
