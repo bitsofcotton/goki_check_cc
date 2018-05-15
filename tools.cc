@@ -17,9 +17,9 @@ const int    nshowh(16);
 const int    nemph(4);
 const int    vbox(8);
 const int    M_TILT(32);
-const double psi(.95);
+const double psi(.05);
 const int    Mpoly(2000);
-const double rz(1. / 6);
+const double rz(1 / 8.);
 
 void usage() {
   cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
@@ -140,7 +140,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> enlarger, denlarger;
       for(int i = 0; i < 3; i ++) {
         const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-        data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
+        data[i] = xye * (data[i].rows() + data[i].cols())+ redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(double(data[i].rows() * data[i].cols()));
       }
     }
     break;
@@ -150,7 +150,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
-        data[i] = xye + redig.tilt45(ddetect.compute(redig.tilt45(data[i], false), ddetect.COLLECT_BOTH), true, xye);
+        data[i] = xye * (data[i].rows() + data[i].cols()) + redig.tilt45(ddetect.compute(redig.tilt45(data[i], false), ddetect.COLLECT_BOTH), true, xye) * sqrt(double(data[i].rows() * data[i].cols()));
       }
     }
     break;
@@ -179,7 +179,7 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
-      bump.getPseudoVec(data[0], points, facets, vbox, rz);
+      bump.getPseudoVec(data[0], points, facets, vbox);
       saveobj(points, facets, argv[3]);
     }
     return 0;
@@ -219,7 +219,7 @@ int main(int argc, const char* argv[]) {
       tilt.initialize(- sqrt(double(bump[0].rows() * bump[0].cols())) * rz);
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(tilt.tilt(data[j], bump[0], i, M_TILT, psi), zero, M_TILT - i, M_TILT, psi);
+          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, psi);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
@@ -249,8 +249,8 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox, rz);
-      bump.getPseudoVec(bump1, shape1, sute, vbox, rz);
+      bump.getPseudoVec(bump0, shape0, sute, vbox);
+      bump.getPseudoVec(bump1, shape1, sute, vbox);
       std::vector<int> id0, id1;
       for(int i = 0; i < shape0.size(); i ++)
         id0.push_back(i);
@@ -291,7 +291,7 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       auto& bump(bump0[0]);
-      bumper.getPseudoVec(bump, shape, sute, vbox, rz);
+      bumper.getPseudoVec(bump, shape, sute, vbox);
       std::vector<int> id;
       for(int i = 0; i < shape.size(); i ++)
         id.push_back(i);
@@ -349,8 +349,8 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox, rz);
-      bump.getPseudoVec(bump1, shape1, sute, vbox, rz);
+      bump.getPseudoVec(bump0, shape0, sute, vbox);
+      bump.getPseudoVec(bump1, shape1, sute, vbox);
       std::vector<int> id0, id1;
       for(int i = 0; i < shape0.size(); i ++)
         id0.push_back(i);

@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include "tilt.hh"
 
 using std::complex;
 using std::abs;
@@ -45,17 +46,19 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const T& thresh);
-  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4, const T& rz = T(1) / T(6));
+  void initialize(const int& z_max, const int& stp, const T& thresh, const T& psi, const int& nloop, const T& rz);
+  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4);
   Mat  getPseudoBump(const Mat& in);
   
 private:
   Vec         getPseudoBumpSub(const Vec& work, const vector<Vec>& cf);
+  Mat         getPseudoBumpLoop(const Mat& in, const vector<Vec>& cf);
   const T&    getImgPt(const Vec& img, const T& y);
   vector<Vec> prepareLineAxis(const T& rstp);
   
-  T   Pi;
-  
+  T   psi;
+  int nloop;
+  T   rz;
   T   thresh;
   int z_max;
   Vec Dop;
@@ -63,18 +66,21 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(12, 121, T(2.));
+  initialize(12, 121, T(2.), T(.05), 2, T(1) / T(8));
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& thresh) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& thresh, const T& psi, const int& nloop, const T& rz) {
   this->z_max  = z_max;
   this->thresh = thresh;
-  assert(1 < z_max && 0 < stp && T(0) <= thresh);
-  this->Pi     = T(4) * atan2(T(1), T(1));
+  this->psi    = psi;
+  this->nloop  = nloop;
+  this->rz     = rz;
+  assert(1 < z_max && 0 < stp && T(0) <= thresh && 0 <= nloop && T(0) <= psi && T(0) < rz);
+  const T Pi(T(4) * atan2(T(1), T(1)));
   MatU DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
@@ -120,25 +126,39 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
-  auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpLoop(const Mat& in, const vector<Vec>& cf) {
+  tilter<T> tilt;
+  tilt.initialize(sqrt(T(in.rows() * in.cols())) * rz);
   Mat result(in.rows(), in.cols());
+  for(int i = 0; i < in.cols(); i ++)
+    result.col(i) = getPseudoBumpSub(in.col(i), cf);
+  const Mat zero(result * T(0));
+  for(int ii = 1; ii <= nloop; ii ++) {
+    const T   lpsi(psi * ii / nloop);
+    const Mat work0(tilt.tilt(in, result / ii, 1, 4, lpsi));
+    const Mat work1(tilt.tilt(in, result / ii, 3, 4, lpsi));
+    Mat sub0(result.rows(), result.cols());
+    Mat sub1(result.rows(), result.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < result.cols(); i ++)
-    result.col(i)  = getPseudoBumpSub(in.col(i), cf);
-  // N.B. cross bump, if you don't need this, please comment out.
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < result.rows(); i ++)
-    result.row(i) += getPseudoBumpSub(in.row(i), cf);
+    for(int i = 0; i < result.cols(); i ++) {
+      sub0.col(i) = getPseudoBumpSub(work0.col(i), cf);
+      sub1.col(i) = getPseudoBumpSub(work1.col(i), cf);
+    }
+    result += (tilt.tilt(sub0, zero, 1, 4, - lpsi) +
+               tilt.tilt(sub0, zero, 3, 4, - lpsi)) / T(2);
+  }
   return result;
 }
 
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
+  auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
+  return getPseudoBumpLoop(in, cf) + getPseudoBumpLoop(in.transpose(), cf).transpose();
+}
+
 // get bump with multiple scale and vectorized result.
-template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox, const T& rz) {
+template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox) {
   // get vectorize.
   geoms = vector<Vec3>();
   T aavg(0);

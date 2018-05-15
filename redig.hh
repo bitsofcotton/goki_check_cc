@@ -133,7 +133,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   vector<int> dups;
   for(int i = 0; i < triangles.size(); i ++) {
     if(!(checked[i * 3 + 0] || checked[i * 3 + 1] || checked[i * 3 + 2]))
-      dups.push_back(i);
+      dups.emplace_back(i);
     triangles[i].p.col(0) = match.transform(triangles[i].p.col(0));
     triangles[i].p.col(1) = match.transform(triangles[i].p.col(1));
     triangles[i].p.col(2) = match.transform(triangles[i].p.col(2));
@@ -294,18 +294,18 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
   if(pp.size() > mdiv) {
     vector<pair<Vec3, int> > div;
     for(int i = 0; i < pp.size(); i ++)
-      div.push_back(make_pair(p[pp[i]], pp[i]));
+      div.emplace_back(make_pair(p[pp[i]], pp[i]));
     sort(div.begin(), div.end(), less0<pair<Vec3, int> >);
     vector<int> lo, mid, hi;
     lo.reserve( div.size() / 2);
     mid.reserve(div.size() / 2);
     hi.reserve( div.size() / 2);
     for(int i = 0; i < div.size() / 2; i ++)
-      lo.push_back(div[i].second);
+      lo.emplace_back(div[i].second);
     for(int i = div.size() / 4; i < div.size() * 3 / 4; i ++)
-      mid.push_back(div[i].second);
+      mid.emplace_back(div[i].second);
     for(int i = div.size() / 2; i < div.size(); i ++)
-      hi.push_back(div[i].second);
+      hi.emplace_back(div[i].second);
     const auto left(  delaunay2(p, lo,  epsilon));
     const auto middle(delaunay2(p, mid, epsilon));
     const auto right( delaunay2(p, hi,  epsilon));
@@ -319,7 +319,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
            div.size() * 3 / 8 < distance(div.begin(), itr) < div.size())
           goto nextl;
       }
-      work.push_back(left[i]);
+      work.emplace_back(left[i]);
      nextl:
       ;
     }
@@ -330,7 +330,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
            distance(div.begin(), itr) < div.size() * 5 / 8)
           goto nextr;
       }
-      work.push_back(right[i]);
+      work.emplace_back(right[i]);
      nextr:
       ;
     }
@@ -342,7 +342,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
             div.size() * 5 / 8 < distance(div.begin(), itr) ) )
           goto next;
       }
-      res.push_back(middle[i]);
+      res.emplace_back(middle[i]);
      next:
       ;
     }
@@ -383,7 +383,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
-      res.push_back(idx);
+      res.emplace_back(idx);
      fixnext0:
       ;
     }
@@ -423,7 +423,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
                                 p[idx[(k + 0) % 3]],
                                 p[idx[(k + 1) % 3]]))
                     goto fixnext;
-            res.push_back(idx);
+            res.emplace_back(idx);
           }
          fixnext:
           ;
@@ -497,7 +497,7 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
     const int y(std::max(std::min(int(points[i][0]), int(mask.rows() - 1)), 0));
     const int x(std::max(std::min(int(points[i][1]), int(mask.cols() - 1)), 0));
     if(mask(y, x) > .5) {
-      elim.push_back(i);
+      elim.emplace_back(i);
       after.push_back(- 1);
     } else
       after.push_back(ii ++);
@@ -506,7 +506,7 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
     if(std::binary_search(elim.begin(), elim.end(), polys[i][0]) ||
        std::binary_search(elim.begin(), elim.end(), polys[i][1]) ||
        std::binary_search(elim.begin(), elim.end(), polys[i][2]))
-      elimp.push_back(i);
+      elimp.emplace_back(i);
   for(int i = 0, j = 0; i < elim.size(); i ++)
     points.erase(points.begin() + (elim[i] - i));
   for(int i = 0; i < polys.size(); i ++)
@@ -520,26 +520,26 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
 template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x) {
   assert(mask.rows() == checked.rows() && mask.cols() == checked.cols());
   vector<pair<int, int> > tries;
-  tries.push_back(make_pair(+ 1,   0));
-  tries.push_back(make_pair(  0, + 1));
-  tries.push_back(make_pair(- 1,   0));
-  tries.push_back(make_pair(  0, - 1));
+  tries.emplace_back(make_pair(+ 1,   0));
+  tries.emplace_back(make_pair(  0, + 1));
+  tries.emplace_back(make_pair(- 1,   0));
+  tries.emplace_back(make_pair(  0, - 1));
   vector<pair<int, int> > stack;
-  stack.push_back(make_pair(y, x));
+  stack.emplace_back(make_pair(y, x));
   while(stack.size()) {
     const auto pop(stack[stack.size() - 1]);
     stack.pop_back();
     const int& yy(pop.first);
     const int& xx(pop.second);
     if(! (0 <= yy && yy < checked.rows() && 0 <= xx && xx < checked.cols()) )
-      store.push_back(pop);
+      store.emplace_back(pop);
     else if(!checked(yy, xx)) {
       checked(yy, xx) = true;
       if(T(.5) < mask(yy, xx))
-        store.push_back(pop);
+        store.emplace_back(pop);
       else
         for(int i = 0; i < tries.size(); i ++)
-          stack.push_back(make_pair(yy + tries[i].first, xx + tries[i].second));
+          stack.emplace_back(make_pair(yy + tries[i].first, xx + tries[i].second));
     }
   }
   return;
@@ -580,7 +580,7 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
         if(!binary_search(se.begin(), se.end(), j) &&
            abs(store[i].first  - store[j].first)  <= 1 &&
            abs(store[i].second - store[j].second) <= 1)
-          si.push_back(j);
+          si.emplace_back(j);
       if(!si.size())
         break;
       // normal vector direction.
@@ -601,8 +601,8 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
         j = 0;
       // store.
       i = si[j];
-      e.push_back(i);
-      se.push_back(i);
+      e.emplace_back(i);
+      se.emplace_back(i);
       sort(se.begin(), se.end());
     }
     // N.B. almost bruteforce...
@@ -614,19 +614,19 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
         const auto& s(store[e[i]]);
         vector<pair<T, int> > distances;
         for(int j = 0; j < points.size(); j ++)
-          distances.push_back(make_pair(
-                                pow(T(s.first  - points[j][0]), T(2)) +
-                                  pow(T(s.second - points[j][1]), T(2)),
-                                j));
+          distances.emplace_back(make_pair(
+                                  pow(T(s.first  - points[j][0]), T(2)) +
+                                    pow(T(s.second - points[j][1]), T(2)),
+                                  j));
         sort(distances.begin(), distances.end());
         if(distances.size() && !binary_search(pj.begin(), pj.end(), distances[0].second)) {
-          result[result.size() - 1].push_back(distances[0].second);
-          pj.push_back(distances[0].second);
+          result[result.size() - 1].emplace_back(distances[0].second);
+          pj.emplace_back(distances[0].second);
         }
       }
-      result[result.size() - 1].push_back(result[result.size() - 1][0]);
+      result[result.size() - 1].emplace_back(result[result.size() - 1][0]);
     } else
-      se.push_back(i);
+      se.emplace_back(i);
     cerr << "." << flush;
   }
   return result;

@@ -116,8 +116,8 @@ public:
     for(int i = 0; i < srcpoints.size(); i ++)
       for(int j = 0; j < src.srcpoints.size(); j ++)
         if(srcpoints[i] == src.srcpoints[j]) {
-          result.dstpoints.push_back(    dstpoints[i]);
-          result.srcpoints.push_back(src.dstpoints[j]);
+          result.dstpoints.emplace_back(    dstpoints[i]);
+          result.srcpoints.emplace_back(src.dstpoints[j]);
         }
     return result;
   }
@@ -137,7 +137,7 @@ public:
     res.reserve(p.size());
     for(int i = 0; i < p.size(); i ++)
       if(0 <= p[i] && p[i] < orig.size())
-        res.push_back(orig[p[i]]);
+        res.emplace_back(orig[p[i]]);
       else
         res.push_back(- 1);
     return res;
@@ -152,7 +152,7 @@ public:
           j0 = j;
           break;
         }
-      res.push_back(j0);
+      res.emplace_back(j0);
     }
     return res;
   }
@@ -163,13 +163,13 @@ public:
     work.reserve(p.size() * 3);
     for(int i = 0; i < p.size(); i ++)
       for(int j = 0; j < 3; j ++)
-        work.push_back(p[i][j]);
+        work.emplace_back(p[i][j]);
     work = ptr(orig, work);
     for(int i = 0; i < p.size(); i ++) {
       Eigen::Matrix<int, 3, 1> tmp;
       for(int j = 0; j < 3; j ++)
         tmp[j] = work[i * 3 + j];
-      res.push_back(tmp);
+      res.emplace_back(tmp);
     }
     return res;
   }
@@ -180,13 +180,13 @@ public:
     work.reserve(p.size() * 3);
     for(int i = 0; i < p.size(); i ++)
       for(int j = 0; j < 3; j ++)
-        work.push_back(p[i][j]);
+        work.emplace_back(p[i][j]);
     work = reversePtr(orig, work);
     for(int i = 0; i < p.size(); i ++) {
       Eigen::Matrix<int, 3, 1> tmp;
       for(int j = 0; j < 3; j ++)
         tmp[j] = work[i * 3 + j];
-      res.push_back(tmp);
+      res.emplace_back(tmp);
     }
     return res;
   }
@@ -311,7 +311,7 @@ template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const 
         work.j   = j;
         work.k   = k;
         work.err = err;
-        result.push_back(work);
+        result.emplace_back(work);
       }
     }
   sort(result.begin(), result.end());
@@ -329,8 +329,9 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
     num         += shapek.dot(pointk);
     work.rdepth += shapek.dot(shapek);
   }
+  assert(T(0) <= num);
   work.ratio     = num / denom;
-  work.rdepth    = abs(num) / sqrt(denom * work.rdepth);
+  work.rdepth    = num / sqrt(denom * work.rdepth);
   work.offset[0] = T(0);
   work.offset[1] = T(0);
   work.offset[2] = T(0);
@@ -365,7 +366,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int nd = 0; nd <= ndiv / 2; nd ++) {
-    Eigen::Matrix<T, 4, 1> ddiv;
+    vector<T> ddiv;
+    ddiv.resize(4, T(0));
     ddiv[0] = cos(2 * Pi * nd / ndiv);
     ddiv[1] = sin(2 * Pi * nd / ndiv);
     // with t < 0 match.
@@ -411,8 +413,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
              //   with this imcomplete set.
              // N.B. t >= 0 and msub is sorted by t0 > t1.
              (msub[t0].t - msub[t1].t) / msub[t0].t <= thresht) {
-            work.dstpoints.push_back(msub[t1].j);
-            work.srcpoints.push_back(msub[t1].k);
+            work.dstpoints.emplace_back(msub[t1].j);
+            work.srcpoints.emplace_back(msub[t1].k);
             flagj[msub[t1].j] = true;
             flagk[msub[t1].k] = true;
             tt = t1;
@@ -439,7 +441,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
             if(idx >= 0)
               result[idx] = work;
             else {
-              result.push_back(work);
+              result.emplace_back(work);
               cerr << "*" << flush;
             }
             sort(result.begin(), result.end());
