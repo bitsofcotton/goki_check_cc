@@ -176,7 +176,7 @@ template <typename T> bool tilter<T>::onTriangle(T& z, const Triangles& tri, con
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
   const T theta(2. * Pi * idx / samples);
-  const T lpsi(Pi / 2. - psi * Pi / 2.);
+  const T lpsi(Pi * psi);
   Mat3x3 R0;
   Mat3x3 R1;
   R0(0, 0) =   cos(theta);
@@ -197,32 +197,20 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   R1(2, 0) = 0.;
   R1(2, 1) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
-  Vec3 move0, move1;
-  move0[0] = T(0);
-  move0[1] = T(0);
-  move0[2] = T(0);
-  move1[0] = T(in.rows());
-  move1[1] = T(in.cols());
-  move1[2] = T(0);
-  const auto pcenter((move0 + move1) / T(2));
-  const auto R2(R1 * R0);
-  const auto R3(R0.transpose());
-  move0 = rotate0(rotate0(move0, R2, pcenter), R3, pcenter);
-  move1 = rotate0(rotate0(move1, R2, pcenter), R3, pcenter);
+  Vec3 pcenter;
+  pcenter[0] = T(in.rows()) / 2;
+  pcenter[1] = T(in.cols()) / 2;
+  pcenter[2] = T(.5);
+  Mat R(R0.transpose() * R1 * R0);
   vector<Triangles> triangles;
   triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
   for(int i = 0; i < in.rows() - 1; i ++)
     for(int j = 0; j < in.cols() - 1; j ++) {
-      triangles.push_back(makeTriangle(i, j, in, bump, false).rotate(R2, pcenter).rotate(R3, pcenter));
-      triangles.push_back(makeTriangle(i, j, in, bump, true ).rotate(R2, pcenter).rotate(R3, pcenter));
+      triangles.push_back(makeTriangle(i, j, in, bump, false));
+      triangles.push_back(makeTriangle(i, j, in, bump, true ));
     }
-  const auto moveto(pcenter - (move0 + move1) / T(2));
-  for(int j = 0; j < triangles.size(); j ++) {
-    triangles[j].p.col(0) += moveto;
-    triangles[j].p.col(1) += moveto;
-    triangles[j].p.col(2) += moveto;
-    triangles[j].solveN();
-  }
+  for(int j = 0; j < triangles.size(); j ++)
+    triangles[j].rotate(R, pcenter).solveN();
   return tiltsub(in, triangles);
 }
 
