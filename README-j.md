@@ -78,7 +78,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     
     #include "tilt.hh"
     tilter<float> tilt;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .95));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .05));
     
     #include "scancontext.hh"
     matchPartialPartial<float> statmatch;
