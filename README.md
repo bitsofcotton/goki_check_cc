@@ -31,8 +31,7 @@ There's preceders to match 3D to 2D with many approaches. (s.t. detecting topolo
 Searching the Internet more...
 
 # Status
-Searching bone-enabled 3d model simple format -> may be .fbx format is widely used.
-Writing whole to rotated partials match. And checking implementation.
+Writing whole to rotated partials match through .fbx file format. And checking details of implementation.
 
 # Usage
     make tools
@@ -80,7 +79,7 @@ Writing whole to rotated partials match. And checking implementation.
     
     #include "tilt.hh"
     tilter<float> tilt;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .95));
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .05));
     
     #include "scancontext.hh"
     lowFreq<float> lf;
