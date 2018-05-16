@@ -307,14 +307,13 @@ int main(int argc, const char* argv[]) {
         std::vector<Eigen::Matrix<double, 3, 1> > mdatapoly;
         auto match(matches[n]);
         for(int k = 0; k < datapoly.size(); k ++)
-          mdatapoly.push_back(match.transform(datapoly[k]) / match.ratio);
+          mdatapoly.push_back(match.rot.transpose() * match.transform(datapoly[k]) / match.ratio);
         match.offset *= double(0);
-        match.rot    *= match.rot.transpose();
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
         
         const auto hsrc(redig.delaunay2(shape, match.srcpoints));
-        const auto hdst(match.hull(match.dstpoints, match.reverseHull(match.srcpoints, hsrc)));
-        const auto dp2(redig.takeShape(mdatapoly, shape, ~ match, hsrc, hdst, double(1)));
+        const auto hdst(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, hsrc)));
+        const auto dp2(redig.takeShape(mdatapoly, shape, ~ match, hdst, hsrc, double(1)));
         saveobj(dp2, polynorms, (std::string(argv[3]) + std::to_string(n + 1) + std::string(".obj")).c_str());;
       }
     }
