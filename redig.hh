@@ -192,12 +192,13 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const 
     checked[i] = false;
   vector<Vec3> result(dst);
   tilter<T> tilt;
+  const auto rmatch(~ match);
   for(int i = 0; i < hullsrc.size(); i ++) {
-    const auto p0(match.transform(src[hullsrc[i][0]]));
-    const auto p1(match.transform(src[hullsrc[i][1]]));
-    const auto p2(match.transform(src[hullsrc[i][2]]));
+    const auto& p0(src[hullsrc[i][0]]);
+    const auto& p1(src[hullsrc[i][1]]);
+    const auto& p2(src[hullsrc[i][2]]);
     for(int j = 0; j < 3; j ++) {
-      const auto& q(dst[hulldst[i][j]]);
+      const auto q(rmatch.transform(dst[hulldst[i][j]]));
       if(!checked[i * 3 + j] &&
          tilt.sameSide2(p0, p1, p2, q) &&
          tilt.sameSide2(p1, p2, p0, q) &&
