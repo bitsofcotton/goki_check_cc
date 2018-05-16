@@ -311,7 +311,7 @@ int main(int argc, const char* argv[]) {
         match.offset *= double(0);
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
         
-        const auto hsrc(redig.delaunay2(shape, match.srcpoints));
+        const auto hsrc(redig.delaunay2(shape, match.dstpoints));
         const auto hdst(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, hsrc)));
         const auto dp2(redig.takeShape(mdatapoly, shape, ~ match, hdst, hsrc, double(1)));
         saveobj(dp2, polynorms, (std::string(argv[3]) + std::to_string(n + 1) + std::string(".obj")).c_str());;
