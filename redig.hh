@@ -357,18 +357,13 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
       Eigen::Matrix<int, 3, 1> idx;
       Vec3 q[4];
       for(int jj = 0; jj < middle.size(); jj ++)
-        for(int i0 = 0; i0 < 3; i0 ++) {
+        for(int i0 = 0; i0 < 3; i0 ++)
           for(int j0 = 0; j0 < 3; j0 ++)
             if(isCrossing(p[work[ii][ i0      % 3]],
                           p[work[ii][(i0 + 1) % 3]],
                           p[middle[jj][ j0      % 3]],
                           p[middle[jj][(j0 + 1) % 3]]))
               goto fixnext0;
-          if(tilt.sameSide2(p[middle[jj][0]], p[middle[jj][1]], p[middle[jj][2]], p[work[ii][i0]], false) &&
-             tilt.sameSide2(p[middle[jj][1]], p[middle[jj][2]], p[middle[jj][0]], p[work[ii][i0]], false) &&
-             tilt.sameSide2(p[middle[jj][2]], p[middle[jj][0]], p[middle[jj][1]], p[work[ii][i0]], false) )
-            goto fixnext0;
-        }
       q[0] = p[i]; q[1] = p[j]; q[2] = p[k];
       q[3] = p[middle[0][0]];
       isDelaunay2(cw, q, epsilon);

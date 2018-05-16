@@ -230,7 +230,7 @@ public:
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
-  vector<match_t<T> > elim(const vector<match_t<T> >& m, const Mat& dst, const Mat& src, const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh = T(4) / T(256));
+  vector<match_t<T> > elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh = T(4) / T(256));
   
   // theta resolution.
   int ndiv;
@@ -243,7 +243,7 @@ private:
   Vec3               makeG(const vector<Vec3>& in) const;
   vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const Mat3x3& drot1) const;
   void               complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const;
-  T                  isElim(const match_t<T>& m, const Mat& dst, const Mat& tsrc, const vector<Vec3>& srcpts, const T& thresh);
+  T                  isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh);
   U   I;
   T   Pi;
   // match theta  thresh in [0, 1].
@@ -453,7 +453,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
   return;
 }
 
-template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vector<match_t<T> >& m, const Mat& dst, const Mat& src, const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh) {
+template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh) {
   vector<match_t<T> > res(m);
   tilter<T> tilt;
   Vec3 zero3;
@@ -462,22 +462,35 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vec
   for(int i = 0; i < I3.rows(); i ++)
     for(int j = 0; j < I3.cols(); j ++)
        I3(i, j) = T(i == j ? 1 : 0);
-  for(int i = 0; i < m.size(); i ++)
-    res[i].rdepth *= isElim(m[i], dst, tilt.tilt(src, srcbump, m[i]), srcpts, thresh);
+  for(int i = 0; i < m.size(); i ++) {
+    Mat tsrc[3];
+    for(int j = 0; j < 3; j ++)
+      tsrc[j] = tilt.tilt(src[j], srcbump, m[i]);
+    res[i].rdepth *= isElim(m[i], dst, tsrc, srcpts, thresh);
+  }
   sort(res.begin(), res.end());
   return res;
 }
 
-template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, const Mat& dst, const Mat& tsrc, const vector<Vec3>& srcpts, const T& thresh) {
-  assert(dst.rows() == tsrc.rows() && dst.cols() == tsrc.cols());
+template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh) {
+  assert(dst[0].rows() == tsrc[0].rows() && dst[0].cols() == tsrc[0].cols());
+  assert(dst[1].rows() == tsrc[1].rows() && dst[1].cols() == tsrc[2].cols());
+  assert(dst[2].rows() == tsrc[2].rows() && dst[2].cols() == tsrc[2].cols());
+  assert(dst[0].rows() ==  dst[1].rows() && dst[0].cols() ==  dst[1].cols());
+  assert(dst[0].rows() ==  dst[2].rows() && dst[0].cols() ==  dst[2].cols());
   vector<T> diffs;
   for(int i = 0; i < m.srcpoints.size(); i ++) {
     const auto g(m.transform(srcpts[m.srcpoints[i]]));
     const int  y(g[0]);
     const int  x(g[1]);
-    if(0 <= y && y < tsrc.rows() && 0 <= x && x < tsrc.cols() &&
-       T(0) < tsrc(y, x))
-      diffs.push_back(abs(tsrc(y, x) - dst(y, x)));
+    if(0 <= y && y < tsrc[0].rows() && 0 <= x && x < tsrc[0].cols()) {
+      if(tsrc[0](y, x) == T(0) && tsrc[1](y, x) == T(0) && tsrc[2](y, x) == T(0))
+        continue;
+      T diff(0);
+      for(int j = 0; j < 3; j ++)
+        diff += pow(tsrc[j](y, x) - dst[j](y, x), T(2));
+      diffs.push_back(sqrt(diff));
+    }
   }
   sort(diffs.begin(), diffs.end());
   vector<T> ddiffs;

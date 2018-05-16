@@ -261,7 +261,7 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(shape0, delau0, mdata[0]);
       redig.maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
-      const auto matches(statmatch.elim(statmatch.match(shape0, shape1), redig.rgb2xz(data), redig.rgb2xz(mout), bump1, shape1));
+      const auto matches(statmatch.elim(statmatch.match(shape0, shape1), data, mout, bump1, shape1));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
@@ -367,7 +367,7 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(match0.size()), nshowh); n ++)
         for(int m = 0; m < min(int(match1.size()), nshowh); m ++)
           matches.push_back(match0[n] / match1[m]);
-      matches = statmatch.elim(matches, redig.rgb2xz(data), redig.rgb2xz(mout), bump1, shape1);
+      matches = statmatch.elim(matches, data, mout, bump1, shape1);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         const auto& relmatch(matches[n]);
         std::cerr << n << " / " << matches.size() << " : (" << relmatch.rdepth << ", " << relmatch.ratio << ")" << endl;
