@@ -103,16 +103,14 @@ N.B. a file per 5 minutes, up to 20 Mo total upload size.
 These program's enlarge is based on pseudo DFT half space plausible one. Already configured.  
 These program's collect is based on DFT differential. No need to configure.  
 These program's bump assumes F=∞ graphics. Please configure the parameters before to use.   
-These program's match matches with calculated pseudo z-depth.  
+These program's match matches with calculated pseudo z-depth, please configure in pseudoBump class initializer.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
-These program's match and match3d assumes one of vertices is full and another is lowPoly.
-
-match has a bug around identity matching, fixing around this.
+These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
 
 # Specification
 PseudoBump generates the bumpmap that is pseudo plausible one because of one image condition.  
 This is avoidable on very wide cases with multiple camera conditions,
-if it fails, the image resolution or color depth resolution lacks, or, because of scattering or fog things.
+if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
