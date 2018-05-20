@@ -131,20 +131,20 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       }
   }
   vector<int> dups;
-  for(int i = 0; i < triangles.size(); i ++) {
+  for(int i = 0; i < triangles.size(); i ++)
     if(!(checked[i * 3 + 0] || checked[i * 3 + 1] || checked[i * 3 + 2]))
       dups.emplace_back(i);
-    triangles[i].p.col(0) = match.transform(triangles[i].p.col(0));
-    triangles[i].p.col(1) = match.transform(triangles[i].p.col(1));
-    triangles[i].p.col(2) = match.transform(triangles[i].p.col(2));
-  }
   delete[] checked;
   
   vector<typename tilter<T>::Triangles> wt;
   wt.reserve(triangles.size() - dups.size());
   for(int i = 0; i < triangles.size(); i ++)
-    if(!binary_search(dups.begin(), dups.end(), i))
+    if(!binary_search(dups.begin(), dups.end(), i)) {
+      triangles[i].p.col(0) = match.transform(triangles[i].p.col(0));
+      triangles[i].p.col(1) = match.transform(triangles[i].p.col(1));
+      triangles[i].p.col(2) = match.transform(triangles[i].p.col(2));
       wt.push_back(triangles[i].solveN());
+    }
   triangles = wt;
   Mat I3(3, 3);
   Vec zero3(3);
@@ -294,6 +294,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
   cerr << pp.size() << ":" << flush;
   if(pp.size() > mdiv) {
     vector<pair<Vec3, int> > div;
+    div.reserve(pp.size());
     for(int i = 0; i < pp.size(); i ++)
       div.emplace_back(make_pair(p[pp[i]], pp[i]));
     sort(div.begin(), div.end(), less0<pair<Vec3, int> >);

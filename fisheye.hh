@@ -79,7 +79,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   this->psi    = psi;
   this->nloop  = nloop;
   this->rz     = rz;
-  assert(1 < z_max && 0 < stp && T(0) <= thresh && 0 <= nloop && T(0) <= psi && T(0) < rz);
+  assert(1 < z_max && 0 < stp && T(0) <= thresh && 0 <= nloop && 0 <= psi && T(0) < rz);
   const T Pi(T(4) * atan2(T(1), T(1)));
   MatU DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -130,6 +130,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   tilter<T> tilt;
   tilt.initialize(sqrt(T(in.rows() * in.cols())) * rz);
   Mat result(in.rows(), in.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < in.cols(); i ++)
     result.col(i) = getPseudoBumpSub(in.col(i), cf);
   const Mat zero(result * T(0));
