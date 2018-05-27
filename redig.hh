@@ -318,7 +318,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
       for(int ii = 0; ii < 3; ii ++) {
         const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[left[i][ii]], left[i][ii]), less0<pair<Vec3, int> >));
         if(itr != div.end() && itr->second == left[i][ii] &&
-           div.size() * 3 / 8 < distance(div.begin(), itr) < div.size())
+           div.size() / 2 < distance(div.begin(), itr) < div.size())
           goto nextl;
       }
       work.emplace_back(left[i]);
@@ -329,7 +329,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
       for(int ii = 0; ii < 3; ii ++) {
         const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[right[i][ii]], right[i][ii]), less0<pair<Vec3, int> >));
         if(itr != div.end() && itr->second == right[i][ii] &&
-           distance(div.begin(), itr) < div.size() * 5 / 8)
+           distance(div.begin(), itr) < div.size() / 2)
           goto nextr;
       }
       work.emplace_back(right[i]);
@@ -340,8 +340,8 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
       for(int ii = 0; ii < 3; ii ++) {
         const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[middle[i][ii]], middle[i][ii]), less0<pair<Vec3, int> >));
         if(itr != div.end() && itr->second == middle[i][ii] &&
-           (distance(div.begin(), itr) < div.size() * 3 / 8 ||
-            div.size() * 5 / 8 < distance(div.begin(), itr) ) )
+           (distance(div.begin(), itr) < div.size() / 4 ||
+            div.size() * 3 / 4 < distance(div.begin(), itr) ) )
           goto next;
       }
       res.emplace_back(middle[i]);

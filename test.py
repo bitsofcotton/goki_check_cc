@@ -31,6 +31,8 @@ if(argv[2] == "match"):
   exit(0)
 
 pixels = 4
+bhabit = ""
+habit0 = ""
 for line in argv[3:]:
   try:
     pixels = int(line)
@@ -76,4 +78,12 @@ for line in argv[3:]:
     for s in range(0, int(np.log(pixels) / np.log(1.5)) + 1):
       subprocess.call([argv[1], "enlarge", root + "-xsmall-" + str(s) + ".ppm", root + "-xsmall-" + str(s + 1) + "-base.ppm"])
       subprocess.call(["convert", root + "-xsmall-" + str(s + 1) + "-base.ppm", "-resize", "75%", "-compress", "none", root + "-xsmall-" + str(s + 1) + ".ppm"])
+  elif(argv[2] == "habit"):
+    if(len(bhabit) <= 0):
+      bhabit = line
+      habit0 = root + "-mask.ppm"
+      subprocess.call(["cp", bhabit, bhabit + "-out.obj"])
+    else:
+      subprocess.call([argv[1], "habit", habit0, line + "-out.obj", bhabit + "-out.obj", line])
+      bhabit = line
 

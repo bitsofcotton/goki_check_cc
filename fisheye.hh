@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include "tilt.hh"
 
 using std::complex;
 using std::abs;
@@ -46,40 +45,31 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const T& thresh, const T& psi, const int& nloop, const T& rz);
-  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4);
+  void initialize(const int& z_max, const int& stp);
+  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4, const T& rz = T(1) / T(8));
   Mat  getPseudoBump(const Mat& in);
   
 private:
   Vec         getPseudoBumpSub(const Vec& work, const vector<Vec>& cf);
-  Mat         getPseudoBumpLoop(const Mat& in, const vector<Vec>& cf);
   const T&    getImgPt(const Vec& img, const T& y);
   vector<Vec> prepareLineAxis(const T& rstp);
   
-  T   psi;
-  int nloop;
-  T   rz;
-  T   thresh;
   int z_max;
   Vec Dop;
   Vec DDDop;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(12, 121, T(2.), T(.05), 2, T(1) / T(8));
+  initialize(150, 31);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& thresh, const T& psi, const int& nloop, const T& rz) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp) {
   this->z_max  = z_max;
-  this->thresh = thresh;
-  this->psi    = psi;
-  this->nloop  = nloop;
-  this->rz     = rz;
-  assert(1 < z_max && 0 < stp && T(0) <= thresh && 0 <= nloop && 0 <= psi && T(0) < rz);
+  assert(1 < z_max && 0 < stp);
   const T Pi(T(4) * atan2(T(1), T(1)));
   MatU DFT(stp, stp), IDFT(stp, stp);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -104,64 +94,44 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   cerr << "." << flush;
   Vec result(work.size());
   for(int s = 0; s < work.size(); s ++) {
-    T buf(2);
-    T mbuf(2);
-    result[s] = T(1);
+    T mbuf(- 1);
     for(int z = 0; z < cf.size(); z ++) {
       // d/dt (local color) / ||local color||:
       Vec c(cf[z].size());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(work, cf[z][u] + s);
-      const T score(abs(Dop.dot(c) * DDDop.dot(c)) / c.dot(c));
-      if(score < mbuf) {
+      const T score(Dop.dot(c) * DDDop.dot(c) / c.dot(c));
+      if(mbuf < score) {
         result[s] = z / T(cf.size());
         mbuf      = score;
-      // N.B. cf[z] increases width of differences, so if it rapidly increases,
-      //      it's on edge point.
-      } else if(buf * (T(1) + thresh) < score)
-        break;
-      buf = score;
+      }
     }
-  }
-  return result;
-}
-
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBumpLoop(const Mat& in, const vector<Vec>& cf) {
-  tilter<T> tilt;
-  tilt.initialize(sqrt(T(in.rows() * in.cols())) * rz);
-  Mat result(in.rows(), in.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < in.cols(); i ++)
-    result.col(i) = getPseudoBumpSub(in.col(i), cf);
-  const Mat zero(result * T(0));
-  for(int ii = 1; ii <= nloop; ii ++) {
-    const T   lpsi(psi * ii / nloop);
-    const Mat work0(tilt.tilt(in, result / ii, 1, 4, lpsi));
-    const Mat work1(tilt.tilt(in, result / ii, 3, 4, lpsi));
-    Mat sub0(result.rows(), result.cols());
-    Mat sub1(result.rows(), result.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < result.cols(); i ++) {
-      sub0.col(i) = getPseudoBumpSub(work0.col(i), cf);
-      sub1.col(i) = getPseudoBumpSub(work1.col(i), cf);
-    }
-    result += (tilt.tilt(sub0, zero, 1, 4, - lpsi) +
-               tilt.tilt(sub0, zero, 3, 4, - lpsi)) / T(2);
+    // N.B. if we can't focus, it's from infinitely far.
+    if(result[s] == T(0))
+      result[s] = T(1);
   }
   return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
   auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
-  return getPseudoBumpLoop(in, cf) + getPseudoBumpLoop(in.transpose(), cf).transpose();
+  Mat result(in.rows(), in.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < in.cols(); i ++)
+    result.col(i)  = getPseudoBumpSub(in.col(i), cf);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < in.rows(); i ++)
+    result.row(i) += getPseudoBumpSub(in.row(i), cf);
+  return result;
 }
 
 // get bump with multiple scale and vectorized result.
-template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox) {
+template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox, const T& rz) {
+  assert(0 < vbox && T(0) < rz);
   // get vectorize.
   geoms = vector<Vec3>();
   T aavg(0);
@@ -224,6 +194,7 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
   
   vector<Vec> result;
   result.resize(z_max, Vec(Dop.size()));
+  T absmax(0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -238,9 +209,19 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
       // <c + (p - c) * t, [0, 1]> = 0
       const T t(- camera[1] / (cpoint[1] - camera[1]));
       // result increases near to far on differential points.
-      result[result.size() - 1 - zi][s] = (camera + (cpoint - camera) * t)[0] * rstp;
+      result[result.size() - 1 - zi][s] = (camera + (cpoint - camera) * t)[0];
+#if defined(_OPENMP)
+#pragma omp atomic
+#endif
+      absmax = max(abs(result[result.size() - 1 - zi][s]), absmax);
     }
   }
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int zi = 0; zi < result.size(); zi ++)
+    for(int s = 0; s < result[zi].size(); s ++)
+      result[result.size() - 1 - zi][s] *= rstp / absmax;
   return result;
 }
 
