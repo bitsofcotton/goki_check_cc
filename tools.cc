@@ -22,7 +22,7 @@ const int    Mpoly(2000);
 const double rz(1 / 8.);
 
 void usage() {
-  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|match|match3d|match2dh3d|maskobj) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|match|match3d|match2dh3d|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -73,6 +73,9 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     savep2or3<T>(outfile.c_str(), outs, false);
   }
+  
+  saveobj(redig.takeShape(shape0, shape1, match, mhull0, mhull1, 1.), mhull0,
+          (outbase + std::string("-emph.obj")).c_str());
   return;
 }
 
@@ -125,6 +128,8 @@ int main(int argc, const char* argv[]) {
     mode = 11;
   else if(strcmp(argv[1], "maskobj") == 0)
     mode = 12;
+  else if(strcmp(argv[1], "habit") == 0)
+    mode = 13;
   if(mode < 0) {
     usage();
     return - 1;
@@ -179,7 +184,7 @@ int main(int argc, const char* argv[]) {
       PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
-      bump.getPseudoVec(data[0], points, facets, vbox);
+      bump.getPseudoVec(data[0], points, facets, vbox, rz);
       saveobj(points, facets, argv[3]);
     }
     return 0;
@@ -249,8 +254,8 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox);
-      bump.getPseudoVec(bump1, shape1, sute, vbox);
+      bump.getPseudoVec(bump0, shape0, sute, vbox, rz);
+      bump.getPseudoVec(bump1, shape1, sute, vbox, rz);
       std::vector<int> id0, id1;
       for(int i = 0; i < shape0.size(); i ++)
         id0.push_back(i);
@@ -291,7 +296,7 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       auto& bump(bump0[0]);
-      bumper.getPseudoVec(bump, shape, sute, vbox);
+      bumper.getPseudoVec(bump, shape, sute, vbox, rz);
       std::vector<int> id;
       for(int i = 0; i < shape.size(); i ++)
         id.push_back(i);
@@ -305,16 +310,23 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size() << "(" << matches[n].rdepth << ", " << matches[n].ratio << ")" << endl;
         std::vector<Eigen::Matrix<double, 3, 1> > mdatapoly;
+        mdatapoly.reserve(datapoly.size());
         auto match(matches[n]);
         for(int k = 0; k < datapoly.size(); k ++)
-          mdatapoly.push_back(match.rot.transpose() * match.transform(datapoly[k]) / match.ratio);
+          mdatapoly.push_back(match.transform(datapoly[k]) / match.ratio);
+        match.rot    *= match.rot.transpose();
         match.offset *= double(0);
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
         
-        const auto hsrc(redig.delaunay2(shape, match.dstpoints));
-        const auto hdst(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, hsrc)));
-        const auto dp2(redig.takeShape(mdatapoly, shape, ~ match, hdst, hsrc, double(1)));
-        saveobj(dp2, polynorms, (std::string(argv[3]) + std::to_string(n + 1) + std::string(".obj")).c_str());;
+        const auto rmatch(~ match);
+        for(int k = 0; k < mdatapoly.size(); k ++)
+          mdatapoly[k] = rmatch.transform(mdatapoly[k]) / rmatch.ratio;
+        const auto hsrc(redig.delaunay2(shape, rmatch.srcpoints));
+        saveobj(redig.takeShape(mdatapoly, shape, rmatch,
+                match.hull(rmatch.dstpoints,
+                           rmatch.reverseHull(rmatch.srcpoints, hsrc)),
+                hsrc, 1.), polynorms,
+                (std::string(argv[3]) + std::to_string(n + 1) + std::string(".obj")).c_str());
       }
     }
     return 0;
@@ -348,8 +360,8 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox);
-      bump.getPseudoVec(bump1, shape1, sute, vbox);
+      bump.getPseudoVec(bump0, shape0, sute, vbox, rz);
+      bump.getPseudoVec(bump1, shape1, sute, vbox, rz);
       std::vector<int> id0, id1;
       for(int i = 0; i < shape0.size(); i ++)
         id0.push_back(i);
@@ -401,6 +413,27 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < points.size(); i ++)
         points[i][2] *= ratio / (M - m);
       saveobj(points, polys, argv[4], true, edges);
+    }
+    return 0;
+  case 13:
+    // habit.
+    {
+      std::vector<Eigen::Matrix<double, 3, 1> > pdst,   psrc;
+      std::vector<Eigen::Matrix<int,    3, 1> > poldst, polsrc;
+      if(argc < 5 || !loadobj<double>(pdst, poldst, argv[4]) ||
+                     !loadobj<double>(psrc, polsrc, argv[4])) {
+        usage();
+        return - 2;
+      }
+      matchPartialPartial<double> statmatch;
+      const auto  match(statmatch.match(pdst, psrc));
+      for(int i = 0; i < nshow; i ++) {
+        const auto mhull0(redig.delaunay2(pdst, match[i].dstpoints));
+        const auto mhull1(match[i].hull(match[i].srcpoints, match[i].reverseHull(match[i].dstpoints, mhull0)));
+        saveobj(redig.takeShape(pdst, psrc, match[i], mhull0, mhull1, 1.),
+                mhull0, (argv[3] + std::string("-emph-") + to_string(i) +
+                                   std::string(".obj")).c_str());
+      }
     }
     return 0;
   default:
