@@ -321,11 +321,13 @@ template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const 
 template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
   T num(0);
   T denom(0);
+  T denom2(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto shapek(shapebase[work.dstpoints[k]] - gs);
     const auto pointk(work.transform(points[work.srcpoints[k]] - gp));
-    denom += pointk.dot(pointk);
-    num   += shapek.dot(pointk);
+    denom  += pointk.dot(pointk);
+    denom2 += shapek.dot(shapek);
+    num    += shapek.dot(pointk);
   }
   assert(T(0) <= num);
   work.ratio = num / denom;
@@ -337,7 +339,7 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
     const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
     work.rdepth += err.dot(err);
   }
-  work.rdepth /= work.dstpoints.size();
+  work.rdepth /= sqrt(denom * denom2) * work.dstpoints.size();
   return;
 }
 
