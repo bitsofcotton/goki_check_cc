@@ -15,11 +15,11 @@ using namespace std;
 const int    nshow(4);
 const int    nshowh(16);
 const int    nemph(4);
-const int    vbox(8);
+const int    vbox(6);
+const double rz(1. / 6.);
 const int    M_TILT(32);
-const double psi(.05);
+const double psi(.01);
 const int    Mpoly(2000);
-const double rz(1 / 8.);
 
 void usage() {
   cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|match|match3d|match2dh3d|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
@@ -174,7 +174,8 @@ int main(int argc, const char* argv[]) {
       // bump.
       PseudoBump<double> bump;
       const auto xye(bump.getPseudoBump(redig.rgb2l(data)));
-      data[0] = xye + redig.tilt45(bump.getPseudoBump(redig.tilt45(redig.rgb2l(data), false)), true, xye);
+      // data[0] = xye + redig.tilt45(bump.getPseudoBump(redig.tilt45(redig.rgb2l(data), false)), true, xye);
+      data[0] = xye;
       data[1] = data[2] = data[0];
     }
     break;
