@@ -91,9 +91,9 @@ template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int
   for(int i = 0; i < stp; i ++)
     DopL[i] = DopM[i] = DopR[i] = T(0);
   for(int i = 0; i < DopL0.size(); i ++) {
-    DopL[i]                          = DopL0[i];
-    DopM[i - DopM0.size() + stp / 2] = DopM0[i];
-    DopR[i - DopR0.size() + stp    ] = DopR0[i];
+    DopL[i]                              = DopL0[i];
+    DopM[i - DopM0.size() / 2 + stp / 2] = DopM0[i];
+    DopR[i - DopR0.size()     + stp    ] = DopR0[i];
   }
   return;
 }
