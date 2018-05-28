@@ -12,8 +12,7 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 * * z_max  : 出力する z 軸の解像度です。
 * * stp    : ぼやけ具合を検出する際に使用される点の数です。
 * * thresh : 局所的な情報の限界を示す閾値です。
-* * psi    : 内部の傾けるループで使用する角度の最大値です
-* * nloop  : 内部の傾けるループでの傾ける回数です。
+* * vbox.  : ベクタ生成の際にまとめるピクセルの数です。
 * * rz     : 奥行きの乗数です。
 * tilt.hh
 * * z_ratio : [0,1] から [0,z_atio] への線形写像です。
@@ -62,34 +61,12 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     # list matches 2d - 2d with hidden 3d.
     ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-object.obj
     
+    # habit
+    ./tools habit mask.ppm output.obj input0.obj input1.obj
+    
 # ライブラリとしての使い方
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
-    
-    #include "enlarge.hh"
-    enlarger2ex<float> enlarger;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.compute(input, enlarger.ENLARGE_BOTH));
-    
-    enlarger2ex<float> detect;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.compute(input, detect.COLLECT_BOTH));
-    
-    #include "fisheye.hh"
-    PseudoBump<float> bump;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBump(input));
-    
-    #include "tilt.hh"
-    tilter<float> tilt;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .05));
-    
-    #include "scancontext.hh"
-    matchPartialPartial<float> statmatch;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape0;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape1;
-    // init shape0, shape1.
-    std::vector<match_t<float> > matches(statmatch.match(shape0, shape1));
-    // match operations.
-    
-    // 必要であれば namespace ブロックでスコープしてください。
-    // ただし、インクルードガードの定義が有害な場合があります。
+tools.cc を参照してください。また、必要であれば namespace ブロックでスコープしてください。
+ただし、高確率でインクルードガードの定義が有害です。
 
 # デモ
 https://services.limpid-intensity.info/ にサンプルがあります。  
