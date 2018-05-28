@@ -11,9 +11,8 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * fisheye.hh
 * * z_max  : z-index resolution.
 * * stp    : number of points to be used in detecting edges.
-* * thresh : local edgepoint colour difference threshold.
-* * psi    : tilting maximum value. (psi * Pi).
-* * nloop  : tilting numbers.
+* * thresh : edgepoint colour difference threshold.
+* * vbox.  : size of vector gathering rectangle.
 * * rz     : z-axis output ratio.
 * tilt.hh
 * * z_ratio : [0,1] to [0,z_atio].
@@ -62,36 +61,12 @@ Writing whole to rotated partials match through .fbx file format. And checking d
     
     # list matches 2d - 2d with hidden 3d.
     ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-3dmodel.obj
+    
+    # habit
+    ./tools habit mask.ppm output.obj input0.obj input1.obj
 
 # How to use as library (sample code).
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> input;
-    
-    #include "enlarge.hh"
-    enlarger2ex<float> enlarger;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> enlarged(enlarger.compute(input, enlarger.ENLARGE_BOTH));
-    
-    enlarger2ex<float> detect;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> edgecollect(detect.compute(input, detect.COLLECT_BOTH));
-    
-    #include "fisheye.hh"
-    PseudoBump<float> bump;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> bumpd(bump.getPseudoBump(input));
-    
-    #include "tilt.hh"
-    tilter<float> tilt;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> tilted(tilt.tilt(input, bumpped, 0, 8, .05));
-    
-    #include "scancontext.hh"
-    lowFreq<float> lf;
-    matchPartialPartial<float> statmatch;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape0;
-    std::vector<Eigen::Matrix<float, 3, 1> > shape1;
-    // init shape0, shape1.
-    std::vector<match_t<float> > matches(statmatch.match(shape0, shape1));
-    // match operations.
-    
-    // If you need, please scope with namespace block.
-    // but include guard definition may harms.
+Please refer tools.cc, and please include with namespace directive (but include guard definition should harms).
 
 # Demos
 https://services.limpid-intensity.info/ have a sample interface working demos.
@@ -108,7 +83,7 @@ These program's match assumes one of vertices is full and another is lowPoly but
 
 # Specification
 PseudoBump generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
-This is avoidable on very wide cases with multiple camera conditions,
+Pseudo condition is avoidable on very wide cases with multiple camera conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 
 # Another downloads
