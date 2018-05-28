@@ -198,20 +198,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   R1(2, 1) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
   Vec3 pcenter;
-  pcenter[0] = T(in.rows()) / 2;
-  pcenter[1] = T(in.cols()) / 2;
+  pcenter[0] = T(in.rows() - 1.) / 2;
+  pcenter[1] = T(in.cols() - 1.) / 2;
   pcenter[2] = T(.5);
-  Mat R(R0.transpose() * R1 * R0);
-  vector<Triangles> triangles;
-  triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
-  for(int i = 0; i < in.rows() - 1; i ++)
-    for(int j = 0; j < in.cols() - 1; j ++) {
-      triangles.push_back(makeTriangle(i, j, in, bump, false));
-      triangles.push_back(makeTriangle(i, j, in, bump, true ));
-    }
-  for(int j = 0; j < triangles.size(); j ++)
-    triangles[j].rotate(R, pcenter).solveN();
-  return tiltsub(in, triangles);
+  match_t<T> m;
+  m.rot    = R0.transpose() * R1 * R0;
+  m.offset = pcenter - m.rot * pcenter;
+  m.ratio  = T(1);
+  return tilt(in, bump, m);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m) {

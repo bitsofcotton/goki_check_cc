@@ -45,8 +45,8 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp);
-  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 4, const T& rz = T(1) / T(8));
+  void initialize(const int& z_max, const int& stp, const T& thresh);
+  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 6, const T& rz = T(1) / T(6));
   Mat  getPseudoBump(const Mat& in);
   
 private:
@@ -55,38 +55,46 @@ private:
   vector<Vec> prepareLineAxis(const T& rstp);
   
   int z_max;
-  Vec Dop;
-  Vec DDDop;
+  T   thresh;
+  Vec DopL;
+  Vec DopM;
+  Vec DopR;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(150, 31);
+  initialize(60, 31, .3);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp) {
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& thresh) {
   this->z_max  = z_max;
-  assert(1 < z_max && 0 < stp);
+  this->thresh = thresh;
+  assert(1 < z_max && 2 < stp && T(0) <= thresh && thresh < T(1));
   const T Pi(T(4) * atan2(T(1), T(1)));
-  MatU DFT(stp, stp), IDFT(stp, stp);
+  MatU DFT(stp / 2, stp / 2), IDFT(stp / 2, stp / 2);
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
       DFT( i, j) = exp(U(- 2.) * Pi * sqrt(U(- 1)) * U(i * j / T(stp)));
       IDFT(i, j) = exp(U(  2.) * Pi * sqrt(U(- 1)) * U(i * j / T(stp))) / T(stp);
     }
-  auto DDDFT(DFT);
-  for(int i = 0; i < DFT.rows(); i ++) {
-    const U rtheta(U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows()));
-    DFT.row(i)   *= rtheta;
-    DDDFT.row(i) *= rtheta * rtheta * rtheta;
+  for(int i = 0; i < DFT.rows(); i ++)
+    DFT.row(i) *= U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
+  const auto DopL0((IDFT.row(IDFT.rows() - 1) * DFT).real().template cast<T>());
+  const auto DopM0((IDFT.row(IDFT.rows() / 2) * DFT).real().template cast<T>());
+  const auto DopR0((IDFT.row(0)               * DFT).real().template cast<T>());
+  DopL = Vec(stp);
+  DopM = Vec(stp);
+  DopR = Vec(stp);
+  for(int i = 0; i < stp; i ++)
+    DopL[i] = DopM[i] = DopR[i] = T(0);
+  for(int i = 0; i < DopL0.size(); i ++) {
+    DopL[i]                          = DopL0[i];
+    DopM[i - DopM0.size() + stp / 2] = DopM0[i];
+    DopR[i - DopR0.size() + stp    ] = DopR0[i];
   }
-  Dop    = (IDFT *   DFT).row(IDFT.rows() / 2).real().template cast<T>();
-  DDDop  = (IDFT * DDDFT).row(IDFT.rows() / 2).real().template cast<T>();
-  Dop   /= sqrt(  Dop.dot(  Dop));
-  DDDop /= sqrt(DDDop.dot(DDDop));
   return;
 }
 
@@ -94,13 +102,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   cerr << "." << flush;
   Vec result(work.size());
   for(int s = 0; s < work.size(); s ++) {
-    T mbuf(- 1);
+    T mbuf(thresh);
+    result[s] = T(0);
     for(int z = 0; z < cf.size(); z ++) {
       // d/dt (local color) / ||local color||:
       Vec c(cf[z].size());
       for(int u = 0; u < c.size(); u ++)
-        c[u] = getImgPt(work, cf[z][u] + s);
-      const T score(Dop.dot(c) * DDDop.dot(c) / c.dot(c));
+        c[u] = getImgPt(work, cf[z][u] + s) - work[s];
+      const T score((abs(DopL.dot(c)) + abs(DopM.dot(c)) + abs(DopR.dot(c))) / sqrt(c.dot(c)) / T(3));
       if(mbuf < score) {
         result[s] = z / T(cf.size());
         mbuf      = score;
@@ -193,7 +202,7 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
   camera[1] = T(1);
   
   vector<Vec> result;
-  result.resize(z_max, Vec(Dop.size()));
+  result.resize(z_max, Vec(DopL.size()));
   T absmax(0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -201,7 +210,7 @@ template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>
   for(int zi = 0; zi < result.size(); zi ++) {
     for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
-      cpoint[0] = (s / T(Dop.size() - 1) - 1 / T(2));
+      cpoint[0] = (s / T(DopL.size() - 1) - 1 / T(2));
       // [0, 1] not works well, [1, infty[ works better.
       cpoint[1] = 1.5 + zi;
       // x-z plane projection of point p with camera geometry c to z=0.
