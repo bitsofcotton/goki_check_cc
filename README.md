@@ -66,7 +66,7 @@ Writing whole to rotated partials match through .fbx file format. And checking d
     ./tools habit mask.ppm output.obj input0.obj input1.obj
 
 # How to use as library (sample code).
-    Please refer tools.cc, and please include with namespace directive (but include guard definition may harms).
+Please refer tools.cc, and please include with namespace directive (but include guard definition should harms).
 
 # Demos
 https://services.limpid-intensity.info/ have a sample interface working demos.
