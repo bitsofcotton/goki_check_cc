@@ -427,11 +427,11 @@ int main(int argc, const char* argv[]) {
         return - 2;
       }
       matchPartialPartial<double> statmatch;
-      const auto  match(statmatch.match(pdst, psrc));
+      const auto match(statmatch.match(pdst, psrc));
       for(int i = 0; i < nshow; i ++) {
         const auto mhull0(redig.delaunay2(pdst, match[i].dstpoints));
         const auto mhull1(match[i].hull(match[i].srcpoints, match[i].reverseHull(match[i].dstpoints, mhull0)));
-        saveobj(redig.takeShape(pdst, psrc, match[i], mhull0, mhull1, 1.),
+        saveobj(redig.takeShape(pdst, psrc, match[i], mhull0, mhull1, .5),
                 mhull0, (argv[3] + std::string("-emph-") + to_string(i) +
                                    std::string(".obj")).c_str());
       }

@@ -102,14 +102,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   cerr << "." << flush;
   Vec result(work.size());
   for(int s = 0; s < work.size(); s ++) {
-    T mbuf(thresh);
+    T mbuf(thresh * T(3));
     result[s] = T(0);
     for(int z = 0; z < cf.size(); z ++) {
       // d/dt (local color) / ||local color||:
       Vec c(cf[z].size());
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(work, cf[z][u] + s) - work[s];
-      const T score((abs(DopL.dot(c)) + abs(DopM.dot(c)) + abs(DopR.dot(c))) / sqrt(c.dot(c)) / T(3));
+      const T score((abs(DopL.dot(c)) + abs(DopM.dot(c)) + abs(DopR.dot(c))) / sqrt(c.dot(c)));
       if(mbuf < score) {
         result[s] = z / T(cf.size());
         mbuf      = score;

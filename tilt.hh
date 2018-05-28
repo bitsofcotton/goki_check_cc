@@ -80,7 +80,6 @@ private:
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   T    Pi;
   T    z_ratio;
-  T    thresh;
 };
 
 template <typename T> tilter<T>::tilter() {
@@ -95,7 +94,6 @@ template <typename T> tilter<T>::~tilter() {
 template <typename T> void tilter<T>::initialize(const T& z_ratio) {
   this->z_ratio = z_ratio;
   Pi            = atan2(T(1), T(1)) * T(4);
-  thresh        = 1e-8;
   return;
 }
 
@@ -157,16 +155,12 @@ template <typename T> bool tilter<T>::onTriangle(T& z, const Triangles& tri, con
   camera[0] = geom[0];
   camera[1] = geom[1];
   camera[2] = 0;
-  // <v0 t + camera, v4> = tri.
+  // <v0 t + camera, tri.n> = tri.z
   const T t((tri.z - tri.n.dot(camera)) / (tri.n.dot(v0)));
   z = camera[2] + v0[2] * t;
-  Vec3 geom3;
-  geom3[0] = geom[0];
-  geom3[1] = geom[1];
-  geom3[2] = T(0);
-  return (sameSide2(tri.p.col(0), tri.p.col(1), tri.p.col(2), geom3, true, T(.125)) &&
-          sameSide2(tri.p.col(1), tri.p.col(2), tri.p.col(0), geom3, true, T(.125)) &&
-          sameSide2(tri.p.col(2), tri.p.col(0), tri.p.col(1), geom3, true, T(.125)));
+  return (sameSide2(tri.p.col(0), tri.p.col(1), tri.p.col(2), camera, true, T(.125)) &&
+          sameSide2(tri.p.col(1), tri.p.col(2), tri.p.col(0), camera, true, T(.125)) &&
+          sameSide2(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, true, T(.125)));
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
@@ -238,15 +232,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   // able to boost with divide and conquer.
   for(int j = 0; j < triangles.size(); j ++) {
     const Triangles& tri(triangles[j]);
-    Vec2 gs[3];
-    for(int k = 0; k < 3; k ++) {
-      gs[k][0] = tri.p(0, k);
-      gs[k][1] = tri.p(1, k);
-    }
-    int ll = int( min(min(gs[0][0], gs[1][0]), gs[2][0]));
-    int rr = ceil(max(max(gs[0][0], gs[1][0]), gs[2][0])) + 1;
-    int bb = int( min(min(gs[0][1], gs[1][1]), gs[2][1]));
-    int tt = ceil(max(max(gs[0][1], gs[1][1]), gs[2][1])) + 1;
+    int ll = int( min(min(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2)));
+    int rr = ceil(max(max(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2)));
+    int bb = int( min(min(tri.p(1, 0), tri.p(1, 1)), tri.p(1, 2)));
+    int tt = ceil(max(max(tri.p(1, 0), tri.p(1, 1)), tri.p(1, 2))) + 1;
     for(int y = max(0, ll); y < min(rr, int(in.rows())); y ++)
       for(int x = max(0, bb); x < min(tt, int(in.cols())); x ++) {
         T z;
