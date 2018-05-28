@@ -84,11 +84,20 @@ public:
   match_t() {
     thresh = T(0);
     threshsize[0] = threshsize[1] = T(0);
+    initId();
   }
   match_t(const T& thresh, const T& h, const T& w) {
     this->thresh        = thresh;
     this->threshsize[0] = h;
     this->threshsize[1] = w;
+    initId();
+  }
+  void initId() {
+    rot(0, 0) = rot(1, 1) = rot(2, 2) = T(0);
+    rot(1, 0) = rot(2, 0) = rot(0, 1) = rot(2, 1) = rot(0, 2) = rot(1, 2) = T(0);
+    offset[0] = offset[1] = offset[2] = T(0);
+    ratio     = T(1);
+    rdepth    = T(0);
   }
   match_t(const match_t<T>& other) {
     *this = other;
@@ -344,11 +353,6 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
 }
 
 template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
-  // drot0 := I_3.
-  Mat3x3 drot0;
-  for(int k = 0; k < drot0.rows(); k ++)
-    for(int l = 0; l < drot0.cols(); l ++)
-      drot0(k, l) = (k == l ? T(1) : T(0));
   const Vec3 gs(makeG(shapebase));
   const Vec3 gp(makeG(points));
   Vec3 gd;
@@ -377,7 +381,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
-      work0.rot = drot0;
       for(int k = 0; k < ddiv.size() / 2; k ++) {
         Mat3x3 lrot;
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
@@ -391,9 +394,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         lrot((k + 1) % 3, (k + 2) % 3) = T(0);
         work0.rot = lrot * work0.rot;
       }
-      work0.rdepth    = T(0);
-      work0.offset[0] = work0.offset[1] = work0.offset[2] = T(0);
-      work0.ratio     = T(1);
       // for each near matches:
       const auto msub(makeMsub(shapebase, points, gs, gp, work0));
       cerr << msub.size() << ":" << flush;
