@@ -103,14 +103,15 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       triangles[triangles.size() - 1].c = srcimg(i, j);
     }
   
-  bool *checked;
-  checked = new bool[triangles.size() * 3];
+  bool *checked = new bool[triangles.size() * 3];
+  assert(checked);
   for(int i = 0; i < triangles.size() * 3; i ++)
     checked[i] = false;
   
   cerr << "e(" << hulldst.size() << ")" << endl;
   const auto rmatch(~ match);
   for(int i = 0; i < hulldst.size(); i ++) {
+    // XXX matching places inversion needed?
     const Vec3 p0(rmatch.transform(dst[hulldst[i][0]]));
     const Vec3 p1(rmatch.transform(dst[hulldst[i][1]]));
     const Vec3 p2(rmatch.transform(dst[hulldst[i][2]]));
@@ -130,30 +131,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
         }
       }
   }
-  vector<int> dups;
-  for(int i = 0; i < triangles.size(); i ++)
-    if(!(checked[i * 3 + 0] || checked[i * 3 + 1] || checked[i * 3 + 2]))
-      dups.emplace_back(i);
-  delete[] checked;
-  
   vector<typename tilter<T>::Triangles> wt;
-  wt.reserve(triangles.size() - dups.size());
+  wt.reserve(triangles.size());
   for(int i = 0; i < triangles.size(); i ++)
-    if(!binary_search(dups.begin(), dups.end(), i)) {
-      triangles[i].p.col(0) = match.transform(triangles[i].p.col(0));
-      triangles[i].p.col(1) = match.transform(triangles[i].p.col(1));
-      triangles[i].p.col(2) = match.transform(triangles[i].p.col(2));
-      wt.push_back(triangles[i].solveN());
-    }
-  triangles = wt;
-  Mat I3(3, 3);
-  Vec zero3(3);
-  for(int i = 0; i < 3; i ++) {
-    for(int j = 0; j < 3; j ++)
-      I3(i, j) = (i == j ? T(1) : T(0));
-    zero3[i] = T(0);
-  }
-  return tilt.tiltsub(dstimg, triangles);
+    if(checked[i * 3 + 0] || checked[i * 3 + 1] || checked[i * 3 + 2])
+      wt.push_back(triangles[i]);
+  delete[] checked;
+  return tilt.tilt(dstimg, wt, match);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc) {
@@ -188,6 +172,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
 template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   assert(hulldst.size() == hullsrc.size());
   bool* checked = new bool[hullsrc.size() * 3];
+  assert(checked);
   for(int i = 0; i < hullsrc.size() * 3; i ++)
     checked[i] = false;
   vector<Vec3> result(dst);
