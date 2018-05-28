@@ -107,7 +107,7 @@ These program's match3d assumes input file as a bump map and .obj 3d file.
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
 
 # Specification
-PseudoBump generates the bumpmap that is pseudo plausible one because of one image condition.  
+PseudoBump generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis "if it's in the focal point, edge is better clear than other places" is correct.  
 This is avoidable on very wide cases with multiple camera conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 
