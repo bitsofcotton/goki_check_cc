@@ -197,7 +197,7 @@ public:
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
     // N.B. parallel -> max, points ratio -> max.
-    return rdepth > x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
+    return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -241,7 +241,7 @@ public:
   
 private:
   Vec3               makeG(const vector<Vec3>& in) const;
-  vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const Mat3x3& drot1) const;
+  vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const match_t<T>& m) const;
   void               complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const;
   T                  isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh);
   U   I;
@@ -286,7 +286,7 @@ template <typename T> Eigen::Matrix<T, 3, 1> matchPartialPartial<T>::makeG(const
   return result / in.size();
 }
 
-template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const Mat3x3& drot1) const {
+template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const match_t<T>& m) const {
   vector<msub_t<T> > result;
   vector<Vec3> shapework;
   vector<Vec3> pointswork;
@@ -295,7 +295,7 @@ template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const 
   for(int i = 0; i < shapebase.size(); i ++)
     shapework.push_back(shapebase[i] - gs);
   for(int i = 0; i < points.size(); i ++)
-    pointswork.push_back(drot1 * (points[i] - gp));
+    pointswork.push_back(m.transform(points[i] - gp));
   // result.reserve(points.size() * shapebase.size());
   for(int k = 0; k < points.size(); k ++)
     for(int j = 0; j < shapebase.size(); j ++) {
@@ -319,25 +319,25 @@ template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const 
 }
 
 template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
-  work.rdepth = T(0);
   T num(0);
   T denom(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const Vec3 shapek(shapebase[work.dstpoints[k]] - gs);
-    const Vec3 pointk(work.rot * (points[work.srcpoints[k]] - gp));
-    denom       += pointk.dot(pointk);
-    num         += shapek.dot(pointk);
-    work.rdepth += shapek.dot(shapek);
+    const auto shapek(shapebase[work.dstpoints[k]] - gs);
+    const auto pointk(work.transform(points[work.srcpoints[k]] - gp));
+    denom += pointk.dot(pointk);
+    num   += shapek.dot(pointk);
   }
   assert(T(0) <= num);
-  work.ratio     = num / denom;
-  work.rdepth    = num / sqrt(denom * work.rdepth);
-  work.offset[0] = T(0);
-  work.offset[1] = T(0);
-  work.offset[2] = T(0);
+  work.ratio = num / denom;
+  auto offset(work.offset);
   for(int k = 0; k < work.dstpoints.size(); k ++)
-    work.offset += shapebase[work.dstpoints[k]] - work.rot * points[work.srcpoints[k]] * work.ratio;
-  work.offset /= work.dstpoints.size();
+    offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
+  work.offset = offset / work.dstpoints.size();
+  for(int k = 0; k < work.dstpoints.size(); k ++) {
+    const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
+    work.rdepth += err.dot(err);
+  }
+  work.rdepth /= work.dstpoints.size();
   return;
 }
 
@@ -374,7 +374,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
     for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
-      Mat3x3 drot1(drot0);
+      match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
+      work0.rot = drot0;
       for(int k = 0; k < ddiv.size() / 2; k ++) {
         Mat3x3 lrot;
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
@@ -386,10 +387,13 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         lrot((k + 2) % 3, (k + 2) % 3) = T(1);
         lrot((k    ) % 3, (k + 2) % 3) = T(0);
         lrot((k + 1) % 3, (k + 2) % 3) = T(0);
-        drot1 = lrot * drot1;
+        work0.rot = lrot * work0.rot;
       }
+      work0.rdepth    = T(0);
+      work0.offset[0] = work0.offset[1] = work0.offset[2] = T(0);
+      work0.ratio     = T(1);
       // for each near matches:
-      const auto msub(makeMsub(shapebase, points, gs, gp, drot1));
+      const auto msub(makeMsub(shapebase, points, gs, gp, work0));
       cerr << msub.size() << ":" << flush;
       if(msub.size() /
            T(min(shapebase.size(), points.size())) < threshp)
@@ -397,8 +401,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       // get nearer matches:
       int t0(0);
       for( ; t0 < msub.size(); t0 ++) {
-        match_t<T> work(threshs, abs(gd[0]), abs(gd[1]));
-        work.rot = drot1;
+        auto work(work0);
         bool flagj[shapebase.size()];
         for(int kk = 0; kk < shapebase.size(); kk ++)
           flagj[kk] = false;
@@ -456,12 +459,6 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
 template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh) {
   vector<match_t<T> > res(m);
   tilter<T> tilt;
-  Vec3 zero3;
-  zero3[0] = zero3[1] = zero3[2] = T(0);
-  Mat3x3 I3;
-  for(int i = 0; i < I3.rows(); i ++)
-    for(int j = 0; j < I3.cols(); j ++)
-       I3(i, j) = T(i == j ? 1 : 0);
   for(int i = 0; i < m.size(); i ++) {
     Mat tsrc[3];
     for(int j = 0; j < 3; j ++)
@@ -497,7 +494,7 @@ template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, cons
   for(int i = 1; i < diffs.size(); i ++)
     ddiffs.push_back(diffs[i] - diffs[i - 1]);
   sort(ddiffs.begin(), ddiffs.end());
-  return ddiffs.size() ? distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh)) / T(ddiffs.size()) : T(0);
+  return ddiffs.size() ? T(1) - distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh)) / T(ddiffs.size()) : T(0);
 }
 
 

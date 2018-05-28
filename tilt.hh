@@ -69,14 +69,14 @@ public:
   
   Mat  tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
-  Mat  tiltsub(const Mat& in, const vector<Triangles>& triangles);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5));
   bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5));
   
 private:
   T    sgn(const T& x);
-  Vec3 rotate0(const Vec3& work, const Mat3x3& rot, const Vec3& origin);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   T    Pi;
   T    z_ratio;
@@ -133,10 +133,6 @@ template <typename T> triangles_t<T> tilter<T>::makeTriangle(const int& u, const
   return work.solveN();
 }
 
-template <typename T> Eigen::Matrix<T, 3, 1> tilter<T>::rotate0(const Vec3& work, const Mat3x3& rot, const Vec3& origin) {
-  return rot * (work - origin) + origin;
-}
-
 template <typename T> bool tilter<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q, const bool& extend, const T& err) {
   const Vec2 dlt(p1 - p0);
   Vec2 dp(p2 - p0);
@@ -164,14 +160,13 @@ template <typename T> bool tilter<T>::onTriangle(T& z, const Triangles& tri, con
   // <v0 t + camera, v4> = tri.
   const T t((tri.z - tri.n.dot(camera)) / (tri.n.dot(v0)));
   z = camera[2] + v0[2] * t;
-  Eigen::Matrix<T, 2, 3> tritri;
-  for(int i = 0; i < 3; i ++) {
-    tritri(0, i) = tri.p(0, i);
-    tritri(1, i) = tri.p(1, i);
-  }
-  return (sameSide2(tritri.col(0), tritri.col(1), tritri.col(2), geom, true, T(.125)) &&
-          sameSide2(tritri.col(1), tritri.col(2), tritri.col(0), geom, true, T(.125)) &&
-          sameSide2(tritri.col(2), tritri.col(0), tritri.col(1), geom, true, T(.125)));
+  Vec3 geom3;
+  geom3[0] = geom[0];
+  geom3[1] = geom[1];
+  geom3[2] = T(0);
+  return (sameSide2(tri.p.col(0), tri.p.col(1), tri.p.col(2), geom3, true, T(.125)) &&
+          sameSide2(tri.p.col(1), tri.p.col(2), tri.p.col(0), geom3, true, T(.125)) &&
+          sameSide2(tri.p.col(2), tri.p.col(0), tri.p.col(1), geom3, true, T(.125)));
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
@@ -217,15 +212,20 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
       triangles.push_back(makeTriangle(i, j, in, bump, false));
       triangles.push_back(makeTriangle(i, j, in, bump, true));
     }
+  return tilt(in, triangles, m);
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m) {
+  vector<Triangles> triangles(triangles0);
   for(int j = 0; j < triangles.size(); j ++) {
     for(int k = 0; k < 3; k ++)
       triangles[j].p.col(k) = m.transform(triangles[j].p.col(k));
     triangles[j].solveN();
   }
-  return tiltsub(in, triangles);
+  return tilt(in, triangles);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tiltsub(const Mat& in, const vector<Triangles>& triangles) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>::tilt(const Mat& in, const vector<Triangles>& triangles) {
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
