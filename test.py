@@ -45,7 +45,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl0.ppm"])
-    subprocess.call(["convert", root + "-enl0.ppm", "-resize", "75%", root + "-75" + ext])
+    subprocess.call(["convert", root + "-enl0.ppm", "-blur", "0x1", "-sharpen", "0x1", root + "-enl" + ext])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "emph"):
@@ -74,10 +74,14 @@ for line in argv[3:]:
     subprocess.call(["convert", "-resize", "128x", "-resize", "x128<", "-resize", "50%", "-gravity", "center", "-crop", "64x64+0+0", root + "-bump64.ppm", root + "-bump64e" + ".jpeg"])
   elif(argv[2] == "demosaic"):
     print pixels
-    subprocess.call(["convert", line, "-resize", str(int(100. / pixels * 100) / 100.) + "%", "-compress", "none", root + "-xsmall-0.ppm"])
-    for s in range(0, int(np.log(pixels) / np.log(1.5)) + 1):
-      subprocess.call([argv[1], "enlarge", root + "-xsmall-" + str(s) + ".ppm", root + "-xsmall-" + str(s + 1) + "-base.ppm"])
-      subprocess.call(["convert", root + "-xsmall-" + str(s + 1) + "-base.ppm", "-resize", "75%", "-compress", "none", root + "-xsmall-" + str(s + 1) + ".ppm"])
+    subprocess.call(["convert", line, "-resize", str(int(100. / pixels * 100) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
+    s0 = int(np.ceil(np.log(pixels) / np.log(2.)))
+    for s in range(0, s0):
+      subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-base.ppm"])
+      # this also better works,
+      # so goki check enlarge isn't so better but different result.
+      #subprocess.call(["convert", root + "-" + str(s) + ".ppm", "-resize", "200%", "-compress", "none", root + "-" + str(s + 1) + "-base.ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-base.ppm", "-blur", "0x1", "-sharpen", "0x" + str(pow(2, s)), "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line

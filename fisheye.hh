@@ -62,7 +62,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(60, 31, .3);
+  initialize(192, 61, .05);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
