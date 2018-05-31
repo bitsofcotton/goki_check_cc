@@ -23,6 +23,7 @@ using std::abs;
 using std::sqrt;
 using std::exp;
 using std::pow;
+using std::tan;
 
 template <typename T> class enlarger2ex {
 public:
@@ -195,26 +196,24 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   Iop = - (IDFT * Ibuf).real().template cast<T>();
   {
     MatU DFTa(DFT);
-    MatU DFTb(DFT);
-    for(int i = 0; i < DFT.rows(); i ++) {
-      // Get half space information.
-      const U phase(T(2) * (i + .5) * Pi / DFT.rows());
-      // N.B. refer enlarge.wxm, uses each freq, ideally U(1) but it is flat,
-      //      this uses limit of geometric mean of U(1+epsilon), U(1-epsilon).
-      const U r(sqrt(T(1) - T(2) * cos(phase) + cos(T(2) * phase)) /
-                (T(2) - T(2) * cos(phase)));
-      DFTa.row(i) *= U(1) / U(2) - r.real();
-      DFTb.row(i) *= U(1) / U(2) + r.real();
+    T    normr(0);
+    DFTa.row(0) *= T(0);
+    for(int i = 1; i < DFTa.rows(); i ++) {
+      // N.B. please refer enlarge.wxm, uses each freq.
+      //      b(t) -> - i * cot(phase / 2) * f(t) for each phase.
+      const T phase(Pi * T(i) / T(DFT.rows()));
+      const U r(- sqrt(U(- 1)) / tan(phase / T(2)));
+      DFTa.row(i) *= r;
+      normr       += pow(abs(r), T(2));
     }
-    // N.B. Da and Db norm is configured but shall not be optimal...
-    const Mat Da((IDFT * DFTa).real().template cast<T>());
-    const Mat Db((IDFT * DFTb).real().template cast<T>());
-    D = Mat(DFT.rows() * 2, DFT.cols());
-    for(int i = 0; i < DFT.rows(); i ++) {
-      D.row(i * 2 + 0) = Da.row(i);
-      D.row(i * 2 + 1) = Db.row(i);
-      D(i * 2 + 0, i) += T(1);
-      D(i * 2 + 1, i) += T(1);
+    // configured normr ratio.
+    const Mat Da((IDFT * DFTa).real().template cast<T>() / sqrt(normr) / T(DFTa.rows()));
+    D = Mat(Da.rows() * 2, Da.cols());
+    for(int i = 0; i < Da.rows(); i ++) {
+      D.row(2 * i + 0) = - Da.row(i);
+      D.row(2 * i + 1) =   Da.row(i);
+      D(2 * i + 0, i) += T(1);
+      D(2 * i + 1, i) += T(1);
     }
   }
   return;
