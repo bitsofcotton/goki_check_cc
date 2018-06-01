@@ -11,7 +11,7 @@ To convert image files to raw ppm, it is powerful tool that imagemagick with 'co
 * fisheye.hh
 * * z_max  : z-index resolution.
 * * stp    : number of points to be used in detecting edges.
-* * thresh : edgepoint colour difference threshold.
+* * dist   : calculation maximum distance.
 * * vbox.  : size of vector gathering rectangle.
 * * rz     : z-axis output ratio.
 * tilt.hh
