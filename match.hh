@@ -93,7 +93,7 @@ public:
     initId();
   }
   void initId() {
-    rot(0, 0) = rot(1, 1) = rot(2, 2) = T(0);
+    rot(0, 0) = rot(1, 1) = rot(2, 2) = T(1);
     rot(1, 0) = rot(2, 0) = rot(0, 1) = rot(2, 1) = rot(0, 2) = rot(1, 2) = T(0);
     offset[0] = offset[1] = offset[2] = T(0);
     ratio     = T(1);

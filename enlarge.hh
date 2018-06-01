@@ -200,9 +200,9 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
     DFTa.row(0) *= T(0);
     for(int i = 1; i < DFTa.rows(); i ++) {
       // N.B. please refer enlarge.wxm, uses each freq.
-      //      b(t) -> - i * cot(phase / 2) * f(t) for each phase.
+      //      b(t) -> i * cot(phase / 2) * f(t) for each phase.
       const T phase(Pi * T(i) / T(DFT.rows()));
-      const U r(- sqrt(U(- 1)) / tan(phase / T(2)));
+      const U r(sqrt(U(- 1)) / tan(phase / T(2)));
       DFTa.row(i) *= r;
       normr       += pow(abs(r), T(2));
     }
