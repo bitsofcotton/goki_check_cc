@@ -45,7 +45,7 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& z_max, const int& stp, const T& thresh);
+  void initialize(const int& z_max, const int& stp, const T& dist);
   void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 6, const T& rz = T(1) / T(6));
   Mat  getPseudoBump(const Mat& in);
   
@@ -55,45 +55,41 @@ private:
   vector<Vec> prepareLineAxis(const T& rstp);
   
   int z_max;
-  T   thresh;
-  Vec DopL;
-  Vec DopM;
-  Vec DopR;
+  T   dist;
+  Mat Dops;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(192, 61, .05);
+  initialize(120, 61, 600);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& thresh) {
-  this->z_max  = z_max;
-  this->thresh = thresh;
-  assert(1 < z_max && 2 < stp && T(0) <= thresh && thresh < T(1));
+template <typename T> void PseudoBump<T>::initialize(const int& z_max, const int& stp, const T& dist) {
+  this->z_max = z_max;
+  this->dist  = dist;
+  assert(1 < z_max && 2 < stp && T(1) < dist);
   const T Pi(T(4) * atan2(T(1), T(1)));
   MatU DFT(stp / 2, stp / 2), IDFT(stp / 2, stp / 2);
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
-      DFT( i, j) = exp(U(- 2.) * Pi * sqrt(U(- 1)) * U(i * j / T(stp)));
-      IDFT(i, j) = exp(U(  2.) * Pi * sqrt(U(- 1)) * U(i * j / T(stp))) / T(stp);
+      DFT( i, j) = exp(U(- 2.) * Pi * sqrt(U(- 1)) * U(i * j / T(DFT.rows())));
+      IDFT(i, j) = exp(U(  2.) * Pi * sqrt(U(- 1)) * U(i * j / T(DFT.rows()))) / T(DFT.rows());
     }
   for(int i = 0; i < DFT.rows(); i ++)
-    DFT.row(i) *= U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
-  const auto DopL0((IDFT.row(IDFT.rows() - 1) * DFT).real().template cast<T>());
-  const auto DopM0((IDFT.row(IDFT.rows() / 2) * DFT).real().template cast<T>());
-  const auto DopR0((IDFT.row(0)               * DFT).real().template cast<T>());
-  DopL = Vec(stp);
-  DopM = Vec(stp);
-  DopR = Vec(stp);
-  for(int i = 0; i < stp; i ++)
-    DopL[i] = DopM[i] = DopR[i] = T(0);
-  for(int i = 0; i < DopL0.size(); i ++) {
-    DopL[i]                              = DopL0[i];
-    DopM[i - DopM0.size() / 2 + stp / 2] = DopM0[i];
-    DopR[i - DopR0.size()     + stp    ] = DopR0[i];
+    DFT.row(i) *= - U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
+  const auto DopL((IDFT.row(IDFT.rows() - 1) * DFT).real().template cast<T>());
+  const auto DopM((IDFT.row(IDFT.rows() / 2) * DFT).real().template cast<T>());
+  const auto DopR((IDFT.row(0)               * DFT).real().template cast<T>());
+  Dops = Mat(3, stp);
+  for(int i = 0; i < Dops.cols(); i ++)
+    Dops(0, i) = Dops(1, i) = Dops(2, i) = T(0);
+  for(int i = 0; i < DopL.size(); i ++) {
+    Dops(0, i)                                     = DopL[i];
+    Dops(1, i - DopM.size() / 2 + Dops.cols() / 2) = DopM[i];
+    Dops(2, i - DopR.size()     + Dops.cols()    ) = DopR[i];
   }
   return;
 }
@@ -102,28 +98,25 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
   cerr << "." << flush;
   Vec result(work.size());
   for(int s = 0; s < work.size(); s ++) {
-    T mbuf(thresh * T(3));
-    result[s] = T(0);
+    T mbuf(- 1);
     for(int z = 0; z < cf.size(); z ++) {
       // d/dt (local color) / ||local color||:
       Vec c(cf[z].size());
       for(int u = 0; u < c.size(); u ++)
-        c[u] = getImgPt(work, cf[z][u] + s) - work[s];
-      const T score((abs(DopL.dot(c)) + abs(DopM.dot(c)) + abs(DopR.dot(c))) / sqrt(c.dot(c)));
+        c[u] = getImgPt(work, cf[z][u] + s);
+      const auto buf(Dops * c / sqrt(c.dot(c)));
+      const auto score(sqrt(buf.dot(buf)));
       if(mbuf < score) {
-        result[s] = z / T(cf.size());
+        result[s] = exp(z / T(cf.size())) - T(1);
         mbuf      = score;
       }
     }
-    // N.B. if we can't focus, it's from infinitely far.
-    if(result[s] == T(0))
-      result[s] = T(1);
   }
   return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
-  auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
+  const auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
   Mat result(in.rows(), in.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -198,39 +191,39 @@ template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec
 template <typename T> vector<Eigen::Matrix<T, Eigen::Dynamic, 1> > PseudoBump<T>::prepareLineAxis(const T& rstp) {
   // N.B. ray is from infinite far, so same side of these.
   Vec camera(2);
-  camera[0] = T(0);
-  camera[1] = T(1);
+  camera[0] =   T(0);
+  camera[1] = - T(1);
   
   vector<Vec> result;
-  result.resize(z_max, Vec(DopL.size()));
+  result.resize(z_max, Vec(Dops.cols()));
   T absmax(0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int zi = 0; zi < result.size(); zi ++) {
+  for(int zi = 0; zi < result.size(); zi ++)
     for(int s = 0; s < result[zi].size(); s ++) {
       Vec cpoint(2);
-      cpoint[0] = (s / T(DopL.size() - 1) - 1 / T(2));
-      // [0, 1] not works well, [1, infty[ works better.
-      cpoint[1] = 1.5 + zi;
+      cpoint[0] = (s / T(Dops.cols() - 1) - 1 / T(2));
+      // [- 1, 0] not works well, [- alpha, alpha] either worse,
+      // [1, infty[ works better.
+      cpoint[1] = exp(T(1)) * dist - exp(T(zi) / result.size()) * dist;
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0
       const T t(- camera[1] / (cpoint[1] - camera[1]));
       // result increases near to far on differential points.
-      result[result.size() - 1 - zi][s] = (camera + (cpoint - camera) * t)[0];
+      result[zi][s] = (camera + (cpoint - camera) * t)[0];
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
-      absmax = max(abs(result[result.size() - 1 - zi][s]), absmax);
+      absmax = max(abs(result[zi][s]), absmax);
     }
-  }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int zi = 0; zi < result.size(); zi ++)
     for(int s = 0; s < result[zi].size(); s ++)
-      result[result.size() - 1 - zi][s] *= rstp / absmax;
+      result[zi][s] *= rstp / absmax;
   return result;
 }
 
