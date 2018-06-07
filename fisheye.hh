@@ -30,7 +30,6 @@ using std::sqrt;
 using std::exp;
 using std::pow;
 using std::isfinite;
-using std::isnan;
 using std::cerr;
 using std::flush;
 using std::vector;
@@ -77,9 +76,9 @@ template <typename T> void PseudoBump<T>::initialize(const int& stp) {
     }
   for(int i = 0; i < DFT.rows(); i ++)
     DFT.row(i) *= - U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
-  const auto DopL((IDFT.row(IDFT.rows() - 1) * DFT).real().template cast<T>());
-  const auto DopM((IDFT.row(IDFT.rows() / 2) * DFT).real().template cast<T>());
-  const auto DopR((IDFT.row(0)               * DFT).real().template cast<T>());
+  const Vec DopL((IDFT.row(IDFT.rows() - 1) * DFT).real().template cast<T>());
+  const Vec DopM((IDFT.row(IDFT.rows() / 2) * DFT).real().template cast<T>());
+  const Vec DopR((IDFT.row(0)               * DFT).real().template cast<T>());
   Dops = Mat(3, stp);
   for(int i = 0; i < Dops.cols(); i ++)
     Dops(0, i) = Dops(1, i) = Dops(2, i) = T(0);
@@ -88,6 +87,7 @@ template <typename T> void PseudoBump<T>::initialize(const int& stp) {
     Dops(1, i - DopM.size() / 2 + Dops.cols() / 2) = DopM[i];
     Dops(2, i - DopR.size()     + Dops.cols()    ) = DopR[i];
   }
+  cerr << Dops << endl;
   return;
 }
 
@@ -107,7 +107,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       //      this is quite pseudo because this similar to
       //      |tan(theta)| * d / |tan(theta)| / 1..
       const auto score(sqrt(buf.dot(buf) / c.dot(c)));
-      if(isfinite(score) && !isnan(score)) {
+      if(isfinite(score)) {
         result[s] += score * pow(z / T(cf.rows()), T(2));
         sum       += score;
       }
@@ -119,7 +119,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
-  const Mat cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
+  const auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
   Mat result(in.rows(), in.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
