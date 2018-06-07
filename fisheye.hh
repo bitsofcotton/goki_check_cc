@@ -194,7 +194,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
   camera[0] =   T(0);
   camera[1] = - T(1);
   
-  Mat result(int(rstp), Dops.cols());
+  Mat result(int(sqrt(rstp) * T(4)), Dops.cols());
   T   absmax(0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
