@@ -233,7 +233,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
   for(int j = 0; j < triangles.size(); j ++) {
     const Triangles& tri(triangles[j]);
     int ll = int( min(min(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2)));
-    int rr = ceil(max(max(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2)));
+    int rr = ceil(max(max(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2))) + 1;
     int bb = int( min(min(tri.p(1, 0), tri.p(1, 1)), tri.p(1, 2)));
     int tt = ceil(max(max(tri.p(1, 0), tri.p(1, 1)), tri.p(1, 2))) + 1;
     for(int y = max(0, ll); y < min(rr, int(in.rows())); y ++)
