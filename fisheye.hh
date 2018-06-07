@@ -30,6 +30,7 @@ using std::sqrt;
 using std::exp;
 using std::pow;
 using std::isfinite;
+using std::isnan;
 using std::cerr;
 using std::flush;
 using std::vector;
@@ -106,8 +107,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       //      this is quite pseudo because this similar to
       //      |tan(theta)| * d / |tan(theta)| / 1..
       const auto score(sqrt(buf.dot(buf) / c.dot(c)));
-      result[s] += score * pow(z / T(cf.rows()), T(2));
-      sum       += score;
+      if(isfinite(score) && !isnan(score)) {
+        result[s] += score * pow(z / T(cf.rows()), T(2));
+        sum       += score;
+      }
     }
     if(sum != T(0))
       result[s] /= sum;
