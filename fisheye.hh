@@ -87,7 +87,6 @@ template <typename T> void PseudoBump<T>::initialize(const int& stp) {
     Dops(1, i - DopM.size() / 2 + Dops.cols() / 2) = DopM[i];
     Dops(2, i - DopR.size()     + Dops.cols()    ) = DopR[i];
   }
-  cerr << Dops << endl;
   return;
 }
 
