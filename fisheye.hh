@@ -106,18 +106,17 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       //      this is quite pseudo because this similar to
       //      |tan(theta)| * d / |tan(theta)| / 1..
       const auto score(sqrt(buf.dot(buf) / c.dot(c)));
-      if(isfinite(score)) {
-        result[s] += score * pow(z / T(cf.rows()), T(2));
-        sum       += score;
-      }
+      result[s] += score * pow(z / T(cf.rows()), T(2));
+      sum       += score;
     }
-    result[s] /= sum;
+    if(sum != T(0))
+      result[s] /= sum;
   }
   return result;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
-  const auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
+  const Mat cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
   Mat result(in.rows(), in.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
