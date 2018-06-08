@@ -24,6 +24,7 @@ using std::sqrt;
 using std::exp;
 using std::pow;
 using std::tan;
+using std::atan2;
 
 template <typename T> class enlarger2ex {
 public:
