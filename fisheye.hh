@@ -221,8 +221,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 
 template <typename T> const T& PseudoBump<T>::getImgPt(const Vec& img, const T& y) {
   const int& h(img.size());
-  const int  yy(abs((int(y + .5) + 3 * h) % (2 * h) - h) % h);
-  return img[yy];
+  return img[int(abs((int(y + .5) + 3 * h) % (2 * h) - h) % h)];
 }
 
 #define _2D3D_PSEUDO_
