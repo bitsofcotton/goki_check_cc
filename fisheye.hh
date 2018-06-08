@@ -58,7 +58,7 @@ private:
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(21);
+  initialize(31);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
@@ -130,7 +130,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 #endif
   for(int i = 0; i < in.rows(); i ++)
     result.row(i) += getPseudoBumpSub(in.row(i), cf);
-  return result;
+  return - result;
 }
 
 // get bump with multiple scale and vectorized result.
