@@ -45,8 +45,8 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& stp);
-  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 3, const T& rz = T(1) / T(8));
+  void initialize(const int& stp, const T& thresh);
+  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 3, const T& rz = T(1));
   Mat  getPseudoBump(const Mat& in);
   
 private:
@@ -54,19 +54,20 @@ private:
   const T& getImgPt(const Vec& img, const T& y);
   Mat      prepareLineAxis(const T& rstp);
   
+  T   thresh;
   Mat Dops;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(31);
+  initialize(31, .125);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& stp) {
-  assert(4 < stp);
+template <typename T> void PseudoBump<T>::initialize(const int& stp, const T& thresh) {
+  assert(4 < stp && T(0) <= thresh && thresh < T(1));
   const T Pi(T(4) * atan2(T(1), T(1)));
   MatU DFT(stp / 2, stp / 2), IDFT(stp / 2, stp / 2);
   for(int i = 0; i < DFT.rows(); i ++)
@@ -76,23 +77,22 @@ template <typename T> void PseudoBump<T>::initialize(const int& stp) {
     }
   for(int i = 0; i < DFT.rows(); i ++)
     DFT.row(i) *= - U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
-  const Vec DopL((IDFT.row(IDFT.rows() - 1) * DFT).real().template cast<T>());
-  const Vec DopM((IDFT.row(IDFT.rows() / 2) * DFT).real().template cast<T>());
-  const Vec DopR((IDFT.row(0)               * DFT).real().template cast<T>());
-  Dops = Mat(3, stp);
-  for(int i = 0; i < Dops.cols(); i ++)
-    Dops(0, i) = Dops(1, i) = Dops(2, i) = T(0);
-  for(int i = 0; i < DopL.size(); i ++) {
-    Dops(0, i)                                     = DopL[i];
-    Dops(1, i - DopM.size() / 2 + Dops.cols() / 2) = DopM[i];
-    Dops(2, i - DopR.size()     + Dops.cols()    ) = DopR[i];
+  Dops = Mat(IDFT.rows(), stp);
+  for(int i = 0; i < Dops.rows(); i ++)
+    for(int j = 0; j < Dops.cols(); j ++)
+      Dops(i, j) = T(0);
+  for(int i = 0; i < IDFT.rows(); i ++) {
+    const Vec lDop((IDFT.row(IDFT.rows() - 1 - i) * DFT).real().template cast<T>());
+    for(int j = i; j < lDop.size(); j ++)
+      Dops(i, j) = lDop[j - i];
   }
   return;
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseudoBumpSub(const Vec& work, const Mat& cf) {
   cerr << "." << flush;
-  Vec result(work.size());
+  Vec  result(work.size());
+  bool flag(true);
   for(int s = 0; s < work.size(); s ++) {
     T sum(0);
     result[s] = T(0);
@@ -102,17 +102,23 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
       for(int u = 0; u < c.size(); u ++)
         c[u] = getImgPt(work, cf(z, u) + s);
       const auto buf(Dops * c);
+      const auto score(sqrt(buf.dot(buf) / c.dot(c)) / buf.size());
       // N.B. <tangents, const distances> / <tangents, 1> is the result,
       //      this is quite pseudo because this similar to
       //      |tan(theta)| * d / |tan(theta)| / 1..
-      const auto score(sqrt(buf.dot(buf) / c.dot(c)));
       if(isfinite(score)) {
-        result[s] += score * pow(z / T(cf.rows()), T(2));
+        result[s] += score * z / T(cf.rows());
         sum       += score;
       }
     }
-    if(sum != T(0))
+    // if we can't get enough tilts or get huge tilts, set neighbor value.
+    if(thresh < sum / cf.rows() && sum / cf.rows() < T(1) / thresh) {
       result[s] /= sum;
+      flag       = false;
+    } else if(s && !flag)
+      result[s] = result[s - 1];
+    else
+      result[s] = T(0);
   }
   return result;
 }
@@ -192,8 +198,8 @@ template <typename T> void PseudoBump<T>::getPseudoVec(const Mat& in, vector<Vec
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::prepareLineAxis(const T& rstp) {
   Vec camera(2);
-  camera[0] =   T(0);
-  camera[1] = - T(1);
+  camera[0] = T(0);
+  camera[1] = rstp;
   
   Mat result(int(sqrt(rstp) * T(4)), Dops.cols());
   T   absmax(0);
@@ -204,8 +210,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
     for(int s = 0; s < result.cols(); s ++) {
       Vec cpoint(2);
       cpoint[0] = s / T(result.cols() - 1) - 1 / T(2);
-      // [1, rstp] works well and scaling works rapidly better.
-      cpoint[1] = (T(1) - pow(zi / T(result.rows()), T(2))) * rstp * T(2);
+      // [1, rstp] works well.
+      cpoint[1] = (zi + T(.5)) / T(result.rows()) * rstp;
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0

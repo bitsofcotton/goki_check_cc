@@ -69,6 +69,7 @@ public:
   Mat  rgb2xz(const Mat rgb[3]);
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
   void normalize(Mat data[3], const T& upper);
+  Mat  autoLevel(const Mat& data, const int& count = 0);
 
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
@@ -705,6 +706,20 @@ template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) {
     data[k] *= upper / (MM - mm);
   }
   return;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::autoLevel(const Mat& data, const int& count) {
+  vector<T> res;
+  res.reserve(data.rows() * data.cols());
+  for(int i = 0; i < data.rows(); i ++)
+    for(int j = 0; j < data.cols(); j ++)
+      res.push_back(data(i, j));
+  sort(res.begin(), res.end());
+  Mat result(data.rows(), data.cols());
+  for(int i = 0; i < data.rows(); i ++)
+    for(int j = 0; j < data.cols(); j ++)
+      result(i, j) = max(min(data(i, j), res[res.size() - count - 1]), res[count]);
+  return result;
 }
 
 #define _REDIG_
