@@ -16,9 +16,9 @@ const int    nshow(4);
 const int    nshowh(16);
 const int    nemph(4);
 const int    vbox(3);
-const double rz(1. / 8.);
+const double rz(1.);
 const int    M_TILT(32);
-const double psi(.05);
+const double psi(.005);
 const int    Mpoly(2000);
 
 void usage() {
@@ -166,7 +166,8 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> idetect, didetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(idetect.compute(data[i], idetect.IDETECT_BOTH));
-        data[i] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.IDETECT_BOTH), true, xye);
+        //data[i] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.IDETECT_BOTH), true, xye);
+        data[i] = xye;
       }
     }
     break;
