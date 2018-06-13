@@ -128,14 +128,23 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case COLLECT_Y:
     result = compute(data, DETECT_Y);
-    for(int i = 0; i < result.rows(); i ++)
-      for(int j = 0; j < result.cols(); j ++)
-        result(i, j) = abs(result(i, j));
+    {
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = abs(result(i, j));
+    }
     break;
   case IDETECT_Y:
     {
       initPattern(data.rows());
       Vec avg(data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
       for(int i = 0; i < data.cols(); i ++) {
         avg[i]  = T(0);
         for(int j = 0; j < data.rows(); j ++)
@@ -143,6 +152,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         avg[i] /= data.rows();
       }
       result = Iop * data;
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
       for(int i = 0; i < data.cols(); i ++)
         for(int j = 0; j < data.rows(); j ++)
           result(j, i) += avg[i] * j * j / data.rows() / data.rows();
@@ -173,7 +185,8 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   MatU DFT( size, size);
   MatU IDFT(size, size);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
@@ -183,13 +196,13 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   MatU Dbuf(DFT);
   MatU Ibuf(DFT);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < Dbuf.rows(); i ++)
     Dbuf.row(i) *= U(- 2.) * Pi * I * U(i / T(size));
   Ibuf.row(0) *= T(0);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp for schedule(static, 1)
 #endif
   for(int i = 1; i < Ibuf.rows(); i ++)
     Ibuf.row(i) /= U(- 2.) * Pi * I * U(i / T(size));
@@ -199,17 +212,27 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
     MatU DFTa(DFT);
     T    normr(0);
     DFTa.row(0) *= T(0);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
     for(int i = 1; i < DFTa.rows(); i ++) {
       // N.B. please refer enlarge.wxm, uses each freq.
       //      b(t) -> i * cot(phase / 2) * f(t) for each phase.
       const T phase(Pi * T(i) / T(DFT.rows()));
       const U r(sqrt(U(- 1)) / tan(phase / T(2)));
       DFTa.row(i) *= r;
+#if defined(_OPENMP)
+#pragma omp atomic
+#endif
       normr       += pow(abs(r), T(2));
     }
     // configured normr ratio.
     const Mat Da((IDFT * DFTa).real().template cast<T>() / sqrt(normr) / T(DFTa.rows()));
     D = Mat(Da.rows() * 2, Da.cols());
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
     for(int i = 0; i < Da.rows(); i ++) {
       D.row(2 * i + 0) = - Da.row(i);
       D.row(2 * i + 1) =   Da.row(i);

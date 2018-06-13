@@ -45,8 +45,8 @@ public:
   
   PseudoBump();
   ~PseudoBump();
-  void initialize(const int& stp, const T& thresh);
-  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 3, const T& rz = T(1));
+  void initialize(const int& stp);
+  void getPseudoVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay, const int& vbox = 3, const T& rz = T(1) / T(6));
   Mat  getPseudoBump(const Mat& in);
   
 private:
@@ -54,33 +54,45 @@ private:
   const T& getImgPt(const Vec& img, const T& y);
   Mat      prepareLineAxis(const T& rstp);
   
-  T   thresh;
   Mat Dops;
 };
 
 template <typename T> PseudoBump<T>::PseudoBump() {
-  initialize(31, .125);
+  initialize(31);
 }
 
 template <typename T> PseudoBump<T>::~PseudoBump() {
   ;
 }
 
-template <typename T> void PseudoBump<T>::initialize(const int& stp, const T& thresh) {
-  assert(4 < stp && T(0) <= thresh && thresh < T(1));
+template <typename T> void PseudoBump<T>::initialize(const int& stp) {
+  assert(4 < stp);
   const T Pi(T(4) * atan2(T(1), T(1)));
   MatU DFT(stp / 2, stp / 2), IDFT(stp / 2, stp / 2);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < DFT.rows(); i ++)
     for(int j = 0; j < DFT.cols(); j ++) {
       DFT( i, j) = exp(U(- 2.) * Pi * sqrt(U(- 1)) * U(i * j / T(DFT.rows())));
       IDFT(i, j) = exp(U(  2.) * Pi * sqrt(U(- 1)) * U(i * j / T(DFT.rows()))) / T(DFT.rows());
     }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < DFT.rows(); i ++)
     DFT.row(i) *= - U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
   Dops = Mat(IDFT.rows(), stp);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < Dops.rows(); i ++)
     for(int j = 0; j < Dops.cols(); j ++)
       Dops(i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < IDFT.rows(); i ++) {
     const Vec lDop((IDFT.row(IDFT.rows() - 1 - i) * DFT).real().template cast<T>());
     for(int j = i; j < lDop.size(); j ++)
@@ -111,14 +123,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
         sum       += score;
       }
     }
-    // if we can't get enough tilts or get huge tilts, set neighbor value.
-    if(thresh < sum / cf.rows() && sum / cf.rows() < T(1) / thresh) {
-      result[s] /= sum;
-      flag       = false;
-    } else if(s && !flag)
-      result[s] = result[s - 1];
-    else
-      result[s] = T(0);
   }
   return result;
 }
@@ -136,7 +140,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBum
 #endif
   for(int i = 0; i < in.rows(); i ++)
     result.row(i) += getPseudoBumpSub(in.row(i), cf);
-  return - result;
+  return result;
 }
 
 // get bump with multiple scale and vectorized result.

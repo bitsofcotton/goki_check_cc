@@ -16,9 +16,9 @@ const int    nshow(4);
 const int    nshowh(16);
 const int    nemph(4);
 const int    vbox(3);
-const double rz(1.);
+const double rz(1. / 6.);
 const int    M_TILT(32);
-const double psi(.005);
+const double psi(.01);
 const int    Mpoly(2000);
 
 void usage() {

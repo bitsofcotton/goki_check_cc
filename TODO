@@ -1,5 +1,3 @@
 Rotated match with input/output raw text fbx.
-Speed up with OpenMP.
-Add selection with the type konbu.hh's SimpleVector, SimpleMatrix??
 Stabilize details.
 
