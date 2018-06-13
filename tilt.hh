@@ -230,6 +230,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
     for(int k = 0; k < zb.cols(); k ++)
       zb(j, k) = - T(1e8);
   // able to boost with divide and conquer.
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int j = 0; j < triangles.size(); j ++) {
     const Triangles& tri(triangles[j]);
     int ll = int( min(min(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2)));
@@ -242,9 +245,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tilter<T>
         Vec2 midgeom;
         midgeom[0] = y;
         midgeom[1] = x;
-        if(onTriangle(z, tri, midgeom) && isfinite(z) && zb(y, x) < z) {
-          result(y, x) = tri.c;
-          zb(y, x)     = z;
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+        {
+          if(onTriangle(z, tri, midgeom) && isfinite(z) && zb(y, x) < z) {
+            result(y, x) = tri.c;
+            zb(y, x)     = z;
+          }
         }
       }
   }
