@@ -45,8 +45,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl0.ppm"])
-    #subprocess.call(["convert", root + "-enl0.ppm", "-blur", "0x1", "-sharpen", "0x1", root + "-enl" + ext])
-    subprocess.call(["convert", root + "-enl0.ppm", "-median", "2", root + "-enl" + ext])
+    subprocess.call(["convert", root + "-enl0.ppm", "-blur", "0x1", "-sharpen", "0x1", root + "-enl" + ext])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump0.ppm"])
     subprocess.call(["convert", root + "-bump0.ppm", "-equalize", "-compress", "none", root + "-bump.ppm"])
@@ -80,9 +79,6 @@ for line in argv[3:]:
     s0 = int(np.ceil(np.log(pixels) / np.log(2.)))
     for s in range(0, s0):
       subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-base.ppm"])
-      # this also better works,
-      # so goki check enlarge isn't so better but different result.
-      #subprocess.call(["convert", root + "-" + str(s) + ".ppm", "-resize", "200%", "-compress", "none", root + "-" + str(s + 1) + "-base.ppm"])
       subprocess.call(["convert", root + "-" + str(s + 1) + "-base.ppm", "-blur", "0x1", "-sharpen", "0x" + str(pow(2, s)), "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
