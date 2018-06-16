@@ -210,35 +210,34 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   Iop = - (IDFT * Ibuf).real().template cast<T>();
   {
     MatU DFTa(DFT);
-    T    normr(0);
-    DFTa.row(0) *= T(0);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-    for(int i = 1; i < DFTa.rows(); i ++) {
+    for(int i = 0; i < DFTa.rows(); i ++) {
       // N.B. please refer enlarge.wxm, uses each freq.
-      //      b(t) -> i * cot(phase / 2) * f(t) for each phase.
-      const T phase(Pi * T(i) / T(DFT.rows()));
-      const U r(sqrt(U(- 1)) / tan(phase / T(2)));
+      //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
+      const T phase(Pi * T(i + DFT.rows()) / T(DFT.rows()));
+      const U r(sqrt(U(- 1)) * sin(phase) / (cos(phase) - U(1)));
       DFTa.row(i) *= r;
-#if defined(_OPENMP)
-#pragma omp atomic
-#endif
-      normr       += pow(abs(r), T(2));
     }
-    // configured normr ratio.
-    const Mat Da((IDFT * DFTa).real().template cast<T>() / sqrt(normr) / T(DFTa.rows()));
-    D = Mat(Da.rows() * 2, Da.cols());
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-    for(int i = 0; i < Da.rows(); i ++) {
+    // N.B. : configured ratio.
+    const Mat Da((IDFT * DFTa).real().template cast<T>() / (T(2 * DFT.rows()) * Pi));
+    D = Mat(DFT.rows() * 2, DFT.cols());
+    for(int i = 0; i < DFT.rows(); i ++) {
       D.row(2 * i + 0) = - Da.row(i);
       D.row(2 * i + 1) =   Da.row(i);
       D(2 * i + 0, i) += T(1);
       D(2 * i + 1, i) += T(1);
     }
+    // N.B. shif, so both sides of image are wrong.
+    const Mat D0(D * T(2));
+    for(int i = 0; i < D.rows(); i ++)
+      for(int j = 0; j < D.cols(); j ++) {
+        D(i, j)                  += D0((i + 1) % D0.rows(), j);
+        D((i + 1) % D.rows(), j) += D0(i, j);
+      }
+    D /= T(4);
   }
   return;
 }

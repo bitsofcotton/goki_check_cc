@@ -145,7 +145,6 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> enlarger, denlarger;
       for(int i = 0; i < 3; i ++) {
         const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-    //    data[i] = xye * (data[i].rows() + data[i].cols())+ redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(double(data[i].rows() * data[i].cols()));
         data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
       }
     }
