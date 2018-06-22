@@ -352,6 +352,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
                           p[middle[jj][ j0      % 3]],
                           p[middle[jj][(j0 + 1) % 3]]))
               goto fixnext0;
+      if(!middle.size()) goto fixnext0;
       q[0] = p[i]; q[1] = p[j]; q[2] = p[k];
       q[3] = p[middle[0][0]];
       isDelaunay2(cw, q, epsilon);

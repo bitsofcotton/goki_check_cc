@@ -238,6 +238,21 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
         D((i + 1) % D.rows(), j) += D0(i, j);
       }
     D /= T(4);
+#if defined(_WITH_EXTERNAL_)
+    // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
+    // But I don't know whether this method is open or not.
+    MatU DFT2(DFT.rows() * 2, DFT.cols() * 2);
+    MatU IDFT2(DFT2.rows(), DFT2.cols());
+    for(int i = 0; i < DFT2.rows(); i ++)
+      for(int j = 0; j < DFT2.cols(); j ++) {
+        DFT2( i, j) = exp(U(- 2.) * Pi * I * U(i * j / T(size * 2)));
+        IDFT2(i, j) = exp(U(  2.) * Pi * I * U(i * j / T(size * 2))) / T(size * 2);
+      }
+    for(int i = 0; i < DFT2.rows(); i ++)
+      DFT2.row(i) *= T(1.5) - T(.5) * exp(- pow(T(i) / DFT.rows(), T(2)));
+    const Mat sharpen((IDFT2 * DFT2).real().template cast<T>());
+    D = sharpen * D;
+#endif
   }
   return;
 }
