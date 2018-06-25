@@ -63,6 +63,7 @@ public:
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
   vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1e-5), const int& mdiv = 300) const;
+  void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points, const int& vbox);
   Mat  rgb2l(const Mat rgb[3]);
@@ -104,41 +105,38 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       triangles[triangles.size() - 1].c = srcimg(i, j);
     }
   
-  bool *checked = new bool[triangles.size() * 3];
-  assert(checked);
-  for(int i = 0; i < triangles.size() * 3; i ++)
-    checked[i] = false;
-  
   cerr << "e(" << hulldst.size() << ")" << endl;
   const auto rmatch(~ match);
+  vector<vector<int> > emphs;
+  emphs.resize(triangles.size() * 3);
   for(int i = 0; i < hulldst.size(); i ++) {
-    // XXX matching places inversion needed?
-    const Vec3 p0(rmatch.transform(dst[hulldst[i][0]]));
-    const Vec3 p1(rmatch.transform(dst[hulldst[i][1]]));
-    const Vec3 p2(rmatch.transform(dst[hulldst[i][2]]));
-    const Vec3 src0((src[hullsrc[i][0]] +
-                     src[hullsrc[i][1]] +
-                     src[hullsrc[i][2]]) / T(3));
-    const Vec3 dst0((p0 + p1 + p2) / T(3));
+    const auto& p0(dst[hulldst[i][0]]);
+    const auto& p1(dst[hulldst[i][1]]);
+    const auto& p2(dst[hulldst[i][2]]);
+    const auto  dp0(rmatch.transform(p0));
+    const auto  dp1(rmatch.transform(p1));
+    const auto  dp2(rmatch.transform(p2));
     for(int l = 0; l < triangles.size(); l ++)
       for(int ll = 0; ll < 3; ll ++) {
-        const Vec3& q(triangles[l].p.col(ll));
-        if(!checked[l * 3 + ll] &&
-           tilt.sameSide2(p0, p1, p2, q) &&
-           tilt.sameSide2(p1, p2, p0, q) &&
-           tilt.sameSide2(p2, p0, p1, q)) {
-          triangles[l].p.col(ll) += (dst0 - src0) * ratio / match.ratio;
-          checked[l * 3 + ll] = true;
-        }
+        const auto& dq(triangles[l].p.col(ll));
+        const auto  q(match.transform(dq));
+        if((tilt.sameSide2(p0, p1, p2, q) &&
+            tilt.sameSide2(p1, p2, p0, q) &&
+            tilt.sameSide2(p2, p0, p1, q)) ||
+           (tilt.sameSide2(dp0, dp1, dp2, dq) &&
+            tilt.sameSide2(dp1, dp2, dp0, dq) &&
+            tilt.sameSide2(dp2, dp0, dp1, dq)) )
+          emphs[l * 3 + ll].push_back(hulldst[i][ll]);
       }
   }
-  vector<typename tilter<T>::Triangles> wt;
-  wt.reserve(triangles.size());
-  for(int i = 0; i < triangles.size(); i ++)
-    if(checked[i * 3 + 0] || checked[i * 3 + 1] || checked[i * 3 + 2])
-      wt.push_back(triangles[i]);
-  delete[] checked;
-  return tilt.tilt(dstimg, wt, match);
+  for(int i = 0; i < emphs.size(); i ++) if(emphs[i].size()) {
+    Vec3 diff;
+    diff[0] = diff[1] = diff[2] = T(0);
+    for(int j = 0; j < emphs[i].size(); j ++)
+      diff += dst[emphs[i][j]] - triangles[i / 3].p.col(i % 3);
+    triangles[i / 3].p.col(i % 3) += diff * ratio / match.ratio / emphs[i].size();
+  }
+  return tilt.tilt(dstimg, triangles, match);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc) {
@@ -172,29 +170,37 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
 
 template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   assert(hulldst.size() == hullsrc.size());
-  bool* checked = new bool[hullsrc.size() * 3];
-  assert(checked);
-  for(int i = 0; i < hullsrc.size() * 3; i ++)
-    checked[i] = false;
   vector<Vec3> result(dst);
   tilter<T> tilt;
   const auto rmatch(~ match);
+  vector<vector<int> > emphs;
+  emphs.resize(result.size() * 3);
   for(int i = 0; i < hullsrc.size(); i ++) {
     const auto& p0(src[hullsrc[i][0]]);
     const auto& p1(src[hullsrc[i][1]]);
     const auto& p2(src[hullsrc[i][2]]);
+    const auto  dp0(match.transform(p0));
+    const auto  dp1(match.transform(p1));
+    const auto  dp2(match.transform(p2));
     for(int j = 0; j < 3; j ++) {
-      const auto q(rmatch.transform(dst[hulldst[i][j]]));
-      if(!checked[i * 3 + j] &&
-         tilt.sameSide2(p0, p1, p2, q) &&
-         tilt.sameSide2(p1, p2, p0, q) &&
-         tilt.sameSide2(p2, p0, p1, q)) {
-        result[hulldst[i][j]] += (match.transform(src[hullsrc[i][j]]) - dst[hulldst[i][j]]) * ratio;
-        checked[i * 3 + j] = true;
-      }
+      const auto& q(dst[hulldst[i][j]]);
+      const auto  dq(rmatch.transform(q));
+      if((tilt.sameSide2(p0, p1, p2, q) &&
+          tilt.sameSide2(p1, p2, p0, q) &&
+          tilt.sameSide2(p2, p0, p1, q)) ||
+         (tilt.sameSide2(dp0, dp1, dp2, dq) &&
+          tilt.sameSide2(dp1, dp2, dp0, dq) &&
+          tilt.sameSide2(dp2, dp0, dp1, dq)) )
+        emphs[hulldst[i][j]].push_back(hullsrc[i][j]);
     }
   }
-  delete[] checked;
+  for(int i = 0; i < emphs.size(); i ++) if(emphs[i].size()) {
+    Vec3 diff;
+    diff[0] = diff[1] = diff[2] = T(0);
+    for(int j = 0; j < emphs[i].size(); j ++)
+      diff += match.transform(src[emphs[i][j]]) - dst[i];
+    result[i] += diff * ratio / emphs[i].size();
+  }
   return result;
 }
 
@@ -473,6 +479,11 @@ template <typename T> bool reDig<T>::isCrossing(const Vec3& p0, const Vec3& p1, 
   auto x(A.inverse() * b);
   return (err <= x[0] && x[0] <= T(1) - err) &&
          (err <= x[1] && x[1] <= T(1) - err);
+}
+
+template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask) {
+  vector<Veci3> tpoly(polys);
+  return maskVectors(points, tpoly, mask);
 }
 
 template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask) {
