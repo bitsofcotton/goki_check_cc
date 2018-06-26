@@ -128,18 +128,23 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> PseudoBump<T>::getPseu
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> PseudoBump<T>::getPseudoBump(const Mat& in) {
-  const auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols()))));
   Mat result(in.rows(), in.cols());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = T(0);
+  for(int i = 0; i < max(log(sqrt(T(in.rows() * in.cols()))) / log(T(2)) / T(2), T(1)); i ++) {
+    const auto cf(prepareLineAxis(sqrt(T(in.rows() * in.cols())) / pow(T(2), i)) * pow(T(2), i));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < in.cols(); i ++)
-    result.col(i)  = getPseudoBumpSub(in.col(i), cf);
+    for(int i = 0; i < in.cols(); i ++)
+      result.col(i) += getPseudoBumpSub(in.col(i), cf);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < in.rows(); i ++)
-    result.row(i) += getPseudoBumpSub(in.row(i), cf);
+    for(int i = 0; i < in.rows(); i ++)
+      result.row(i) += getPseudoBumpSub(in.row(i), cf);
+  }
   return result;
 }
 
