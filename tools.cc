@@ -176,7 +176,8 @@ int main(int argc, const char* argv[]) {
       // bump.
       PseudoBump<double> bump;
       const auto xye(bump.getPseudoBump(redig.rgb2l(data)));
-      data[0] = xye + redig.tilt45(bump.getPseudoBump(redig.tilt45(redig.rgb2l(data), false)), true, xye);
+      data[0] = xye;
+      // data[0] = xye + redig.tilt45(bump.getPseudoBump(redig.tilt45(redig.rgb2l(data), false)), true, xye);
       data[1] = data[2] = data[0];
     }
     break;
