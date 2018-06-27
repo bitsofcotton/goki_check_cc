@@ -184,7 +184,7 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const 
     const auto  dp2(match.transform(p2));
     for(int j = 0; j < 3; j ++) {
       const auto& dq(dst[hulldst[i][j]]);
-      const auto  q(rmatch.transform(q));
+      const auto  q(rmatch.transform(dq));
       if((tilt.sameSide2(p0, p1, p2, q) &&
           tilt.sameSide2(p1, p2, p0, q) &&
           tilt.sameSide2(p2, p0, p1, q)) ||
