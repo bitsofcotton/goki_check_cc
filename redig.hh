@@ -133,7 +133,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     Vec3 diff;
     diff[0] = diff[1] = diff[2] = T(0);
     for(int j = 0; j < emphs[i].size(); j ++)
-      diff += dst[emphs[i][j]] - triangles[i / 3].p.col(i % 3);
+      diff += rmatch.transform(dst[emphs[i][j]]) - triangles[i / 3].p.col(i % 3);
     triangles[i / 3].p.col(i % 3) += diff * ratio / match.ratio / emphs[i].size();
   }
   return tilt.tilt(dstimg, triangles, match);
@@ -183,8 +183,8 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const 
     const auto  dp1(match.transform(p1));
     const auto  dp2(match.transform(p2));
     for(int j = 0; j < 3; j ++) {
-      const auto& q(dst[hulldst[i][j]]);
-      const auto  dq(rmatch.transform(q));
+      const auto& dq(dst[hulldst[i][j]]);
+      const auto  q(rmatch.transform(q));
       if((tilt.sameSide2(p0, p1, p2, q) &&
           tilt.sameSide2(p1, p2, p0, q) &&
           tilt.sameSide2(p2, p0, p1, q)) ||

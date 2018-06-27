@@ -71,9 +71,11 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     savep2or3<T>(outfile.c_str(), outs, false);
   }
   
-  saveobj(redig.takeShape(shape0, shape1, match, mhull0, mhull1, 1.), mhull0,
+  saveobj(redig.takeShape(shape0, shape1, match, mhull0, mhull1,
+                          emph[emph.size() - 1]), mhull0,
           (outbase + std::string("-emph.obj")).c_str());
-  saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0, 1.), mhull1,
+  saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0,
+                          emph[emph.size() - 1]), mhull1,
           (outbase + std::string("-emphr.obj")).c_str());
   return;
 }
