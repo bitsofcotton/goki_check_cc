@@ -8,12 +8,11 @@ This program needs ascii raw ppm files to input/output.
 To convert image files to raw ppm, it is powerful tool that imagemagick with 'convert from.image -compress none to.ppm'. 
 
 # Parameters
-* fisheye.hh
+* enlarge.hh
 * * stp    : number of points to be used in detecting edges.
+* redig.hh
 * * vbox.  : size of vector gathering rectangle.
 * * rz     : z-axis output ratio.
-* tilt.hh
-* * z_ratio : [0,1] to [0,z_atio].
 * scancontext.hh
 * * matchPartialPartial::ndiv    : number of divides that match angles, effects the matching errors.
 * * matchPartialPartial::threshp : ratio of threshold for matched points.
@@ -80,7 +79,7 @@ These program's match3d assumes input file as a bump map and .obj 3d file.
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
 
 # Specification
-PseudoBump generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
+enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 
