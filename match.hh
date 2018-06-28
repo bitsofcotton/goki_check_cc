@@ -17,7 +17,8 @@
 #include <Eigen/LU>
 #include <cmath>
 #include <vector>
-#include "tilt.hh"
+
+template <typename T> class reDig;
 
 using std::sqrt;
 using std::atan2;
@@ -460,11 +461,11 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
 
 template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh) {
   vector<match_t<T> > res(m);
-  tilter<T> tilt;
+  reDig<T> redig;
   for(int i = 0; i < m.size(); i ++) {
     Mat tsrc[3];
     for(int j = 0; j < 3; j ++)
-      tsrc[j] = tilt.tilt(src[j], srcbump, m[i]);
+      tsrc[j] = redig.tilt(src[j], srcbump, m[i]);
     res[i].rdepth *= isElim(m[i], dst, tsrc, srcpts, thresh);
   }
   sort(res.begin(), res.end());
