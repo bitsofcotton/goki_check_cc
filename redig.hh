@@ -17,7 +17,7 @@
 #include <Eigen/LU>
 #include <cmath>
 #include <vector>
-#include "tilt.hh"
+template <typename T> class match_t;
 
 using std::sqrt;
 using std::atan2;
@@ -28,6 +28,8 @@ using std::cos;
 using std::sin;
 using std::min;
 using std::max;
+using std::ceil;
+using std::floor;
 using std::cerr;
 using std::endl;
 using std::flush;
@@ -44,18 +46,44 @@ template <typename T> bool less0(const T& x, const T& y) {
   return x.first[0] < y.first[0] || (x.first[0] == y.first[0] && x.first[1] < y.first[1]);
 }
 
+template <typename T> class triangles_t {
+public:
+  Eigen::Matrix<T, 3, 3> p;
+  Eigen::Matrix<T, 3, 1> n;
+  T                      c;
+  T                      z;
+  triangles_t<T>& rotate(const Eigen::Matrix<T, 3, 3>& R, const Eigen::Matrix<T, 3, 1>& origin) {
+    for(int i = 0; i < 3; i ++)
+      p.col(i) = R * (p.col(i) - origin) + origin;
+    return *this;
+  }
+  triangles_t<T>& solveN() {
+    const auto pq(p.col(1) - p.col(0));
+    const auto pr(p.col(2) - p.col(0));
+    n[0] =   (pq[1] * pr[2] - pq[2] * pr[1]);
+    n[1] = - (pq[0] * pr[2] - pq[2] * pr[0]);
+    n[2] =   (pq[0] * pr[1] - pq[1] * pr[0]);
+    if(n.dot(n) > 0)
+      n /= sqrt(n.dot(n));
+    z = n.dot(p.col(0));
+    return *this;
+  }
+};
+
 template <typename T> class reDig {
 public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
-  typedef Eigen::Matrix<T,   3, 1>            Vec3;
-  typedef Eigen::Matrix<int, 3, 1>            Veci3;
+  typedef Eigen::Matrix<T,   3, 1> Vec3;
+  typedef Eigen::Matrix<int, 3, 1> Veci3;
+  typedef Eigen::Matrix<T,   2, 1> Vec2;
+  typedef triangles_t<T>           Triangles;
   
   reDig();
   ~reDig();
-  void init();
-  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio, tilter<T>& tilt);
+  void initialize(const int& vbox, const T& rz);
+  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
   Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc);
   Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
@@ -65,12 +93,20 @@ public:
   vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1e-5), const int& mdiv = 300) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
-  vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points, const int& vbox);
+  vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2xz(const Mat rgb[3]);
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
+  void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
+  Mat  tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
+  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
+  Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
+  bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5)) const;
+  bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
 
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
@@ -78,30 +114,38 @@ private:
   bool isDelaunay2(T& cw, const Vec3 p[4], const T& epsilon) const;
   bool isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1, const T& err = T(1e-4)) const;
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
+  bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
+  
+  T   Pi;
+  int vbox;
+  T   rz;
 };
 
 template <typename T> reDig<T>::reDig() {
-  ;
+  initialize(3, T(1) / T(6));
 }
 
 template <typename T> reDig<T>::~reDig() {
   ;
 }
 
-template <typename T> void reDig<T>::init() {
+template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
+  assert(0 < vbox && T(0) < rz);
+  this->vbox = vbox;
+  this->rz   = rz;
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio, tilter<T>& tilt) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   cerr << "m" << flush;
   assert(hulldst.size() == hullsrc.size());
-  vector<typename tilter<T>::Triangles> triangles;
+  vector<Triangles> triangles;
   triangles.reserve((srcimg.rows() - 1) * (srcimg.cols() - 1) * 2);
   for(int i = 0; i < srcimg.rows() - 1; i ++)
     for(int j = 0; j < srcimg.cols() - 1; j ++) {
-      triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, false));
+      triangles.push_back(makeTriangle(i, j, srcimg, srcbump, false));
       triangles[triangles.size() - 1].c = srcimg(i, j);
-      triangles.push_back(tilt.makeTriangle(i, j, srcimg, srcbump, true));
+      triangles.push_back(makeTriangle(i, j, srcimg, srcbump, true));
       triangles[triangles.size() - 1].c = srcimg(i, j);
     }
   
@@ -120,12 +164,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       for(int ll = 0; ll < 3; ll ++) {
         const auto& dq(triangles[l].p.col(ll));
         const auto  q(match.transform(dq));
-        if((tilt.sameSide2(p0, p1, p2, q) &&
-            tilt.sameSide2(p1, p2, p0, q) &&
-            tilt.sameSide2(p2, p0, p1, q)) ||
-           (tilt.sameSide2(dp0, dp1, dp2, dq) &&
-            tilt.sameSide2(dp1, dp2, dp0, dq) &&
-            tilt.sameSide2(dp2, dp0, dp1, dq)) )
+        if((sameSide2(p0, p1, p2, q) &&
+            sameSide2(p1, p2, p0, q) &&
+            sameSide2(p2, p0, p1, q)) ||
+           (sameSide2(dp0, dp1, dp2, dq) &&
+            sameSide2(dp1, dp2, dp0, dq) &&
+            sameSide2(dp2, dp0, dp1, dq)) )
           emphs[l * 3 + ll].push_back(hulldst[i][ll]);
       }
   }
@@ -136,7 +180,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       diff += rmatch.transform(dst[emphs[i][j]]) - triangles[i / 3].p.col(i % 3);
     triangles[i / 3].p.col(i % 3) += diff * ratio / match.ratio / emphs[i].size();
   }
-  return tilt.tilt(dstimg, triangles, match);
+  return tilt(dstimg, triangles, match);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc) {
@@ -171,7 +215,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
 template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   assert(hulldst.size() == hullsrc.size());
   vector<Vec3> result(dst);
-  tilter<T> tilt;
   const auto rmatch(~ match);
   vector<vector<int> > emphs;
   emphs.resize(result.size() * 3);
@@ -185,12 +228,12 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const 
     for(int j = 0; j < 3; j ++) {
       const auto& dq(dst[hulldst[i][j]]);
       const auto  q(rmatch.transform(dq));
-      if((tilt.sameSide2(p0, p1, p2, q) &&
-          tilt.sameSide2(p1, p2, p0, q) &&
-          tilt.sameSide2(p2, p0, p1, q)) ||
-         (tilt.sameSide2(dp0, dp1, dp2, dq) &&
-          tilt.sameSide2(dp1, dp2, dp0, dq) &&
-          tilt.sameSide2(dp2, dp0, dp1, dq)) )
+      if((sameSide2(p0, p1, p2, q) &&
+          sameSide2(p1, p2, p0, q) &&
+          sameSide2(p2, p0, p1, q)) ||
+         (sameSide2(dp0, dp1, dp2, dq) &&
+          sameSide2(dp1, dp2, dp0, dq) &&
+          sameSide2(dp2, dp0, dp1, dq)) )
         emphs[hulldst[i][j]].push_back(hullsrc[i][j]);
     }
   }
@@ -282,7 +325,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
 
 template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon, const int& mdiv) const {
   vector<Veci3> res;
-  tilter<T> tilt;
   cerr << pp.size() << ":" << flush;
   if(pp.size() > mdiv) {
     vector<pair<Vec3, int> > div;
@@ -452,11 +494,10 @@ template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T
     cw = - T(1);
   else if(T(0) < cw)
     cw =   T(1);
-  tilter<T> tilt;
   if(cw * dc.determinant() < - epsilon ||
-     (tilt.sameSide2(p[0], p[1], p[2], p[3], false) &&
-      tilt.sameSide2(p[1], p[2], p[0], p[3], false) &&
-      tilt.sameSide2(p[2], p[0], p[1], p[3], false)) )
+     (sameSide2(p[0], p[1], p[2], p[3], false) &&
+      sameSide2(p[1], p[2], p[0], p[3], false) &&
+      sameSide2(p[2], p[0], p[1], p[3], false)) )
     return false;
   return true;
 }
@@ -540,7 +581,7 @@ template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, in
   return;
 }
 
-template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, const vector<Vec3>& points, const int& vbox) {
+template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, const vector<Vec3>& points) {
   cerr << "getEdges" << flush;
   Mat checked(mask.rows(), mask.cols());
   for(int i = 0; i < checked.rows(); i ++)
@@ -731,6 +772,216 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++)
       result(i, j) = max(min(data(i, j), res[res.size() - count - 1]), res[count]);
+  return result;
+}
+
+// get bump with multiple scale and vectorized result.
+template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay) {
+  // get vectorize.
+  geoms = vector<Vec3>();
+  T aavg(0);
+  for(int i = 0; i < in.rows(); i ++)
+    for(int j = 0; j < in.cols(); j ++)
+      aavg += in(i, j);
+  aavg /= in.rows() * in.cols();
+  for(int i = 0; i < in.rows() / vbox + 1; i ++)
+    for(int j = 0; j < in.cols() / vbox + 1; j ++) {
+      if(in.rows() < (i + 1) * vbox ||
+         in.cols() < (j + 1) * vbox) {
+        if(geoms.size() >= 1) {
+          Vec3 gbuf;
+          gbuf[0] = i * vbox;
+          gbuf[1] = j * vbox;
+          gbuf[2] = geoms[geoms.size() - 1][2];
+          geoms.push_back(gbuf);
+        }
+        continue;
+      }
+      T avg(0);
+      for(int ii = i * vbox; ii < (i + 1) * vbox; ii ++)
+        for(int jj = j * vbox; jj < (j + 1) * vbox; jj ++)
+          avg += in(ii, jj);
+      Vec3 work;
+      work[0] = i * vbox;
+      work[1] = j * vbox;
+      const T intens(avg / vbox / vbox - aavg);
+      work[2] = - intens * sqrt(T(in.rows() * in.cols())) * rz;
+      geoms.push_back(work);
+    }
+  Vec3 avg;
+  avg[0] = avg[1] = avg[2] = T(0);
+  for(int i = 0; i < geoms.size(); i ++)
+    avg += geoms[i];
+  avg /= geoms.size();
+  for(int i = 0; i < geoms.size(); i ++)
+    geoms[i][2] -= avg[2];
+  delaunay = vector<Veci3>();
+  for(int i = 1; i < in.rows() / vbox + 1; i ++)
+    for(int j = 0; j < in.cols() / vbox; j ++) {
+      Veci3 work, work2;
+      work[0]  = (i - 1) * (in.cols() / vbox + 1) + j;
+      work[1]  =  i      * (in.cols() / vbox + 1) + j;
+      work[2]  =  i      * (in.cols() / vbox + 1) + j + 1;
+      work2[0] = (i - 1) * (in.cols() / vbox + 1) + j;
+      work2[2] = (i - 1) * (in.cols() / vbox + 1) + j + 1;
+      work2[1] =  i      * (in.cols() / vbox + 1) + j + 1;
+      delaunay.push_back(work);
+      delaunay.push_back(work2);
+    }
+  return;
+}
+
+template <typename T> triangles_t<T> reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
+  Triangles work;
+  if(flg) {
+    work.p(0, 0) = u;
+    work.p(1, 0) = v;
+    work.p(0, 1) = u + 1;
+    work.p(1, 1) = v;
+    work.p(0, 2) = u + 1;
+    work.p(1, 2) = v + 1;
+  } else {
+    work.p(0, 0) = u;
+    work.p(1, 0) = v;
+    work.p(0, 1) = u;
+    work.p(1, 1) = v + 1;
+    work.p(0, 2) = u + 1;
+    work.p(1, 2) = v + 1;
+  }
+  work.c = T(0);
+  for(int i = 0; i < 3;  i ++) {
+    work.p(2, i) = bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
+    work.c      += in(int(work.p(0, i)), int(work.p(1, i)));
+  }
+  work.c /= T(3);
+  return work.solveN();
+}
+
+template <typename T> bool reDig<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q, const bool& extend, const T& err) const {
+  const Vec2 dlt(p1 - p0);
+  Vec2 dp(p2 - p0);
+  dp -= dlt.dot(dp) * dlt / dlt.dot(dlt);
+  // N.B. dp.dot(p1 - p0) >> 0.
+  return dp.dot(q - p0) >= (extend ? - T(1) : T(1)) * (abs(dp[0]) + abs(dp[1])) * err;
+}
+
+template <typename T> bool reDig<T>::sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const bool& extend, const T& err) const {
+  return sameSide2(Vec2(p0[0], p0[1]), Vec2(p1[0], p1[1]),
+                   Vec2(p2[0], p2[1]), Vec2(q[0],  q[1]),
+                   extend, err);
+}
+
+// <[x, y, t], triangle.n> == triangle.z
+template <typename T> bool reDig<T>::onTriangle(T& z, const Triangles& tri, const Vec2& geom) {
+  Vec3 v0;
+  Vec3 camera;
+  v0[0] = 0;
+  v0[1] = 0;
+  v0[2] = 1;
+  camera[0] = geom[0];
+  camera[1] = geom[1];
+  camera[2] = 0;
+  // <v0 t + camera, tri.n> = tri.z
+  const T t((tri.z - tri.n.dot(camera)) / (tri.n.dot(v0)));
+  z = camera[2] + v0[2] * t;
+  return (sameSide2(tri.p.col(0), tri.p.col(1), tri.p.col(2), camera, true, T(.125)) &&
+          sameSide2(tri.p.col(1), tri.p.col(2), tri.p.col(0), camera, true, T(.125)) &&
+          sameSide2(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, true, T(.125)));
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
+  const T theta(2. * Pi * idx / samples);
+  const T lpsi(Pi * psi);
+  Mat3x3 R0;
+  Mat3x3 R1;
+  R0(0, 0) =   cos(theta);
+  R0(0, 1) = - sin(theta);
+  R0(0, 2) = 0.;
+  R0(1, 0) =   sin(theta);
+  R0(1, 1) =   cos(theta);
+  R0(1, 2) = 0.;
+  R0(2, 0) = 0.;
+  R0(2, 1) = 0.;
+  R0(2, 2) = 1.;
+  R1(0, 0) = 1.;
+  R1(0, 1) = 0.;
+  R1(0, 2) = 0.;
+  R1(1, 0) = 0.;
+  R1(1, 1) =   cos(lpsi);
+  R1(1, 2) = - sin(lpsi);
+  R1(2, 0) = 0.;
+  R1(2, 1) =   sin(lpsi);
+  R1(2, 2) =   cos(lpsi);
+  Vec3 pcenter;
+  pcenter[0] = T(in.rows() - 1.) / 2;
+  pcenter[1] = T(in.cols() - 1.) / 2;
+  pcenter[2] = T(.5);
+  match_t<T> m;
+  m.rot    = R0.transpose() * R1 * R0;
+  m.offset = pcenter - m.rot * pcenter;
+  m.ratio  = T(1);
+  return tilt(in, bump, m);
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m) {
+  assert(in.rows() == bump.rows() && in.cols() == bump.cols());
+  vector<Triangles> triangles;
+  triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
+  for(int i = 0; i < in.rows() - 1; i ++)
+    for(int j = 0; j < in.cols() - 1; j ++) {
+      triangles.push_back(makeTriangle(i, j, in, bump, false));
+      triangles.push_back(makeTriangle(i, j, in, bump, true));
+    }
+  return tilt(in, triangles, m);
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m) {
+  vector<Triangles> triangles(triangles0);
+  for(int j = 0; j < triangles.size(); j ++) {
+    for(int k = 0; k < 3; k ++)
+      triangles[j].p.col(k) = m.transform(triangles[j].p.col(k));
+    triangles[j].solveN();
+  }
+  return tilt(in, triangles);
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles) {
+  Mat result(in.rows(), in.cols());
+  for(int i = 0; i < in.rows(); i ++)
+    for(int j = 0; j < in.cols(); j ++)
+      result(i, j) = 0.;
+  cerr << "t" << flush;
+  Mat zb(in.rows(), in.cols());
+  for(int j = 0; j < zb.rows(); j ++)
+    for(int k = 0; k < zb.cols(); k ++)
+      zb(j, k) = - T(1e8);
+  // able to boost with divide and conquer.
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = 0; j < triangles.size(); j ++) {
+    const Triangles& tri(triangles[j]);
+    int ll = int( min(min(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2)));
+    int rr = ceil(max(max(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2))) + 1;
+    int bb = int( min(min(tri.p(1, 0), tri.p(1, 1)), tri.p(1, 2)));
+    int tt = ceil(max(max(tri.p(1, 0), tri.p(1, 1)), tri.p(1, 2))) + 1;
+    for(int y = max(0, ll); y < min(rr, int(in.rows())); y ++)
+      for(int x = max(0, bb); x < min(tt, int(in.cols())); x ++) {
+        T z;
+        Vec2 midgeom;
+        midgeom[0] = y;
+        midgeom[1] = x;
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+        {
+          if(onTriangle(z, tri, midgeom) && isfinite(z) && zb(y, x) < z) {
+            result(y, x) = tri.c;
+            zb(y, x)     = z;
+          }
+        }
+      }
+  }
   return result;
 }
 

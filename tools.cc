@@ -4,8 +4,6 @@
 #include <Eigen/Core>
 #include "fileio.hh"
 #include "enlarge.hh"
-#include "fisheye.hh"
-#include "tilt.hh"
 #include "match.hh"
 #include "redig.hh"
 
@@ -20,7 +18,7 @@ const int    vbox0(2);
 const int    vbox(16);
 const double rz(1. / 6.);
 const int    M_TILT(32);
-const double psi(.025);
+const double psi(.015);
 const int    Mpoly(2000);
 
 void usage() {
@@ -29,13 +27,9 @@ void usage() {
 }
 
 template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<Eigen::Matrix<T, 3, 1> >& shape0, const std::vector<Eigen::Matrix<T, 3, 1> >& shape1, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> in0[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> in1[3], const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump0, const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& bump1, const std::vector<T>& emph) {
-  reDig<T>  redig;
-  tilter<T> tilt;
-  
-  std::cerr << "(" << match.rdepth << ", " << match.ratio << ")" << std::endl;
-  
   // generated bump map is inverted.
-  tilt.initialize(- sqrt(double(bump1.rows() * bump1.cols())) * rz);
+  reDig<T> redig;
+  std::cerr << "(" << match.rdepth << ", " << match.ratio << ")" << std::endl;
   
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> outs[3];
   const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
@@ -46,7 +40,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     sin1[idx] = redig.showMatch(in1[idx], shape1, mhull1);
   redig.normalize(sin1, 1.);
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = tilt.tilt(sin1[idx], bump1, match);
+    outs[idx] = redig.tilt(sin1[idx], bump1, match);
   std::string outfile(outbase + std::string("-src.ppm"));
   savep2or3<T>(outfile.c_str(), outs, false);
   
@@ -64,7 +58,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   const auto rin0(redig.makeRefMatrix(in0[0], 1));
   const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
   for(int kk = 0; kk < emph.size(); kk ++) {
-    const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1, match, mhull0, mhull1, emph[kk], tilt));
+    const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1, match, mhull0, mhull1, emph[kk]));
     for(int idx = 0; idx < 3; idx ++) 
       outs[idx] = (in0[idx] + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), sin1[idx])) / T(2);
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
@@ -141,6 +135,7 @@ int main(int argc, const char* argv[]) {
   if(!loadp2or3<double>(data, argv[2]))
     return - 2;
   reDig<double> redig;
+  redig.initialize(vbox, rz);
   switch(mode) {
   case 0:
     {
@@ -176,31 +171,31 @@ int main(int argc, const char* argv[]) {
   case 2:
     {
       // bump.
-      PseudoBump<double> bump;
-      const auto xye(bump.getPseudoBump(redig.rgb2l(data)));
+      enlarger2ex<double> bump;
+      const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
       data[0] = xye;
-      // data[0] = xye + redig.tilt45(bump.getPseudoBump(redig.tilt45(redig.rgb2l(data), false)), true, xye);
+      // data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2l(data), false), bump.BUMP_BOTH), true, xye);
       data[1] = data[2] = data[0];
     }
     break;
   case 7:
     {
       // obj.
-      PseudoBump<double> bump;
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
-      bump.getPseudoVec(data[0], points, facets, vbox0, rz);
+      redig.initialize(vbox0, rz);
+      redig.getTileVec(data[0], points, facets);
       saveobj(points, facets, argv[3]);
     }
     return 0;
   case 3:
     {
       // bump2 for training output.
-      PseudoBump<double> bump;
+      enlarger2ex<double> bump;
       auto X(.49000/.17697 * data[0] + .31000/.17697  * data[1] + .20000/.17697 * data[2]);
       auto Z(                          .010000/.17697 * data[1] + .99000/.17697 * data[2]);
       data[0] = X     / 8.;
-      data[1] = bump.getPseudoBump(redig.rgb2l(data)) / 8.;
+      data[1] = bump.compute(redig.rgb2l(data), bump.BUMP_BOTH) / 8.;
       data[2] = Z     / 8.;
     }
     // with no auto-level.
@@ -225,11 +220,9 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<double>(bump, argv[4]))
         return - 2;
       auto zero(bump[0] * double(0));
-      tilter<double> tilt;
-      tilt.initialize(- sqrt(double(bump[0].rows() * bump[0].cols())) * rz);
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, M_TILT, psi);
+          out[j] = redig.tilt(data[j], bump[0], i, M_TILT, psi);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         savep2or3<double>(outfile.c_str(), out, false);
@@ -244,11 +237,9 @@ int main(int argc, const char* argv[]) {
       if(!loadp2or3<double>(bump, argv[4]))
         return - 2;
       auto zero(bump[0] * double(0));
-      tilter<double> tilt;
-      tilt.initialize(- sqrt(double(bump[0].rows() * bump[0].cols())) * rz);
       for(int i = 0; i < 2; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = tilt.tilt(data[j], bump[0], i, 2, psi);
+          out[j] = redig.tilt(data[j], bump[0], i, 2, psi);
         std::string outfile(argv[3]);
         const char* names[2] = {"-L.ppm", "-R.ppm"};
         outfile += std::string(names[i % 2]);
@@ -275,12 +266,11 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph * Memph);
       resizeDst2(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
-      PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox, rz);
-      bump.getPseudoVec(bump1, shape1, sute, vbox, rz);
+      redig.getTileVec(bump0, shape0, sute);
+      redig.getTileVec(bump1, shape1, sute);
       std::vector<int> id0, id1;
       for(int i = 0; i < shape0.size(); i ++)
         id0.push_back(i);
@@ -315,11 +305,10 @@ int main(int argc, const char* argv[]) {
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph * Memph);
-      PseudoBump<double> bumper;
       std::vector<Eigen::Matrix<double, 3, 1> > shape;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       auto& bump(bump0[0]);
-      bumper.getPseudoVec(bump, shape, sute, vbox, rz);
+      redig.getTileVec(bump, shape, sute);
       std::vector<int> id;
       for(int i = 0; i < shape.size(); i ++)
         id.push_back(i);
@@ -369,12 +358,11 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph * Memph);
       resizeDst2(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
-      PseudoBump<double> bump;
       std::vector<Eigen::Matrix<int,    3, 1> > sute;
       std::vector<Eigen::Matrix<double, 3, 1> > shape0, shape1;
       auto& bump0(bdata[0]);
-      bump.getPseudoVec(bump0, shape0, sute, vbox, rz);
-      bump.getPseudoVec(bump1, shape1, sute, vbox, rz);
+      redig.getTileVec(bump0, shape0, sute);
+      redig.getTileVec(bump1, shape1, sute);
       std::vector<int> id0, id1;
       for(int i = 0; i < shape0.size(); i ++)
         id0.push_back(i);
@@ -406,8 +394,9 @@ int main(int argc, const char* argv[]) {
         usage();
         return - 2;
       }
+      redig.initialize(vbox0, rz);
       redig.maskVectors(points, polys, data[0]);
-      auto edges(redig.getEdges(data[0], points, vbox0));
+      auto edges(redig.getEdges(data[0], points));
       double ratio;
       std::stringstream stream(argv[5]);
       stream >> ratio;

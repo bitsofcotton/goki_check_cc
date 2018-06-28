@@ -44,36 +44,42 @@ public:
     COLLECT_BOTH,
     IDETECT_X,
     IDETECT_Y,
-    IDETECT_BOTH } direction_t;
+    IDETECT_BOTH,
+    BUMP_X,
+    BUMP_Y,
+    BUMP_BOTH } direction_t;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   enlarger2ex();
-  Mat compute(const Mat& data, const direction_t& dir);
+  void initialize(const int& stp);
+  Mat  compute(const Mat& data, const direction_t& dir);
   
 private:
   void initPattern(const int& size);
+  int  getImgPt(const T& y, const T& rows);
+  void prepareMat(const int& rows, const T& rstp);
+  Mat  Dops;
   U    I;
   T    Pi;
+  Mat  A;
+  Mat  B;
   Mat  D;
   Mat  Dop;
   Mat  Iop;
+  Mat  bA;
+  Mat  bB;
   Mat  bD;
   Mat  bDop;
   Mat  bIop;
 };
 
 template <typename T> enlarger2ex<T>::enlarger2ex() {
-  I    = sqrt(U(- 1.));
-  Pi   = atan2(T(1), T(1)) * T(4);
-  D    = Mat();
-  Dop  = Mat();
-  Iop  = Mat();
-  bD   = Mat();
-  bDop = Mat();
-  bIop = Mat();
+  I  = sqrt(U(- 1.));
+  Pi = atan2(T(1), T(1)) * T(4);
+  initialize(31);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -92,13 +98,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
              compute(data, ENLARGE_FBOTH) / T(2) / T(3);
     break;
   case DETECT_BOTH:
-    result = (compute(data, DETECT_X) + compute(data, DETECT_Y)) / 2.;
+    result = (compute(data, DETECT_X)  + compute(data, DETECT_Y)) / 2.;
     break;
   case COLLECT_BOTH:
     result = (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / 2.;
     break;
   case IDETECT_BOTH:
     result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / 2.;
+    break;
+  case BUMP_BOTH:
+    result = (compute(data, BUMP_X)    + compute(data, BUMP_Y)) / 2.;
     break;
   case ENLARGE_X:
     result = compute(data.transpose(), ENLARGE_Y).transpose();
@@ -114,6 +123,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case IDETECT_X:
     result = compute(data.transpose(), IDETECT_Y).transpose();
+    break;
+  case BUMP_X:
+    result = compute(data.transpose(), BUMP_Y).transpose();
     break;
   case ENLARGE_FY:
     result = compute(compute(data, DETECT_Y), ENLARGE_Y);
@@ -160,10 +172,58 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
           result(j, i) += avg[i] * j * j / data.rows() / data.rows();
     }
     break;
+  case BUMP_Y:
+    {
+      prepareMat(data.rows(), sqrt(T(data.rows() * data.cols())));
+      result = Mat(data.rows(), data.cols());
+      assert(A.rows() == result.rows() && A.cols() == result.rows() &&
+             B.rows() == result.rows() && B.cols() == result.rows() &&
+             data.rows() == result.rows() && data.cols() == result.cols());
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          // XXX : is tensor multiplication norm better?
+          result(i, j) = abs(A.col(i).dot(data.col(j)) / B.col(i).dot(data.col(j)));
+    }
+    break;
   default:
     assert(0 && "unknown command in enlarger2ex (should not be reached.)");
   }
   return result;
+}
+
+template <typename T> void enlarger2ex<T>::initialize(const int& stp) {
+  assert(4 < stp);
+  MatU DFT(stp / 2, stp / 2), IDFT(stp / 2, stp / 2);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < DFT.rows(); i ++)
+    for(int j = 0; j < DFT.cols(); j ++) {
+      DFT( i, j) = exp(U(- 2.) * Pi * sqrt(U(- 1)) * U(i * j / T(DFT.rows())));
+      IDFT(i, j) = exp(U(  2.) * Pi * sqrt(U(- 1)) * U(i * j / T(DFT.rows()))) / T(DFT.rows());
+    }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < DFT.rows(); i ++)
+    DFT.row(i) *= - U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
+  Dops = Mat(IDFT.rows(), stp);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < Dops.rows(); i ++)
+    for(int j = 0; j < Dops.cols(); j ++)
+      Dops(i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < IDFT.rows(); i ++) {
+    const Vec lDop((IDFT.row(IDFT.rows() - 1 - i) * DFT).real().template cast<T>());
+    for(int j = i; j < lDop.size(); j ++)
+      Dops(i, j) = lDop[j - i];
+  }
+  return;
 }
 
 template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
@@ -181,7 +241,7 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
   Iop  = work;
   if(Dop.rows() == size)
     return;
-  cerr << " new" << flush;
+  cerr << "new" << flush;
   MatU DFT( size, size);
   MatU IDFT(size, size);
 #if defined(_OPENMP)
@@ -193,8 +253,7 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
       DFT( i, j) = exp(U(- 2.) * Pi * I * U(i * j / T(size)));
       IDFT(i, j) = exp(U(  2.) * Pi * I * U(i * j / T(size))) / T(size);
     }
-  MatU Dbuf(DFT);
-  MatU Ibuf(DFT);
+  MatU Dbuf(DFT); MatU Ibuf(DFT);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -255,6 +314,67 @@ template <typename T> void enlarger2ex<T>::initPattern(const int& size) {
 #endif
   }
   return;
+}
+
+template <typename T> void enlarger2ex<T>::prepareMat(const int& rows, const T& rstp) {
+  cerr << "." << flush;
+  if(A.rows() == rows)
+    return;
+  Mat work(bA);
+  bA   = A;
+  A    = work;
+  work = bB;
+  bB   = B;
+  B    = work;
+  if(A.rows() == rows)
+    return;
+  cerr << "new" << flush;
+  
+  Vec camera(2);
+  camera[0] = T(0);
+  camera[1] = rstp;
+  
+  work = Mat(int(sqrt(rstp) * T(4)), Dops.cols());
+  T absmax(0);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int zi = 0; zi < work.rows(); zi ++)
+    for(int s = 0; s < work.cols(); s ++) {
+      Vec cpoint(2);
+      cpoint[0] = s / T(work.cols() - 1) - 1 / T(2);
+      // [1, rstp] works well.
+      cpoint[1] = (zi + T(.5)) / T(work.rows()) * rstp;
+      // x-z plane projection of point p with camera geometry c to z=0.
+      // c := camera, p := cpoint.
+      // <c + (p - c) * t, [0, 1]> = 0
+      const T t(- camera[1] / (cpoint[1] - camera[1]));
+      work(zi, s) = (camera + (cpoint - camera) * t)[0];
+#if defined(_OPENMP)
+#pragma omp atomic
+#endif
+      absmax = max(abs(work(zi, s)), absmax);
+    }
+  work *= rstp / absmax;
+  A = Mat(rows, rows);
+  B = Mat(rows, rows);
+  for(int i = 0; i < rows; i ++)
+    for(int j = 0; j < rows; j ++)
+      A(i, j) = B(i, j) = T(0);
+  for(int i = 1; i < max(sqrt(sqrt(rstp)), T(1)); i ++)
+    for(int j = 0; j < work.rows(); j ++)
+      for(int k = 0; k < work.cols(); k ++)
+        for(int ii = 0; ii < rows; ii ++)
+          for(int jj = 0; jj < Dops.rows(); jj ++) {
+            A(getImgPt(ii + work(j, k) * T(i) / sqrt(sqrt(rstp)), rows), ii) += Dops(jj, k) * (jj + T(1)) / Dops.rows();
+            B(getImgPt(ii + work(j, k) * T(i) / sqrt(sqrt(rstp)), rows), ii) += T(1);
+          }
+  return;
+}
+
+template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& rows) {
+  const int& h(rows);
+  return abs((int(y + .5) + 3 * h) % (2 * h) - h) % h;
 }
 
 #define _ENLARGE2X_

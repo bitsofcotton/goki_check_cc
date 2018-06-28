@@ -17,5 +17,5 @@ all:	tools
 clean:
 	@rm -rf ${CLEANFILES}
 
-tools.o:        tools.cc enlarge.hh fisheye.hh match.hh tilt.hh redig.hh fileio.hh
+tools.o:        tools.cc enlarge.hh match.hh redig.hh fileio.hh
 
