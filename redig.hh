@@ -102,11 +102,6 @@ public:
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   Mat  tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m);
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m);
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
-  Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
-  bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5)) const;
-  bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
 
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
@@ -115,6 +110,12 @@ private:
   bool isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1, const T& err = T(1e-4)) const;
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
+  Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
+  bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5)) const;
+  bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
+
   
   T   Pi;
   int vbox;
@@ -131,7 +132,7 @@ template <typename T> reDig<T>::~reDig() {
 
 template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
   assert(0 < vbox && T(0) < rz);
-  Pi         = atan2(T(1), T(1));
+  Pi         = T(4) * atan2(T(1), T(1));
   this->vbox = vbox;
   this->rz   = rz;
   return;
