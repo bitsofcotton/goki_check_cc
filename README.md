@@ -8,8 +8,6 @@ This program needs ascii raw ppm files to input/output.
 To convert image files to raw ppm, it is powerful tool that imagemagick with 'convert from.image -compress none to.ppm'. 
 
 # Parameters
-* enlarge.hh
-* * stp    : number of points to be used in detecting edges.
 * redig.hh
 * * vbox.  : size of vector gathering rectangle.
 * * rz     : z-axis output ratio.
