@@ -1,5 +1,5 @@
 /* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
-/* [ Created with wxMaxima version 12.08.0 ] */
+/* [ Created with wxMaxima version 15.04.0 ] */
 
 /* [wxMaxima: input   start ] */
 diff((1-%e^(-%pi*%i*th/N))*b(t)*%e^(-2*%pi*%i*t*th/N)=2*f(t)*%e^(-2*%pi*%i*t*th/N)-fs(t)*%e^(-%pi*%i*t*th/N),th);
@@ -14,7 +14,7 @@ solve(%o1,d0(t)),fs(t)=2*f(t)-b(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d0(t);
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-%o3,fs(t)=2*f(t)-b(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d(t)/M;
+%o3,fs(t)=2*f(t)-b(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d(t);
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
@@ -22,19 +22,23 @@ solve(%o4,d(t));
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-%o5/M;
+trigsimp(realpart(%o5));
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-%o7,th=1;
+trigsimp(imagpart(%o5));
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-realpart(%o11);
+base(x,th):=sum(sum(f(L*x+l)*%e^(-2*%pi*%i*(L*x+l)*th/N),x,0,N/L),l,0,L-1)-2*sum(g(L*x)*%e^(-2*%pi*%i*(L*x)*th/N),x,0,N/L);
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-trigsimp(%o12);
+base(x,th)=0,L=2;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+diff(base(x,th),th)=0,L=2;
 /* [wxMaxima: input   end   ] */
 
 /* Maxima can't load/batch files which end with a comment! */

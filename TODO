@@ -1,4 +1,3 @@
-Rotated match with input/output raw text fbx.
-Stabilize details.
+Rotated match with input/output fbx through fbx SDK.
 Stabilize reDig::delaunay2.
 
