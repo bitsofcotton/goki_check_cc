@@ -123,7 +123,7 @@ private:
 };
 
 template <typename T> reDig<T>::reDig() {
-  initialize(3, T(1) / T(6));
+  initialize(3, 1 / 6.);
 }
 
 template <typename T> reDig<T>::~reDig() {
@@ -134,7 +134,7 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
   assert(0 < vbox && T(0) < rz);
   Pi         = T(4) * atan2(T(1), T(1));
   this->vbox = vbox;
-  this->rz   = rz;
+  this->rz   = - rz;
   return;
 }
 
@@ -807,7 +807,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
       work[0] = i * vbox;
       work[1] = j * vbox;
       const T intens(avg / vbox / vbox - aavg);
-      work[2] = - intens * sqrt(T(in.rows() * in.cols())) * rz;
+      work[2] = intens * sqrt(T(in.rows() * in.cols())) * rz;
       geoms.push_back(work);
     }
   Vec3 avg;

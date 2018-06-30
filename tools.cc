@@ -18,7 +18,7 @@ const int    vbox0(2);
 const int    vbox(16);
 const double rz(1. / 6.);
 const int    M_TILT(32);
-const double psi(.015);
+const double psi(.025);
 const int    Mpoly(2000);
 
 void usage() {
@@ -175,6 +175,7 @@ int main(int argc, const char* argv[]) {
       const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
       data[0] = xye;
       // data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2l(data), false), bump.BUMP_BOTH), true, xye);
+      data[0] = redig.autoLevel(data[0], data[0].rows() + data[0].cols());
       data[1] = data[2] = data[0];
     }
     break;
