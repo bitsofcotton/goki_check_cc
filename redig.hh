@@ -852,7 +852,7 @@ template <typename T> triangles_t<T> reDig<T>::makeTriangle(const int& u, const 
   }
   work.c = T(0);
   for(int i = 0; i < 3;  i ++) {
-    work.p(2, i) = bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
+    work.p(2, i) = - bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
     work.c      += in(int(work.p(0, i)), int(work.p(1, i)));
   }
   work.c /= T(3);
