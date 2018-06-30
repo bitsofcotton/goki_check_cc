@@ -134,7 +134,7 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
   assert(0 < vbox && T(0) < rz);
   Pi         = T(4) * atan2(T(1), T(1));
   this->vbox = vbox;
-  this->rz   = - rz;
+  this->rz   = rz;
   return;
 }
 

@@ -229,12 +229,12 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 
 template <typename T> void enlarger2ex<T>::initEop(const int& size) {
   cerr << "." << flush;
-  if(D.rows() == size)
+  if(D.rows() == size * 2)
     return;
   Mat work(bD);
   bD = D;
   D  = work;
-  if(D.rows() == size)
+  if(D.rows() == size * 2)
     return;
   cerr << "new" << flush;
   auto DFTa(seed(size, false));
