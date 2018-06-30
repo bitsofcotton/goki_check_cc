@@ -16,6 +16,7 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 #include <vector>
+#include "redig.hh"
 
 using std::cerr;
 using std::flush;
@@ -59,13 +60,13 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   enlarger2ex();
   Mat  compute(const Mat& data, const direction_t& dir);
-  T    zcoffset;
   
 private:
   void initDop(const int& size);
   void initEop(const int& size);
   void initBump(const int& rows, const T& zmax);
   void initBump0(const T& stp0);
+  Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
   MatU seed(const int& size, const bool& idft);
   void xchg(Mat& a, Mat& b);
@@ -73,12 +74,10 @@ private:
   U    I;
   T    Pi;
   Mat  A;
-  Mat  B;
   Mat  D;
   Mat  Dop;
   Mat  Iop;
   Mat  bA;
-  Mat  bB;
   Mat  bD;
   Mat  bDop;
   Mat  bIop;
@@ -87,7 +86,6 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  zcoffset = T(16) / T(256);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -160,45 +158,49 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
   case IDETECT_Y:
     {
       initDop(data.rows());
-      Vec avg(data.cols());
+      Vec ms[data.cols()];
+      Mat work(data);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.cols(); i ++) {
-        avg[i]  = T(0);
+        ms[i] = minSquare(data.col(i));
         for(int j = 0; j < data.rows(); j ++)
-          avg[i] += data(j, i);
-        avg[i] /= data.rows();
+          work(j, i) -= ms[i][0];
       }
-      result = Iop * data;
+      result = Iop * work;
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.cols(); i ++)
         for(int j = 0; j < data.rows(); j ++)
-          result(j, i) += avg[i] * j * j / data.rows() / data.rows();
+          result(j, i) += ms[i][0] * j / data.rows();
     }
     break;
   case BUMP_Y:
     {
-      assert(T(0) < zcoffset);
-      // initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       result = Mat(data.rows(), data.cols());
       assert(A.rows() == result.rows() && A.cols() == result.rows() &&
-             B.rows() == result.rows() && B.cols() == result.rows() &&
              data.rows() == result.rows() && data.cols() == result.cols());
-      // N.B. linear.
-      const Mat tA(A * data);
-      const Mat tB(B * data);
+      // N.B. local to global, commutative.
+      const Mat tA(A * (data + compute(data, IDETECT_Y)));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = abs(tA(i, j)) / max(abs(tB(i, j)), zcoffset);
+          // N.B.
+          // (uv)'=u'v+uv', u'v=(uv)'+uv',
+          //   v = average(dC_k/dy*z_k), u' = 1 / average(dC_k/dy),
+          //                             u  = log(average(dC_k/dy)) * const..
+          //         integrate(average / average(dC_k/dy)) =
+          // integrate(u'v) = (average) * log(average(dC_k/dy)) +
+          //         integrate(average  * log(average(dC_k/dy))).
+          // we assume pseudo condition that log(avg.) == const. + err.
+          result(i, j) = abs(tA(i, j)) * log(abs(data(i, j)) + exp(T(2)));
     }
     break;
   default:
@@ -317,17 +319,15 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
   if(A.rows() == rows)
     return;
   xchg(A, bA);
-  xchg(B, bB);
   if(A.rows() == rows)
     return;
 
   cerr << "new" << flush;
   assert(0 < rows && T(0) < zmax);
   A = Mat(rows, rows);
-  B = Mat(rows, rows);
   for(int i = 0; i < rows; i ++)
     for(int j = 0; j < rows; j ++)
-      B(i, j) = A(i, j) = T(0);
+      A(i, j) = T(0);
   initBump0(rows);
   // Fixed camera, 0 < t < 1 <=> point_z < camera_z
   //             - 1 < t < 0 <=> point_z in [1, 2] * camera_z
@@ -344,17 +344,14 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
       // <c + (p - c) * t, [0, 1]> = 0
       const auto t(- camera[1] / (cpoint[1] - camera[1]));
       const auto y0((camera + (cpoint - camera) * t)[0]);
-      // N.B. average_k(dC_k/dy * z_k) / average_k(dC_k/dy)
+      // N.B. average_k(dC_k / dy * z_k).
       const auto i(0);
       const auto y(getImgPt(y0 + i, rows));
       A(i, y) += Dop0[j] * (zi + 1);
-      B(i, y) += Dop0[j] / T(int(zmax) * 2 + 1);
     }
   for(int i = 1; i < A.rows(); i ++)
-    for(int j = 0; j < A.cols(); j ++) {
+    for(int j = 0; j < A.cols(); j ++)
       A(i, (j + i) % A.cols()) = A(0, j);
-      B(i, (j + i) % B.cols()) = B(0, j);
-    }
   return;
 }
 
@@ -379,6 +376,23 @@ template <typename T> void enlarger2ex<T>::xchg(Mat& a, Mat& b) {
   b = a;
   a = work;
   return;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> enlarger2ex<T>::minSquare(const Vec& in) {
+  T xsum(0);
+  T ysum(0);
+  T xdot(0);
+  T ydot(0);
+  for(int i = 0; i < in.size(); i ++) {
+    xsum += T(i);
+    ysum += in[i];
+    xdot += T(i) * T(i);
+    ydot += T(i) * in[i];
+  }
+  Vec result(2);
+  result[0] = (xdot * ysum - ydot * xsum) / (in.size() * xdot - xsum * xsum);
+  result[1] = (in.size() * ydot - xsum * ysum) / (in.size() * xdot - xsum * xsum);
+  return result;
 }
 
 #define _ENLARGE2X_
