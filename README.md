@@ -8,8 +8,6 @@ This program needs ascii raw ppm files to input/output.
 To convert image files to raw ppm, it is powerful tool that imagemagick with 'convert from.image -compress none to.ppm'. 
 
 # Parameters
-* enlarge.hh
-* * stp    : number of points to be used in detecting edges.
 * redig.hh
 * * vbox.  : size of vector gathering rectangle.
 * * rz     : z-axis output ratio.
@@ -74,7 +72,7 @@ N.B. a file per 5 minutes, up to 20 Mo total upload size.
 These program's enlarge is based on pseudo DFT half space plausible one. Already configured.  
 These program's collect is based on DFT differential. No need to configure.  
 These program's bump assumes F=∞ graphics. Please configure the parameters before to use.   
-These program's match matches with calculated pseudo z-depth, please configure in pseudoBump class initializer.  
+These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
 
