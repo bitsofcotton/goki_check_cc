@@ -17,6 +17,7 @@ const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
 const double rz(1 / 3.);
+const double offsetx(.1);
 const int    M_TILT(32);
 const double psi(.025);
 const int    Mpoly(2000);
@@ -235,10 +236,23 @@ int main(int argc, const char* argv[]) {
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> bump[3], out[3];
       if(!loadp2or3<double>(bump, argv[4]))
         return - 2;
+      for(int i = 0; i < bump[0].rows(); i ++)
+        for(int j = 0; j < bump[0].cols(); j ++) {
+          const int jj(- offsetx * bump[0].cols() + j);
+          if(0 <= jj && jj < bump[0].cols())
+            bump[0](i, j) = bump[2](i, jj);
+          else
+            bump[0](i, j) = 0.;
+          const int jj2(offsetx * bump[0].cols() + j);
+          if(0 <= jj2 && jj2 < bump[0].cols())
+            bump[1](i, j) = bump[2](i, jj2);
+          else
+            bump[1](i, j) = 0.;
+        }
       auto zero(bump[0] * double(0));
       for(int i = 0; i < 2; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data[j], bump[0], i, 2, psi);
+          out[j] = redig.tilt(data[j], bump[i % 2], i, 2, psi);
         std::string outfile(argv[3]);
         const char* names[2] = {"-L.ppm", "-R.ppm"};
         outfile += std::string(names[i % 2]);
