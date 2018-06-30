@@ -83,14 +83,14 @@ public:
   reDig();
   ~reDig();
   void initialize(const int& vbox, const T& rz);
-  Mat  emphasis(const Mat& dstimg, const Mat& dstbump, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
-  Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc);
-  Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc);
+  Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
+  Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const bool& elim = false);
+  Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(.2));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
-  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1e-5), const int& mdiv = 300) const;
+  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1e-5), const int& mdiv = 400) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
@@ -107,7 +107,7 @@ private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
   void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
   bool isDelaunay2(T& cw, const Vec3 p[4], const T& epsilon) const;
-  bool isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1, const T& err = T(1e-4)) const;
+  bool isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1, const T& err = T(1e-2)) const;
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
@@ -115,7 +115,6 @@ private:
   bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
-
   
   T   Pi;
   int vbox;
@@ -123,7 +122,7 @@ private:
 };
 
 template <typename T> reDig<T>::reDig() {
-  initialize(3, 1 / 6.);
+  initialize(3, 1 / 3.);
 }
 
 template <typename T> reDig<T>::~reDig() {
@@ -185,7 +184,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return tilt(dstimg, triangles, match);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc) {
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const bool& elim) {
   Mat result(dstimg);
   vector<Vec3> tsrc;
   T            M(0);
@@ -200,7 +199,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   }
   if(M - m != T(0))
     for(int i = 0; i < tsrc.size(); i ++)
-      tsrc[i][2] = (tsrc[i][2] - m) / (M - m);
+      tsrc[i][2] = elim ? T(0) : (tsrc[i][2] - m) / (M - m);
   for(int ii = 0; ii < hullsrc.size(); ii ++)
     drawMatchTriangle(result, tsrc[hullsrc[ii][0]],
                               tsrc[hullsrc[ii][1]],
@@ -208,10 +207,10 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& dstbump, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc) {
-  Mat result(dstimg);
-  // stub.
-  return result;
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
+  const Mat repl(replace(dstimg, src, match, hullsrc, true));
+  return repl + emphasis(repl, srcimg, srcbump, dst, src, match,
+                         hulldst, hullsrc, T(0));
 }
 
 template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
@@ -332,7 +331,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
     vector<pair<Vec3, int> > div;
     div.reserve(pp.size());
     for(int i = 0; i < pp.size(); i ++)
-      div.emplace_back(make_pair(p[pp[i]], pp[i]));
+      div.push_back(make_pair(p[pp[i]], pp[i]));
     sort(div.begin(), div.end(), less0<pair<Vec3, int> >);
     vector<int> lo, mid, hi;
     lo.reserve( div.size() / 2);
@@ -352,9 +351,12 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
     res.reserve(middle.size());
     for(int i = 0; i < left.size(); i ++) {
       for(int ii = 0; ii < 3; ii ++) {
-        const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[left[i][ii]], left[i][ii]), less0<pair<Vec3, int> >));
-        if(itr != div.end() && itr->second == left[i][ii] &&
-           div.size() / 2 < distance(div.begin(), itr) < div.size())
+        const auto itr(upper_bound(div.begin(), div.end(),
+                         make_pair(p[left[i][ii]], left[i][ii]),
+                         less0<pair<Vec3, int> >));
+        if(itr != div.end() && itr->first[0] == p[left[i][ii]][0] &&
+           div.size() * 7 / 16 < distance(div.begin(), itr) &&
+                                distance(div.begin(), itr) < div.size())
           goto nextl;
       }
       work.emplace_back(left[i]);
@@ -363,9 +365,12 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
     }
     for(int i = 0; i < right.size(); i ++) {
       for(int ii = 0; ii < 3; ii ++) {
-        const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[right[i][ii]], right[i][ii]), less0<pair<Vec3, int> >));
-        if(itr != div.end() && itr->second == right[i][ii] &&
-           distance(div.begin(), itr) < div.size() / 2)
+        const auto itr(upper_bound(div.begin(), div.end(),
+                         make_pair(p[right[i][ii]], right[i][ii]),
+                         less0<pair<Vec3, int> >));
+        if(itr != div.end() && itr->first[0] == p[right[i][ii]][0] &&
+           0 <= distance(div.begin(), itr) &&
+                distance(div.begin(), itr) < div.size() * 9 / 16)
           goto nextr;
       }
       work.emplace_back(right[i]);
@@ -374,10 +379,12 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
     }
     for(int i = 0; i < middle.size(); i ++) {
       for(int ii = 0; ii < 3; ii ++) {
-        const auto itr(upper_bound(div.begin(), div.end(), make_pair(p[middle[i][ii]], middle[i][ii]), less0<pair<Vec3, int> >));
-        if(itr != div.end() && itr->second == middle[i][ii] &&
-           (distance(div.begin(), itr) < div.size() / 4 ||
-            div.size() * 3 / 4 < distance(div.begin(), itr) ) )
+        const auto itr(upper_bound(div.begin(), div.end(),
+                         make_pair(p[middle[i][ii]], middle[i][ii]),
+                         less0<pair<Vec3, int> >));
+        if(itr != div.end() && itr->first[0] == p[middle[i][ii]][0] &&
+           (distance(div.begin(), itr) < div.size() * 5 / 16 ||
+               div.size() * 11 / 16 < distance(div.begin(), itr) ) )
           goto next;
       }
       res.emplace_back(middle[i]);

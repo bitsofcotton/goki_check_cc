@@ -15,6 +15,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/LU>
+#include <vector>
 
 using std::cerr;
 using std::flush;
@@ -25,6 +26,9 @@ using std::exp;
 using std::pow;
 using std::tan;
 using std::atan2;
+using std::vector;
+using std::sort;
+using std::ceil;
 
 template <typename T> class enlarger2ex {
 public:
@@ -55,6 +59,7 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
   enlarger2ex();
   Mat  compute(const Mat& data, const direction_t& dir);
+  T    zcoffset;
   
 private:
   void initDop(const int& size);
@@ -63,6 +68,7 @@ private:
   void initBump0(const T& stp0);
   int  getImgPt(const T& y, const T& h);
   MatU seed(const int& size, const bool& idft);
+  void xchg(Mat& a, Mat& b);
   Vec  Dop0;
   U    I;
   T    Pi;
@@ -81,6 +87,7 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
+  zcoffset = T(16) / T(256);
 }
 
 template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -175,6 +182,8 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case BUMP_Y:
     {
+      assert(T(0) < zcoffset);
+      // initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       result = Mat(data.rows(), data.cols());
       assert(A.rows() == result.rows() && A.cols() == result.rows() &&
@@ -184,11 +193,12 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       const Mat tA(A * data);
       const Mat tB(B * data);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = abs(tA(i, j) / (abs(tB(i, j)) + T(.5)));
+          result(i, j) = abs(tA(i, j)) / max(abs(tB(i, j)), zcoffset);
     }
     break;
   default:
@@ -201,12 +211,8 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   cerr << "." << flush;
   if(Dop.rows() == size)
     return;
-  Mat work(bDop);
-  bDop = Dop;
-  Dop  = work;
-  work = bIop;
-  bIop = Iop;
-  Iop  = work;
+  xchg(Dop, bDop);
+  xchg(Iop, bIop);
   if(Dop.rows() == size)
     return;
   cerr << "new" << flush;
@@ -231,9 +237,7 @@ template <typename T> void enlarger2ex<T>::initEop(const int& size) {
   cerr << "." << flush;
   if(D.rows() == size * 2)
     return;
-  Mat work(bD);
-  bD = D;
-  D  = work;
+  xchg(D, bD);
   if(D.rows() == size * 2)
     return;
   cerr << "new" << flush;
@@ -299,10 +303,9 @@ template <typename T> void enlarger2ex<T>::initBump0(const T& stp0) {
       DFT.row(i) *= - U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
     for(int i = 0; i < IDFT.rows(); i ++) {
       const Vec lDop((IDFT.row(IDFT.rows() - 1 - i) * DFT ).real().template cast<T>());
-      for(int j = i; j - i < lDop.size(); j ++) {
-        // N.B. check me tilt:
-        Dop0[j + stp / 2 - IDFT.rows() + 1] += T(stp / 2 - ss) * lDop[j - i];
-      }
+      const T   nDop(sqrt(lDop.dot(lDop)));
+      for(int j = i; j - i < lDop.size(); j ++)
+        Dop0[j + stp / 2 - IDFT.rows() + 1] += lDop[j - i] / nDop;
     }
   }
   Dop0 /= sqrt(Dop0.dot(Dop0));
@@ -313,42 +316,44 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
   cerr << "." << flush;
   if(A.rows() == rows)
     return;
-  Mat work(bA);
-  bA   = A;
-  A    = work;
-  work = bB;
-  bB   = B;
-  B    = work;
+  xchg(A, bA);
+  xchg(B, bB);
   if(A.rows() == rows)
     return;
 
   cerr << "new" << flush;
+  assert(0 < rows && T(0) < zmax);
   A = Mat(rows, rows);
   B = Mat(rows, rows);
   for(int i = 0; i < rows; i ++)
     for(int j = 0; j < rows; j ++)
       B(i, j) = A(i, j) = T(0);
-  initBump0(zmax / T(3));
+  initBump0(rows);
+  // Fixed camera, 0 < t < 1 <=> point_z < camera_z
+  //             - 1 < t < 0 <=> point_z in [1, 2] * camera_z
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = zmax;
-  for(int zi = 0; zi <= zmax; zi ++)
+  for(int zi = 0; zi <= zmax * T(2); zi ++)
     for(int j = 0; j < Dop0.size(); j ++) {
       Vec cpoint(2);
       cpoint[0] = j - T(Dop0.size() - 1) / 2;
-      // [1, zmax] works well.
-      cpoint[1] = zi + T(.5);
+      cpoint[1] = zi;
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0
       const auto t(- camera[1] / (cpoint[1] - camera[1]));
       const auto y0((camera + (cpoint - camera) * t)[0]);
       // N.B. average_k(dC_k/dy * z_k) / average_k(dC_k/dy)
-      for(int i = 0; i < A.rows(); i ++) {
-        const auto y(getImgPt(y0 + i, rows));
-        A(i, y) += Dop0[j] * (zi + T(.5));
-        B(i, y) += Dop0[j] / zmax;
-      }
+      const auto i(0);
+      const auto y(getImgPt(y0 + i, rows));
+      A(i, y) += Dop0[j] * (zi + 1);
+      B(i, y) += Dop0[j] / T(int(zmax) * 2 + 1);
+    }
+  for(int i = 1; i < A.rows(); i ++)
+    for(int j = 0; j < A.cols(); j ++) {
+      A(i, (j + i) % A.cols()) = A(0, j);
+      B(i, (j + i) % B.cols()) = B(0, j);
     }
   return;
 }
@@ -367,6 +372,13 @@ template <typename T> Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> 
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = exp(U(- 2. * (idft ? - 1 : 1)) * Pi * I * U(i * j / T(size))) / T(idft ? size : 1);
   return result;
+}
+
+template <typename T> void enlarger2ex<T>::xchg(Mat& a, Mat& b) {
+  Mat work(b);
+  b = a;
+  a = work;
+  return;
 }
 
 #define _ENLARGE2X_
