@@ -8,8 +8,6 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 変換の際は、例えばパワルフなツールである imagemagick の 'convert from.image -compress none to.ppm' が使用できます。
 
 # 調整可能なパラメタ
-* enlarge.hh
-* * stp    : ぼやけ具合を検出する際に使用される点の数です。
 * redig.hh
 * * vbox.  : ベクタ生成の際にまとめるピクセルの数です。
 * * rz     : 奥行きの乗数です。
