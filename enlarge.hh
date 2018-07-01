@@ -175,7 +175,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 #endif
       for(int i = 0; i < data.cols(); i ++)
         for(int j = 0; j < data.rows(); j ++)
-          result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows() / data.rows();
+          result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows();
     }
     break;
   case BUMP_Y:
