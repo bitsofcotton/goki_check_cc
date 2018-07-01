@@ -16,7 +16,7 @@ const int    nemph(2);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
-const double rz(1 / 3.);
+const double rz(1);
 const double offsetx(.1);
 const int    M_TILT(32);
 const double psi(.025);
@@ -173,7 +173,8 @@ int main(int argc, const char* argv[]) {
       // bump.
       enlarger2ex<double> bump;
       const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
-      data[0] = xye;
+      // data[0] = xye;
+      data[0] = redig.autoLevel(xye, data[0].rows() + data[0].cols());
       // data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2l(data), false), bump.BUMP_BOTH), true, xye);
       data[1] = data[2] = data[0];
     }

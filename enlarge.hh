@@ -167,7 +167,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       for(int i = 0; i < data.cols(); i ++) {
         ms[i] = minSquare(data.col(i));
         for(int j = 0; j < data.rows(); j ++)
-          work(j, i) -= ms[i][0];
+          work(j, i) -= ms[i][0] + ms[i][1] * j;
       }
       result = Iop * work;
 #if defined(_OPENMP)
@@ -175,7 +175,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 #endif
       for(int i = 0; i < data.cols(); i ++)
         for(int j = 0; j < data.rows(); j ++)
-          result(j, i) += ms[i][0] * j / data.rows();
+          result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows();
     }
     break;
   case BUMP_Y:
@@ -185,22 +185,26 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       assert(A.rows() == result.rows() && A.cols() == result.rows() &&
              data.rows() == result.rows() && data.cols() == result.cols());
       // N.B. local to global, commutative.
-      const Mat tA(A * (data + compute(data, IDETECT_Y)));
+      // (uv)'=u'v+uv', u'v=(uv)'-uv',
+      //   u' = average(C'*z_k), v = 1 / average(C').
+      //   u  = integrate(average(C'*z_k)) = average(integrate(C')*z_k).
+      //   v' = - C'' / average^2(C')
+      //        integrate(average(C'*z_k) / average(C')) =
+      // integrate(u'v) = average(integrate(C')*z_k) / average(C') +
+      //        integrate(average(integrate(C')*z_k) / average^2(C') * C'').
+      const Mat tA(A * compute(data, IDETECT_Y));
+            Mat work(  compute(data, DETECT_Y));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
+      for(int i = 0; i < work.rows(); i ++)
+        for(int j = 0; j < work.cols(); j ++)
+          work(i, j) *= tA(i, j) / pow(data(i, j) + T(1), T(2));
+      work = compute(work, IDETECT_Y);
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          // N.B.
-          // (uv)'=u'v+uv', u'v=(uv)'+uv',
-          //   v = average(dC_k/dy*z_k), u' = 1 / average(dC_k/dy),
-          //                             u  = log(average(dC_k/dy)) * const..
-          //         integrate(average / average(dC_k/dy)) =
-          // integrate(u'v) = (average) * log(average(dC_k/dy)) +
-          //         integrate(average  * log(average(dC_k/dy))).
-          // we assume pseudo condition that log(avg.) == const. + err.
-          result(i, j) = abs(tA(i, j)) * log(abs(data(i, j)) + exp(T(2)));
+          result(i, j) = tA(i, j) / (data(i, j) + T(1)) + work(i, j);
     }
     break;
   default:
@@ -223,15 +227,17 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   auto IDFT(seed(size, true));
   Dbuf.row(0) *= U(0);
   Ibuf.row(0) *= U(0);
+  T n2(0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 1; i < Dbuf.rows(); i ++) {
     Dbuf.row(i) *= U(- 2.) * Pi * I * U(i / T(size));
     Ibuf.row(i) /= U(- 2.) * Pi * I * U(i / T(size));
+    n2          += pow(T(2) * Pi * i / T(size), T(2));
   }
-  Dop =   (IDFT * Dbuf).real().template cast<T>();
-  Iop = - (IDFT * Ibuf).real().template cast<T>();
+  Dop =   (IDFT * Dbuf).real().template cast<T>() / sqrt(n2);
+  Iop = - (IDFT * Ibuf).real().template cast<T>() / sqrt(n2);
   return;
 }
 
@@ -349,6 +355,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
       const auto y(getImgPt(y0 + i, rows));
       A(i, y) += Dop0[j] * (zi + 1);
     }
+  A.row(0) /= sqrt(A.row(0).dot(A.row(0)));
   for(int i = 1; i < A.rows(); i ++)
     for(int j = 0; j < A.cols(); j ++)
       A(i, (j + i) % A.cols()) = A(0, j);
