@@ -122,7 +122,7 @@ private:
 };
 
 template <typename T> reDig<T>::reDig() {
-  initialize(3, 1.);
+  initialize(3, 1 / 3.);
 }
 
 template <typename T> reDig<T>::~reDig() {
@@ -814,7 +814,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
       work[0] = i * vbox;
       work[1] = j * vbox;
       const T intens(avg / vbox / vbox - aavg);
-      work[2] = - intens * sqrt(T(in.rows() * in.cols())) * rz;
+      work[2] = intens * sqrt(T(in.rows() * in.cols())) * rz;
       geoms.push_back(work);
     }
   Vec3 avg;
@@ -859,7 +859,8 @@ template <typename T> triangles_t<T> reDig<T>::makeTriangle(const int& u, const 
   }
   work.c = T(0);
   for(int i = 0; i < 3;  i ++) {
-    work.p(2, i) = bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
+    // XXX fixme: sign.
+    work.p(2, i) = - bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
     work.c      += in(int(work.p(0, i)), int(work.p(1, i)));
   }
   work.c /= T(3);

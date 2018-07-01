@@ -175,7 +175,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 #endif
       for(int i = 0; i < data.cols(); i ++)
         for(int j = 0; j < data.rows(); j ++)
-          result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows();
+          result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows() / data.rows();
     }
     break;
   case BUMP_Y:
@@ -192,19 +192,32 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       //        integrate(average(C'*z_k) / average(C')) =
       // integrate(u'v) = average(integrate(C')*z_k) / average(C') +
       //        integrate(average(integrate(C')*z_k) / average^2(C') * C'').
-      const Mat tA(A * compute(data, IDETECT_Y));
-            Mat work(  compute(data, DETECT_Y));
+            Mat rdata(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < work.rows(); i ++)
-        for(int j = 0; j < work.cols(); j ++)
-          work(i, j) *= tA(i, j) / pow(data(i, j) + T(1), T(2));
-      work = compute(work, IDETECT_Y);
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = tA(i, j) / (data(i, j) + T(1)) + work(i, j);
+      for(int i = 0; i < rdata.rows(); i ++)
+        rdata.row(i) = data.row(data.rows() - 1 - i);
+      const Mat tA( A * compute(data, IDETECT_Y));
+            Mat work(   compute(data, DETECT_Y));
+      const Mat trA(A * compute(rdata, IDETECT_Y));
+            Mat rwork(  compute(rdata, DETECT_Y));
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i <= work.rows() / 2; i ++)
+        for(int j = 0; j < work.cols(); j ++) {
+          work(i, j)  *= tA(i, j)  / pow(data(i, j) + T(1), T(2));
+          rwork(i, j) *= trA(i, j) / pow(data(i, j) + T(1), T(2));
+      }
+      work  = compute( work, IDETECT_Y);
+      rwork = compute(rwork, IDETECT_Y);
+      for(int i = 0; i <= result.rows() / 2; i ++)
+        for(int j = 0; j < result.cols(); j ++) {
+          result(i,                     j) = tA(i, j)  / (data(i, j)  + T(1)) + work(i, j);
+          result(result.rows() - 1 - i, j) = trA(i, j) / (rdata(i, j) + T(1)) + rwork(i, j);
+        }
     }
     break;
   default:
@@ -352,13 +365,15 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
       const auto y0((camera + (cpoint - camera) * t)[0]);
       // N.B. average_k(dC_k / dy * z_k).
       const auto i(0);
-      const auto y(getImgPt(y0 + i, rows));
-      A(i, y) += Dop0[j] * (zi + 1);
+      for(int i = 0; i < A.rows(); i ++) {
+        const auto y(getImgPt(y0 + i, rows));
+        A(i, y) += Dop0[j] * (zi + 1);
+      }
     }
-  A.row(0) /= sqrt(A.row(0).dot(A.row(0)));
-  for(int i = 1; i < A.rows(); i ++)
-    for(int j = 0; j < A.cols(); j ++)
-      A(i, (j + i) % A.cols()) = A(0, j);
+  T n2(0);
+  for(int i = 0; i < A.rows(); i ++)
+    n2 += sqrt(A.row(i).dot(A.row(i)));
+  A /= n2 / A.rows();
   return;
 }
 
