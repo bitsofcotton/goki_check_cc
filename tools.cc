@@ -16,7 +16,7 @@ const int    nemph(2);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
-const double rz(1);
+const double rz(1 / 3.);
 const double offsetx(.1);
 const int    M_TILT(32);
 const double psi(.025);
