@@ -260,6 +260,15 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
   return true;
 }
 
+
+#if defined(_LINK_FBX_EXT_SDK_)
+
+
+template <typename T> bool loadBoneFBX(const char* filename, vector<vector<Eigen::Matrix<T, 3, 1> > >& points, vector<vector<Eigen::Matrix<int, 3, 1> > >& polys) {
+  return false;
+}
+#endif
+
 #define _FILEIO_GOKI_
 #endif
 

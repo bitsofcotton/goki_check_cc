@@ -354,9 +354,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
         const auto itr(upper_bound(div.begin(), div.end(),
                          make_pair(p[left[i][ii]], left[i][ii]),
                          less0<pair<Vec3, int> >));
-        if(itr != div.end() && itr->first[0] == p[left[i][ii]][0] &&
-           div.size() * 7 / 16 < distance(div.begin(), itr) &&
-                                distance(div.begin(), itr) < div.size())
+        if(div.size() * 7 / 16 < distance(div.begin(), itr))
           goto nextl;
       }
       work.emplace_back(left[i]);
@@ -368,9 +366,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
         const auto itr(upper_bound(div.begin(), div.end(),
                          make_pair(p[right[i][ii]], right[i][ii]),
                          less0<pair<Vec3, int> >));
-        if(itr != div.end() && itr->first[0] == p[right[i][ii]][0] &&
-           0 <= distance(div.begin(), itr) &&
-                distance(div.begin(), itr) < div.size() * 9 / 16)
+        if(distance(div.begin(), itr) < div.size() * 9 / 16)
           goto nextr;
       }
       work.emplace_back(right[i]);
@@ -382,9 +378,8 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
         const auto itr(upper_bound(div.begin(), div.end(),
                          make_pair(p[middle[i][ii]], middle[i][ii]),
                          less0<pair<Vec3, int> >));
-        if(itr != div.end() && itr->first[0] == p[middle[i][ii]][0] &&
-           (distance(div.begin(), itr) < div.size() * 5 / 16 ||
-               div.size() * 11 / 16 < distance(div.begin(), itr) ) )
+        if(distance(div.begin(), itr) < div.size() * 5 / 16 ||
+                 div.size() * 11 / 16 < distance(div.begin(), itr) )
           goto next;
       }
       res.emplace_back(middle[i]);
@@ -401,15 +396,15 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
       T cw;
       Eigen::Matrix<int, 3, 1> idx;
       Vec3 q[4];
+      assert(middle.size());
       for(int jj = 0; jj < middle.size(); jj ++)
         for(int i0 = 0; i0 < 3; i0 ++)
           for(int j0 = 0; j0 < 3; j0 ++)
-            if(isCrossing(p[work[ii][ i0      % 3]],
-                          p[work[ii][(i0 + 1) % 3]],
+            if(isCrossing(p[work[ii][   i0      % 3]],
+                          p[work[ii][  (i0 + 1) % 3]],
                           p[middle[jj][ j0      % 3]],
                           p[middle[jj][(j0 + 1) % 3]]))
               goto fixnext0;
-      if(!middle.size()) goto fixnext0;
       q[0] = p[i]; q[1] = p[j]; q[2] = p[k];
       q[3] = p[middle[0][0]];
       isDelaunay2(cw, q, epsilon);
@@ -456,13 +451,13 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
 #pragma omp critical
 #endif
           {
-            for(int i = 0; i < res.size(); i ++)
-              for(int j = 0; j < res[i].size(); j ++)
-                for(int k = 0; k < idx.size(); k ++)
-                  if(isCrossing(p[res[i][(j + 0) % 3]],
-                                p[res[i][(j + 1) % 3]],
-                                p[idx[(k + 0) % 3]],
-                                p[idx[(k + 1) % 3]]))
+            for(int ii = 0; ii < res.size(); ii ++)
+              for(int jj = 0; jj < res[ii].size(); jj ++)
+                for(int kk = 0; kk < idx.size(); kk ++)
+                  if(isCrossing(p[res[ii][(jj + 0) % 3]],
+                                p[res[ii][(jj + 1) % 3]],
+                                p[idx[(kk + 0) % 3]],
+                                p[idx[(kk + 1) % 3]]))
                     goto fixnext;
             res.emplace_back(idx);
           }
@@ -477,7 +472,7 @@ template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T
   // sameline?
   Vec3 bcn(p[1] - p[2]);
   bcn[2] = T(0);
-  Vec3 err(p[0]);
+  Vec3 err(p[0] - p[2]);
   err[2] = T(0);
   err   -= err.dot(bcn) * bcn / bcn.dot(bcn);
   if(err.dot(err) <= epsilon)

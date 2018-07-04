@@ -23,7 +23,7 @@ const double psi(.025);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|tilt2|match|match3d|match2dh3d|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|tilt2|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -120,8 +120,12 @@ int main(int argc, const char* argv[]) {
     mode = 9;
   else if(strcmp(argv[1], "match3d") == 0)
     mode = 10;
+  else if(strcmp(argv[1], "match3dbone") == 0)
+    mode = 15;
   else if(strcmp(argv[1], "match2dh3d") == 0)
     mode = 11;
+  else if(strcmp(argv[1], "match2dh3dbone") == 0)
+    mode = 16;
   else if(strcmp(argv[1], "maskobj") == 0)
     mode = 12;
   else if(strcmp(argv[1], "habit") == 0)
