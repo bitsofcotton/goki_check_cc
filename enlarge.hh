@@ -65,9 +65,9 @@ private:
   void initDop(const int& size);
   void initEop(const int& size);
   void initBump(const int& rows, const T& zmax);
-  void initBump0(const T& stp0);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
+  void makeDI(const int& size, Vec& Dop, Vec& Iop);
   MatU seed(const int& size, const bool& idft);
   void xchg(Mat& a, Mat& b);
   Vec  Dop0;
@@ -218,6 +218,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
           result(i,                     j) = tA(i, j)  / (data(i, j)  + T(1)) + work(i, j);
           result(result.rows() - 1 - i, j) = trA(i, j) / (rdata(i, j) + T(1)) + rwork(i, j);
         }
+      result /= - T(2);
     }
     break;
   default:
@@ -235,22 +236,19 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   if(Dop.rows() == size)
     return;
   cerr << "new" << flush;
-  auto Dbuf(seed(size, false));
-  auto Ibuf(Dbuf);
-  auto IDFT(seed(size, true));
-  Dbuf.row(0) *= U(0);
-  Ibuf.row(0) *= U(0);
-  T n2(0);
+  Vec vDop;
+  Vec vIop;
+  makeDI(size, vDop, vIop);
+  Dop = Mat(size, size);
+  Iop = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 1; i < Dbuf.rows(); i ++) {
-    Dbuf.row(i) *= U(- 2.) * Pi * I * U(i / T(size));
-    Ibuf.row(i) /= U(- 2.) * Pi * I * U(i / T(size));
-    n2          += pow(T(2) * Pi * i / T(size), T(2));
-  }
-  Dop =   (IDFT * Dbuf).real().template cast<T>() / sqrt(n2);
-  Iop = - (IDFT * Ibuf).real().template cast<T>() / sqrt(n2);
+  for(int i = 0; i < Dop.rows(); i ++)
+    for(int j = 0; j < Dop.cols(); j ++) {
+      Dop(i, j) = Dop(0, (j + i) % Dop.cols());
+      Iop(i, j) = Iop(0, (j + i) % Iop.cols());
+    }
   return;
 }
 
@@ -305,34 +303,6 @@ template <typename T> void enlarger2ex<T>::initEop(const int& size) {
   return;
 }
 
-template <typename T> void enlarger2ex<T>::initBump0(const T& stp0) {
-  const int stp(int(stp0) - int(stp0) % 2 + 1);
-  assert(4 < stp && (stp & 1));
-  Dop0 = Vec(stp);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < Dop0.size(); i ++)
-    Dop0[i] = T(0);
-  for(int ss = 4; ss < stp / 2; ss ++) {
-    auto DFT(seed(ss, false));
-    auto IDFT(seed(ss, true));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < DFT.rows(); i ++)
-      DFT.row(i) *= - U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFT.rows());
-    for(int i = 0; i < IDFT.rows(); i ++) {
-      const Vec lDop((IDFT.row(IDFT.rows() - 1 - i) * DFT ).real().template cast<T>());
-      const T   nDop(sqrt(lDop.dot(lDop)));
-      for(int j = i; j - i < lDop.size(); j ++)
-        Dop0[j + stp / 2 - IDFT.rows() + 1] += lDop[j - i] / nDop;
-    }
-  }
-  Dop0 /= sqrt(Dop0.dot(Dop0));
-  return;
-}
-
 template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zmax) {
   cerr << "." << flush;
   if(A.rows() == rows)
@@ -347,7 +317,9 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
   for(int i = 0; i < rows; i ++)
     for(int j = 0; j < rows; j ++)
       A(i, j) = T(0);
-  initBump0(rows);
+  Vec Dop0;
+  Vec Iop0;
+  makeDI(rows, Dop0, Iop0);
   // Fixed camera, 0 < t < 1 <=> point_z < camera_z
   //             - 1 < t < 0 <=> point_z in [1, 2] * camera_z
   Vec camera(2);
@@ -364,11 +336,8 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
       const auto t(- camera[1] / (cpoint[1] - camera[1]));
       const auto y0((camera + (cpoint - camera) * t)[0]);
       // N.B. average_k(dC_k / dy * z_k).
-      const auto i(0);
-      for(int i = 0; i < A.rows(); i ++) {
-        const auto y(getImgPt(y0 + i, rows));
-        A(i, y) += Dop0[j] * (zi + 1);
-      }
+      for(int i = 0; i < A.rows(); i ++)
+        A(i, getImgPt(y0 + i, rows)) += Dop0[j] * (zi + 1);
     }
   T n2(0);
   for(int i = 0; i < A.rows(); i ++)
@@ -379,6 +348,43 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
 
 template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
   return int(abs(int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
+}
+
+template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec& Iop) {
+  assert(6 < size);
+  Dop = Vec(size);
+  Iop = Vec(size);
+  for(int i = 0; i < Dop.size(); i ++)
+    Dop[i] = Iop[i] = T(0);
+  assert(Dop.size() == size && Iop.size() == size);
+  for(int ss = 3; ss <= size / 2; ss ++) {
+          auto DFTD(seed(ss, false));
+    const auto IDFT(seed(ss, true));
+          auto DFTI(DFTD);
+    DFTD.row(0) *= U(0);
+    DFTI.row(0) *= U(0);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+    for(int i = 1; i < DFTD.rows(); i ++) {
+      const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+      DFTD.row(i) *= phase;
+      DFTI.row(i) /= phase;
+    }
+    for(int i = 0; i < IDFT.rows(); i ++) {
+      const Vec lDop((IDFT.row(IDFT.rows() - 1 - i) * DFTD).real().template cast<T>());
+      const Vec lIop((IDFT.row(IDFT.rows() - 1 - i) * DFTI).real().template cast<T>());
+      const T   norm2D(lDop.dot(lDop));
+      const T   norm2I(lIop.dot(lIop));
+      for(int j = i; j - i < lDop.size(); j ++) {
+        Dop[j + size / 2 - IDFT.rows() + 1] += lDop[j - i] / norm2D;
+        Iop[j + size / 2 - IDFT.rows() + 1] += lIop[j - i] / norm2I;
+      }
+    }
+  }
+  Dop /= sqrt(Dop.dot(Dop));
+  Iop /= sqrt(Iop.dot(Iop));
+  return;
 }
 
 template <typename T> Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::seed(const int& size, const bool& idft) {
