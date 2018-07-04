@@ -246,8 +246,8 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 #endif
   for(int i = 0; i < Dop.rows(); i ++)
     for(int j = 0; j < Dop.cols(); j ++) {
-      Dop(i, j) = Dop(0, (j + i) % Dop.cols());
-      Iop(i, j) = Iop(0, (j + i) % Iop.cols());
+      Dop(i, j) = vDop[(j + i + Dop.cols() / 2) % Dop.cols()];
+      Iop(i, j) = vIop[(j + i + Dop.cols() / 2) % Iop.cols()];
     }
   return;
 }
