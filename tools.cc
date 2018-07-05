@@ -177,8 +177,7 @@ int main(int argc, const char* argv[]) {
       // bump.
       enlarger2ex<double> bump;
       const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
-      // data[0] = xye;
-      data[0] = redig.autoLevel(xye, data[0].rows() + data[0].cols());
+      data[0] = redig.autoLevel(xye, 4 * (data[0].rows() + data[0].cols()));
       // data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2l(data), false), bump.BUMP_BOTH), true, xye);
       data[1] = data[2] = data[0];
     }
