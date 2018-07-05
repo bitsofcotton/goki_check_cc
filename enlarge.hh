@@ -201,14 +201,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 #endif
       for(int i = 0; i < work.rows(); i ++)
         for(int j = 0; j < work.cols(); j ++)
-          work(i, j)  *= tA(i, j)  / pow(data(i, j) + boffset, T(2));
+          work(i, j) *= tA(i, j) / pow(data(i, j) + boffset, T(2));
       work = compute(work, IDETECT_Y);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = tA(i, j)  / (data(i, j)  + boffset) + work(i, j);
+          result(i, j) = tA(i, j) / (data(i, j) + boffset) + work(i, j);
       result /= - T(2);
     }
     break;
@@ -258,11 +258,10 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     Eop(2 * i + 1, i) += T(1);
   }
   const Mat E0(Eop * T(2));
-  for(int i = 0; i < Eop.rows(); i ++)
-    for(int j = 0; j < Eop.cols(); j ++) {
-      Eop( i,                   j) += E0((i + 1) % E0.rows(), j);
-      Eop((i + 1) % Eop.rows(), j) += E0( i,                  j);
-    }
+  for(int i = 0; i < Eop.rows(); i ++) {
+    Eop.row( i                  ) += E0.row((i + 1) % E0.rows());
+    Eop.row((i + 1) % Eop.rows()) += E0.row( i                 );
+  }
   Eop /= T(4);
   return;
 }
