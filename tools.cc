@@ -158,7 +158,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
-        data[i] = xye * (data[i].rows() + data[i].cols()) + redig.tilt45(ddetect.compute(redig.tilt45(data[i], false), ddetect.COLLECT_BOTH), true, xye) * sqrt(double(data[i].rows() * data[i].cols()));
+        data[i] = xye + redig.tilt45(ddetect.compute(redig.tilt45(data[i], false), ddetect.COLLECT_BOTH), true, xye);
       }
     }
     break;
@@ -177,8 +177,8 @@ int main(int argc, const char* argv[]) {
       // bump.
       enlarger2ex<double> bump;
       const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
-      data[0] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2l(data), false), bump.BUMP_BOTH), true, xye), 8 * (data[0].rows() + data[0].cols()));
-      data[1] = data[2] = data[0];
+      data[1] = data[2] = data[0] = xye;
+      // data[1] = data[2] = data[0] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.BUMP_BOTH), true, xye);
     }
     break;
   case 7:
@@ -197,9 +197,9 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> bump;
       auto X(.49000/.17697 * data[0] + .31000/.17697  * data[1] + .20000/.17697 * data[2]);
       auto Z(                          .010000/.17697 * data[1] + .99000/.17697 * data[2]);
-      data[0] = X     / 8.;
+      data[0] = X / 8.;
       data[1] = bump.compute(redig.rgb2l(data), bump.BUMP_BOTH) / 8.;
-      data[2] = Z     / 8.;
+      data[2] = Z / 8.;
     }
     // with no auto-level.
     if(!savep2or3<double>(argv[3], data, ! true))
