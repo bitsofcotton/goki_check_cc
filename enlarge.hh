@@ -16,7 +16,6 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 #include <vector>
-#include "redig.hh"
 
 using std::cerr;
 using std::flush;
@@ -138,7 +137,18 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
     break;
   case ENLARGE_Y:
     initDop(data.rows());
-    result = Eop * data;
+    {
+      const Mat work(Eop * data);
+      result = Mat(data.rows() * 2, data.cols());
+      for(int i = 0; i < result.rows(); i ++)
+        result.row(i) = data.row(i / 2);
+      for(int i = 0; i < result.cols(); i ++) {
+        T score(0);
+        for(int j = 1; j < data.rows(); j ++)
+          score += abs(data(j, i) - data(j - 1, i));
+        result.col(i) += work.col(i) * score / data.rows() / sqrt(work.col(i).dot(work.col(i)));
+      }
+    }
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -184,16 +194,16 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       result = Mat(data.rows(), data.cols());
       assert(A.rows() == result.rows() && A.cols() == result.rows() &&
              data.rows() == result.rows() && data.cols() == result.cols());
-      // N.B. local to global, commutative.
+      // N.B. local to global (apply for integrated space), commutative.
       // (uv)'=u'v+uv', u'v=(uv)'-uv',
       //   u' = average(C'*z_k), v = 1 / average(C').
-      //   u  = integrate(average(C'*z_k)) = average(integrate(C')*z_k).
+      //   u  = integrate(average(C'*z_k)).
       //   v' = - C'' / average^2(C')
       //        integrate(average(C'*z_k) / average(C')) =
       // integrate(u'v) = average(integrate(C')*z_k) / average(C') +
       //        integrate(average(integrate(C')*z_k) / average^2(C') * C'').
-      const Mat tA(A * compute(data, IDETECT_Y));
-            Mat work(  compute(data, DETECT_Y));
+      const Mat tA(  compute(A * data, IDETECT_Y));
+            Mat work(compute(    data, DETECT_Y));
       assert(T(0) < boffset);
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -209,7 +219,6 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = tA(i, j) / (data(i, j) + boffset) + work(i, j);
-      result /= - T(2);
     }
     break;
   default:
@@ -234,7 +243,8 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   makeDI(size, vDop, vIop, vEop);
   Dop = Mat(size, size);
   Iop = Mat(size, size);
-  Mat wEop(size, size);
+  Mat  wEop(size, size);
+  vEop /= sqrt(vEop.dot(vEop));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -245,8 +255,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       Iop(i, j)  = vIop[(j - i + Dop.cols() * 3 / 2) %  Iop.cols()];
       wEop(i, j) = vEop[(j - i + Dop.cols() * 3 / 2) % wEop.cols()];
     }
-  // N.B. : configured ratio.
-  wEop /= T(2 * wEop.rows() * Pi);
   Eop   = Mat(wEop.rows() * 2, wEop.cols());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -257,12 +265,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     Eop(2 * i + 0, i) += T(1);
     Eop(2 * i + 1, i) += T(1);
   }
-  const Mat E0(Eop * T(2));
-  for(int i = 0; i < Eop.rows(); i ++) {
-    Eop.row( i                  ) += E0.row((i + 1) % E0.rows());
-    Eop.row((i + 1) % Eop.rows()) += E0.row( i                 );
-  }
-  Eop /= T(4);
   return;
 }
 
