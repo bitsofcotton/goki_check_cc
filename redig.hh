@@ -97,6 +97,7 @@ public:
   Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2xz(const Mat rgb[3]);
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
+  Mat  normalize(const Mat& data, const T& upper);
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
@@ -744,6 +745,22 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       }
   }
   return res;
+}
+
+template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::normalize(const Mat& data, const T& upper) {
+  T MM(data(0, 0)), mm(data(0, 0));
+  for(int i = 0; i < data.rows(); i ++)
+    for(int j = 0; j < data.cols(); j ++) {
+      MM = max(MM, data(i, j));
+      mm = min(mm, data(i, j));
+    }
+  if(MM == mm)
+    return data;
+  Mat result(data);
+  for(int i = 0; i < data.rows(); i ++)
+    for(int j = 0; j < data.cols(); j ++)
+      result(i, j) -= mm;
+  return result * upper / (MM - mm);
 }
 
 template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) {
