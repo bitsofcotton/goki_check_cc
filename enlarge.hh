@@ -51,8 +51,7 @@ public:
     IDETECT_BOTH,
     BUMP_X,
     BUMP_Y,
-    BUMP_BOTH,
-    BUMP_NORMALIZE_Y } direction_t;
+    BUMP_BOTH } direction_t;
   typedef complex<T> U;
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
@@ -218,30 +217,9 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = tA(i, j) / (data(i, j) + boffset) + work(i, j);
-    }
-    result = compute(result, BUMP_NORMALIZE_Y);
-    break;
-    // N.B. quite artificial range changes.
-  case BUMP_NORMALIZE_Y:
-    {
-      T mm(data(0, 0));
-      T MM(data(0, 0));
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++) {
-          mm = min(mm, data(i, j));
-          MM = max(MM, data(i, j));
+        for(int j = 0; j < result.cols(); j ++) {
+          result(i, j) = - tA(i, j) / (data(i, j) + boffset) + work(i, j);
         }
-      result = Mat(data.rows(), data.cols());
-      if(mm != MM)
-        for(int i = 0; i < result.rows(); i ++)
-          for(int j = 0; j < result.cols(); j ++)
-            result(i, j) = T(1) - sqrt(sqrt(T(1) - (data(i, j) - mm) / (MM - mm)));
-      else
-        for(int i = 0; i < result.rows(); i ++)
-          for(int j = 0; j < result.cols(); j ++)
-            result(i, j) = T(0);
     }
     break;
   default:
