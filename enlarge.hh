@@ -347,13 +347,16 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       DFTE.row(i) *= r;
     }
     for(int i = 0; i < IDFT.rows(); i ++) {
-      const Vec lDop((IDFT.row(IDFT.rows() - 1 - i) * DFTD).real().template cast<T>());
-      const Vec lIop((IDFT.row(IDFT.rows() - 1 - i) * DFTI).real().template cast<T>());
-      const Vec lEop((IDFT.row(IDFT.rows() - 1 - i) * DFTE).real().template cast<T>());
+      const int iidx(IDFT.rows() - 1 - i);
+      const Vec lDop((IDFT.row(iidx) * DFTD).real().template cast<T>());
+      const Vec lIop((IDFT.row(iidx) * DFTI).real().template cast<T>());
+      const Vec lEop((IDFT.row(iidx) * DFTE).real().template cast<T>());
       for(int j = i; j - i < lDop.size(); j ++) {
-        Dop[j + size / 2 - IDFT.rows() + 1] += lDop[j - i] / lDop.size();
-        Iop[j + size / 2 - IDFT.rows() + 1] += lIop[j - i] / lIop.size();
-        Eop[j + size / 2 - IDFT.rows() + 1] += lEop[j - i] / lEop.size();
+        const int idx(j + size / 2 - IDFT.rows() + 1);
+        const int jdx(j - i);
+        Dop[idx] += lDop[jdx] / lDop.size();
+        Iop[idx] += lIop[jdx] / lIop.size();
+        Eop[idx] += lEop[jdx] / lEop.size();
       }
     }
   }

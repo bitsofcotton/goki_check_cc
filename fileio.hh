@@ -148,7 +148,7 @@ template <typename T> bool savep2or3(const char* filename, Eigen::Matrix<T, Eige
   return true;
 }
 
-template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2)) {
+template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2)) {
   ofstream output;
   output.open(filename, std::ios::out);
   if(output.is_open()) {
@@ -164,7 +164,11 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
       Mw = max(data[i][0], Mw);
       lz = min(- data[i][2], lz);
     }
-    if(addstand) {
+    if(arout) {
+      assert(!addstand);
+      for(int i = 0; i < data.size(); i ++)
+        output << "v " << - data[i][2] / sqrt(Mw * Mh) - zs << " " << - data[i][0] / Mw << " " << - data[i][1] / Mh << endl;
+    } else if(addstand) {
       for(int i = 0; i < data.size(); i ++)
         output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + zs - lz << endl;
       for(int i = 0; i < data.size(); i ++)
@@ -259,15 +263,6 @@ template <typename T> bool loadobj(vector<Eigen::Matrix<T, 3, 1> >& data, vector
   }
   return true;
 }
-
-
-#if defined(_LINK_FBX_EXT_SDK_)
-
-
-template <typename T> bool loadBoneFBX(const char* filename, vector<vector<Eigen::Matrix<T, 3, 1> > >& points, vector<vector<Eigen::Matrix<int, 3, 1> > >& polys) {
-  return false;
-}
-#endif
 
 #define _FILEIO_GOKI_
 #endif
