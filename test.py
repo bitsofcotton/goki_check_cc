@@ -59,6 +59,8 @@ for line in argv[3:]:
     subprocess.call([argv[1], "obj",     root + "-bump.ppm", root + "0.obj"])
     subprocess.call([argv[1], "arobj",   root + "-bump.ppm", root + "1.obj"])
     subprocess.call([argv[1], "maskobj", root + "-mask.ppm", root + "0.obj", root + ".obj", ".05", "2"])
+  elif(argv[2] == "scn"):
+    subprocess.call(["xcrun", "scntool", "--convert", root + "1.obj", "--format", "scn", "--output", root + ".scn"])
   elif(argv[2] == "mtl"):
     subprocess.call(["cp", os.path.dirname(argv[1]) + "/material.mtl", root + ".obj.mtl"])
     f = open(root + ".obj.mtl", "a")
