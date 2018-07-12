@@ -48,7 +48,7 @@ for line in argv[3:]:
     subprocess.call(["convert", root + "-enl0.ppm", "-blur", "0x.75", "-sharpen", "0x1", "-compress", "none", root + "-enl.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump0.ppm"])
-    subprocess.call(["convert", root + "-bump0.ppm", "-equalize", "-compress", "none", root + "-bump.ppm"])
+    subprocess.call(["convert", root + "-bump0.ppm", "-blur", "8x2", "-equalize", "-compress", "none", root + "-bump.ppm"])
   elif(argv[2] == "emph"):
     subprocess.call(["convert", root + ".ppm", root + "-bump.ppm", "-alpha", "on", "-channel", "a", "-evaluate", "set", "30%", "-compose", "Multiply", "-composite", root + "-emph" + ext])
   elif(argv[2] == "mask0"):
@@ -94,4 +94,6 @@ for line in argv[3:]:
     else:
       subprocess.call([argv[1], "habit", habit0, line + "-out.obj", bhabit + "-out.obj", line])
       bhabit = line
+  elif(argv[2] == "prep"):
+    subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])
 
