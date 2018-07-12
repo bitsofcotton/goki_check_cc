@@ -23,7 +23,7 @@ const double psi(.025);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|bump2|rbump2|tilt|tilt2|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -128,6 +128,8 @@ int main(int argc, const char* argv[]) {
     mode = 16;
   else if(strcmp(argv[1], "maskobj") == 0)
     mode = 12;
+  else if(strcmp(argv[1], "arobj") == 0)
+    mode = 17;
   else if(strcmp(argv[1], "habit") == 0)
     mode = 13;
   else if(strcmp(argv[1], "tilt2") == 0)
@@ -178,17 +180,18 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> bump;
       const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
       data[1] = data[2] = data[0] = xye;
-      // data[1] = data[2] = data[0] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.BUMP_BOTH), true, xye);
+      // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(data[i], false), bump.BUMP_BOTH), true, xye);
     }
     break;
   case 7:
+  case 17:
     {
       // obj.
       std::vector<Eigen::Matrix<double, 3, 1> > points;
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
       redig.initialize(vbox0, rz);
       redig.getTileVec(data[0], points, facets);
-      saveobj(points, facets, argv[3]);
+      saveobj(points, facets, argv[3], mode == 17);
     }
     return 0;
   case 3:
@@ -428,7 +431,7 @@ int main(int argc, const char* argv[]) {
       if(M == m) M += 1.;
       for(int i = 0; i < points.size(); i ++)
         points[i][2] *= ratio / (M - m);
-      saveobj(points, polys, argv[4], true, edges);
+      saveobj(points, polys, argv[4], false, true, edges);
     }
     return 0;
   case 13:

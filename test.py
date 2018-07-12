@@ -57,18 +57,16 @@ for line in argv[3:]:
     subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
   elif(argv[2] == "obj"):
     subprocess.call([argv[1], "obj",     root + "-bump.ppm", root + "0.obj"])
+    subprocess.call([argv[1], "arobj",   root + "-bump.ppm", root + "1.obj"])
     subprocess.call([argv[1], "maskobj", root + "-mask.ppm", root + "0.obj", root + ".obj", ".05", "2"])
   elif(argv[2] == "mtl"):
     subprocess.call(["cp", os.path.dirname(argv[1]) + "/material.mtl", root + ".obj.mtl"])
-    subprocess.call(["cp", os.path.dirname(argv[1]) + "/material.mtl", root + "0.obj.mtl"])
     f = open(root + ".obj.mtl", "a")
     f.write("map_Ka " + line + "\n")
     f.write("map_Kd " + line + "\n\n")
     f.close()
-    f = open(root + "0.obj.mtl", "a")
-    f.write("map_Ka " + line + "\n")
-    f.write("map_Kd " + line + "\n\n")
-    f.close()
+    subprocess.call(["cp", root + ".obj.mtl", root + "0.obj.mtl"])
+    subprocess.call(["cp", root + ".obj.mtl", root + "1.obj.mtl"])
   elif(argv[2] == "tilt"):
     subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base", root + "-bump.ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
