@@ -167,7 +167,7 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
     if(arout) {
       assert(!addstand);
       for(int i = 0; i < data.size(); i ++)
-        output << "v " << data[i][1] / Mh - T(.5) << " " << T(.5) - data[i][0] / Mw << " " << - (data[i][2] + lz / T(2)) / sqrt(Mw * Mh) << endl;
+        output << "v " << data[i][1] / Mh - T(.5) << " " << T(.5) - data[i][0] / Mw << " " << - (data[i][2] + lz / T(2)) / sqrt(Mw * Mh) - T(.5) << endl;
     } else if(addstand) {
       for(int i = 0; i < data.size(); i ++)
         output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + zs - lz << endl;
