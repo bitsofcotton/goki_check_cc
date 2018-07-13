@@ -18,6 +18,7 @@ const int    vbox0(2);
 const int    vbox(16);
 const double rz(1 / 6.);
 const double offsetx(.1);
+const double aroffset(.05);
 const int    M_TILT(32);
 const double psi(.025);
 const int    Mpoly(2000);
@@ -191,7 +192,12 @@ int main(int argc, const char* argv[]) {
       std::vector<Eigen::Matrix<int,    3, 1> > facets;
       redig.initialize(vbox0, rz);
       redig.getTileVec(data[0], points, facets);
-      saveobj(points, facets, argv[3], mode == 17);
+      if(mode == 7)
+        saveobj(points, facets, argv[3], false);
+      else {
+        saveobj(points, facets, (std::string(argv[3]) + std::string("-L.obj")).c_str(), true, false, std::vector<std::vector<int> >(), 2.,   aroffset);
+        saveobj(points, facets, (std::string(argv[3]) + std::string("-R.obj")).c_str(), true, false, std::vector<std::vector<int> >(), 2., - aroffset);
+      }
     }
     return 0;
   case 3:
