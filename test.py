@@ -56,10 +56,11 @@ for line in argv[3:]:
     subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
   elif(argv[2] == "obj"):
     subprocess.call([argv[1], "obj",     root + "-bump.ppm", root + "0.obj"])
-    subprocess.call([argv[1], "arobj",   root + "-bump.ppm", root + "1.obj"])
+    subprocess.call([argv[1], "arobj",   root + "-bump.ppm", root + "1"])
     subprocess.call([argv[1], "maskobj", root + "-mask.ppm", root + "0.obj", root + ".obj", ".05", "2"])
   elif(argv[2] == "scn"):
-    subprocess.call(["xcrun", "scntool", "--convert", root + "1.obj", "--format", "scn", "--output", root + ".scn"])
+    subprocess.call(["xcrun", "scntool", "--convert", root + "1-L.obj", "--format", "scn", "--output", root + "-L.scn"])
+    subprocess.call(["xcrun", "scntool", "--convert", root + "1-R.obj", "--format", "scn", "--output", root + "-R.scn"])
   elif(argv[2] == "mtl"):
     subprocess.call(["cp", os.path.dirname(argv[1]) + "/material.mtl", root + ".obj.mtl"])
     f = open(root + ".obj.mtl", "a")
@@ -67,7 +68,8 @@ for line in argv[3:]:
     f.write("map_Kd " + line + "\n\n")
     f.close()
     subprocess.call(["cp", root + ".obj.mtl", root + "0.obj.mtl"])
-    subprocess.call(["cp", root + ".obj.mtl", root + "1.obj.mtl"])
+    subprocess.call(["cp", root + ".obj.mtl", root + "1-L.obj.mtl"])
+    subprocess.call(["cp", root + ".obj.mtl", root + "1-R.obj.mtl"])
   elif(argv[2] == "tilt"):
     subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base", root + "-bump.ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])

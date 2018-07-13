@@ -148,7 +148,7 @@ template <typename T> bool savep2or3(const char* filename, Eigen::Matrix<T, Eige
   return true;
 }
 
-template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2)) {
+template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, const vector<Eigen::Matrix<int, 3, 1> >& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2), const T& aroffset = T(.2)) {
   ofstream output;
   output.open(filename, std::ios::out);
   if(output.is_open()) {
@@ -167,7 +167,7 @@ template <typename T> bool saveobj(const vector<Eigen::Matrix<T, 3, 1> >& data, 
     if(arout) {
       assert(!addstand);
       for(int i = 0; i < data.size(); i ++)
-        output << "v " << (data[i][1] - Mh / T(2)) / sqrt(Mh * Mh + Mw * Mw) << " " << (Mw / T(2) - data[i][0]) / sqrt(Mh * Mh + Mw * Mw) << " " << - (data[i][2] + lz / T(2)) / sqrt(Mh * Mh + Mw * Mw) - T(.5) << endl;
+        output << "v " << aroffset + (data[i][1] - Mh / T(2)) / sqrt(Mh * Mh + Mw * Mw) << " " << (Mw / T(2) - data[i][0]) / sqrt(Mh * Mh + Mw * Mw) << " " << - (data[i][2] + lz / T(2)) / sqrt(Mh * Mh + Mw * Mw) - T(.5) << endl;
     } else if(addstand) {
       for(int i = 0; i < data.size(); i ++)
         output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + zs - lz << endl;
