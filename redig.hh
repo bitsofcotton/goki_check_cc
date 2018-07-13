@@ -123,7 +123,7 @@ private:
 };
 
 template <typename T> reDig<T>::reDig() {
-  initialize(3, 1 / 20.);
+  initialize(3, 1 / 6.);
 }
 
 template <typename T> reDig<T>::~reDig() {
