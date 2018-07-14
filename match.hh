@@ -100,6 +100,7 @@ public:
   Vec2        threshsize;
   match_t() {
     thresh = T(0);
+    threshsize    = Vec2(2);
     threshsize[0] = threshsize[1] = T(0);
     initId();
   }
