@@ -316,7 +316,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
 }
 
 template <typename T> typename matchPartialPartial<T>::Vec3 matchPartialPartial<T>::makeG(const vector<Vec3>& in) const {
-  Vec3 result;
+  Vec3 result(3);
   result[0] = result[1] = result[2] = T(0);
   for(int i = 0; i < in.size(); i ++)
     result += in[i];
