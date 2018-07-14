@@ -8,6 +8,8 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 変換の際は、例えばパワルフなツールである imagemagick の 'convert from.image -compress none to.ppm' が使用できます。
 
 # 調整可能なパラメタ
+* enlarge.hh
+* * boffset : 奥行きの計算の局所情報と大域情報に関連する積分の際の色オフセットです。
 * redig.hh
 * * vbox.  : ベクタ生成の際にまとめるピクセルの数です。
 * * rz     : 奥行きの乗数です。
