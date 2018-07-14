@@ -330,7 +330,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::showMatch(const Mat& dsti
     for(int j = 0; j < map.cols(); j ++)
       map(i, j) = T(0);
 #if defined(_OPENMP)
-#pragma omp paralell for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int k = 0; k < hull.size(); k ++) {
     drawMatchLine(map, dst[hull[k][0]], dst[hull[k][1]], emph);
@@ -455,9 +455,11 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
         idx[2] = k;
       }
 #if defined(_OPENMP)
-#pragma omp atomic
+#pragma omp critical
 #endif
-      res.emplace_back(idx);
+      {
+        res.emplace_back(idx);
+      }
      fixnext0:
       ;
     }
@@ -496,8 +498,10 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
                                 p[res[ii][(jj + 1) % 3]],
                                 p[idx[(kk + 0) % 3]],
                                 p[idx[(kk + 1) % 3]]))
-                    goto fixnext;
+                    goto fixnextcr;
             res.emplace_back(idx);
+           fixnextcr:
+            ;
           }
          fixnext:
           ;
