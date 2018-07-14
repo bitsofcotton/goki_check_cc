@@ -8,6 +8,8 @@ This program needs ascii raw ppm files to input/output.
 To convert image files to raw ppm, it is powerful tool that imagemagick with 'convert from.image -compress none to.ppm'. 
 
 # Parameters
+* enlarge.hh
+* * boffset : offset of colour in integrated space for local to global focal bump operator.
 * redig.hh
 * * vbox.  : size of vector gathering rectangle.
 * * rz     : z-axis output ratio.
@@ -25,7 +27,7 @@ There's preceders to match 3D to 2D with many approaches. (s.t. detecting topolo
 Searching the Internet more...
 
 # Status
-Writing whole to rotated partials match through .fbx file format. And checking details of implementation.
+Writing whole to rotated partials match through .blend file format. And checking details of implementation.
 
 # Usage
     make tools
