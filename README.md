@@ -27,7 +27,7 @@ There's preceders to match 3D to 2D with many approaches. (s.t. detecting topolo
 Searching the Internet more...
 
 # Status
-Writing whole to rotated partials match through .fbx file format. And checking details of implementation.
+Writing whole to rotated partials match through .blend file format. And checking details of implementation.
 
 # Usage
     make tools
