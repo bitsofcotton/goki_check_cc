@@ -13,8 +13,13 @@
 
 #if !defined(_REDIG_)
 
+#if defined(_WITHOUT_EIGEN_)
+#include "simplelin.hh"
+#else
 #include <Eigen/Core>
 #include <Eigen/LU>
+#endif
+
 #include <cmath>
 #include <vector>
 template <typename T> class match_t;
@@ -48,13 +53,24 @@ template <typename T> bool less0(const T& x, const T& y) {
 
 template <typename T> class triangles_t {
 public:
-  Eigen::Matrix<T, 3, 3> p;
-  Eigen::Matrix<T, 3, 1> n;
-  T                      c;
-  T                      z;
-  triangles_t<T>& rotate(const Eigen::Matrix<T, 3, 3>& R, const Eigen::Matrix<T, 3, 1>& origin) {
+#if defined(_WITHOUT_EIGEN_)
+  typedef SimpleMatrix<T> Mat3x3;
+  typedef SimpleVector<T> Vec3;
+#else
+  typedef Eigen::Matrix<T, 3, 3> Mat3x3;
+  typedef Eigen::Matrix<T, 3, 1> Vec3;
+#endif
+  Mat3x3 p;
+  Vec3   n;
+  T      c;
+  T      z;
+  triangles_t<T>& rotate(const Mat3x3& R, const Vec3& origin) {
     for(int i = 0; i < 3; i ++)
+#if defined(_WITHOUT_EIGEN_)
+      p.setCol(i, R * (p.col(i) - origin) + origin);
+#else
       p.col(i) = R * (p.col(i) - origin) + origin;
+#endif
     return *this;
   }
   triangles_t<T>& solveN() {
@@ -72,12 +88,25 @@ public:
 
 template <typename T> class reDig {
 public:
+#if defined(_WITHOUT_EIGEN_)
+  typedef SimpleMatrix<T> Mat;
+  typedef SimpleMatrix<T> Mat4x4;
+  typedef SimpleMatrix<T> Mat3x3;
+  typedef SimpleMatrix<T> Mat2x2;
+  typedef SimpleVector<T> Vec;
+  typedef SimpleVector<T> Vec3;
+  typedef SimpleVector<T> Vec2;
+  typedef SimpleVector<int> Veci3;
+#else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<T, 4, 4>                           Mat4x4;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
+  typedef Eigen::Matrix<T, 2, 2>                           Mat2x2;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
   typedef Eigen::Matrix<T,   3, 1> Vec3;
   typedef Eigen::Matrix<int, 3, 1> Veci3;
   typedef Eigen::Matrix<T,   2, 1> Vec2;
+#endif
   typedef triangles_t<T>           Triangles;
   
   reDig();
@@ -113,7 +142,7 @@ private:
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5)) const;
-  bool sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
+  bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
   
@@ -138,7 +167,7 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
+template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   cerr << "m" << flush;
   assert(hulldst.size() == hullsrc.size());
   vector<Triangles> triangles;
@@ -166,26 +195,30 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
       for(int ll = 0; ll < 3; ll ++) {
         const auto& dq(triangles[l].p.col(ll));
         const auto  q(match.transform(dq));
-        if((sameSide2(p0, p1, p2, q) &&
-            sameSide2(p1, p2, p0, q) &&
-            sameSide2(p2, p0, p1, q)) ||
-           (sameSide2(dp0, dp1, dp2, dq) &&
-            sameSide2(dp1, dp2, dp0, dq) &&
-            sameSide2(dp2, dp0, dp1, dq)) )
+        if((sameSide3(p0, p1, p2, q) &&
+            sameSide3(p1, p2, p0, q) &&
+            sameSide3(p2, p0, p1, q)) ||
+           (sameSide3(dp0, dp1, dp2, dq) &&
+            sameSide3(dp1, dp2, dp0, dq) &&
+            sameSide3(dp2, dp0, dp1, dq)) )
           emphs[l * 3 + ll].push_back(hulldst[i][ll]);
       }
   }
   for(int i = 0; i < emphs.size(); i ++) if(emphs[i].size()) {
-    Vec3 diff;
+    Vec3 diff(3);
     diff[0] = diff[1] = diff[2] = T(0);
     for(int j = 0; j < emphs[i].size(); j ++)
       diff += rmatch.transform(dst[emphs[i][j]]) - triangles[i / 3].p.col(i % 3);
+#if defined(_WITHOUT_EIGEN_)
+    triangles[i / 3].p.setCol(i % 3, triangles[i / 3].p.col(i % 3) + diff * ratio / match.ratio / emphs[i].size());
+#else
     triangles[i / 3].p.col(i % 3) += diff * ratio / match.ratio / emphs[i].size();
+#endif
   }
   return tilt(dstimg, triangles, match);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const bool& elim) {
+template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const bool& elim) {
   Mat result(dstimg);
   vector<Vec3> tsrc;
   T            M(0);
@@ -208,13 +241,13 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
+template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
   const Mat repl(replace(dstimg, src, match, hullsrc, true));
   return repl + emphasis(repl, srcimg, srcbump, dst, src, match,
                          hulldst, hullsrc, T(0));
 }
 
-template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
+template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   assert(hulldst.size() == hullsrc.size());
   vector<Vec3> result(dst);
   const auto rmatch(~ match);
@@ -230,17 +263,17 @@ template <typename T> vector<Eigen::Matrix<T, 3, 1> > reDig<T>::takeShape(const 
     for(int j = 0; j < 3; j ++) {
       const auto& dq(dst[hulldst[i][j]]);
       const auto  q(rmatch.transform(dq));
-      if((sameSide2(p0, p1, p2, q) &&
-          sameSide2(p1, p2, p0, q) &&
-          sameSide2(p2, p0, p1, q)) ||
-         (sameSide2(dp0, dp1, dp2, dq) &&
-          sameSide2(dp1, dp2, dp0, dq) &&
-          sameSide2(dp2, dp0, dp1, dq)) )
+      if((sameSide3(p0, p1, p2, q) &&
+          sameSide3(p1, p2, p0, q) &&
+          sameSide3(p2, p0, p1, q)) ||
+         (sameSide3(dp0, dp1, dp2, dq) &&
+          sameSide3(dp1, dp2, dp0, dq) &&
+          sameSide3(dp2, dp0, dp1, dq)) )
         emphs[hulldst[i][j]].push_back(hullsrc[i][j]);
     }
   }
   for(int i = 0; i < emphs.size(); i ++) if(emphs[i].size()) {
-    Vec3 diff;
+    Vec3 diff(3);
     diff[0] = diff[1] = diff[2] = T(0);
     for(int j = 0; j < emphs[i].size(); j ++)
       diff += match.transform(src[emphs[i][j]]) - dst[i];
@@ -273,7 +306,7 @@ template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, const Vec3& lre
   }
   const Vec3 ldiff0(lref0 - lref1);
         Vec3 ldiff(lref2 - lref0);
-  ldiff -= ldiff.dot(ldiff0) * ldiff0 / ldiff0.dot(ldiff0);
+  ldiff -= ldiff0 * ldiff.dot(ldiff0) / ldiff0.dot(ldiff0);
   const T    lnum(sqrt(ldiff.dot(ldiff)) + 1);
   for(int k = 0; k < lnum; k ++) {
     const Vec3 l0(lref0 + (lref2 - lref0) * k / int(lnum));
@@ -287,7 +320,7 @@ template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, const Vec3& lre
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph) {
+template <typename T> typename reDig<T>::Mat reDig<T>::showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph) {
   Mat map(dstimg.rows(), dstimg.cols());
   for(int i = 0; i < map.rows(); i ++)
     for(int j = 0; j < map.cols(); j ++)
@@ -303,14 +336,14 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return dstimg + map;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::makeRefMatrix(const Mat& orig, const int& start) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::makeRefMatrix(const Mat& orig, const int& start) const {
   Mat result(orig.rows(), orig.cols());
   for(int i = 0; i < orig.rows() * orig.cols(); i ++)
     result(i % orig.rows(), i / orig.rows()) = i + start;
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const {
   assert(orig.rows() == ref.rows() && orig.cols() == ref.cols());
   Mat result(orig.rows(), orig.cols());
   for(int i = 0; i < ref.rows() * ref.cols(); i ++) {
@@ -325,7 +358,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return result;
 }
 
-template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon, const int& mdiv) const {
+template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon, const int& mdiv) const {
   vector<Veci3> res;
   cerr << pp.size() << ":" << flush;
   if(pp.size() > mdiv) {
@@ -395,7 +428,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
       const int& j(work[ii][1]);
       const int& k(work[ii][2]);
       T cw;
-      Eigen::Matrix<int, 3, 1> idx;
+      Veci3 idx;
       Vec3 q[4];
       assert(middle.size());
       for(int jj = 0; jj < middle.size(); jj ++)
@@ -432,7 +465,7 @@ template <typename T> vector<Eigen::Matrix<int, 3, 1> > reDig<T>::delaunay2(cons
       for(int j = i + 1; j < pp.size(); j ++)
         for(int k = j + 1; k < pp.size(); k ++) {
           T cw;
-          Eigen::Matrix<int, 3, 1> idx;
+          Veci3 idx;
           Vec3 q[4];
           q[0] = p[pp[i]]; q[1] = p[pp[j]]; q[2] = p[pp[k]];
           for(int l = 0; l < pp.size(); l ++) {
@@ -475,10 +508,10 @@ template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T
   bcn[2] = T(0);
   Vec3 err(p[0] - p[2]);
   err[2] = T(0);
-  err   -= err.dot(bcn) * bcn / bcn.dot(bcn);
+  err   -= bcn * err.dot(bcn) / bcn.dot(bcn);
   if(err.dot(err) <= epsilon)
     return false;
-  Eigen::Matrix<T, 4, 4> dc;
+  Mat4x4 dc(4, 4);
   const auto g((p[0] + p[1] + p[2]) / T(3));
   for(int i = 0; i < 4; i ++) {
     dc(i, 0) = T(1);
@@ -486,7 +519,7 @@ template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T
     dc(i, 2) = p[i][1] - g[1];
     dc(i, 3) = dc(i, 1) * dc(i, 1) + dc(i, 2) * dc(i, 2);
   }
-  Eigen::Matrix<T, 3, 3> dc0;
+  Mat3x3 dc0(3, 3);
   for(int i = 0; i < 3; i ++) {
     dc0(i, 0) = T(1);
     dc0(i, 1) = p[i][0] - g[0];
@@ -500,9 +533,9 @@ template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T
   else if(T(0) < cw)
     cw =   T(1);
   if(cw * dc.determinant() < - epsilon ||
-     (sameSide2(p[0], p[1], p[2], p[3], false) &&
-      sameSide2(p[1], p[2], p[0], p[3], false) &&
-      sameSide2(p[2], p[0], p[1], p[3], false)) )
+     (sameSide3(p[0], p[1], p[2], p[3], false) &&
+      sameSide3(p[1], p[2], p[0], p[3], false) &&
+      sameSide3(p[2], p[0], p[1], p[3], false)) )
     return false;
   return true;
 }
@@ -512,8 +545,8 @@ template <typename T> bool reDig<T>::isCrossing(const Vec3& p0, const Vec3& p1, 
   // <=> p1 + (p0 - p1) t == q1 + (q0 - q1) s
   // <=> [(p0 - p1), (q1 - q0)][t, s] == q1 - p1.
   // <=> Ax==b.
-  Eigen::Matrix<T, 2, 2> A;
-  Eigen::Matrix<T, 2, 1> b;
+  Mat2x2 A(2, 2);
+  Vec2   b(2);
   A(0, 0) = p0[0] - p1[0];
   A(1, 0) = p0[1] - p1[1];
   A(0, 1) = q1[0] - q0[0];
@@ -522,7 +555,11 @@ template <typename T> bool reDig<T>::isCrossing(const Vec3& p0, const Vec3& p1, 
   b[1]    = q1[1] - p1[1];
   if(abs(A.determinant()) <= pow(err, T(2)))
     return false;
+#if defined(_WITHOUT_EIGEN_)
+  auto x(A.solve(b));
+#else
   auto x(A.inverse() * b);
+#endif
   return (err <= x[0] && x[0] <= T(1) - err) &&
          (err <= x[1] && x[1] <= T(1) - err);
 }
@@ -673,19 +710,21 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::rgb2l(const Mat rgb[3]) {
+template <typename T> typename reDig<T>::Mat reDig<T>::rgb2l(const Mat rgb[3]) {
   // CIE 1931 XYZ from wikipedia.org
-  auto X(.49000/.17697 * rgb[0] + .31000/.17697  * rgb[1] + .30000/.17697  * rgb[2]);
-  auto Y(.17697/.17697 * rgb[0] + .81240/.17697  * rgb[1] + .010630/.17697 * rgb[2]);
-  auto Z(                         .010000/.17697 * rgb[1] + .99000/.17697  * rgb[2]);
-  return Y;
+  auto r0(rgb[0]);
+  auto r1(rgb[1] * T(.81240  / .187697));
+  auto r2(rgb[2] * T(.010630 / .17697));
+  auto r01(r0 + r1);
+  auto r02(r01 + r2);
+  return r02;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::rgb2xz(const Mat rgb[3]) {
+template <typename T> typename reDig<T>::Mat reDig<T>::rgb2xz(const Mat rgb[3]) {
   // CIE 1931 XYZ from wikipedia.org
-  auto X(.49000/.17697 * rgb[0] + .31000/.17697  * rgb[1] + .30000/.17697  * rgb[2]);
-  auto Y(.17697/.17697 * rgb[0] + .81240/.17697  * rgb[1] + .010630/.17697 * rgb[2]);
-  auto Z(                         .010000/.17697 * rgb[1] + .99000/.17697  * rgb[2]);
+  auto X(rgb[0] * .49000/.17697 + rgb[1] * .31000/.17697  + rgb[2] * .30000/.17697);
+  auto Y(rgb[0] * .17697/.17697 + rgb[1] * .81240/.17697  + rgb[2] * .010630/.17697);
+  auto Z(                         rgb[1] * .010000/.17697 + rgb[2] * .99000/.17697);
   Mat result(rgb[0].rows(), rgb[0].cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -696,7 +735,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt45(const Mat& in, const bool& invert, const Mat& orig) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, const bool& invert, const Mat& orig) {
   Mat res;
   if(invert) {
     assert(orig.rows() + orig.cols() == in.rows() &&
@@ -747,7 +786,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return res;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::normalize(const Mat& data, const T& upper) {
+template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data, const T& upper) {
   T MM(data(0, 0)), mm(data(0, 0));
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++) {
@@ -782,7 +821,7 @@ template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) {
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::autoLevel(const Mat& data, const int& count) {
+template <typename T> typename reDig<T>::Mat reDig<T>::autoLevel(const Mat& data, const int& count) {
   vector<T> res;
   res.reserve(data.rows() * data.cols());
   for(int i = 0; i < data.rows(); i ++)
@@ -810,7 +849,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
       if(in.rows() < (i + 1) * vbox ||
          in.cols() < (j + 1) * vbox) {
         if(geoms.size() >= 1) {
-          Vec3 gbuf;
+          Vec3 gbuf(3);
           gbuf[0] = i * vbox;
           gbuf[1] = j * vbox;
           gbuf[2] = geoms[geoms.size() - 1][2];
@@ -822,14 +861,14 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
       for(int ii = i * vbox; ii < (i + 1) * vbox; ii ++)
         for(int jj = j * vbox; jj < (j + 1) * vbox; jj ++)
           avg += in(ii, jj);
-      Vec3 work;
+      Vec3 work(3);
       work[0] = i * vbox;
       work[1] = j * vbox;
       const T intens(avg / vbox / vbox - aavg);
       work[2] = intens * sqrt(T(in.rows() * in.cols())) * rz;
       geoms.push_back(work);
     }
-  Vec3 avg;
+  Vec3 avg(3);
   avg[0] = avg[1] = avg[2] = T(0);
   for(int i = 0; i < geoms.size(); i ++)
     avg += geoms[i];
@@ -882,21 +921,22 @@ template <typename T> triangles_t<T> reDig<T>::makeTriangle(const int& u, const 
 template <typename T> bool reDig<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q, const bool& extend, const T& err) const {
   const Vec2 dlt(p1 - p0);
   Vec2 dp(p2 - p0);
-  dp -= dlt.dot(dp) * dlt / dlt.dot(dlt);
+  dp -= dlt * dlt.dot(dp) / dlt.dot(dlt);
   // N.B. dp.dot(p1 - p0) >> 0.
   return dp.dot(q - p0) >= (extend ? - T(1) : T(1)) * (abs(dp[0]) + abs(dp[1])) * err;
 }
 
-template <typename T> bool reDig<T>::sameSide2(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const bool& extend, const T& err) const {
-  return sameSide2(Vec2(p0[0], p0[1]), Vec2(p1[0], p1[1]),
-                   Vec2(p2[0], p2[1]), Vec2(q[0],  q[1]),
-                   extend, err);
+template <typename T> bool reDig<T>::sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const bool& extend, const T& err) const {
+  Vec2 q0(2), q1(2), q2(2), qq(3);
+  q0[0] = p0[0]; q0[1] = p0[1]; q1[0] = p1[0]; q1[1] = p1[1];
+  q2[0] = p2[0]; q2[1] = p2[1]; qq[0] = q[0];  qq[1] = q[1];
+  return sameSide2(q0, q1, q2, qq, extend, err);
 }
 
 // <[x, y, t], triangle.n> == triangle.z
 template <typename T> bool reDig<T>::onTriangle(T& z, const Triangles& tri, const Vec2& geom) {
-  Vec3 v0;
-  Vec3 camera;
+  Vec3 v0(3);
+  Vec3 camera(3);
   v0[0] = 0;
   v0[1] = 0;
   v0[2] = 1;
@@ -906,16 +946,16 @@ template <typename T> bool reDig<T>::onTriangle(T& z, const Triangles& tri, cons
   // <v0 t + camera, tri.n> = tri.z
   const T t((tri.z - tri.n.dot(camera)) / (tri.n.dot(v0)));
   z = camera[2] + v0[2] * t;
-  return (sameSide2(tri.p.col(0), tri.p.col(1), tri.p.col(2), camera, true, T(.125)) &&
-          sameSide2(tri.p.col(1), tri.p.col(2), tri.p.col(0), camera, true, T(.125)) &&
-          sameSide2(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, true, T(.125)));
+  return (sameSide3(tri.p.col(0), tri.p.col(1), tri.p.col(2), camera, true, T(.125)) &&
+          sameSide3(tri.p.col(1), tri.p.col(2), tri.p.col(0), camera, true, T(.125)) &&
+          sameSide3(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, true, T(.125)));
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
   const T theta(2. * Pi * idx / samples);
   const T lpsi(Pi * psi);
-  Mat3x3 R0;
-  Mat3x3 R1;
+  Mat3x3 R0(3, 3);
+  Mat3x3 R1(3, 3);
   R0(0, 0) =   cos(theta);
   R0(0, 1) = - sin(theta);
   R0(0, 2) = 0.;
@@ -934,7 +974,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   R1(2, 0) = 0.;
   R1(2, 1) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
-  Vec3 pcenter;
+  Vec3 pcenter(3);
   pcenter[0] = T(in.rows() - 1.) / 2;
   pcenter[1] = T(in.cols() - 1.) / 2;
   pcenter[2] = T(.5);
@@ -945,7 +985,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return tilt(in, bump, m);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m) {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
   vector<Triangles> triangles;
   triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
@@ -957,17 +997,21 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
   return tilt(in, triangles, m);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m) {
   vector<Triangles> triangles(triangles0);
   for(int j = 0; j < triangles.size(); j ++) {
     for(int k = 0; k < 3; k ++)
+#if defined(_WITHOUT_EIGEN_)
+      triangles[j].p.setCol(k, m.transform(triangles[j].p.col(k)));
+#else
       triangles[j].p.col(k) = m.transform(triangles[j].p.col(k));
+#endif
     triangles[j].solveN();
   }
   return tilt(in, triangles);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles) {
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
@@ -990,7 +1034,7 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> reDig<T>:
     for(int y = max(0, ll); y < min(rr, int(in.rows())); y ++)
       for(int x = max(0, bb); x < min(tt, int(in.cols())); x ++) {
         T z;
-        Vec2 midgeom;
+        Vec2 midgeom(2);
         midgeom[0] = y;
         midgeom[1] = x;
 #if defined(_OPENMP)

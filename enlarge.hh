@@ -13,8 +13,13 @@
 
 #if !defined(_ENLARGE2X_)
 
+#if defined(_WITHOUT_EIGEN_)
+#include "simplelin.hh"
+#include <complex>
+#else
 #include <Eigen/Core>
 #include <Eigen/LU>
+#endif
 #include <vector>
 
 using std::cerr;
@@ -53,10 +58,17 @@ public:
     BUMP_Y,
     BUMP_BOTH } direction_t;
   typedef complex<T> U;
+#if defined(_WITHOUT_EIGEN_)
+  typedef SimpleMatrix<T> Mat;
+  typedef SimpleMatrix<U> MatU;
+  typedef SimpleVector<T> Vec;
+  typedef SimpleVector<U> VecU;
+#else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
+#endif
   enlarger2ex();
   Mat  compute(const Mat& data, const direction_t& dir);
   T    boffset;
@@ -87,7 +99,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   boffset = T(20);
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
+template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
   Mat result;
   switch(dir) {
   case ENLARGE_BOTH:
@@ -146,7 +158,11 @@ template <typename T> Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> enlarger2
         T score(0);
         for(int j = 1; j < data.rows(); j ++)
           score += abs(data(j, i) - data(j - 1, i));
+#if defined(_WITHOUT_EIGEN_)
+        result.setCol(i, result.col(i) + work.col(i) * score / data.rows() / sqrt(work.col(i).dot(work.col(i))));
+#else
         result.col(i) += work.col(i) * score / data.rows() / sqrt(work.col(i).dot(work.col(i)));
+#endif
       }
     }
     break;
@@ -346,17 +362,28 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
       DFTE.row(i) *= r;
     }
+#if defined(_WITHOUT_EIGEN_)
+    DFTD = DFTD.transpose();
+    DFTI = DFTI.transpose();
+    DFTE = DFTE.transpose();
+#endif
     for(int i = 0; i < IDFT.rows(); i ++) {
       const int iidx(IDFT.rows() - 1 - i);
-      const Vec lDop((IDFT.row(iidx) * DFTD).real().template cast<T>());
-      const Vec lIop((IDFT.row(iidx) * DFTI).real().template cast<T>());
-      const Vec lEop((IDFT.row(iidx) * DFTE).real().template cast<T>());
+#if defined(_WITHOUT_EIGEN_)
+      const VecU lDop(DFTD * IDFT.row(iidx));
+      const VecU lIop(DFTI * IDFT.row(iidx));
+      const VecU lEop(DFTE * IDFT.row(iidx));
+#else
+      const VecU lDop(IDFT.row(iidx) * DFTD);
+      const VecU lIop(IDFT.row(iidx) * DFTI);
+      const VecU lEop(IDFT.row(iidx) * DFTE);
+#endif
       for(int j = i; j - i < lDop.size(); j ++) {
         const int idx(j + size / 2 - IDFT.rows() + 1);
         const int jdx(j - i);
-        Dop[idx] += lDop[jdx] / lDop.size();
-        Iop[idx] += lIop[jdx] / lIop.size();
-        Eop[idx] += lEop[jdx] / lEop.size();
+        Dop[idx] += T(lDop[jdx].real()) / lDop.size();
+        Iop[idx] += T(lIop[jdx].real()) / lIop.size();
+        Eop[idx] += T(lEop[jdx].real()) / lEop.size();
       }
     }
   }
@@ -366,7 +393,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
   return;
 }
 
-template <typename T> Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> enlarger2ex<T>::seed(const int& size, const bool& idft) {
+template <typename T> typename enlarger2ex<T>::MatU enlarger2ex<T>::seed(const int& size, const bool& idft) {
   MatU result(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -385,7 +412,7 @@ template <typename T> void enlarger2ex<T>::xchg(Mat& a, Mat& b) {
   return;
 }
 
-template <typename T> Eigen::Matrix<T, Eigen::Dynamic, 1> enlarger2ex<T>::minSquare(const Vec& in) {
+template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(const Vec& in) {
   T xsum(0);
   T ysum(0);
   T xdot(0);

@@ -13,8 +13,13 @@
 
 #if !defined(_MATCH_)
 
+#if defined(_WITHOUT_EIGEN_)
+#include "simplelin.hh"
+#else
 #include <Eigen/Core>
 #include <Eigen/LU>
+#endif
+
 #include <cmath>
 #include <vector>
 
@@ -74,14 +79,25 @@ public:
 
 template <typename T> class match_t {
 public:
-  Eigen::Matrix<T, 3, 3> rot;
-  Eigen::Matrix<T, 3, 1> offset;
-  T                      ratio;
-  T                      rdepth;
-  vector<int>            dstpoints;
-  vector<int>            srcpoints;
-  T                      thresh;
-  Eigen::Matrix<T, 2, 1> threshsize;
+#if defined(_WITHOUT_EIGEN_)
+  typedef SimpleMatrix<T>   Mat3x3;
+  typedef SimpleVector<T>   Vec3;
+  typedef SimpleVector<T>   Vec2;
+  typedef SimpleVector<int> Vec3i;
+#else
+  typedef Eigen::Matrix<T, 3, 3> Mat3x3;
+  typedef Eigen::Matrix<T, 3, 1> Vec3;
+  typedef Eigen::Matrix<T, 2, 1> Vec2;
+  typedef Eigen::Matrix<int, 3, 1> Vec3i;
+#endif
+  Mat3x3      rot;
+  Vec3        offset;
+  T           ratio;
+  T           rdepth;
+  vector<int> dstpoints;
+  vector<int> srcpoints;
+  T           thresh;
+  Vec2        threshsize;
   match_t() {
     thresh = T(0);
     threshsize[0] = threshsize[1] = T(0);
@@ -89,13 +105,16 @@ public:
   }
   match_t(const T& thresh, const T& h, const T& w) {
     this->thresh        = thresh;
+    this->threshsize    = Vec2(2);
     this->threshsize[0] = h;
     this->threshsize[1] = w;
     initId();
   }
   void initId() {
+    rot = Mat3x3(3, 3);
     rot(0, 0) = rot(1, 1) = rot(2, 2) = T(1);
     rot(1, 0) = rot(2, 0) = rot(0, 1) = rot(2, 1) = rot(0, 2) = rot(1, 2) = T(0);
+    offset = Vec3(3);
     offset[0] = offset[1] = offset[2] = T(0);
     ratio     = T(1);
     rdepth    = T(0);
@@ -166,8 +185,8 @@ public:
     }
     return res;
   }
-  vector<Eigen::Matrix<int, 3, 1> > hull(const vector<int>& orig, const vector<Eigen::Matrix<int, 3, 1> >& p) const {
-    vector<Eigen::Matrix<int, 3, 1> > res;
+  vector<Vec3i> hull(const vector<int>& orig, const vector<Vec3i>& p) const {
+    vector<Vec3i> res;
     vector<int> work;
     res.reserve(p.size());
     work.reserve(p.size() * 3);
@@ -176,15 +195,15 @@ public:
         work.emplace_back(p[i][j]);
     work = ptr(orig, work);
     for(int i = 0; i < p.size(); i ++) {
-      Eigen::Matrix<int, 3, 1> tmp;
+      Vec3i tmp(3);
       for(int j = 0; j < 3; j ++)
         tmp[j] = work[i * 3 + j];
       res.emplace_back(tmp);
     }
     return res;
   }
-  vector<Eigen::Matrix<int, 3, 1> > reverseHull(const vector<int>& orig, const vector<Eigen::Matrix<int, 3, 1> >& p) const {
-    vector<Eigen::Matrix<int, 3, 1> > res;
+  vector<Vec3i> reverseHull(const vector<int>& orig, const vector<Vec3i>& p) const {
+    vector<Vec3i> res;
     vector<int> work;
     res.reserve(p.size());
     work.reserve(p.size() * 3);
@@ -193,14 +212,14 @@ public:
         work.emplace_back(p[i][j]);
     work = reversePtr(orig, work);
     for(int i = 0; i < p.size(); i ++) {
-      Eigen::Matrix<int, 3, 1> tmp;
+      Vec3i tmp(3);
       for(int j = 0; j < 3; j ++)
         tmp[j] = work[i * 3 + j];
       res.emplace_back(tmp);
     }
     return res;
   }
-  Eigen::Matrix<T, 3, 1> transform(const Eigen::Matrix<T, 3, 1>& x) const {
+  Vec3 transform(const Vec3& x) const {
     return rot * x * ratio + offset;
   }
   bool operator < (const match_t<T>& x1) const {
@@ -229,10 +248,17 @@ public:
 
 template <typename T> class matchPartialPartial {
 public:
+#if defined(_WITHOUT_EIGEN_)
+  typedef SimpleMatrix<T> Mat;
+  typedef SimpleMatrix<T> Mat3x3;
+  typedef SimpleMatrix<T> Mat2x2;
+  typedef SimpleVector<T> Vec3;
+#else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, 2, 2>                           Mat2x2;
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
+#endif
   typedef complex<T> U;
   matchPartialPartial();
   ~matchPartialPartial();
@@ -288,7 +314,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const ve
   return result;
 }
 
-template <typename T> Eigen::Matrix<T, 3, 1> matchPartialPartial<T>::makeG(const vector<Vec3>& in) const {
+template <typename T> typename matchPartialPartial<T>::Vec3 matchPartialPartial<T>::makeG(const vector<Vec3>& in) const {
   Vec3 result;
   result[0] = result[1] = result[2] = T(0);
   for(int i = 0; i < in.size(); i ++)
@@ -356,7 +382,7 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
 template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
   const Vec3 gs(makeG(shapebase));
   const Vec3 gp(makeG(points));
-  Vec3 gd;
+  Vec3 gd(3);
   gd[0] = gd[1] = gd[2] = T(0);
   for(int i = 0; i < shapebase.size(); i ++) {
     const auto diff(shapebase[i] - gs);
@@ -383,7 +409,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
       for(int k = 0; k < ddiv.size() / 2; k ++) {
-        Mat3x3 lrot;
+        Mat3x3 lrot(3, 3);
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
         lrot((k + 1) % 3, (k    ) % 3) =   ddiv[k * 2 + 1];
         lrot((k    ) % 3, (k + 1) % 3) = - ddiv[k * 2 + 1];
@@ -503,9 +529,15 @@ template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, cons
 
 template <typename T> class matchWholePartial {
 public:
+#if defined(_WITHOUT_EIGEN_)
+  typedef SimpleMatrix<T> Mat;
+  typedef SimpleMatrix<T> Mat3x3;
+  typedef SimpleVector<T> Vec3;
+#else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
+#endif
   typedef complex<T> U;
   matchWholePartial();
   ~matchWholePartial();
