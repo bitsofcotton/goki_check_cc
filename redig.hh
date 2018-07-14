@@ -64,6 +64,10 @@ public:
   Vec3   n;
   T      c;
   T      z;
+  triangles_t() {
+    p = Mat3x3(3, 3);
+    n = Vec3(3);
+  }
   triangles_t<T>& rotate(const Mat3x3& R, const Vec3& origin) {
     for(int i = 0; i < 3; i ++)
 #if defined(_WITHOUT_EIGEN_)
@@ -878,7 +882,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
   delaunay = vector<Veci3>();
   for(int i = 1; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox; j ++) {
-      Veci3 work, work2;
+      Veci3 work(3), work2(3);
       work[0]  = (i - 1) * (in.cols() / vbox + 1) + j;
       work[1]  =  i      * (in.cols() / vbox + 1) + j;
       work[2]  =  i      * (in.cols() / vbox + 1) + j + 1;
@@ -927,7 +931,7 @@ template <typename T> bool reDig<T>::sameSide2(const Vec2& p0, const Vec2& p1, c
 }
 
 template <typename T> bool reDig<T>::sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const bool& extend, const T& err) const {
-  Vec2 q0(2), q1(2), q2(2), qq(3);
+  Vec2 q0(2), q1(2), q2(2), qq(2);
   q0[0] = p0[0]; q0[1] = p0[1]; q1[0] = p1[0]; q1[1] = p1[1];
   q2[0] = p2[0]; q2[1] = p2[1]; qq[0] = q[0];  qq[1] = q[1];
   return sameSide2(q0, q1, q2, qq, extend, err);
