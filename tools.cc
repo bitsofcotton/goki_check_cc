@@ -18,6 +18,7 @@ using namespace std;
 // XXX: configure me:
 const int    nshow(4);
 const int    nshowh(16);
+const int    nmatchhid(20);
 const int    nemph(2);
 const double Memph(.25);
 const int    vbox0(2);
@@ -299,20 +300,17 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph * Memph);
       resizeDst2<double>(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
-      std::vector<typename simpleFile<double>::Veci3> sute;
-      std::vector<typename simpleFile<double>::Vec3> shape0, shape1;
+      std::vector<typename simpleFile<double>::Veci3> delau0, delau1;
+      std::vector<typename simpleFile<double>::Vec3>  shape0, shape1;
       auto& bump0(bdata[0]);
-      redig.getTileVec(bump0, shape0, sute);
-      redig.getTileVec(bump1, shape1, sute);
-      std::vector<int> id0, id1;
-      for(int i = 0; i < shape0.size(); i ++)
-        id0.push_back(i);
-      for(int i = 0; i < shape1.size(); i ++)
-        id1.push_back(i);
-      redig.maskVectors(shape0, redig.delaunay2(shape0, id0), mdata[0]);
-      redig.maskVectors(shape1, redig.delaunay2(shape1, id1), mmout1);
+      redig.getTileVec(bump0, shape0, delau0);
+      redig.getTileVec(bump1, shape1, delau1);
+      redig.maskVectors(shape0, delau0, mdata[0]);
+      redig.maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
-      const auto matches(statmatch.elim(statmatch.match(shape0, shape1), data, mout, bump1, shape1));
+      auto matches(statmatch.match(shape0, shape1));
+      matches.resize(min(int(matches.size()), nmatchhid));
+      matches = statmatch.elim(matches, data, mout, bump1, shape1);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
@@ -339,13 +337,9 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph * Memph);
       std::vector<typename simpleFile<double>::Vec3> shape;
-      std::vector<typename simpleFile<double>::Veci3> sute;
+      std::vector<typename simpleFile<double>::Veci3> delau;
       auto& bump(bump0[0]);
-      redig.getTileVec(bump, shape, sute);
-      std::vector<int> id;
-      for(int i = 0; i < shape.size(); i ++)
-        id.push_back(i);
-      auto delau(redig.delaunay2(shape, id));
+      redig.getTileVec(bump, shape, delau);
       redig.maskVectors(shape, delau, mask0[0]);
       typename simpleFile<double>::Mat zero[3];
       for(int i = 0; i < 3; i ++)
@@ -391,18 +385,13 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph * Memph);
       resizeDst2<double>(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
-      std::vector<typename simpleFile<double>::Veci3> sute;
+      std::vector<typename simpleFile<double>::Veci3> delau0, delau1;
       std::vector<typename simpleFile<double>::Vec3> shape0, shape1;
       auto& bump0(bdata[0]);
-      redig.getTileVec(bump0, shape0, sute);
-      redig.getTileVec(bump1, shape1, sute);
-      std::vector<int> id0, id1;
-      for(int i = 0; i < shape0.size(); i ++)
-        id0.push_back(i);
-      for(int i = 0; i < shape1.size(); i ++)
-        id1.push_back(i);
-      redig.maskVectors(shape0, redig.delaunay2(shape0, id0), mdata[0]);
-      redig.maskVectors(shape1, redig.delaunay2(shape1, id1), mmout1);
+      redig.getTileVec(bump0, shape0, delau0);
+      redig.getTileVec(bump1, shape1, delau1);
+      redig.maskVectors(shape0, delau0, mdata[0]);
+      redig.maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
       const auto match0(statmatch.match(shape0, datapoly));
       const auto match1(statmatch.match(shape1, datapoly));
@@ -410,6 +399,7 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(match0.size()), nshowh); n ++)
         for(int m = 0; m < min(int(match1.size()), nshowh); m ++)
           matches.push_back(match0[n] / match1[m]);
+      matches = statmatch.elim(matches, data, mout, bump1, shape1);
       matches = statmatch.elim(matches, data, mout, bump1, shape1);
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         const auto& relmatch(matches[n]);
