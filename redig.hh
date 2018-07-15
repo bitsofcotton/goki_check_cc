@@ -188,6 +188,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
   const auto rmatch(~ match);
   vector<vector<int> > emphs;
   emphs.resize(triangles.size() * 3);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < hulldst.size(); i ++) {
     const auto& p0(dst[hulldst[i][0]]);
     const auto& p1(dst[hulldst[i][1]]);
@@ -204,8 +207,14 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
             sameSide3(p2, p0, p1, q)) ||
            (sameSide3(dp0, dp1, dp2, dq) &&
             sameSide3(dp1, dp2, dp0, dq) &&
-            sameSide3(dp2, dp0, dp1, dq)) )
-          emphs[l * 3 + ll].push_back(hulldst[i][ll]);
+            sameSide3(dp2, dp0, dp1, dq)) ) {
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+            {
+              emphs[l * 3 + ll].push_back(hulldst[i][ll]);
+            }
+        }
       }
   }
   for(int i = 0; i < emphs.size(); i ++) if(emphs[i].size()) {

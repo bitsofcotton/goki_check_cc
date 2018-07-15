@@ -96,7 +96,7 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  boffset = T(20);
+  boffset = T(256);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -185,7 +185,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       initDop(data.rows());
       Vec ms[data.cols()];
-      Mat work(data);
+      result = data;
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -193,9 +193,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.cols(); i ++) {
         ms[i] = minSquare(data.col(i));
         for(int j = 0; j < data.rows(); j ++)
-          work(j, i) -= ms[i][0] + ms[i][1] * j;
+          result(j, i) -= ms[i][0] + ms[i][1] * j;
       }
-      result = Iop * work;
+      result = Iop * result;
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -206,10 +206,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y:
     {
+      assert(T(0) < boffset);
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
-      result = Mat(data.rows(), data.cols());
-      assert(A.rows() == result.rows() && A.cols() == result.rows() &&
-             data.rows() == result.rows() && data.cols() == result.cols());
+      assert(A.rows() == data.rows() && A.cols() == data.rows());
       // N.B. local to global (apply for integrated space), commutative.
       // (uv)'=u'v+uv', u'v=(uv)'-uv',
       //   u' = average(C'*z_k), v = 1 / average(C').
@@ -218,24 +217,22 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       //        integrate(average(C'*z_k) / average(C')) =
       // integrate(u'v) = average(integrate(C')*z_k) / average(C') +
       //        integrate(average(integrate(C')*z_k) / average^2(C') * C'').
-      const Mat tA(  compute(A * data, IDETECT_Y));
-            Mat work(compute(    data, DETECT_Y));
-      assert(T(0) < boffset);
+      const Mat tA(compute(A * data, IDETECT_Y));
+      result = compute(data, DETECT_Y);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < work.rows(); i ++)
-        for(int j = 0; j < work.cols(); j ++)
-          work(i, j) *= tA(i, j) / pow(data(i, j) + boffset, T(2));
-      work = compute(work, IDETECT_Y);
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) *= tA(i, j) / pow(data(i, j) + boffset, T(2));
+      result = compute(result, IDETECT_Y);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++) {
-          result(i, j) = - tA(i, j) / (data(i, j) + boffset) + work(i, j);
-        }
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) -= tA(i, j) / (data(i, j) + boffset);
     }
     break;
   default:

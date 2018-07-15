@@ -491,8 +491,9 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vec
   reDig<T> redig;
   for(int i = 0; i < m.size(); i ++) {
     Mat tsrc[3];
+    const auto ref(redig.tilt(redig.makeRefMatrix(src[0], 1), srcbump, m[i]));
     for(int j = 0; j < 3; j ++)
-      tsrc[j] = redig.tilt(src[j], srcbump, m[i]);
+      tsrc[j] = redig.pullRefMatrix(ref, 1, src[j]);
     res[i].rdepth *= isElim(m[i], dst, tsrc, srcpts, thresh);
   }
   sort(res.begin(), res.end());
