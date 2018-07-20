@@ -204,8 +204,8 @@ int main(int argc, const char* argv[]) {
       if(mode == 7)
         file.saveobj(points, facets, argv[3], false);
       else {
-        file.saveobj(points, facets, (std::string(argv[3]) + std::string("-L.obj")).c_str(), true, false, std::vector<std::vector<int> >(), 2.,   aroffset);
-        file.saveobj(points, facets, (std::string(argv[3]) + std::string("-R.obj")).c_str(), true, false, std::vector<std::vector<int> >(), 2., - aroffset);
+        file.saveobj(points, facets, (std::string(argv[3]) + std::string("-L.obj")).c_str(), true, false, std::vector<std::vector<int> >(), 2., - aroffset);
+        file.saveobj(points, facets, (std::string(argv[3]) + std::string("-R.obj")).c_str(), true, false, std::vector<std::vector<int> >(), 2.,   aroffset);
       }
     }
     return 0;

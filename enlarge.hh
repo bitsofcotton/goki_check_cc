@@ -96,7 +96,7 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  boffset = T(256);
+  boffset = T(16);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -209,30 +209,24 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       assert(T(0) < boffset);
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // N.B. local to global (apply for integrated space), commutative.
-      // (uv)'=u'v+uv', u'v=(uv)'-uv',
-      //   u' = average(C'*z_k), v = 1 / average(C').
-      //   u  = integrate(average(C'*z_k)).
-      //   v' = - C'' / average^2(C')
-      //        integrate(average(C'*z_k) / average(C')) =
-      // integrate(u'v) = average(integrate(C')*z_k) / average(C') +
-      //        integrate(average(integrate(C')*z_k) / average^2(C') * C'').
-      const Mat tA(compute(A * data, IDETECT_Y));
-      result = compute(data, DETECT_Y);
+      // |average(C * z_k) / average(C)| on differential space.
+      const auto data0(compute(data, DETECT_Y));
+      result = compute(A * data0, IDETECT_Y);
+      T mm(0);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) *= tA(i, j) / pow(data(i, j) + boffset, T(2));
-      result = compute(result, IDETECT_Y);
+          mm = min(result(i, j), mm);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) -= tA(i, j) / (data(i, j) + boffset);
+        for(int j = 0; j < result.cols(); j ++) 
+          result(i, j) = (result(i, j) - mm + boffset) / (abs(data0(i, j)) + boffset);
+      result = compute(result, IDETECT_Y);
     }
     break;
   default:
