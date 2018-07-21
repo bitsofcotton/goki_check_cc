@@ -49,7 +49,7 @@ for line in argv[3:]:
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "emph"):
-    subprocess.call(["convert", root + ".ppm", root + "-bump.ppm", "-alpha", "on", "-channel", "a", "-evaluate", "set", "30%", "-compose", "Multiply", "-composite", root + "-emph" + ext])
+    subprocess.call(["convert", root + ".ppm", root + "-bump.ppm", "-compose", "Screen", "-composite", "-equalize", root + "-emph" + ext])
   elif(argv[2] == "mask0"):
     subprocess.call(["convert", root + ".ppm", "-fill", "black", "-colorize", "100", root + "-mask.png"])
   elif(argv[2] == "mask"):
