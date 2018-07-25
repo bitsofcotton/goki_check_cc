@@ -96,7 +96,7 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  boffset = T(16);
+  boffset = T(1);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -219,13 +219,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          mm = min(result(i, j), mm);
+          mm = min(data0(i, j), min(result(i, j), mm));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++) 
-          result(i, j) = (result(i, j) - mm + boffset) / (abs(data0(i, j)) + boffset);
+          result(i, j) = (result(i, j) - mm + boffset) / (abs(data0(i, j)) - mm + boffset);
       result = compute(result, IDETECT_Y);
     }
     break;
@@ -263,7 +263,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       Iop(i, j)  = vIop[(j - i + Dop.cols() * 3 / 2) %  Iop.cols()];
       wEop(i, j) = vEop[(j - i + Dop.cols() * 3 / 2) % wEop.cols()];
     }
-  Eop   = Mat(wEop.rows() * 2, wEop.cols());
+  Eop = Mat(wEop.rows() * 2, wEop.cols());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
