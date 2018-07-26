@@ -31,7 +31,7 @@ const double psi(.025);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -111,6 +111,8 @@ int main(int argc, const char* argv[]) {
   int mode = - 1;
   if(strcmp(argv[1], "enlarge") == 0)
     mode = 0;
+  else if(strcmp(argv[1], "enlarge4") == 0)
+    mode = 18;
   else if(strcmp(argv[1], "bump") == 0)
     mode = 2;
   else if(strcmp(argv[1], "obj") == 0)
@@ -161,6 +163,16 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++) {
         const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
         data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
+      }
+    }
+    break;
+  case 18:
+    {
+      // enlarge.
+      enlarger2ex<double> enlargerx, enlargery, denlarger;
+      for(int i = 0; i < 3; i ++) {
+        const auto xye(enlargery.compute(enlargery.compute(enlargerx.compute(enlargerx.compute(data[i], enlargerx.ENLARGE_X), enlargerx.ENLARGE_X), enlargery.ENLARGE_Y), enlargery.ENLARGE_Y));
+        data[i] = xye + redig.tilt45(denlarger.compute(denlarger.compute(denlarger.compute(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_X), denlarger.ENLARGE_X), denlarger.ENLARGE_Y), denlarger.ENLARGE_Y), true, xye);
       }
     }
     break;
