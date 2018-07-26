@@ -44,8 +44,7 @@ for line in argv[3:]:
   if(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
-    subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl0.ppm"])
-    subprocess.call(["convert", root + "-enl0.ppm", "-blur", "0x.75", "-sharpen", "0x1", "-compress", "none", root + "-enl.ppm"])
+    subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "emph"):

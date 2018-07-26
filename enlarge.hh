@@ -149,22 +149,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case ENLARGE_Y:
     initDop(data.rows());
-    {
-      const Mat work(Eop * data);
-      result = Mat(data.rows() * 2, data.cols());
-      for(int i = 0; i < result.rows(); i ++)
-        result.row(i) = data.row(i / 2);
-      for(int i = 0; i < result.cols(); i ++) {
-        T score(0);
-        for(int j = 1; j < data.rows(); j ++)
-          score += abs(data(j, i) - data(j - 1, i));
-#if defined(_WITHOUT_EIGEN_)
-        result.setCol(i, result.col(i) + work.col(i) * score / data.rows() / sqrt(work.col(i).dot(work.col(i))));
-#else
-        result.col(i) += work.col(i) * score / data.rows() / sqrt(work.col(i).dot(work.col(i)));
-#endif
-      }
-    }
+    result = Eop * data;
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -251,28 +236,30 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   makeDI(size, vDop, vIop, vEop);
   Dop = Mat(size, size);
   Iop = Mat(size, size);
-  Mat  wEop(size, size);
-  vEop /= sqrt(vEop.dot(vEop));
+  Eop = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < Dop.rows(); i ++)
     for(int j = 0; j < Dop.cols(); j ++) {
-      Dop(i, j)  = vDop[(j - i + Dop.cols() * 3 / 2) %  Dop.cols()];
-      Iop(i, j)  = vIop[(j - i + Dop.cols() * 3 / 2) %  Iop.cols()];
-      wEop(i, j) = vEop[(j - i + Dop.cols() * 3 / 2) % wEop.cols()];
+      Dop(i, j) = vDop[(j - i + Dop.cols() * 3 / 2) % Dop.cols()];
+      Iop(i, j) = vIop[(j - i + Dop.cols() * 3 / 2) % Iop.cols()];
+      Eop(i, j) = vEop[(j - i + Dop.cols() * 3 / 2) % Eop.cols()];
     }
-  Eop = Mat(wEop.rows() * 2, wEop.cols());
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < wEop.rows(); i ++) {
-    Eop.row(2 * i + 0) = - wEop.row(i);
-    Eop.row(2 * i + 1) =   wEop.row(i);
-    Eop(2 * i + 0, i) += T(1);
-    Eop(2 * i + 1, i) += T(1);
+  Mat newEop(Eop.rows() * 2, Eop.cols());
+  for(int i = 0; i < Eop.rows(); i ++) {
+    newEop.row(2 * i + 0) =   Eop.row(i);
+    newEop.row(2 * i + 1) = - Eop.row(i);
+    newEop(2 * i + 0, i) += T(1);
+    newEop(2 * i + 1, i) += T(1);
   }
+  Eop = newEop * T(2);
+  for(int i = 0; i < Eop.rows(); i ++) {
+    Eop.row(i) += newEop.row(min(i + 1, int(Eop.rows()) - 1));
+    Eop.row(i) += newEop.row(max(i - 1, 0));
+  }
+  Eop /= T(4);
   return;
 }
 
@@ -340,6 +327,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
     DFTD.row(0) *= U(0);
     DFTI.row(0) *= U(0);
     DFTE.row(0) *= U(0);
+    T norme2(0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -352,7 +340,9 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       const T phase2(Pi * T(i + DFTE.rows()) / T(DFTE.rows()));
       const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
       DFTE.row(i) *= r;
+      norme2      += abs(r) * abs(r);
     }
+    DFTE /= sqrt(norme2);
 #if defined(_WITHOUT_EIGEN_)
     DFTD = DFTD.transpose();
     DFTI = DFTI.transpose();
