@@ -96,7 +96,7 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  boffset = T(1);
+  boffset = T(1) / T(256);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -319,6 +319,9 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
   for(int i = 0; i < Dop.size(); i ++)
     Dop[i] = Iop[i] = Eop[i] = T(0);
   assert(Dop.size() == size && Iop.size() == size && Eop.size() == size);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int ss = 3; ss <= size / 2; ss ++) {
           auto DFTD(seed(ss, false));
     const auto IDFT(seed(ss, true));
@@ -328,9 +331,6 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
     DFTI.row(0) *= U(0);
     DFTE.row(0) *= U(0);
     T norme2(0);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
     for(int i = 1; i < DFTD.rows(); i ++) {
       const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
       DFTD.row(i) *= phase;
@@ -358,6 +358,9 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       const VecU lDop(IDFT.row(iidx) * DFTD);
       const VecU lIop(IDFT.row(iidx) * DFTI);
       const VecU lEop(IDFT.row(iidx) * DFTE);
+#endif
+#if defined(_OPENMP)
+#pragma omp critical
 #endif
       for(int j = i; j - i < lDop.size(); j ++) {
         const int idx(j + size / 2 - IDFT.rows() + 1);
