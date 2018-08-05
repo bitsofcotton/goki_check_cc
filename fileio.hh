@@ -25,6 +25,10 @@
 #include <sstream>
 #include <vector>
 
+#if defined(_WITH_GLTF2_)
+#include <fx/gltf.h>
+#endif
+
 using std::max;
 using std::min;
 using std::cerr;
@@ -280,6 +284,114 @@ public:
       return false;
     }
     return true;
+  }
+  
+  // following 3 functions and 1 structure:
+  //   thanks to: https://github.com/jessey-git/fx-gltf/
+#if defined(_WITH_GLTF2_)
+  struct BufferInfo {
+    fx::gltf::Accessor const * Accessor;
+    uint8_t const * Data;
+    uint32_t DataStride;
+    uint32_t TotalSize;
+    bool HasData() const noexcept {
+      return Data != nullptr;
+    }
+  };
+
+  static uint32_t CalculateDataTypeSize(fx::gltf::Accessor const & accessor) noexcept {
+        uint32_t elementSize = 0;
+        switch (accessor.componentType)
+        {
+        case fx::gltf::Accessor::ComponentType::Byte:
+        case fx::gltf::Accessor::ComponentType::UnsignedByte:
+            elementSize = 1;
+            break;
+        case fx::gltf::Accessor::ComponentType::Short:
+        case fx::gltf::Accessor::ComponentType::UnsignedShort:
+            elementSize = 2;
+            break;
+        case fx::gltf::Accessor::ComponentType::Float:
+        case fx::gltf::Accessor::ComponentType::UnsignedInt:
+            elementSize = 4;
+            break;
+        }
+
+        switch (accessor.type)
+        {
+        case fx::gltf::Accessor::Type::Mat2:
+            return 4 * elementSize;
+            break;
+        case fx::gltf::Accessor::Type::Mat3:
+            return 9 * elementSize;
+            break;
+        case fx::gltf::Accessor::Type::Mat4:
+            return 16 * elementSize;
+            break;
+        case fx::gltf::Accessor::Type::Scalar:
+            return elementSize;
+            break;
+        case fx::gltf::Accessor::Type::Vec2:
+            return 2 * elementSize;
+            break;
+        case fx::gltf::Accessor::Type::Vec3:
+            return 3 * elementSize;
+            break;
+        case fx::gltf::Accessor::Type::Vec4:
+            return 4 * elementSize;
+            break;
+        }
+
+        return 0;
+  }
+  
+  struct BufferInfo GetData(fx::gltf::Document const & doc, fx::gltf::Accessor const & accessor) {
+    fx::gltf::BufferView const & bufferView = doc.bufferViews[accessor.bufferView];
+    fx::gltf::Buffer const & buffer = doc.buffers[bufferView.buffer];
+    const uint32_t dataTypeSize = CalculateDataTypeSize(accessor);
+    return BufferInfo{ &accessor, &buffer.data[static_cast<uint64_t>(bufferView.byteOffset) + accessor.byteOffset], dataTypeSize, accessor.count * dataTypeSize };
+  }
+#endif
+  
+  bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, const char* filename) {
+#if defined(_WITH_GLTF2_)
+    data  = vector<vector<Vec3> >();
+    polys = vector<vector<Veci3> >();
+    fx::gltf::Document doc = fx::gltf::LoadFromText(filename);
+    for(int meshIndex = 0; meshIndex < doc.meshes.size(); meshIndex ++)
+      for(int primitiveIndex = 0; primitiveIndex < doc.meshes[meshIndex].primitives.size(); primitiveIndex ++) {
+        fx::gltf::Mesh const & mesh = doc.meshes[meshIndex];
+        fx::gltf::Primitive const & primitive = mesh.primitives[primitiveIndex];
+        BufferInfo m_vertexBuffer;
+        for (auto const & attrib : primitive.attributes)
+          if (attrib.first == "POSITION") {
+            m_vertexBuffer = GetData(doc, doc.accessors[attrib.second]);
+            assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::Float);
+            assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec3);
+          }
+        vector<Vec3>  vertices;
+        vector<Veci3> indices;
+        for(int i = 0; i < m_vertexBuffer.DataStride; i ++) {
+          Vec3 work;
+          for(int j = 0; j < 3; j ++)
+            work[j] = *(float*)(&m_vertexBuffer.Data[4 * 3 * i + j]);
+          vertices.push_back(work);
+        }
+        for(int i = 2; i < vertices.size(); i ++) {
+          Veci3 work;
+          work[0] = i - 2;
+          work[1] = i - 1;
+          work[2] = i;
+          indices.push_back(work);
+        }
+        data.push_back(vertices);
+        polys.push_back(indices);
+      }
+    return true;
+#else
+    assert(0 && "Please compile with _WITH_GLTF2_");
+    return false;
+#endif
   }
 };
 
