@@ -3,9 +3,10 @@ These program aims to get prepared model geometry in A still image in a determin
 Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
 # How to use
-Please touch Makefile for Eigen and stdc++ enabled.  
+Please touch Makefile for stdc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
-To convert image files to raw ppm, it is powerful tool that imagemagick with 'convert from.image -compress none to.ppm'. 
+To convert image files to raw ppm, it is powerful tool that https://www.imagemagick.org/ with 'convert from.image -compress none to.ppm'.   
+For speed, http://eigen.tuxfamily.org/ library is needed, and for bone information, https://github.com/jessey-git/fx-gltf/ library is needed.
 
 # Parameters
 * enlarge.hh
