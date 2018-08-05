@@ -23,10 +23,11 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
 (例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるもの、動画から生成するものなどです。)
 検索結果に defocus photo アルゴリズムがありました。 http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf 。これはほとんどの場合のカメラ撮影について、goki_check_cc よりも正確です。goki_check_cc は異なる仮定を用いていますが、一般的に使用されるカメラ撮影の場合には、事前のいくつかの変換が必要です。  
 また、合致の分野に対して、様々な(これと異なる)付帯条件での先行がたくさんありました。(例えば、トポロジを検出して端を合致するものや、機械学習を使うもの、および座標変換の変数を点の数で固定するものなどです。)。また、特徴点を利用した PnP 問題の合致の方がこちらよりも高速です。  
+検索によって限られた組み合わせの語句では見つからなかった https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ という記事さんがありました。gltf2 のライブラリは初めて知りました。  
 さらに検索中です。
 
 # 状態
-回転のある場合の全体の一致を .blend ファイルの読み書きとともに実装しています。また、細かな実装のチェックをしています。
+Freeze 前の細かな実装のチェックをしています。
 
 # 使い方
     make tools
@@ -58,6 +59,12 @@ Makefile を Eigen と stdc++ を使えるように変更してください。
     # list matches 2d - 2d with hidden 3d.
     ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-object.obj
     
+    # list matches 2d - 3d.
+    ./tools match3dbone input-matchbase.ppm output-base input-tobematched.gltf matchbase-bump.ppm matchbase-mask.ppm
+    
+    # list matches 2d - 2d with hidden 3d.
+    ./tools match2dh3dbone input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-object.gltf
+
     # habit
     ./tools habit mask.ppm output.obj input0.obj input1.obj
     
@@ -75,8 +82,9 @@ enlarge は DFT 時の半整数空間から擬似的にとってきています�
 collect は単純に DFT 微分の後、abs をとってきています。調整は必要ありません。  
 bump は F=&infin; を仮定しています。パラメタを適宜調整してください。  
 match は z 軸方向まで含めて合致する部分を探します。reDig クラス内部で深度の比率を調節してください。  
-match3d は入力にバンプマップと .obj ファイルを仮定しています。  
 match は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定していますが、現在そうなってはいません。
+
+少しの実験により、emph コマンド後もう一度 bump を取ると出力が改善されることがありますが、どうしてかは不明です。
 
 # 仕様
 enlarger2ex はもっともらしいバンプマップを返しますが、正しくない場合があります。
