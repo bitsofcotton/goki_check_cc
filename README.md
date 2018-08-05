@@ -24,10 +24,11 @@ And around this, there's many preceders that many approach to get bump maps with
 (such as multiple camera conditions, or, with layered objects, or, spherical, or, from movie, etcetc).
 There's a defocus photo algorithms http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf some words with googled. So it's accurate for most cameras, goki_check_cc is standing on another hypothesis that is not widely  used (in another words, some transform or special camera is needed for photos...).  
 There's preceders to match 3D to 2D with many approaches. (s.t. detecting topology of junction point, or, machine learning, and so on.). And it is fater than this that PnP problem and specific point based matching.  
+By searching with some word that is not common, there exists the article https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ that I firstly know the gltf format by this.  
 Searching the Internet more...
 
 # Status
-Writing whole to rotated partials match through .blend file format. And checking details of implementation.
+Checking details of implementation before to freeze the library.
 
 # Usage
     make tools
@@ -59,6 +60,12 @@ Writing whole to rotated partials match through .blend file format. And checking
     # list matches 2d - 2d with hidden 3d.
     ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-3dmodel.obj
     
+    # list matches 2d - 3d.
+    ./tools match3dbone input-matchbase.ppm output-base input-tobematched.gltf matchbase-bump.ppm matchbase-mask.ppm
+    
+    # list matches 2d - 2d with hidden 3d.
+    ./tools match2dh3dbone input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-3dmodel.gltf
+
     # habit
     ./tools habit mask.ppm output.obj input0.obj input1.obj
 
@@ -77,6 +84,8 @@ These program's bump assumes F=∞ graphics. Please configure the parameters bef
 These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
+
+By testing, from somehow, emphasis then bump loop can grow some quality up but I don't know why.
 
 # Specification
 enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
