@@ -248,6 +248,9 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       Eop(i, j) = vEop[(j - i + Dop.cols() * 3 / 2) % Eop.cols()];
     }
   Mat newEop(Eop.rows() * 2, Eop.cols());
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < Eop.rows(); i ++) {
     newEop.row(2 * i + 0) =   Eop.row(i);
     newEop.row(2 * i + 1) = - Eop.row(i);
@@ -274,6 +277,10 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
   cerr << "new" << flush;
   assert(0 < rows && T(0) < zmax);
   A = Mat(rows, rows);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < rows; i ++)
     for(int j = 0; j < rows; j ++)
       A(i, j) = T(0);
@@ -286,6 +293,9 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = zmax;
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
   for(int zi = 0; zi <= zmax * T(2); zi ++)
     for(int j = 0; j < Dop0.size(); j ++) {
       Vec cpoint(2);
@@ -297,8 +307,14 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
       const auto t(- camera[1] / (cpoint[1] - camera[1]));
       const auto y0((camera + (cpoint - camera) * t)[0]);
       // N.B. average_k(dC_k / dy * z_k).
-      for(int i = 0; i < A.rows(); i ++)
-        A(i, getImgPt(y0 + i, rows)) += Dop0[j] * (zi + 1);
+      for(int i = 0; i < A.rows(); i ++) {
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+        {
+          A(i, getImgPt(y0 + i, rows)) += Dop0[j] * (zi + 1);
+        }
+      }
     }
   T n2(0);
   for(int i = 0; i < A.rows(); i ++)

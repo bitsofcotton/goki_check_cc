@@ -471,6 +471,44 @@ int main(int argc, const char* argv[]) {
       }
     }
     return 0;
+  case 15:
+    // match 3d with bone.
+    {
+      std::vector<std::vector<typename simpleFile<double>::Vec3> > datapoly;
+      std::vector<std::vector<typename simpleFile<double>::Veci3> > polynorms;
+      typename simpleFile<double>::Mat bump0[3], mask0[3];
+      if(!file.loadglTF(datapoly, polynorms, argv[4]))
+        return - 2;
+      if(!file.loadp2or3(bump0, argv[5]))
+        return - 2;
+      if(!file.loadp2or3(mask0, argv[6]))
+        return - 2;
+      std::vector<double> emph;
+      for(int i = 0; i <= nemph; i ++)
+        emph.push_back(double(i) / nemph * Memph);
+      std::vector<typename simpleFile<double>::Vec3> shape;
+      std::vector<typename simpleFile<double>::Veci3> delau;
+      auto& bump(bump0[0]);
+      redig.getTileVec(bump, shape, delau);
+      redig.maskVectors(shape, delau, mask0[0]);
+      typename simpleFile<double>::Mat zero[3];
+      for(int i = 0; i < 3; i ++)
+        zero[i] = bump * double(0);
+      matchPartialPartial<double> statmatch;
+      const auto matches(statmatch.match(shape, datapoly[0]));
+      for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
+        std::cerr << "Writing " << n << " / " << matches.size();
+        std::vector<typename simpleFile<double>::Vec3> mdatapoly;
+        mdatapoly.reserve(datapoly[0].size());
+        auto match(matches[n]);
+        for(int k = 0; k < datapoly[0].size(); k ++)
+          mdatapoly.push_back(match.transform(datapoly[0][k]) / match.ratio);
+        match.rot    *= match.rot.transpose();
+        match.offset *= double(0);
+        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
+      }
+    }
+    break;
   default:
     usage();
     return - 1;

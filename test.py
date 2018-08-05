@@ -21,6 +21,8 @@ if(argv[2] == "match"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
   if(ext1 == ".obj"):
     subprocess.call([argv[1], "match3d", root0 + ".ppm", "match3dbase-" + root0 + "-" + root1 + "-", root1 + ".obj", root0 + "-bump.ppm", root0 + "-mask.ppm"])
+  elif(ext1 == ".gltf"):
+    subprocess.call([argv[1], "match3dbone", root0 + ".ppm", "match3dbase-" + root0 + "-" + root1 + "-", root1 + ".gltf", root0 + "-bump.ppm", root0 + "-mask.ppm"])
   else:
     if(ext1 != ".ppm"):
       subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
