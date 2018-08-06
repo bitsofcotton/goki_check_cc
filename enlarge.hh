@@ -71,7 +71,6 @@ public:
 #endif
   enlarger2ex();
   Mat  compute(const Mat& data, const direction_t& dir);
-  T    boffset;
   
 private:
   void initDop(const int& size);
@@ -96,7 +95,6 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  boffset = T(1) / T(256);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -191,12 +189,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y:
     {
-      assert(T(0) < boffset);
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       assert(A.rows() == data.rows() && A.cols() == data.rows());
       // |average(C * z_k) / average(C)| on differential space.
       // XXX: light and shadow are inverted roles on most of figures.
-      const auto data0(compute(- data, DETECT_Y));
+      auto data0(compute(- data, DETECT_Y));
       result = compute(A * data0, IDETECT_Y);
       T mm(0);
 #if defined(_OPENMP)
@@ -205,13 +202,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          mm = min(data0(i, j), min(result(i, j), mm));
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++) 
-          result(i, j) = (result(i, j) - mm + boffset) / (abs(data0(i, j)) - mm + boffset);
+          // XXX: logarithm scale works well by some tests.
+          result(i, j) = (result(i, j) < T(0) ? - T(1) : T(1)) * log(abs(result(i, j)) + T(1)) - (data0(i, j)  < T(0) ? - T(1) : T(1)) * log(abs(data0(i, j))  + T(1));
     }
     break;
   default:
