@@ -77,11 +77,10 @@ Please bookmark output directory page after sending images, then please wait som
 N.B. a file per 5 minutes, up to 20 Mo total upload size.
 
 # Tips
-These program's enlarge is based on pseudo DFT half space plausible one. Already configured.  
-These program's collect is based on DFT differential. No need to configure.  
-These program's bump assumes F=∞ graphics. No need to configure.   
+These program's enlarge is based on pseudo DFT half space plausible one.  
+These program's collect is based on DFT differential.  
+These program's bump assumes F=∞ graphics.  
 These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer.  
-These program's match3d assumes input file as a bump map and .obj 3d file.  
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
 
 By testing, from somehow, emphasis then bump loop can grow some quality up but I don't know why.
