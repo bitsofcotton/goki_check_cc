@@ -196,7 +196,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       assert(A.rows() == data.rows() && A.cols() == data.rows());
       // |average(C * z_k) / average(C)| on differential space.
       // XXX: light and shadow are inverted roles on most of figures.
-      result = compute(A * compute(- data, DETECT_Y), IDETECT_Y);
+      const auto data0(compute(- data, DETECT_Y));
+      result = compute(A * data0, IDETECT_Y);
       T mm(0);
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -204,13 +205,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          mm = min(data(i, j), min(result(i, j), mm));
+          mm = min(data0(i, j), min(result(i, j), mm));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++) 
-          result(i, j) = (result(i, j) - mm + boffset) / (abs(data(i, j)) - mm + boffset);
+          result(i, j) = (result(i, j) - mm + boffset) / (abs(data0(i, j)) - mm + boffset);
     }
     break;
   default:
