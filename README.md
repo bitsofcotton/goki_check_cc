@@ -9,8 +9,6 @@ To convert image files to raw ppm, it is powerful tool that https://www.imagemag
 For speed, http://eigen.tuxfamily.org/ library is needed, and for bone information, https://github.com/jessey-git/fx-gltf/ library is needed.
 
 # Parameters
-* enlarge.hh
-* * boffset : offset of colour in integrated space for local to global focal bump operator.
 * redig.hh
 * * vbox.  : size of vector gathering rectangle.
 * * rz     : z-axis output ratio.
@@ -81,7 +79,7 @@ N.B. a file per 5 minutes, up to 20 Mo total upload size.
 # Tips
 These program's enlarge is based on pseudo DFT half space plausible one. Already configured.  
 These program's collect is based on DFT differential. No need to configure.  
-These program's bump assumes F=∞ graphics. Please configure the parameters before to use.   
+These program's bump assumes F=∞ graphics. No need to configure.   
 These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer.  
 These program's match3d assumes input file as a bump map and .obj 3d file.  
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
