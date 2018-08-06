@@ -48,10 +48,12 @@ template <typename T> class simpleFile {
 public:
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
+  typedef SimpleMatrix<T> Mat3x3;
   typedef SimpleVector<T> Vec3;
   typedef SimpleVector<int> Veci3;
 #else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<T,   3, 3> Mat3x3;
   typedef Eigen::Matrix<T,   3, 1> Vec3;
   typedef Eigen::Matrix<int, 3, 1> Veci3;
 #endif
@@ -353,40 +355,70 @@ public:
   }
 #endif
   
-  bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, const char* filename) {
+  bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, vector<Vec3>& center, const char* filename) {
 #if defined(_WITH_GLTF2_)
-    data  = vector<vector<Vec3> >();
-    polys = vector<vector<Veci3> >();
+    data   = vector<vector<Vec3> >();
+    polys  = vector<vector<Veci3> >();
+    center = vector<Vec3>();
     fx::gltf::Document doc = fx::gltf::LoadFromText(filename);
+    for(int nodeIndex = 0; nodeIndex < doc.nodes.size(); nodeIndex ++) {
+      Vec3 lcenter(3);
+      for(int i = 0; i < 3; i ++)
+        lcenter[i] = doc.nodes[nodeIndex].translation[i];
+      center.push_back(lcenter);
+    }
+    data.resize(center.size());
+    polys.resize(center.size());
     for(int meshIndex = 0; meshIndex < doc.meshes.size(); meshIndex ++)
       for(int primitiveIndex = 0; primitiveIndex < doc.meshes[meshIndex].primitives.size(); primitiveIndex ++) {
         fx::gltf::Mesh const & mesh = doc.meshes[meshIndex];
         fx::gltf::Primitive const & primitive = mesh.primitives[primitiveIndex];
         BufferInfo m_vertexBuffer;
+        BufferInfo m_jointBuffer;
+        fx::gltf::Accessor::ComponentType jointType;
         for (auto const & attrib : primitive.attributes)
           if (attrib.first == "POSITION") {
             m_vertexBuffer = GetData(doc, doc.accessors[attrib.second]);
             assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::Float);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec3);
+          } else if(attrib.first == "JOINTS_0") {
+            m_jointBuffer = GetData(doc, doc.accessors[attrib.second]);
+            jointType     = doc.accessors[attrib.second].componentType;
+            assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::UnsignedByte || doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::UnsignedShort);
+            assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
           }
-        vector<Vec3>  vertices;
-        vector<Veci3> indices;
-        for(int i = 0; i < m_vertexBuffer.DataStride; i ++) {
-          Vec3 work;
-          for(int j = 0; j < 3; j ++)
-            work[j] = *(float*)(&m_vertexBuffer.Data[4 * 3 * i + j]);
-          vertices.push_back(work);
+        for(int cIdx = 0; cIdx < center.size(); cIdx ++) {
+          vector<Vec3>  vertices;
+          vector<Veci3> indices;
+          for(int i = 0; i < m_vertexBuffer.DataStride; i ++) {
+            bool idx_match(false);
+            for(int j = 0; j < 4; j ++)
+              if(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte) {
+                unsigned char c = *(unsigned char*)(&m_jointBuffer.Data[4 * i + j]);
+                idx_match |= static_cast<int>(c) == cIdx;
+              } else if(jointType == fx::gltf::Accessor::ComponentType::UnsignedShort) {
+                unsigned short c = *(unsigned short*)(&m_jointBuffer.Data[4 * 2 * i + 2 * j]);
+                idx_match |= static_cast<int>(c) == cIdx;
+              }
+            if(idx_match) {
+              Vec3 work(3);
+              for(int j = 0; j < 3; j ++)
+                work[j] = *(float*)(&m_vertexBuffer.Data[4 * 3 * i + j]);
+              vertices.push_back(work);
+            }
+          }
+          for(int i = 2; i < vertices.size(); i ++) {
+            Veci3 work(3);
+            work[0] = i - 2;
+            work[1] = i - 1;
+            work[2] = i;
+            indices.push_back(work);
+          }
+          data[cIdx]  = vertices;
+          polys[cIdx] = indices;
         }
-        for(int i = 2; i < vertices.size(); i ++) {
-          Veci3 work;
-          work[0] = i - 2;
-          work[1] = i - 1;
-          work[2] = i;
-          indices.push_back(work);
-        }
-        data.push_back(vertices);
-        polys.push_back(indices);
       }
+    cerr << data.size() << "parts found." << endl;
     return true;
 #else
     assert(0 && "Please compile with _WITH_GLTF2_");
