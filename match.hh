@@ -97,15 +97,18 @@ public:
   vector<int> dstpoints;
   vector<int> srcpoints;
   T           thresh;
+  T           rthresh;
   Vec2        threshsize;
   match_t() {
-    thresh = T(0);
+    thresh  = T(0);
+    rthresh = T(1e-2);
     threshsize    = Vec2(2);
     threshsize[0] = threshsize[1] = T(0);
     initId();
   }
-  match_t(const T& thresh, const T& h, const T& w) {
+  match_t(const T& thresh, const T& rthresh, const T& h, const T& w) {
     this->thresh        = thresh;
+    this->rthresh       = rthresh;
     this->threshsize    = Vec2(2);
     this->threshsize[0] = h;
     this->threshsize[1] = w;
@@ -132,6 +135,7 @@ public:
     result.dstpoints  = srcpoints;
     result.srcpoints  = dstpoints;
     result.thresh     = thresh;
+    result.rthresh    = rthresh;
     result.threshsize = threshsize;
     return result;
   }
@@ -159,6 +163,7 @@ public:
     dstpoints  = other.dstpoints;
     srcpoints  = other.srcpoints;
     thresh     = other.thresh;
+    rthresh    = other.rthresh;
     threshsize = other.threshsize;
     return *this;
   }
@@ -223,11 +228,16 @@ public:
   Vec3 transform(const Vec3& x) const {
     return rot * x * ratio + offset;
   }
+  bool isValid() const {
+    const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
+    return rratio <= T(1) / rthresh;
+  }
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
     // N.B. parallel -> max, points ratio -> max.
-    return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
+    return (rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio)) &&
+           isValid();
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -279,7 +289,7 @@ public:
 private:
   Vec3               makeG(const vector<Vec3>& in) const;
   vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const match_t<T>& m) const;
-  void               complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const;
+  bool               complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const;
   T                  isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh);
   U   I;
   T   Pi;
@@ -355,7 +365,7 @@ template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const 
   return result;
 }
 
-template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
+template <typename T> bool matchPartialPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
   T num(0);
   T denom(0);
   T denom2(0);
@@ -377,7 +387,7 @@ template <typename T> void matchPartialPartial<T>::complementMatch(match_t<T>& w
     work.rdepth += err.dot(err);
   }
   work.rdepth /= sqrt(denom * denom2) * work.dstpoints.size();
-  return;
+  return work.isValid();
 }
 
 template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
@@ -408,7 +418,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
     for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
-      match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
+      match_t<T> work0(threshs, thresht * thresht, abs(gd[0]), abs(gd[1]));
       for(int k = 0; k < ddiv.size() / 2; k ++) {
         Mat3x3 lrot(3, 3);
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
@@ -455,8 +465,8 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
         t0 = tt;
         // if it's good:
         if(threshp <= work.dstpoints.size() /
-                        T(min(shapebase.size(), points.size()))) {
-          complementMatch(work, shapebase, points, gs, gp);
+                        T(min(shapebase.size(), points.size())) &&
+          complementMatch(work, shapebase, points, gs, gp) ) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
