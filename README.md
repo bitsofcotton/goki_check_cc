@@ -83,8 +83,6 @@ These program's bump assumes F=∞ graphics.
 These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer.  
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
 
-By testing, from somehow, emphasis then bump loop can grow some quality up but I don't know why.
-
 # Specification
 enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions,
