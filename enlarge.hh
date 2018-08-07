@@ -195,13 +195,25 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       // XXX: light and shadow are inverted roles on most of figures.
       const auto data0(compute(- data, DETECT_Y));
       result = compute(A * data0, IDETECT_Y);
+      T mm(result(0, 0));
+      T MM(mm);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++) {
+          mm = min(min(result(i, j), data0(i, j)), mm);
+          MM = max(max(result(i, j), data0(i, j)), MM);
+        }
+      if(mm == MM)
+        MM += T(1);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (abs(result(i, j)) + T(1)) / (abs(data0(i, j)) + T(1));
+          result(i, j) = log((result(i, j) - mm) / (MM - mm) + T(1)) - log((data0(i, j) - mm) / (MM - mm) + T(1));
     }
     break;
   default:
