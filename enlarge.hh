@@ -193,10 +193,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // |average(C * z_k) / average(C)| on differential space.
-      auto data0(compute(data, DETECT_Y));
-      result = compute(A * data0, IDETECT_Y);
-      data0  = compute(B * data0, IDETECT_Y);
+      // |average(C * z_k) / average(C)| via 2nd differential space.
+      auto data0(compute(compute(data, DETECT_Y), DETECT_Y));
+      result = compute(compute(A * data0, IDETECT_Y), IDETECT_Y);
+      data0  = compute(compute(B * data0, IDETECT_Y), IDETECT_Y);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
