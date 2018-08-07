@@ -83,10 +83,12 @@ private:
   U    I;
   T    Pi;
   Mat  A;
+  Mat  B;
   Mat  Dop;
   Mat  Eop;
   Mat  Iop;
   Mat  bA;
+  Mat  bB;
   Mat  bDop;
   Mat  bEop;
   Mat  bIop;
@@ -192,28 +194,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       assert(A.rows() == data.rows() && A.cols() == data.rows());
       // |average(C * z_k) / average(C)| on differential space.
-      // XXX: light and shadow are inverted roles on most of figures.
-      const auto data0(compute(- data, DETECT_Y));
+      auto data0(compute(data, DETECT_Y));
       result = compute(A * data0, IDETECT_Y);
-      T mm(result(0, 0));
-      T MM(mm);
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++) {
-          mm = min(min(result(i, j), data0(i, j)), mm);
-          MM = max(max(result(i, j), data0(i, j)), MM);
-        }
-      if(mm == MM)
-        MM += T(1);
+      data0  = compute(B * data0, IDETECT_Y);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = log((result(i, j) - mm) / (MM - mm) + T(1)) - log((data0(i, j) - mm) / (MM - mm) + T(1));
+          result(i, j) = (result(i, j) + (result(i, j) < T(0) ? - T(1) : T(1))) / (data0(i, j) + (data0(i, j) < T(0) ? - T(1) : T(1)));
     }
     break;
   default:
@@ -273,19 +262,21 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
   if(A.rows() == rows)
     return;
   xchg(A, bA);
+  xchg(B, bB);
   if(A.rows() == rows)
     return;
 
   cerr << "new" << flush;
   assert(0 < rows && T(0) < zmax);
   A = Mat(rows, rows);
+  B = Mat(rows, rows);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < rows; i ++)
     for(int j = 0; j < rows; j ++)
-      A(i, j) = T(0);
+      B(i, j) = A(i, j) = T(0);
   Vec Dop0;
   Vec Iop0;
   Vec Eop0;
@@ -315,6 +306,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
 #endif
         {
           A(i, getImgPt(y0 + i, rows)) += Dop0[j] * (zi + 1);
+          B(i, getImgPt(y0 + i, rows)) += Dop0[j];
         }
       }
     }
@@ -322,6 +314,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
   for(int i = 0; i < A.rows(); i ++)
     n2 += sqrt(A.row(i).dot(A.row(i)));
   A /= n2 / A.rows();
+  B /= n2 / A.rows();
   return;
 }
 
