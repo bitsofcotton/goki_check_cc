@@ -317,6 +317,8 @@ public:
         case fx::gltf::Accessor::ComponentType::UnsignedInt:
             elementSize = 4;
             break;
+        default:
+            assert(0 && "should not be reached.");
         }
 
         switch (accessor.type)
@@ -342,6 +344,8 @@ public:
         case fx::gltf::Accessor::Type::Vec4:
             return 4 * elementSize;
             break;
+        default:
+            assert(0 && "should not be reached");
         }
 
         return 0;

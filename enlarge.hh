@@ -202,7 +202,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (result(i, j) + (result(i, j) < T(0) ? - T(1) : T(1))) / (data0(i, j) + (data0(i, j) < T(0) ? - T(1) : T(1)));
+          result(i, j) = abs((result(i, j) + (result(i, j) < T(0) ? - T(1) : T(1))) / (data0(i, j) + (data0(i, j) < T(0) ? - T(1) : T(1))));
     }
     break;
   default:
