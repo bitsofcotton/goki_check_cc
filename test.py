@@ -88,8 +88,8 @@ for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(int(100. / pixels * 100) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
     s0 = int(np.ceil(np.log(pixels) / np.log(2.)))
     for s in range(0, s0):
-      subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
-      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-blur", "0x.75", "-sharpen", "0x1", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
+      subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + ".ppm"])
+    subprocess.call(["convert", root + "-" + str(s0) + ".ppm", "-blur", str(s0 / 2.) + "x" + str(s0), "-unsharp", str(s0) + "x" + str(s0 * 2), "-compress", "none", root + "-" + str(s0 + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
