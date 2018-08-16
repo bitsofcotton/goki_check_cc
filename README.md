@@ -10,8 +10,8 @@ For speed, http://eigen.tuxfamily.org/ library is needed, and for bone informati
 
 # Parameters
 * redig.hh
-* * vbox.  : size of vector gathering rectangle.
-* * rz     : z-axis output ratio.
+* * vbox : size of vector gathering rectangle.
+* * rz   : z-axis output ratio.
 * scancontext.hh
 * * matchPartialPartial::ndiv    : number of divides that match angles, effects the matching errors.
 * * matchPartialPartial::threshp : ratio of threshold for matched points.
