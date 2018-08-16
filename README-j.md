@@ -10,8 +10,8 @@ Makefile を stdc++ を使えるように変更してください。
 
 # 調整可能なパラメタ
 * redig.hh
-* * vbox.  : ベクタ生成の際にまとめるピクセルの数です。
-* * rz     : 奥行きの乗数です。
+* * vbox : ベクタ生成の際にまとめるピクセルの数です。
+* * rz   : 奥行きの乗数です。
 * scancontext.hh
 * * matchPartialPartial::ndiv    : 合致する角度の分割数です。合致の誤差にも影響します。
 * * matchPartialPartial::threshp : 検出される最小の合致する点の数の比率です。
