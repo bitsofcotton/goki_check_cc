@@ -193,17 +193,18 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // |average(C * z_k) / average(C)|.
-      const Mat data0(B * data);
-      result = A * data;
-      // XXX I don't know why this better works but from some experiments.
-      const Mat datad(compute(data, DETECT_Y));
+      // |average(C * z_k) / average(C)| via differential space.
+      const Mat data0(A * data);
+      const Mat data1(B * data);
+      const Mat data2(compute(data0, DETECT_Y));
+      const Mat data3(compute(data1, DETECT_Y));
+      result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = abs((result(i, j) + (result(i, j) < T(0) ? - T(1) : T(1))) / (data0(i, j) + (data0(i, j) < T(0) ? - T(1) : T(1)))) * datad(i, j);
+          result(i, j) = (data2(i, j) * data1(i, j) - data0(i, j) * data3(i, j)) / (data1(i, j) * data1(i, j) + T(1) / T(256));
       result = compute(result, IDETECT_Y);
     }
     break;
