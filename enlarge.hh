@@ -193,19 +193,16 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // |average(C * z_k) / average(C)| via differential space.
-      const Mat data0(A * data);
-      const Mat data1(B * data);
-      const Mat data2(compute(data0, DETECT_Y));
-      const Mat data3(compute(data1, DETECT_Y));
-      result = Mat(data.rows(), data.cols());
+      // we assume |average(C * z_k) / average(C)| be in a differential space.
+      result = A * data;
+      const Mat work(B * data);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data2(i, j) * data1(i, j) - data0(i, j) * data3(i, j)) / (data1(i, j) * data1(i, j) + T(1) / T(256));
-      result = compute(result, IDETECT_Y);
+          result(i, j) /= max(work(i, j), T(1) / T(256));
+      result = - compute(result, IDETECT_Y);
     }
     break;
   default:
@@ -315,10 +312,10 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
       }
     }
   T n2(0);
-  for(int i = 0; i < A.rows(); i ++)
-    n2 += sqrt(A.row(i).dot(A.row(i)));
-  A /= n2 / A.rows();
-  B /= n2 / A.rows();
+  for(int i = 0; i < B.rows(); i ++)
+    n2 += sqrt(B.row(i).dot(B.row(i)));
+  A /= n2 / B.rows() * zmax;
+  B /= n2 / B.rows();
   return;
 }
 
