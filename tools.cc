@@ -202,7 +202,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> bump;
       const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
       data[1] = data[2] = data[0] = xye;
-      // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(data[i], false), bump.BUMP_BOTH), true, xye);
+      // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2l(data), false), bump.BUMP_BOTH), true, xye);
     }
     break;
   case 7:
@@ -252,7 +252,6 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<double>::Mat bump[3], out[3];
       if(!file.loadp2or3(bump, argv[4]))
         return - 2;
-      auto zero(bump[0] * double(0));
       for(int i = 0; i < M_TILT; i ++) {
         for(int j = 0; j < 3; j ++)
           out[j] = redig.tilt(data[j], bump[0], i, M_TILT, psi);
@@ -282,7 +281,6 @@ int main(int argc, const char* argv[]) {
           else
             bump[1](i, j) = 0.;
         }
-      auto zero(bump[0] * double(0));
       for(int i = 0; i < 2; i ++) {
         for(int j = 0; j < 3; j ++)
           out[j] = redig.tilt(data[j], bump[i % 2], i, 2, psi);
