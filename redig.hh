@@ -806,16 +806,22 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, con
 template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data, const T& upper) {
   T MM(data(0, 0)), mm(data(0, 0));
   for(int i = 0; i < data.rows(); i ++)
-    for(int j = 0; j < data.cols(); j ++) {
-      MM = max(MM, data(i, j));
-      mm = min(mm, data(i, j));
-    }
+    for(int j = 0; j < data.cols(); j ++)
+      if(isfinite(data(i, j))) {
+        MM = max(MM, data(i, j));
+        mm = min(mm, data(i, j));
+      }
   if(MM == mm)
     return data;
   Mat result(data);
   for(int i = 0; i < data.rows(); i ++)
-    for(int j = 0; j < data.cols(); j ++)
-      result(i, j) -= mm;
+    for(int j = 0; j < data.cols(); j ++) {
+      if(isfinite(result(i, j)))
+        result(i, j) -= mm;
+      else
+        result(i, j)  = T(0);
+      assert(T(0) <= result(i, j) && result(i, j) <= MM - mm);
+    }
   return result * upper / (MM - mm);
 }
 
@@ -823,16 +829,22 @@ template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) {
   T MM(data[0](0, 0)), mm(data[0](0, 0));
   for(int k = 0; k < 3; k ++)
     for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++) {
-        MM = max(MM, data[k](i, j));
-        mm = min(mm, data[k](i, j));
-      }
+      for(int j = 0; j < data[k].cols(); j ++)
+        if(isfinite(data[k](i, j))) {
+          MM = max(MM, data[k](i, j));
+          mm = min(mm, data[k](i, j));
+        }
   if(MM == mm)
     return;
   for(int k = 0; k < 3; k ++) {
     for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++)
-        data[k](i, j) -= mm;
+      for(int j = 0; j < data[k].cols(); j ++) {
+        if(isfinite(data[k](i, j)))
+          data[k](i, j) -= mm;
+        else
+          data[k](i, j)  = T(0);
+        assert(T(0) <= data[k](i, j) && data[k](i, j) <= MM - mm);
+      }
     data[k] *= upper / (MM - mm);
   }
   return;

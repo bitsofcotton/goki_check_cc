@@ -28,10 +28,11 @@ const double offsetx(.1);
 const double aroffset(.05);
 const int    M_TILT(32);
 const double psi(.025);
+const double psi2(.075);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -145,6 +146,8 @@ int main(int argc, const char* argv[]) {
     mode = 13;
   else if(strcmp(argv[1], "tilt2") == 0)
     mode = 14;
+  else if(strcmp(argv[1], "tilt3") == 0)
+    mode = 8;
   if(mode < 0) {
     usage();
     return - 1;
@@ -287,6 +290,22 @@ int main(int argc, const char* argv[]) {
         std::string outfile(argv[3]);
         const char* names[2] = {"-L.ppm", "-R.ppm"};
         outfile += std::string(names[i % 2]);
+        file.savep2or3(outfile.c_str(), out, false);
+      }
+      return 0;
+    }
+    break;
+  case 8:
+    {
+      // tilt3.
+      typename simpleFile<double>::Mat bump[3], out[3];
+      if(!file.loadp2or3(bump, argv[4]))
+        return - 2;
+      for(int i = 0; i < 4; i ++) {
+        for(int j = 0; j < 3; j ++)
+          out[j] = redig.tilt(data[j], bump[0], i, 4, psi2);
+        std::string outfile(argv[3]);
+        outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
       }
       return 0;
@@ -464,7 +483,7 @@ int main(int argc, const char* argv[]) {
         const auto mhull0(redig.delaunay2(pdst, match[i].dstpoints));
         const auto mhull1(match[i].hull(match[i].srcpoints, match[i].reverseHull(match[i].dstpoints, mhull0)));
         file.saveobj(redig.takeShape(pdst, psrc, match[i], mhull0, mhull1, Memph),
-                     mhull0, (argv[3] + std::string("-emph-") + to_string(i) +
+                     poldst, (argv[3] + std::string("-emph-") + to_string(i) +
                                         std::string(".obj")).c_str());
       }
     }
