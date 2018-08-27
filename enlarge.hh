@@ -193,7 +193,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // we assume |average(ddC * z_k) / average(ddC)| be in a differential space.
+      // we assume |average(dC * z_k) / average(dC)| be in a differential space.
       Mat dataA(A * data);
       Mat dataB(B * data);
 #if defined(_OPENMP)
