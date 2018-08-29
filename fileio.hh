@@ -51,11 +51,13 @@ public:
   typedef SimpleMatrix<T> Mat3x3;
   typedef SimpleVector<T> Vec3;
   typedef SimpleVector<int> Veci3;
+  typedef SimpleVector<int> Veci4;
 #else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T,   3, 3> Mat3x3;
   typedef Eigen::Matrix<T,   3, 1> Vec3;
   typedef Eigen::Matrix<int, 3, 1> Veci3;
+  typedef Eigen::Matrix<int, 4, 1> Veci4;
 #endif
 
   bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Mat* datas) {
@@ -359,11 +361,12 @@ public:
   }
 #endif
   
-  bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, vector<Vec3>& center, const char* filename) {
+  bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, vector<Vec3>& center, vector<Veci4>& bone, const char* filename) {
 #if defined(_WITH_GLTF2_)
     data   = vector<vector<Vec3> >();
     polys  = vector<vector<Veci3> >();
     center = vector<Vec3>();
+    bone   = vector<Veci4>();
     fx::gltf::Document doc = fx::gltf::LoadFromText(filename);
     for(int nodeIndex = 0; nodeIndex < doc.nodes.size(); nodeIndex ++) {
       Vec3 lcenter(3);
@@ -373,6 +376,7 @@ public:
     }
     data.resize(center.size());
     polys.resize(center.size());
+    bone.resize(center.size());
     for(int meshIndex = 0; meshIndex < doc.meshes.size(); meshIndex ++)
       for(int primitiveIndex = 0; primitiveIndex < doc.meshes[meshIndex].primitives.size(); primitiveIndex ++) {
         fx::gltf::Mesh const & mesh = doc.meshes[meshIndex];
@@ -394,14 +398,18 @@ public:
         for(int cIdx = 0; cIdx < center.size(); cIdx ++) {
           vector<Vec3>  vertices;
           vector<Veci3> indices;
+          Veci4         lbone(4);
+          lbone[0] = lbone[1] = lbone[2] = lbone[3] = - 1;
           for(int i = 0; i < m_vertexBuffer.DataStride; i ++) {
             bool idx_match(false);
             for(int j = 0; j < 4; j ++)
               if(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte) {
                 unsigned char c = *(unsigned char*)(&m_jointBuffer.Data[4 * i + j]);
+                lbone[j]   = static_cast<int>(c);
                 idx_match |= static_cast<int>(c) == cIdx;
               } else if(jointType == fx::gltf::Accessor::ComponentType::UnsignedShort) {
                 unsigned short c = *(unsigned short*)(&m_jointBuffer.Data[4 * 2 * i + 2 * j]);
+                lbone[j]   = static_cast<int>(c);
                 idx_match |= static_cast<int>(c) == cIdx;
               }
             if(idx_match) {
@@ -420,6 +428,7 @@ public:
           }
           data[cIdx]  = vertices;
           polys[cIdx] = indices;
+          bone[cIdx]  = lbone;
         }
       }
     cerr << data.size() << "parts found." << endl;

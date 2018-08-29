@@ -167,6 +167,10 @@ public:
     threshsize = other.threshsize;
     return *this;
   }
+  T distance(const match_t<T>& other, const Vec3& p) {
+    const auto d(transform(p) - other.transform(p));
+    return sqrt(d.dot(d));
+  }
   vector<int> ptr(const vector<int>& orig, const vector<int>& p) const {
     vector<int> res;
     res.reserve(p.size());
@@ -272,6 +276,7 @@ public:
 #endif
   typedef complex<T> U;
   matchPartialPartial();
+  matchPartialPartial(const int& ndiv, const T& threshp, const T& threshs);
   ~matchPartialPartial();
   void init(const int& ndiv, const T& threshp, const T& threshs);
   
@@ -303,7 +308,13 @@ template <typename T> matchPartialPartial<T>::matchPartialPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, .25, .1);
+  init(60, .25, .1);
+}
+
+template <typename T> matchPartialPartial<T>::matchPartialPartial(const int& ndiv, const T& threshp, const T& threshs) {
+  I  = sqrt(U(- T(1)));
+  Pi = atan2(T(1), T(1)) * T(4);
+  init(ndiv, threshp, threshs);
 }
 
 template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
@@ -542,54 +553,88 @@ template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, cons
 template <typename T> class matchWholePartial {
 public:
 #if defined(_WITHOUT_EIGEN_)
-  typedef SimpleMatrix<T> Mat;
-  typedef SimpleMatrix<T> Mat3x3;
-  typedef SimpleVector<T> Vec3;
+  typedef SimpleMatrix<T>   Mat;
+  typedef SimpleMatrix<T>   Mat3x3;
+  typedef SimpleVector<T>   Vec3;
+  typedef SimpleVector<int> Veci4;
 #else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
+  typedef Eigen::Matrix<int, 4, 1>                         Veci4;
 #endif
   typedef complex<T> U;
   matchWholePartial();
   ~matchWholePartial();
-  void init(const int& ndiv, const T& thresh, const T& threshp, const T& threshs);
+  void init(const int& ndiv, const T& threshp, const T& threshs);
 
-  vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins);
+  vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<Veci4>& bones, const int& ntry = 6);
 private:
-  U I;
-  T Pi;
-  T thresh;
-  T threshp;
-  T threshs;
+  U   I;
+  T   Pi;
+  int ndiv;
+  T   threshp;
+  T   threshs;
 };
 
 template <typename T> matchWholePartial<T>::matchWholePartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
+  init(60, .25, .1);
 }
 
 template <typename T> matchWholePartial<T>::~matchWholePartial() {
   ;
 }
 
-template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& thresh, const T& threshp, const T& threshs) {
-  this->thresh  = thresh;
+template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& threshp, const T& threshs) {
+  this->ndiv    = ndiv;
   this->threshp = threshp;
   this->threshs = threshs;
   return;
 }
 
-template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins) {
+template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<Veci4>& bones, const int& ntry) {
   assert(points.size() == origins.size());
   vector<vector<match_t<T> > > pmatches;
-  matchPartialPartial<T> pmatch(thresh, threshp, threshs);
+  matchPartialPartial<T> pmatch(ndiv, threshp, threshs);
   for(int i = 0; i < points.size(); i ++) {
     cerr << "matching partials : " << i << "/" << shapebase.size() << endl;
     pmatches.push_back(pmatch.match(shapebase, points[i]));
   }
-  cerr << "XXX not implemented: detecting possible whole matches..." << endl;
   vector<vector<match_t<T> > > result;
+  for(int i0 = 0; i0 < min(ntry, int(pmatches[0].size())); i0 ++) {
+    vector<match_t<T> > lmatch;
+    lmatch.push_back(pmatches[0][i0]);
+    for(int i = 1; i < pmatches.size(); i ++) {
+      if(pmatches[i].size()) {
+        T m(0);
+        for(int j = 0; j < 4; j ++)
+          if(0 <= bones[i][j] && bones[i][j] < i)
+            m += lmatch[bones[i][j]].distance(pmatches[i][0], origins[i]);
+        int idx = 0;
+        T   llratio(max(abs(pmatches[i][0].ratio) / abs(lmatch[i - 1].ratio), abs(lmatch[i - 1].ratio) / abs(pmatches[i][0].ratio)));
+        for(int k = 1; k < pmatches[i].size(); k ++) {
+          T lscore(0);
+          T lratio(1);
+          for(int j = 0; j < 4; j ++)
+            if(0 <= bones[i][j] && bones[i][j] < i) {
+              lscore += lmatch[bones[i][j]].distance(pmatches[i][k], origins[i]);
+              lratio *= max(abs(pmatches[i][idx].ratio) / abs(lmatch[bones[i][j]].ratio), abs(lmatch[bones[i][j]].ratio) / abs(pmatches[i][idx].ratio));
+            }
+        int idx = 0;
+          if(lscore < m && (lratio <= llratio || lratio < T(1) + threshs)) {
+            m       = lscore;
+            llratio = lratio;
+            idx     = k;
+          }
+        }
+        lmatch.push_back(pmatches[i][idx]);
+      } else
+        lmatch.push_back(match_t<T>());
+    }
+    result.push_back(lmatch);
+  }
   return result;
 }
 
