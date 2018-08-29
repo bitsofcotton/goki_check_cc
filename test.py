@@ -81,9 +81,9 @@ for line in argv[3:]:
     for s in range(0, 4):
       subprocess.call([argv[1], "bump", root + "-tilt3-" + str(s) + ".ppm", root + "-bumpext-" + str(s) + ".ppm"])
       subprocess.call([argv[1], "obj", root + "-bumpext-" + str(s) + ".ppm", root + "-bumpext-" + str(s) + ".obj"])
-    subprocess.call([argv[1], "habit", root + "-mask.ppm", root + "-bumpextA.obj", root + "-bumpext-0.obj", root + "-bumpext-2.obj"])
-    subprocess.call([argv[1], "habit", root + "-mask.ppm", root + "-bumpextB.obj", root + "-bumpext-1.obj", root + "-bumpext-3.obj"])
-    subprocess.call([argv[1], "habit", root + "-mask.ppm", root + "-bumpext.obj", root + "-bumpextA.obj-emph-0.obj", root + "-bumpextB.obj-emph-0.obj"])
+    subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextA.obj", root + "-bumpext-0.obj", root + "-bumpext-2.obj"])
+    subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextB.obj", root + "-bumpext-1.obj", root + "-bumpext-3.obj"])
+    subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpext.obj", root + "-bumpextA.obj-emph-0.obj", root + "-bumpextB.obj-emph-0.obj"])
   elif(argv[2] == "jps"):
     subprocess.call([argv[1], "tilt2", root + ".ppm", root, root + "-bump.ppm"])
     subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])

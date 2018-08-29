@@ -218,7 +218,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         for(int j = 0; j < result.rows(); j ++)
           result(j, i) = (datadA(j, i) * dataB(j, i) - dataA(j, i) * datadB(j, i)) / max(dataB(j, i) * dataB(j, i), offset / T(256) / T(256));
       }
-      result = - compute(result, IDETECT_Y);
+      result = compute(result, IDETECT_Y);
     }
     break;
   default:
@@ -250,9 +250,9 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 #endif
   for(int i = 0; i < Dop.rows(); i ++)
     for(int j = 0; j < Dop.cols(); j ++) {
-      Dop(i, j) = vDop[(j - i + Dop.cols() * 3 / 2) % Dop.cols()];
-      Iop(i, j) = vIop[(j - i + Dop.cols() * 3 / 2) % Iop.cols()];
-      Eop(i, j) = vEop[(j - i + Dop.cols() * 3 / 2) % Eop.cols()];
+      Dop(i, j) =   vDop[(j - i + Dop.cols() * 3 / 2) % Dop.cols()];
+      Iop(i, j) = - vIop[(j - i + Dop.cols() * 3 / 2) % Iop.cols()];
+      Eop(i, j) =   vEop[(j - i + Dop.cols() * 3 / 2) % Eop.cols()];
     }
   Eop *= T(2);
   Mat newEop(Eop.rows() * 2, Eop.cols());

@@ -28,11 +28,11 @@ const double offsetx(.1);
 const double aroffset(.05);
 const int    M_TILT(32);
 const double psi(.025);
-const double psi2(.075);
+const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -148,6 +148,8 @@ int main(int argc, const char* argv[]) {
     mode = 14;
   else if(strcmp(argv[1], "tilt3") == 0)
     mode = 8;
+  else if(strcmp(argv[1], "habit2") == 0)
+    mode = 19;
   if(mode < 0) {
     usage();
     return - 1;
@@ -488,14 +490,36 @@ int main(int argc, const char* argv[]) {
       }
     }
     return 0;
+  case 19:
+    // habit2.
+    {
+      std::vector<typename simpleFile<double>::Vec3> pdst, psrc;
+      std::vector<typename simpleFile<double>::Veci3> poldst, polsrc;
+      if(argc < 5 || !file.loadobj(pdst, poldst, argv[4]) ||
+                     !file.loadobj(psrc, polsrc, argv[4])) {
+        usage();
+        return - 2;
+      }
+      matchPartialPartial<double> statmatch;
+      const auto match(statmatch.match(pdst, psrc));
+      for(int i = 0; i < nshow; i ++) {
+        const auto mhull0(redig.delaunay2(pdst, match[i].dstpoints));
+        const auto mhull1(match[i].hull(match[i].srcpoints, match[i].reverseHull(match[i].dstpoints, mhull0)));
+        file.saveobj(redig.takeShape(pdst, psrc, match[i], mhull0, mhull1, double(.5)),
+                     poldst, (argv[3] + std::string("-emph-") + to_string(i) +
+                                        std::string(".obj")).c_str());
+      }
+    }
+    return 0;
   case 15:
     // match 3d with bone.
     {
-      std::vector<std::vector<typename simpleFile<double>::Vec3> > datapoly;
+      std::vector<std::vector<typename simpleFile<double>::Vec3> >  datapoly;
       std::vector<std::vector<typename simpleFile<double>::Veci3> > polynorms;
-      std::vector<typename simpleFile<double>::Vec3> center;
+      std::vector<typename simpleFile<double>::Veci4> bone;
+      std::vector<typename simpleFile<double>::Vec3>  center;
       typename simpleFile<double>::Mat bump0[3], mask0[3];
-      if(!file.loadglTF(datapoly, polynorms, center, argv[4]))
+      if(!file.loadglTF(datapoly, polynorms, center, bone, argv[4]))
         return - 2;
       if(!file.loadp2or3(bump0, argv[5]))
         return - 2;
@@ -504,7 +528,7 @@ int main(int argc, const char* argv[]) {
       std::vector<double> emph;
       for(int i = 0; i <= nemph; i ++)
         emph.push_back(double(i) / nemph * Memph);
-      std::vector<typename simpleFile<double>::Vec3> shape;
+      std::vector<typename simpleFile<double>::Vec3>  shape;
       std::vector<typename simpleFile<double>::Veci3> delau;
       auto& bump(bump0[0]);
       redig.getTileVec(bump, shape, delau);
@@ -512,22 +536,12 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<double>::Mat zero[3];
       for(int i = 0; i < 3; i ++)
         zero[i] = bump * double(0);
-      matchPartialPartial<double> statmatch;
-      for(int i = 0; i < datapoly.size(); i ++) {
-      if(!datapoly[i].size()) continue;
-      const auto matches(statmatch.match(shape, datapoly[i]));
-      if(! matches[0].isValid()) continue;
+      matchWholePartial<double> wholematch;
+      const auto matches(wholematch.match(shape, datapoly, center, bone));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
-        std::vector<typename simpleFile<double>::Vec3> mdatapoly;
-        mdatapoly.reserve(datapoly[i].size());
-        auto match(matches[n]);
-        for(int k = 0; k < datapoly[i].size(); k ++)
-          mdatapoly.push_back(match.transform(datapoly[i][k]) / match.ratio);
-        match.rot    *= match.rot.transpose();
-        match.offset *= double(0);
-        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(i), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
-      }
+        for(int m = 0; m < matches[n].size(); m ++)
+          saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), matches[n][m], shape, datapoly[m], data, zero, bump, zero[0], emph);
       }
     }
     break;
