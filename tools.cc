@@ -227,7 +227,9 @@ int main(int argc, const char* argv[]) {
         data[2] += lwork;
         sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
         dwork = redig.div2(dwork);
-        if(! (dwork.rows() <= sizes[i].first &&
+        if(! (dwork.rows() == sizes[i].first / 2 &&
+              dwork.cols() == sizes[i].second / 2 &&
+              dwork.rows() <= sizes[i].first &&
               dwork.cols() <= sizes[i].second) )
           break;
       }
