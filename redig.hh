@@ -20,6 +20,7 @@
 #include <Eigen/LU>
 #endif
 
+#include <complex>
 #include <cmath>
 #include <vector>
 template <typename T> class match_t;
@@ -94,6 +95,7 @@ template <typename T> class reDig {
 public:
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
+  typedef SimpleMatrix<complex<T> > MatU;
   typedef SimpleMatrix<T> Mat4x4;
   typedef SimpleMatrix<T> Mat3x3;
   typedef SimpleMatrix<T> Mat2x2;
@@ -103,6 +105,7 @@ public:
   typedef SimpleVector<int> Veci3;
 #else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> MatU;
   typedef Eigen::Matrix<T, 4, 4>                           Mat4x4;
   typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
   typedef Eigen::Matrix<T, 2, 2>                           Mat2x2;
@@ -130,6 +133,8 @@ public:
   Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2xz(const Mat rgb[3]);
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
+  Mat  div2(const Mat& in);
+  Mat  round2(const Mat& in, const int& h, const int& w);
   Mat  normalize(const Mat& data, const T& upper);
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
@@ -801,6 +806,33 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, con
       }
   }
   return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::div2(const Mat& in) {
+  assert(0 < in.rows() / 2 && 0 < in.cols() / 2);
+  Mat result(in.rows() / 2, in.cols() / 2);
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++) {
+      int cnt(0);
+      result(i, j) = T(0);
+      for(int ii = i * 2; ii < min(i * 2 + 2, int(in.rows())); ii ++)
+        for(int jj = j * 2; jj < min(j * 2 + 2, int(in.cols())); jj ++) {
+          result(i, j) += in(ii, jj);
+          cnt ++;
+        }
+      result(i, j) /= cnt;
+    }
+  return result;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::round2(const Mat& in, const int& h, const int& w) {
+  assert(h / 2 == in.rows() / 2 && w / 2 == in.cols() / 2 &&
+         h <= in.rows() && w <= in.cols());
+  Mat result(h, w);
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = in(i, j);
+  return result;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data, const T& upper) {

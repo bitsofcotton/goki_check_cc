@@ -23,6 +23,7 @@ const int    nemph(2);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
+const int    mpbump(4);
 const double rz(1 / 6.);
 const double offsetx(.1);
 const double aroffset(.05);
@@ -32,7 +33,7 @@ const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -116,6 +117,8 @@ int main(int argc, const char* argv[]) {
     mode = 18;
   else if(strcmp(argv[1], "bump") == 0)
     mode = 2;
+  else if(strcmp(argv[1], "pbump") == 0)
+    mode = 20;
   else if(strcmp(argv[1], "obj") == 0)
     mode = 7;
   else if(strcmp(argv[1], "bump2") == 0)
@@ -208,6 +211,26 @@ int main(int argc, const char* argv[]) {
       const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
       data[1] = data[2] = data[0] = xye;
       // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2l(data), false), bump.BUMP_BOTH), true, xye);
+    }
+    break;
+  case 20:
+    {
+      // pbump : persistent bump.
+      auto dwork(redig.rgb2l(data));
+      enlarger2ex<double> bump;
+      data[0] = data[1] = data[2] *= double(0);
+      std::vector<std::pair<int, int> > sizes;
+      for(int i = 0; i < mpbump; i ++) {
+        auto lwork(bump.compute(dwork, bump.BUMP_BOTH));
+        for(int j = 0; j < i; j ++)
+          lwork = redig.round2(bump.compute(lwork, bump.ENLARGE_BOTH), sizes[sizes.size() - j - 1].first, sizes[sizes.size() - j - 1].second);
+        data[2] += lwork;
+        sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
+        dwork = redig.div2(dwork);
+        if(dwork.rows() <= 2 || dwork.cols() <= 2)
+          break;
+      }
+      data[0] = data[1] = data[2];
     }
     break;
   case 7:
