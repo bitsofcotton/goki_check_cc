@@ -40,6 +40,9 @@ Freeze 前の細かな実装のチェックをしています。
     # make 2d to 3d pseudo bumpmap
     ./tools bump input.ppm output.ppm
     
+    # make 2d to 3d persistent pseudo bumpmap
+    ./tools pbump input.ppm output.ppm
+    
     # bumpmap to .obj file
     ./tools obj input-bump.ppm output.obj
     
@@ -89,7 +92,7 @@ enlarger2ex はもっともらしいバンプマップを返しますが、正�
 ほとんどの場合では複数台のカメラを使えば正しいバンプマップを返すことができます。
 (それができない場合には画像や色の解像度が足りないか、鏡など角度によって異なる色を返すものや、散乱やフォグなどの光学的事象がある際です)
 
-また、このプログラムは大域的には平坦なバンプマップを返します。(これはスケール別に適用し直すと恐らく補正できます)。
+また、このプログラムは大域的には平坦なバンプマップを返します。(これはスケール別に適用し直すと恐らく補正できます pbump コマンドを試してみてください)。
 これにより、合致の際に使用される模型が薄くなりすぎて合致されない可能性があります。
 
 # その他のダウンロードサイト

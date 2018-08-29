@@ -41,6 +41,9 @@ Checking details of implementation before to freeze the library.
     # make 2d to 3d pseudo bumpmap
     ./tools bump input.ppm output.ppm
     
+    # make 2d to 3d persistent pseudo bumpmap
+    ./tools pbump input.ppm output.ppm
+    
     # bumpmap to .obj file.
     ./tools obj input-bump.ppm output.obj
     
@@ -88,7 +91,7 @@ enlarger2ex generates the bumpmap that is pseudo plausible one because of one im
 Pseudo condition is avoidable on very wide cases with multiple camera conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 
-And, generated bumpmap is flat enough in global, (this might be corrected by summing up per scale conversions), so this causes match fails because of thin shapes.
+And, generated bumpmap is flat enough in global, (this might be corrected by summing up per scale conversions : try pbump command), so this causes match fails because of thin shapes.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
