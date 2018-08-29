@@ -826,9 +826,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::div2(const Mat& in) {
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::round2(const Mat& in, const int& h, const int& w) {
-  assert(h / 2 == in.rows() / 2 && w / 2 == in.cols() / 2 &&
-         h <= in.rows() && w <= in.cols());
-  Mat result(h, w);
+  Mat result(min(h, int(in.rows())), min(w, int(in.cols())));
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = in(i, j);

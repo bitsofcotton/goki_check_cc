@@ -224,13 +224,13 @@ int main(int argc, const char* argv[]) {
         auto lwork(bump.compute(dwork, bump.BUMP_BOTH));
         for(int j = 0; j < i; j ++)
           lwork = redig.round2(bump.compute(lwork, bump.ENLARGE_BOTH), sizes[i - j - 1].first, sizes[i - j - 1].second);
-        data[2] += lwork;
+        if(lwork.rows() == data[2].rows() && lwork.cols() == data[2].cols())
+          data[2] += lwork;
+        else
+          break;
         sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
         dwork = redig.div2(dwork);
-        if(! (dwork.rows() == sizes[i].first / 2 &&
-              dwork.cols() == sizes[i].second / 2 &&
-              dwork.rows() * 2 <= sizes[i].first &&
-              dwork.cols() * 2 <= sizes[i].second) )
+        if(dwork.rows() < 3 || dwork.cols() < 3)
           break;
       }
       data[0] = data[1] = data[2];
