@@ -223,11 +223,12 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < mpbump; i ++) {
         auto lwork(bump.compute(dwork, bump.BUMP_BOTH));
         for(int j = 0; j < i; j ++)
-          lwork = redig.round2(bump.compute(lwork, bump.ENLARGE_BOTH), sizes[sizes.size() - j - 1].first, sizes[sizes.size() - j - 1].second);
+          lwork = redig.round2(bump.compute(lwork, bump.ENLARGE_BOTH), sizes[i - j - 1].first, sizes[i - j - 1].second);
         data[2] += lwork;
         sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
         dwork = redig.div2(dwork);
-        if(dwork.rows() <= 2 || dwork.cols() <= 2)
+        if(! (dwork.rows() <= sizes[i].first &&
+              dwork.cols() <= sizes[i].second) )
           break;
       }
       data[0] = data[1] = data[2];
