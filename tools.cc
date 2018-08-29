@@ -229,8 +229,8 @@ int main(int argc, const char* argv[]) {
         dwork = redig.div2(dwork);
         if(! (dwork.rows() == sizes[i].first / 2 &&
               dwork.cols() == sizes[i].second / 2 &&
-              dwork.rows() <= sizes[i].first &&
-              dwork.cols() <= sizes[i].second) )
+              dwork.rows() * 2 <= sizes[i].first &&
+              dwork.cols() * 2 <= sizes[i].second) )
           break;
       }
       data[0] = data[1] = data[2];
