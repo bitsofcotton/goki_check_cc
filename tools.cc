@@ -225,7 +225,7 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < i; j ++)
           lwork = redig.round2(bump.compute(lwork, bump.ENLARGE_BOTH), sizes[i - j - 1].first, sizes[i - j - 1].second);
         if(lwork.rows() == data[2].rows() && lwork.cols() == data[2].cols())
-          data[2] += lwork;
+          data[2] += lwork * pow(double(2), i);
         else
           break;
         sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
