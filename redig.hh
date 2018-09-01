@@ -810,7 +810,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, con
 
 template <typename T> typename reDig<T>::Mat reDig<T>::div2(const Mat& in) {
   assert(0 < in.rows() / 2 && 0 < in.cols() / 2);
-  Mat result(in.rows() / 2, in.cols() / 2);
+  Mat result((in.rows() + 1) / 2, (in.cols() + 1) / 2);
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++) {
       int cnt(0);
