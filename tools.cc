@@ -23,10 +23,11 @@ const int    nemph(2);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
-const int    mpbump(4);
+const int    mpbump(6);
 const double rz(1 / 6.);
 const double offsetx(.1);
-const double aroffset(.05);
+const double aroffset(.01);
+const double arrot(.025);
 const int    M_TILT(32);
 const double psi(.025);
 const double psi2(.1);
@@ -296,25 +297,36 @@ int main(int argc, const char* argv[]) {
   case 14:
     // tilt2
     {
-      typename simpleFile<double>::Mat bump[3], out[3];
+      typename simpleFile<double>::Mat bump[3], data2[2][3], out[3];
       if(!file.loadp2or3(bump, argv[4]))
         return - 2;
+      data2[0][0] = data2[0][1] = data2[0][2] = data2[1][0] = data2[1][1] = data2[1][2] = bump[0] * 0.;
       for(int i = 0; i < bump[0].rows(); i ++)
         for(int j = 0; j < bump[0].cols(); j ++) {
           const int jj(- offsetx * bump[0].cols() + j);
-          if(0 <= jj && jj < bump[0].cols())
+          if(0 <= jj && jj < bump[0].cols()) {
             bump[0](i, j) = bump[2](i, jj);
-          else
+            for(int k = 0; k < 3; k ++)
+              data2[0][k](i, j) = data[k](i, j);
+          } else {
             bump[0](i, j) = 0.;
+            for(int k = 0; k < 3; k ++)
+              data2[0][k](i, j) = 0.;
+          }
           const int jj2(offsetx * bump[0].cols() + j);
-          if(0 <= jj2 && jj2 < bump[0].cols())
+          if(0 <= jj2 && jj2 < bump[0].cols()) {
             bump[1](i, j) = bump[2](i, jj2);
-          else
+            for(int k = 0; k < 3; k ++)
+              data2[1][k](i, j) = data[k](i, j);
+          } else {
             bump[1](i, j) = 0.;
+            for(int k = 0; k < 3; k ++)
+              data2[1][k](i, j) = 0.;
+          }
         }
       for(int i = 0; i < 2; i ++) {
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data[j], bump[i % 2], i, 2, psi);
+          out[j] = redig.tilt(data2[i % 2][j], bump[i % 2], i, 2, psi);
         std::string outfile(argv[3]);
         const char* names[2] = {"-L.ppm", "-R.ppm"};
         outfile += std::string(names[i % 2]);

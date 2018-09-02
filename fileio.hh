@@ -43,6 +43,9 @@ using std::sqrt;
 using std::vector;
 using std::pair;
 using std::make_pair;
+using std::atan2;
+
+template <typename T> class match_t;
 
 template <typename T> class simpleFile {
 public:
@@ -174,7 +177,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2), const T& aroffset = T(.2)) {
+  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2), const T& aroffset = T(.2), const T& arrot = T(.025)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -192,8 +195,41 @@ public:
       }
       if(arout) {
         assert(!addstand);
-        for(int i = 0; i < data.size(); i ++)
-          output << "v " << aroffset + (data[i][1] - Mh / T(2)) / sqrt(Mh * Mh + Mw * Mw) << " " << (Mw / T(2) - data[i][0]) / sqrt(Mh * Mh + Mw * Mw) << " " << - (data[i][2] + lz / T(2)) / sqrt(Mh * Mh + Mw * Mw) - T(.5) << endl;
+        match_t<T> m;
+        m.offset[1] += aroffset;
+        m.offset[2] -= T(.5);
+        const T Pi(T(4) * atan2(T(1), T(1)));
+        const T theta(2. * Pi * (aroffset < T(0) ? 0 : 1) / T(2));
+        const T lpsi(Pi * arrot);
+        Mat3x3 R0(3, 3);
+        Mat3x3 R1(3, 3);
+        R0(0, 0) =   cos(theta);
+        R0(0, 1) = - sin(theta);
+        R0(0, 2) = 0.;
+        R0(1, 0) =   sin(theta);
+        R0(1, 1) =   cos(theta);
+        R0(1, 2) = 0.;
+        R0(2, 0) = 0.;
+        R0(2, 1) = 0.;
+        R0(2, 2) = 1.;
+        R1(0, 0) = 1.;
+        R1(0, 1) = 0.;
+        R1(0, 2) = 0.;
+        R1(1, 0) = 0.;
+        R1(1, 1) =   cos(lpsi);
+        R1(1, 2) = - sin(lpsi);
+        R1(2, 0) = 0.;
+        R1(2, 1) =   sin(lpsi);
+        R1(2, 2) =   cos(lpsi);
+        m.rot    = R0.transpose() * R1 * R0;
+        for(int i = 0; i < data.size(); i ++) {
+          Vec3 workv(3);
+          workv[0] =   (  Mw / T(2) - data[i][0]) / sqrt(Mh * Mh + Mw * Mw);
+          workv[1] =   (- Mh / T(2) + data[i][1]) / sqrt(Mh * Mh + Mw * Mw);
+          workv[2] = - (  lz / T(2) + data[i][2]) / sqrt(Mh * Mh + Mw * Mw);
+          workv    = m.transform(workv);
+          output << "v " << workv[1] << " " << workv[0] << " " << workv[2] << endl;
+        }
       } else if(addstand) {
         for(int i = 0; i < data.size(); i ++)
           output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + zs - lz << endl;
