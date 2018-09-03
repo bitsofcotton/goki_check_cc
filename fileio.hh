@@ -419,18 +419,31 @@ public:
         fx::gltf::Primitive const & primitive = mesh.primitives[primitiveIndex];
         BufferInfo m_vertexBuffer;
         BufferInfo m_jointBuffer;
+        BufferInfo m_weightBuffer;
+        bool found_pos(false);
+        bool found_joint(false);
+        bool found_weight(false);
         fx::gltf::Accessor::ComponentType jointType;
         for (auto const & attrib : primitive.attributes)
-          if (attrib.first == "POSITION") {
+          if (attrib.first == std::string("POSITION")) {
             m_vertexBuffer = GetData(doc, doc.accessors[attrib.second]);
             assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::Float);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec3);
-          } else if(attrib.first == "JOINTS_0") {
+            found_pos = true;
+          } else if(attrib.first == std::string("JOINTS_0")) {
             m_jointBuffer = GetData(doc, doc.accessors[attrib.second]);
             jointType     = doc.accessors[attrib.second].componentType;
-            assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::UnsignedByte || doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::UnsignedShort);
+            assert(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte ||
+                   jointType == fx::gltf::Accessor::ComponentType::UnsignedShort);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
+            found_joint = true;
+          } else if(attrib.first == std::string("WEIGHTS_0")) {
+            m_weightBuffer = GetData(doc, doc.accessors[attrib.second]);
+            assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::UnsignedFloat);
+            assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
+            found_weight = true;
           }
+        assert(found_pos && found_joint && found_weight);
         for(int cIdx = 0; cIdx < center.size(); cIdx ++) {
           vector<Vec3>  vertices;
           vector<Veci3> indices;
@@ -438,20 +451,26 @@ public:
           lbone[0] = lbone[1] = lbone[2] = lbone[3] = - 1;
           for(int i = 0; i < m_vertexBuffer.DataStride; i ++) {
             bool idx_match(false);
-            for(int j = 0; j < 4; j ++)
+            Vec3 lweight;
+            for(int j = 0; j < 4; j ++) {
               if(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte) {
                 unsigned char c = *(unsigned char*)(&m_jointBuffer.Data[4 * i + j]);
                 lbone[j]   = static_cast<int>(c);
+                assert(0 <= lbone[j] && lbone[j] < center.size());
                 idx_match |= static_cast<int>(c) == cIdx;
               } else if(jointType == fx::gltf::Accessor::ComponentType::UnsignedShort) {
                 unsigned short c = *(unsigned short*)(&m_jointBuffer.Data[4 * 2 * i + 2 * j]);
                 lbone[j]   = static_cast<int>(c);
+                assert(0 <= lbone[j] && lbone[j] < center.size());
                 idx_match |= static_cast<int>(c) == cIdx;
               }
+              lweight[j] = Vec3(3);
+              lweight[j] = T(*(float*)(&m_weightBuffer.Data[4 * 4 * i + 4 * j));
+            }
             if(idx_match) {
               Vec3 work(3);
               for(int j = 0; j < 3; j ++)
-                work[j] = *(float*)(&m_vertexBuffer.Data[4 * 3 * i + j]);
+                work[j] = T(*(float*)(&m_vertexBuffer.Data[3 * 4 * i + 4 * j]));
               vertices.push_back(work);
             }
           }
