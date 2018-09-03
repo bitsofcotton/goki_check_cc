@@ -199,7 +199,7 @@ public:
         m.offset[1] += aroffset;
         m.offset[2] -= T(.5);
         const T Pi(T(4) * atan2(T(1), T(1)));
-        const T theta(2. * Pi * (aroffset < T(0) ? 0 : 1) / T(2));
+        const T theta(2. * Pi * T(aroffset < T(0) ? 0 : 1) / T(2));
         const T lpsi(Pi * arrot);
         Mat3x3 R0(3, 3);
         Mat3x3 R1(3, 3);
