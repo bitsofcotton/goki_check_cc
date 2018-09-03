@@ -29,12 +29,15 @@ const double offsetx(.1);
 const double aroffset(.01);
 const double arrot(.025);
 const int    M_TILT(32);
+const int    M_TILTROT(8);
+const double tiltrots(.001);
+const double tiltrote(.1);
 const double psi(.025);
 const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -152,6 +155,8 @@ int main(int argc, const char* argv[]) {
     mode = 14;
   else if(strcmp(argv[1], "tilt3") == 0)
     mode = 8;
+  else if(strcmp(argv[1], "tiltp") == 0)
+    mode = 22;
   else if(strcmp(argv[1], "habit2") == 0)
     mode = 19;
   else if(strcmp(argv[1], "drawgltf") == 0)
@@ -614,6 +619,50 @@ int main(int argc, const char* argv[]) {
       }
     }
     return - 1;
+  case 22:
+    // tiltp
+    {
+      typename simpleFile<double>::Mat bump[3], data2[2][3], out[3];
+      if(!file.loadp2or3(bump, argv[4]))
+        return - 2;
+      data2[0][0] = data2[0][1] = data2[0][2] = data2[1][0] = data2[1][1] = data2[1][2] = bump[0] * 0.;
+      for(int i = 0; i < bump[0].rows(); i ++)
+        for(int j = 0; j < bump[0].cols(); j ++) {
+          const int jj(- offsetx * bump[0].cols() + j);
+          if(0 <= jj && jj < bump[0].cols()) {
+            bump[0](i, j) = bump[2](i, jj);
+            for(int k = 0; k < 3; k ++)
+              data2[0][k](i, j) = data[k](i, j);
+          } else {
+            bump[0](i, j) = 0.;
+            for(int k = 0; k < 3; k ++)
+              data2[0][k](i, j) = 0.;
+          }
+          const int jj2(offsetx * bump[0].cols() + j);
+          if(0 <= jj2 && jj2 < bump[0].cols()) {
+            bump[1](i, j) = bump[2](i, jj2);
+            for(int k = 0; k < 3; k ++)
+              data2[1][k](i, j) = data[k](i, j);
+          } else {
+            bump[1](i, j) = 0.;
+            for(int k = 0; k < 3; k ++)
+              data2[1][k](i, j) = 0.;
+          }
+        }
+      for(int k = 0; k < M_TILTROT; k ++) {
+        for(int i = 0; i < 2; i ++) {
+          for(int j = 0; j < 3; j ++)
+            out[j] = redig.tilt(data2[i % 2][j], bump[i % 2], i, 2, (tiltrote * k + tiltrots * (M_TILTROT - k - 1)) / M_TILTROT);
+          std::string outfile(argv[3]);
+          outfile += std::string("-") + std::to_string(k);
+          const char* names[2] = {"-L.ppm", "-R.ppm"};
+          outfile += std::string(names[i % 2]);
+          file.savep2or3(outfile.c_str(), out, false);
+        }
+      }
+      return 0;
+    }
+    break;
   default:
     usage();
     return - 1;

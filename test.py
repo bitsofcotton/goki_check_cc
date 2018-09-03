@@ -3,6 +3,7 @@
 import os
 import sys
 import subprocess
+import glob
 import numpy as np
 
 argv = sys.argv
@@ -78,6 +79,18 @@ for line in argv[3:]:
   elif(argv[2] == "tilt"):
     subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base", root + "-bump.ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
+  elif(argv[2] == "flicker"):
+    subprocess.call([argv[1], "tiltp", root + ".ppm", root + "-tiltrot-base", root + "-bump.ppm"])
+    files = []
+    for s in range(0, 200):
+      file = glob.glob(root + "-tiltrot-base-" + str(s) + "-[LR].ppm")
+      if(len(file) < 2):
+        break
+      files.append(root + "-" + str(s) + "-tr.png")
+      subprocess.call(["montage", file[0], file[1], "-geometry", "100%x100%", files[- 1]])
+    for s in range(0, len(files)):
+      subprocess.call(["cp", files[len(files) - s - 1], root + "-" + str(s + len(files)) + "-tr.png"])
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-%d-tr.png", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-tr.mp4"])
   elif(argv[2] == "extend"):
     subprocess.call([argv[1], "tilt3", root + ".ppm", root + "-tilt3", root + "-bump.ppm"])
     for s in range(0, 4):
