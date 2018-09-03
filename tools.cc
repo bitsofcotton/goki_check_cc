@@ -34,7 +34,7 @@ const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -154,6 +154,8 @@ int main(int argc, const char* argv[]) {
     mode = 8;
   else if(strcmp(argv[1], "habit2") == 0)
     mode = 19;
+  else if(strcmp(argv[1], "drawgltf") == 0)
+    mode = 21;
   if(mode < 0) {
     usage();
     return - 1;
@@ -583,6 +585,35 @@ int main(int argc, const char* argv[]) {
       }
     }
     break;
+  case 21:
+    {
+      std::vector<std::vector<typename simpleFile<double>::Vec3> >  datapoly;
+      std::vector<std::vector<typename simpleFile<double>::Veci3> > polynorms;
+      std::vector<typename simpleFile<double>::Veci4> bone;
+      std::vector<typename simpleFile<double>::Vec3>  center;
+      if(!file.loadglTF(datapoly, polynorms, center, bone, argv[4]))
+        return - 2;
+      match_t<double> m;
+      m.offset[0] += min(data[0].rows(), data[0].cols()) / 2.;
+      m.offset[1] += min(data[0].rows(), data[0].cols()) / 2.;
+      m.ratio     *= min(data[0].rows(), data[0].cols()) / 2.;
+      for(int i = 0; i < datapoly.size(); i ++)
+        for(int j = 0; j < datapoly[i].size(); j ++)
+          datapoly[i][j] = m.transform(datapoly[i][j]);
+      for(int i = 0; i < datapoly.size(); i ++) {
+        if(!datapoly[i].size()) continue;
+        cerr << i << ": " << endl;
+        for(int j = 0; j < datapoly[i].size(); j ++)
+          cerr << datapoly[i][j].transpose() << endl;
+        typename simpleFile<double>::Mat res[3];
+        std::vector<int> idx;
+        for(int j = 0; j < datapoly[i].size(); j ++)
+          idx.push_back(j);
+        res[0] = res[1] = res[2] = redig.showMatch(data[0] * 0., datapoly[i], polynorms[i], double(120));
+        file.savep2or3((std::string(argv[3]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), res, true);
+      }
+    }
+    return - 1;
   default:
     usage();
     return - 1;
