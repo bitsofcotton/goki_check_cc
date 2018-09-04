@@ -82,7 +82,6 @@ private:
   void xchg(Mat& a, Mat& b);
   U    I;
   T    Pi;
-  T    intensity;
   Mat  A;
   Mat  B;
   Mat  Dop;
@@ -98,8 +97,6 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  // artificial.
-  intensity = T(.05);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
