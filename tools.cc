@@ -185,11 +185,12 @@ int main(int argc, const char* argv[]) {
   case 18:
     {
       // enlarge.
-      enlarger2ex<double> enlargerx, enlargery, denlarger;
-      for(int i = 0; i < 3; i ++) {
-        const auto xye(enlargery.compute(enlargery.compute(enlargerx.compute(enlargerx.compute(data[i], enlargerx.ENLARGE_X), enlargerx.ENLARGE_X), enlargery.ENLARGE_Y), enlargery.ENLARGE_Y));
-        data[i] = xye + redig.tilt45(denlarger.compute(denlarger.compute(denlarger.compute(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_X), denlarger.ENLARGE_X), denlarger.ENLARGE_Y), denlarger.ENLARGE_Y), true, xye);
-      }
+      enlarger2ex<double> enlarger, denlarger;
+      for(int j = 0; j < 4; j ++)
+        for(int i = 0; i < 3; i ++) {
+          const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
+          data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
+        }
     }
     break;
   case 4:
@@ -216,15 +217,15 @@ int main(int argc, const char* argv[]) {
     {
       // bump.
       enlarger2ex<double> bump;
-      const auto xye(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH));
+      const auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
       data[1] = data[2] = data[0] = xye;
-      // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2l(data), false), bump.BUMP_BOTH), true, xye);
+      // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye);
     }
     break;
   case 20:
     {
       // pbump : persistent bump.
-      auto dwork(redig.rgb2l(data));
+      auto dwork(redig.rgb2d(data));
       enlarger2ex<double> bump;
       data[0] = data[1] = data[2] *= double(0);
       std::vector<std::pair<int, int> > sizes;

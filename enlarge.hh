@@ -82,6 +82,7 @@ private:
   void xchg(Mat& a, Mat& b);
   U    I;
   T    Pi;
+  T    intensity;
   Mat  A;
   Mat  B;
   Mat  Dop;
@@ -97,6 +98,8 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
+  // artificial.
+  intensity = T(.05);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -250,9 +253,9 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 #endif
   for(int i = 0; i < Dop.rows(); i ++)
     for(int j = 0; j < Dop.cols(); j ++) {
-      Dop(i, j) =   vDop[(j - i + Dop.cols() * 3 / 2) % Dop.cols()];
-      Iop(i, j) = - vIop[(j - i + Dop.cols() * 3 / 2) % Iop.cols()];
-      Eop(i, j) =   vEop[(j - i + Dop.cols() * 3 / 2) % Eop.cols()];
+      Dop(i, j) =   vDop[getImgPt(j - i - size / 2, Dop.cols())];
+      Iop(i, j) = - vIop[getImgPt(j - i - size / 2, Dop.cols())];
+      Eop(i, j) =   vEop[getImgPt(j - i - size / 2, Dop.cols())];
     }
   Eop *= T(2);
   Mat newEop(Eop.rows() * 2, Eop.cols());
