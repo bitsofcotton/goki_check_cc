@@ -131,7 +131,9 @@ public:
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2l(const Mat rgb[3]);
+  Mat  rgb2d(const Mat rgb[3]);
   Mat  rgb2xz(const Mat rgb[3]);
+  void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
   Mat  div2(const Mat& in);
   Mat  round2(const Mat& in, const int& h, const int& w);
@@ -733,28 +735,43 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::rgb2l(const Mat rgb[3]) {
-  // CIE 1931 XYZ from wikipedia.org
-  auto r0(rgb[0]);
-  auto r1(rgb[1] * T(.81240  / .187697));
-  auto r2(rgb[2] * T(.010630 / .17697));
-  auto r01(r0 + r1);
-  auto r02(r01 + r2);
-  return r02;
+  Mat work[3];
+  rgb2xyz(work, rgb);
+  return work[0];
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::rgb2xz(const Mat rgb[3]) {
-  // CIE 1931 XYZ from wikipedia.org
-  auto X(rgb[0] * .49000/.17697 + rgb[1] * .31000/.17697  + rgb[2] * .30000/.17697);
-  auto Y(rgb[0] * .17697/.17697 + rgb[1] * .81240/.17697  + rgb[2] * .010630/.17697);
-  auto Z(                         rgb[1] * .010000/.17697 + rgb[2] * .99000/.17697);
+template <typename T> typename reDig<T>::Mat reDig<T>::rgb2d(const Mat rgb[3]) {
+  Mat xyz[3];
+  rgb2xyz(xyz, rgb);
   Mat result(rgb[0].rows(), rgb[0].cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < rgb[0].rows(); j ++)
     for(int k = 0; k < rgb[0].cols(); k ++)
-      result(j, k) = sqrt(X(j, k) * X(j, k) + Z(j, k) * Z(j, k));
+      result(j, k) = sqrt(xyz[0](j, k) * xyz[0](j, k) + xyz[1](j, k) * xyz[1](j, k) + xyz[2](j, k) * xyz[2](j, k));
   return result;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::rgb2xz(const Mat rgb[3]) {
+  Mat xyz[3];
+  rgb2xyz(xyz, rgb);
+  Mat result(rgb[0].rows(), rgb[0].cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = 0; j < rgb[0].rows(); j ++)
+    for(int k = 0; k < rgb[0].cols(); k ++)
+      result(j, k) = sqrt(xyz[1](j, k) * xyz[1](j, k) + xyz[2](j, k) * xyz[2](j, k));
+  return result;
+}
+
+template <typename T> void reDig<T>::rgb2xyz(Mat xyz[3], const Mat rgb[3]) {
+  // CIE 1931 XYZ from wikipedia.org
+  xyz[0] = rgb[0] * .49000/.17697 + rgb[1] * .31000/.17697  + rgb[2] * .30000/.17697;
+  xyz[1] = rgb[0] * .17697/.17697 + rgb[1] * .81240/.17697  + rgb[2] * .010630/.17697;
+  xyz[2] =                          rgb[1] * .010000/.17697 + rgb[2] * .99000/.17697;
+  return;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, const bool& invert, const Mat& orig) {
