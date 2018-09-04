@@ -49,7 +49,8 @@ for line in argv[3:]:
   if(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
-    subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl.ppm"])
+    subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl-0.ppm"])
+    subprocess.call(["convert", root + "-enl-0.ppm", "-contrast", "-contrast", "-auto-level", "-auto-gamma", root + "-enl.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pbump"):
@@ -111,8 +112,8 @@ for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(int(100. / pixels * 100) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
     s0 = int(np.ceil(np.log(pixels) / np.log(2.)))
     for s in range(0, s0):
-      subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + ".ppm"])
-    subprocess.call(["convert", root + "-" + str(s0) + ".ppm", "-blur", str(s0 / 2.) + "x" + str(s0), "-unsharp", str(s0) + "x" + str(s0 * 2), "-compress", "none", root + "-" + str(s0 + 1) + ".ppm"])
+      subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s) + "-0.ppm"])
+      subprocess.call(["convert", root + "-" + str(s) + "-0.ppm", "-contrast", "-contrast", "-auto-level", "-auto-gamma", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
