@@ -568,7 +568,7 @@ public:
   ~matchWholePartial();
   void init(const int& ndiv, const T& threshp, const T& threshs);
 
-  vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<Veci4>& bones, const int& ntry = 6);
+  vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<vector<Veci4> >& bones, const int& ntry = 6);
 private:
   U   I;
   T   Pi;
@@ -594,7 +594,7 @@ template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& 
   return;
 }
 
-template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<Veci4>& bones, const int& ntry) {
+template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<vector<Veci4> >& bones, const int& ntry) {
   assert(points.size() == origins.size());
   vector<vector<match_t<T> > > pmatches;
   matchPartialPartial<T> pmatch(ndiv, threshp, threshs);
@@ -608,25 +608,29 @@ template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(c
     lmatch.push_back(pmatches[0][i0]);
     for(int i = 1; i < pmatches.size(); i ++) {
       if(pmatches[i].size()) {
-        T m(0);
-        for(int j = 0; j < 4; j ++)
-          if(0 <= bones[i][j] && bones[i][j] < i)
-            m += lmatch[bones[i][j]].distance(pmatches[i][0], origins[i]);
-        int idx = 0;
-        T   llratio(max(abs(pmatches[i][0].ratio) / abs(lmatch[i - 1].ratio), abs(lmatch[i - 1].ratio) / abs(pmatches[i][0].ratio)));
-        for(int k = 1; k < pmatches[i].size(); k ++) {
-          T lscore(0);
-          T lratio(1);
-          for(int j = 0; j < 4; j ++)
-            if(0 <= bones[i][j] && bones[i][j] < i) {
-              lscore += lmatch[bones[i][j]].distance(pmatches[i][k], origins[i]);
-              lratio *= max(abs(pmatches[i][idx].ratio) / abs(lmatch[bones[i][j]].ratio), abs(lmatch[bones[i][j]].ratio) / abs(pmatches[i][idx].ratio));
-            }
-        int idx = 0;
-          if(lscore < m && (lratio <= llratio || lratio < T(1) + threshs)) {
-            m       = lscore;
-            llratio = lratio;
-            idx     = k;
+        int idx(0);
+        T   m(0);
+        T   lratio(1);
+        for(int k = 0; k < pmatches[i].size(); k ++) {
+          T lm(0);
+          T llratio(1);
+          vector<int> boneidxs;
+          for(int j = 0; j < pmatches[i][0].srcpoints.size(); j ++) {
+            const auto& work(bones[i][pmatches[i][0].srcpoints[j]]);
+            for(int k = 0; k < work.size(); k ++)
+              if(0 <= work[k])
+                boneidxs.push_back(work[k]);
+          }
+          sort(boneidxs.begin(), boneidxs.end());
+          boneidxs.erase(unique(boneidxs.begin(), boneidxs.end()), boneidxs.end());
+          for(int j = 0; j < boneidxs.size(); j ++) {
+            lm      += lmatch[boneidxs[j]].distance(pmatches[i][0], origins[i]);
+            llratio *= max(abs(pmatches[i][0].ratio) / abs(lmatch[boneidxs[j]].ratio), abs(lmatch[boneidxs[j]].ratio) / abs(pmatches[i][0].ratio));
+          }
+          if(!k || (m < lm && (llratio <= lratio || llratio < T(1) + threshs))) {
+            m      = lm;
+            lratio = llratio;
+            idx    = k;
           }
         }
         lmatch.push_back(pmatches[i][idx]);

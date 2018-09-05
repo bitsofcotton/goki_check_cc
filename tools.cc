@@ -178,7 +178,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> enlarger, denlarger;
       for(int i = 0; i < 3; i ++) {
         const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-        data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
+        data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
       }
     }
     break;
@@ -239,7 +239,7 @@ int main(int argc, const char* argv[]) {
           break;
         sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
         dwork = redig.div2(dwork);
-        if(dwork.rows() < 3 || dwork.cols() < 3)
+        if(dwork.rows() < 12 || dwork.cols() < 12)
           break;
       }
       data[0] = data[1] = data[2];
@@ -562,7 +562,7 @@ int main(int argc, const char* argv[]) {
     {
       std::vector<std::vector<typename simpleFile<double>::Vec3> >  datapoly;
       std::vector<std::vector<typename simpleFile<double>::Veci3> > polynorms;
-      std::vector<typename simpleFile<double>::Veci4> bone;
+      std::vector<std::vector<typename simpleFile<double>::Veci4> > bone;
       std::vector<typename simpleFile<double>::Vec3>  center;
       typename simpleFile<double>::Mat bump0[3], mask0[3];
       if(!file.loadglTF(datapoly, polynorms, center, bone, argv[4]))
@@ -595,7 +595,7 @@ int main(int argc, const char* argv[]) {
     {
       std::vector<std::vector<typename simpleFile<double>::Vec3> >  datapoly;
       std::vector<std::vector<typename simpleFile<double>::Veci3> > polynorms;
-      std::vector<typename simpleFile<double>::Veci4> bone;
+      std::vector<std::vector<typename simpleFile<double>::Veci4> > bone;
       std::vector<typename simpleFile<double>::Vec3>  center;
       if(!file.loadglTF(datapoly, polynorms, center, bone, argv[4]))
         return - 2;
@@ -609,8 +609,11 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < datapoly.size(); i ++) {
         if(!datapoly[i].size()) continue;
         cerr << i << ": " << endl;
-        for(int j = 0; j < datapoly[i].size(); j ++)
-          cerr << datapoly[i][j].transpose() << endl;
+        for(int j = 0; j < datapoly[i].size(); j ++) {
+          for(int k = 0; k < datapoly[i][j].size(); k ++)
+            cerr << datapoly[i][j][k] << ", ";
+          cerr << endl;
+        }
         typename simpleFile<double>::Mat res[3];
         std::vector<int> idx;
         for(int j = 0; j < datapoly[i].size(); j ++)
