@@ -397,13 +397,13 @@ public:
   }
 #endif
   
-  bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, vector<Vec3>& center, vector<Veci4>& bone, const char* filename) {
+  bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone, const char* filename) {
 #if defined(_WITH_GLTF2_)
     data   = vector<vector<Vec3> >();
     polys  = vector<vector<Veci3> >();
     center = vector<Vec3>();
-    bone   = vector<Veci4>();
-    fx::gltf::Document doc = fx::gltf::LoadFromText(filename);
+    bone   = vector<vector<Veci4> >();
+    const auto doc(fx::gltf::LoadFromText(filename));
     for(int nodeIndex = 0; nodeIndex < doc.nodes.size(); nodeIndex ++) {
       Vec3 lcenter(3);
       for(int i = 0; i < 3; i ++)
@@ -415,14 +415,12 @@ public:
     bone.resize(center.size());
     for(int meshIndex = 0; meshIndex < doc.meshes.size(); meshIndex ++)
       for(int primitiveIndex = 0; primitiveIndex < doc.meshes[meshIndex].primitives.size(); primitiveIndex ++) {
-        fx::gltf::Mesh const & mesh = doc.meshes[meshIndex];
-        fx::gltf::Primitive const & primitive = mesh.primitives[primitiveIndex];
+        const auto& mesh(doc.meshes[meshIndex]);
+        const auto& primitive(mesh.primitives[primitiveIndex]);
         BufferInfo m_vertexBuffer;
         BufferInfo m_jointBuffer;
-        BufferInfo m_weightBuffer;
         bool found_pos(false);
         bool found_joint(false);
-        bool found_weight(false);
         fx::gltf::Accessor::ComponentType jointType;
         for (auto const & attrib : primitive.attributes)
           if (attrib.first == std::string("POSITION")) {
@@ -437,22 +435,17 @@ public:
                    jointType == fx::gltf::Accessor::ComponentType::UnsignedShort);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
             found_joint = true;
-          } else if(attrib.first == std::string("WEIGHTS_0")) {
-            m_weightBuffer = GetData(doc, doc.accessors[attrib.second]);
-            assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::UnsignedFloat);
-            assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
-            found_weight = true;
           }
-        assert(found_pos && found_joint && found_weight);
+        assert(found_pos && found_joint);
         for(int cIdx = 0; cIdx < center.size(); cIdx ++) {
           vector<Vec3>  vertices;
           vector<Veci3> indices;
+          vector<Veci4> bones;
           Veci4         lbone(4);
           lbone[0] = lbone[1] = lbone[2] = lbone[3] = - 1;
           for(int i = 0; i < m_vertexBuffer.DataStride; i ++) {
             bool idx_match(false);
-            Vec3 lweight;
-            for(int j = 0; j < 4; j ++) {
+            for(int j = 0; j < 4; j ++)
               if(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte) {
                 unsigned char c = *(unsigned char*)(&m_jointBuffer.Data[4 * i + j]);
                 lbone[j]   = static_cast<int>(c);
@@ -464,14 +457,12 @@ public:
                 assert(0 <= lbone[j] && lbone[j] < center.size());
                 idx_match |= static_cast<int>(c) == cIdx;
               }
-              lweight[j] = Vec3(3);
-              lweight[j] = T(*(float*)(&m_weightBuffer.Data[4 * 4 * i + 4 * j));
-            }
             if(idx_match) {
               Vec3 work(3);
               for(int j = 0; j < 3; j ++)
                 work[j] = T(*(float*)(&m_vertexBuffer.Data[3 * 4 * i + 4 * j]));
               vertices.push_back(work);
+              bones.push_back(lbone);
             }
           }
           for(int i = 2; i < vertices.size(); i ++) {
@@ -483,7 +474,7 @@ public:
           }
           data[cIdx]  = vertices;
           polys[cIdx] = indices;
-          bone[cIdx]  = lbone;
+          bone[cIdx]  = bones;
         }
       }
     cerr << data.size() << "parts found." << endl;
