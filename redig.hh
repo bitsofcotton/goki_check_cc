@@ -135,6 +135,7 @@ public:
   Mat  rgb2xz(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
+  Mat  reversey(const Mat& in);
   Mat  div2(const Mat& in);
   Mat  round2(const Mat& in, const int& h, const int& w);
   Mat  normalize(const Mat& data, const T& upper);
@@ -822,6 +823,13 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, con
         res(y, x) = sum / cnt;
       }
   }
+  return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::reversey(const Mat& in) {
+  Mat res(in.rows(), in.cols());
+  for(int i = 0; i < in.rows(); i ++)
+    res.row(in.rows() - i - 1) = in.row(i);
   return res;
 }
 
