@@ -234,7 +234,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case EXTEND_Y:
     {
       initDop(data.rows() + 1);
-      result = Mat(data.rows() + 1, data.cols());
+      result = Mat(Dop.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -253,13 +253,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < result.cols(); i ++) {
         T a(0), b(0), c(0);
         for(int j = 0; j < data.rows(); j ++) {
-          const T aa(T(2) * Dop(j, data.rows()) - Dop(getImgPt(j - 1, result.rows()), data.rows()) - Dop(getImgPt(j + 1, result.rows()), data.rows()));
-          const T bb(T(2) * ddata(j, i) - ddata(getImgPt(j - 1, result.rows()), i) - ddata(getImgPt(j + 1, result.rows()), i));
+          const T aa(T(2) * Dop(j, Dop.rows() - 1) - Dop(getImgPt(j - 1, Dop.rows()), Dop.rows() - 1) - Dop(getImgPt(j + 1, Dop.rows()), Dop.rows() - 1));
+          const T bb(T(2) * ddata(j, i) - ddata(getImgPt(j - 1, ddata.rows()), i) - ddata(getImgPt(j + 1, ddata.rows()), i));
           a += aa * aa;
           b += aa * bb;
           c += bb * bb;
         }
-        if(b * b - a * c > T(0))
+        if(T(0) < b * b - a * c)
           result(data.rows(), i) = - b / a + sqrt(b * b - a * c) / a;
         else
           result(data.rows(), i) = - b / a;
@@ -267,7 +267,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       // XXX fixme: don't know why:
       result.row(data.rows()) /= T(2);
       for(int i = 0; i < result.cols(); i ++)
-        result(data.rows(), i) = max(T(0), min(T(1), result(result.rows() - 1, i)));
+        result(data.rows(), i) = max(T(0), min(T(1), result(data.rows(), i)));
     }
     break;
   default:
