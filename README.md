@@ -27,7 +27,8 @@ By searching with some word that is not common, there exists the article https:/
 Searching the Internet more...
 
 # Status
-Checking details of implementation before to freeze the library.
+Checking details of implementation before to freeze the library.  
+gltf2 compatibility is pre alpha.
 
 # Usage
     make tools
