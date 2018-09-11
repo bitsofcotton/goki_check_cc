@@ -37,7 +37,7 @@ const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -119,6 +119,8 @@ int main(int argc, const char* argv[]) {
     mode = 0;
   else if(strcmp(argv[1], "enlarge4") == 0)
     mode = 18;
+  else if(strcmp(argv[1], "pextend") == 0)
+    mode = 23;
   else if(strcmp(argv[1], "bump") == 0)
     mode = 2;
   else if(strcmp(argv[1], "pbump") == 0)
@@ -191,6 +193,16 @@ int main(int argc, const char* argv[]) {
           const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
         }
+    }
+    break;
+  case 23:
+    {
+      // extend.
+      enlarger2ex<double> extender, extender2;
+      const int count(sqrt(sqrt(double(data[0].rows() * data[0].cols()))));
+      for(int j = 0; j < count; j ++)
+        for(int i = 0; i < 3; i ++)
+          data[i] = redig.reversey(redig.reversey(extender2.compute(redig.reversey(redig.reversey(extender.compute(data[i], extender.EXTEND_BOTH)).transpose()), extender2.EXTEND_BOTH)).transpose());
     }
     break;
   case 4:
@@ -587,7 +599,8 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
         for(int m = 0; m < matches[n].size(); m ++)
-          saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), matches[n][m], shape, datapoly[m], data, zero, bump, zero[0], emph);
+          if(matches[n][m].dstpoints.size())
+            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), matches[n][m], shape, datapoly[m], data, zero, bump, zero[0], emph);
       }
     }
     break;

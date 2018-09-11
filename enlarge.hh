@@ -56,7 +56,10 @@ public:
     IDETECT_BOTH,
     BUMP_X,
     BUMP_Y,
-    BUMP_BOTH } direction_t;
+    BUMP_BOTH,
+    EXTEND_X,
+    EXTEND_Y,
+    EXTEND_BOTH } direction_t;
   typedef complex<T> U;
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
@@ -126,6 +129,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case BUMP_BOTH:
     result = (compute(data, BUMP_X)    + compute(data, BUMP_Y)) / 2.;
     break;
+  case EXTEND_BOTH:
+    result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
+              compute(compute(data, EXTEND_Y), EXTEND_X)) / 2.;
+    break;
   case ENLARGE_X:
     result = compute(data.transpose(), ENLARGE_Y).transpose();
     break;
@@ -143,6 +150,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
+    break;
+  case EXTEND_X:
+    result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
   case ENLARGE_FY:
     result = compute(compute(data, DETECT_Y), ENLARGE_Y);
@@ -219,6 +229,46 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(j, i) = (datadA(j, i) * dataB(j, i) - dataA(j, i) * datadB(j, i)) / max(dataB(j, i) * dataB(j, i), offset / T(256) / T(256));
       }
       result = compute(result, IDETECT_Y);
+    }
+    break;
+  case EXTEND_Y:
+    {
+      initDop(data.rows() + data.rows() % 2);
+      result = Mat(data.rows() + 1, data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(i) = data.row(i);
+      Mat data0(Dop.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 1; i < data0.rows(); i ++)
+        data0.row(i - 1) = data.row(i - data0.rows() + data.rows());
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < data.cols(); i ++)
+        data0(data0.rows() - 1, i) = T(0);
+      const auto ddata(Dop * data0);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.cols(); i ++) {
+        T a(0), b(0), c(0);
+        for(int j = 0; j < Dop.rows() - 1; j ++) {
+          const auto aa(T(2) * Dop(j, Dop.rows() - 1) - Dop(getImgPt(j - 1, result.rows()), Dop.rows() - 1) - Dop(getImgPt(j + 1, result.rows()), Dop.rows() - 1));
+          const auto bb(T(2) * ddata(j, i) - ddata(getImgPt(j - 1, result.rows()), i) - ddata(getImgPt(j + 1, result.rows()), i));
+          a += aa * aa;
+          b += aa * bb;
+        }
+        result(result.rows() - 1, i) = - b / a;
+      }
+      result.row(result.rows() - 1) *= sqrt(result.row(data.rows()).dot(result.row(data.rows())) / result.row(data.rows()).dot(result.row(data.rows())));
+      for(int i = 0; i < result.cols(); i ++)
+        result(result.rows() - 1, i) = max(T(0), min(T(1), result(result.rows() - 1, i)));
     }
     break;
   default:

@@ -92,6 +92,8 @@ for line in argv[3:]:
     for s in range(0, len(files)):
       subprocess.call(["cp", files[len(files) - s - 1], root + "-" + str(s + len(files)) + "-tr.png"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-%d-tr.png", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-tr.mp4"])
+  elif(argv[2] == "pextend"):
+    subprocess.call([argv[1], "pextend", root + ".ppm", root + "-pextend.ppm"])
   elif(argv[2] == "extend"):
     subprocess.call([argv[1], "tilt3", root + ".ppm", root + "-tilt3", root + "-bump.ppm"])
     for s in range(0, 4):
