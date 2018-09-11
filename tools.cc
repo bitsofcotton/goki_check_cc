@@ -23,7 +23,6 @@ const int    nemph(2);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
-const int    mpbump(6);
 const double rz(1 / 6.);
 const double offsetx(.1);
 const double aroffset(.01);
@@ -241,7 +240,7 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> bump;
       data[0] = data[1] = data[2] *= double(0);
       std::vector<std::pair<int, int> > sizes;
-      for(int i = 0; i < mpbump; i ++) {
+      for(int i = 0; 12 < dwork.rows() && 12 < dwork.cols(); i ++) {
         auto lwork(bump.compute(dwork, bump.BUMP_BOTH));
         for(int j = 0; j < i; j ++)
           lwork = redig.round2(bump.compute(lwork, bump.ENLARGE_BOTH), sizes[i - j - 1].first, sizes[i - j - 1].second);
@@ -251,8 +250,6 @@ int main(int argc, const char* argv[]) {
           break;
         sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
         dwork = redig.div2(dwork);
-        if(dwork.rows() < 12 || dwork.cols() < 12)
-          break;
       }
       data[0] = data[1] = data[2];
     }
