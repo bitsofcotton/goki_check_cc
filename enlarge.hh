@@ -233,7 +233,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case EXTEND_Y:
     {
-      initDop(data.rows() + data.rows() % 2);
+      initDop(data.rows() + 1);
       result = Mat(data.rows() + 1, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -241,34 +241,33 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i) = data.row(i);
-      Mat data0(Dop.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 1; i < data0.rows(); i ++)
-        data0.row(i - 1) = data.row(i - data0.rows() + data.rows());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.cols(); i ++)
-        data0(data0.rows() - 1, i) = T(0);
-      const auto ddata(Dop * data0);
+        result(data.rows(), i) = T(0);
+      const auto ddata(Dop * result);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.cols(); i ++) {
         T a(0), b(0), c(0);
-        for(int j = 0; j < Dop.rows() - 1; j ++) {
-          const auto aa(T(2) * Dop(j, Dop.rows() - 1) - Dop(getImgPt(j - 1, result.rows()), Dop.rows() - 1) - Dop(getImgPt(j + 1, result.rows()), Dop.rows() - 1));
-          const auto bb(T(2) * ddata(j, i) - ddata(getImgPt(j - 1, result.rows()), i) - ddata(getImgPt(j + 1, result.rows()), i));
+        for(int j = 0; j < data.rows(); j ++) {
+          const T aa(T(2) * Dop(j, data.rows()) - Dop(getImgPt(j - 1, result.rows()), data.rows()) - Dop(getImgPt(j + 1, result.rows()), data.rows()));
+          const T bb(T(2) * ddata(j, i) - ddata(getImgPt(j - 1, result.rows()), i) - ddata(getImgPt(j + 1, result.rows()), i));
           a += aa * aa;
           b += aa * bb;
+          c += bb * bb;
         }
-        result(result.rows() - 1, i) = - b / a;
+        if(b * b - a * c > T(0))
+          result(data.rows(), i) = - b / a + sqrt(b * b - a * c) / a;
+        else
+          result(data.rows(), i) = - b / a;
       }
-      result.row(result.rows() - 1) *= sqrt(result.row(data.rows()).dot(result.row(data.rows())) / result.row(data.rows()).dot(result.row(data.rows())));
+      // XXX fixme: don't know why:
+      result.row(data.rows()) /= T(2);
       for(int i = 0; i < result.cols(); i ++)
-        result(result.rows() - 1, i) = max(T(0), min(T(1), result(result.rows() - 1, i)));
+        result(data.rows(), i) = max(T(0), min(T(1), result(result.rows() - 1, i)));
     }
     break;
   default:
