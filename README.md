@@ -92,6 +92,10 @@ enlarger2ex generates the bumpmap that is pseudo plausible one because of one im
 Pseudo condition is avoidable on very wide cases with multiple camera conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 
+enlarger2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
+This is because we generate the one with DFT half space plausible ones by shifting frequency space intensitys,
+that's why, if we use this with sharpen algorithm may returns better results.
+
 And, generated bumpmap is flat enough in global, (this might be corrected by summing up per scale conversions : try pbump command), so this causes match fails because of thin shapes.
 
 # Another downloads
