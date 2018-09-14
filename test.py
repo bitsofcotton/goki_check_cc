@@ -12,7 +12,7 @@ if(len(argv) < 4):
   print "not much argments."
   exit(- 1)
 
-if(argv[2] == "match"):
+if(argv[2] == "match" or argv[2] == "pmatch"):
   if(len(argv) < 5):
     print "no much argments."
     exit(- 1)
@@ -28,7 +28,7 @@ if(argv[2] == "match"):
     if(ext1 != ".ppm"):
       subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
     if(len(argv) < 6):
-      subprocess.call([argv[1], "match", root0 + ".ppm", "matchbase-" + root0 + "-" + root1 + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm"])
+      subprocess.call([argv[1], argv[2], root0 + ".ppm", "matchbase-" + root0 + "-" + root1 + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm"])
     elif(os.path.splitext(argv[5])[1] == ".obj"):
       subprocess.call([argv[1], "match2dh3d", root0 + ".ppm", "match3dh2dbase-" + root0 + root1 + os.path.splitext(argv[5])[0] + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", argv[5]])
     elif(os.path.splitext(argv[5])[1] == ".gltf"):
@@ -80,6 +80,17 @@ for line in argv[3:]:
   elif(argv[2] == "tilt"):
     subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base", root + "-bump.ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
+  elif(argv[2] == "btilt"):
+    subprocess.call([argv[1], "tilt4", root + ".ppm", root + "-btilt-base", root + "-bump.ppm"])
+    files = []
+    for s in range(0, 200):
+      file = glob.glob(root + "-btilt-base-" + str(s) + ".ppm")
+      if(len(file) < 1):
+        break
+      files.append(file[0])
+    for s in range(0, len(files)):
+      subprocess.call(["cp", files[len(files) - s - 1], root + "-btilt-base-" + str(s + len(files)) + ".ppm"])
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "flicker"):
     subprocess.call([argv[1], "tiltp", root + ".ppm", root + "-tiltrot-base", root + "-bump.ppm"])
     files = []
