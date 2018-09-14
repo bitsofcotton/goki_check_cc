@@ -36,7 +36,7 @@ const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|maskobj|habit|habit2|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tilt4|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|pmatch|pmatch3d|maskobj|habit|habit2|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -146,6 +146,10 @@ int main(int argc, const char* argv[]) {
     mode = 11;
   else if(strcmp(argv[1], "match2dh3dbone") == 0)
     mode = 16;
+  else if(strcmp(argv[1], "pmatch") == 0)
+    mode = 25;
+  else if(strcmp(argv[1], "pmatch3d") == 0)
+    mode = 26;
   else if(strcmp(argv[1], "maskobj") == 0)
     mode = 12;
   else if(strcmp(argv[1], "arobj") == 0)
@@ -156,6 +160,8 @@ int main(int argc, const char* argv[]) {
     mode = 14;
   else if(strcmp(argv[1], "tilt3") == 0)
     mode = 8;
+  else if(strcmp(argv[1], "tilt4") == 0)
+    mode = 24;
   else if(strcmp(argv[1], "tiltp") == 0)
     mode = 22;
   else if(strcmp(argv[1], "habit2") == 0)
@@ -368,9 +374,27 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     break;
+  case 24:
+    {
+      // tilt4.
+      typename simpleFile<double>::Mat bump[3], out[3];
+      if(!file.loadp2or3(bump, argv[4]))
+        return - 2;
+      for(int i = 0; i < M_TILT; i ++) {
+        for(int j = 0; j < 3; j ++)
+          out[j] = redig.tilt(data[j], bump[0], 0, 2, psi2 * ((M_TILT - 1) / 2. - i) / ((M_TILT - 1) / 2.));
+        std::string outfile(argv[3]);
+        outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
+        file.savep2or3(outfile.c_str(), out, false);
+      }
+      return 0;
+    }
+    break;
   case 9:
+  case 25:
     {
       // 2d - 2d match with hidden calculated 3d.
+      // and pmatch.
       typename simpleFile<double>::Mat data1[3], bdata[3], bdata1[3], mdata[3], mdata1[3], mout[3], mmout1, bump1;
       if(!file.loadp2or3(data1, argv[4]))
         return - 2;
@@ -397,10 +421,33 @@ int main(int argc, const char* argv[]) {
       auto matches(statmatch.match(shape0, shape1));
       matches.resize(min(int(matches.size()), nmatchhid));
       matches = statmatch.elim(matches, data, mout, bump1, shape1);
-      for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-        std::cerr << "Writing " << n << " / " << matches.size();
-        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
-      }
+      if(mode == 9)
+        for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
+          std::cerr << "Writing " << n << " / " << matches.size();
+          saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
+        }
+      else
+        for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
+          std::cerr << "Matchingsub: " << n << " / " << matches.size();
+          std::vector<typename simpleFile<double>::Vec3> shape0a;
+          std::vector<typename simpleFile<double>::Vec3> shape1a;
+          for(int j = 0; j < shape0.size(); j ++)
+            if(!binary_search(matches[n].dstpoints.begin(), matches[n].dstpoints.end(), j))
+              shape0a.push_back(shape0[j]);
+          for(int j = 0; j < shape1.size(); j ++)
+            if(!binary_search(matches[n].srcpoints.begin(), matches[n].srcpoints.end(), j))
+              shape1a.push_back(shape1[j]);
+          matchPartialPartial<double> pstatmatch;
+          auto pmatches(pstatmatch.match(shape0a, shape1a));
+          pmatches.resize(min(int(pmatches.size()), nmatchhid));
+          pmatches = pstatmatch.elim(pmatches, data, mout, bump1, shape1a);
+          for(int m = 0; m < min(int(pmatches.size()), nshow); m ++) {
+            std::cerr << "Writing " << m << " / " << pmatches.size() << " - " << n << " / " << matches.size();
+            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), pmatches[m], shape0a, shape1a, data, mout, bump0, bump1, emph);
+          }
+          std::cerr << "Writing " << n << " / " << matches.size();
+          saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
+        }
     }
     return 0;
   case 10:
