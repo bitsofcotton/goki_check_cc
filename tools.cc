@@ -418,6 +418,8 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(shape0, delau0, mdata[0]);
       redig.maskVectors(shape1, delau1, mmout1);
       matchPartialPartial<double> statmatch;
+      if(mode != 9)
+        statmatch.ndiv = statmatch.ndiv * 1.2;
       auto matches(statmatch.match(shape0, shape1));
       matches.resize(min(int(matches.size()), nmatchhid));
       matches = statmatch.elim(matches, data, mout, bump1, shape1);
@@ -429,15 +431,20 @@ int main(int argc, const char* argv[]) {
       else
         for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
           std::cerr << "Matchingsub: " << n << " / " << matches.size();
+          std::vector<int> dstbuf(matches[n].dstpoints);
+          std::vector<int> srcbuf(matches[n].srcpoints);
           std::vector<typename simpleFile<double>::Vec3> shape0a;
           std::vector<typename simpleFile<double>::Vec3> shape1a;
+          std::sort(dstbuf.begin(), dstbuf.end());
+          std::sort(srcbuf.begin(), srcbuf.end());
           for(int j = 0; j < shape0.size(); j ++)
-            if(!binary_search(matches[n].dstpoints.begin(), matches[n].dstpoints.end(), j))
+            if(!binary_search(dstbuf.begin(), dstbuf.end(), j))
               shape0a.push_back(shape0[j]);
           for(int j = 0; j < shape1.size(); j ++)
-            if(!binary_search(matches[n].srcpoints.begin(), matches[n].srcpoints.end(), j))
+            if(!binary_search(srcbuf.begin(), srcbuf.end(), j))
               shape1a.push_back(shape1[j]);
           matchPartialPartial<double> pstatmatch;
+          pstatmatch.ndiv /= 2;
           auto pmatches(pstatmatch.match(shape0a, shape1a));
           pmatches.resize(min(int(pmatches.size()), nmatchhid));
           pmatches = pstatmatch.elim(pmatches, data, mout, bump1, shape1a);
