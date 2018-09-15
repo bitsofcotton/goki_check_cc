@@ -142,7 +142,7 @@ public:
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
-  Mat  tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi);
+  match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m);
 
 private:
@@ -1034,7 +1034,7 @@ template <typename T> bool reDig<T>::onTriangle(T& z, const Triangles& tri, cons
           sameSide3(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, true, T(.125)));
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const int& idx, const int& samples, const T& psi) {
+template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) {
   const T theta(2. * Pi * idx / samples);
   const T lpsi(Pi * psi);
   Mat3x3 R0(3, 3);
@@ -1065,7 +1065,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   m.rot    = R0.transpose() * R1 * R0;
   m.offset = pcenter - m.rot * pcenter;
   m.ratio  = T(1);
-  return tilt(in, bump, m);
+  return m;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m) {

@@ -152,6 +152,8 @@ int main(int argc, const char* argv[]) {
     mode = 26;
   else if(strcmp(argv[1], "maskobj") == 0)
     mode = 12;
+  else if(strcmp(argv[1], "maskobj2") == 0)
+    mode = 27;
   else if(strcmp(argv[1], "arobj") == 0)
     mode = 17;
   else if(strcmp(argv[1], "habit") == 0)
@@ -308,8 +310,9 @@ int main(int argc, const char* argv[]) {
       if(!file.loadp2or3(bump, argv[4]))
         return - 2;
       for(int i = 0; i < M_TILT; i ++) {
+        const auto mtilt(redig.tiltprep(data[0], i, M_TILT, psi));
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data[j], bump[0], i, M_TILT, psi);
+          out[j] = redig.tilt(data[j], bump[0], mtilt);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
@@ -348,8 +351,9 @@ int main(int argc, const char* argv[]) {
           }
         }
       for(int i = 0; i < 2; i ++) {
+        const auto mtilt(redig.tiltprep(data2[i % 2][0], i, 2, psi));
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data2[i % 2][j], bump[i % 2], i, 2, psi);
+          out[j] = redig.tilt(data2[i % 2][j], bump[i % 2], mtilt);
         std::string outfile(argv[3]);
         const char* names[2] = {"-L.ppm", "-R.ppm"};
         outfile += std::string(names[i % 2]);
@@ -365,8 +369,9 @@ int main(int argc, const char* argv[]) {
       if(!file.loadp2or3(bump, argv[4]))
         return - 2;
       for(int i = 0; i < 4; i ++) {
+        const auto mtilt(redig.tiltprep(data[0], i, 4, psi2));
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data[j], bump[0], i, 4, psi2);
+          out[j] = redig.tilt(data[j], bump[0], mtilt);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
@@ -381,8 +386,9 @@ int main(int argc, const char* argv[]) {
       if(!file.loadp2or3(bump, argv[4]))
         return - 2;
       for(int i = 0; i < M_TILT; i ++) {
+        const auto mtilt(redig.tiltprep(data[0], 0, 2, psi2 * ((M_TILT - 1) / 2. - i) / ((M_TILT - 1) / 2.)));
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data[j], bump[0], 0, 2, psi2 * ((M_TILT - 1) / 2. - i) / ((M_TILT - 1) / 2.));
+          out[j] = redig.tilt(data[j], bump[0], mtilt);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
@@ -549,17 +555,24 @@ int main(int argc, const char* argv[]) {
     }
     return 0;
   case 12:
+  case 27:
     {
       // maskobj.
+      // maskobj2.
       std::vector<typename simpleFile<double>::Vec3> points;
       std::vector<typename simpleFile<double>::Veci3> polys;
-      if(argc < 6 || !file.loadobj(points, polys, argv[3])) {
+      if((mode == 12 && argc < 6) || (mode == 27 && argc < 5) ||
+         !file.loadobj(points, polys, argv[3])) {
         usage();
         return - 2;
       }
       redig.initialize(vbox0, rz);
       redig.maskVectors(points, polys, data[0]);
       auto edges(redig.getEdges(data[0], points));
+      if(mode == 27) {
+        file.saveobj(points, polys, argv[4], false);
+        return - 3;
+      }
       double ratio;
       std::stringstream stream(argv[5]);
       stream >> ratio;
@@ -602,22 +615,31 @@ int main(int argc, const char* argv[]) {
   case 19:
     // habit2.
     {
-      std::vector<typename simpleFile<double>::Vec3> pdst, psrc;
+      std::vector<typename simpleFile<double>::Vec3>  pdst,   psrc;
       std::vector<typename simpleFile<double>::Veci3> poldst, polsrc;
-      if(argc < 5 || !file.loadobj(pdst, poldst, argv[4]) ||
-                     !file.loadobj(psrc, polsrc, argv[4])) {
+      if(argc < 8 || !file.loadobj(pdst, poldst, argv[4]) ||
+                     !file.loadobj(psrc, polsrc, argv[5])) {
         usage();
         return - 2;
       }
-      matchPartialPartial<double> statmatch;
-      const auto match(statmatch.match(pdst, psrc));
-      for(int i = 0; i < nshow; i ++) {
-        const auto mhull0(redig.delaunay2(pdst, match[i].dstpoints));
-        const auto mhull1(match[i].hull(match[i].srcpoints, match[i].reverseHull(match[i].dstpoints, mhull0)));
-        file.saveobj(redig.takeShape(pdst, psrc, match[i], mhull0, mhull1, double(.5)),
-                     poldst, (argv[3] + std::string("-emph-") + to_string(i) +
-                                        std::string(".obj")).c_str());
+      double Mx(0), My(0);
+      for(int i = 0; i < pdst.size(); i ++) {
+        My = max(My, std::abs(pdst[i][0]));
+        Mx = max(Mx, std::abs(pdst[i][1]));
       }
+      for(int i = 0; i < psrc.size(); i ++) {
+        My = max(My, std::abs(psrc[i][0]));
+        Mx = max(Mx, std::abs(psrc[i][1]));
+      }
+      typename simpleFile<double>::Mat in(int(My + 1.), int(Mx + 1.));
+      matchPartialPartial<double> statmatch;
+      auto m(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), psi2 * 2.));
+      statmatch.complementMatch(m, pdst, psrc, statmatch.makeG(pdst), statmatch.makeG(psrc));
+      const auto mhull0(redig.delaunay2(pdst, m.dstpoints));
+      const auto mhull1(m.hull(m.srcpoints, m.reverseHull(m.dstpoints, mhull0)));
+      file.saveobj(redig.takeShape(pdst, psrc, m, mhull0, mhull1, double(.5)),
+                   poldst, (argv[3] + std::string("-emph") +
+                                      std::string(".obj")).c_str());
     }
     return 0;
   case 15:
@@ -719,8 +741,9 @@ int main(int argc, const char* argv[]) {
         }
       for(int k = 0; k < M_TILTROT; k ++) {
         for(int i = 0; i < 2; i ++) {
+          const auto mtilt(redig.tiltprep(data2[i % 2][0], i, 2, (tiltrote * k + tiltrots * (M_TILTROT - k - 1)) / M_TILTROT));
           for(int j = 0; j < 3; j ++)
-            out[j] = redig.tilt(data2[i % 2][j], bump[i % 2], i, 2, (tiltrote * k + tiltrots * (M_TILTROT - k - 1)) / M_TILTROT);
+            out[j] = redig.tilt(data2[i % 2][j], bump[i % 2], mtilt);
           std::string outfile(argv[3]);
           outfile += std::string("-") + std::to_string(k);
           const char* names[2] = {"-L.ppm", "-R.ppm"};
