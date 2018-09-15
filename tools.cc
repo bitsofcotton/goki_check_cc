@@ -46,7 +46,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   simpleFile<T> file;
   std::cerr << "(" << match.rdepth << ", " << match.ratio << ")" << std::endl;
   
-  typename simpleFile<T>::Mat outs[3];
+  typename simpleFile<T>::Mat outs[3], outs2[3];
   const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
   const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
   
@@ -74,10 +74,18 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
   for(int kk = 0; kk < emph.size(); kk ++) {
     const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1, match, mhull0, mhull1, emph[kk]));
-    for(int idx = 0; idx < 3; idx ++) 
+    for(int idx = 0; idx < 3; idx ++) {
       outs[idx] = (in0[idx] + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), sin1[idx])) / T(2);
+      outs2[idx] = in0[idx];
+      for(int i = 0; i < reref.rows(); i ++)
+        for(int j = 0; j < reref.cols(); j ++)
+          if(reref(i, j))
+            outs2[idx](i, j) = in1[idx](i, j);
+    }
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     file.savep2or3(outfile.c_str(), outs, false);
+    outfile = outbase + std::string("-emph2-") + std::to_string(kk) + std::string(".ppm");
+    file.savep2or3(outfile.c_str(), outs2, false);
   }
   
   file.saveobj(redig.takeShape(shape0, shape1, match, mhull0, mhull1,
