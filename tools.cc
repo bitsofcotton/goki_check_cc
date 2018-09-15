@@ -79,7 +79,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
       outs2[idx] = in0[idx];
       for(int i = 0; i < reref.rows(); i ++)
         for(int j = 0; j < reref.cols(); j ++)
-          if(reref(i, j))
+          if(rin0.rows() * rin0.cols() + 1 < reref(i, j))
             outs2[idx](i, j) = in1[idx](i, j);
     }
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
