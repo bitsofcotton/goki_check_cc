@@ -50,7 +50,10 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", root + ".ppm", root + "-enl-0.ppm"])
-    subprocess.call(["convert", root + "-enl-0.ppm", "-contrast", "-contrast", "-auto-level", "-auto-gamma", root + "-enl.png"])
+    subprocess.call(["convert", root + "-enl-0.ppm", "-sharpen", "4x4", root + "-enl.png"])
+  elif(argv[2] == "enl4"):
+    subprocess.call([argv[1], "enlarge4", root + ".ppm", root + "-enl4-0.ppm"])
+    subprocess.call(["convert", root + "-enl4-0.ppm", "-sharpen", "32x32", "-resize", "50%", root + "-enl4.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pbump"):
@@ -123,11 +126,11 @@ for line in argv[3:]:
     subprocess.call(["convert", "-resize", "128x", "-resize", "x128<", "-resize", "50%", "-gravity", "center", "-crop", "64x64+0+0", root + "-bump64.ppm", root + "-bump64e" + ".jpeg"])
   elif(argv[2] == "demosaic"):
     print pixels
-    subprocess.call(["convert", line, "-resize", str(int(100. / pixels * 100) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
-    s0 = int(np.ceil(np.log(pixels) / np.log(2.)))
+    s0  = int(np.ceil(np.log(pixels) / np.log(8.)))
+    subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", root + "-0.png"])
     for s in range(0, s0):
-      subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s) + "-0.ppm"])
-      subprocess.call(["convert", root + "-" + str(s) + "-0.ppm", "-contrast", "-contrast", "-auto-level", "-auto-gamma", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
+      subprocess.call(["python", argv[0], argv[1], "enl4", root + "-" + str(s) + ".png"])
+      subprocess.call(["mv", root + "-" + str(s) + "-enl4.png", root + "-" + str(s + 1) + ".png"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
