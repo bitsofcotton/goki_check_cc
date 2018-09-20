@@ -134,6 +134,7 @@ public:
   Mat  rgb2d(const Mat rgb[3]);
   Mat  rgb2xz(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
+  Mat  contrast(const Mat& in, const T& intensity, const T& thresh = T(.5));
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
   Mat  reversey(const Mat& in);
   Mat  div2(const Mat& in);
@@ -773,6 +774,14 @@ template <typename T> void reDig<T>::rgb2xyz(Mat xyz[3], const Mat rgb[3]) {
   xyz[1] = rgb[0] * .17697/.17697 + rgb[1] * .81240/.17697  + rgb[2] * .010630/.17697;
   xyz[2] =                          rgb[1] * .010000/.17697 + rgb[2] * .99000/.17697;
   return;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::contrast(const Mat& in, const T& intensity, const T& thresh) {
+  Mat result(in);
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = min(abs(thresh) + T(.5), max(- abs(thresh) + T(.5), intensity * (result(i, j) - T(.5)) + T(.5)));
+  return result;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, const bool& invert, const Mat& orig) {

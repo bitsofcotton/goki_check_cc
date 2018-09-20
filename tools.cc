@@ -19,7 +19,7 @@ using namespace std;
 const int    nshow(4);
 const int    nshowh(16);
 const int    nmatchhid(20);
-const int    nemph(2);
+const int    nemph(8);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
@@ -41,7 +41,6 @@ void usage() {
 }
 
 template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<typename simpleFile<T>::Vec3>& shape0, const std::vector<typename simpleFile<T>::Vec3>& shape1, const typename simpleFile<T>::Mat in0[3], const typename simpleFile<T>::Mat in1[3], const typename simpleFile<T>::Mat& bump0, const typename simpleFile<T>::Mat& bump1, const std::vector<T>& emph) {
-  // generated bump map is inverted.
   reDig<T> redig;
   simpleFile<T> file;
   std::cerr << "(" << match.rdepth << ", " << match.ratio << ")" << std::endl;
@@ -75,13 +74,16 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   for(int kk = 0; kk < emph.size(); kk ++) {
     const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1, match, mhull0, mhull1, emph[kk]));
     for(int idx = 0; idx < 3; idx ++) {
-      outs[idx] = (in0[idx] + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), sin1[idx])) / T(2);
+      outs[idx] = (in0[idx] * (emph.size() - 1 - kk) + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), sin1[idx]) * kk) / double(emph.size() - 1);
+      outs2[idx] = (in0[idx] * (emph.size() - 1 - kk) + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]) * kk) / double(emph.size() - 1);
+/*
       outs2[idx] = in0[idx];
       const auto rework(redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]));
       for(int i = 0; i < reref.rows(); i ++)
         for(int j = 0; j < reref.cols(); j ++)
           if(rin0.rows() * rin0.cols() + 1 < reref(i, j))
             outs2[idx](i, j) = rework(i, j);
+*/
     }
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     file.savep2or3(outfile.c_str(), outs, false);
@@ -194,20 +196,24 @@ int main(int argc, const char* argv[]) {
     {
       // enlarge.
       enlarger2ex<double> enlarger, denlarger;
+      redig.normalize(data, 1.);
       for(int i = 0; i < 3; i ++) {
         const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
         data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
+        data[i] = redig.contrast(data[i] / 2., 1.);
       }
     }
     break;
   case 18:
     {
-      // enlarge.
+      // enlarge4.
       enlarger2ex<double> enlarger, denlarger;
+      redig.normalize(data, 1.);
       for(int j = 0; j < 4; j ++)
         for(int i = 0; i < 3; i ++) {
           const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
+          data[i] = redig.contrast(data[i] / 2., 1.);
         }
     }
     break;
@@ -687,6 +693,7 @@ int main(int argc, const char* argv[]) {
     }
     break;
   case 21:
+    // draw gltf.
     {
       std::vector<std::vector<typename simpleFile<double>::Vec3> >  datapoly;
       std::vector<std::vector<typename simpleFile<double>::Veci3> > polynorms;
