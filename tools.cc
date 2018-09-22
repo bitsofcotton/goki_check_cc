@@ -23,7 +23,7 @@ const int    nemph(8);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
-const double rz(1 / 6.);
+const double rz(1. / 3.);
 const double offsetx(.1);
 const double aroffset(.01);
 const double arrot(.025);
@@ -53,8 +53,9 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   for(int idx = 0; idx < 3; idx ++)
     sin1[idx] = redig.showMatch(in1[idx], shape1, mhull1);
   redig.normalize(sin1, 1.);
+  const auto tilt0(redig.tilt(redig.makeRefMatrix(in0[0], 1), bump1, match));
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.tilt(sin1[idx], bump1, match);
+    outs[idx] = redig.pullRefMatrix(tilt0, 1, sin1[idx]);
   std::string outfile(outbase + std::string("-src.ppm"));
   file.savep2or3(outfile.c_str(), outs, false);
   
@@ -268,7 +269,7 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < i; j ++)
           lwork = redig.round2(bump.compute(lwork, bump.ENLARGE_BOTH), sizes[i - j - 1].first, sizes[i - j - 1].second);
         if(lwork.rows() == data[2].rows() && lwork.cols() == data[2].cols())
-          data[2] += lwork * pow(double(2), i);
+          data[2] += lwork * pow(double(4), i);
         else
           break;
         sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
@@ -326,8 +327,9 @@ int main(int argc, const char* argv[]) {
         return - 2;
       for(int i = 0; i < M_TILT; i ++) {
         const auto mtilt(redig.tiltprep(data[0], i, M_TILT, psi));
+        const auto tilt0(redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt));
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data[j], bump[0], mtilt);
+          out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
@@ -367,8 +369,9 @@ int main(int argc, const char* argv[]) {
         }
       for(int i = 0; i < 2; i ++) {
         const auto mtilt(redig.tiltprep(data2[i % 2][0], i, 2, psi));
+        const auto tilt0(redig.tilt(redig.makeRefMatrix(data2[i % 2][0], 1), bump[i % 2], mtilt));
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data2[i % 2][j], bump[i % 2], mtilt);
+          out[j] = redig.pullRefMatrix(tilt0, 1, data2[i % 2][j]);
         std::string outfile(argv[3]);
         const char* names[2] = {"-L.ppm", "-R.ppm"};
         outfile += std::string(names[i % 2]);
@@ -385,8 +388,9 @@ int main(int argc, const char* argv[]) {
         return - 2;
       for(int i = 0; i < 4; i ++) {
         const auto mtilt(redig.tiltprep(data[0], i, 4, psi2));
+        const auto tilt0(redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt));
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data[j], bump[0], mtilt);
+          out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
@@ -402,8 +406,9 @@ int main(int argc, const char* argv[]) {
         return - 2;
       for(int i = 0; i < M_TILT; i ++) {
         const auto mtilt(redig.tiltprep(data[0], 0, 2, psi2 * ((M_TILT - 1) / 2. - i) / ((M_TILT - 1) / 2.)));
+        const auto tilt0(redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt));
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.tilt(data[j], bump[0], mtilt);
+          out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
         std::string outfile(argv[3]);
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
@@ -758,8 +763,9 @@ int main(int argc, const char* argv[]) {
       for(int k = 0; k < M_TILTROT; k ++) {
         for(int i = 0; i < 2; i ++) {
           const auto mtilt(redig.tiltprep(data2[i % 2][0], i, 2, (tiltrote * k + tiltrots * (M_TILTROT - k - 1)) / M_TILTROT));
+          const auto tilt0(redig.tilt(redig.makeRefMatrix(data2[i % 2][0], 1), bump[i % 2], mtilt));
           for(int j = 0; j < 3; j ++)
-            out[j] = redig.tilt(data2[i % 2][j], bump[i % 2], mtilt);
+            out[j] = redig.pullRefMatrix(tilt0, 1, data2[i % 2][j]);
           std::string outfile(argv[3]);
           outfile += std::string("-") + std::to_string(k);
           const char* names[2] = {"-L.ppm", "-R.ppm"};

@@ -466,6 +466,7 @@ public:
             }
           }
           for(int i = 2; i < vertices.size(); i ++) {
+            // XXX fixme: delaunay?
             Veci3 work(3);
             work[0] = i - 2;
             work[1] = i - 1;
