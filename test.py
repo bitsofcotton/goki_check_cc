@@ -98,7 +98,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "tiltp", root + ".ppm", root + "-tiltrot-base", root + "-bump.ppm"])
     files = []
     for s in range(0, 200):
-      file = glob.glob(root + "-tiltrot-base-" + str(s) + "-[LR].ppm")
+      file = glob.glob(root + "-tiltrot-base-" + str(s) + "-[RL].ppm")
       if(len(file) < 2):
         break
       files.append(root + "-" + str(s) + "-tr.png")
