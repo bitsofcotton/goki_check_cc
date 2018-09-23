@@ -581,7 +581,7 @@ private:
 template <typename T> matchWholePartial<T>::matchWholePartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(60, .25, .1);
+  init(60, .05, .1);
 }
 
 template <typename T> matchWholePartial<T>::~matchWholePartial() {
@@ -603,12 +603,18 @@ template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(c
     cerr << "matching partials : " << i << "/" << shapebase.size() << endl;
     pmatches.push_back(pmatch.match(shapebase, points[i]));
   }
+  int i0idx(0);
+  for(int i = 1; i < pmatches.size(); i ++)
+    if(pmatches[i0idx].size() < pmatches[i].size())
+      i0idx = i;
   vector<vector<match_t<T> > > result;
-  for(int i0 = 0; i0 < min(ntry, int(pmatches[0].size())); i0 ++) {
+  for(int i0 = 0; i0 < min(ntry, int(pmatches[i0idx].size())); i0 ++) {
     vector<match_t<T> > lmatch;
-    lmatch.push_back(pmatches[0][i0]);
-    for(int i = 1; i < pmatches.size(); i ++) {
-      if(pmatches[i].size()) {
+    lmatch.resize(pmatches.size(), match_t<T>());
+    lmatch[i0idx] = pmatches[i0idx][i0];
+    int mcount(1);
+    for(int i = 0; i < pmatches.size(); i ++)
+      if(i != i0idx && pmatches[i].size()) {
         int idx(0);
         T   m(0);
         T   lratio(1);
@@ -634,11 +640,11 @@ template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(c
             idx    = k;
           }
         }
-        lmatch.push_back(pmatches[i][idx]);
-      } else
-        lmatch.push_back(match_t<T>());
-    }
-    result.push_back(lmatch);
+        lmatch[i] = pmatches[i][idx];
+        mcount ++;
+      }
+    if(threshp <= mcount / T(pmatches.size()))
+      result.push_back(lmatch);
   }
   return result;
 }
