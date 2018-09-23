@@ -98,7 +98,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "tiltp", root + ".ppm", root + "-tiltrot-base", root + "-bump.ppm"])
     files = []
     for s in range(0, 200):
-      file = glob.glob(root + "-tiltrot-base-" + str(s) + "-[RL].ppm")
+      file = glob.glob(root + "-tiltrot-base-" + str(s) + "-[LR].ppm")
       if(len(file) < 2):
         break
       files.append(root + "-" + str(s) + "-tr.png")
@@ -119,7 +119,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "maskobj2", root + "-mask.ppm", root + "-bumpext.obj-emph.obj", root + "-bumpextmask.obj"])
   elif(argv[2] == "jps"):
     subprocess.call([argv[1], "tilt2", root + ".ppm", root, root + "-bump.ppm"])
-    subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
+    subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
     subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
   elif(argv[2] == "64"):
     subprocess.call([argv[1], "bump2", root + ".ppm", root + "-bump64.ppm"])

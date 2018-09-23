@@ -36,7 +36,7 @@ const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tilt4|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|pmatch|pmatch3d|maskobj|habit|habit2|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tilt4|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|pmatch|pmatch3d|match3d3d|maskobj|habit|habit2|drawobj|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -162,6 +162,8 @@ int main(int argc, const char* argv[]) {
     mode = 25;
   else if(strcmp(argv[1], "pmatch3d") == 0)
     mode = 26;
+  else if(strcmp(argv[1], "match3d3d") == 0)
+    mode = 28;
   else if(strcmp(argv[1], "maskobj") == 0)
     mode = 12;
   else if(strcmp(argv[1], "maskobj2") == 0)
@@ -180,6 +182,8 @@ int main(int argc, const char* argv[]) {
     mode = 22;
   else if(strcmp(argv[1], "habit2") == 0)
     mode = 19;
+  else if(strcmp(argv[1], "drawobj") == 0)
+    mode = 29;
   else if(strcmp(argv[1], "drawgltf") == 0)
     mode = 21;
   if(mode < 0) {
@@ -697,6 +701,65 @@ int main(int argc, const char* argv[]) {
       }
     }
     break;
+  case 28:
+    // match3d3d
+    {
+      std::vector<typename simpleFile<double>::Vec3>  datapoly0;
+      std::vector<typename simpleFile<double>::Veci3> polynorms0;
+      std::vector<std::vector<typename simpleFile<double>::Vec3> >  datapoly;
+      std::vector<std::vector<typename simpleFile<double>::Veci3> > polynorms;
+      std::vector<std::vector<typename simpleFile<double>::Veci4> > bone;
+      std::vector<typename simpleFile<double>::Vec3>  center;
+      typename simpleFile<double>::Mat bump0[3], mask0[3];
+      if(!file.loadglTF(datapoly, polynorms, center, bone, argv[4]))
+        return - 2;
+      if(!file.loadobj(datapoly0, polynorms0, argv[5]))
+        return - 2;
+      match_t<double> m;
+      m.offset[0] += min(data[0].rows(), data[0].cols()) / 2.;
+      m.offset[1] += min(data[0].rows(), data[0].cols()) / 2.;
+      m.ratio     *= min(data[0].rows(), data[0].cols()) / 2.;
+      for(int i = 0; i < datapoly0.size(); i ++)
+        datapoly0[i] = m.transform(datapoly0[i]);
+      for(int i = 0; i < datapoly.size(); i ++)
+        for(int j = 0; j < datapoly[i].size(); j ++)
+          datapoly[i][j] = m.transform(datapoly[i][j]);
+      typename simpleFile<double>::Mat zero[3];
+      for(int i = 0; i < 3; i ++)
+        zero[i] = data[0] * double(0);
+      std::vector<double> emph;
+      emph.push_back(0.); emph.push_back(1.);
+      matchWholePartial<double> wholematch;
+      const auto matches(wholematch.match(datapoly0, datapoly, center, bone));
+      for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
+        std::cerr << "Writing " << n << " / " << matches.size();
+        for(int m = 0; m < matches[n].size(); m ++)
+          if(matches[n][m].dstpoints.size())
+            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), matches[n][m], datapoly0, datapoly[m], zero, zero, zero[0], zero[0], emph);
+      }
+    }
+    return 0;
+  case 29:
+    // draw obj.
+    {
+      std::vector<typename simpleFile<double>::Vec3>  datapoly;
+      std::vector<typename simpleFile<double>::Veci3> polynorms;
+      if(!file.loadobj(datapoly, polynorms, argv[4]))
+        return - 2;
+      match_t<double> m;
+      m.offset[0] += min(data[0].rows(), data[0].cols()) / 2.;
+      m.offset[1] += min(data[0].rows(), data[0].cols()) / 2.;
+      m.ratio     *= min(data[0].rows(), data[0].cols()) / 2.;
+      for(int i = 0; i < datapoly.size(); i ++)
+        datapoly[i] = m.transform(datapoly[i]);
+      typename simpleFile<double>::Mat res[3];
+      std::vector<int> idx;
+      for(int j = 0; j < datapoly.size(); j ++)
+        idx.push_back(j);
+      res[0] = res[1] = res[2] = redig.showMatch(data[0] * 0., datapoly, polynorms, double(120));
+      file.savep2or3((std::string(argv[3]) + std::string("-obj.ppm")).c_str(), res, true);
+    }
+    return 0;
   case 21:
     // draw gltf.
     {
@@ -729,7 +792,7 @@ int main(int argc, const char* argv[]) {
         file.savep2or3((std::string(argv[3]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), res, true);
       }
     }
-    return - 1;
+    return 0;
   case 22:
     // tiltp
     {
