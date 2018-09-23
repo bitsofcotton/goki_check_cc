@@ -196,7 +196,7 @@ public:
       if(arout) {
         assert(!addstand);
         match_t<T> m;
-        m.offset[1] += aroffset;
+        m.offset[0] += aroffset;
         m.offset[2] -= T(.5);
         const T Pi(T(4) * atan2(T(1), T(1)));
         const T theta(2. * Pi * T(aroffset < T(0) ? 0 : 1) / T(2));
@@ -326,77 +326,8 @@ public:
     return true;
   }
   
-  // following 3 functions and 1 structure:
-  //   thanks to: https://github.com/jessey-git/fx-gltf/
-#if defined(_WITH_GLTF2_)
-  struct BufferInfo {
-    fx::gltf::Accessor const * Accessor;
-    uint8_t const * Data;
-    uint32_t DataStride;
-    uint32_t TotalSize;
-    bool HasData() const noexcept {
-      return Data != nullptr;
-    }
-  };
-
-  static uint32_t CalculateDataTypeSize(fx::gltf::Accessor const & accessor) noexcept {
-        uint32_t elementSize = 0;
-        switch (accessor.componentType)
-        {
-        case fx::gltf::Accessor::ComponentType::Byte:
-        case fx::gltf::Accessor::ComponentType::UnsignedByte:
-            elementSize = 1;
-            break;
-        case fx::gltf::Accessor::ComponentType::Short:
-        case fx::gltf::Accessor::ComponentType::UnsignedShort:
-            elementSize = 2;
-            break;
-        case fx::gltf::Accessor::ComponentType::Float:
-        case fx::gltf::Accessor::ComponentType::UnsignedInt:
-            elementSize = 4;
-            break;
-        default:
-            assert(0 && "should not be reached.");
-        }
-
-        switch (accessor.type)
-        {
-        case fx::gltf::Accessor::Type::Mat2:
-            return 4 * elementSize;
-            break;
-        case fx::gltf::Accessor::Type::Mat3:
-            return 9 * elementSize;
-            break;
-        case fx::gltf::Accessor::Type::Mat4:
-            return 16 * elementSize;
-            break;
-        case fx::gltf::Accessor::Type::Scalar:
-            return elementSize;
-            break;
-        case fx::gltf::Accessor::Type::Vec2:
-            return 2 * elementSize;
-            break;
-        case fx::gltf::Accessor::Type::Vec3:
-            return 3 * elementSize;
-            break;
-        case fx::gltf::Accessor::Type::Vec4:
-            return 4 * elementSize;
-            break;
-        default:
-            assert(0 && "should not be reached");
-        }
-
-        return 0;
-  }
-  
-  struct BufferInfo GetData(fx::gltf::Document const & doc, fx::gltf::Accessor const & accessor) {
-    fx::gltf::BufferView const & bufferView = doc.bufferViews[accessor.bufferView];
-    fx::gltf::Buffer const & buffer = doc.buffers[bufferView.buffer];
-    const uint32_t dataTypeSize = CalculateDataTypeSize(accessor);
-    return BufferInfo{ &accessor, &buffer.data[static_cast<uint64_t>(bufferView.byteOffset) + accessor.byteOffset], dataTypeSize, accessor.count * dataTypeSize };
-  }
-#endif
-  
+  // ( Please read the page before to compile )
+  // thanks to: https://github.com/jessey-git/fx-gltf/
   bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone, const char* filename) {
 #if defined(_WITH_GLTF2_)
     data   = vector<vector<Vec3> >();
@@ -417,25 +348,35 @@ public:
       for(int primitiveIndex = 0; primitiveIndex < doc.meshes[meshIndex].primitives.size(); primitiveIndex ++) {
         const auto& mesh(doc.meshes[meshIndex]);
         const auto& primitive(mesh.primitives[primitiveIndex]);
-        BufferInfo m_vertexBuffer;
-        BufferInfo m_jointBuffer;
+        uint8_t* m_vertexBuffer;
+        int      n_vertexBuffer;
+        uint8_t* m_jointBuffer;
+        int      n_jointBuffer;
         bool found_pos(false);
         bool found_joint(false);
         fx::gltf::Accessor::ComponentType jointType;
         for (auto const & attrib : primitive.attributes)
           if (attrib.first == std::string("POSITION")) {
-            m_vertexBuffer = GetData(doc, doc.accessors[attrib.second]);
+            const auto& bv(doc.bufferViews[doc.accessors[attrib.second].bufferView]);
+            m_vertexBuffer = (uint8_t*)&doc.buffers[bv.buffer].data[static_cast<uint64_t>(bv.byteOffset) + doc.accessors[attrib.second].byteOffset];
+            n_vertexBuffer = doc.accessors[attrib.second].count;
             assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::Float);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec3);
             found_pos = true;
           } else if(attrib.first == std::string("JOINTS_0")) {
-            m_jointBuffer = GetData(doc, doc.accessors[attrib.second]);
+            const auto& bv(doc.bufferViews[doc.accessors[attrib.second].bufferView]);
+            m_jointBuffer = (uint8_t*)&doc.buffers[bv.buffer].data[static_cast<uint64_t>(bv.byteOffset) + doc.accessors[attrib.second].byteOffset];
+            n_jointBuffer = doc.accessors[attrib.second].count;
             jointType     = doc.accessors[attrib.second].componentType;
             assert(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte ||
                    jointType == fx::gltf::Accessor::ComponentType::UnsignedShort);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
             found_joint = true;
           }
+        const auto bv(doc.bufferViews[doc.accessors[primitive.indices].bufferView]);
+        const uint8_t* m_indexBuffer = (uint8_t*)&doc.buffers[bv.buffer].data[static_cast<uint64_t>(bv.byteOffset) + doc.accessors[primitive.indices].byteOffset];
+        assert(doc.accessors[primitive.indices].componentType == fx::gltf::Accessor::ComponentType::UnsignedShort);
+        assert(doc.accessors[primitive.indices].type == fx::gltf::Accessor::Type::Scalar);
         assert(found_pos && found_joint);
         for(int cIdx = 0; cIdx < center.size(); cIdx ++) {
           vector<Vec3>  vertices;
@@ -443,16 +384,16 @@ public:
           vector<Veci4> bones;
           Veci4         lbone(4);
           lbone[0] = lbone[1] = lbone[2] = lbone[3] = - 1;
-          for(int i = 0; i < m_vertexBuffer.DataStride; i ++) {
+          for(int i = 0; i < n_vertexBuffer; i ++) {
             bool idx_match(false);
             for(int j = 0; j < 4; j ++)
               if(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte) {
-                unsigned char c = *(unsigned char*)(&m_jointBuffer.Data[4 * i + j]);
+                unsigned char c = *(unsigned char*)(&m_jointBuffer[4 * i + j]);
                 lbone[j]   = static_cast<int>(c);
                 assert(0 <= lbone[j] && lbone[j] < center.size());
                 idx_match |= static_cast<int>(c) == cIdx;
               } else if(jointType == fx::gltf::Accessor::ComponentType::UnsignedShort) {
-                unsigned short c = *(unsigned short*)(&m_jointBuffer.Data[4 * 2 * i + 2 * j]);
+                unsigned short c = *(unsigned short*)(&m_jointBuffer[4 * 2 * i + 2 * j]);
                 lbone[j]   = static_cast<int>(c);
                 assert(0 <= lbone[j] && lbone[j] < center.size());
                 idx_match |= static_cast<int>(c) == cIdx;
@@ -460,7 +401,7 @@ public:
             if(idx_match) {
               Vec3 work(3);
               for(int j = 0; j < 3; j ++)
-                work[j] = T(*(float*)(&m_vertexBuffer.Data[3 * 4 * i + 4 * j]));
+                work[j] = T(*(float*)(&m_vertexBuffer[3 * 4 * i + 4 * j]));
               vertices.push_back(work);
               bones.push_back(lbone);
             }
