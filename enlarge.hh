@@ -239,7 +239,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         auto lwork(compute(dwork, BUMP_Y0));
         for(int j = 0; j < i; j ++)
           lwork = round2y(ecache[j - i + size0].compute(lwork, ecache[j - i + size0].ENLARGE_Y0), sizes[i - j - 1]);
-        result += lwork * pow(T(2), i);
+        result += lwork;
         sizes.push_back(dwork.rows());
         dwork = compute(dwork, DIV2_Y);
       }
