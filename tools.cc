@@ -302,11 +302,26 @@ int main(int argc, const char* argv[]) {
     {
       // tilt.
       typename simpleFile<double>::Mat bump[3], out[3];
-      if(!file.loadp2or3(bump, argv[4]))
+      std::vector<typename simpleFile<double>::Vec3>  points;
+      std::vector<typename simpleFile<double>::Veci3> polys;
+      const std::string fn(argv[4]);
+      bool is_obj(false);
+      if(fn[fn.size() - 1] == 'm') {
+        if(!file.loadp2or3(bump, argv[4]))
+          return - 2;
+      } else if(fn[fn.size() - 1] == 'j') {
+        if(!file.loadobj(points, polys, argv[4]))
+          return - 2;
+        is_obj = true;
+      } else
         return - 2;
       for(int i = 0; i < M_TILT; i ++) {
         const auto mtilt(redig.tiltprep(data[0], i, M_TILT, psi));
-        const auto tilt0(redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt));
+        typename simpleFile<double>::Mat tilt0;
+        if(is_obj)
+          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
+        else
+          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
         for(int j = 0; j < 3; j ++)
           out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
         std::string outfile(argv[3]);
@@ -363,11 +378,26 @@ int main(int argc, const char* argv[]) {
     {
       // tilt3.
       typename simpleFile<double>::Mat bump[3], out[3];
-      if(!file.loadp2or3(bump, argv[4]))
+      std::vector<typename simpleFile<double>::Vec3>  points;
+      std::vector<typename simpleFile<double>::Veci3> polys;
+      const std::string fn(argv[4]);
+      bool is_obj(false);
+      if(fn[fn.size() - 1] == 'm') {
+        if(!file.loadp2or3(bump, argv[4]))
+          return - 2;
+      } else if(fn[fn.size() - 1] == 'j') {
+        if(!file.loadobj(points, polys, argv[4]))
+          return - 2;
+        is_obj = true;
+      } else
         return - 2;
       for(int i = 0; i < 4; i ++) {
         const auto mtilt(redig.tiltprep(data[0], i, 4, psi2));
-        const auto tilt0(redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt));
+        typename simpleFile<double>::Mat tilt0;
+        if(is_obj)
+          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
+        else
+          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
         for(int j = 0; j < 3; j ++)
           out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
         std::string outfile(argv[3]);
@@ -381,11 +411,26 @@ int main(int argc, const char* argv[]) {
     {
       // tilt4.
       typename simpleFile<double>::Mat bump[3], out[3];
-      if(!file.loadp2or3(bump, argv[4]))
+      std::vector<typename simpleFile<double>::Vec3>  points;
+      std::vector<typename simpleFile<double>::Veci3> polys;
+      const std::string fn(argv[4]);
+      bool is_obj(false);
+      if(fn[fn.size() - 1] == 'm') {
+        if(!file.loadp2or3(bump, argv[4]))
+          return - 2;
+      } else if(fn[fn.size() - 1] == 'j') {
+        if(!file.loadobj(points, polys, argv[4]))
+          return - 2;
+        is_obj = true;
+      } else
         return - 2;
       for(int i = 0; i < M_TILT; i ++) {
         const auto mtilt(redig.tiltprep(data[0], 0, 2, psi2 * ((M_TILT - 1) / 2. - i) / ((M_TILT - 1) / 2.)));
-        const auto tilt0(redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt));
+        typename simpleFile<double>::Mat tilt0;
+        if(is_obj)
+          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
+        else
+          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
         for(int j = 0; j < 3; j ++)
           out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
         std::string outfile(argv[3]);
@@ -772,7 +817,18 @@ int main(int argc, const char* argv[]) {
     // tiltp
     {
       typename simpleFile<double>::Mat bump[3], data2[2][3], out[3];
-      if(!file.loadp2or3(bump, argv[4]))
+      std::vector<typename simpleFile<double>::Vec3>  points;
+      std::vector<typename simpleFile<double>::Veci3> polys;
+      const std::string fn(argv[4]);
+      bool is_obj(false);
+      if(fn[fn.size() - 1] == 'm') {
+        if(!file.loadp2or3(bump, argv[4]))
+          return - 2;
+      } else if(fn[fn.size() - 1] == 'j') {
+        if(!file.loadobj(points, polys, argv[4]))
+          return - 2;
+        is_obj = true;
+      } else
         return - 2;
       data2[0][0] = data2[0][1] = data2[0][2] = data2[1][0] = data2[1][1] = data2[1][2] = bump[0] * 0.;
       for(int i = 0; i < bump[0].rows(); i ++)
