@@ -235,7 +235,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(i, j) = T(0);
       const int size0(int(log(T(dwork.rows())) / log(T(2))) + 1);
       enlarger2ex<T> ecache[size0];
-      for(int i = 0; 0 <= i && 8 <= dwork.rows(); i ++) {
+      for(int i = 0; 0 <= i && 16 <= dwork.rows(); i ++) {
         auto lwork(compute(dwork, BUMP_Y0));
         for(int j = 0; j < i; j ++)
           lwork = round2y(ecache[j - i + size0].compute(lwork, ecache[j - i + size0].ENLARGE_Y0), sizes[i - j - 1]);
@@ -243,41 +243,38 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         sizes.push_back(dwork.rows());
         dwork = compute(dwork, DIV2_Y);
       }
+      // from somehow, there appears center line.
       result = compute(result, IDETECT_Y);
     }
     break;
   case BUMP_Y0:
     {
       result = Mat(data.rows(), data.cols());
-      for(int ii = 0; ii < 2; ii ++) {
-        initBump(data.rows(), sqrt(T(data.rows() * data.cols())), T(ii + 1));
-        assert(A.rows() == data.rows() && A.cols() == data.rows());
-        // we assume |average(dC * z_k) / average(dC)| be in a differential space.
-        Mat dataA(A * data);
-        Mat dataB(B * data);
+      initBump(data.rows(), sqrt(T(data.rows() * data.cols())), T(3));
+      assert(A.rows() == data.rows() && A.cols() == data.rows());
+      // we assume |average(dC * z_k) / average(dC)| be in a differential space.
+      Mat dataA(A * data);
+      Mat dataB(B * data);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-        for(int j = 0; j < dataA.cols(); j ++) {
-          const T offset(sqrt(data.col(j).dot(data.col(j))) / T(2));
-          for(int i = 0; i < dataA.rows(); i ++) {
-            dataA(i, j) = abs(dataA(i, j)) + offset;
-            dataB(i, j) = abs(dataB(i, j)) + offset;
-          }
+      for(int j = 0; j < dataA.cols(); j ++) {
+        const T offset(sqrt(data.col(j).dot(data.col(j))) / T(2));
+        for(int i = 0; i < dataA.rows(); i ++) {
+          dataA(i, j) = abs(dataA(i, j)) + offset;
+          dataB(i, j) = abs(dataB(i, j)) + offset;
         }
-        const Mat datadA(compute(dataA, DETECT_Y));
-        const Mat datadB(compute(dataB, DETECT_Y));
+      }
+      const Mat datadA(compute(dataA, DETECT_Y));
+      const Mat datadB(compute(dataB, DETECT_Y));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-        for(int i = 0; i < result.cols(); i ++) {
-          const T offset(data.col(i).dot(data.col(i)));
-          for(int j = 0; j < result.rows(); j ++)
-            if(((!ii) &&  (result.rows() / 4 <= abs(j - result.rows() / 2))) ||
-                ( ii  && !(result.rows() / 4 <= abs(j - result.rows() / 2))))
-              result(j, i) = (datadA(j, i) * dataB(j, i) - dataA(j, i) * datadB(j, i)) / max(dataB(j, i) * dataB(j, i), offset / T(256) / T(256));
-        }
+      for(int i = 0; i < result.cols(); i ++) {
+        const T offset(data.col(i).dot(data.col(i)));
+        for(int j = 0; j < result.rows(); j ++)
+          result(j, i) = (datadA(j, i) * dataB(j, i) - dataA(j, i) * datadB(j, i)) / max(dataB(j, i) * dataB(j, i), offset / T(256) / T(256));
       }
     }
     break;
