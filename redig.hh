@@ -142,6 +142,8 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
+  vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m);
 
 private:
@@ -155,7 +157,6 @@ private:
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5)) const;
   bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m);
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
   
   T   Pi;
   int vbox;
@@ -1045,6 +1046,24 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   m.offset = pcenter - m.rot * pcenter;
   m.ratio  = T(1);
   return m;
+}
+
+template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m) {
+  vector<Triangles> result;
+  for(int i = 0; i < polys.size(); i ++) {
+    Triangles work;
+    for(int j = 0; j < 3; j ++) {
+#if defined(_WITHOUT_EIGEN_)
+      work.p.setCol(j, m.transform(points[polys[i][j]]));
+#else
+      work.p.col(j) = m.transform(points[polys[i][j]]);
+#endif
+    }
+    work.c = in(int(points[polys[i][0]][0]),
+                int(points[polys[i][0]][1]));
+    result.push_back(work.solveN());
+  }
+  return result;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m) {
