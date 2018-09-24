@@ -55,6 +55,7 @@ public:
     IDETECT_Y,
     IDETECT_BOTH,
     BUMP_X,
+    BUMP_Y0,
     BUMP_Y,
     BUMP_BOTH,
     EXTEND_X,
@@ -63,6 +64,9 @@ public:
     DIV2_X,
     DIV2_Y,
     DIV2_BOTH,
+    REVERSE_X,
+    REVERSE_Y,
+    REVERSE_BOTH,
     CLIP,
     NORMALIZE } direction_t;
   typedef complex<T> U;
@@ -143,6 +147,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case DIV2_BOTH:
     result = compute(compute(data, DIV2_X), DIV2_Y);
     break;
+  case REVERSE_BOTH:
+    result = compute(compute(data, REVERSE_X), REVERSE_Y);
+    break;
   case ENLARGE_X:
     result = compute(data.transpose(), ENLARGE_Y).transpose();
     break;
@@ -166,6 +173,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case DIV2_X:
     result = compute(data.transpose(), DIV2_Y).transpose();
+    break;
+  case REVERSE_X:
+    result = compute(data.transpose(), REVERSE_Y).transpose();
     break;
   case ENLARGE_FY:
     result = compute(compute(data, DETECT_Y), ENLARGE_Y);
@@ -212,7 +222,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows() / data.rows();
     }
     break;
-  case BUMP_Y:
+  case BUMP_Y0:
     {
       result = Mat(data.rows(), data.cols());
       initBump(data.rows(), sqrt(T(data.rows() * data.cols())), T(3));
@@ -243,6 +253,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       }
       result = compute(result, IDETECT_Y);
     }
+    break;
+  case BUMP_Y:
+    result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y);
     break;
   case EXTEND_Y:
     {
@@ -301,6 +314,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       if(data.rows() % 2)
         result.row(data.rows() / 2) = data.row(data.rows() - 1);
     }
+    break;
+  case REVERSE_Y:
+    result = Mat(data.rows(), data.cols());
+    for(int i = 0; i < data.rows(); i ++)
+      result.row(result.rows() - i - 1) = data.row(i);
     break;
   case CLIP:
     {
