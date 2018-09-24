@@ -373,8 +373,8 @@ int main(int argc, const char* argv[]) {
           return - 2;
         points[1] = points[0];
         for(int i = 0; i < points[0].size(); i ++) {
-          points[0][1] -= offsetx * data[0].cols();
-          points[1][1] += offsetx * data[0].cols();
+          points[0][i][1] -= offsetx * data[0].cols();
+          points[1][i][1] += offsetx * data[0].cols();
         }
         is_obj = true;
       } else
@@ -877,8 +877,8 @@ int main(int argc, const char* argv[]) {
           return - 2;
         points[1] = points[0];
         for(int i = 0; i < points[0].size(); i ++) {
-          points[0][1] -= offsetx * data[0].cols();
-          points[1][1] += offsetx * data[0].cols();
+          points[0][i][1] -= offsetx * data[0].cols();
+          points[1][i][1] += offsetx * data[0].cols();
         }
         is_obj = true;
       } else
