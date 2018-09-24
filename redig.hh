@@ -1053,9 +1053,14 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
   for(int i = 0; i < polys.size(); i ++) {
     Triangles work;
     for(int j = 0; j < 3; j ++) {
+// XXX fixme in fileio.hh.
 #if defined(_WITHOUT_EIGEN_)
-      work.p.setCol(j, m.transform(points[polys[i][j]]));
+      work.p.setCol(j, points[polys[i][j]]);
+      work.p(2, j) = - work.p(2, j);
+      work.p.setCol(j, m.transform(work.p.col(j)));
 #else
+      work.p.col(j) = points[polys[i][j]];
+      work.p(2, j) = - work.p(2, j);
       work.p.col(j) = m.transform(points[polys[i][j]]);
 #endif
     }
