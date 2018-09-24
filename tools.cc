@@ -36,7 +36,7 @@ const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tilt4|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|pmatch|pmatch3d|match3d3d|maskobj|habit|habit2|drawobj|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tilt4|tilt5|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|pmatch|pmatch3d|match3d3d|maskobj|habit|habit2|drawobj|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -176,6 +176,8 @@ int main(int argc, const char* argv[]) {
     mode = 8;
   else if(strcmp(argv[1], "tilt4") == 0)
     mode = 24;
+  else if(strcmp(argv[1], "tilt5") == 0)
+    mode = 20;
   else if(strcmp(argv[1], "tiltp") == 0)
     mode = 22;
   else if(strcmp(argv[1], "habit2") == 0)
@@ -408,8 +410,10 @@ int main(int argc, const char* argv[]) {
     }
     break;
   case 24:
+  case 20:
     {
       // tilt4.
+      // tilt5.
       typename simpleFile<double>::Mat bump[3], out[3];
       std::vector<typename simpleFile<double>::Vec3>  points;
       std::vector<typename simpleFile<double>::Veci3> polys;
@@ -425,7 +429,7 @@ int main(int argc, const char* argv[]) {
       } else
         return - 2;
       for(int i = 0; i < M_TILT; i ++) {
-        const auto mtilt(redig.tiltprep(data[0], 0, 2, psi2 * ((M_TILT - 1) / 2. - i) / ((M_TILT - 1) / 2.)));
+        const auto mtilt(redig.tiltprep(data[0], 0, 2, double(mode == 20 ? 2 : 1) * psi2 * ((M_TILT - 1) / 2. - i) / ((M_TILT - 1) / 2.)));
         typename simpleFile<double>::Mat tilt0;
         if(is_obj)
           tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
