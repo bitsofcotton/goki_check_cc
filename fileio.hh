@@ -196,7 +196,7 @@ public:
       if(arout) {
         assert(!addstand);
         match_t<T> m;
-        m.offset[0] += aroffset;
+        m.offset[1] += aroffset;
         m.offset[2] -= T(.5);
         const T Pi(T(4) * atan2(T(1), T(1)));
         const T theta(2. * Pi * T(aroffset < T(0) ? 0 : 1) / T(2));
