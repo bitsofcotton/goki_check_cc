@@ -387,7 +387,10 @@ int main(int argc, const char* argv[]) {
         else
           tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[i % 2], mtilt);
         for(int j = 0; j < 3; j ++)
-          out[j] = redig.pullRefMatrix(tilt0, 1, data2[i % 2][j]);
+          if(is_obj)
+            out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
+          else
+            out[j] = redig.pullRefMatrix(tilt0, 1, data2[i % 2][j]);
         std::string outfile(argv[3]);
         const char* names[2] = {"-L.ppm", "-R.ppm"};
         outfile += std::string(names[i % 2]);
@@ -892,7 +895,10 @@ int main(int argc, const char* argv[]) {
           else
             tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[i % 2], mtilt);
           for(int j = 0; j < 3; j ++)
-            out[j] = redig.pullRefMatrix(tilt0, 1, data2[i % 2][j]);
+            if(is_obj)
+              out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
+            else
+              out[j] = redig.pullRefMatrix(tilt0, 1, data2[i % 2][j]);
           std::string outfile(argv[3]);
           outfile += std::string("-") + std::to_string(k);
           const char* names[2] = {"-L.ppm", "-R.ppm"};
