@@ -337,7 +337,7 @@ int main(int argc, const char* argv[]) {
     // tilt2
     {
       typename simpleFile<double>::Mat bump[3], data2[2][3], out[3];
-      std::vector<typename simpleFile<double>::Vec3>  points[2];
+      std::vector<typename simpleFile<double>::Vec3>  points;
       std::vector<typename simpleFile<double>::Veci3> polys;
       const std::string fn(argv[4]);
       bool is_obj(false);
@@ -345,7 +345,7 @@ int main(int argc, const char* argv[]) {
         if(!file.loadp2or3(bump, argv[4]))
           return - 2;
       } else if(fn[fn.size() - 1] == 'j') {
-        if(!file.loadobj(points[0], polys, argv[4]))
+        if(!file.loadobj(points, polys, argv[4]))
           return - 2;
         is_obj = true;
       } else
@@ -355,7 +355,7 @@ int main(int argc, const char* argv[]) {
         mtilt.offset[2] += offsetx * data[0].cols() * double(i % 2 ? - 1 : 1);
         typename simpleFile<double>::Mat tilt0;
         if(is_obj)
-          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points[i % 2], polys, redig.makeRefMatrix(data[0], 1), mtilt));
+          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
         else
           tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
         for(int j = 0; j < 3; j ++)
@@ -813,7 +813,7 @@ int main(int argc, const char* argv[]) {
     // tiltp
     {
       typename simpleFile<double>::Mat bump[3], data2[2][3], out[3];
-      std::vector<typename simpleFile<double>::Vec3>  points[2];
+      std::vector<typename simpleFile<double>::Vec3>  points;
       std::vector<typename simpleFile<double>::Veci3> polys;
       const std::string fn(argv[4]);
       bool is_obj(false);
@@ -821,7 +821,7 @@ int main(int argc, const char* argv[]) {
         if(!file.loadp2or3(bump, argv[4]))
           return - 2;
       } else if(fn[fn.size() - 1] == 'j') {
-        if(!file.loadobj(points[0], polys, argv[4]))
+        if(!file.loadobj(points, polys, argv[4]))
           return - 2;
         is_obj = true;
       } else
@@ -832,7 +832,7 @@ int main(int argc, const char* argv[]) {
           mtilt.offset[2] += offsetx * data[0].cols() * double(i % 2 ? - 1 : 1);
           typename simpleFile<double>::Mat tilt0;
           if(is_obj)
-            tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points[i % 2], polys, redig.makeRefMatrix(data[0], 1), mtilt));
+            tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
           else
             tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
           for(int j = 0; j < 3; j ++)
