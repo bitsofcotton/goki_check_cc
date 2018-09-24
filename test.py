@@ -104,7 +104,7 @@ for line in argv[3:]:
       subprocess.call(["cp", files[len(files) - s - 1], root + "-btilt-base-" + str(s + len(files)) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "flicker"):
-    subprocess.call([argv[1], "tiltp", root + ".ppm", root + "-tiltrot-base", root + ".obj"])
+    subprocess.call([argv[1], "tiltp", root + ".ppm", root + "-tiltrot-base", root + "0.obj"])
     files = []
     for s in range(0, 200):
       file = glob.glob(root + "-tiltrot-base-" + str(s) + "-[LR].ppm")
