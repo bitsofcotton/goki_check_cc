@@ -380,12 +380,12 @@ int main(int argc, const char* argv[]) {
       } else
         return - 2;
       for(int i = 0; i < 2; i ++) {
-        const auto mtilt(redig.tiltprep(data[0], i, 2, psi));
+        const auto mtilt(redig.tiltprep(data2[0][0], i, 2, psi));
         typename simpleFile<double>::Mat tilt0;
         if(is_obj)
-          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points[i % 2], polys, redig.makeRefMatrix(data[0], 1), mtilt));
+          tilt0 = redig.tilt(redig.makeRefMatrix(data2[0][0], 1), redig.tiltprep(points[i % 2], polys, redig.makeRefMatrix(data2[0][0], 1), mtilt));
         else
-          tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[i % 2], mtilt);
+          tilt0 = redig.tilt(redig.makeRefMatrix(data2[0][0], 1), bump[i % 2], mtilt);
         for(int j = 0; j < 3; j ++)
           out[j] = redig.pullRefMatrix(tilt0, 1, data2[i % 2][j]);
         std::string outfile(argv[3]);
@@ -885,12 +885,12 @@ int main(int argc, const char* argv[]) {
         return - 2;
       for(int k = 0; k < M_TILTROT; k ++) {
         for(int i = 0; i < 2; i ++) {
-          const auto mtilt(redig.tiltprep(data[0], i, 2, (tiltrote * k + tiltrots * (M_TILTROT - k - 1)) / M_TILTROT));
+          const auto mtilt(redig.tiltprep(data2[0][0], i, 2, (tiltrote * k + tiltrots * (M_TILTROT - k - 1)) / M_TILTROT));
           typename simpleFile<double>::Mat tilt0;
           if(is_obj)
-            tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points[i % 2], polys, redig.makeRefMatrix(data[0], 1), mtilt));
+            tilt0 = redig.tilt(redig.makeRefMatrix(data2[0][0], 1), redig.tiltprep(points[i % 2], polys, redig.makeRefMatrix(data2[0][0], 1), mtilt));
           else
-            tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[i % 2], mtilt);
+            tilt0 = redig.tilt(redig.makeRefMatrix(data2[0][0], 1), bump[i % 2], mtilt);
           for(int j = 0; j < 3; j ++)
             out[j] = redig.pullRefMatrix(tilt0, 1, data2[i % 2][j]);
           std::string outfile(argv[3]);
