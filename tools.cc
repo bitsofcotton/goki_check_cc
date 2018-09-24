@@ -36,7 +36,7 @@ const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
-  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|pbump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tilt4|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|pmatch|pmatch3d|match3d3d|maskobj|habit|habit2|drawobj|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
+  cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tilt4|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|pmatch|pmatch3d|match3d3d|maskobj|habit|habit2|drawobj|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
   return;
 }
 
@@ -134,8 +134,6 @@ int main(int argc, const char* argv[]) {
     mode = 23;
   else if(strcmp(argv[1], "bump") == 0)
     mode = 2;
-  else if(strcmp(argv[1], "pbump") == 0)
-    mode = 20;
   else if(strcmp(argv[1], "obj") == 0)
     mode = 7;
   else if(strcmp(argv[1], "bump2") == 0)
@@ -257,15 +255,6 @@ int main(int argc, const char* argv[]) {
       const auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
       data[1] = data[2] = data[0] = xye;
       // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye);
-    }
-    break;
-  case 20:
-    {
-      // pbump : persistent bump.
-      enlarger2ex<double> bump;
-      const auto xye(bump.compute(redig.rgb2d(data), bump.PBUMP_BOTH));
-      data[1] = data[2] = data[0] = xye;
-      // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.PBUMP_BOTH), true, xye);
     }
     break;
   case 7:

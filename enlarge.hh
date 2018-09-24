@@ -57,9 +57,6 @@ public:
     BUMP_X,
     BUMP_Y,
     BUMP_BOTH,
-    PBUMP_X,
-    PBUMP_Y,
-    PBUMP_BOTH,
     EXTEND_X,
     EXTEND_Y,
     EXTEND_BOTH,
@@ -139,9 +136,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case BUMP_BOTH:
     result = (compute(data, BUMP_X)    + compute(data, BUMP_Y)) / 2.;
     break;
-  case PBUMP_BOTH:
-    result = (compute(data, PBUMP_X)   + compute(data, PBUMP_Y)) / 2.;
-    break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
               compute(compute(data, EXTEND_Y), EXTEND_X)) / 2.;
@@ -166,9 +160,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
-    break;
-  case PBUMP_X:
-    result = compute(data.transpose(), PBUMP_Y).transpose();
     break;
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
@@ -219,30 +210,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.cols(); i ++)
         for(int j = 0; j < data.rows(); j ++)
           result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows() / data.rows();
-    }
-    break;
-  case PBUMP_Y:
-    {
-      // each pmatrix[k] dC in focus k.
-      const auto pmatrix(initPBump(data.rows(), sqrt(T(data.rows() * data.cols())), T(3)));
-      vector<Mat> work;
-      work.resize(pmatrix.size(), Mat());
-      for(int i = 0; i < pmatrix.size(); i ++)
-        work[i] = pmatrix[i] * data;
-      // get most edge clear place.
-      result = Mat(data.rows(), data.cols());
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++) {
-          T M0(0);
-          result(i, j) = T(0);
-          for(int k = 0; k < work.size(); k ++)
-            if(M0 < abs(work[k](i, j))) {
-              M0 = abs(work[k](i, j));
-              result(i, j) = T(k) / work.size();
-            }
-        }
-      // get global result.
-      result = compute(result, IDETECT_Y);
     }
     break;
   case BUMP_Y:
@@ -417,54 +384,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   }
   Eop /= T(4);
   return;
-}
-
-template <typename T> vector<typename enlarger2ex<T>::Mat> enlarger2ex<T>::initPBump(const int& rows, const T& zmax, const T& denom) {
-  cerr << "new" << flush;
-  assert(0 < rows && T(0) < zmax);
-  vector<Mat> result;
-  result.resize(int(zmax * 2 + 1), Mat(rows, rows));
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int k = 0; k < result.size(); k ++)
-    for(int i = 0; i < rows; i ++)
-      for(int j = 0; j < rows; j ++)
-        result[k](i, j) = T(0);
-  Vec Dop0;
-  Vec Iop0;
-  Vec Eop0;
-  makeDI(int(rows / denom), Dop0, Iop0, Eop0);
-  // Fixed camera, 0 < t < 1 <=> point_z < camera_z
-  //             - 1 < t < 0 <=> point_z in [1, 2] * camera_z
-  Vec camera(2);
-  camera[0] = T(0);
-  camera[1] = zmax;
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int zi = 0; zi <= zmax * T(2); zi ++)
-    for(int j = 0; j < Dop0.size(); j ++) {
-      Vec cpoint(2);
-      cpoint[0] = j - T(Dop0.size() - 1) / 2;
-      cpoint[1] = zi;
-      // x-z plane projection of point p with camera geometry c to z=0.
-      // c := camera, p := cpoint.
-      // <c + (p - c) * t, [0, 1]> = 0
-      const auto t(- camera[1] / (cpoint[1] - camera[1]));
-      const auto y0((camera + (cpoint - camera) * t)[0]);
-      // N.B. average_k(dC_k / dy * z_k).
-      for(int i = 0; i < result[zi].rows(); i ++) {
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-        {
-          result[zi](i, getImgPt(i + y0, rows)) += Dop0[j];
-        }
-      }
-    }
-  return result;
 }
 
 template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zmax, const T& denom) {
