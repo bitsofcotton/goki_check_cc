@@ -243,7 +243,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         sizes.push_back(dwork.rows());
         dwork = compute(dwork, DIV2_Y);
       }
-      // from somehow, there appears center line.
+      // XXX: from somehow, there appears center line.
       result = compute(result, IDETECT_Y);
     }
     break;
