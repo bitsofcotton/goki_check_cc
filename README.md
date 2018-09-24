@@ -42,9 +42,6 @@ gltf2 compatibility is alpha.
     # make 2d to 3d pseudo bumpmap
     ./tools bump input.ppm output.ppm
     
-    # make 2d to 3d persistent pseudo bumpmap
-    ./tools pbump input.ppm output.ppm
-    
     # bumpmap to .obj file.
     ./tools obj input-bump.ppm output.obj
     
