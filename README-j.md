@@ -40,9 +40,6 @@ Freeze 前の細かな実装のチェックをしています。特に、gltf2 �
     # make 2d to 3d pseudo bumpmap
     ./tools bump input.ppm output.ppm
     
-    # make 2d to 3d persistent pseudo bumpmap
-    ./tools pbump input.ppm output.ppm
-    
     # bumpmap to .obj file
     ./tools obj input-bump.ppm output.obj
     
