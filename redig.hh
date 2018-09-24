@@ -137,8 +137,6 @@ public:
   Mat  contrast(const Mat& in, const T& intensity, const T& thresh = T(.5));
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
   Mat  reversey(const Mat& in);
-  Mat  div2(const Mat& in);
-  Mat  round2(const Mat& in, const int& h, const int& w);
   Mat  normalize(const Mat& data, const T& upper);
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
@@ -840,31 +838,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reversey(const Mat& in) {
   for(int i = 0; i < in.rows(); i ++)
     res.row(in.rows() - i - 1) = in.row(i);
   return res;
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::div2(const Mat& in) {
-  assert(0 < in.rows() / 2 && 0 < in.cols() / 2);
-  Mat result((in.rows() + 1) / 2, (in.cols() + 1) / 2);
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++) {
-      int cnt(0);
-      result(i, j) = T(0);
-      for(int ii = i * 2; ii < min(i * 2 + 2, int(in.rows())); ii ++)
-        for(int jj = j * 2; jj < min(j * 2 + 2, int(in.cols())); jj ++) {
-          result(i, j) += in(ii, jj);
-          cnt ++;
-        }
-      result(i, j) /= cnt;
-    }
-  return result;
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::round2(const Mat& in, const int& h, const int& w) {
-  Mat result(min(h, int(in.rows())), min(w, int(in.cols())));
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = in(i, j);
-  return result;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data, const T& upper) {
