@@ -196,16 +196,15 @@ int main(int argc, const char* argv[]) {
   if(!file.loadp2or3(data, argv[2]))
     return - 2;
   redig.initialize(vbox, rz);
+  redig.normalize(data, 1.);
   switch(mode) {
   case 0:
     {
       // enlarge.
       enlarger2ex<double> enlarger, denlarger;
-      redig.normalize(data, 1.);
       for(int i = 0; i < 3; i ++) {
         const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
         data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
-        data[i] = redig.contrast(data[i] / 2., 1.);
       }
     }
     break;
@@ -213,12 +212,11 @@ int main(int argc, const char* argv[]) {
     {
       // enlarge4.
       enlarger2ex<double> enlarger, denlarger;
-      redig.normalize(data, 1.);
       for(int j = 0; j < 4; j ++)
         for(int i = 0; i < 3; i ++) {
           const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-          data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
-          data[i] = redig.contrast(data[i] / 2., 1.);
+          data[i]  = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
+          data[i] /= 2.;
         }
     }
     break;
@@ -264,22 +262,10 @@ int main(int argc, const char* argv[]) {
   case 20:
     {
       // pbump : persistent bump.
-      auto dwork(redig.rgb2d(data));
       enlarger2ex<double> bump;
-      data[0] = data[1] = data[2] *= double(0);
-      std::vector<std::pair<int, int> > sizes;
-      for(int i = 0; 12 < dwork.rows() && 12 < dwork.cols(); i ++) {
-        auto lwork(bump.compute(dwork, bump.BUMP_BOTH));
-        for(int j = 0; j < i; j ++)
-          lwork = redig.round2(bump.compute(lwork, bump.ENLARGE_BOTH), sizes[i - j - 1].first, sizes[i - j - 1].second);
-        if(lwork.rows() == data[2].rows() && lwork.cols() == data[2].cols())
-          data[2] += lwork * pow(double(4), i);
-        else
-          break;
-        sizes.push_back(std::make_pair(dwork.rows(), dwork.cols()));
-        dwork = redig.div2(dwork);
-      }
-      data[0] = data[1] = data[2];
+      const auto xye(bump.compute(redig.rgb2d(data), bump.PBUMP_BOTH));
+      data[1] = data[2] = data[0] = xye;
+      // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.PBUMP_BOTH), true, xye);
     }
     break;
   case 7:

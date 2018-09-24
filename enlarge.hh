@@ -39,6 +39,7 @@ template <typename T> class enlarger2ex {
 public:
   typedef enum {
     ENLARGE_X,
+    ENLARGE_Y0,
     ENLARGE_Y,
     ENLARGE_FX,
     ENLARGE_FY,
@@ -55,11 +56,20 @@ public:
     IDETECT_Y,
     IDETECT_BOTH,
     BUMP_X,
+    BUMP_Y0,
     BUMP_Y,
     BUMP_BOTH,
+    PBUMP_X,
+    PBUMP_Y,
+    PBUMP_BOTH,
     EXTEND_X,
     EXTEND_Y,
-    EXTEND_BOTH } direction_t;
+    EXTEND_BOTH,
+    DIV2_X,
+    DIV2_Y,
+    DIV2_BOTH,
+    CLIP,
+    NORMALIZE } direction_t;
   typedef complex<T> U;
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
@@ -73,16 +83,17 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
 #endif
   enlarger2ex();
-  Mat  compute(const Mat& data, const direction_t& dir);
+  Mat compute(const Mat& data, const direction_t& dir);
   
 private:
   void initDop(const int& size);
-  void initBump(const int& rows, const T& zmax);
+  void initBump(const int& rows, const T& zmax, const T& denom);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
   void makeDI(const int& size, Vec& Dop, Vec& Iop, Vec& Eop);
   MatU seed(const int& size, const bool& idft);
   void xchg(Mat& a, Mat& b);
+  Mat  round2y(const Mat& in, const int& h);
   U    I;
   T    Pi;
   Mat  A;
@@ -129,9 +140,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case BUMP_BOTH:
     result = (compute(data, BUMP_X)    + compute(data, BUMP_Y)) / 2.;
     break;
+  case PBUMP_BOTH:
+    result = (compute(data, PBUMP_X)   + compute(data, PBUMP_Y)) / 2.;
+    break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
               compute(compute(data, EXTEND_Y), EXTEND_X)) / 2.;
+    break;
+  case DIV2_BOTH:
+    result = compute(compute(data, DIV2_X), DIV2_Y);
     break;
   case ENLARGE_X:
     result = compute(data.transpose(), ENLARGE_Y).transpose();
@@ -151,15 +168,24 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
     break;
+  case PBUMP_X:
+    result = compute(data.transpose(), PBUMP_Y).transpose();
+    break;
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
+    break;
+  case DIV2_X:
+    result = compute(data.transpose(), DIV2_Y).transpose();
     break;
   case ENLARGE_FY:
     result = compute(compute(data, DETECT_Y), ENLARGE_Y);
     break;
-  case ENLARGE_Y:
+  case ENLARGE_Y0:
     initDop(data.rows());
     result = Eop * data;
+    break;
+  case ENLARGE_Y:
+    result = compute(compute(data, ENLARGE_Y0), CLIP);
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -199,37 +225,64 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows();
     }
     break;
-  case BUMP_Y:
+  case PBUMP_Y:
     {
-      initBump(data.rows(), sqrt(T(data.rows() * data.cols())));
-      assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // we assume |average(dC * z_k) / average(dC)| be in a differential space.
-      Mat dataA(A * data);
-      Mat dataB(B * data);
+      std::vector<int> sizes;
+      Mat dwork(data);
+      result = Mat(data.rows(), data.cols());
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = T(0);
+      const int size0(int(log(T(dwork.rows())) / log(T(2))) + 1);
+      enlarger2ex<T> ecache[size0];
+      for(int i = 0; 0 <= i && 8 <= dwork.rows(); i ++) {
+        auto lwork(compute(dwork, BUMP_Y0));
+        for(int j = 0; j < i; j ++)
+          lwork = round2y(ecache[j - i + size0].compute(lwork, ecache[j - i + size0].ENLARGE_Y0), sizes[i - j - 1]);
+        result += lwork * pow(T(2), i);
+        sizes.push_back(dwork.rows());
+        dwork = compute(dwork, DIV2_Y);
+      }
+      result = compute(result, IDETECT_Y);
+    }
+    break;
+  case BUMP_Y0:
+    {
+      result = Mat(data.rows(), data.cols());
+      for(int ii = 0; ii < 2; ii ++) {
+        initBump(data.rows(), sqrt(T(data.rows() * data.cols())), T(ii + 1));
+        assert(A.rows() == data.rows() && A.cols() == data.rows());
+        // we assume |average(dC * z_k) / average(dC)| be in a differential space.
+        Mat dataA(A * data);
+        Mat dataB(B * data);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-      for(int j = 0; j < dataA.cols(); j ++) {
-        const T offset(sqrt(data.col(j).dot(data.col(j))) / T(2));
-        for(int i = 0; i < dataA.rows(); i ++) {
-          dataA(i, j) = abs(dataA(i, j)) + offset;
-          dataB(i, j) = abs(dataB(i, j)) + offset;
+        for(int j = 0; j < dataA.cols(); j ++) {
+          const T offset(sqrt(data.col(j).dot(data.col(j))) / T(2));
+          for(int i = 0; i < dataA.rows(); i ++) {
+            dataA(i, j) = abs(dataA(i, j)) + offset;
+            dataB(i, j) = abs(dataB(i, j)) + offset;
+          }
         }
-      }
-      const Mat datadA(compute(dataA, DETECT_Y));
-      const Mat datadB(compute(dataB, DETECT_Y));
-      result = Mat(data.rows(), data.cols());
+        const Mat datadA(compute(dataA, DETECT_Y));
+        const Mat datadB(compute(dataB, DETECT_Y));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < result.cols(); i ++) {
-        const T offset(data.col(i).dot(data.col(i)));
-        for(int j = 0; j < result.rows(); j ++)
-          result(j, i) = (datadA(j, i) * dataB(j, i) - dataA(j, i) * datadB(j, i)) / max(dataB(j, i) * dataB(j, i), offset / T(256) / T(256));
+        for(int i = 0; i < result.cols(); i ++) {
+          const T offset(data.col(i).dot(data.col(i)));
+          for(int j = 0; j < result.rows(); j ++)
+            if(((!ii) &&  (result.rows() / 4 <= abs(j - result.rows() / 2))) ||
+                ( ii  && !(result.rows() / 4 <= abs(j - result.rows() / 2))))
+              result(j, i) = (datadA(j, i) * dataB(j, i) - dataA(j, i) * datadB(j, i)) / max(dataB(j, i) * dataB(j, i), offset / T(256) / T(256));
+        }
       }
-      result = compute(result, IDETECT_Y);
     }
+    break;
+  case BUMP_Y:
+    result = compute(compute(data, BUMP_Y0), IDETECT_Y);
     break;
   case EXTEND_Y:
     {
@@ -268,6 +321,56 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result.row(data.rows()) /= T(2);
       for(int i = 0; i < result.cols(); i ++)
         result(data.rows(), i) = max(T(0), min(T(1), result(data.rows(), i)));
+    }
+    break;
+  case DIV2_Y:
+    {
+      result = Mat(data.rows() / 2 + data.rows() % 2, data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < data.rows() / 2; i ++)
+        result.row(i / 2) += data.row(i) / T(2);
+      if(data.rows() % 2)
+        result.row(data.rows() / 2) = data.row(data.rows() - 1);
+    }
+    break;
+  case CLIP:
+    {
+      result = data;
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = min(T(1), max(T(0), result(i, j)));
+    }
+    break;
+  case NORMALIZE:
+    {
+      result = data;
+      T MM(result(0, 0));
+      T mm(result(0, 0));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++) {
+          MM = max(MM, result(i, j));
+          mm = min(mm, result(i, j));
+        }
+      if(mm == MM)
+        MM += T(1);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = (result(i, j) - mm) / (MM - mm);
     }
     break;
   default:
@@ -323,7 +426,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   return;
 }
 
-template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zmax) {
+template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zmax, const T& denom) {
   cerr << "." << flush;
   if(A.rows() == rows)
     return;
@@ -346,7 +449,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
   Vec Dop0;
   Vec Iop0;
   Vec Eop0;
-  makeDI(rows, Dop0, Iop0, Eop0);
+  makeDI(int(rows / denom), Dop0, Iop0, Eop0);
   // Fixed camera, 0 < t < 1 <=> point_z < camera_z
   //             - 1 < t < 0 <=> point_z in [1, 2] * camera_z
   Vec camera(2);
@@ -371,8 +474,8 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const T& zm
 #pragma omp critical
 #endif
         {
-          A(i, getImgPt(y0 + i, rows)) += Dop0[j] * (zi + 1);
-          B(i, getImgPt(y0 + i, rows)) += Dop0[j];
+          A(i, getImgPt(i + y0, rows)) += Dop0[j] * (zi + 1);
+          B(i, getImgPt(i + y0, rows)) += Dop0[j];
         }
       }
     }
@@ -474,6 +577,14 @@ template <typename T> void enlarger2ex<T>::xchg(Mat& a, Mat& b) {
   b = a;
   a = work;
   return;
+}
+
+template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::round2y(const Mat& in, const int& h) {
+  Mat result(min(h, int(in.rows())), in.cols());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = in(i, j);
+  return result;
 }
 
 template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(const Vec& in) {
