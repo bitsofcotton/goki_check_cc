@@ -79,7 +79,7 @@ for line in argv[3:]:
     subprocess.call(["cp", root + ".obj.mtl", root + "1-L.obj.mtl"])
     subprocess.call(["cp", root + ".obj.mtl", root + "1-R.obj.mtl"])
   elif(argv[2] == "tilt"):
-    subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base", root + ".obj"])
+    subprocess.call([argv[1], "tilt", root + ".ppm", root + "-tilt-base", root + "0.obj"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "8", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "btilt"):
     subprocess.call([argv[1], "tilt4", root + ".ppm", root + "-btilt-base", root + "0.obj"])
@@ -124,7 +124,7 @@ for line in argv[3:]:
         subprocess.call([argv[1], "bump", root + "-tilt3-" + str(s) + ".ppm", root + "-bumpext-" + str(s) + ".ppm"])
         subprocess.call([argv[1], "obj", root + "-bumpext-" + str(s) + ".ppm", root + "-bumpext-" + str(s) + ".obj"])
       subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextA.obj", root + "-bumpext-0.obj", root + "-bumpext-2.obj", "2", "4", str(tam)])
-      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextB.obj", root + "-bumpext-1.obj", root + "-bumpext-3.obj", "3", "4", str(tam)])
+      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextB.obj", root + "-bumpext-1.obj", root + "-bumpext-3.obj", "1", "4", str(tam)])
       subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpext.obj", root + "-bumpextA.obj-emph.obj", root + "-bumpextB.obj-emph.obj", "4", "4", str(tam)])
       subprocess.call([argv[1], "maskobj2", root + "-mask.ppm", root + "-bumpext.obj-emph.obj", root + "-bumpextmask.obj"])
       subprocess.call(["cp", root + "-bumpext.obj-emph.obj", root + "-" + str(tam) + ".obj"])
