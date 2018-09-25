@@ -376,6 +376,54 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
     else
       result(ly, lx) = T(0);
   }
+  for(int i = 0; i < result.rows(); i ++) {
+    T c(0);
+    for(int j = 0; j < result.cols(); j ++)
+      if(result(i, j) != T(0)) {
+        c = result(i, j);
+        break;
+      }
+    for(int j = 0; j < result.cols(); j ++)
+      if(result(i, j) == T(0))
+        result(i, j) = c;
+      else
+        break;
+    c = T(0);
+    for(int j = 0; j < result.cols(); j ++)
+      if(result(i, result.cols() - 1 - j) != T(0)) {
+        c = result(i, result.cols() - 1 - j);
+        break;
+      }
+    for(int j = 0; j < result.cols(); j ++)
+      if(result(i, result.cols() - 1 - j) == T(0))
+        result(i, result.cols() - 1 - j) = c;
+      else
+        break;
+  }
+  for(int i = 0; i < result.cols(); i ++) {
+    T c(0);
+    for(int j = 0; j < result.rows(); j ++)
+      if(result(j, i) != T(0)) {
+        c = result(j, i);
+        break;
+      }
+    for(int j = 0; j < result.rows(); j ++)
+      if(result(j, i) == T(0)) {
+        result(j, i) = c;
+      } else
+        break;
+    c = T(0);
+    for(int j = 0; j < result.rows(); j ++)
+      if(result(result.rows() - 1 - j, i) != T(0)) {
+        c = result(result.rows() - 1 - j, i);
+        break;
+      }
+    for(int j = 0; j < result.rows(); j ++)
+      if(result(result.rows() - 1 - j, i) == T(0))
+        result(result.rows() - 1 - j, i) = c;
+      else
+        break;
+  }
   return result;
 }
 
@@ -1053,14 +1101,9 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
   for(int i = 0; i < polys.size(); i ++) {
     Triangles work;
     for(int j = 0; j < 3; j ++) {
-// XXX fixme in fileio.hh.
 #if defined(_WITHOUT_EIGEN_)
-      work.p.setCol(j, points[polys[i][j]]);
-      work.p(2, j) = - work.p(2, j);
-      work.p.setCol(j, m.transform(work.p.col(j)));
+      work.p.setCol(j, m.transform(points[polys[i][j]]));
 #else
-      work.p.col(j) = points[polys[i][j]];
-      work.p(2, j) = - work.p(2, j);
       work.p.col(j) = m.transform(points[polys[i][j]]);
 #endif
     }

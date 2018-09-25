@@ -680,9 +680,7 @@ int main(int argc, const char* argv[]) {
       matchPartialPartial<double> statmatch;
       auto m(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), - psi2 * 2.));
       statmatch.complementMatch(m, pdst, psrc, statmatch.makeG(pdst), statmatch.makeG(psrc));
-      const auto mhull0(redig.delaunay2(pdst, m.dstpoints));
-      const auto mhull1(m.hull(m.srcpoints, m.reverseHull(m.dstpoints, mhull0)));
-      file.saveobj(redig.takeShape(pdst, psrc, m, mhull0, mhull1, double(.5)),
+      file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
                    poldst, (argv[3] + std::string("-emph") +
                                       std::string(".obj")).c_str());
     }

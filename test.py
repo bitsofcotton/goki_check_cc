@@ -118,7 +118,7 @@ for line in argv[3:]:
   elif(argv[2] == "pextend"):
     subprocess.call([argv[1], "pextend", root + ".ppm", root + "-pextend.ppm"])
   elif(argv[2] == "extend"):
-    for tam in [.3 / 6., .4 / 6., .5 / 6.]:
+    for tam in [.5 / 6., .75 / 6., 1. / 6.]:
       subprocess.call([argv[1], "tilt3", root + ".ppm", root + "-tilt3", root + "0.obj", str(tam)])
       for s in range(0, 4):
         subprocess.call([argv[1], "bump", root + "-tilt3-" + str(s) + ".ppm", root + "-bumpext-" + str(s) + ".ppm"])
