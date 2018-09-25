@@ -232,6 +232,12 @@ public:
   Vec3 transform(const Vec3& x) const {
     return rot * x * ratio + offset;
   }
+  vector<Vec3> transform(const vector<Vec3>& x) const {
+    vector<Vec3> result(x);
+    for(int i = 0; i < result.size(); i ++)
+      result[i] = transform(result[i]);
+    return result;
+  }
   bool isValid() const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     return rratio <= T(1) / rthresh;

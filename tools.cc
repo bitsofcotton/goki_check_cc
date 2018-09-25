@@ -23,7 +23,7 @@ const int    nemph(8);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
-const double rz(1. / 6.);
+const double rz(1. / 3.);
 const double offsetx(.01);
 const double aroffset(.01);
 const double arrot(.025);
@@ -32,7 +32,6 @@ const int    M_TILTROT(8);
 const double tiltrots(.001);
 const double tiltrote(.1);
 const double psi(.025);
-const double psi2(.1);
 const int    Mpoly(2000);
 
 void usage() {
@@ -385,6 +384,9 @@ int main(int argc, const char* argv[]) {
         is_obj = true;
       } else
         return - 2;
+      if(argc < 6)
+        return - 2;
+      const double psi2(std::atof(argv[5]));
       for(int i = 0; i < 4; i ++) {
         const auto mtilt(redig.tiltprep(data[0], i, 4, psi2));
         typename simpleFile<double>::Mat tilt0;
@@ -420,6 +422,8 @@ int main(int argc, const char* argv[]) {
         is_obj = true;
       } else
         return - 2;
+      // XXX configure me:
+      const double psi2(.1);
       for(int i = 0; i < M_TILT; i ++) {
         const auto mtilt(redig.tiltprep(data[0], 0, 2, double(mode == 20 ? 2 : 1) * psi2 * ((M_TILT - 1) / 2. - i) / ((M_TILT - 1) / 2.)));
         typename simpleFile<double>::Mat tilt0;
@@ -657,11 +661,12 @@ int main(int argc, const char* argv[]) {
     {
       std::vector<typename simpleFile<double>::Vec3>  pdst,   psrc;
       std::vector<typename simpleFile<double>::Veci3> poldst, polsrc;
-      if(argc < 8 || !file.loadobj(pdst, poldst, argv[4]) ||
+      if(argc < 9 || !file.loadobj(pdst, poldst, argv[4]) ||
                      !file.loadobj(psrc, polsrc, argv[5])) {
         usage();
         return - 2;
       }
+      const double psi2(std::atof(argv[8]));
       double Mx(0), My(0);
       for(int i = 0; i < pdst.size(); i ++) {
         My = max(My, std::abs(pdst[i][0]));
@@ -674,10 +679,11 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<double>::Mat in(int(My + 1.), int(Mx + 1.));
       matchPartialPartial<double> statmatch;
       auto m(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), psi2 * 2.));
+      auto m0(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), psi2));
       statmatch.complementMatch(m, pdst, psrc, statmatch.makeG(pdst), statmatch.makeG(psrc));
       const auto mhull0(redig.delaunay2(pdst, m.dstpoints));
       const auto mhull1(m.hull(m.srcpoints, m.reverseHull(m.dstpoints, mhull0)));
-      file.saveobj(redig.takeShape(pdst, psrc, m, mhull0, mhull1, double(.5)),
+      file.saveobj(m0.transform(redig.takeShape(pdst, psrc, m, mhull0, mhull1, double(.5))),
                    poldst, (argv[3] + std::string("-emph") +
                                       std::string(".obj")).c_str());
     }

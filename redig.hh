@@ -1123,13 +1123,15 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
         Vec2 midgeom(2);
         midgeom[0] = y;
         midgeom[1] = x;
+        if(onTriangle(z, tri, midgeom) && isfinite(z)) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-        {
-          if(onTriangle(z, tri, midgeom) && isfinite(z) && zb(y, x) < z) {
-            result(y, x) = tri.c;
-            zb(y, x)     = z;
+          {
+            if(zb(y, x) < z) {
+              result(y, x) = tri.c;
+              zb(y, x)     = z;
+            }
           }
         }
       }
