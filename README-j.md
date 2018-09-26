@@ -9,6 +9,8 @@ Makefile を stdc++ を使えるように変更してください。
 また、速度を担保するには http://eigen.tuxfamily.org/ ライブラリが、bone 情報を担保した合致をする際には https://github.com/jessey-git/fx-gltf/ ライブラリが必要です。
 
 # 調整可能なパラメタ
+* enlarge.hh
+* * dratio : z 軸を走査する際のステップ幅です。1 に対して記述し、1 より小さくなくてはいけません。
 * redig.hh
 * * vbox : ベクタ生成の際にまとめるピクセルの数です。
 * * rz   : 奥行きの乗数です。
