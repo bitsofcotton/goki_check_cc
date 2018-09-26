@@ -9,6 +9,8 @@ To convert image files to raw ppm, it is powerful tool that https://www.imagemag
 For speed, http://eigen.tuxfamily.org/ library is needed, and for bone information, https://github.com/jessey-git/fx-gltf/ library is needed.
 
 # Parameters
+* enlarge.hh
+* * dratio : z-axis step ratio relate to 1., must be &lt; 1.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
