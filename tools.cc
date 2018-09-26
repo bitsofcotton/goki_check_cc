@@ -23,7 +23,7 @@ const int    nemph(8);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
-const double rz(1.);
+const double rz(1. / 6);
 const double offsetx(.01);
 const double aroffset(.01);
 const double arrot(.025);
