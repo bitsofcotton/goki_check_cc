@@ -69,6 +69,7 @@ public:
     REVERSE_BOTH,
     CLIP,
     CLIPPM,
+    BCLIP,
     EXPSCALE,
     LOGSCALE,
     NORMALIZE } direction_t;
@@ -231,11 +232,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result = Mat(data.rows(), data.cols());
       initBump(data.rows());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // N.B.: pseudo: logscale input intensity to expscale output bumpmap.
-      // exp(integrate^2d/dy^2|average(dlog(C)*z_k)/average(dlog(C))|dy^2).
-      const Mat data0(compute(data, LOGSCALE));
-      Mat dataA(A * data0);
-      Mat dataB(B * data0);
+      // integrate d/dy|average(dC*z_k)/average(dC)|dy.
+      Mat dataA(A * data);
+      Mat dataB(B * data);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -243,27 +242,23 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int j = 0; j < dataA.cols(); j ++) {
         const T offset(sqrt(data.col(j).dot(data.col(j))) / T(2));
         for(int i = 0; i < dataA.rows(); i ++) {
-          dataA(i, j) = abs(dataA(i, j)) + offset;
-          dataB(i, j) = abs(dataB(i, j)) + offset;
+          dataA(i, j) = max(abs(dataA(i, j)), offset / T(256));
+          dataB(i, j) = T(1) / max(abs(dataB(i, j)), offset / T(256));
         }
       }
-      const Mat datadA(compute(dataA, DETECT_Y));
-      const Mat datadB(compute(dataB, DETECT_Y));
-      const Mat dataddA(compute(datadA, DETECT_Y));
-      const Mat dataddB(compute(datadB, DETECT_Y));
+      auto datadA(compute(dataA, DETECT_Y));
+      auto datadB(compute(dataB, DETECT_Y));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < result.cols(); i ++) {
-        const T offset(data.col(i).dot(data.col(i)));
-        for(int j = 0; j < result.rows(); j ++)
-          result(j, i) = ((dataddA(j, i) * dataB(j, i) - dataA(j, i) * dataddB(j, i)) / max(dataB(j, i) * dataB(j, i), offset / T(256) / T(256)) + (datadA(j, i) * dataB(j, i) - dataA(j, i) * datadB(j, i)) / max(pow(dataB(j, i), T(3)), offset / pow(T(256), T(3))) * datadB(j, i) * (- T(2)));
-      }
-      result = compute(compute(compute(result, IDETECT_Y), IDETECT_Y), EXPSCALE);
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = dataA(i, j) * datadB(i, j) + datadA(i, j) * dataB(i, j);
+      result = compute(result, IDETECT_Y);
     }
     break;
   case BUMP_Y:
-    result = compute((compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y)) / T(4) / Pi, CLIPPM);
+    result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y);
     break;
   case EXTEND_Y:
     {
@@ -330,48 +325,62 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case CLIP:
     {
-      result = data;
+      result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = min(T(1), max(T(0), result(i, j)));
+          result(i, j) = min(T(1), max(T(0), data(i, j)));
     }
     break;
   case CLIPPM:
     {
-      result = data;
+      result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = min(T(1), max(- T(1), result(i, j)));
+          result(i, j) = min(T(1), max(- T(1), data(i, j)));
+    }
+    break;
+  case BCLIP:
+    {
+      result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int j = 0; j < result.cols(); j ++) {
+        const T offset(sqrt(data.col(j).dot(data.col(j))) / T(2));
+        for(int i = 0; i < result.rows(); i ++)
+          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * max(abs(data(i, j)), offset / T(256));
+      }
     }
     break;
   case EXPSCALE:
     {
-      result = data;
-      // N.B. might be sigmoid is better.
+      result = Mat(data.rows(), data.cols());
+      // N.B. might sigmoid is better.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (result(i, j) < T(0) ? - T(1) : T(1)) * exp(T(1) + abs(result(i, j)));
+          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * exp(T(1) + abs(data(i, j)));
     }
     break;
   case LOGSCALE:
     {
-      result = data;
+      result = Mat(data.rows(), data.cols());
       // N.B. might be sigmoid is better.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (result(i, j) < T(0) ? - T(1) : T(1)) * (abs(result(i, j)) < exp(T(1)) ? abs(result(i, j)) / exp(T(1)) : log(abs(result(i, j)) + exp(T(1))));
+          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * (abs(data(i, j)) < exp(T(1)) ? abs(data(i, j)) / exp(T(1)) : log(abs(data(i, j)) + exp(T(1))));
     }
     break;
   case NORMALIZE:
