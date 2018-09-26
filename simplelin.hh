@@ -237,6 +237,8 @@ public:
         T                determinant() const;
         SimpleVector<T>  solve(SimpleVector<T> other) const;
         SimpleVector<T>  projectionPt(const SimpleVector<T>& other) const;
+        SimpleMatrix<T>  real() const;
+  template <typename U> SimpleMatrix<U> cast() const;
   const int& rows() const;
   const int& cols() const;
         void resize(const int& rows, const int& cols);
@@ -552,6 +554,24 @@ template <typename T> SimpleVector<T> SimpleMatrix<T>::projectionPt(const Simple
     for(int j = 0; j < erows; j ++)
       res[i] += work(j, i);
   }
+  return res;
+}
+
+template <typename T> SimpleMatrix<T> SimpleMatrix<T>::real() const {
+  assert(0 < erows && 0 < ecols);
+  SimpleMatrix<T> res(erows, ecols);
+  for(int i = 0; i < erows; i ++)
+    for(int j = 0; j < ecols; j ++)
+      res(i, j) = entity[i][j].real();
+  return res;
+}
+
+template <typename T> template <typename U> SimpleMatrix<U> SimpleMatrix<T>::cast() const {
+  assert(0 < erows && 0 < ecols);
+  SimpleMatrix<U> res(erows, ecols);
+  for(int i = 0; i < erows; i ++)
+    for(int j = 0; j < ecols; j ++)
+      res(i, j) = *reinterpret_cast<const U*>(&entity[i][j]);
   return res;
 }
 
