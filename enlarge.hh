@@ -231,9 +231,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result = Mat(data.rows(), data.cols());
       initBump(data.rows());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // integrate^2 d/dy^2|average(dC * z_k) / average(dC)| / C dy^2 * C.
-      Mat dataA(A * data);
-      Mat dataB(B * data);
+      // N.B.: pseudo: logscale input intensity to expscale output bumpmap.
+      // exp(integrate^2d/dy^2|average(dlog(C)*z_k)/average(dlog(C))|dy^2).
+      const Mat data0(compute(data, LOGSCALE));
+      Mat dataA(A * data0);
+      Mat dataB(B * data0);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -257,12 +259,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         for(int j = 0; j < result.rows(); j ++)
           result(j, i) = ((dataddA(j, i) * dataB(j, i) - dataA(j, i) * dataddB(j, i)) / max(dataB(j, i) * dataB(j, i), offset / T(256) / T(256)) + (datadA(j, i) * dataB(j, i) - dataA(j, i) * datadB(j, i)) / max(pow(dataB(j, i), T(3)), offset / pow(T(256), T(3))) * datadB(j, i) * (- T(2)));
       }
-      // XXX: exp(integrate(integrate(log(c))))
-      result = compute(compute(compute(compute(result, LOGSCALE), IDETECT_Y), IDETECT_Y), EXPSCALE);
+      result = compute(compute(compute(result, IDETECT_Y), IDETECT_Y), EXPSCALE);
     }
     break;
   case BUMP_Y:
-    result = compute((compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y)) / T(2) / exp(T(1)), CLIPPM);
+    result = compute((compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y)) / T(4) / Pi, CLIPPM);
     break;
   case EXTEND_Y:
     {
