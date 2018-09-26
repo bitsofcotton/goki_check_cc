@@ -232,7 +232,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result = Mat(data.rows(), data.cols());
       initBump(data.rows());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // integrate^3d/dy^3|average(dC*z_k)/average(dC)|dy^3.
+      // integrate d/dy|average(dC*z_k)/average(dC)|dy.
       Mat dataA(A * data);
       Mat dataB(B * data);
 #if defined(_OPENMP)
@@ -248,29 +248,16 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       }
       auto datadA(compute(dataA, DETECT_Y));
       auto datadB(compute(dataB, DETECT_Y));
-      auto dataddA(compute(datadA, DETECT_Y));
-      auto dataddB(compute(datadB, DETECT_Y));
-      auto datadddA(compute(dataddA, DETECT_Y));
-      auto datadddB(compute(dataddB, DETECT_Y));
-      datadA = compute(datadA, BCLIP);
-      datadB = compute(datadB, BCLIP);
-      dataddA = compute(dataddA, BCLIP);
-      dataddB = compute(dataddB, BCLIP);
-      datadddA = compute(datadddA, BCLIP);
-      datadddB = compute(datadddB, BCLIP);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = dataA(i, j) * datadddB(i, j) + T(3) * datadA(i, j) * dataddB(i, j) + T(3) * dataddA(i, j) * datadB(i, j) + datadddA(i, j) * dataB(i, j);
-          // result(i, j) = dataA(i, j) * dataddB(i, j) + T(2) * datadA(i, j) * datadB(i, j) + dataddA(i, j) * dataB(i, j);
-      result = compute(compute(compute(result, IDETECT_Y), IDETECT_Y), IDETECT_Y);
-      // result = compute(compute(result, IDETECT_Y), IDETECT_Y);
+          result(i, j) = dataA(i, j) * datadB(i, j) + datadA(i, j) * dataB(i, j);
+      result = compute(result, IDETECT_Y);
     }
     break;
   case BUMP_Y:
-    // result = compute((compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y)) / T(4) / Pi / T(2) / Pi, CLIPPM);
     result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y);
     break;
   case EXTEND_Y:
