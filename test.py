@@ -137,6 +137,8 @@ for line in argv[3:]:
     subprocess.call([argv[1], "tilt2", root + ".ppm", root, root + "-bump.ppm"])
     subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
     subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
+  elif(argv[2] == "pnga"):
+    subprocess.call(["convert", line, root + "-bump.ppm", "-channel-fx", "| gray=>alpha", root + "-alpha.png"])
   elif(argv[2] == "64"):
     subprocess.call([argv[1], "bump2", root + ".ppm", root + "-bump64.ppm"])
     subprocess.call(["convert", "-resize", "128x", "-resize", "x128<", "-resize", "50%", "-gravity", "center", "-crop", "64x64+0+0", root + "-bump64.ppm", root + "-bump64e" + ".jpeg"])
