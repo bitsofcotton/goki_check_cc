@@ -47,6 +47,7 @@ public:
     ENLARGE_3BOTH,
     DETECT_X,
     DETECT_Y,
+    DETECT_NOP_Y,
     DETECT_BOTH,
     COLLECT_X,
     COLLECT_Y,
@@ -90,13 +91,14 @@ public:
   Mat compute(const Mat& data, const direction_t& dir);
   T   dratio;
   T   offset;
+  T   blur;
   
 private:
   void initDop(const int& size);
   void initBump(const int& rows, const int& cols);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
-  void makeDI(const int& size, Vec& Dop, Vec& Iop, Vec& Eop);
+  void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop);
   MatU seed(const int& size, const bool& idft);
   void xchg(Mat& a, Mat& b);
   Mat  round2y(const Mat& in, const int& h);
@@ -107,12 +109,14 @@ private:
   Mat  B;
   Mat  C;
   Mat  Dop;
+  Mat  Dhop;
   Mat  Eop;
   Mat  Iop;
   Mat  bA;
   Mat  bB;
   Mat  bC;
   Mat  bDop;
+  Mat  bDhop;
   Mat  bEop;
   Mat  bIop;
 };
@@ -122,6 +126,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   Pi = atan2(T(1), T(1)) * T(4);
   dratio = T(.0005);
   offset = T(4) / T(256);
+  blur   = T(8);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -199,6 +204,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     initDop(data.rows());
     result = Dop * data;
     break;
+  case DETECT_NOP_Y:
+    initDop(data.rows());
+    result = Dhop * data;
+    break;
   case COLLECT_Y:
     result = compute(data, DETECT_Y);
     {
@@ -238,18 +247,19 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result = Mat(data.rows(), data.cols());
       initBump(data.rows(), data.cols());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // integrate d/dy|average(dC*z_k)/average(dC)|dy.
+      // integrate d/dy|average(dC*z_k)/average(dC)|dy with denominator limit.
       const auto dataA(compute(A * data, ABS));
       const auto dataB(compute(B * data, ABS));
       const auto datadA(compute(dataA, DETECT_Y));
-      const auto datadB(compute(compute(dataB, DETECT_Y), BCLIP));
+      const auto datadB(compute(dataB, DETECT_Y));
+      const auto datadhB(compute(compute(dataB, DETECT_NOP_Y), BCLIP));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (datadA(i, j) * dataB(i, j) - dataA(i, j) * datadB(i, j)) / (datadB(i, j) * datadB(i, j));
+          result(i, j) = (datadA(i, j) * dataB(i, j) - dataA(i, j) * datadB(i, j)) / pow(datadhB(i, j), T(2));
       result = compute(result * C, IDETECT_Y);
     }
     break;
@@ -420,27 +430,31 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   if(Dop.rows() == size)
     return;
   xchg(Dop, bDop);
+  xchg(Dhop, bDhop);
   xchg(Iop, bIop);
   xchg(Eop, bEop);
   if(Dop.rows() == size)
     return;
   cerr << "new" << flush;
   Vec vDop;
+  Vec vDhop;
   Vec vIop;
   Vec vEop;
-  makeDI(size, vDop, vIop, vEop);
-  Dop = Mat(size, size);
-  Iop = Mat(size, size);
-  Eop = Mat(size, size);
+  makeDI(size, vDop, vDhop, vIop, vEop);
+  Dop  = Mat(size, size);
+  Dhop = Mat(size, size);
+  Iop  = Mat(size, size);
+  Eop  = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < Dop.rows(); i ++)
     for(int j = 0; j < Dop.cols(); j ++) {
-      Dop(i, j) =   vDop[getImgPt(j - i - size / 2, Dop.cols())];
-      Iop(i, j) = - vIop[getImgPt(j - i - size / 2, Dop.cols())];
-      Eop(i, j) =   vEop[getImgPt(j - i - size / 2, Dop.cols())];
+      Dop(i, j)  =   vDop[ getImgPt(j - i - size / 2, Dop.cols())];
+      Dhop(i, j) =   vDhop[getImgPt(j - i - size / 2, Dop.cols())];
+      Iop(i, j)  = - vIop[ getImgPt(j - i - size / 2, Dop.cols())];
+      Eop(i, j)  =   vEop[ getImgPt(j - i - size / 2, Dop.cols())];
     }
   Eop *= T(2);
   Mat newEop(Eop.rows() * 2, Eop.cols());
@@ -484,9 +498,10 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
     for(int j = 0; j < rows; j ++)
       B(i, j) = A(i, j) = T(0);
   Vec Dop0;
+  Vec Dhop0;
   Vec Iop0;
   Vec Eop0;
-  makeDI(int(sqrt(T(rows))), Dop0, Iop0, Eop0);
+  makeDI(int(sqrt(T(rows))), Dop0, Dhop0, Iop0, Eop0);
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
@@ -527,7 +542,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
   C  = Mat(cols, cols);
   for(int i = 0; i < C.rows(); i ++)
     for(int j = 0; j < C.cols(); j ++)
-       C(i, j) = pow(T(1 + abs(i - j)), - T(1));
+       C(i, j) = T(1) / (T(1 + abs(i - j)) / C.rows() * blur);
   return;
 }
 
@@ -535,30 +550,36 @@ template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
   return int(abs(int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
 }
 
-template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec& Iop, Vec& Eop) {
+template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop) {
   assert(6 < size);
-  Dop = Vec(size);
-  Iop = Vec(size);
-  Eop = Vec(size);
+  Dop  = Vec(size);
+  Dhop = Vec(size);
+  Iop  = Vec(size);
+  Eop  = Vec(size);
   for(int i = 0; i < Dop.size(); i ++)
-    Dop[i] = Iop[i] = Eop[i] = T(0);
-  assert(Dop.size() == size && Iop.size() == size && Eop.size() == size);
+    Dop[i] = Dhop[i] = Iop[i] = Eop[i] = T(0);
+  assert(Dop.size() == size && Dhop.size() == size && Iop.size() == size && Eop.size() == size);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int ss = 3; ss <= size / 2; ss ++) {
           auto DFTD(seed(ss, false));
     const auto IDFT(seed(ss, true));
+          auto DFTH(DFTD);
           auto DFTI(DFTD);
           auto DFTE(DFTD);
     DFTD.row(0) *= U(0);
+    DFTH.row(0) *= U(0);
     DFTI.row(0) *= U(0);
     DFTE.row(0) *= U(0);
     T norme2(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
       const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+      // N.B. d/dy, integrate.
       DFTD.row(i) *= phase;
       DFTI.row(i) /= phase;
+      // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
+      DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, uses each freq.
       //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
       const T phase2(Pi * T(i + DFTE.rows()) / T(DFTE.rows()));
@@ -569,19 +590,22 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
     DFTE /= sqrt(norme2);
 #if defined(_WITHOUT_EIGEN_)
     DFTD = DFTD.transpose();
+    DFTH = DFTH.transpose();
     DFTI = DFTI.transpose();
     DFTE = DFTE.transpose();
 #endif
     for(int i = 0; i < IDFT.rows(); i ++) {
       const int iidx(IDFT.rows() - 1 - i);
 #if defined(_WITHOUT_EIGEN_)
-      const VecU lDop(DFTD * IDFT.row(iidx));
-      const VecU lIop(DFTI * IDFT.row(iidx));
-      const VecU lEop(DFTE * IDFT.row(iidx));
+      const VecU lDop( DFTD * IDFT.row(iidx));
+      const VecU lDhop(DFTH * IDFT.row(iidx));
+      const VecU lIop( DFTI * IDFT.row(iidx));
+      const VecU lEop( DFTE * IDFT.row(iidx));
 #else
-      const VecU lDop(IDFT.row(iidx) * DFTD);
-      const VecU lIop(IDFT.row(iidx) * DFTI);
-      const VecU lEop(IDFT.row(iidx) * DFTE);
+      const VecU lDop( IDFT.row(iidx) * DFTD);
+      const VecU lDhop(IDFT.row(iidx) * DFTH);
+      const VecU lIop( IDFT.row(iidx) * DFTI);
+      const VecU lEop( IDFT.row(iidx) * DFTE);
 #endif
 #if defined(_OPENMP)
 #pragma omp critical
@@ -589,15 +613,17 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       for(int j = i; j - i < lDop.size(); j ++) {
         const int idx(j + size / 2 - IDFT.rows() + 1);
         const int jdx(j - i);
-        Dop[idx] += T(lDop[jdx].real()) / lDop.size();
-        Iop[idx] += T(lIop[jdx].real()) / lIop.size();
-        Eop[idx] += T(lEop[jdx].real()) / lEop.size();
+        Dop[idx]  += T(lDop[ jdx].real()) / lDop.size();
+        Dhop[idx] += T(lDhop[jdx].real()) / lDhop.size();
+        Iop[idx]  += T(lIop[ jdx].real()) / lIop.size();
+        Eop[idx]  += T(lEop[ jdx].real()) / lEop.size();
       }
     }
   }
-  Dop /= size / 2 - 2;
-  Iop /= size / 2 - 2;
-  Eop /= size / 2 - 2;
+  Dop  /= size / 2 - 2;
+  Dhop /= size / 2 - 2;
+  Iop  /= size / 2 - 2;
+  Eop  /= size / 2 - 2;
   return;
 }
 

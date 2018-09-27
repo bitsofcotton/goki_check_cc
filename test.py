@@ -55,7 +55,8 @@ for line in argv[3:]:
     subprocess.call([argv[1], "enlarge4", root + ".ppm", root + "-enl4-0.ppm"])
     subprocess.call(["convert", root + "-enl4-0.ppm", "-sharpen", "32x32", "-resize", "50%", root + "-enl4.png"])
   elif(argv[2] == "bump"):
-    subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
+    subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump0.ppm"])
+    subprocess.call(["convert", root + "-bump0.ppm", "-blur", "2x2", "-compress", "none", root + "-bump.ppm"])
   elif(argv[2] == "emph"):
     subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])
   elif(argv[2] == "mask0"):
