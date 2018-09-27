@@ -34,6 +34,7 @@ using std::atan2;
 using std::vector;
 using std::sort;
 using std::ceil;
+using std::vector;
 
 template <typename T> class enlarger2ex {
 public:
@@ -74,7 +75,8 @@ public:
     ABS,
     EXPSCALE,
     LOGSCALE,
-    NORMALIZE } direction_t;
+    NORMALIZE,
+    NORMALIZE_CLIP } direction_t;
   typedef complex<T> U;
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
@@ -252,19 +254,41 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       const auto dataB(compute(B * data, ABS));
       const auto datadA(compute(dataA, DETECT_Y));
       const auto datadB(compute(dataB, DETECT_Y));
-      const auto datadhB(compute(compute(dataB, DETECT_NOP_Y), BCLIP));
+      const auto datahB(compute(compute(dataB, DETECT_NOP_Y), BCLIP));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (datadA(i, j) * dataB(i, j) - dataA(i, j) * datadB(i, j)) / pow(datadhB(i, j), T(2));
+          result(i, j) = (datadA(i, j) * dataB(i, j) - dataA(i, j) * datadB(i, j)) / pow(datahB(i, j), T(2));
       result = compute(result * C, IDETECT_Y);
     }
     break;
   case BUMP_Y:
-    result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y);
+    {
+      result = Mat(data.rows(), data.cols());
+      const auto lwork(compute(compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y), NORMALIZE_CLIP));
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(i) = lwork.row(i);
+      Mat work(data.rows() * 2, data.cols());
+      Mat wres(data.rows(), data.cols());
+      vector<int> sizes;
+      for(int i = 0; i < data.rows(); i ++)
+        for(int j = 0; j < data.cols(); j ++) {
+          work(i, j) = work(work.rows() - 1 - i, j) = data(i, j);
+          wres(i, j) = T(0);
+        }
+      for(int i = 0; 72 * 2 <= work.rows(); i ++) {
+        work = compute(work, DIV2_Y);
+        sizes.push_back(work.rows());
+        auto lwork(compute(compute(work, BUMP_Y0) + compute(compute(compute(work, REVERSE_Y), BUMP_Y0), REVERSE_Y), NORMALIZE_CLIP));
+        for(int j = 0; j < i; j ++)
+          lwork = round2y(compute(lwork, ENLARGE_Y), sizes[i - j - 1]);
+        wres += lwork;
+      }
+      result += round2y(compute(wres, ENLARGE_Y), data.rows());
+    }
     break;
   case EXTEND_Y:
     {
@@ -401,13 +425,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case NORMALIZE:
     {
-      result = data;
-      T MM(result(0, 0));
-      T mm(result(0, 0));
+      result = Mat(data.rows(), data.cols());
+      T MM(data(0, 0));
+      T mm(data(0, 0));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++) {
-          MM = max(MM, result(i, j));
-          mm = min(mm, result(i, j));
+          MM = max(MM, data(i, j));
+          mm = min(mm, data(i, j));
         }
       if(mm == MM)
         MM += T(1);
@@ -416,7 +440,27 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (result(i, j) - mm) / (MM - mm);
+          result(i, j) = (data(i, j) - mm) / (MM - mm);
+    }
+    break;
+  case NORMALIZE_CLIP:
+    {
+      result = Mat(data.rows(), data.cols());
+      vector<T> stat;
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          stat.push_back(data(i, j));
+      sort(stat.begin(), stat.end());
+      auto mm(stat[data.rows() + data.cols()]);
+      auto MM(stat[stat.size() - data.rows() - data.cols() - 1]);
+      if(mm <= MM + T(1))
+        MM += T(1);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = max(mm, min(MM, (data(i, j) - mm) / (MM - mm)));
     }
     break;
   default:
@@ -509,7 +553,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int zi = 0; MM < rows / 4; zi ++)
+  for(int zi = 0; MM < rows; zi ++)
     for(int j = 0; j < Dop0.size(); j ++) {
       Vec cpoint(2);
       cpoint[0] = j - T(Dop0.size() - 1) / 2;
