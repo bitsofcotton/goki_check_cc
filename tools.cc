@@ -254,8 +254,8 @@ int main(int argc, const char* argv[]) {
       // bump.
       enlarger2ex<double> bump;
       const auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      data[1] = data[2] = data[0] = xye;
-      // data[1] = data[2] = data[0] = xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye);
+      // data[1] = data[2] = data[0] = redig.autoLevel(xye, 2 * (xye.rows() + xye.cols()));
+      data[1] = data[2] = data[0] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
     }
     break;
   case 7:
@@ -281,7 +281,7 @@ int main(int argc, const char* argv[]) {
       auto X(data[0] * .49000/.17697 + data[1] * .31000/.17697  + data[2] * .20000/.17697);
       auto Z(                          data[1] * .010000/.17697 + data[2] * .99000/.17697);
       data[0] = X / 8.;
-      data[1] = bump.compute(redig.rgb2l(data), bump.BUMP_BOTH) / 8.;
+      data[1] = redig.autoLevel(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH) / 8., 2 * (data[0].rows() + data[0].cols()));
       data[2] = Z / 8.;
     }
     // with no auto-level.
