@@ -571,7 +571,7 @@ template <typename T> template <typename U> SimpleMatrix<U> SimpleMatrix<T>::cas
   SimpleMatrix<U> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
     for(int j = 0; j < ecols; j ++)
-      res(i, j) = *reinterpret_cast<const U*>(&entity[i][j]);
+      res(i, j) = static_cast<const U>(entity[i][j]);
   return res;
 }
 

@@ -254,8 +254,8 @@ int main(int argc, const char* argv[]) {
       // bump.
       enlarger2ex<double> bump;
       const auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      // data[1] = data[2] = data[0] = redig.autoLevel(xye, 2 * (xye.rows() + xye.cols()));
-      data[1] = data[2] = data[0] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
+      data[1] = data[2] = data[0] = redig.autoLevel(xye, 2 * (xye.rows() + xye.cols()));
+      // data[1] = data[2] = data[0] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
     }
     break;
   case 7:
@@ -678,7 +678,7 @@ int main(int argc, const char* argv[]) {
       }
       typename simpleFile<double>::Mat in(int(My + 1.), int(Mx + 1.));
       matchPartialPartial<double> statmatch;
-      auto m(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), - psi2 * 2.));
+      auto m(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), - psi2));
       statmatch.complementMatch(m, pdst, psrc, statmatch.makeG(pdst), statmatch.makeG(psrc));
       file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
                    poldst, (argv[3] + std::string("-emph") +
