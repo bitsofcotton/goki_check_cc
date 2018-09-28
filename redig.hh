@@ -118,7 +118,7 @@ public:
   
   reDig();
   ~reDig();
-  void initialize(const int& vbox, const T& rz);
+  void initialize(const int& vbox, const T& rz = - T(1));
   Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
   Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const bool& elim = false);
   Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
@@ -136,7 +136,6 @@ public:
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   Mat  contrast(const Mat& in, const T& intensity, const T& thresh = T(.5));
   Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
-  Mat  reversey(const Mat& in);
   Mat  normalize(const Mat& data, const T& upper);
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
@@ -172,10 +171,11 @@ template <typename T> reDig<T>::~reDig() {
 }
 
 template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
-  assert(0 < vbox && T(0) < rz);
+  assert(0 < vbox);
   Pi         = T(4) * atan2(T(1), T(1));
   this->vbox = vbox;
-  this->rz   = rz;
+  if(T(0) < rz)
+    this->rz = rz;
   return;
 }
 
@@ -263,7 +263,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
-  const Mat repl(replace(dstimg, src, match, hullsrc, true));
+  const Mat repl(dstimg, src, match, hullsrc, true);
   return repl + emphasis(repl, srcimg, srcbump, dst, src, match,
                          hulldst, hullsrc, T(0));
 }
@@ -274,6 +274,10 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
   const auto rmatch(~ match);
   vector<vector<int> > emphs;
   emphs.resize(result.size() * 3);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < hullsrc.size(); i ++) {
     const auto& p0(src[hullsrc[i][0]]);
     const auto& p1(src[hullsrc[i][1]]);
@@ -289,8 +293,14 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
           sameSide3(p2, p0, p1, q)) ||
          (sameSide3(dp0, dp1, dp2, dq) &&
           sameSide3(dp1, dp2, dp0, dq) &&
-          sameSide3(dp2, dp0, dp1, dq)) )
-        emphs[hulldst[i][j]].push_back(hullsrc[i][j]);
+          sameSide3(dp2, dp0, dp1, dq)) ) {
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+          {
+            emphs[hulldst[i][j]].push_back(hullsrc[i][j]);
+          }
+        }
     }
   }
   for(int i = 0; i < emphs.size(); i ++) if(emphs[i].size()) {
@@ -737,6 +747,7 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
       // normal vector direction.
       sort(si.begin(), si.end());
       int j(0);
+      // XXX: sorting is needed.
       for( ; j < si.size(); j ++) {
         const auto& sti(store[i]);
         const auto& stj(store[si[j]]);
@@ -825,6 +836,9 @@ template <typename T> void reDig<T>::rgb2xyz(Mat xyz[3], const Mat rgb[3]) {
 
 template <typename T> typename reDig<T>::Mat reDig<T>::contrast(const Mat& in, const T& intensity, const T& thresh) {
   Mat result(in);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = min(abs(thresh) + T(.5), max(- abs(thresh) + T(.5), intensity * (result(i, j) - T(.5)) + T(.5)));
@@ -879,13 +893,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, con
         res(y, x) = sum / cnt;
       }
   }
-  return res;
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::reversey(const Mat& in) {
-  Mat res(in.rows(), in.cols());
-  for(int i = 0; i < in.rows(); i ++)
-    res.row(in.rows() - i - 1) = in.row(i);
   return res;
 }
 
@@ -944,6 +951,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::autoLevel(const Mat& data
       res.push_back(data(i, j));
   sort(res.begin(), res.end());
   Mat result(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++)
       result(i, j) = max(min(data(i, j), res[res.size() - count - 1]), res[count]);

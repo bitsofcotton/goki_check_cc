@@ -146,11 +146,11 @@ for line in argv[3:]:
     subprocess.call(["convert", "-resize", "128x", "-resize", "x128<", "-resize", "50%", "-gravity", "center", "-crop", "64x64+0+0", root + "-bump64.ppm", root + "-bump64e" + ".jpeg"])
   elif(argv[2] == "demosaic"):
     print pixels
-    s0  = int(np.ceil(np.log(pixels) / np.log(8.)))
+    s0  = int(np.ceil(np.log(pixels) / np.log(1.75)))
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", root + "-0.png"])
     for s in range(0, s0):
-      subprocess.call(["python", argv[0], argv[1], "enl4", root + "-" + str(s) + ".png"])
-      subprocess.call(["mv", root + "-" + str(s) + "-enl4.png", root + "-" + str(s + 1) + ".png"])
+      subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "2x2", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
