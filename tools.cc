@@ -245,7 +245,8 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> idetect, didetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(idetect.compute(data[i], idetect.IDETECT_BOTH));
-        data[i] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.IDETECT_BOTH), true, xye);
+        data[i] = xye;
+        // data[i] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.IDETECT_BOTH), true, xye);
       }
     }
     break;
