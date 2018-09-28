@@ -109,7 +109,6 @@ private:
   MatU seed(const int& size, const bool& idft);
   void xchg(Mat& a, Mat& b);
   Mat  round2y(const Mat& in, const int& h);
-  Mat  tdot(const Mat& a, const Mat& b);
   U    I;
   T    Pi;
   Mat  A;
@@ -259,15 +258,25 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       const auto dataB(compute(B * data, ABS));
       const auto datadA(compute(dataA, DETECT_Y));
       const auto datadB(compute(dataB, DETECT_Y));
+      // N.B. don't know why, but works well. (might be independent data).
       const auto datahB(compute(compute(dataB, DETECT_NOP_Y), BCLIP));
+      // N.B. spread tilt for eachpoint.
+      const auto dataC(compute(compute(data, COLLECT_Y), BCLIP) * C);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (datadA(i, j) * dataB(i, j) - dataA(i, j) * datadB(i, j)) / pow(datahB(i, j), T(2));
+          result(i, j) = (datadA(i, j) * dataB(i, j) - dataA(i, j) * datadB(i, j)) / pow(datahB(i, j), T(2)) * dataC(i, j);
       result = compute(result * C, IDETECT_Y);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) /= dataC(i, j);
     }
     break;
   case BUMP_Y:
@@ -290,7 +299,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         auto lwork(compute(compute(work, BUMP_Y0) + compute(compute(compute(work, REVERSE_Y), BUMP_Y0), REVERSE_Y), NORMALIZE_CLIP));
         for(int j = 0; j < i; j ++)
           lwork = round2y(compute(lwork, ENLARGE_Y), sizes[i - j - 1]);
-        wres += lwork;
+        wres += lwork * pow(T(2), i);
       }
       result += round2y(compute(wres, ENLARGE_Y), data.rows());
     }
@@ -310,6 +319,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
+      // N.B. nearest data in differential space.
       const auto ddata(Dop * result);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -703,18 +713,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::round2y(const
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = in(i, j);
-  return result;
-}
-
-template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::tdot(const Mat& a, const Mat& b) {
-  assert(a.rows() == b.rows() && a.cols() == b.cols());
-  Mat result(a.rows(), a.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = a(i, j) * b(i, j);
   return result;
 }
 
