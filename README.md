@@ -23,7 +23,7 @@ For speed, http://eigen.tuxfamily.org/ library is needed, and for bone informati
 This program is inspired from re-focus photo softwares.  
 And around this, there's many preceders that many approach to get bump maps with certain conditions
 (such as multiple camera conditions, or, with layered objects, or, spherical, or, from movie, etcetc).
-There's a defocus photo algorithms http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf some words with googled. So it's accurate for most cameras, goki_check_cc is standing on another hypothesis that is not widely used (in another words, some transform or special camera is needed for photos...).  
+There's a defocus photo algorithms http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf some words with googled. So it's accurate for most cameras, goki_check_cc is standing on another hypothesis that is not widely used (in another words, some transform or special camera is needed for photos...). And, there exists preceders that make it from multiple pint images, this makes very accurate results.  
 There's preceders to match 3D to 2D with many approaches. (s.t. detecting topology of junction point, or, machine learning, and so on.). And it is fater than this that PnP problem and specific point based matching.  
 By searching with some word that is not common, there exists the article https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ that I firstly know the gltf format by this.  
 Searching the Internet more...
@@ -88,7 +88,7 @@ These program's match assumes one of vertices is full and another is lowPoly but
 
 # Specification
 enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
-Pseudo condition is avoidable on very wide cases with multiple camera conditions,
+Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 
 And, generated bumpmap is flat enough in global, so please try extend command with correct it by tilting little by little.
