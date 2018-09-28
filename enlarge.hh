@@ -248,10 +248,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
             auto dataB(compute(B * data, ABS));
       const auto datadyA(compute(dataA, DETECT_Y));
       const auto datadyB(compute(dataB, DETECT_Y));
-      const auto datadxA(compute(dataA.transpose(), DETECT_Y).transpose());
-      const auto datadxB(compute(dataB.transpose(), DETECT_Y).transpose());
+      const auto datadxA(compute(dataA, DETECT_X));
+      const auto datadxB(compute(dataB, DETECT_X));
       const auto datad2yxA(compute(datadxA, DETECT_Y));
-      const auto datad2xyB(compute(datadyB.transpose(), DETECT_Y).transpose());
+      const auto datad2xyB(compute(datadyB, DETECT_X));
       dataB = compute(dataB, BCLIP);
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -261,36 +261,16 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         for(int j = 0; j < result.cols(); j ++)
           // N.B. simply: d/dy(d/dx(A/B)) =
           result(i, j) = (datad2yxA(i, j) * dataB(i, j) + datadxA(i, j) * datadyB(i, j) - datadyA(i, j) * datadxB(i, j) - dataA(i, j) * datad2xyB(i, j)) / pow(dataB(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataB(i, j), T(3)) * (- T(2)) * datadyB(i, j);
-      result = compute(compute(result, IDETECT_Y).transpose(), IDETECT_Y).transpose();
+      result = compute(compute(result, IDETECT_Y), IDETECT_X);
     }
     break;
   case BUMP_Y:
-    {
-      result = compute(compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y), NORMALIZE_CLIP);
-      break;
-      Mat work(data.rows() * 2, data.cols());
-      Mat wres(data.rows(), data.cols());
-      vector<int> sizes;
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++) {
-          work(i, j) = work(work.rows() - 1 - i, j) = data(i, j);
-          wres(i, j) = T(0);
-        }
-      for(int i = 0; 72 * 2 <= work.rows(); i ++) {
-        work = compute(work, DIV2_Y);
-        sizes.push_back(work.rows());
-        auto lwork(compute(compute(work, BUMP_Y0) + compute(compute(compute(work, REVERSE_Y), BUMP_Y0), REVERSE_Y), NORMALIZE_CLIP));
-        for(int j = 0; j < i; j ++)
-          lwork = round2y(compute(lwork, ENLARGE_Y), sizes[i - j - 1]);
-        wres += lwork * pow(T(2), i);
-      }
-      result += round2y(compute(wres, ENLARGE_Y), data.rows());
-    }
+    result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
     break;
   case EXTEND_Y:
     {
       initDop(data.rows() + 1);
-      result = Mat(Dop.rows(), data.cols());
+      result = Mat(data.rows() + 1, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
