@@ -278,7 +278,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.rows(); i ++)
         result.row(i) = data.row(i);
 #if defined(_OPENMP)
-#if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.cols(); i ++)
