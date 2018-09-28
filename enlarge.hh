@@ -261,7 +261,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       // N.B. don't know why, but works well. (might be independent data).
       const auto datahB(compute(compute(dataB, DETECT_NOP_Y), BCLIP));
       // N.B. spread tilt for eachpoint.
-      const auto dataC(compute(compute(data, COLLECT_Y), BCLIP) * C);
+      const auto dataC(compute(compute(data, COLLECT_Y) * C, BCLIP));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
