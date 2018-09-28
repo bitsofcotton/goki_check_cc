@@ -23,10 +23,8 @@ const int    nemph(8);
 const double Memph(.25);
 const int    vbox0(2);
 const int    vbox(16);
-const double rz(1. / 6);
 const double offsetx(.01);
 const double aroffset(.01);
-const double arrot(.025);
 const int    M_TILT(32);
 const int    M_TILTROT(8);
 const double tiltrots(.001);
@@ -191,10 +189,11 @@ int main(int argc, const char* argv[]) {
   }
   reDig<double> redig;
   simpleFile<double> file;
+  bool auto_level(true);
   typename simpleFile<double>::Mat data[3];
   if(!file.loadp2or3(data, argv[2]))
     return - 2;
-  redig.initialize(vbox, rz);
+  redig.initialize(vbox);
   redig.normalize(data, 1.);
   switch(mode) {
   case 0:
@@ -214,7 +213,7 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < 4; j ++)
         for(int i = 0; i < 3; i ++) {
           const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-          data[i]  = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye);
+          data[i]  = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
           data[i] /= 2.;
         }
     }
@@ -222,11 +221,11 @@ int main(int argc, const char* argv[]) {
   case 23:
     {
       // extend.
-      enlarger2ex<double> extender, extender2;
+      enlarger2ex<double> extender;
       const int count(sqrt(sqrt(double(data[0].rows() * data[0].cols()))));
       for(int j = 0; j < count; j ++)
         for(int i = 0; i < 3; i ++)
-          data[i] = redig.reversey(redig.reversey(extender2.compute(redig.reversey(redig.reversey(extender.compute(data[i], extender.EXTEND_BOTH)).transpose()), extender2.EXTEND_BOTH)).transpose());
+          data[i] = extender.compute(data[i], extender.EXTEND_BOTH);
     }
     break;
   case 4:
@@ -263,9 +262,9 @@ int main(int argc, const char* argv[]) {
   case 17:
     {
       // obj.
-      std::vector<typename simpleFile<double>::Vec3> points;
+      std::vector<typename simpleFile<double>::Vec3>  points;
       std::vector<typename simpleFile<double>::Veci3> facets;
-      redig.initialize(vbox0, rz);
+      redig.initialize(vbox0);
       redig.getTileVec(data[0], points, facets);
       if(mode == 7)
         file.saveobj(points, facets, argv[3], false);
@@ -285,10 +284,8 @@ int main(int argc, const char* argv[]) {
       data[1] = redig.autoLevel(bump.compute(redig.rgb2l(data), bump.BUMP_BOTH) / 8., 2 * (data[0].rows() + data[0].cols()));
       data[2] = Z / 8.;
     }
-    // with no auto-level.
-    if(!file.savep2or3(argv[3], data, ! true))
-      return - 3;
-    return 0;
+    auto_level = false;
+    break;
   case 5:
     {
       // reverse bump2.
@@ -330,13 +327,12 @@ int main(int argc, const char* argv[]) {
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
       }
-      return 0;
     }
-    break;
+    return 0;
   case 14:
     // tilt2
     {
-      typename simpleFile<double>::Mat bump[3], data2[2][3], out[3];
+      typename simpleFile<double>::Mat bump[3], out[3];
       std::vector<typename simpleFile<double>::Vec3>  points;
       std::vector<typename simpleFile<double>::Veci3> polys;
       const std::string fn(argv[4]);
@@ -365,9 +361,8 @@ int main(int argc, const char* argv[]) {
         outfile += std::string(names[i % 2]);
         file.savep2or3(outfile.c_str(), out, false);
       }
-      return 0;
     }
-    break;
+    return 0;
   case 8:
     {
       // tilt3.
@@ -401,9 +396,8 @@ int main(int argc, const char* argv[]) {
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
       }
-      return 0;
     }
-    break;
+    return 0;
   case 24:
   case 20:
     {
@@ -438,9 +432,8 @@ int main(int argc, const char* argv[]) {
         outfile += std::string("-") + std::to_string(i) + std::string(".ppm");
         file.savep2or3(outfile.c_str(), out, false);
       }
-      return 0;
     }
-    break;
+    return 0;
   case 9:
   case 25:
     {
@@ -611,7 +604,7 @@ int main(int argc, const char* argv[]) {
         usage();
         return - 2;
       }
-      redig.initialize(vbox0, rz);
+      redig.initialize(vbox0);
       redig.maskVectors(points, polys, data[0]);
       auto edges(redig.getEdges(data[0], points));
       if(mode == 27) {
@@ -720,7 +713,7 @@ int main(int argc, const char* argv[]) {
             saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), matches[n][m], shape, datapoly[m], data, zero, bump, zero[0], emph);
       }
     }
-    break;
+    return 0;
   case 28:
     // match3d3d
     {
@@ -816,7 +809,7 @@ int main(int argc, const char* argv[]) {
   case 22:
     // tiltp
     {
-      typename simpleFile<double>::Mat bump[3], data2[2][3], out[3];
+      typename simpleFile<double>::Mat bump[3], out[3];
       std::vector<typename simpleFile<double>::Vec3>  points;
       std::vector<typename simpleFile<double>::Veci3> polys;
       const std::string fn(argv[4]);
@@ -848,14 +841,14 @@ int main(int argc, const char* argv[]) {
           file.savep2or3(outfile.c_str(), out, false);
         }
       }
-      return 0;
     }
-    break;
+    return 0;
   default:
     usage();
     return - 1;
   }
-  redig.normalize(data, 1.);
+  if(auto_level)
+    redig.normalize(data, 1.);
   if(!file.savep2or3(argv[3], data, ! true))
     return - 3;
   return 0;

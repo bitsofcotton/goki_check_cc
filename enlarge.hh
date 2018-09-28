@@ -113,14 +113,12 @@ private:
   T    Pi;
   Mat  A;
   Mat  B;
-  Mat  C;
   Mat  Dop;
   Mat  Dhop;
   Mat  Eop;
   Mat  Iop;
   Mat  bA;
   Mat  bB;
-  Mat  bC;
   Mat  bDop;
   Mat  bDhop;
   Mat  bEop;
@@ -160,7 +158,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / T(2);
     break;
   case BUMP_BOTH:
-    result = (compute(data, BUMP_X)    + compute(data, BUMP_Y)) / T(2);
+    result = (compute(data, BUMP_Y) + compute(data, BUMP_X)) / T(2);
     break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
@@ -215,15 +213,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = Dhop * data;
     break;
   case COLLECT_Y:
-    result = compute(data, DETECT_Y);
-    {
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = abs(result(i, j));
-    }
+    result = compute(compute(data, DETECT_Y), ABS);
     break;
   case IDETECT_Y:
     {
@@ -253,38 +243,31 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result = Mat(data.rows(), data.cols());
       initBump(data.rows(), data.cols());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      // integrate d/dy|average(dC*z_k)/average(dC)|dy with denominator limit.
+      // |average(dC*z_k)/average(dC)| == dataA / dataB.
       const auto dataA(compute(A * data, ABS));
-      const auto dataB(compute(B * data, ABS));
-      const auto datadA(compute(dataA, DETECT_Y));
-      const auto datadB(compute(dataB, DETECT_Y));
-      // N.B. don't know why, but works well. (might be independent data).
-      const auto datahB(compute(compute(dataB, DETECT_NOP_Y), BCLIP));
-      // N.B. spread tilt for eachpoint.
-      const auto dataC(compute(compute(data, COLLECT_Y) * C, BCLIP));
+            auto dataB(compute(B * data, ABS));
+      const auto datadyA(compute(dataA, DETECT_Y));
+      const auto datadyB(compute(dataB, DETECT_Y));
+      const auto datadxA(compute(dataA.transpose(), DETECT_Y).transpose());
+      const auto datadxB(compute(dataB.transpose(), DETECT_Y).transpose());
+      const auto datad2yxA(compute(datadxA, DETECT_Y));
+      const auto datad2xyB(compute(datadyB.transpose(), DETECT_Y).transpose());
+      dataB = compute(dataB, BCLIP);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (datadA(i, j) * dataB(i, j) - dataA(i, j) * datadB(i, j)) / pow(datahB(i, j), T(2)) * dataC(i, j);
-      result = compute(result * C, IDETECT_Y);
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) /= dataC(i, j);
+          // N.B. simply: d/dy(d/dx(A/B)) =
+          result(i, j) = (datad2yxA(i, j) * dataB(i, j) + datadxA(i, j) * datadyB(i, j) - datadyA(i, j) * datadxB(i, j) - dataA(i, j) * datad2xyB(i, j)) / pow(dataB(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataB(i, j), T(3)) * (- T(2)) * datadyB(i, j);
+      result = compute(compute(result, IDETECT_Y).transpose(), IDETECT_Y).transpose();
     }
     break;
   case BUMP_Y:
     {
-      result = Mat(data.rows(), data.cols());
-      const auto lwork(compute(compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y), NORMALIZE_CLIP));
-      for(int i = 0; i < data.rows(); i ++)
-        result.row(i) = lwork.row(i);
+      result = compute(compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y), NORMALIZE_CLIP);
+      break;
       Mat work(data.rows() * 2, data.cols());
       Mat wres(data.rows(), data.cols());
       vector<int> sizes;
@@ -541,7 +524,6 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
     return;
   xchg(A, bA);
   xchg(B, bB);
-  xchg(C, bC);
   if(A.rows() == rows)
     return;
 
@@ -598,10 +580,6 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
   for(int i = 0; i < B.rows(); i ++)
     n2 += sqrt(B.row(i).dot(B.row(i)));
   B /= n2 / B.rows();
-  C  = Mat(cols, cols);
-  for(int i = 0; i < C.rows(); i ++)
-    for(int j = 0; j < C.cols(); j ++)
-       C(i, j) = T(1) / (T(1 + abs(i - j)) / C.rows() * blur);
   return;
 }
 
