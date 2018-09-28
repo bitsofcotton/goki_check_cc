@@ -36,6 +36,11 @@ using std::sort;
 using std::ceil;
 using std::vector;
 
+/*
+ * This class is NOT thread safe.
+ * When applying this to another sizes of images,
+ * please create instances for each, or we get slow results.
+ */
 template <typename T> class enlarger2ex {
 public:
   typedef enum {
