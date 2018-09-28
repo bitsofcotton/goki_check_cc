@@ -177,7 +177,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2), const T& aroffset = T(.2), const T& arrot = T(.025)) {
+  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2), const T& aroffset = T(.2), const T& arrot = T(.015)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
