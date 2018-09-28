@@ -22,7 +22,7 @@ Makefile を stdc++ を使えるように変更してください。
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。また、この分野に関して、様々な(これと異なる)付帯条件での先行がたくさんありました。
 (例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるもの、動画から生成するものなどです。)
-検索結果に defocus photo アルゴリズムがありました。 http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf 。これはほとんどの場合のカメラ撮影について、goki_check_cc よりも正確です。goki_check_cc は異なる仮定を用いていますが、一般的に使用されるカメラ撮影の場合には、事前のいくつかの変換が必要です。  
+検索結果に defocus photo アルゴリズムがありました。 http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf 。これはほとんどの場合のカメラ撮影について、goki_check_cc よりも正確です。goki_check_cc は異なる仮定を用いていますが、一般的に使用されるカメラ撮影の場合には、事前のいくつかの変換が必要です。また、フォーカスをずらして 2 枚以上の写真を撮影できる場合には、より正確な先行結果があります。  
 また、合致の分野に対して、様々な(これと異なる)付帯条件での先行がたくさんありました。(例えば、トポロジを検出して端を合致するものや、機械学習を使うもの、および座標変換の変数を点の数で固定するものなどです。)。また、特徴点を利用した PnP 問題の合致の方がこちらよりも高速です。  
 検索によって限られた組み合わせの語句では見つからなかった https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ という記事さんがありました。gltf2 のライブラリは初めて知りました。  
 さらに検索中です。
@@ -60,10 +60,10 @@ Freeze 前の細かな実装のチェックをしています。特に、gltf2 �
     # list matches 2d - 2d with hidden 3d.
     ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-object.obj
     
-    # list matches 2d - 3d.
+    # list matches 2d - 3d with bone.
     ./tools match3dbone input-matchbase.ppm output-base input-tobematched.gltf matchbase-bump.ppm matchbase-mask.ppm
     
-    # list matches 2d - 2d with hidden 3d.
+    # list matches 2d - 2d with hidden 3d with bone.
     ./tools match2dh3dbone input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-object.gltf
 
     # habit
@@ -88,7 +88,7 @@ match は片方が稠密な頂点、もう片方が lowPoly された頂点で�
 # 仕様
 enlarger2ex はもっともらしいバンプマップを返しますが、正しくない場合があります。
 これは、1 枚の画像のみを使用する事と仮定している構造である、もし焦点が合っていればより角が立ってみえる、という構造によるもので、
-ほとんどの場合では複数台のカメラを使えば正しいバンプマップを返すことができます。
+ほとんどの場合では複数台のカメラあるいは複数のピントを使えば正しいバンプマップを返すことができます。
 (それができない場合には画像や色の解像度が足りないか、鏡など角度によって異なる色を返すものや、散乱やフォグなどの光学的事象がある際です)
 
 また、このプログラムは大域的には平坦なバンプマップを返します。少しずつ傾けつつ補正するには extend コマンドを試して見てください。
