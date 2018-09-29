@@ -61,6 +61,9 @@ public:
     IDETECT_X,
     IDETECT_Y,
     IDETECT_BOTH,
+    BLUR_X,
+    BLUR_Y,
+    BLUR_BOTH,
     BUMP_X,
     BUMP_Y0,
     BUMP_Y,
@@ -113,12 +116,14 @@ private:
   T    Pi;
   Mat  A;
   Mat  B;
+  Mat  C;
   Mat  Dop;
   Mat  Dhop;
   Mat  Eop;
   Mat  Iop;
   Mat  bA;
   Mat  bB;
+  Mat  bC;
   Mat  bDop;
   Mat  bDhop;
   Mat  bEop;
@@ -157,8 +162,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case IDETECT_BOTH:
     result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / T(2);
     break;
+  case BLUR_BOTH:
+    result = (compute(data, BLUR_X)    + compute(data, BLUR_Y)) / T(2);
+    break;
   case BUMP_BOTH:
-    result = (compute(data, BUMP_Y) + compute(data, BUMP_X)) / T(2);
+    result = (compute(data, BUMP_Y)    + compute(data, BUMP_X)) / T(2);
     break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
@@ -184,6 +192,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case IDETECT_X:
     result = compute(data.transpose(), IDETECT_Y).transpose();
+    break;
+  case BLUR_X:
+    result = compute(data.transpose(), BLUR_Y).transpose();
     break;
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
@@ -211,6 +222,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case DETECT_NOP_Y:
     initDop(data.rows());
     result = Dhop * data;
+    break;
+  case BLUR_Y:
+    initDop(data.rows());
+    result = C * data;
     break;
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
@@ -250,18 +265,26 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       const auto datadyB(compute(dataB, DETECT_Y));
       const auto datadxA(compute(dataA, DETECT_X));
       const auto datadxB(compute(dataB, DETECT_X));
-      const auto datad2yxA(compute(datadxA, DETECT_Y));
-      const auto datad2xyB(compute(datadyB, DETECT_X));
+      const auto datad2yyA(compute(datadyA, DETECT_Y));
+      const auto datad2yyB(compute(datadyB, DETECT_Y));
+      const auto datad2xxA(compute(datadxA, DETECT_X));
+      const auto datad2xxB(compute(datadxB, DETECT_X));
       dataB = compute(dataB, BCLIP);
+      Mat rbufxx(result.rows(), result.cols());
+      Mat rbufyy(result.rows(), result.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          // N.B. simply: d/dy(d/dx(A/B)) =
-          result(i, j) = (datad2yxA(i, j) * dataB(i, j) + datadxA(i, j) * datadyB(i, j) - datadyA(i, j) * datadxB(i, j) - dataA(i, j) * datad2xyB(i, j)) / pow(dataB(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataB(i, j), T(3)) * (- T(2)) * datadyB(i, j);
-      result = compute(compute(result, IDETECT_Y), IDETECT_X);
+        for(int j = 0; j < result.cols(); j ++) {
+          // N.B. simply: d/dx(d/dx(A/B)) =
+          rbufxx(i, j)   = (datad2xxA(i, j) * dataB(i, j) + datadxA(i, j) * datadxB(i, j) - datadxA(i, j) * datadxB(i, j) - dataA(i, j) * datad2xxB(i, j)) / pow(dataB(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataB(i, j), T(3)) * (- T(2)) * datadxB(i, j);
+          // N.B. simply: d/dy(d/dy(A/B)) =
+          rbufyy(i, j)   = (datad2yyA(i, j) * dataB(i, j) + datadyA(i, j) * datadyB(i, j) - datadyA(i, j) * datadyB(i, j) - dataA(i, j) * datad2yyB(i, j)) / pow(dataB(i, j), T(2)) + (datadyA(i, j) * dataB(i, j) + dataA(i, j) * datadyB(i, j)) / pow(dataB(i, j), T(3)) * (- T(2)) * datadyB(i, j);
+        }
+      // inverse of div grad dataA/dataB.
+      result = compute(compute(compute(rbufyy, IDETECT_Y), IDETECT_Y), BLUR_X) + compute(compute(compute(rbufxx, IDETECT_X), IDETECT_X), BLUR_Y);
     }
     break;
   case BUMP_Y:
@@ -451,6 +474,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   cerr << "." << flush;
   if(Dop.rows() == size)
     return;
+  xchg(C, bC);
   xchg(Dop, bDop);
   xchg(Dhop, bDhop);
   xchg(Iop, bIop);
@@ -495,6 +519,10 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     Eop.row(i) += newEop.row(max(i - 1, 0));
   }
   Eop /= T(4);
+  C = Mat(Dop.rows(), Dop.cols());
+  for(int i = 0; i < C.rows(); i ++)
+    for(int j = 0; j < C.cols(); j ++)
+      C(i, j) = T(1) / (T(1 + abs(i - j)) / C.rows() * blur);
   return;
 }
 
