@@ -69,6 +69,7 @@ public:
     BUMP_Y,
     BUMP_BOTH,
     EXTEND_X,
+    EXTEND_Y0,
     EXTEND_Y,
     EXTEND_BOTH,
     DIV2_X,
@@ -255,44 +256,53 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y0:
     {
-      result = Mat(data.rows(), data.cols());
       initBump(data.rows(), data.cols());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       const auto dataA(compute(A * data, ABS));
-            auto dataB(compute(B * data, ABS));
+      const auto dataB(compute(B * data, ABS));
+      const auto dataBc(compute(dataB, BCLIP));
       const auto datadyA(compute(dataA, DETECT_Y));
       const auto datadyB(compute(dataB, DETECT_Y));
       const auto datadxA(compute(dataA, DETECT_X));
       const auto datadxB(compute(dataB, DETECT_X));
       const auto datad2yyA(compute(datadyA, DETECT_Y));
       const auto datad2yyB(compute(datadyB, DETECT_Y));
+      const auto datad2xyA(compute(datadyA, DETECT_X));
+      const auto datad2xyB(compute(datadyB, DETECT_X));
       const auto datad2xxA(compute(datadxA, DETECT_X));
       const auto datad2xxB(compute(datadxB, DETECT_X));
-      dataB = compute(dataB, BCLIP);
-      Mat rbufxx(result.rows(), result.cols());
-      Mat rbufyy(result.rows(), result.cols());
+      const auto datad2yxA(compute(datadxA, DETECT_Y));
+      const auto datad2yxB(compute(datadxB, DETECT_Y));
+      result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++) {
-          // N.B. simply: d/dx(d/dx(A/B)) =
-          rbufxx(i, j)   = (datad2xxA(i, j) * dataB(i, j) + datadxA(i, j) * datadxB(i, j) - datadxA(i, j) * datadxB(i, j) - dataA(i, j) * datad2xxB(i, j)) / pow(dataB(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataB(i, j), T(3)) * (- T(2)) * datadxB(i, j);
-          // N.B. simply: d/dy(d/dy(A/B)) =
-          rbufyy(i, j)   = (datad2yyA(i, j) * dataB(i, j) + datadyA(i, j) * datadyB(i, j) - datadyA(i, j) * datadyB(i, j) - dataA(i, j) * datad2yyB(i, j)) / pow(dataB(i, j), T(2)) + (datadyA(i, j) * dataB(i, j) + dataA(i, j) * datadyB(i, j)) / pow(dataB(i, j), T(3)) * (- T(2)) * datadyB(i, j);
+          // const auto ddx((datadxA(i, j) * dataB(i, j) - dataA(i, j) * datadxB(i, j)) / (dataBc(i, j), T(2)));
+          // const auto ddy((datadyA(i, j) * dataB(i, j) - dataA(i, j) * datadyB(i, j)) / (dataBc(i, j), T(2)));
+          const auto d2dxdx((datad2xxA(i, j) * dataB(i, j) + datadxA(i, j) * datadxB(i, j) - datadxA(i, j) * datadxB(i, j) - dataA(i, j) * datad2xxB(i, j)) / pow(dataBc(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadxB(i, j));
+          const auto d2dxdy((datad2xyA(i, j) * dataB(i, j) + datadyA(i, j) * datadxB(i, j) - datadxA(i, j) * datadyB(i, j) - dataA(i, j) * datad2xyB(i, j)) / pow(dataBc(i, j), T(2)) + (datadyA(i, j) * dataB(i, j) + dataA(i, j) * datadyB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadxB(i, j));
+          const auto d2dydx((datad2yxA(i, j) * dataB(i, j) + datadxA(i, j) * datadyB(i, j) - datadyA(i, j) * datadxB(i, j) - dataA(i, j) * datad2yxB(i, j)) / pow(dataBc(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadyB(i, j));
+          const auto d2dydy((datad2yyA(i, j) * dataB(i, j) + datadyA(i, j) * datadyB(i, j) - datadyA(i, j) * datadyB(i, j) - dataA(i, j) * datad2yyB(i, j)) / pow(dataBc(i, j), T(2)) + (datadyA(i, j) * dataB(i, j) + dataA(i, j) * datadyB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadyB(i, j));
+          // N.B. (d/dt)^2 f = d/dt(df/dx dx/dt + df/dy dy/dt)
+          // = d^2f/dx^2 dx/dt + df/dx d^2x/dt^2 +
+          //   d^2f/dydx dx/dt + df/dx dxdy/dt^2 +
+          //   d^2f/dxdy dy/dt + df/dy dydx/dt^2 +
+          //   d^2f/dy^2 dy/dt + df/dy d^2y/dt^2
+          // dx/dt == dy/dt == const. ->
+          result(i, j) = d2dxdx + d2dxdy + d2dydx + d2dydy;
         }
-      // inverse of div grad dataA/dataB.
-      result = compute(compute(compute(rbufyy, IDETECT_Y), IDETECT_Y), BLUR_X) + compute(compute(compute(rbufxx, IDETECT_X), IDETECT_X), BLUR_Y);
+      result = compute(compute(result, IDETECT_Y) + compute(result, IDETECT_X), IDETECT_Y) + compute(compute(result, IDETECT_X) + compute(result, IDETECT_Y), IDETECT_X);
     }
     break;
   case BUMP_Y:
     result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
     break;
-  case EXTEND_Y:
+  case EXTEND_Y0:
     {
-      initDop(data.rows() + 1);
       result = Mat(data.rows() + 1, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -306,15 +316,16 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
       // N.B. nearest data in differential space.
-      const auto ddata(Dop * result);
+      const auto d0data(compute(data, DETECT_Y));
+      const auto ddata(compute(result, DETECT_Y));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.cols(); i ++) {
         T a(0), b(0), c(0);
-        for(int j = 0; j < data.rows(); j ++) {
-          const T aa(T(2) * Dop(j, Dop.rows() - 1) - Dop(getImgPt(j - 1, Dop.rows()), Dop.rows() - 1) - Dop(getImgPt(j + 1, Dop.rows()), Dop.rows() - 1));
-          const T bb(T(2) * ddata(j, i) - ddata(getImgPt(j - 1, ddata.rows()), i) - ddata(getImgPt(j + 1, ddata.rows()), i));
+        for(int j = 0; j < d0data.rows(); j ++) {
+          const T aa(- Dop(j, Dop.rows() - 1));
+          const T bb(ddata(j, i) - d0data(j, i));
           a += aa * aa;
           b += aa * bb;
           c += bb * bb;
@@ -325,9 +336,20 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(data.rows(), i) = - b / a;
       }
       // XXX fixme: don't know why:
-      result.row(data.rows()) /= T(2);
+      // result.row(data.rows()) /= T(2);
       for(int i = 0; i < result.cols(); i ++)
         result(data.rows(), i) = max(T(0), min(T(1), result(data.rows(), i)));
+    }
+    break;
+  case EXTEND_Y:
+    {
+      const auto buf0(compute(data, EXTEND_Y0));
+      const auto buf1(compute(compute(compute(data, REVERSE_Y), EXTEND_Y0), REVERSE_Y));
+      result = Mat(data.rows() + 2, data.cols());
+      result.row(0) = buf1.row(0);
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(i + 1) = data.row(i);
+      result.row(data.rows() + 1) = buf0.row(data.rows() - 1);
     }
     break;
   case DIV2_Y:

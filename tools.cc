@@ -461,7 +461,7 @@ int main(int argc, const char* argv[]) {
       redig.getTileVec(bump1, shape1, delau1);
       redig.maskVectors(shape0, delau0, mdata[0]);
       redig.maskVectors(shape1, delau1, mmout1);
-      matchPartialPartial<double> statmatch;
+      matchPartial<double> statmatch;
       if(mode != 9)
         statmatch.ndiv = statmatch.ndiv * 1.2;
       auto matches(statmatch.match(shape0, shape1));
@@ -487,7 +487,7 @@ int main(int argc, const char* argv[]) {
           for(int j = 0; j < shape1.size(); j ++)
             if(!binary_search(srcbuf.begin(), srcbuf.end(), j))
               shape1a.push_back(shape1[j]);
-          matchPartialPartial<double> pstatmatch;
+          matchPartial<double> pstatmatch;
           pstatmatch.ndiv /= 2;
           auto pmatches(pstatmatch.match(shape0a, shape1a));
           pmatches.resize(min(int(pmatches.size()), nmatchhid));
@@ -528,7 +528,7 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<double>::Mat zero[3];
       for(int i = 0; i < 3; i ++)
         zero[i] = bump * double(0);
-      matchPartialPartial<double> statmatch;
+      matchPartial<double> statmatch;
       const auto matches(statmatch.match(shape, datapoly));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
@@ -576,7 +576,7 @@ int main(int argc, const char* argv[]) {
       redig.getTileVec(bump1, shape1, delau1);
       redig.maskVectors(shape0, delau0, mdata[0]);
       redig.maskVectors(shape1, delau1, mmout1);
-      matchPartialPartial<double> statmatch;
+      matchPartial<double> statmatch;
       const auto match0(statmatch.match(shape0, datapoly));
       const auto match1(statmatch.match(shape1, datapoly));
       std::vector<match_t<double> > matches;
@@ -639,7 +639,7 @@ int main(int argc, const char* argv[]) {
         usage();
         return - 2;
       }
-      matchPartialPartial<double> statmatch;
+      matchPartial<double> statmatch;
       const auto match(statmatch.match(pdst, psrc));
       for(int i = 0; i < nshow; i ++) {
         const auto mhull0(redig.delaunay2(pdst, match[i].dstpoints));
@@ -671,7 +671,7 @@ int main(int argc, const char* argv[]) {
         Mx = max(Mx, std::abs(psrc[i][1]));
       }
       typename simpleFile<double>::Mat in(int(My + 1.), int(Mx + 1.));
-      matchPartialPartial<double> statmatch;
+      matchPartial<double> statmatch;
       auto m(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), - psi2));
       statmatch.complementMatch(m, pdst, psrc, statmatch.makeG(pdst), statmatch.makeG(psrc));
       file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
@@ -704,7 +704,7 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<double>::Mat zero[3];
       for(int i = 0; i < 3; i ++)
         zero[i] = bump * double(0);
-      matchWholePartial<double> wholematch;
+      matchWhole<double> wholematch;
       const auto matches(wholematch.match(shape, datapoly, center, bone));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
@@ -742,7 +742,7 @@ int main(int argc, const char* argv[]) {
         zero[i] = data[0] * double(0);
       std::vector<double> emph;
       emph.push_back(0.); emph.push_back(1.);
-      matchWholePartial<double> wholematch;
+      matchWhole<double> wholematch;
       const auto matches(wholematch.match(datapoly0, datapoly, center, bone));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
