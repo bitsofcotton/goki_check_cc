@@ -267,7 +267,7 @@ public:
 };
 
 
-template <typename T> class matchPartialPartial {
+template <typename T> class matchPartial {
 public:
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
@@ -281,9 +281,9 @@ public:
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
 #endif
   typedef complex<T> U;
-  matchPartialPartial();
-  matchPartialPartial(const int& ndiv, const T& threshp, const T& threshs);
-  ~matchPartialPartial();
+  matchPartial();
+  matchPartial(const int& ndiv, const T& threshp, const T& threshs);
+  ~matchPartial();
   void init(const int& ndiv, const T& threshp, const T& threshs);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
@@ -311,24 +311,24 @@ private:
   T   thresht;
 };
 
-template <typename T> matchPartialPartial<T>::matchPartialPartial() {
+template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
   init(60, .25, .1);
 }
 
-template <typename T> matchPartialPartial<T>::matchPartialPartial(const int& ndiv, const T& threshp, const T& threshs) {
+template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshp, const T& threshs) {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   init(ndiv, threshp, threshs);
 }
 
-template <typename T> matchPartialPartial<T>::~matchPartialPartial() {
+template <typename T> matchPartial<T>::~matchPartial() {
   ;
 }
 
-template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T& threshp, const T& threshs) {
+template <typename T> void matchPartial<T>::init(const int& ndiv, const T& threshp, const T& threshs) {
   this->ndiv    = ndiv;
   this->thresh  = sin(T(2) * Pi / ndiv) / T(2);
   this->thresht = this->thresh;
@@ -337,13 +337,13 @@ template <typename T> void matchPartialPartial<T>::init(const int& ndiv, const T
   return;
 }
 
-template <typename T> vector<match_t<T> > matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points) {
+template <typename T> vector<match_t<T> > matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points) {
   vector<match_t<T> > result;
   match(shapebase, points, result);
   return result;
 }
 
-template <typename T> typename matchPartialPartial<T>::Vec3 matchPartialPartial<T>::makeG(const vector<Vec3>& in) const {
+template <typename T> typename matchPartial<T>::Vec3 matchPartial<T>::makeG(const vector<Vec3>& in) const {
   Vec3 result(3);
   result[0] = result[1] = result[2] = T(0);
   for(int i = 0; i < in.size(); i ++)
@@ -351,7 +351,7 @@ template <typename T> typename matchPartialPartial<T>::Vec3 matchPartialPartial<
   return result / in.size();
 }
 
-template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const match_t<T>& m) const {
+template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const match_t<T>& m) const {
   vector<msub_t<T> > result;
   vector<Vec3> shapework;
   vector<Vec3> pointswork;
@@ -383,7 +383,7 @@ template <typename T> vector<msub_t<T> > matchPartialPartial<T>::makeMsub(const 
   return result;
 }
 
-template <typename T> bool matchPartialPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
+template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
   T num(0);
   T denom(0);
   T denom2(0);
@@ -408,7 +408,7 @@ template <typename T> bool matchPartialPartial<T>::complementMatch(match_t<T>& w
   return work.isValid();
 }
 
-template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
+template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
   const Vec3 gs(makeG(shapebase));
   const Vec3 gp(makeG(points));
   Vec3 gd(3);
@@ -514,7 +514,7 @@ template <typename T> void matchPartialPartial<T>::match(const vector<Vec3>& sha
   return;
 }
 
-template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh) {
+template <typename T> vector<match_t<T> > matchPartial<T>::elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh) {
   vector<match_t<T> > res(m);
   reDig<T> redig;
   for(int i = 0; i < m.size(); i ++) {
@@ -528,7 +528,7 @@ template <typename T> vector<match_t<T> > matchPartialPartial<T>::elim(const vec
   return res;
 }
 
-template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh) {
+template <typename T> T matchPartial<T>::isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh) {
   assert(dst[0].rows() == tsrc[0].rows() && dst[0].cols() == tsrc[0].cols());
   assert(dst[1].rows() == tsrc[1].rows() && dst[1].cols() == tsrc[2].cols());
   assert(dst[2].rows() == tsrc[2].rows() && dst[2].cols() == tsrc[2].cols());
@@ -557,7 +557,7 @@ template <typename T> T matchPartialPartial<T>::isElim(const match_t<T>& m, cons
 }
 
 
-template <typename T> class matchWholePartial {
+template <typename T> class matchWhole {
 public:
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T>   Mat;
@@ -571,8 +571,8 @@ public:
   typedef Eigen::Matrix<int, 4, 1>                         Veci4;
 #endif
   typedef complex<T> U;
-  matchWholePartial();
-  ~matchWholePartial();
+  matchWhole();
+  ~matchWhole();
   void init(const int& ndiv, const T& threshp, const T& threshs);
 
   vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<vector<Veci4> >& bones, const int& ntry = 6);
@@ -584,27 +584,27 @@ private:
   T   threshs;
 };
 
-template <typename T> matchWholePartial<T>::matchWholePartial() {
+template <typename T> matchWhole<T>::matchWhole() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   init(60, .05, .1);
 }
 
-template <typename T> matchWholePartial<T>::~matchWholePartial() {
+template <typename T> matchWhole<T>::~matchWhole() {
   ;
 }
 
-template <typename T> void matchWholePartial<T>::init(const int& ndiv, const T& threshp, const T& threshs) {
+template <typename T> void matchWhole<T>::init(const int& ndiv, const T& threshp, const T& threshs) {
   this->ndiv    = ndiv;
   this->threshp = threshp;
   this->threshs = threshs;
   return;
 }
 
-template <typename T> vector<vector<match_t<T> > > matchWholePartial<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<vector<Veci4> >& bones, const int& ntry) {
+template <typename T> vector<vector<match_t<T> > > matchWhole<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<vector<Veci4> >& bones, const int& ntry) {
   assert(points.size() == origins.size());
   vector<vector<match_t<T> > > pmatches;
-  matchPartialPartial<T> pmatch(ndiv, threshp, threshs);
+  matchPartial<T> pmatch(ndiv, threshp, threshs);
   for(int i = 0; i < points.size(); i ++) {
     cerr << "matching partials : " << i << "/" << shapebase.size() << endl;
     pmatches.push_back(pmatch.match(shapebase, points[i]));
