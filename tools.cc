@@ -73,15 +73,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1, match, mhull0, mhull1, emph[kk]));
     for(int idx = 0; idx < 3; idx ++) {
       outs[idx] = (in0[idx] * (emph.size() - 1 - kk) + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), sin1[idx]) * kk) / double(emph.size() - 1);
-      outs2[idx] = (in0[idx] * (emph.size() - 1 - kk) + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]) * kk) / double(emph.size() - 1);
-/*
-      outs2[idx] = in0[idx];
-      const auto rework(redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]));
-      for(int i = 0; i < reref.rows(); i ++)
-        for(int j = 0; j < reref.cols(); j ++)
-          if(rin0.rows() * rin0.cols() + 1 < reref(i, j))
-            outs2[idx](i, j) = rework(i, j);
-*/
+      outs2[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
     }
     outfile = outbase + std::string("-emph-") + std::to_string(kk) + std::string(".ppm");
     file.savep2or3(outfile.c_str(), outs, false);
