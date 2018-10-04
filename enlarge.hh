@@ -82,6 +82,7 @@ public:
     CLIPPM,
     BCLIP,
     ABS,
+    SQRTSCALE,
     EXPSCALE,
     LOGSCALE,
     NORMALIZE,
@@ -294,8 +295,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           //   d^2f/dy^2 dy/dt + df/dy d^2y/dt^2
           // dx/dt == dy/dt == const. ->
           result(i, j) = d2dxdx + d2dxdy + d2dydx + d2dydy;
+          // N.B. in fact, in this case, so function don't have rotation related
+          //      information, rotation + d/dt sumup is needed, but now, not so.
         }
-      result = compute(compute(result, IDETECT_Y) + compute(result, IDETECT_X), IDETECT_Y) + compute(compute(result, IDETECT_X) + compute(result, IDETECT_Y), IDETECT_X);
+      result = compute(result, IDETECT_Y) + compute(result, IDETECT_X);
+      result = compute(result, IDETECT_Y) + compute(result, IDETECT_X);
     }
     break;
   case BUMP_Y:
@@ -335,8 +339,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         else
           result(data.rows(), i) = - b / a;
       }
-      // XXX fixme: don't know why:
-      // result.row(data.rows()) /= T(2);
       for(int i = 0; i < result.cols(); i ++)
         result(data.rows(), i) = max(T(0), min(T(1), result(data.rows(), i)));
     }
@@ -420,6 +422,18 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = abs(data(i, j));
+    }
+    break;
+  case SQRTSCALE:
+    {
+      result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * sqrt(abs(data(i, j)));
     }
     break;
   case EXPSCALE:
@@ -583,8 +597,8 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
   for(int zi = 0; MM < rows; zi ++)
     for(int j = 0; j < Dop0.size(); j ++) {
       Vec cpoint(2);
-      cpoint[0] = j - T(Dop0.size() - 1) / 2;
-      cpoint[1] = zi * dratio;
+      cpoint[0] = (j - T(Dop0.size() - 1) / 2);
+      cpoint[1] = T(zi + 1) * dratio;
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0
@@ -597,7 +611,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
 #pragma omp critical
 #endif
         {
-          A(i, getImgPt(i + y0, rows)) += Dop0[j] * (zi + 1);
+          A(i, getImgPt(i + y0, rows)) += Dop0[j] * T(zi + 1);
           B(i, getImgPt(i + y0, rows)) += Dop0[j];
         }
       }
