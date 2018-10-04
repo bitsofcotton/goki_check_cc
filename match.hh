@@ -385,7 +385,8 @@ template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<
 
 template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
   assert(work.dstpoints.size() == work.srcpoints.size());
-  auto offset(work.offset * T(0));
+  work.offset *= T(0);
+  auto offset(work.offset);
   for(int k = 0; k < work.dstpoints.size(); k ++)
     offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
   work.offset = offset / work.dstpoints.size();
@@ -396,7 +397,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   avgpk[0] = avgpk[1] = avgpk[2] = T(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     avgsk += shapebase[work.dstpoints[k]];
-    avgpk += work.transform(points[work.srcpoints[k]] - gp);
+    avgpk += work.transform(points[work.srcpoints[k]] + work.offset);
   }
   const auto a(avgsk.dot(work.offset));
   const auto b(avgsk.dot(avgpk));
