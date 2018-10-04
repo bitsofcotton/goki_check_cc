@@ -528,7 +528,7 @@ int main(int argc, const char* argv[]) {
         match_t<double> m0;
         match.rot    = m0.rot;
         match.offset = m0.offset;
-        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), m0, shape, matches[n].transform(datapoly), data, zero, bump, zero[0], emph);
+        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, matches[n].transform(datapoly), data, zero, bump, zero[0], emph);
       }
     }
     return 0;
@@ -703,7 +703,7 @@ int main(int argc, const char* argv[]) {
             match_t<double> m0;
             match.rot    = m0.rot;
             match.offset = m0.offset;
-            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), m0, shape, matches[n][m].transform(datapoly[m]), data, zero, bump, zero[0], emph);
+            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), match, shape, matches[n][m].transform(datapoly[m]), data, zero, bump, zero[0], emph);
           }
       }
     }
