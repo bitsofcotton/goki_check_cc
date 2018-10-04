@@ -290,7 +290,7 @@ public:
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
   
   Vec3 makeG(const vector<Vec3>& in) const;
-  bool complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const;
+  bool complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points) const;
   vector<match_t<T> > elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh = T(4) / T(256));
   
   // theta resolution.
@@ -383,7 +383,7 @@ template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<
   return result;
 }
 
-template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
+template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points) const {
   assert(work.dstpoints.size() == work.srcpoints.size());
   work.offset *= T(0);
   auto offset(work.offset);
@@ -405,20 +405,13 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   T num(0);
   T denom(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto shapek(shapebase[work.dstpoints[k]] - gs);
+    const auto shapek(shapebase[work.dstpoints[k]]);
     const auto pointk(work.transform(points[work.srcpoints[k]]));
     num   += pointk.dot(shapek);
     denom += pointk.dot(pointk);
   }
   work.offset *= num / denom;
   work.ratio  *= num / denom;
-  offset      *= T(0);
-  for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto& shapek(shapebase[work.dstpoints[k]]);
-    const auto  pointk(work.transform(points[work.srcpoints[k]]));
-    offset += shapek - pointk;
-  }
-  work.offset += offset / work.dstpoints.size();
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
     work.rdepth += err.dot(err);
@@ -503,7 +496,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
         // if it's good:
         if(threshp <= work.dstpoints.size() /
                         T(min(shapebase.size(), points.size())) &&
-          complementMatch(work, shapebase, points, gs, gp) ) {
+          complementMatch(work, shapebase, points) ) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif

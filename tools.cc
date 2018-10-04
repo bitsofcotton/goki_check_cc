@@ -662,7 +662,7 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<double>::Mat in(int(My + 1.), int(Mx + 1.));
       matchPartial<double> statmatch;
       auto m(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), - psi2));
-      statmatch.complementMatch(m, pdst, psrc, statmatch.makeG(pdst), statmatch.makeG(psrc));
+      statmatch.complementMatch(m, pdst, psrc);
       file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
                    poldst, (argv[3] + std::string("-emph") +
                                       std::string(".obj")).c_str());
