@@ -521,7 +521,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         zero[i] = bump * double(0);
       matchPartial<double> statmatch;
-      const auto matches(statmatch.match(datapoly, shape));
+      const auto matches(statmatch.match(shape, datapoly));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
         saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match_t<double>(), shape, matches[n].transform(datapoly), data, zero, bump, zero[0], emph);
