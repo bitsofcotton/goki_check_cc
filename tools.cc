@@ -63,7 +63,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   file.savep2or3(outfile.c_str(), outs, false);
   
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in0[idx], shape1, match, mhull1);
+    outs[idx] = redig.replace(in0[idx], match.transform(shape1), match, mhull1);
   outfile = outbase + std::string("-repl.ppm");
   file.savep2or3(outfile.c_str(), outs, false);
   
