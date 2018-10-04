@@ -524,7 +524,11 @@ int main(int argc, const char* argv[]) {
       const auto matches(statmatch.match(shape, datapoly));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
-        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match_t<double>(), shape, matches[n].transform(datapoly), data, zero, bump, zero[0], emph);
+        auto match(matches[n]);
+        match_t<double> m0;
+        match.rot    = m0.rot;
+        match.offset = m0.offset;
+        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), m0, shape, matches[n].transform(datapoly), data, zero, bump, zero[0], emph);
       }
     }
     return 0;
@@ -694,8 +698,13 @@ int main(int argc, const char* argv[]) {
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
         for(int m = 0; m < matches[n].size(); m ++)
-          if(matches[n][m].dstpoints.size())
-            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), match_t<double>(), shape, matches[n][m].transform(datapoly[m]), data, zero, bump, zero[0], emph);
+          if(matches[n][m].dstpoints.size()) {
+            auto match(matches[n][m]);
+            match_t<double> m0;
+            match.rot    = m0.rot;
+            match.offset = m0.offset;
+            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), m0, shape, matches[n][m].transform(datapoly[m]), data, zero, bump, zero[0], emph);
+          }
       }
     }
     return 0;
