@@ -30,7 +30,7 @@ const int    M_TILTROT(8);
 const double tiltrots(.001);
 const double tiltrote(.1);
 const double psi(.025);
-const int    Mpoly(2000);
+const int    Mpoly(8000);
 
 void usage() {
   cout << "Usage: tools (enlarge|enlarge4|pextend|collect|idetect|bump|obj|arobj|bump2|rbump2|tilt|tilt2|tilt3|tilt4|tilt5|tiltp|match|match3d|match3dbone|match2dh3d|match2dh3dbone|pmatch|pmatch3d|match3d3d|maskobj|habit|habit2|drawobj|drawgltf) <input filename>.p[gp]m <output filename>.p[gp]m <args>?" << endl;
@@ -246,8 +246,8 @@ int main(int argc, const char* argv[]) {
       // bump.
       enlarger2ex<double> bump;
       const auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      data[1] = data[2] = data[0] = redig.autoLevel(xye, 2 * (xye.rows() + xye.cols()));
-      // data[1] = data[2] = data[0] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
+      // data[1] = data[2] = data[0] = redig.autoLevel(xye, 2 * (xye.rows() + xye.cols()));
+      data[1] = data[2] = data[0] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
     }
     break;
   case 7:
@@ -521,17 +521,10 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         zero[i] = bump * double(0);
       matchPartial<double> statmatch;
-      const auto matches(statmatch.match(shape, datapoly));
+      const auto matches(statmatch.match(datapoly, shape));
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::cerr << "Writing " << n << " / " << matches.size();
-        std::vector<typename simpleFile<double>::Vec3> mdatapoly;
-        mdatapoly.reserve(datapoly.size());
-        auto match(matches[n]);
-        for(int k = 0; k < datapoly.size(); k ++)
-          mdatapoly.push_back(match.transform(datapoly[k]) / match.ratio);
-        match.rot    *= match.rot.transpose();
-        match.offset *= double(0);
-        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match, shape, mdatapoly, data, zero, bump, zero[0], emph);
+        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), match_t<double>(), shape, matches[n].transform(datapoly), data, zero, bump, zero[0], emph);
       }
     }
     return 0;
@@ -702,7 +695,7 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Writing " << n << " / " << matches.size();
         for(int m = 0; m < matches[n].size(); m ++)
           if(matches[n][m].dstpoints.size())
-            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), matches[n][m], shape, datapoly[m], data, zero, bump, zero[0], emph);
+            saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m), match_t<double>(), shape, matches[n][m].transform(datapoly[m]), data, zero, bump, zero[0], emph);
       }
     }
     return 0;
