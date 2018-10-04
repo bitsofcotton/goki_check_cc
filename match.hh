@@ -398,6 +398,8 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     avgpk  += work.transform(points[work.srcpoints[k]]);
   }
   offset /= work.dstpoints.size();
+  avgsk  /= work.dstpoints.size();
+  avgpk  /= work.dstpoints.size();
   const auto a(avgsk.dot(offset));
   const auto b(avgsk.dot(avgpk));
   work.offset  = offset * a;
