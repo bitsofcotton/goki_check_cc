@@ -397,7 +397,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   avgpk[0] = avgpk[1] = avgpk[2] = T(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     avgsk += shapebase[work.dstpoints[k]];
-    avgpk += work.transform(points[work.srcpoints[k]] + work.offset);
+    avgpk += work.transform(points[work.srcpoints[k]]);
   }
   const auto a(avgsk.dot(work.offset));
   const auto b(avgsk.dot(avgpk));
@@ -407,7 +407,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   T denom(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto shapek(shapebase[work.dstpoints[k]] - gs);
-    const auto pointk(work.transform(points[work.srcpoints[k]] + work.offset));
+    const auto pointk(work.transform(points[work.srcpoints[k]]));
     num   += pointk.dot(shapek);
     denom += pointk.dot(pointk);
   }
@@ -600,7 +600,7 @@ private:
 template <typename T> matchWhole<T>::matchWhole() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(60, .05, .1);
+  init(40, .05, .1);
 }
 
 template <typename T> matchWhole<T>::~matchWhole() {
