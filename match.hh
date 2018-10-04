@@ -391,7 +391,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   Vec3 avgpk(3);
   avgsk[0] = avgsk[1] = avgsk[2] = T(0);
   avgpk[0] = avgpk[1] = avgpk[2] = T(0);
-  // t * offset + pointk // shapebase in summation condition.
+  // a * offset + b * pointk // shapebase in summation condition.
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
     avgsk  += shapebase[work.dstpoints[k]];
