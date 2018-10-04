@@ -418,7 +418,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     const auto  pointk(work.transform(points[work.srcpoints[k]]));
     offset += shapek - pointk;
   }
-  work.offset = offset / work.dstpoints.size();
+  work.offset += offset / work.dstpoints.size();
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
     work.rdepth += err.dot(err);
