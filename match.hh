@@ -384,27 +384,39 @@ template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<
 }
 
 template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp) const {
-  T num(0);
-  T denom(0);
-  T denom2(0);
-  for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto shapek(shapebase[work.dstpoints[k]] - gs);
-    const auto pointk(work.transform(points[work.srcpoints[k]] - gp));
-    denom  += pointk.dot(pointk);
-    denom2 += shapek.dot(shapek);
-    num    += shapek.dot(pointk);
-  }
-  assert(T(0) <= num);
-  work.ratio = num / denom;
-  auto offset(work.offset);
+  assert(work.dstpoints.size() == work.srcpoints.size());
+  auto offset(work.offset * T(0));
   for(int k = 0; k < work.dstpoints.size(); k ++)
     offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
   work.offset = offset / work.dstpoints.size();
+  // t * offset + pointk // shapebase in summation condition.
+  Vec3 avgsk(3);
+  Vec3 avgpk(3);
+  avgsk[0] = avgsk[1] = avgsk[2] = T(0);
+  avgpk[0] = avgpk[1] = avgpk[2] = T(0);
+  for(int k = 0; k < work.dstpoints.size(); k ++) {
+    avgsk += shapebase[work.dstpoints[k]];
+    avgpk += work.transform(points[work.srcpoints[k]] - gp);
+  }
+  const auto a(avgsk.dot(work.offset));
+  const auto b(avgsk.dot(avgpk));
+  work.offset *= a;
+  work.ratio  *= b;
+  T num(0);
+  T denom(0);
+  for(int k = 0; k < work.dstpoints.size(); k ++) {
+    const auto shapek(shapebase[work.dstpoints[k]] - gs);
+    const auto pointk(work.transform(points[work.srcpoints[k]] + work.offset));
+    num   += pointk.dot(shapek);
+    denom += pointk.dot(pointk);
+  }
+  work.offset *= num / denom;
+  work.ratio  *= num / denom;
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
     work.rdepth += err.dot(err);
   }
-  work.rdepth /= sqrt(denom * denom2) * work.dstpoints.size();
+  work.rdepth /= denom * work.dstpoints.size();
   return work.isValid();
 }
 
