@@ -63,7 +63,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   file.savep2or3(outfile.c_str(), outs, false);
   
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in0[idx], shape1, match, mhull1);
+    outs[idx] = redig.replace(in0[idx], match.transform(shape1), match, mhull1);
   outfile = outbase + std::string("-repl.ppm");
   file.savep2or3(outfile.c_str(), outs, false);
   
@@ -662,7 +662,7 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<double>::Mat in(int(My + 1.), int(Mx + 1.));
       matchPartial<double> statmatch;
       auto m(redig.tiltprep(in, std::atoi(argv[6]), std::atoi(argv[7]), - psi2));
-      statmatch.complementMatch(m, pdst, psrc, statmatch.makeG(pdst), statmatch.makeG(psrc));
+      statmatch.complementMatch(m, pdst, psrc);
       file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
                    poldst, (argv[3] + std::string("-emph") +
                                       std::string(".obj")).c_str());
