@@ -387,21 +387,20 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   assert(work.dstpoints.size() == work.srcpoints.size());
   work.offset *= T(0);
   auto offset(work.offset);
-  for(int k = 0; k < work.dstpoints.size(); k ++)
-    offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
-  work.offset = offset / work.dstpoints.size();
-  // t * offset + pointk // shapebase in summation condition.
   Vec3 avgsk(3);
   Vec3 avgpk(3);
   avgsk[0] = avgsk[1] = avgsk[2] = T(0);
   avgpk[0] = avgpk[1] = avgpk[2] = T(0);
+  // t * offset + pointk // shapebase in summation condition.
   for(int k = 0; k < work.dstpoints.size(); k ++) {
+    offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
     avgsk += shapebase[work.dstpoints[k]];
     avgpk += work.transform(points[work.srcpoints[k]]);
   }
-  const auto a(avgsk.dot(work.offset));
+  offset /= work.dstpoints.size();
+  const auto a(avgsk.dot(offset));
   const auto b(avgsk.dot(avgpk));
-  work.offset *= a;
+  work.offset  = offset * a;
   work.ratio  *= b;
   T num(0);
   T denom(0);
