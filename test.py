@@ -72,8 +72,12 @@ for line in argv[3:]:
     subprocess.call(["xcrun", "scntool", "--convert", root + "1-L.obj", "--format", "scn", "--output", root + "-L.scn"])
     subprocess.call(["xcrun", "scntool", "--convert", root + "1-R.obj", "--format", "scn", "--output", root + "-R.scn"])
   elif(argv[2] == "mtl"):
-    subprocess.call(["cp", os.path.dirname(argv[1]) + "/material.mtl", root + ".obj.mtl"])
     f = open(root + ".obj.mtl", "a")
+    f.write("newmtl material0\n")
+    f.write("Ka 1.000000 1.000000 1.000000\n")
+    f.write("Kd 1.000000 1.000000 1.000000\n")
+    f.write("Ks 0.000000 0.000000 0.000000\n")
+    f.write("illum 1\n")
     f.write("map_Ka " + line + "\n")
     f.write("map_Kd " + line + "\n\n")
     f.close()

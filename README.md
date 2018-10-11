@@ -11,6 +11,8 @@ For speed, http://eigen.tuxfamily.org/ library is needed, and for bone informati
 # Parameters
 * enlarge.hh
 * * dratio : z-axis step ratio relate to 1., must be &lt; 1.
+* * offset : color value ratio around convergences in making bump map.
+* * blur   : pixel number ratio for blurring.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
@@ -30,7 +32,7 @@ Searching the Internet more...
 
 # Status
 Checking details of implementation before to freeze the library.  
-gltf2 compatibility is alpha.
+gltf2 compatibility is alpha, and, tools.cc and test.py needs to be changed as normal use.
 
 # Usage
     make tools
