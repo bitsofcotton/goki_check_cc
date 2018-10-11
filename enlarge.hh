@@ -35,6 +35,8 @@ using std::vector;
 using std::sort;
 using std::ceil;
 using std::vector;
+using std::max;
+using std::min;
 
 /*
  * This class is NOT thread safe.
@@ -590,11 +592,10 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
-  T MM(0);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int zi = 0; MM < rows; zi ++)
+  for(int zi = 0; zi < T(1) / dratio; zi ++) {
     for(int j = 0; j < Dop0.size(); j ++) {
       Vec cpoint(2);
       cpoint[0] = (j - T(Dop0.size() - 1) / 2);
@@ -604,7 +605,6 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
       // <c + (p - c) * t, [0, 1]> = 0
       const auto t(- camera[1] / (cpoint[1] - camera[1]));
       const auto y0((camera + (cpoint - camera) * t)[0]);
-      MM = max(y0, MM);
       // N.B. average_k(dC_k / dy * z_k).
       for(int i = 0; i < A.rows(); i ++) {
 #if defined(_OPENMP)
@@ -616,6 +616,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
         }
       }
     }
+  }
   T n2(0);
   for(int i = 0; i < A.rows(); i ++)
     n2 += sqrt(A.row(i).dot(A.row(i)));
