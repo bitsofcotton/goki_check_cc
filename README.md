@@ -32,7 +32,7 @@ Searching the Internet more...
 
 # Status
 Checking details of implementation before to freeze the library.  
-gltf2 compatibility is alpha.
+gltf2 compatibility is alpha, and, tools.cc and test.py needs to be changed as normal use.
 
 # Usage
     make tools
