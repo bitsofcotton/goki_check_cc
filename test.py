@@ -12,32 +12,23 @@ if(len(argv) < 4):
   print "not much argments."
   exit(- 1)
 
-if(argv[2] == "match" or argv[2] == "pmatch"):
-  if(len(argv) < 5):
+if(argv[2] == "match"):
+  if(len(argv) < 4):
     print "no much argments."
     exit(- 1)
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
   if(ext0 != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
-  if(ext1 == ".obj"):
-    subprocess.call([argv[1], "match3d", root0 + ".ppm", "match3dbase-" + root0 + "-" + root1 + "-", argv[4], root0 + "-bump.ppm", root0 + "-mask.ppm"])
-  elif(ext1 == ".gltf"):
-    subprocess.call([argv[1], "match3dbone", root0 + ".ppm", "match3dbase-" + root0 + "-" + root1 + "-", argv[4], root0 + "-bump.ppm", root0 + "-mask.ppm"])
-  else:
-    if(ext1 != ".ppm"):
-      subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
-    if(len(argv) < 6):
-      subprocess.call([argv[1], argv[2], root0 + ".ppm", "matchbase-" + root0 + "-" + root1 + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm"])
-    elif(os.path.splitext(argv[5])[1] == ".obj"):
-      subprocess.call([argv[1], "match2dh3d", root0 + ".ppm", "match3dh2dbase-" + root0 + root1 + os.path.splitext(argv[5])[0] + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", argv[5]])
-    elif(os.path.splitext(argv[5])[1] == ".gltf"):
-      subprocess.call([argv[1], "match2dh3dbone", root0 + ".ppm", "match3dh2dbase-" + root0 + root1 + os.path.splitext(argv[5])[0] + "-", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", argv[5]])
+  if(ext1 == ".obj" or ext1 == ".gltf"):
+    subprocess.call([argv[1], "match", "4", "20", "8", "8", "8", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4]])
+  elif(ext1 != ".ppm"):
+    subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
+  subprocess.call([argv[1], "match", "4", "20", "8", "8", "8", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm"])
   exit(0)
 
 pixels = 4
 bhabit = ""
-habit0 = ""
 for line in argv[3:]:
   try:
     pixels = int(line)
@@ -84,10 +75,15 @@ for line in argv[3:]:
     f.write("map_Ka " + line + "\n")
     f.write("map_Kd " + line + "\n\n")
     f.close()
-    subprocess.call(["cp", root + ".obj.mtl", root + ".obj.mtl"])
     subprocess.call(["cp", root + ".obj.mtl", root + "-L.obj.mtl"])
     subprocess.call(["cp", root + ".obj.mtl", root + "-R.obj.mtl"])
     subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
+    subprocess.call(["cp", root + ".obj.mtl", root + "-stand.obj.mtl"])
+  elif(argv[2] == "jps"):
+    subprocess.call([argv[1], "tilt", "1", "2", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+    subprocess.call([argv[1], "tilt", "0", "2", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+    subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
+    subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
   elif(argv[2] == "tilt"):
     for s in range(0, 16):
       subprocess.call([argv[1], "tilt", str(s), "16", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-tilt-base-" + str(s) + ".ppm"])
@@ -99,38 +95,27 @@ for line in argv[3:]:
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "extend"):
     for tam in [.5 / 6., .75 / 6., 1. / 6.]:
-      subprocess.call([argv[1], "tilt3", root + ".ppm", root + "-tilt3", root + "0.obj", str(tam)])
       for s in range(0, 4):
-        subprocess.call([argv[1], "bump", root + "-tilt3-" + str(s) + ".ppm", root + "-bumpext-" + str(s) + ".ppm"])
-        subprocess.call([argv[1], "obj", root + "-bumpext-" + str(s) + ".ppm", root + "-bumpext-" + str(s) + ".obj"])
-      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextA.obj", root + "-bumpext-0.obj", root + "0.obj", "0", "4", str(tam)])
-      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextB.obj", root + "-bumpext-1.obj", root + "0.obj", "1", "4", str(tam)])
-      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextC.obj", root + "-bumpext-2.obj", root + "0.obj", "2", "4", str(tam)])
-      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextD.obj", root + "-bumpext-3.obj", root + "0.obj", "3", "4", str(tam)])
-      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextAC.obj", root + "-bumpextA.obj-emph.obj", root + "-bumpextC.obj-emph.obj", "4", "4", str(tam)])
-      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpextBD.obj", root + "-bumpextB.obj-emph.obj", root + "-bumpextD.obj-emph.obj", "4", "4", str(tam)])
-      subprocess.call([argv[1], "habit2", root + "-mask.ppm", root + "-bumpext.obj", root + "-bumpextAC.obj-emph.obj", root + "-bumpextBD.obj-emph.obj", "4", "4", str(tam)])
-      subprocess.call([argv[1], "maskobj2", root + "-mask.ppm", root + "-bumpext.obj-emph.obj", root + "-bumpextmask.obj"])
-      subprocess.call(["cp", root + "-bumpext.obj-emph.obj", root + "-" + str(tam) + ".obj"])
-      subprocess.call(["cp", root + "-bumpext.obj-emph.obj", root + "0.obj"])
-  elif(argv[2] == "jps"):
-    subprocess.call([argv[1], "tilt2", root + ".ppm", root, root + "-bump.ppm"])
-    subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
-    subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
+        subprocess.call([argv[1], "tilt", str(s), "4", str(tam), "0", root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
+        subprocess.call([argv[1], "bump", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
+        subprocess.call([argv[1], "obj", "0", "3", ".15", root + "-bumpext" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".obj"])
+      subprocess.call([argv[1], "habit", root + "-bumpext0.obj", root + "-bumpext2.obj", "2", "4", str(tam), root + "-bumpextA.obj"])
+      subprocess.call([argv[1], "habit", root + "-bumpext1.obj", root + "-bumpext3.obj", "3", "4", str(tam), root + "-bumpextB.obj"])
+      subprocess.call([argv[1], "habit", root + "-bumpextA.obj", root + "-bumpextB.obj", "0", "1", str(tam), root + "-bumpext.obj"])
+      subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
   elif(argv[2] == "demosaic"):
     print pixels
     s0  = int(np.ceil(np.log(pixels) / np.log(1.75)))
-    subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", root + "-0.png"])
+    subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
     for s in range(0, s0):
-      subprocess.call([argv[1], "enlarge", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
+      subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
       subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "2x2", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
-      habit0 = root + "-mask.ppm"
       subprocess.call(["cp", bhabit, bhabit + "-out.obj"])
     else:
-      subprocess.call([argv[1], "habit", habit0, line + "-out.obj", bhabit + "-out.obj", line])
+      subprocess.call([argv[1], "habit", bhabit + "-out.obj", line, line + "-out.obj"])
       bhabit = line
   elif(argv[2] == "prep"):
     subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])

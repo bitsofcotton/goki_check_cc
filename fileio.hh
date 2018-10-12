@@ -177,7 +177,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2), const T& aroffset = T(.2), const T& arrot = T(.015)) {
+  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0), const T& aroffset = T(0), const T& arrot = T(.015)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -188,13 +188,13 @@ public:
           lfs = fslash;
       if(lfs) lfs ++;
       output << "mtllib " << &filename[lfs] << ".mtl" << endl;
+      output << "usemtl material0" << endl;
       for(int i = 0; i < data.size(); i ++) {
         Mh = max(data[i][1], Mh);
         Mw = max(data[i][0], Mw);
         lz = min(- data[i][2], lz);
       }
-      if(arout) {
-        assert(!addstand);
+      if(aroffset != T(0)) {
         match_t<T> m;
         m.offset[1] += aroffset;
         m.offset[2] -= T(.5);
@@ -230,35 +230,35 @@ public:
           workv    = m.transform(workv);
           output << "v " << workv[1] << " " << workv[0] << " " << workv[2] << endl;
         }
-      } else if(addstand) {
+      } else if(addstand != T(0)) {
         for(int i = 0; i < data.size(); i ++)
-          output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + zs - lz << endl;
+          output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + addstand - lz << endl;
         for(int i = 0; i < data.size(); i ++)
           output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << 0 << endl;
-      } else
+      } else {
         for(int i = 0; i < data.size(); i ++)
           output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
+      }
       for(int i = 0; i < data.size(); i ++)
         output << "vt " << data[i][1] / Mh << " " << 1. - data[i][0] / Mw << endl;
-      output << "usemtl material0" << endl;
       // xchg with clockwise/counter clockwise.
       for(int i = 0; i < polys.size(); i ++) {
-        output << "f " << polys[i][0] + 1 << "/" << polys[i][0] + 1 << "/" << polys[i][0] + 1;
-        output << " "  << polys[i][1] + 1 << "/" << polys[i][1] + 1 << "/" << polys[i][1] + 1;
-        output << " "  << polys[i][2] + 1 << "/" << polys[i][2] + 1 << "/" << polys[i][2] + 1 << endl;
-        if(addstand) {
+        output << "f " << polys[i][0] + 1;
+        output << " "  << polys[i][1] + 1;
+        output << " "  << polys[i][2] + 1 << endl;
+      }
+      if(addstand != T(0)) {
+        cerr << "in" << endl;
+        for(int i = 0; i < polys.size(); i ++) {
           output << "f " << data.size() + polys[i][0] + 1;
           output << " "  << data.size() + polys[i][2] + 1;
           output << " "  << data.size() + polys[i][1] + 1 << endl;
         }
-      }
-      if(addstand && edges.size())
-        cerr << edges.size() << "parts found." << endl;
-        for(int ii = 0; ii < edges.size(); ii ++) if(edges[ii].size()) {
-          const vector<int>& outer(edges[ii]);
-          for(int i = 0; i < outer.size() - 1; i ++) {
-            const int& i0(i);
-            const int  i1(i + 1);
+        assert(0 < edges.size());
+        for(int ii = 0; ii < edges.size(); ii ++) if(edges[ii].size())
+          for(int i0 = 0; i0 < edges[ii].size(); i0 ++) {
+            const auto& outer(edges[ii]);
+            const int   i1((i0 + 1) % edges[ii].size());
             output << "f " << data.size() + outer[i0] + 1;
             output << " "  << outer[i1] + 1;
             output << " "  << data.size() + outer[i1] + 1 << endl;
@@ -266,7 +266,7 @@ public:
             output << " "  << outer[i0] + 1;
             output << " "  << outer[i1] + 1 << endl;
           }
-        }
+      }
       output.close();
     } else {
       cerr << "Unable to open file: " << filename << endl;
