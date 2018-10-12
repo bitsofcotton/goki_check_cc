@@ -17,17 +17,17 @@ using namespace std;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "./tools enlarge <ratio>  <input.ppm> <output.ppm>" << endl;
-  cout << "./tools pextend <pixels> <input.ppm> <output.ppm>" << endl;
-  cout << "./tools collect <input.ppm> <output.ppm>" << endl;
-  cout << "./tools idetect <input.ppm> <output.ppm>" << endl;
-  cout << "./tools bump    <input.ppm> <output.ppm>" << endl;
-  cout << "./tools obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
-  cout << "./tools obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
-  cout << "./tools tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "./tools draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
-  cout << "./tools match   <num_of_res_shown> <num_of_hidden_match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)?" << endl;
-  cout << "./tools habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
+  cout << "gokicheck enlarge <ratio>  <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck idetect <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
+  cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
+  cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
+  cout << "gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
+  cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
 }
 
@@ -302,10 +302,11 @@ int main(int argc, const char* argv[]) {
     res[0] = res[1] = res[2] = redig.showMatch(data[0] * 0., datapoly, polynorms, double(120));
     file.savep2or3(argv[4], res, true);
   } else if(strcmp(argv[1], "match") == 0) {
-    if(10 < argc) {
+    if(argc < 11) {
       usage();
       return - 1;
     }
+    int fnout(11);
     int nshow(std::atoi(argv[2]));
     int nhid(std::atoi(argv[3]));
     int nemph(std::atoi(argv[4]));
@@ -343,6 +344,7 @@ int main(int argc, const char* argv[]) {
         return - 2;
       if(!file.loadp2or3(mdata1, argv[12]))
         return - 2;
+      fnout = 13;
     } else {
       mdata[0]  = mdata[1]  = mdata[2]  = data[0]  * 0.;
       mdata1[0] = mdata1[1] = mdata1[2] = data1[0] * 0.;
@@ -382,10 +384,10 @@ int main(int argc, const char* argv[]) {
       pmatches = pstatmatch.elim(pmatches, data, mout, bump1, shape1a);
       for(int m = 0; m < min(int(pmatches.size()), nshow); m ++) {
         std::cerr << "Writing " << m << " / " << pmatches.size() << " - " << n << " / " << matches.size();
-        saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), pmatches[m], shape0a, shape1a, data, mout, bump0, bump1, emph);
+        saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), pmatches[m], shape0a, shape1a, data, mout, bump0, bump1, emph);
       }
       std::cerr << "Writing " << n << " / " << matches.size();
-      saveMatches<double>(std::string(argv[3]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
+      saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
     }
   } else if(strcmp(argv[1], "habit") == 0) {
     std::vector<typename simpleFile<double>::Vec3>  pdst,   psrc;
