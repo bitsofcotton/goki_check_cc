@@ -1,19 +1,34 @@
 #include <cstdio>
-#include <cmath>
+#include <cstdlib>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <assert.h>
 
 #if defined(_WITHOUT_EIGEN_)
 #include "simplelin.hh"
+#include <complex>
 #else
 #include <Eigen/Core>
+#include <Eigen/LU>
 #endif
 
+#if defined(_WITH_GLTF2_)
+#include <fx/gltf.h>
+#endif
+
+namespace goki {
 #include "fileio.hh"
 #include "enlarge.hh"
 #include "match.hh"
 #include "redig.hh"
-
-using namespace std;
+};
+using namespace goki;
+using std::cout;
+using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
@@ -289,10 +304,22 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
+    assert(datapoly.size());
+    double My(datapoly[0][0]);
+    double Mx(datapoly[0][1]);
+    double my(My);
+    double mx(Mx);
+    for(int i = 0; i < datapoly.size(); i ++) {
+      My = max(My, datapoly[i][0]);
+      Mx = max(Mx, datapoly[i][1]);
+      my = min(my, datapoly[i][0]);
+      mx = min(mx, datapoly[i][1]);
+    }
     match_t<double> m;
-    m.offset[0] += min(data[0].rows(), data[0].cols()) / 2.;
-    m.offset[1] += min(data[0].rows(), data[0].cols()) / 2.;
-    m.ratio     *= min(data[0].rows(), data[0].cols()) / 2.;
+    const double ratio(sqrt(double(data[0].rows() * data[0].cols())) / max(My - my, Mx - mx));
+    m.ratio     *= ratio;
+    m.offset[0] -= my * ratio;
+    m.offset[1] -= mx * ratio;
     for(int i = 0; i < datapoly.size(); i ++)
       datapoly[i] = m.transform(datapoly[i]);
     typename simpleFile<double>::Mat res[3];
@@ -354,15 +381,17 @@ int main(int argc, const char* argv[]) {
     for(int i = 0; i <= nemph; i ++)
       emph.push_back(double(i) / nemph);
     auto& bump0(bdata[0]);
+    redig.initialize(vboxdst);
     redig.getTileVec(bump0, shape0, delau0);
+    redig.maskVectors(shape0, delau0, mdata[0]);
+    redig.initialize(vboxsrc);
     if(fn[fn.size() - 1] == 'm')
       redig.getTileVec(bump1, shape1, delau1);
-    redig.maskVectors(shape0, delau0, mdata[0]);
     redig.maskVectors(shape1, delau1, mmout1);
     matchPartial<double> statmatch;
     auto matches(statmatch.match(shape0, shape1));
+    // matches = statmatch.elim(matches, data, mout, bump1, shape1);
     matches.resize(min(int(matches.size()), nhid));
-    matches = statmatch.elim(matches, data, mout, bump1, shape1);
     for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
       std::cerr << "Matchingsub: " << n << " / " << matches.size();
       std::vector<int> dstbuf(matches[n].dstpoints);
@@ -380,8 +409,8 @@ int main(int argc, const char* argv[]) {
       matchPartial<double> pstatmatch;
       pstatmatch.ndiv /= 2;
       auto pmatches(pstatmatch.match(shape0a, shape1a));
+      // pmatches = pstatmatch.elim(pmatches, data, mout, bump1, shape1a);
       pmatches.resize(min(int(pmatches.size()), nhid));
-      pmatches = pstatmatch.elim(pmatches, data, mout, bump1, shape1a);
       for(int m = 0; m < min(int(pmatches.size()), nshow); m ++) {
         std::cerr << "Writing " << m << " / " << pmatches.size() << " - " << n << " / " << matches.size();
         saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), pmatches[m], shape0a, shape1a, data, mout, bump0, bump1, emph);

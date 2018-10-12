@@ -13,22 +13,6 @@
 
 #if !defined(_FILEIO_GOKI_)
 
-#if defined(_WITHOUT_EIGEN_)
-#include "simplelin.hh"
-#else
-#include <Eigen/Core>
-#endif
-
-#include <algorithm>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <vector>
-
-#if defined(_WITH_GLTF2_)
-#include <fx/gltf.h>
-#endif
-
 using std::max;
 using std::min;
 using std::cerr;

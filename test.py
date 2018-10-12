@@ -21,10 +21,10 @@ if(argv[2] == "match"):
   if(ext0 != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
   if(ext1 == ".obj" or ext1 == ".gltf"):
-    subprocess.call([argv[1], "match", "4", "20", "8", "8", "8", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+    subprocess.call([argv[1], "match", "4", "20", "8", "60", "15", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
   elif(ext1 != ".ppm"):
     subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
-  subprocess.call([argv[1], "match", "4", "20", "8", "8", "8", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
+  subprocess.call([argv[1], "match", "4", "20", "8", "60", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   exit(0)
 
 pixels = 4

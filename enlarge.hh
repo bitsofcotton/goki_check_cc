@@ -13,15 +13,6 @@
 
 #if !defined(_ENLARGE2X_)
 
-#if defined(_WITHOUT_EIGEN_)
-#include "simplelin.hh"
-#include <complex>
-#else
-#include <Eigen/Core>
-#include <Eigen/LU>
-#endif
-#include <vector>
-
 using std::cerr;
 using std::flush;
 using std::complex;

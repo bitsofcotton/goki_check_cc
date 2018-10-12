@@ -13,16 +13,6 @@
 
 #if !defined(_REDIG_)
 
-#if defined(_WITHOUT_EIGEN_)
-#include "simplelin.hh"
-#else
-#include <Eigen/Core>
-#include <Eigen/LU>
-#endif
-
-#include <complex>
-#include <cmath>
-#include <vector>
 template <typename T> class match_t;
 
 using std::sqrt;
