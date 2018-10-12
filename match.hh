@@ -13,16 +13,6 @@
 
 #if !defined(_MATCH_)
 
-#if defined(_WITHOUT_EIGEN_)
-#include "simplelin.hh"
-#else
-#include <Eigen/Core>
-#include <Eigen/LU>
-#endif
-
-#include <cmath>
-#include <vector>
-
 template <typename T> class reDig;
 
 using std::sqrt;
@@ -315,7 +305,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(60, .25, .1);
+  init(40, .25, .1);
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshp, const T& threshs) {

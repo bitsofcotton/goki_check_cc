@@ -14,7 +14,6 @@
 
 #if !defined(_SIMPLELIN_)
 
-#include <assert.h>
 using std::move;
 using std::isfinite;
 using std::isnan;

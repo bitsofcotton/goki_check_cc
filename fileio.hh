@@ -13,22 +13,6 @@
 
 #if !defined(_FILEIO_GOKI_)
 
-#if defined(_WITHOUT_EIGEN_)
-#include "simplelin.hh"
-#else
-#include <Eigen/Core>
-#endif
-
-#include <algorithm>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <vector>
-
-#if defined(_WITH_GLTF2_)
-#include <fx/gltf.h>
-#endif
-
 using std::max;
 using std::min;
 using std::cerr;
@@ -177,7 +161,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const bool& arout = false, const bool& addstand = false, const vector<vector<int> >& edges = vector<vector<int> >(), const T& zs = T(2), const T& aroffset = T(.2), const T& arrot = T(.015)) {
+  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0), const T& aroffset = T(0), const T& arrot = T(.015)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -188,13 +172,13 @@ public:
           lfs = fslash;
       if(lfs) lfs ++;
       output << "mtllib " << &filename[lfs] << ".mtl" << endl;
+      output << "usemtl material0" << endl;
       for(int i = 0; i < data.size(); i ++) {
         Mh = max(data[i][1], Mh);
         Mw = max(data[i][0], Mw);
         lz = min(- data[i][2], lz);
       }
-      if(arout) {
-        assert(!addstand);
+      if(aroffset != T(0)) {
         match_t<T> m;
         m.offset[1] += aroffset;
         m.offset[2] -= T(.5);
@@ -230,35 +214,35 @@ public:
           workv    = m.transform(workv);
           output << "v " << workv[1] << " " << workv[0] << " " << workv[2] << endl;
         }
-      } else if(addstand) {
+      } else if(addstand != T(0)) {
         for(int i = 0; i < data.size(); i ++)
-          output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + zs - lz << endl;
+          output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + addstand - lz << endl;
         for(int i = 0; i < data.size(); i ++)
           output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << 0 << endl;
-      } else
+      } else {
         for(int i = 0; i < data.size(); i ++)
           output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
+      }
       for(int i = 0; i < data.size(); i ++)
         output << "vt " << data[i][1] / Mh << " " << 1. - data[i][0] / Mw << endl;
-      output << "usemtl material0" << endl;
       // xchg with clockwise/counter clockwise.
       for(int i = 0; i < polys.size(); i ++) {
-        output << "f " << polys[i][0] + 1 << "/" << polys[i][0] + 1 << "/" << polys[i][0] + 1;
-        output << " "  << polys[i][1] + 1 << "/" << polys[i][1] + 1 << "/" << polys[i][1] + 1;
-        output << " "  << polys[i][2] + 1 << "/" << polys[i][2] + 1 << "/" << polys[i][2] + 1 << endl;
-        if(addstand) {
+        output << "f " << polys[i][0] + 1;
+        output << " "  << polys[i][1] + 1;
+        output << " "  << polys[i][2] + 1 << endl;
+      }
+      if(addstand != T(0)) {
+        cerr << "in" << endl;
+        for(int i = 0; i < polys.size(); i ++) {
           output << "f " << data.size() + polys[i][0] + 1;
           output << " "  << data.size() + polys[i][2] + 1;
           output << " "  << data.size() + polys[i][1] + 1 << endl;
         }
-      }
-      if(addstand && edges.size())
-        cerr << edges.size() << "parts found." << endl;
-        for(int ii = 0; ii < edges.size(); ii ++) if(edges[ii].size()) {
-          const vector<int>& outer(edges[ii]);
-          for(int i = 0; i < outer.size() - 1; i ++) {
-            const int& i0(i);
-            const int  i1(i + 1);
+        assert(0 < edges.size());
+        for(int ii = 0; ii < edges.size(); ii ++) if(edges[ii].size())
+          for(int i0 = 0; i0 < edges[ii].size(); i0 ++) {
+            const auto& outer(edges[ii]);
+            const int   i1((i0 + 1) % edges[ii].size());
             output << "f " << data.size() + outer[i0] + 1;
             output << " "  << outer[i1] + 1;
             output << " "  << data.size() + outer[i1] + 1 << endl;
@@ -266,7 +250,7 @@ public:
             output << " "  << outer[i0] + 1;
             output << " "  << outer[i1] + 1 << endl;
           }
-        }
+      }
       output.close();
     } else {
       cerr << "Unable to open file: " << filename << endl;
@@ -328,12 +312,13 @@ public:
   
   // ( Please read the page before to compile )
   // thanks to: https://github.com/jessey-git/fx-gltf/
-  bool loadglTF(vector<vector<Vec3> >& data, vector<vector<Veci3> >& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone, const char* filename) {
+  // and thanks to: https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/SimpleMeshes
+  bool loadglTF(vector<Vec3>& data, vector<Veci3>& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone, const char* filename, const T& bone01 = T(0)) {
 #if defined(_WITH_GLTF2_)
-    data   = vector<vector<Vec3> >();
-    polys  = vector<vector<Veci3> >();
     center = vector<Vec3>();
     bone   = vector<vector<Veci4> >();
+    data   = vector<Vec3>();
+    polys  = vector<Veci3>();
     const auto doc(fx::gltf::LoadFromText(filename));
     for(int nodeIndex = 0; nodeIndex < doc.nodes.size(); nodeIndex ++) {
       Vec3 lcenter(3);
@@ -341,19 +326,15 @@ public:
         lcenter[i] = doc.nodes[nodeIndex].translation[i];
       center.push_back(lcenter);
     }
-    data.resize(center.size());
-    polys.resize(center.size());
     bone.resize(center.size());
     for(int meshIndex = 0; meshIndex < doc.meshes.size(); meshIndex ++)
       for(int primitiveIndex = 0; primitiveIndex < doc.meshes[meshIndex].primitives.size(); primitiveIndex ++) {
         const auto& mesh(doc.meshes[meshIndex]);
         const auto& primitive(mesh.primitives[primitiveIndex]);
-        uint8_t* m_vertexBuffer;
-        int      n_vertexBuffer;
-        uint8_t* m_jointBuffer;
-        int      n_jointBuffer;
-        bool found_pos(false);
-        bool found_joint(false);
+        uint8_t* m_vertexBuffer(0);
+        int      n_vertexBuffer(- 1);
+        uint8_t* m_jointBuffer(0);
+        int      n_jointBuffer(- 1);
         fx::gltf::Accessor::ComponentType jointType;
         for (auto const & attrib : primitive.attributes)
           if (attrib.first == std::string("POSITION")) {
@@ -362,7 +343,6 @@ public:
             n_vertexBuffer = doc.accessors[attrib.second].count;
             assert(doc.accessors[attrib.second].componentType == fx::gltf::Accessor::ComponentType::Float);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec3);
-            found_pos = true;
           } else if(attrib.first == std::string("JOINTS_0")) {
             const auto& bv(doc.bufferViews[doc.accessors[attrib.second].bufferView]);
             m_jointBuffer = (uint8_t*)&doc.buffers[bv.buffer].data[static_cast<uint64_t>(bv.byteOffset) + doc.accessors[attrib.second].byteOffset];
@@ -371,52 +351,25 @@ public:
             assert(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte ||
                    jointType == fx::gltf::Accessor::ComponentType::UnsignedShort);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
-            found_joint = true;
           }
-        const auto bv(doc.bufferViews[doc.accessors[primitive.indices].bufferView]);
-        const uint8_t* m_indexBuffer = (uint8_t*)&doc.buffers[bv.buffer].data[static_cast<uint64_t>(bv.byteOffset) + doc.accessors[primitive.indices].byteOffset];
+        assert(0 <= n_vertexBuffer && 0 <= n_jointBuffer);
+        const auto     bv(doc.bufferViews[doc.accessors[primitive.indices].bufferView]);
+        const uint8_t* m_indexBuffer(&doc.buffers[bv.buffer].data[static_cast<uint64_t>(bv.byteOffset) + doc.accessors[primitive.indices].byteOffset]);
         assert(doc.accessors[primitive.indices].componentType == fx::gltf::Accessor::ComponentType::UnsignedShort);
         assert(doc.accessors[primitive.indices].type == fx::gltf::Accessor::Type::Scalar);
-        assert(found_pos && found_joint);
-        for(int cIdx = 0; cIdx < center.size(); cIdx ++) {
-          vector<Vec3>  vertices;
-          vector<Veci3> indices;
-          vector<Veci4> bones;
-          Veci4         lbone(4);
-          lbone[0] = lbone[1] = lbone[2] = lbone[3] = - 1;
-          for(int i = 0; i < n_vertexBuffer; i ++) {
-            bool idx_match(false);
-            for(int j = 0; j < 4; j ++)
-              if(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte) {
-                unsigned char c = *(unsigned char*)(&m_jointBuffer[4 * i + j]);
-                lbone[j]   = static_cast<int>(c);
-                assert(0 <= lbone[j] && lbone[j] < center.size());
-                idx_match |= static_cast<int>(c) == cIdx;
-              } else if(jointType == fx::gltf::Accessor::ComponentType::UnsignedShort) {
-                unsigned short c = *(unsigned short*)(&m_jointBuffer[4 * 2 * i + 2 * j]);
-                lbone[j]   = static_cast<int>(c);
-                assert(0 <= lbone[j] && lbone[j] < center.size());
-                idx_match |= static_cast<int>(c) == cIdx;
-              }
-            if(idx_match) {
-              Vec3 work(3);
-              for(int j = 0; j < 3; j ++)
-                work[j] = T(*(float*)(&m_vertexBuffer[3 * 4 * i + 4 * j]));
-              vertices.push_back(work);
-              bones.push_back(lbone);
-            }
+        data.reserve(n_vertexBuffer * 3);
+        polys.reserve(n_vertexBuffer);
+        for(int i = 0; i < n_vertexBuffer * 3; i ++) {
+          Vec3 work(3);
+          for(int j = 0; j < 3; j ++)
+            work[j] = T(*(float*)(&m_vertexBuffer[3 * 4 * i + 4 * j]));
+          data.push_back(work);
+          if(i && i % 3 == 0) {
+            Veci3 worki(3);
+            for(int j = 0; j < 3; j ++)
+              worki[j] = i - 3 + j;
+            polys.push_back(worki);
           }
-          for(int i = 2; i < vertices.size(); i ++) {
-            // XXX fixme: delaunay?
-            Veci3 work(3);
-            work[0] = i - 2;
-            work[1] = i - 1;
-            work[2] = i;
-            indices.push_back(work);
-          }
-          data[cIdx]  = vertices;
-          polys[cIdx] = indices;
-          bone[cIdx]  = bones;
         }
       }
     cerr << data.size() << "parts found." << endl;
@@ -425,6 +378,10 @@ public:
     assert(0 && "Please compile with _WITH_GLTF2_");
     return false;
 #endif
+  }
+  bool saveglTF(const char* filename, vector<Vec3>& data, vector<Veci3>& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone) {
+    assert(0 && "not now.");
+    return false;
   }
 };
 
