@@ -33,44 +33,31 @@ Makefile を stdc++ を使えるように変更してください。
 Freeze 前の細かな実装のチェックをしています。特に、gltf2 ライブラリへの対応はまだバグが潜在しています。
 
 # 使い方
-    make tools
+    make gokicheck
     
-    # enlarge
-    ./tools enlarge input.ppm output.ppm
-    
-    # detect edges with absolute differential with dft value.
-    ./tools collect input.ppm output.ppm
-    
-    # make 2d to 3d pseudo bumpmap
-    ./tools bump input.ppm output.ppm
-    
-    # bumpmap to .obj file
-    ./tools obj input-bump.ppm output.obj
-    
-    # mask .obj files and add support.
-    ./tools maskobj input-mask.ppm input.obj output.obj size-ratio thin-or-thickness-size
-    
-    # make tilts from original and bumpmap images.
-    ./tools tilt input.ppm output-base input-bump.ppm
-    
-    # list matches.
-    ./tools match input-matchbase.ppm output-base input-tobematched.ppm matchbase-bump.ppm tobematched-bump.ppm input-mask.ppm tobematched-mask.ppm
-    
-    # list matches 2d - 3d.
-    ./tools match3d input-matchbase.ppm output-base input-tobematched.obj matchbase-bump.ppm matchbase-mask.ppm
-    
-    # list matches 2d - 2d with hidden 3d.
-    ./tools match2dh3d input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-object.obj
-    
-    # list matches 2d - 3d with bone.
-    ./tools match3dbone input-matchbase.ppm output-base input-tobematched.gltf matchbase-bump.ppm matchbase-mask.ppm
-    
-    # list matches 2d - 2d with hidden 3d with bone.
-    ./tools match2dh3dbone input-matchbase.ppm output-base input-tobematched.ppm bump-matchbase.ppm bump-tobematched.ppm mask-matchbase.ppm mask-tobematched.ppm hidden-object.gltf
+    gokicheck enlarge <ratio>  <input.ppm> <output.ppm>
+    gokicheck pextend <pixels> <input.ppm> <output.ppm>
+    gokicheck collect <input.ppm> <output.ppm>
+    gokicheck idetect <input.ppm> <output.ppm>
+    gokicheck bump    <input.ppm> <output.ppm>
+    gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>
+    gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
+    gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
+    gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>
+    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
+    python test.py ./gokicheck bump input.png
+    python test.py ./gokicheck obj  input.png
+    python test.py ./gokicheck mtl  input.png
+    python test.py ./gokicheck scn  input.png
+    python test.py ./gokicheck tilt input.png
+    python test.py ./gokicheck btilt input.png
+    python test.py ./gokicheck pnga input.png
+    python test.py ./gokicheck jps input.png
+    python test.py ./gokicheck match input0.png input1.png
+    python test.py ./gokicheck match input0.png input1.obj
+    python test.py ./gokicheck match input0.png input1.gltf
 
-    # habit
-    ./tools habit mask.ppm output.obj input0.obj input1.obj
-    
 # ライブラリとしての使い方
 tools.cc を参照してください。また、必要であれば namespace ブロックでスコープしてください。
 ただし、高確率でインクルードガードの定義が有害です。
