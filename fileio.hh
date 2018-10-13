@@ -227,9 +227,12 @@ public:
         output << "vt " << data[i][1] / Mh << " " << 1. - data[i][0] / Mw << endl;
       // xchg with clockwise/counter clockwise.
       for(int i = 0; i < polys.size(); i ++) {
-        output << "f " << polys[i][0] + 1;
-        output << " "  << polys[i][1] + 1;
-        output << " "  << polys[i][2] + 1 << endl;
+        const int i0(polys[i][0] + 1);
+        const int i1(polys[i][1] + 1);
+        const int i2(polys[i][2] + 1);
+        output << "f " << i0 << "/" << i0 << "/" << i0;
+        output << " "  << i1 << "/" << i1 << "/" << i1;
+        output << " "  << i2 << "/" << i2 << "/" << i2 << endl;
       }
       if(addstand != T(0)) {
         cerr << "in" << endl;
