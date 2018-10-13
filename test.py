@@ -89,9 +89,9 @@ for line in argv[3:]:
       subprocess.call([argv[1], "tilt", str(s), "16", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-tilt-base-" + str(s) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "btilt"):
-    for s in range(0, 16):
-      subprocess.call([argv[1], "tilt", "0", "2", str((s - 8) / 8. * .1), "0", root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])
-      subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(16 * 2 - s - 1) + ".ppm"])
+    for s in range(0, 32):
+      subprocess.call([argv[1], "tilt", "0", "2", str((s - 16) / 16. * .1), "0", root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])
+      subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(32 * 2 - s - 1) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "sbox"):
     for s in range(0, 8):
