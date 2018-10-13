@@ -40,6 +40,7 @@ void usage() {
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
+  cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
@@ -245,27 +246,40 @@ int main(int argc, const char* argv[]) {
     for(int i = 0; i < points.size(); i ++)
       points[i][2] *= zratio / (M - m);
     file.saveobj(points, facets, argv[sidx], edges, addstand, xoffset);
-  } else if(strcmp(argv[1], "tilt") == 0) {
-    if(argc < 9) {
+  } else if(strcmp(argv[1], "tilt") == 0 ||
+            strcmp(argv[1], "sbox") == 0) {
+    if((strcmp(argv[1], "tilt") == 0 && argc < 9) ||
+       (strcmp(argv[1], "sbox") == 0 && argc < 7)) {
       usage();
       return - 1;
     }
     int    index(std::atoi(argv[2]));
     int    Mindex(std::atoi(argv[3]));
-    double psi(std::atof(argv[4]));
-    int    offsetx(std::atoi(argv[5]));
+    double psi(0);
+    int    offsetx(0);
+    int    ipidx(6);
+    int    iidx(7);
+    int    oidx(8);
+    if(strcmp(argv[1], "tilt") == 0) {
+      psi = std::atof(argv[4]);
+      offsetx = std::atoi(argv[5]);
+    } else {
+      ipidx = 4;
+      iidx  = 5;
+      oidx  = 6;
+    }
     typename simpleFile<double>::Mat data[3], bump[3], out[3];
     std::vector<typename simpleFile<double>::Vec3>  points;
     std::vector<typename simpleFile<double>::Veci3> polys;
-    if(!file.loadp2or3(data, argv[6]))
+    if(!file.loadp2or3(data, argv[ipidx]))
       return - 2;
-    const std::string fn(argv[7]);
+    const std::string fn(argv[iidx]);
     bool is_obj(false);
     if(fn[fn.size() - 1] == 'm') {
-      if(!file.loadp2or3(bump, argv[7]))
+      if(!file.loadp2or3(bump, argv[iidx]))
         return - 2;
     } else if(fn[fn.size() - 1] == 'j') {
-      if(!file.loadobj(points, polys, argv[7]))
+      if(!file.loadobj(points, polys, argv[iidx]))
         return - 2;
       is_obj = true;
     } else
@@ -279,7 +293,7 @@ int main(int argc, const char* argv[]) {
       tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
     for(int j = 0; j < 3; j ++)
       out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
-    if(!file.savep2or3(argv[8], out, ! true))
+    if(!file.savep2or3(argv[oidx], out, ! true))
       return - 1;
   } else if(strcmp(argv[1], "draw") == 0) {
     if(argc < 5) {

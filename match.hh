@@ -360,7 +360,7 @@ template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<
       const Vec3  lerr(aj - bk * t);
       const T     err(lerr.dot(lerr) / sqrt(aj.dot(aj) * bk.dot(bk) * t * t));
       // if t <= T(0), it's mirrored and this should not match.
-      if(T(0) <= t && err <= thresh * thresh && isfinite(t) && isfinite(err)) {
+      if(T(0) <= t && err <= thresht * thresht && isfinite(t) && isfinite(err)) {
         msub_t<T> work;
         work.t   = t;
         work.j   = j;

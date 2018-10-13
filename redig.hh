@@ -132,8 +132,8 @@ public:
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles);
-  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1e8));
+  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0 = - T(1e8));
 
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
@@ -145,7 +145,7 @@ private:
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5)) const;
   bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(1e8));
   
   T   Pi;
   int vbox;
@@ -1027,7 +1027,7 @@ template <typename T> triangles_t<T> reDig<T>::makeTriangle(const int& u, const 
   }
   work.c = in(u, v);
   for(int i = 0; i < 3;  i ++)
-    work.p(2, i) = bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
+    work.p(2, i) = - bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
   return work.solveN();
 }
 
@@ -1116,7 +1116,7 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0) {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
   vector<Triangles> triangles;
   triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
@@ -1125,10 +1125,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
       triangles.push_back(makeTriangle(i, j, in, bump, false));
       triangles.push_back(makeTriangle(i, j, in, bump, true));
     }
-  return tilt(in, triangles, m);
+  return tilt(in, triangles, m, z0);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0) {
   vector<Triangles> triangles(triangles0);
   for(int j = 0; j < triangles.size(); j ++) {
     for(int k = 0; k < 3; k ++)
@@ -1139,10 +1139,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
 #endif
     triangles[j].solveN();
   }
-  return tilt(in, triangles);
+  return tilt(in, triangles, z0);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0) {
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
@@ -1151,7 +1151,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   Mat zb(in.rows(), in.cols());
   for(int j = 0; j < zb.rows(); j ++)
     for(int k = 0; k < zb.cols(); k ++)
-      zb(j, k) = - T(1e8);
+      zb(j, k) = z0;
   // able to boost with divide and conquer.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
