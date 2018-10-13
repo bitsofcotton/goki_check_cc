@@ -52,7 +52,9 @@ public:
     COLLECT_Y,
     COLLECT_BOTH,
     IDETECT_X,
+    IDETECT_X_BOTH,
     IDETECT_Y,
+    IDETECT_Y_BOTH,
     IDETECT_BOTH,
     IDETECT_QUAD,
     BLUR_X,
@@ -159,10 +161,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / T(2);
     break;
   case IDETECT_QUAD:
-    result = compute(data, IDETECT_BOTH) +
-             compute(compute(compute(data, REVERSE_X), IDETECT_BOTH), REVERSE_X) +
-             compute(compute(compute(data, REVERSE_Y), IDETECT_BOTH), REVERSE_Y) +
-             compute(compute(compute(data, REVERSE_BOTH), IDETECT_BOTH), REVERSE_BOTH);
+    result = (compute(data, IDETECT_Y_BOTH) + compute(data, IDETECT_X_BOTH)) / T(2);
     break;
   case BLUR_BOTH:
     result = (compute(data, BLUR_X)    + compute(data, BLUR_Y)) / T(2);
@@ -194,6 +193,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case IDETECT_X:
     result = compute(data.transpose(), IDETECT_Y).transpose();
+    break;
+  case IDETECT_X_BOTH:
+    result = compute(data.transpose(), IDETECT_Y_BOTH).transpose();
     break;
   case BLUR_X:
     result = compute(data.transpose(), BLUR_Y).transpose();
@@ -254,6 +256,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         for(int j = 0; j < data.rows(); j ++)
           result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows() / data.rows();
     }
+    break;
+  case IDETECT_Y_BOTH:
+    result = compute(data, IDETECT_Y) + compute(compute(compute(data, REVERSE_Y), IDETECT_Y), REVERSE_Y);
     break;
   case BUMP_Y0:
     {
