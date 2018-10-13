@@ -178,8 +178,11 @@ int main(int argc, const char* argv[]) {
       }
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
-      const auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
+      auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
+      data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
+      // N.B. integrate local data for global data, is this correct?
+      xye = bump.compute(data[2], bump.IDETECT_BOTH);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(data[2], false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
