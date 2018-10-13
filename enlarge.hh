@@ -54,6 +54,7 @@ public:
     IDETECT_X,
     IDETECT_Y,
     IDETECT_BOTH,
+    IDETECT_QUAD,
     BLUR_X,
     BLUR_Y,
     BLUR_BOTH,
@@ -156,6 +157,12 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case IDETECT_BOTH:
     result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / T(2);
+    break;
+  case IDETECT_QUAD:
+    result = compute(data, IDETECT_BOTH) +
+             compute(compute(compute(data, REVERSE_X), IDETECT_BOTH), REVERSE_X) +
+             compute(compute(compute(data, REVERSE_Y), IDETECT_BOTH), REVERSE_Y) +
+             compute(compute(compute(data, REVERSE_BOTH), IDETECT_BOTH), REVERSE_BOTH);
     break;
   case BLUR_BOTH:
     result = (compute(data, BLUR_X)    + compute(data, BLUR_Y)) / T(2);

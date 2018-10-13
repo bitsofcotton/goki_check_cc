@@ -57,11 +57,11 @@ for line in argv[3:]:
   elif(argv[2] == "mask"):
     subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
   elif(argv[2] == "obj"):
-    subprocess.call([argv[1], "obj", "0", "3", ".15", root + "-bump.ppm", root + ".obj"])
-    subprocess.call([argv[1], "obj", "  .2", "3", ".15", root + "-bump.ppm", root + "-L.obj"])
-    subprocess.call([argv[1], "obj", "- .2", "3", ".15", root + "-bump.ppm", root + "-R.obj"])
-    subprocess.call([argv[1], "obj", "0", "3", ".15", root + "-bump.ppm", root + "-mask.ppm", root + "-mask.obj"])
-    subprocess.call([argv[1], "obj", "stand", "3", ".2", "1", ".15", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
+    subprocess.call([argv[1], "obj", "0", "3", ".3", root + "-bump.ppm", root + ".obj"])
+    subprocess.call([argv[1], "obj", "  .2", "3", ".3", root + "-bump.ppm", root + "-L.obj"])
+    subprocess.call([argv[1], "obj", "- .2", "3", ".3", root + "-bump.ppm", root + "-R.obj"])
+    subprocess.call([argv[1], "obj", "0", "3", ".3", root + "-bump.ppm", root + "-mask.ppm", root + "-mask.obj"])
+    subprocess.call([argv[1], "obj", "stand", "3", ".2", "1", ".3", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
   elif(argv[2] == "scn"):
     subprocess.call(["xcrun", "scntool", "--convert", root + "-L.obj", "--format", "scn", "--output", root + "-L.scn"])
     subprocess.call(["xcrun", "scntool", "--convert", root + "-R.obj", "--format", "scn", "--output", root + "-R.scn"])
