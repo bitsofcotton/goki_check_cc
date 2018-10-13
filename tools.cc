@@ -475,6 +475,64 @@ int main(int argc, const char* argv[]) {
       file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
                    poldst, argv[4]);
     }
+#if !defined(_WITHOUT_EIGEN_)
+  } else if(strcmp(argv[1], "omake") == 0) {
+    std::vector<double> in;
+    std::string line;
+    while (std::getline(std::cin, line)) {
+      std::stringstream sl(line);
+      in.push_back(0);
+      sl >> in[in.size() - 1];
+    }
+    simpleFile<double>::Mat buf(std::atoi(argv[2]), std::atoi(argv[2]));
+    enlarger2ex<double> filter;
+    double M(0);
+    std::vector<double> rbuf;
+    if(strcmp(argv[3], "enlarge") == 0)
+      rbuf.resize(in.size() * 2, 0.);
+    else
+      rbuf.resize(in.size(), 0.);
+    const auto dft0(filter.seed(buf.rows(), false));
+    const auto idft0(filter.seed(buf.rows(), true));
+    for(int i = 0; i < in.size() / buf.rows() / buf.rows(); i ++) {
+      for(int j = 0; j < buf.rows(); j ++)
+        for(int k = 0; k < buf.cols(); k ++)
+          buf(j, k) = in[i * buf.rows() * buf.rows() + k * buf.rows() + j];
+      enlarger2ex<double>::MatU dft(dft0 * buf.template cast<complex<double> >());
+      if(strcmp(argv[3], "enlarge") == 0) {
+        const auto rp(filter.compute(dft.real(), filter.ENLARGE_X));
+        const auto ip(filter.compute(dft.imag(), filter.ENLARGE_X));
+        const auto buf2((idft0 * (rp.template cast<complex<double> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real());
+        for(int j = 0; j < buf2.rows(); j ++)
+          for(int k = 0; k < buf2.cols(); k ++) {
+            M = max(M, abs(buf2(j, k)));
+            rbuf[i * buf.rows() * buf.rows() * 2 + k * buf.rows() + j] = buf2(j, k);
+          }
+      } else {
+        enlarger2ex<double>::Mat buf2;
+        if(strcmp(argv[3], "diff") == 0){
+          const auto rp(filter.compute(dft.real(), filter.DETECT_X));
+          const auto ip(filter.compute(dft.imag(), filter.DETECT_X));
+          buf2 = (idft0 * (rp.template cast<complex<double> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
+        } else if(strcmp(argv[3], "integ") == 0){
+          const auto rp(filter.compute(dft.real(), filter.IDETECT_X));
+          const auto ip(filter.compute(dft.imag(), filter.IDETECT_X));
+          buf2 = (idft0 * (rp.template cast<complex<double> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
+        } else if(strcmp(argv[3], "bump") == 0) {
+          const auto rp(filter.compute(dft.real(), filter.BUMP_X));
+          const auto ip(filter.compute(dft.imag(), filter.BUMP_X));
+          buf2 = (idft0 * (rp.template cast<complex<double> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
+        }
+        for(int j = 0; j < buf2.rows(); j ++)
+          for(int k = 0; k < buf2.cols(); k ++) {
+            M = max(M, abs(buf2(j, k)));
+            rbuf[i * buf.rows() * buf.rows() + k * buf.rows() + j] = buf2(j, k);
+          }
+      }
+    }
+    for(int i = 0; i < rbuf.size(); i ++)
+      std::cout << rbuf[i] / M << "\r" << std::endl;
+#endif
   } else {
     usage();
     return - 1;
