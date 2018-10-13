@@ -698,6 +698,9 @@ template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, in
 
 template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, const vector<Vec3>& points) {
   cerr << "getEdges" << flush;
+  vector<vector<int> > result;
+  if(mask.rows() <= 0 || mask.cols() <= 0)
+    return result;
   Mat checked(mask.rows(), mask.cols());
   for(int i = 0; i < checked.rows(); i ++)
     for(int j = 0; j < checked.cols(); j ++)
@@ -711,7 +714,6 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
   store.erase(unique(store.begin(), store.end()), store.end());
   cerr << " with " << store.size() << " edge points " << flush;
   
-  vector<vector<int> > result;
   // stored indices.
   vector<int>          se;
   for( ; se.size() < store.size(); ) {

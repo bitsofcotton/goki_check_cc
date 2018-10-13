@@ -315,6 +315,7 @@ public:
   // and thanks to: https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/SimpleMeshes
   bool loadglTF(vector<Vec3>& data, vector<Veci3>& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone, const char* filename, const T& bone01 = T(0)) {
 #if defined(_WITH_GLTF2_)
+    assert(T(0) <= bone01 && bone01 <= T(1));
     center = vector<Vec3>();
     bone   = vector<vector<Veci4> >();
     data   = vector<Vec3>();
@@ -335,6 +336,8 @@ public:
         int      n_vertexBuffer(- 1);
         uint8_t* m_jointBuffer(0);
         int      n_jointBuffer(- 1);
+        uint8_t* m_jointBuffer1(0);
+        int      n_jointBuffer1(- 1);
         fx::gltf::Accessor::ComponentType jointType;
         for (auto const & attrib : primitive.attributes)
           if (attrib.first == std::string("POSITION")) {
@@ -351,12 +354,20 @@ public:
             assert(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte ||
                    jointType == fx::gltf::Accessor::ComponentType::UnsignedShort);
             assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
+          } else if(attrib.first == std::string("JOINTS_1")) {
+            const auto& bv(doc.bufferViews[doc.accessors[attrib.second].bufferView]);
+            m_jointBuffer1 = (uint8_t*)&doc.buffers[bv.buffer].data[static_cast<uint64_t>(bv.byteOffset) + doc.accessors[attrib.second].byteOffset];
+            n_jointBuffer1 = doc.accessors[attrib.second].count;
+            jointType      = doc.accessors[attrib.second].componentType;
+            assert(jointType == fx::gltf::Accessor::ComponentType::UnsignedByte ||
+                   jointType == fx::gltf::Accessor::ComponentType::UnsignedShort);
+            assert(doc.accessors[attrib.second].type == fx::gltf::Accessor::Type::Vec4);
           }
         assert(0 <= n_vertexBuffer && 0 <= n_jointBuffer);
         const auto     bv(doc.bufferViews[doc.accessors[primitive.indices].bufferView]);
         const uint8_t* m_indexBuffer(&doc.buffers[bv.buffer].data[static_cast<uint64_t>(bv.byteOffset) + doc.accessors[primitive.indices].byteOffset]);
         assert(doc.accessors[primitive.indices].componentType == fx::gltf::Accessor::ComponentType::UnsignedShort);
-        assert(doc.accessors[primitive.indices].type == fx::gltf::Accessor::Type::Scalar);
+        assert(doc.accessors[primitive.indices].type          == fx::gltf::Accessor::Type::Scalar);
         data.reserve(n_vertexBuffer * 3);
         polys.reserve(n_vertexBuffer);
         for(int i = 0; i < n_vertexBuffer * 3; i ++) {
@@ -372,16 +383,22 @@ public:
           }
         }
       }
-    cerr << data.size() << "parts found." << endl;
+    cerr << center.size() << "parts found." << endl;
     return true;
 #else
     assert(0 && "Please compile with _WITH_GLTF2_");
     return false;
 #endif
   }
-  bool saveglTF(const char* filename, vector<Vec3>& data, vector<Veci3>& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone) {
+
+  bool saveglTF(const char* filename, const vector<Vec3>& data, const vector<Veci3>& polys, const match_t<T>& m, const vector<Vec3>& center, const vector<vector<Veci4> >& bone) {
+#if defined(_WITH_GLTF2_)
     assert(0 && "not now.");
+    return true;
+#else
+    assert(0 && "Please compile with _WITH_GLTF2_");
     return false;
+#endif
   }
 };
 
