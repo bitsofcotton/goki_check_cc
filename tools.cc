@@ -284,13 +284,21 @@ int main(int argc, const char* argv[]) {
       is_obj = true;
     } else
       return - 2;
-    auto mtilt(redig.tiltprep(data[0], index, Mindex, psi));
-    mtilt.offset[2] += offsetx * data[0].cols();
     typename simpleFile<double>::Mat tilt0;
-    if(is_obj)
-      tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
-    else
-      tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
+    if(strcmp(argv[1], "sbox") == 0) {
+      const match_t<double> mtilt;
+      if(is_obj)
+        tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt), index / (double)Mindex);
+      else
+        tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, index / (double)Mindex);
+    } else {
+      auto mtilt(redig.tiltprep(data[0], index, Mindex, psi));
+      mtilt.offset[2] += offsetx * data[0].cols();
+      if(is_obj)
+        tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
+      else
+        tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
+    }
     for(int j = 0; j < 3; j ++)
       out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
     if(!file.savep2or3(argv[oidx], out, ! true))
