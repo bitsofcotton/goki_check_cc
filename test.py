@@ -95,7 +95,7 @@ for line in argv[3:]:
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "sbox"):
     for s in range(0, 8):
-      subprocess.call([argv[1], "sbox", str(s * 8), "1", root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(s) + ".ppm"])
+      subprocess.call([argv[1], "sbox", str(int(- s * 256 / 8.)), "1", root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(s) + ".ppm"])
   elif(argv[2] == "extend"):
     for tam in [.5 / 6., .75 / 6., 1. / 6.]:
       for s in range(0, 4):
