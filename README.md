@@ -80,7 +80,8 @@ enlarger2ex generates the bumpmap that is pseudo plausible one because of one im
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 
-And, generated bumpmap is flat enough in global, so please try extend command with correct it by tilting little by little.
+And, generated bumpmap is NOT correct in global, this is because of integrating the local pint that we get can't describe
+enough for global pints, so please try extend command with correct it by tilting little by little.
 
 enlarger2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
 This is because we generate the one with DFT half space plausible ones by shifting frequency space intensities.
