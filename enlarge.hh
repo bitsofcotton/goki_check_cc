@@ -61,7 +61,10 @@ public:
     BLUR_Y,
     BLUR_BOTH,
     BUMP_X,
+    BUMP_Y00,
     BUMP_Y0,
+    BUMP_Y1,
+    BUMP_Y2,
     BUMP_Y,
     BUMP_BOTH,
     EXTEND_X,
@@ -76,6 +79,7 @@ public:
     REVERSE_BOTH,
     CLIP,
     CLIPPM,
+    CLIPPLUS,
     BCLIP,
     ABS,
     SQRTSCALE,
@@ -96,10 +100,11 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
 #endif
   enlarger2ex();
-  Mat compute(const Mat& data, const direction_t& dir);
-  T   dratio;
-  T   offset;
-  T   blur;
+  Mat  compute(const Mat& data, const direction_t& dir);
+  MatU seed(const int& size, const bool& idft);
+  T    dratio;
+  T    offset;
+  T    blur;
   
 private:
   void initDop(const int& size);
@@ -107,12 +112,12 @@ private:
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
   void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop);
-  MatU seed(const int& size, const bool& idft);
   void xchg(Mat& a, Mat& b);
   Mat  round2y(const Mat& in, const int& h);
   U    I;
   T    Pi;
   Mat  A;
+  Mat  dataA;
   Mat  B;
   Mat  C;
   Mat  Dop;
@@ -260,12 +265,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case IDETECT_Y_BOTH:
     result = compute(data, IDETECT_Y) + compute(compute(compute(data, REVERSE_Y), IDETECT_Y), REVERSE_Y);
     break;
-  case BUMP_Y0:
+  case BUMP_Y00:
     {
-      initBump(data.rows(), data.cols());
+      // initBump(data.rows(), data.cols());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
+      assert(dataA.rows() == data.rows() && dataA.cols() == data.cols());
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
-      const auto dataA(compute(A * data, ABS));
+      // from somehow, works well.
       const auto dataB(compute(B * data, ABS));
       const auto dataBc(compute(dataB, BCLIP));
       const auto datadyA(compute(dataA, DETECT_Y));
@@ -280,35 +286,48 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       const auto datad2xxB(compute(datadxB, DETECT_X));
       const auto datad2yxA(compute(datadxA, DETECT_Y));
       const auto datad2yxB(compute(datadxB, DETECT_Y));
-      result = Mat(data.rows(), data.cols());
+      Mat d2xx(data.rows(), data.cols());
+      Mat d2xy(data.rows(), data.cols());
+      Mat d2yx(data.rows(), data.cols());
+      Mat d2yy(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++) {
-          // const auto ddx((datadxA(i, j) * dataB(i, j) - dataA(i, j) * datadxB(i, j)) / (dataBc(i, j), T(2)));
-          // const auto ddy((datadyA(i, j) * dataB(i, j) - dataA(i, j) * datadyB(i, j)) / (dataBc(i, j), T(2)));
-          const auto d2dxdx((datad2xxA(i, j) * dataB(i, j) + datadxA(i, j) * datadxB(i, j) - datadxA(i, j) * datadxB(i, j) - dataA(i, j) * datad2xxB(i, j)) / pow(dataBc(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadxB(i, j));
-          const auto d2dxdy((datad2xyA(i, j) * dataB(i, j) + datadyA(i, j) * datadxB(i, j) - datadxA(i, j) * datadyB(i, j) - dataA(i, j) * datad2xyB(i, j)) / pow(dataBc(i, j), T(2)) + (datadyA(i, j) * dataB(i, j) + dataA(i, j) * datadyB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadxB(i, j));
-          const auto d2dydx((datad2yxA(i, j) * dataB(i, j) + datadxA(i, j) * datadyB(i, j) - datadyA(i, j) * datadxB(i, j) - dataA(i, j) * datad2yxB(i, j)) / pow(dataBc(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadyB(i, j));
-          const auto d2dydy((datad2yyA(i, j) * dataB(i, j) + datadyA(i, j) * datadyB(i, j) - datadyA(i, j) * datadyB(i, j) - dataA(i, j) * datad2yyB(i, j)) / pow(dataBc(i, j), T(2)) + (datadyA(i, j) * dataB(i, j) + dataA(i, j) * datadyB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadyB(i, j));
-          // N.B. (d/dt)^2 f = d/dt(df/dx dx/dt + df/dy dy/dt)
-          // = d^2f/dx^2 dx/dt + df/dx d^2x/dt^2 +
-          //   d^2f/dydx dx/dt + df/dx dxdy/dt^2 +
-          //   d^2f/dxdy dy/dt + df/dy dydx/dt^2 +
-          //   d^2f/dy^2 dy/dt + df/dy d^2y/dt^2
-          // dx/dt == dy/dt == const. ->
-          result(i, j) = d2dxdx + d2dxdy + d2dydx + d2dydy;
-          // N.B. in fact, in this case, so function don't have rotation related
-          //      information, rotation + d/dt sumup is needed, but now, not so.
+      for(int i = 0; i < data.rows(); i ++)
+        for(int j = 0; j < data.cols(); j ++) {
+          d2xx(i, j) = (datad2xxA(i, j) * dataB(i, j) + datadxA(i, j) * datadxB(i, j) - datadxA(i, j) * datadxB(i, j) - dataA(i, j) * datad2xxB(i, j)) / pow(dataBc(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadxB(i, j);
+          d2xy(i, j) = (datad2xyA(i, j) * dataB(i, j) + datadyA(i, j) * datadxB(i, j) - datadxA(i, j) * datadyB(i, j) - dataA(i, j) * datad2xyB(i, j)) / pow(dataBc(i, j), T(2)) + (datadyA(i, j) * dataB(i, j) + dataA(i, j) * datadyB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadxB(i, j);
+          d2yx(i, j) = (datad2yxA(i, j) * dataB(i, j) + datadxA(i, j) * datadyB(i, j) - datadyA(i, j) * datadxB(i, j) - dataA(i, j) * datad2yxB(i, j)) / pow(dataBc(i, j), T(2)) + (datadxA(i, j) * dataB(i, j) + dataA(i, j) * datadxB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadyB(i, j);
+          d2yy(i, j) = (datad2yyA(i, j) * dataB(i, j) + datadyA(i, j) * datadyB(i, j) - datadyA(i, j) * datadyB(i, j) - dataA(i, j) * datad2yyB(i, j)) / pow(dataBc(i, j), T(2)) + (datadyA(i, j) * dataB(i, j) + dataA(i, j) * datadyB(i, j)) / pow(dataBc(i, j), T(3)) * (- T(2)) * datadyB(i, j);
         }
-      result = compute(result, IDETECT_Y) + compute(result, IDETECT_X);
-      result = compute(result, IDETECT_Y) + compute(result, IDETECT_X);
+      // N.B. (d/dt)^2 f = d/dt(df/dx dx/dt + df/dy dy/dt)
+      // = d^2f/dx^2 dx/dt + df/dx d^2x/dt^2 +
+      //   d^2f/dydx dx/dt + df/dx dxdy/dt^2 +
+      //   d^2f/dxdy dy/dt + df/dy dydx/dt^2 +
+      //   d^2f/dy^2 dy/dt + df/dy d^2y/dt^2
+      // dx/dt == dy/dt == const. ->
+      // result(i, j) = d2dxdx + d2dxdy + d2dydx + d2dydy;
+      // N.B. in fact, in this case, so function don't have rotation related
+      //      information, rotation + d/dt sumup is needed, but now, not so.
+      result = compute(compute(compute(compute(compute(d2xx, IDETECT_X), IDETECT_X) + compute(compute(d2xy, IDETECT_Y), IDETECT_X) + compute(compute(d2yx, IDETECT_X), IDETECT_Y) + compute(compute(d2yy, IDETECT_Y), IDETECT_Y), CLIPPLUS), LOGSCALE), LOGSCALE);
     }
     break;
+  case BUMP_Y0:
+    initBump(data.rows(), data.cols());
+    dataA  = compute(A * data, ABS);
+    result = compute(data, BUMP_Y00);
+    break;
+  case BUMP_Y1:
+    initBump(data.rows(), data.cols());
+    dataA  = - compute(A * data, ABS);
+    result = - compute(data, BUMP_Y00);
+    break;
+  case BUMP_Y2:
+    result = compute(data, BUMP_Y0) + compute(data, BUMP_Y1);
+    break;
   case BUMP_Y:
-    result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
+    result = compute(data, BUMP_Y2) + compute(compute(compute(data, REVERSE_X), BUMP_Y2), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y2), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y2), REVERSE_BOTH);
     break;
   case EXTEND_Y0:
     {
@@ -403,6 +422,17 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = min(T(1), max(- T(1), data(i, j)));
+    }
+    break;
+  case CLIPPLUS:
+    {
+      result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = max(T(0), data(i, j));
     }
     break;
   case BCLIP:
@@ -595,6 +625,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
+  T sumup(0);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -609,25 +640,27 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
       const auto t(- camera[1] / (cpoint[1] - camera[1]));
       const auto y0((camera + (cpoint - camera) * t)[0]);
       // N.B. average_k(dC_k / dy * z_k).
-      for(int i = 0; i < A.rows(); i ++) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-        {
-          A(i, getImgPt(i + y0, rows)) += Dop0[j] * T(zi + 1);
+      {
+        for(int i = 0; i < A.rows(); i ++) {
+          // N.B. exp exp then log log to get better results.
+          //      this is because in fact we need to do this with multiple
+          //      sets of A, B and get maximum abs index as a result.
+          A(i, getImgPt(i + y0, rows)) += Dop0[j] * exp(exp(T(zi + 1) * dratio));
           B(i, getImgPt(i + y0, rows)) += Dop0[j];
         }
       }
     }
+#if defined(_OPENMP)
+#pragma omp atomic
+#endif
+    sumup += exp(exp(T(zi + 1) * dratio));
   }
-  T n2(0);
-  for(int i = 0; i < A.rows(); i ++)
-    n2 += sqrt(A.row(i).dot(A.row(i)));
-  A /= n2 / A.rows();
-  n2 = T(0);
-  for(int i = 0; i < B.rows(); i ++)
-    n2 += sqrt(B.row(i).dot(B.row(i)));
-  B /= n2 / B.rows();
+  const T n2(T(1) / dratio);
+  A /= n2 * sumup;
+  B /= n2;
   return;
 }
 
