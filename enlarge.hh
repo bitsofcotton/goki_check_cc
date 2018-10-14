@@ -970,7 +970,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
       result = Mat(data.rows() + 2, data.cols());
       result.row(0) = (former.row(0) + shrink.row(0)) / T(2);
       for(int i = 1; i < data.rows() + 1; i ++)
-        result.row(i) = data.row(i);
+        result.row(i) = data.row(i - 1);
       result.row(data.rows() + 1) = (latter.row(latter.rows() - 1) + shrink.row(shrink.rows() - 1)) / T(2);
     } else {
       if(dir0 == ENLARGE_Y)
