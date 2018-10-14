@@ -173,7 +173,6 @@ private:
   Mat  bDhop;
   Mat  bEop;
   Mat  bIop;
-  direction_t pextend;
 };
 
 template <typename T> enlarger2ex<T>::enlarger2ex() {
@@ -184,7 +183,6 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   blur    = T(8);
   sz_cell = 96;
   st_cell = 12;
-  pextend = DETECT_Y;
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -494,9 +492,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
       // N.B. nearest data in differential space.
-      const auto d0data(compute(data, pextend));
-      const auto ddata(compute(result, pextend));
-      initDop(data.rows());
+      const auto d0data(compute(data, DETECT_Y));
+      const auto ddata(compute(result, DETECT_Y));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -530,16 +527,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     }
     break;
   case EXTEND_Y:
-    pextend = DETECT_Y;
     result = compute(data, EXTEND_Y1);
     break;
   case EXTEND_YQ:
-    pextend = DETECT_YQ;
-    result = compute(data, EXTEND_Y1);
+    result = recursive(data, EXTEND_YQ, EXTEND_Y1);
     break;
   case EXTEND_YQS:
-    pextend = DETECT_YQS;
-    result = compute(data, EXTEND_Y1);
+    result = recursiveSumup(data, EXTEND_YQ, EXTEND_Y1);
     break;
   case DIV2_Y:
     {
@@ -959,7 +953,7 @@ template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(con
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0) {
   assert(96 <= sz_cell && 0 < st_cell && st_cell < sz_cell);
-  Mat result(data.rows(), data.cols());
+  Mat result;
   if(sz_cell < data.rows()) {
     Mat former(data.rows() / 2, data.cols());
     Mat latter(data.rows() - data.rows() / 2, data.cols());
@@ -969,15 +963,27 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
     for(int i = 0; i < latter.rows(); i ++)
       latter.row(i) = data.row(former.rows() + i);
     // omit parallelize.
-    former = compute(former, dir);
+    if(dir0 != EXTEND_Y1)
+      former = compute(former, dir);
     latter = compute(latter, dir);
     shrink = compute(shrink, dir);
-    for(int i = 0; i < former.rows(); i ++)
-      result.row(i) = former.row(i);
-    for(int i = 0; i < latter.rows(); i ++)
-      result.row(former.rows() + i) = latter.row(i);
-    for(int i = 0; i < data.rows(); i ++)
-      result.row(i) += shrink.row(i / 2);
+    if(dir0 == EXTEND_Y1) {
+      result = Mat(data.rows() + 1, data.cols());
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(i) = data.row(i);
+      result.row(data.rows()) = (latter.row(latter.rows() - 1) + shrink.row(shrink.rows() - 1)) / T(2);
+    } else {
+      if(dir0 == ENLARGE_Y)
+        result = Mat(data.rows() * 2, data.cols());
+      else
+        result = Mat(data.rows(), data.cols());
+      for(int i = 0; i < former.rows(); i ++)
+         result.row(i) = former.row(i);
+      for(int i = 0; i < latter.rows(); i ++)
+        result.row(former.rows() + i) = latter.row(i);
+      for(int i = 0; i < result.rows(); i ++)
+        result.row(i) += shrink.row(i / 2);
+    }
   } else
     result = compute(data, dir0);
   return result;
