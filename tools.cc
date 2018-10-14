@@ -145,8 +145,7 @@ int main(int argc, const char* argv[]) {
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
-      const int count(sqrt(sqrt(double(data[0].rows() * data[0].cols()))));
-      for(int j = 0; j < count; j ++)
+      for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++)
           data[i] = extender.compute(data[i], extender.EXTEND_BOTHQS);
     }
