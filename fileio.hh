@@ -126,7 +126,7 @@ public:
       }
       input.close();
     } else {
-      cerr << "Unable to open file: " << filename << endl;
+      cerr << "Unable to open file for read: " << filename << endl;
       return false;
     }
     return true;
@@ -155,7 +155,7 @@ public:
       }
       output.close();
     } else {
-      cerr << "Unable to open file: " << filename << endl;
+      cerr << "Unable to open file for write: " << filename << endl;
       return false;
     }
     return true;
@@ -256,7 +256,7 @@ public:
       }
       output.close();
     } else {
-      cerr << "Unable to open file: " << filename << endl;
+      cerr << "Unable to open file for write: " << filename << endl;
       return false;
     }
     return true;
@@ -307,7 +307,7 @@ public:
         }
       input.close();
     } else {
-      cerr << "Unable to open file: " << filename << endl;
+      cerr << "Unable to open file for read: " << filename << endl;
       return false;
     }
     return true;

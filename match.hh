@@ -230,14 +230,13 @@ public:
   }
   bool isValid() const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
-    return rratio <= T(1) / rthresh;
+    return rratio <= T(1) / rthresh && *this == *this;
   }
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
     // N.B. parallel -> max, points ratio -> max.
-    return (rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio)) &&
-           isValid();
+    return (rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio));
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -280,7 +279,7 @@ public:
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
   
   Vec3 makeG(const vector<Vec3>& in) const;
-  bool complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points) const;
+  bool complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& retry = false) const;
   vector<match_t<T> > elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh = T(4) / T(256));
   
   // theta resolution.
@@ -305,7 +304,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, .25, .1);
+  init(40, .025, .1);
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshp, const T& threshs) {
@@ -373,7 +372,7 @@ template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<
   return result;
 }
 
-template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points) const {
+template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& retry) const {
   assert(work.dstpoints.size() == work.srcpoints.size());
   work.offset *= T(0);
   auto offset(work.offset);
@@ -409,7 +408,26 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     work.rdepth += err.dot(err);
   }
   work.rdepth /= denom * work.dstpoints.size();
-  return work.isValid();
+  if(!retry) {
+    vector<pair<T, int>> errors;
+    for(int k = 0; k < work.dstpoints.size(); k ++) {
+      const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
+      errors.push_back(make_pair(err.dot(err), k));
+    }
+    sort(errors.begin(), errors.end());
+    vector<int> dstpoints;
+    vector<int> srcpoints;
+    T err(0);
+    for(int k = 0; k < errors.size(); k ++) {
+      err += errors[k].first;
+      if(sqrt(thresh) < err / (k + 1))
+        break;
+      dstpoints.push_back(work.dstpoints[errors[k].second]);
+      srcpoints.push_back(work.srcpoints[errors[k].second]);
+    }
+    return complementMatch(work, shapebase, points, true);
+  }
+  return abs(work.rdepth) < sqrt(sqrt(thresh)) && work.isValid();
 }
 
 template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
@@ -488,7 +506,9 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
         // if it's good:
         if(threshp <= work.dstpoints.size() /
                         T(min(shapebase.size(), points.size())) &&
-          complementMatch(work, shapebase, points) ) {
+          complementMatch(work, shapebase, points) &&
+          threshp <= work.dstpoints.size() /
+                        T(min(shapebase.size(), points.size()))) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif

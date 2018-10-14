@@ -140,15 +140,15 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> enlarger, denlarger;
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
-          const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-          data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
+          const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTHQS));
+          data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTHQS), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
       const int count(sqrt(sqrt(double(data[0].rows() * data[0].cols()))));
       for(int j = 0; j < count; j ++)
         for(int i = 0; i < 3; i ++)
-          data[i] = extender.compute(data[i], extender.EXTEND_BOTH);
+          data[i] = extender.compute(data[i], extender.EXTEND_BOTHQS);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[4], data, ! true))
@@ -167,25 +167,19 @@ int main(int argc, const char* argv[]) {
       // collect.
       enlarger2ex<double> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
-        const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
-        data[i] = xye + redig.tilt45(ddetect.compute(redig.tilt45(data[i], false), ddetect.COLLECT_BOTH), true, xye);
+        const auto xye(detect.compute(data[i], detect.COLLECT_BOTHQS));
+        data[i] = xye + redig.tilt45(ddetect.compute(redig.tilt45(data[i], false), ddetect.COLLECT_BOTHQS), true, xye);
       }
     } else if(strcmp(argv[1], "idetect") == 0) {
       enlarger2ex<double> idetect, didetect;
       for(int i = 0; i < 3; i ++) {
-        const auto xye(idetect.compute(data[i], idetect.IDETECT_BOTH));
-        data[i] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.IDETECT_BOTH), true, xye);
+        const auto xye(idetect.compute(data[i], idetect.IDETECT_BOTHQS));
+        data[i] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.IDETECT_BOTHQS), true, xye);
       }
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
-      auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
-      redig.normalize(data, 1.);
-      // N.B. integrate local data for global data, is this correct?
-/*
-      xye = bump.compute(data[2], bump.IDETECT_QUAD);
-      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(data[2], false), bump.BUMP_BOTH), true, xye), 4 * (xye.rows() + xye.cols()));
-*/
+      auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTHQS));
+      data[0] = data[1] = data[2] = xye;
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
@@ -420,8 +414,11 @@ int main(int argc, const char* argv[]) {
     auto matches(statmatch.match(shape0, shape1));
     // matches = statmatch.elim(matches, data, mout, bump1, shape1);
     matches.resize(min(int(matches.size()), nhid));
+    std::cerr << matches.size() << "pending" << std::endl;
     for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-      std::cerr << "Matchingsub: " << n << " / " << matches.size();
+      std::cerr << "Writing " << n << " / " << matches.size();
+      saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
+      std::cerr << "Matchingsub: " << n << " / " << matches.size() << std::flush;
       std::vector<int> dstbuf(matches[n].dstpoints);
       std::vector<int> srcbuf(matches[n].srcpoints);
       std::vector<typename simpleFile<double>::Vec3> shape0a;
@@ -443,8 +440,6 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Writing " << m << " / " << pmatches.size() << " - " << n << " / " << matches.size();
         saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), pmatches[m], shape0a, shape1a, data, mout, bump0, bump1, emph);
       }
-      std::cerr << "Writing " << n << " / " << matches.size();
-      saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
     }
   } else if(strcmp(argv[1], "habit") == 0) {
     std::vector<typename simpleFile<double>::Vec3>  pdst,   psrc;

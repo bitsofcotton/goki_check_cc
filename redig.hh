@@ -253,7 +253,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
-  const Mat repl(dstimg, src, match, hullsrc, true);
+  const Mat repl(replace(dstimg, src, match, hullsrc, true));
   return repl + emphasis(repl, srcimg, srcbump, dst, src, match,
                          hulldst, hullsrc, T(0));
 }
@@ -329,9 +329,9 @@ template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, const Vec3& lre
         Vec3 ldiff(lref2 - lref0);
   ldiff -= ldiff0 * ldiff.dot(ldiff0) / ldiff0.dot(ldiff0);
   const T    lnum(sqrt(ldiff.dot(ldiff)) + 1);
-  for(int k = 0; k < lnum; k ++) {
-    const Vec3 l0(lref0 + (lref2 - lref0) * k / int(lnum));
-    const Vec3 l1(lref1 + (lref2 - lref1) * k / int(lnum));
+  for(int k = 0; k < lnum * 4; k ++) {
+    const Vec3 l0(lref0 + (lref2 - lref0) * k / (lnum * 4));
+    const Vec3 l1(lref1 + (lref2 - lref1) * k / (lnum * 4));
     for(int i = 0; i <= int(abs(l0[idxM] - l1[idxM]) + 1); i ++) {
       const auto gidx(l0 + (l1 - l0) * i / int(abs(l0[idxM] - l1[idxM]) + 1));
       map(max(0, min(int(gidx[0]), int(map.rows() - 1))),
