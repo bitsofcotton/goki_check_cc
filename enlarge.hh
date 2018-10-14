@@ -397,7 +397,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = recursive(data, IDETECT_YQ, IDETECT_Y);
     break;
   case IDETECT_YQS:
-    result = recursive(data, IDETECT_YQS, IDETECT_Y);
+    result = recursiveSumup(data, IDETECT_YQS, IDETECT_Y);
     break;
   case IDETECT_Y_BOTH:
     result = compute(data, IDETECT_Y) + compute(compute(compute(data, REVERSE_Y), IDETECT_Y), REVERSE_Y);
