@@ -39,15 +39,12 @@ public:
   typedef enum {
     ENLARGE_X,
     ENLARGE_XQ,
-    ENLARGE_XQS,
     ENLARGE_Y,
     ENLARGE_YQ,
-    ENLARGE_YQS,
     ENLARGE_FX,
     ENLARGE_FY,
     ENLARGE_BOTH,
     ENLARGE_BOTHQ,
-    ENLARGE_BOTHQS,
     ENLARGE_FBOTH,
     ENLARGE_3BOTH,
     DETECT_X,
@@ -196,10 +193,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = (compute(compute(data, ENLARGE_XQ), ENLARGE_YQ) +
               compute(compute(data, ENLARGE_YQ), ENLARGE_XQ)) / T(2);
     break;
-  case ENLARGE_BOTHQS:
-    result = (compute(compute(data, ENLARGE_XQS), ENLARGE_YQS) +
-              compute(compute(data, ENLARGE_YQS), ENLARGE_XQS)) / T(2);
-    break;
   case ENLARGE_FBOTH:
     result = (compute(compute(data, ENLARGE_FX), ENLARGE_FY) +
               compute(compute(data, ENLARGE_FY), ENLARGE_FX)) / T(2);
@@ -274,9 +267,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case ENLARGE_XQ:
     result = compute(data.transpose(), ENLARGE_YQ).transpose();
     break;
-  case ENLARGE_XQS:
-    result = compute(data.transpose(), ENLARGE_YQS).transpose();
-    break;
   case ENLARGE_FX:
     result = compute(data.transpose(), ENLARGE_FY).transpose();
     break;
@@ -346,9 +336,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case ENLARGE_YQ:
     result = recursive(data, ENLARGE_YQ, ENLARGE_Y);
-    break;
-  case ENLARGE_YQS:
-    result = recursiveSumup(data, ENLARGE_YQ, ENLARGE_Y);
     break;
   case DETECT_Y:
     initDop(data.rows());
