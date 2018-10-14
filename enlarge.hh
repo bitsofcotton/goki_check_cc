@@ -243,6 +243,12 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case BUMP_BOTH:
     result = (compute(data, BUMP_Y)    + compute(data, BUMP_X)) / T(2);
     break;
+  case BUMP_BOTHQ:
+    result = (compute(data, BUMP_YQ)   + compute(data, BUMP_XQ)) / T(2);
+    break;
+  case BUMP_BOTHQS:
+    result = (compute(data, BUMP_YQS)  + compute(data, BUMP_XQS)) / T(2);
+    break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
               compute(compute(data, EXTEND_Y), EXTEND_X)) / T(2);
