@@ -143,6 +143,7 @@ public:
   T    offset;
   T    blur;
   int  sz_cell;
+  int  st_cell;
   
 private:
   void initDop(const int& size);
@@ -180,6 +181,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   offset  = T(4) / T(256);
   blur    = T(8);
   sz_cell = 96;
+  st_cell = 12;
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -940,7 +942,7 @@ template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(con
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0) {
-  assert(96 <= sz_cell);
+  assert(96 <= sz_cell && 0 < st_cell && st_cell < sz_cell);
   Mat result(data.rows(), data.cols());
   if(sz_cell < data.rows()) {
     Mat former(data.rows() / 2, data.cols());
@@ -966,9 +968,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveSumup(const Mat& data, const direction_t& dir, const direction_t& dir0) {
+  assert(96 <= sz_cell && 0 < st_cell && st_cell < sz_cell);
   Mat result(recursive(data, dir, dir0));
   if(sz_cell < result.rows())
-    for(int ii = 1; ii < sz_cell; ii ++) {
+    for(int ii = 1; ii < sz_cell; ii += st_cell) {
       Mat data2(data.rows() + ii, data.cols());
       for(int i = 0; i < ii; i ++)
         data2.row(i) = data.row(ii - i);
