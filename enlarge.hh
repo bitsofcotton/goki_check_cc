@@ -965,7 +965,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
     // omit parallelize.
     former = compute(former, dir);
     latter = compute(latter, dir);
-    shrink = compute(shrink, dir);
+    if(dir0 == ENLARGE_Y)
+      shrink = compute(data, dir0);
+    else
+      shrink = compute(shrink, dir);
     if(dir0 == EXTEND_Y1) {
       result = Mat(data.rows() + 2, data.cols());
       result.row(0) = (former.row(0) + shrink.row(0)) / T(2);
@@ -978,11 +981,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
       else
         result = Mat(data.rows(), data.cols());
       for(int i = 0; i < former.rows(); i ++)
-         result.row(i) = former.row(i);
+        result.row(i) = former.row(i);
       for(int i = 0; i < latter.rows(); i ++)
         result.row(former.rows() + i) = latter.row(i);
-      for(int i = 0; i < result.rows(); i ++)
-        result.row(i) += shrink.row(i / 2);
+      if(dir0 == ENLARGE_Y)
+        for(int i = 0; i < result.rows(); i ++)
+          result.row(i) += shrink.row(i);
+      else
+        for(int i = 0; i < result.rows(); i ++)
+          result.row(i) += shrink.row(i / 2);
     }
   } else
     result = compute(data, dir0);
