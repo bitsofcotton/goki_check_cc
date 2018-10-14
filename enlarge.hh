@@ -530,15 +530,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case EXTEND_Y:
     pextend = DETECT_Y;
-    result = compute(data, EXTEND_Y);
+    result = compute(data, EXTEND_Y1);
     break;
   case EXTEND_YQ:
     pextend = DETECT_YQ;
-    result = compute(data, EXTEND_Y);
+    result = compute(data, EXTEND_Y1);
     break;
   case EXTEND_YQS:
     pextend = DETECT_YQS;
-    result = compute(data, EXTEND_Y);
+    result = compute(data, EXTEND_Y1);
     break;
   case DIV2_Y:
     {
