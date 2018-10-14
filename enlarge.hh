@@ -178,7 +178,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   dratio  = T(.0005);
   offset  = T(4) / T(256);
   blur    = T(8);
-  sz_cell = 96;
+  sz_cell = 120;
   st_cell = 12;
 }
 
