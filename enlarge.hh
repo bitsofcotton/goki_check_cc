@@ -957,11 +957,17 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
   if(sz_cell < data.rows()) {
     Mat former(data.rows() / 2, data.cols());
     Mat latter(data.rows() - data.rows() / 2, data.cols());
+    if(dir0 == ENLARGE_Y && former.rows() * 2 < data.rows())
+      former = Mat(former.rows() + 1, data.cols());
+    if(dir0 == ENLARGE_Y && latter.rows() * 2 < data.rows())
+      latter = Mat(latter.rows() + 1, data.cols());
     Mat shrink(compute(data, DIV2_Y));
     for(int i = 0; i < former.rows(); i ++)
       former.row(i) = data.row(i);
-    for(int i = 0; i < latter.rows(); i ++)
+    for(int i = 0; i < min(latter.rows(), data.rows() - former.rows()); i ++)
       latter.row(i) = data.row(former.rows() + i);
+    if(latter.rows() > data.rows() - former.rows())
+      latter.row(latter.rows() - 1) = data.row(data.rows() - 1);
     // omit parallelize.
     former = compute(former, dir);
     latter = compute(latter, dir);
