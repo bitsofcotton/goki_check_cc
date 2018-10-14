@@ -964,8 +964,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
     Mat shrink(compute(data, DIV2_Y));
     for(int i = 0; i < former.rows(); i ++)
       former.row(i) = data.row(i);
-    for(int i = 0; i < latter.rows(); i ++)
+    for(int i = 0; i < min(latter.rows(), data.rows() - former.rows()); i ++)
       latter.row(i) = data.row(former.rows() + i);
+    if(latter.rows() > data.rows() - former.rows())
+      latter.row(latter.rows() - 1) = data.row(data.rows() - 1);
     // omit parallelize.
     former = compute(former, dir);
     latter = compute(latter, dir);
