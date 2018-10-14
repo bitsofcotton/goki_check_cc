@@ -976,20 +976,23 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
         result.row(i) = data.row(i - 1);
       result.row(data.rows() + 1) = (latter.row(latter.rows() - 1) + shrink.row(shrink.rows() - 1)) / T(2);
     } else {
-      if(dir0 == ENLARGE_Y)
+      if(dir0 == ENLARGE_Y) {
         result = Mat(data.rows() * 2, data.cols());
-      else
-        result = Mat(data.rows(), data.cols());
-      for(int i = 0; i < former.rows(); i ++)
-        result.row(i) = former.row(i);
-      for(int i = 0; i < latter.rows(); i ++)
-        result.row(former.rows() + i) = latter.row(i);
-      if(dir0 == ENLARGE_Y)
-        for(int i = 0; i < result.rows(); i ++)
-          result.row(i) += shrink.row(i);
-      else
+        for(int i = 0; i < data.rows(); i ++)
+          result.row(i) = former.row(i);
+        for(int i = 0; i < data.rows(); i ++)
+          result.row(data.rows() + i) = latter.row(i);
         for(int i = 0; i < result.rows(); i ++)
           result.row(i) += shrink.row(i / 2);
+      } else {
+        result = Mat(data.rows(), data.cols());
+        for(int i = 0; i < former.rows(); i ++)
+          result.row(i) = former.row(i);
+        for(int i = 0; i < latter.rows(); i ++)
+          result.row(former.rows() + i) = latter.row(i);
+        for(int i = 0; i < result.rows(); i ++)
+          result.row(i) += shrink.row(i / 2);
+      }
     }
   } else
     result = compute(data, dir0);
