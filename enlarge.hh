@@ -102,6 +102,7 @@ public:
     EXTEND_XQ,
     EXTEND_XQS,
     EXTEND_Y0,
+    EXTEND_Y1,
     EXTEND_Y,
     EXTEND_YQ,
     EXTEND_YQS,
@@ -172,6 +173,7 @@ private:
   Mat  bDhop;
   Mat  bEop;
   Mat  bIop;
+  direction_t pextend;
 };
 
 template <typename T> enlarger2ex<T>::enlarger2ex() {
@@ -182,6 +184,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   blur    = T(8);
   sz_cell = 96;
   st_cell = 12;
+  pextend = DETECT_Y;
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -491,8 +494,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
       // N.B. nearest data in differential space.
-      const auto d0data(compute(data, DETECT_Y));
-      const auto ddata(compute(result, DETECT_Y));
+      const auto d0data(compute(data, pextend));
+      const auto ddata(compute(result, pextend));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -514,7 +517,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         result(data.rows(), i) = max(T(0), min(T(1), result(data.rows(), i)));
     }
     break;
-  case EXTEND_Y:
+  case EXTEND_Y1:
     {
       const auto buf0(compute(data, EXTEND_Y0));
       const auto buf1(compute(compute(compute(data, REVERSE_Y), EXTEND_Y0), REVERSE_Y));
@@ -525,11 +528,17 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result.row(data.rows() + 1) = buf0.row(data.rows() - 1);
     }
     break;
+  case EXTEND_Y:
+    pextend = DETECT_Y;
+    result = compute(data, EXTEND_Y);
+    break;
   case EXTEND_YQ:
-    result = recursive(data, EXTEND_YQ, EXTEND_Y);
+    pextend = DETECT_YQ;
+    result = compute(data, EXTEND_Y);
     break;
   case EXTEND_YQS:
-    result = recursiveSumup(data, EXTEND_YQ, EXTEND_Y);
+    pextend = DETECT_YQS;
+    result = compute(data, EXTEND_Y);
     break;
   case DIV2_Y:
     {
