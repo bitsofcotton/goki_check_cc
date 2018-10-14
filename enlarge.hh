@@ -496,6 +496,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       // N.B. nearest data in differential space.
       const auto d0data(compute(data, pextend));
       const auto ddata(compute(result, pextend));
+      initDop(data.rows());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -530,15 +531,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case EXTEND_Y:
     pextend = DETECT_Y;
-    result = compute(data, EXTEND_Y);
+    result = compute(data, EXTEND_Y1);
     break;
   case EXTEND_YQ:
     pextend = DETECT_YQ;
-    result = compute(data, EXTEND_Y);
+    result = compute(data, EXTEND_Y1);
     break;
   case EXTEND_YQS:
     pextend = DETECT_YQS;
-    result = compute(data, EXTEND_Y);
+    result = compute(data, EXTEND_Y1);
     break;
   case DIV2_Y:
     {
