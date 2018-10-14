@@ -977,7 +977,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveSumu
         data2.row(i) = data.row(ii - i);
       for(int i = 0; i < data.rows(); i ++)
         data2.row(i + ii) = data.row(i);
-      data2 = recursive(data, dir, dir0);
+      data2 = recursive(data2, dir, dir0);
       for(int i = 0; i < result.rows(); i ++)
         result.row(i) += data2.row(i + ii);
     }
