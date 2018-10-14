@@ -990,6 +990,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
           result.row(data.rows() + i) = latter.row(i);
         for(int i = 0; i < result.rows(); i ++)
           result.row(i) += shrink.row(i / 2);
+        result /= T(2);
       } else {
         result = Mat(data.rows(), data.cols());
         for(int i = 0; i < former.rows(); i ++)
