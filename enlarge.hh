@@ -854,10 +854,14 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
   for(int i = 0; i < Dop.size(); i ++)
     Dop[i] = Dhop[i] = Iop[i] = Eop[i] = T(0);
   assert(Dop.size() == size && Dhop.size() == size && Iop.size() == size && Eop.size() == size);
+#if defined(_RECURSIVE_RECURSIVE_)
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int ss = 3; ss <= size / 2; ss ++) {
+#else
+  for(int ss = size / 2; ss <= size / 2; ss ++) {
+#endif
           auto DFTD(seed(ss, false));
     const auto IDFT(seed(ss, true));
           auto DFTH(DFTD);
@@ -1014,11 +1018,17 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
           result.row(data.rows() + i) = latter.row(i);
         result /= T(2);
       } else {
-        result = subfilter.compute(data, dir0);
+        if(dir0 == BUMP_Y) {
+          result = Mat(data.rows(), data.cols());
+          for(int i = 0; i < result.rows(); i ++)
+            for(int j = 0; j < result.cols(); j ++)
+              result(i, j) = T(0);
+        } else
+          result = subfilter.compute(data, dir0);
         for(int i = 0; i < former.rows(); i ++)
-          result.row(i) = former.row(i);
+          result.row(i) += former.row(i);
         for(int i = 0; i < latter.rows(); i ++)
-          result.row(former.rows() + i) = latter.row(i);
+          result.row(former.rows() + i) += latter.row(i);
         for(int i = 0; i < result.rows(); i ++)
           result.row(i) += shrink.row(i / 2);
       }
