@@ -84,10 +84,7 @@ public:
     BUMP_X,
     BUMP_XQ,
     BUMP_XQS,
-    BUMP_Y00,
     BUMP_Y0,
-    BUMP_Y1,
-    BUMP_Y2,
     BUMP_Y,
     BUMP_YP,
     BUMP_YQ,
@@ -429,11 +426,12 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case IDETECT_Y_BOTH:
     result = compute(data, IDETECT_Y) + compute(compute(compute(data, REVERSE_Y), IDETECT_Y), REVERSE_Y);
     break;
-  case BUMP_Y00:
+  case BUMP_Y0:
     {
+      initBump(data.rows(), data.cols());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
-      assert(dataA.rows() == data.rows() && dataA.cols() == data.cols());
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
+      const auto dataA(compute(A * data, ABS));
       const auto dataB(compute(B * data, ABS));
       const auto dataBc(compute(dataB, BCLIP));
       const auto datadyA(compute(dataA, DETECT_Y));
@@ -472,24 +470,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       // result(i, j) = d2dxdx + d2dxdy + d2dydx + d2dydy;
       // N.B. in fact, in this case, so function don't have rotation related
       //      information, rotation + d/dt sumup is needed, but now, not so.
-      result = compute(compute(compute(d2xx, IDETECT_X), IDETECT_X) + compute(compute(d2xy, IDETECT_Y), IDETECT_X) + compute(compute(d2yx, IDETECT_X), IDETECT_Y) + compute(compute(d2yy, IDETECT_Y), IDETECT_Y), LOGSCALE);
+      result = compute(compute(d2xx, IDETECT_X), IDETECT_X) + compute(compute(d2xy, IDETECT_Y), IDETECT_X) + compute(compute(d2yx, IDETECT_X), IDETECT_Y) + compute(compute(d2yy, IDETECT_Y), IDETECT_Y);
     }
     break;
-  case BUMP_Y0:
-    initBump(data.rows(), data.cols());
-    dataA  = compute(A * data, ABS);
-    result = compute(data, BUMP_Y00);
-    break;
-  case BUMP_Y1:
-    initBump(data.rows(), data.cols());
-    dataA  = - compute(A * data, ABS);
-    result = - compute(data, BUMP_Y00);
-    break;
-  case BUMP_Y2:
-    result = compute(data, BUMP_Y0) + compute(data, BUMP_Y1);
-    break;
   case BUMP_Y:
-    result = compute(data, BUMP_Y2) + compute(compute(compute(data, REVERSE_X), BUMP_Y2), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y2), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y2), REVERSE_BOTH);
+    result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
     break;
   case BUMP_YQ:
     result = recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this));
@@ -825,7 +810,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
           // N.B. exp exp then log log to get better results.
           //      this is because in fact we need to do this with multiple
           //      sets of A, B and get maximum abs index as a result.
-          A(i, getImgPt(i + y0, rows)) += Dop0[j] * exp(T(zi + 1) * dratio);
+          A(i, getImgPt(i + y0, rows)) += Dop0[j] * T(zi + 1) * dratio;
           B(i, getImgPt(i + y0, rows)) += Dop0[j];
         }
       }
@@ -833,7 +818,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
-    sumup += exp(T(zi + 1) * dratio);
+    sumup += T(zi + 1) * dratio;
   }
   const T n2(T(1) / dratio);
   A /= n2 * sumup;
