@@ -85,6 +85,9 @@ public:
     BUMP_XQ,
     BUMP_XQS,
     BUMP_Y0,
+    BUMP_Y1,
+    BUMP_Y2,
+    BUMP_Y3,
     BUMP_Y,
     BUMP_YP,
     BUMP_YQ,
@@ -428,10 +431,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y0:
     {
-      initBump(data.rows(), data.cols());
-      assert(A.rows() == data.rows() && A.cols() == data.rows());
+      assert(A.rows()     == data.rows() && A.cols()     == data.rows());
+      assert(dataA.rows() == data.rows() && dataA.cols() == data.cols());
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
-      const auto dataA(compute(A * data, ABS));
       const auto dataB(compute(B * data, ABS));
       const auto dataBc(compute(dataB, BCLIP));
       const auto datadyA(compute(dataA, DETECT_Y));
@@ -470,11 +472,24 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       // result(i, j) = d2dxdx + d2dxdy + d2dydx + d2dydy;
       // N.B. in fact, in this case, so function don't have rotation related
       //      information, rotation + d/dt sumup is needed, but now, not so.
-      result = compute(compute(compute(d2xx, IDETECT_X), IDETECT_X) + compute(compute(d2xy, IDETECT_Y), IDETECT_X) + compute(compute(d2yx, IDETECT_X), IDETECT_Y) + compute(compute(d2yy, IDETECT_Y), IDETECT_Y), LOGSCALE);
+      result = compute(compute(d2xx, IDETECT_X), IDETECT_X) + compute(compute(d2xy, IDETECT_Y), IDETECT_X) + compute(compute(d2yx, IDETECT_X), IDETECT_Y) + compute(compute(d2yy, IDETECT_Y), IDETECT_Y);
     }
     break;
+  case BUMP_Y1:
+    initBump(data.rows(), data.cols());
+    dataA  = compute(A * data, ABS);
+    result = compute(data, BUMP_Y0);
+    break;
+  case BUMP_Y2:
+    initBump(data.rows(), data.cols());
+    dataA  = - compute((B - A) * data, ABS);
+    result = compute(data, BUMP_Y0);
+    break;
+  case BUMP_Y3:
+    result = compute(data, BUMP_Y1) + compute(data, BUMP_Y2);
+    break;
   case BUMP_Y:
-    result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
+    result = - (compute(data, BUMP_Y3) + compute(compute(compute(data, REVERSE_X), BUMP_Y3), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y3), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y3), REVERSE_BOTH));
     break;
   case BUMP_YQ:
     result = recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this));
@@ -795,7 +810,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
     for(int j = 0; j < Dop0.size(); j ++) {
       Vec cpoint(2);
       cpoint[0] = (j - T(Dop0.size() - 1) / 2);
-      cpoint[1] = T(zi + 1) * dratio;
+      cpoint[1] = log(T(zi + 1) * dratio);
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0
@@ -810,7 +825,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
           // N.B. exp exp then log log to get better results.
           //      this is because in fact we need to do this with multiple
           //      sets of A, B and get maximum abs index as a result.
-          A(i, getImgPt(i + y0, rows)) += Dop0[j] * exp(T(zi + 1) * dratio);
+          A(i, getImgPt(i + y0, rows)) += Dop0[j] * log(T(zi + 1) * dratio);
           B(i, getImgPt(i + y0, rows)) += Dop0[j];
         }
       }
@@ -818,7 +833,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
-    sumup += exp(T(zi + 1) * dratio);
+    sumup += log(T(zi + 1) * dratio);
   }
   const T n2(T(1) / dratio);
   A /= n2 * sumup;
@@ -975,7 +990,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
       former = Mat(former.rows() + 1, data.cols());
     if(dir0 == ENLARGE_Y && latter.rows() * 2 < data.rows())
       latter = Mat(latter.rows() + 1, data.cols());
-    Mat shrink(compute(data, DIV2_Y));
     for(int i = 0; i < former.rows(); i ++)
       former.row(i) = data.row(i);
     for(int i = 0; i < min(latter.rows(), data.rows() - former.rows()); i ++)
@@ -986,37 +1000,28 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
     enlarger2ex<T> sub2filter(subfilter);
     former = recursive(former, dir, dir0, sub2filter);
     latter = recursive(latter, dir, dir0, sub2filter);
-    if(dir0 != ENLARGE_Y)
-      shrink = recursive(shrink, dir, dir0, sub2filter);
     if(dir0 == EXTEND_Y1) {
       result = subfilter.compute(data, dir0);
-      result.row(0) = (former.row(0) + shrink.row(0)) / T(2);
+      result.row(0) = (former.row(0) + result.row(0)) / T(2);
+      result.row(data.rows() + 1) = (latter.row(latter.rows() - 1) + result.row(result.rows() - 1)) / T(2);
       for(int i = 1; i < data.rows() + 1; i ++)
         result.row(i) = data.row(i - 1);
-      result.row(data.rows() + 1) = (latter.row(latter.rows() - 1) + shrink.row(shrink.rows() - 1)) / T(2);
+    } else if(dir0 == ENLARGE_Y) {
+      result = subfilter.compute(data, dir0);
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(i) += former.row(i);
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(data.rows() + i) += latter.row(i);
+      result /= T(2);
     } else {
-      if(dir0 == ENLARGE_Y) {
-        result = subfilter.compute(data, dir0);
-        for(int i = 0; i < data.rows(); i ++)
-          result.row(i) = former.row(i);
-        for(int i = 0; i < data.rows(); i ++)
-          result.row(data.rows() + i) = latter.row(i);
-        result /= T(2);
-      } else {
-        if(dir0 == BUMP_Y) {
-          result = Mat(data.rows(), data.cols());
-          for(int i = 0; i < result.rows(); i ++)
-            for(int j = 0; j < result.cols(); j ++)
-              result(i, j) = T(0);
-        } else
-          result = subfilter.compute(data, dir0);
-        for(int i = 0; i < former.rows(); i ++)
-          result.row(i) += former.row(i);
-        for(int i = 0; i < latter.rows(); i ++)
-          result.row(former.rows() + i) += latter.row(i);
-        for(int i = 0; i < result.rows(); i ++)
-          result.row(i) += shrink.row(i / 2);
-      }
+      result = Mat(data.rows(), data.cols());
+      const auto shrink(subfilter.compute(subfilter.compute(data, DIV2_Y), dir0));
+      for(int i = 0; i < former.rows(); i ++)
+        result.row(i) = former.row(i);
+      for(int i = 0; i < latter.rows(); i ++)
+        result.row(former.rows() + i) = latter.row(i);
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(i) += shrink.row(i / 2);
     }
   } else
     result = compute(data, dir0);
