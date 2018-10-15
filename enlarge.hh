@@ -428,6 +428,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y0:
     {
+      initBump(data.rows(), data.cols());
       assert(A.rows() == data.rows() && A.cols() == data.rows());
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       const auto dataA(compute(A * data, ABS));
