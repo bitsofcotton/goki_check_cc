@@ -178,7 +178,7 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  dratio  = T(.0005);
+  dratio  = T(1e-3);
   offset  = T(4) / T(256);
   blur    = T(8);
   sz_cell = 8;
