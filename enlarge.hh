@@ -135,6 +135,8 @@ public:
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
 #endif
   enlarger2ex();
+  enlarger2ex(const enlarger2ex<T>& src);
+  enlarger2ex<T>& operator = (const enlarger2ex<T>& src);
   Mat  compute(const Mat& data, const direction_t& dir);
   MatU seed(const int& size, const bool& idft);
   T    dratio;
@@ -151,7 +153,8 @@ private:
   void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop);
   void xchg(Mat& a, Mat& b);
   Mat  round2y(const Mat& in, const int& h);
-  Mat  recursive(const Mat& data, const direction_t& dir, const direction_t& dir0);
+  Mat  recursive(const Mat& data, const direction_t& dir, const direction_t& dir0, enlarger2ex<T>& subfilter);
+  Mat  recursive(const Mat& data, const direction_t& dir, const direction_t& dir0, const enlarger2ex<T>& subfilter);
   Mat  recursiveSumup(const Mat& data, const direction_t& dir, const direction_t& dir0);
   U    I;
   T    Pi;
@@ -180,6 +183,36 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   blur    = T(8);
   sz_cell = 120;
   st_cell = 12;
+}
+
+template <typename T> enlarger2ex<T>::enlarger2ex(const enlarger2ex<T>& src) {
+  *this = src;
+}
+
+template <typename T> enlarger2ex<T>& enlarger2ex<T>::operator = (const enlarger2ex<T>& src) {
+  I  = src.I;
+  Pi = src.Pi;
+  dratio  = src.dratio;
+  offset  = src.offset;
+  blur    = src.blur;
+  sz_cell = src.sz_cell;
+  st_cell = src.st_cell;
+  A     = src.A;
+  dataA = src.dataA;
+  B     = src.B;
+  C     = src.C;
+  Dop   = src.Dop;
+  Dhop  = src.Dhop;
+  Eop   = src.Eop;
+  Iop   = src.Iop;
+  bA    = src.bA;
+  bB    = src.bB;
+  bC    = src.bC;
+  bDop  = src.bDop;
+  bDhop = src.bDhop;
+  bEop  = src.bEop;
+  bIop  = src.bIop;
+  return *this;
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -335,14 +368,14 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(Eop * data, CLIP);
     break;
   case ENLARGE_YQ:
-    result = recursive(data, ENLARGE_YQ, ENLARGE_Y);
+    result = recursive(data, ENLARGE_YQ, ENLARGE_Y, const_cast<const enlarger2ex<T>&>(*this));
     break;
   case DETECT_Y:
     initDop(data.rows());
     result = Dop * data;
     break;
   case DETECT_YQ:
-    result = recursive(data, DETECT_YQ, DETECT_Y);
+    result = recursive(data, DETECT_YQ, DETECT_Y, const_cast<const enlarger2ex<T>&>(*this));
     break;
   case DETECT_YQS:
     result = recursiveSumup(data, DETECT_YQ, DETECT_Y);
@@ -388,7 +421,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     }
     break;
   case IDETECT_YQ:
-    result = recursive(data, IDETECT_YQ, IDETECT_Y);
+    result = recursive(data, IDETECT_YQ, IDETECT_Y, const_cast<const enlarger2ex<T>&>(*this));
     break;
   case IDETECT_YQS:
     result = recursiveSumup(data, IDETECT_YQS, IDETECT_Y);
@@ -459,7 +492,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(data, BUMP_Y2) + compute(compute(compute(data, REVERSE_X), BUMP_Y2), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y2), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y2), REVERSE_BOTH);
     break;
   case BUMP_YQ:
-    result = recursive(data, BUMP_YQ, BUMP_Y);
+    result = recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this));
     break;
   case BUMP_YQS:
     result = recursiveSumup(data, BUMP_YQ, BUMP_Y);
@@ -517,7 +550,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(data, EXTEND_Y1);
     break;
   case EXTEND_YQ:
-    result = recursive(data, EXTEND_YQ, EXTEND_Y1);
+    result = recursive(data, EXTEND_YQ, EXTEND_Y1, const_cast<const enlarger2ex<T>&>(*this));
     break;
   case EXTEND_YQS:
     result = recursiveSumup(data, EXTEND_YQ, EXTEND_Y1);
@@ -938,7 +971,12 @@ template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(con
   return result;
 }
 
-template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0) {
+template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0, const enlarger2ex<T>& subfilter) {
+  enlarger2ex<T> subcopy(subfilter);
+  return recursive(data, dir, dir0, subcopy);
+}
+
+template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0, enlarger2ex<T>& subfilter) {
   assert(120 <= sz_cell);
   Mat result;
   if(sz_cell < data.rows()) {
@@ -956,30 +994,27 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
     if(latter.rows() > data.rows() - former.rows())
       latter.row(latter.rows() - 1) = data.row(data.rows() - 1);
     // omit parallelize.
-    former = compute(former, dir);
-    latter = compute(latter, dir);
-    if(dir0 == ENLARGE_Y)
-      shrink = compute(data, dir0);
-    else
-      shrink = compute(shrink, dir);
+    enlarger2ex<T> sub2filter(subfilter);
+    former = recursive(former, dir, dir0, sub2filter);
+    latter = recursive(latter, dir, dir0, sub2filter);
+    if(dir0 != ENLARGE_Y)
+      shrink = recursive(shrink, dir, dir0, sub2filter);
     if(dir0 == EXTEND_Y1) {
-      result = Mat(data.rows() + 2, data.cols());
+      result = subfilter.compute(data, dir0);
       result.row(0) = (former.row(0) + shrink.row(0)) / T(2);
       for(int i = 1; i < data.rows() + 1; i ++)
         result.row(i) = data.row(i - 1);
       result.row(data.rows() + 1) = (latter.row(latter.rows() - 1) + shrink.row(shrink.rows() - 1)) / T(2);
     } else {
       if(dir0 == ENLARGE_Y) {
-        result = Mat(data.rows() * 2, data.cols());
+        result = subfilter.compute(data, dir0);
         for(int i = 0; i < data.rows(); i ++)
           result.row(i) = former.row(i);
         for(int i = 0; i < data.rows(); i ++)
           result.row(data.rows() + i) = latter.row(i);
-        for(int i = 0; i < result.rows(); i ++)
-          result.row(i) += shrink.row(i / 2);
         result /= T(2);
       } else {
-        result = Mat(data.rows(), data.cols());
+        result = subfilter.compute(data, dir0);
         for(int i = 0; i < former.rows(); i ++)
           result.row(i) = former.row(i);
         for(int i = 0; i < latter.rows(); i ++)
@@ -995,7 +1030,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveSumup(const Mat& data, const direction_t& dir, const direction_t& dir0) {
   assert(0 < st_cell && st_cell < sz_cell);
-  Mat result(recursive(data, dir, dir0));
+  Mat result(recursive(data, dir, dir0, const_cast<const enlarger2ex<T>&>(*this)));
   if(sz_cell < result.rows())
     for(int ii = 1; ii < sz_cell; ii += st_cell) {
       Mat data2(data.rows() + ii, data.cols());
@@ -1003,7 +1038,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveSumu
         data2.row(i) = data.row(ii - i);
       for(int i = 0; i < data.rows(); i ++)
         data2.row(i + ii) = data.row(i);
-      data2 = recursive(data2, dir, dir0);
+      data2 = recursive(data2, dir, dir0, const_cast<const enlarger2ex<T>&>(*this));
       for(int i = 0; i < result.rows(); i ++)
         result.row(i) += data2.row(i + ii);
     }
