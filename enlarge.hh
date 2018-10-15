@@ -492,10 +492,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = - (compute(data, BUMP_Y3) + compute(compute(compute(data, REVERSE_X), BUMP_Y3), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y3), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y3), REVERSE_BOTH));
     break;
   case BUMP_YQ:
-    result = recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this));
+    result = compute(data, BUMP_Y) - recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this));
     break;
   case BUMP_YQS:
-    result = recursiveSumup(data, BUMP_YQ, BUMP_Y);
+    result = compute(data, BUMP_Y) - recursiveSumup(data, BUMP_YQ, BUMP_Y);
     break;
   case EXTEND_Y0:
     {
@@ -982,63 +982,65 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0, enlarger2ex<T>& subfilter) {
   assert(6 < sz_cell);
-  Mat result;
-  if(sz_cell * 2 < data.rows()) {
-    Mat former(data.rows() / 2, data.cols());
-    Mat latter(data.rows() - data.rows() / 2, data.cols());
-    if(dir0 == ENLARGE_Y && former.rows() * 2 < data.rows())
-      former = Mat(former.rows() + 1, data.cols());
-    if(dir0 == ENLARGE_Y && latter.rows() * 2 < data.rows())
-      latter = Mat(latter.rows() + 1, data.cols());
-    for(int i = 0; i < former.rows(); i ++)
-      former.row(i) = data.row(i);
-    for(int i = 0; i < min(latter.rows(), data.rows() - former.rows()); i ++)
-      latter.row(i) = data.row(former.rows() + i);
-    if(latter.rows() > data.rows() - former.rows())
-      latter.row(latter.rows() - 1) = data.row(data.rows() - 1);
+  Mat result(subfilter.compute(data, dir0));
+  if(sz_cell * 2 < data.rows() && sz_cell * 2 < data.cols()) {
+    Mat a00(data.rows() / 2 + data.rows() % 2, data.cols() / 2 + data.cols() % 2);
+    Mat a01(a00);
+    Mat a10(a00);
+    Mat a11(a00);
+    for(int i = 0; i < a00.rows(); i ++)
+      for(int j = 0; j < a00.cols(); j ++) {
+        a00(i, j) = data(i, j);
+        a01(i, j) = data(i, j - a00.cols() + data.cols());
+        a10(i, j) = data(i - a00.rows() + data.rows(), j);
+        a11(i, j) = data(i - a00.rows() + data.rows(), j - a00.cols() + data.cols());
+      }
     // omit parallelize.
     enlarger2ex<T> sub2filter(subfilter);
-    former = recursive(former, dir, dir0, sub2filter);
-    latter = recursive(latter, dir, dir0, sub2filter);
-    if(dir0 == EXTEND_Y1) {
-      result = subfilter.compute(data, dir0);
-      result.row(0) = (former.row(0) + result.row(0)) / T(2);
-      result.row(data.rows() + 1) = (latter.row(latter.rows() - 1) + result.row(result.rows() - 1)) / T(2);
-      for(int i = 1; i < data.rows() + 1; i ++)
-        result.row(i) = data.row(i - 1);
-    } else if(dir0 == ENLARGE_Y) {
-      result = subfilter.compute(data, dir0);
-      for(int i = 0; i < data.rows(); i ++)
-        result.row(i) += former.row(i);
-      for(int i = 0; i < data.rows(); i ++)
-        result.row(data.rows() + i) += latter.row(i);
+    a00 = recursive(a00, dir, dir0, sub2filter);
+    a01 = recursive(a01, dir, dir0, sub2filter);
+    a10 = recursive(a10, dir, dir0, sub2filter);
+    a11 = recursive(a11, dir, dir0, sub2filter);
+    switch(dir0) {
+    case EXTEND_Y1:
+      for(int i = 0; i < a00.cols(); i ++) {
+        result(0, i) = a00(0, i);
+        result(0, i - a00.cols() + result.cols()) = a01(0, i);
+        result(result.rows() - 1, i) = a10(a00.rows() - 1, i);
+        result(result.rows() - 1, i - a00.cols() + result.cols()) = a11(a11.rows() - 1, i);
+      }
+      break;
+    default:
+      for(int i = 0; i < a00.rows(); i ++)
+        for(int j = 0; j < a00.cols(); j ++) {
+          result(i, j) += a00(i, j);
+          if(a00.cols() <= j - a00.cols() + result.cols())
+            result(i, j - a00.cols() + result.cols()) += a01(i, j);
+          if(a00.rows() <= i - a00.rows() + result.rows())
+            result(i - a00.rows() + result.rows(), j) += a10(i, j);
+          if(a00.cols() <= j - a00.cols() + result.cols() &&
+             a00.rows() <= i - a00.rows() + result.rows())
+            result(i - a00.rows() + result.rows(), j - a00.cols() + result.cols()) += a11(i, j);
+        }
       result /= T(2);
-    } else {
-      result = subfilter.compute(data, dir0) * T(2);
-      for(int i = 0; i < former.rows(); i ++)
-        result.row(i) += former.row(i);
-      for(int i = 0; i < latter.rows(); i ++)
-        result.row(former.rows() + i) += latter.row(i);
     }
-  } else
-    result = compute(data, dir0);
+  }
   return result;
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveSumup(const Mat& data, const direction_t& dir, const direction_t& dir0) {
   assert(0 < st_cell && st_cell < sz_cell);
   Mat result(recursive(data, dir, dir0, const_cast<const enlarger2ex<T>&>(*this)));
-  if(sz_cell < result.rows())
-    for(int ii = 1; ii < sz_cell; ii += st_cell) {
-      Mat data2(data.rows() + ii, data.cols());
-      for(int i = 0; i < ii; i ++)
-        data2.row(i) = data.row(ii - i);
-      for(int i = 0; i < data.rows(); i ++)
-        data2.row(i + ii) = data.row(i);
-      data2 = recursive(data2, dir, dir0, const_cast<const enlarger2ex<T>&>(*this));
-      for(int i = 0; i < result.rows(); i ++)
-        result.row(i) += data2.row(i + ii);
-    }
+  for(int ii = 1; ii < min(sz_cell, int(result.rows())); ii += st_cell) {
+    Mat data2(data.rows() + ii, data.cols());
+    for(int i = 0; i < ii; i ++)
+      data2.row(i) = data.row(ii - i);
+    for(int i = 0; i < data.rows(); i ++)
+      data2.row(i + ii) = data.row(i);
+    data2 = recursive(data2, dir, dir0, const_cast<const enlarger2ex<T>&>(*this));
+    for(int i = 0; i < result.rows(); i ++)
+      result.row(i) += data2.row(i + ii);
+  }
   return result;
 }
 
