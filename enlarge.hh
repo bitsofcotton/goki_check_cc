@@ -492,10 +492,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = - (compute(data, BUMP_Y3) + compute(compute(compute(data, REVERSE_X), BUMP_Y3), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y3), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y3), REVERSE_BOTH));
     break;
   case BUMP_YQ:
-    result = recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this));
+    result = compute(recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this)), DETECT_Y);
     break;
   case BUMP_YQS:
-    result = recursiveSumup(data, BUMP_YQ, BUMP_Y);
+    result = compute(recursiveSumup(data, BUMP_YQ, BUMP_Y), DETECT_Y);
     break;
   case EXTEND_Y0:
     {
@@ -982,7 +982,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0, enlarger2ex<T>& subfilter) {
   assert(6 < sz_cell);
-  Mat result(subfilter.compute(data, dir0));
+  Mat result;
+  if(dir0 == BUMP_Y)
+    result = subfilter.compute(subfilter.compute(data, dir0), IDETECT_Y);
+  else
+    result = subfilter.compute(data, dir0);
   if(sz_cell * 2 < data.rows() && sz_cell * 2 < data.cols()) {
     Mat a00(data.rows() / 2 + data.rows() % 2, data.cols() / 2 + data.cols() % 2);
     Mat a01(a00);
