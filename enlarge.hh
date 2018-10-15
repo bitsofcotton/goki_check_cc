@@ -181,8 +181,8 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   dratio  = T(.0005);
   offset  = T(4) / T(256);
   blur    = T(8);
-  sz_cell = 120;
-  st_cell = 12;
+  sz_cell = 8;
+  st_cell = 1;
 }
 
 template <typename T> enlarger2ex<T>::enlarger2ex(const enlarger2ex<T>& src) {
@@ -798,7 +798,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
   Vec Dhop0;
   Vec Iop0;
   Vec Eop0;
-  makeDI(int(sqrt(T(rows))), Dop0, Dhop0, Iop0, Eop0);
+  makeDI(min(max(7, int(sqrt(T(rows)))), int(rows)), Dop0, Dhop0, Iop0, Eop0);
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
@@ -981,9 +981,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0, enlarger2ex<T>& subfilter) {
-  assert(120 <= sz_cell);
+  assert(6 < sz_cell);
   Mat result;
-  if(sz_cell < data.rows()) {
+  if(sz_cell * 2 < data.rows()) {
     Mat former(data.rows() / 2, data.cols());
     Mat latter(data.rows() - data.rows() / 2, data.cols());
     if(dir0 == ENLARGE_Y && former.rows() * 2 < data.rows())
@@ -1014,14 +1014,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
         result.row(data.rows() + i) += latter.row(i);
       result /= T(2);
     } else {
-      result = Mat(data.rows(), data.cols());
-      const auto shrink(subfilter.compute(subfilter.compute(data, DIV2_Y), dir0));
+      result = subfilter.compute(data, dir0) * T(2);
       for(int i = 0; i < former.rows(); i ++)
-        result.row(i) = former.row(i);
+        result.row(i) += former.row(i);
       for(int i = 0; i < latter.rows(); i ++)
-        result.row(former.rows() + i) = latter.row(i);
-      for(int i = 0; i < data.rows(); i ++)
-        result.row(i) += shrink.row(i / 2);
+        result.row(former.rows() + i) += latter.row(i);
     }
   } else
     result = compute(data, dir0);
