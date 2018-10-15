@@ -470,7 +470,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       // result(i, j) = d2dxdx + d2dxdy + d2dydx + d2dydy;
       // N.B. in fact, in this case, so function don't have rotation related
       //      information, rotation + d/dt sumup is needed, but now, not so.
-      result = compute(compute(d2xx, IDETECT_X), IDETECT_X) + compute(compute(d2xy, IDETECT_Y), IDETECT_X) + compute(compute(d2yx, IDETECT_X), IDETECT_Y) + compute(compute(d2yy, IDETECT_Y), IDETECT_Y);
+      result = compute(compute(compute(d2xx, IDETECT_X), IDETECT_X) + compute(compute(d2xy, IDETECT_Y), IDETECT_X) + compute(compute(d2yx, IDETECT_X), IDETECT_Y) + compute(compute(d2yy, IDETECT_Y), IDETECT_Y), LOGSCALE);
     }
     break;
   case BUMP_Y:
@@ -810,7 +810,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
           // N.B. exp exp then log log to get better results.
           //      this is because in fact we need to do this with multiple
           //      sets of A, B and get maximum abs index as a result.
-          A(i, getImgPt(i + y0, rows)) += Dop0[j] * T(zi + 1) * dratio;
+          A(i, getImgPt(i + y0, rows)) += Dop0[j] * exp(T(zi + 1) * dratio);
           B(i, getImgPt(i + y0, rows)) += Dop0[j];
         }
       }
@@ -818,7 +818,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
-    sumup += T(zi + 1) * dratio;
+    sumup += exp(T(zi + 1) * dratio);
   }
   const T n2(T(1) / dratio);
   A /= n2 * sumup;
