@@ -177,7 +177,7 @@ int main(int argc, const char* argv[]) {
       }
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
-      auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTHQS));
+      auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTHQ));
       data[0] = data[1] = data[2] = xye;
     }
     redig.normalize(data, 1.);
