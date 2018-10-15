@@ -492,10 +492,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = - (compute(data, BUMP_Y3) + compute(compute(compute(data, REVERSE_X), BUMP_Y3), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y3), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y3), REVERSE_BOTH));
     break;
   case BUMP_YQ:
-    result = compute(data, BUMP_Y) - recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this));
+    result = recursive(data, BUMP_YQ, BUMP_Y, const_cast<const enlarger2ex<T>&>(*this));
     break;
   case BUMP_YQS:
-    result = compute(data, BUMP_Y) - recursiveSumup(data, BUMP_YQ, BUMP_Y);
+    result = recursiveSumup(data, BUMP_YQ, BUMP_Y);
     break;
   case EXTEND_Y0:
     {
