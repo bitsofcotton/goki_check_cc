@@ -291,6 +291,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       }
       if(in_bump) {
         di_mode[0] = di_bump_mode[0];
+        initDop(data.rows());
         result = Iop[0] * result;
       } else {
         di_mode[0] = false;
