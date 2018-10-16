@@ -566,7 +566,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   for(int i = 0; i < 4; i ++)
     if(Dop[i].rows() == size &&
        (( di_mode[0] &&  di_mode[i + 1]) ||
-        (!di_mode[0] && !di_mode[i + 1]))) {
+        (!di_mode[0] && !di_mode[i + 1])) ) {
       if(i) {
         xchg(Dop[0],  Dop[i]);
         xchg(Dhop[0], Dhop[i]);
@@ -577,16 +577,14 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       di_mode[1]     = di_mode[0];
       return;
     }
-  for(int i = 3; i < 0; i --) {
-    xchg(Dop[i - 1],  Dop[i]);
-    xchg(Dhop[i - 1], Dhop[i]);
-    xchg(Iop[i - 1],  Iop[i]);
-    xchg(Eop[i - 1],  Eop[i]);
-    const auto dimode(di_mode[i + 1]);
-    di_mode[i + 1] = di_mode[i];
-    di_mode[i]     = dimode;
-  }
   cerr << "new" << flush;
+  for(int i = 3; i < 0; i --) {
+    Dop[i]  = Dop[i - 1];
+    Dhop[i] = Dhop[i - 1];
+    Iop[i]  = Iop[i - 1];
+    Eop[i]  = Eop[i - 1];
+    di_mode[i + 1] = di_mode[i];
+  }
   Vec vDop,  vDop0;
   Vec vDhop;
   Vec vIop;
@@ -630,7 +628,8 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 
 template <typename T> void enlarger2ex<T>::initBump(const int& size) {
   cerr << "." << flush;
-  for(int i = 0; i < 4; i ++)
+  // XXX compiler omit next for, so scope with for...
+  for(int i = 0; i < 4; i ++) {
     if(A[i].rows() == size &&
        (( di_bump_mode[0] &&  di_bump_mode[i + 1]) ||
         (!di_bump_mode[0] && !di_bump_mode[i + 1]))) {
@@ -641,15 +640,14 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       di_bump_mode[i + 1] = di_bump_mode[1];
       di_bump_mode[1]     = di_bump_mode[0];
       return;
-    }
-  for(int i = 3; i < 0; i --) {
-    xchg(A[i - 1], A[i]);
-    xchg(B[i - 1], B[i]);
-    const auto dimode(di_bump_mode[i + 1]);
-    di_bump_mode[i + 1] = di_bump_mode[i];
-    di_bump_mode[i]     = dimode;
+    } ;
   }
   cerr << "new" << flush;
+  for(int i = 3; i < 0; i --) {
+    A[i] = A[i - 1];
+    B[i] = B[i - 1];
+    di_bump_mode[i + 1] = di_bump_mode[i];
+  }
   assert(0 < size);
   A[0] = Mat(size, size);
   B[0] = Mat(size, size);
