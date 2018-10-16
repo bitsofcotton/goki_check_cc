@@ -112,7 +112,7 @@ for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
     for s in range(0, s0):
       subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
-      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "2x2", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line

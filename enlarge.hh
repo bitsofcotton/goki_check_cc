@@ -57,9 +57,6 @@ public:
     IDETECT_Y_BOTH,
     IDETECT_BOTH,
     IDETECT_QUAD,
-    BLUR_X,
-    BLUR_Y,
-    BLUR_BOTH,
     BUMP_X,
     BUMP_Y0,
     BUMP_Y1,
@@ -108,30 +105,26 @@ public:
   MatU seed(const int& size, const bool& idft);
   T    dratio;
   T    offset;
-  T    blur;
-  int  sz_cell;
-  int  st_cell;
+  bool di_bump_mode[3];
   
 private:
   void initDop(const int& size);
   void initBump(const int& rows, const int& cols);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
-  void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop, const bool& mode = false);
+  void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop);
   void xchg(Mat& a, Mat& b);
   Mat  round2y(const Mat& in, const int& h);
   U    I;
   T    Pi;
   Mat  A;
   Mat  B;
-  Mat  C;
   Mat  Dop;
   Mat  Dhop;
   Mat  Eop;
   Mat  Iop;
   Mat  bA;
   Mat  bB;
-  Mat  bC;
   Mat  bDop;
   Mat  bDhop;
   Mat  bEop;
@@ -143,9 +136,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   Pi = atan2(T(1), T(1)) * T(4);
   dratio  = T(1e-3);
   offset  = T(4) / T(256);
-  blur    = T(8);
-  sz_cell = 8;
-  st_cell = 1;
+  di_bump_mode[0] = di_bump_mode[1] = di_bump_mode[2] = false;
 }
 
 template <typename T> enlarger2ex<T>::enlarger2ex(const enlarger2ex<T>& src) {
@@ -157,19 +148,17 @@ template <typename T> enlarger2ex<T>& enlarger2ex<T>::operator = (const enlarger
   Pi = src.Pi;
   dratio  = src.dratio;
   offset  = src.offset;
-  blur    = src.blur;
-  sz_cell = src.sz_cell;
-  st_cell = src.st_cell;
+  di_bump_mode[0] = src.di_bump_mode[0];
+  di_bump_mode[1] = src.di_bump_mode[1];
+  di_bump_mode[2] = src.di_bump_mode[2];
   A     = src.A;
   B     = src.B;
-  C     = src.C;
   Dop   = src.Dop;
   Dhop  = src.Dhop;
   Eop   = src.Eop;
   Iop   = src.Iop;
   bA    = src.bA;
   bB    = src.bB;
-  bC    = src.bC;
   bDop  = src.bDop;
   bDhop = src.bDhop;
   bEop  = src.bEop;
@@ -204,9 +193,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case IDETECT_QUAD:
     result = (compute(data, IDETECT_Y_BOTH) + compute(data, IDETECT_X_BOTH)) / T(2);
     break;
-  case BLUR_BOTH:
-    result = (compute(data, BLUR_X)    + compute(data, BLUR_Y)) / T(2);
-    break;
   case BUMP_BOTH:
     result = (compute(data, BUMP_Y)    + compute(data, BUMP_X)) / T(2);
     break;
@@ -238,9 +224,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case IDETECT_X_BOTH:
     result = compute(data.transpose(), IDETECT_Y_BOTH).transpose();
     break;
-  case BLUR_X:
-    result = compute(data.transpose(), BLUR_Y).transpose();
-    break;
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
     break;
@@ -267,10 +250,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case DETECT_NOP_Y:
     initDop(data.rows());
     result = Dhop * data;
-    break;
-  case BLUR_Y:
-    initDop(data.rows());
-    result = C * data;
     break;
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
@@ -352,7 +331,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     }
     break;
   case BUMP_Y:
-    result = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
+    di_bump_mode[0] = false;
+    result  = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
+    di_bump_mode[0] = true;
+    result += compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
     break;
   case EXTEND_Y0:
     {
@@ -573,7 +555,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   cerr << "." << flush;
   if(Dop.rows() == size)
     return;
-  xchg(C, bC);
   xchg(Dop, bDop);
   xchg(Dhop, bDhop);
   xchg(Iop, bIop);
@@ -582,18 +563,11 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     return;
   cerr << "new" << flush;
   Vec vDop,  vDop0;
-  Vec vDhop, vDhop0;
-  Vec vIop,  vIop0;
-  Vec vEop,  vEop0;
-  makeDI(size, vDop,  vDhop,  vIop,  vEop,  false);
-  makeDI(size, vDop0, vDhop0, vIop0, vEop0, true);
-  vDop  += vDop0;
-  vDhop += vDhop0;
-  vIop  += vIop0;
-  vEop  += vEop0;
-  vDop  /= T(2);
-  vDhop /= T(2);
-  vIop  /= T(2);
+  Vec vDhop;
+  Vec vIop;
+  Vec vEop;
+  makeDI(size, vDop, vDhop, vIop, vEop);
+  vEop *= T(2);
   Dop  = Mat(size, size);
   Dhop = Mat(size, size);
   Iop  = Mat(size, size);
@@ -625,20 +599,19 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     Eop.row(i) += newEop.row(max(i - 1, 0));
   }
   Eop /= T(4);
-  C = Mat(Dop.rows(), Dop.cols());
-  for(int i = 0; i < C.rows(); i ++)
-    for(int j = 0; j < C.cols(); j ++)
-      C(i, j) = T(1) / (T(1 + abs(i - j)) / C.rows() * blur);
   return;
 }
 
 template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& cols) {
   cerr << "." << flush;
-  if(A.rows() == rows)
+  if(A.rows() == rows && di_bump_mode[1] == di_bump_mode[0])
     return;
   xchg(A, bA);
   xchg(B, bB);
-  if(A.rows() == rows)
+  const auto di_bump_mode2(di_bump_mode[2]);
+  di_bump_mode[2] = di_bump_mode[1];
+  di_bump_mode[1] = di_bump_mode2;
+  if(A.rows() == rows && di_bump_mode[1] == di_bump_mode[0])
     return;
 
   cerr << "new" << flush;
@@ -652,16 +625,12 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
   for(int i = 0; i < rows; i ++)
     for(int j = 0; j < rows; j ++)
       B(i, j) = A(i, j) = T(0);
-  Vec Dop0,  Dop1;
-  Vec Dhop0, Dhop1;
-  Vec Iop0,  Iop1;
-  Vec Eop0,  Eop1;
-  makeDI(min(max(7, int(sqrt(T(rows)))), int(rows)), Dop0, Dhop0, Iop0, Eop0, false);
-  makeDI(min(max(7, int(sqrt(T(rows)))), int(rows)), Dop1, Dhop1, Iop1, Eop1, true);
-  Dop0  += Dop1;
-  Dhop0 += Dhop1;
-  Iop0  += Iop1;
-  Eop0  += Eop1;
+  Vec Dop0;
+  Vec Dhop0;
+  Vec Iop0;
+  Vec Eop0;
+  di_bump_mode[1] = di_bump_mode[0];
+  makeDI(min(max(7, int(sqrt(T(rows)))), int(rows)), Dop0, Dhop0, Iop0, Eop0);
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
@@ -705,7 +674,7 @@ template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
   return int(abs(int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
 }
 
-template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop, const bool& mode) {
+template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop) {
   assert(6 < size);
   Dop  = Vec(size);
   Dhop = Vec(size);
@@ -713,7 +682,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
   Eop  = Vec(size);
   for(int i = 0; i < Dop.size(); i ++)
     Dop[i] = Dhop[i] = Iop[i] = Eop[i] = T(0);
-  T sumexp(0);
+  T sumup(0);
   assert(Dop.size() == size && Dhop.size() == size && Iop.size() == size && Eop.size() == size);
 #if defined(_RECURSIVE_RECURSIVE_)
 #if defined(_OPENMP)
@@ -767,12 +736,13 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       VecU lIop( IDFT.row(iidx) * DFTI);
       VecU lEop( IDFT.row(iidx) * DFTE);
 #endif
-      const T ratio(exp((mode ? size / 2 - ss : ss) / T(size / 2)));
-      sumexp += ratio;
-      lDop   *= ratio;
-      lDhop  *= ratio;
-      lIop   *= ratio;
-      lEop   *= ratio;
+      // N.B. averate effect for each diffs.
+      const T ratio(di_bump_mode[0] ? T(ss) : T(1) / ss);
+      sumup += ratio;
+      lDop  *= ratio;
+      lDhop *= ratio;
+      lIop  *= ratio;
+      lEop  *= ratio;
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
@@ -788,10 +758,10 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       }
     }
   }
-  Dop  /= sumexp;
-  Dhop /= sumexp;
-  Iop  /= sumexp;
-  Eop  /= sumexp;
+  Dop  /= sumup;
+  Dhop /= sumup;
+  Iop  /= sumup;
+  Eop  /= sumup;
   return;
 }
 
