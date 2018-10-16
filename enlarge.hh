@@ -239,7 +239,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     di_mode[0] = true;
     initDop(data.rows());
     result += compute(Eop[0] * data, CLIP);
-    break;
+    result /= T(2);
     break;
   case DETECT_Y:
     di_mode[0] = false;
@@ -248,6 +248,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     di_mode[0] = true;
     initDop(data.rows());
     result += Dop[0] * data;
+    result /= T(2);
     break;
   case DETECT_NOP_Y:
     di_mode[0] = false;
