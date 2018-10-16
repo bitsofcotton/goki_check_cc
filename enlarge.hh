@@ -580,7 +580,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   Vec vDhop;
   Vec vIop;
   Vec vEop;
-  di_bump_mode[1] = di_bump_mode[0];
+  di_mode[1] = di_mode[0];
   makeDI(size, vDop, vDhop, vIop, vEop);
   vEop *= T(2);
   Dop[0]  = Mat(size, size);
