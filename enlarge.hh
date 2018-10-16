@@ -643,8 +643,8 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       return;
     }
   for(int i = 3; i < 0; i --) {
-    xchg(A[0], A[i]);
-    xchg(B[0], B[i]);
+    xchg(A[i - 1], A[i]);
+    xchg(B[i - 1], B[i]);
     const auto dimode(di_bump_mode[i + 1]);
     di_bump_mode[i + 1] = di_bump_mode[i];
     di_bump_mode[i]     = dimode;
