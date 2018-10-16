@@ -240,12 +240,21 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(compute(data, DETECT_Y), ENLARGE_Y);
     break;
   case ENLARGE_Y:
+    di_bump_mode[0] = false;
     initDop(data.rows());
-    result = compute(Eop * data, CLIP);
+    result  = compute(Eop * data, CLIP);
+    di_bump_mode[0] = true;
+    initDop(data.rows());
+    result += compute(Eop * data, CLIP);
+    break;
     break;
   case DETECT_Y:
+    di_bump_mode[0] = false;
     initDop(data.rows());
-    result = Dop * data;
+    result  = Dop * data;
+    di_bump_mode[0] = true;
+    initDop(data.rows());
+    result += Dop * data;
     break;
   case DETECT_NOP_Y:
     initDop(data.rows());
