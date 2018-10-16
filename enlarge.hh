@@ -105,11 +105,12 @@ public:
   MatU seed(const int& size, const bool& idft);
   T    dratio;
   T    offset;
-  bool di_bump_mode[3];
+  bool di_mode[5];
+  bool di_bump_mode[5];
   
 private:
   void initDop(const int& size);
-  void initBump(const int& rows, const int& cols);
+  void initBump(const int& size);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
   void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop);
@@ -117,18 +118,12 @@ private:
   Mat  round2y(const Mat& in, const int& h);
   U    I;
   T    Pi;
-  Mat  A;
-  Mat  B;
-  Mat  Dop;
-  Mat  Dhop;
-  Mat  Eop;
-  Mat  Iop;
-  Mat  bA;
-  Mat  bB;
-  Mat  bDop;
-  Mat  bDhop;
-  Mat  bEop;
-  Mat  bIop;
+  Mat  A[4];
+  Mat  B[4];
+  Mat  Dop[4];
+  Mat  Dhop[4];
+  Mat  Eop[4];
+  Mat  Iop[4];
 };
 
 template <typename T> enlarger2ex<T>::enlarger2ex() {
@@ -136,7 +131,8 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   Pi = atan2(T(1), T(1)) * T(4);
   dratio  = T(1e-3);
   offset  = T(4) / T(256);
-  di_bump_mode[0] = di_bump_mode[1] = di_bump_mode[2] = false;
+  for(int i = 0; i < 5; i ++)
+    di_bump_mode[i] = di_mode[i] = false;
 }
 
 template <typename T> enlarger2ex<T>::enlarger2ex(const enlarger2ex<T>& src) {
@@ -148,21 +144,18 @@ template <typename T> enlarger2ex<T>& enlarger2ex<T>::operator = (const enlarger
   Pi = src.Pi;
   dratio  = src.dratio;
   offset  = src.offset;
-  di_bump_mode[0] = src.di_bump_mode[0];
-  di_bump_mode[1] = src.di_bump_mode[1];
-  di_bump_mode[2] = src.di_bump_mode[2];
-  A     = src.A;
-  B     = src.B;
-  Dop   = src.Dop;
-  Dhop  = src.Dhop;
-  Eop   = src.Eop;
-  Iop   = src.Iop;
-  bA    = src.bA;
-  bB    = src.bB;
-  bDop  = src.bDop;
-  bDhop = src.bDhop;
-  bEop  = src.bEop;
-  bIop  = src.bIop;
+  for(int i = 0; i < 5; i ++) {
+    di_mode[i]      = src.di_mode[i];
+    di_bump_mode[i] = src.di_bump_mode[i];
+  }
+  for(int i = 0; i < 4; i ++) {
+    A[i]     = src.A[i];
+    B[i]     = src.B[i];
+    Dop[i]   = src.Dop[i];
+    Dhop[i]  = src.Dhop[i];
+    Eop[i]   = src.Eop[i];
+    Iop[i]   = src.Iop[i];
+  }
   return *this;
 }
 
@@ -240,32 +233,35 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(compute(data, DETECT_Y), ENLARGE_Y);
     break;
   case ENLARGE_Y:
-    di_bump_mode[0] = false;
+    di_mode[0] = false;
     initDop(data.rows());
-    result  = compute(Eop * data, CLIP);
-    di_bump_mode[0] = true;
+    result  = compute(Eop[0] * data, CLIP);
+    di_mode[0] = true;
     initDop(data.rows());
-    result += compute(Eop * data, CLIP);
+    result += compute(Eop[0] * data, CLIP);
     break;
     break;
   case DETECT_Y:
-    di_bump_mode[0] = false;
+    di_mode[0] = false;
     initDop(data.rows());
-    result  = Dop * data;
-    di_bump_mode[0] = true;
+    result  = Dop[0] * data;
+    di_mode[0] = true;
     initDop(data.rows());
-    result += Dop * data;
+    result += Dop[0] * data;
     break;
   case DETECT_NOP_Y:
+    di_mode[0] = false;
     initDop(data.rows());
-    result = Dhop * data;
+    result  = Dhop[0] * data;
+    di_mode[0] = true;
+    initDop(data.rows());
+    result += Dhop[0] * data;
     break;
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
     break;
   case IDETECT_Y:
     {
-      initDop(data.rows());
       Vec ms[data.cols()];
       result = data;
 #if defined(_OPENMP)
@@ -277,7 +273,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         for(int j = 0; j < data.rows(); j ++)
           result(j, i) -= ms[i][0] + ms[i][1] * j;
       }
-      result = Iop * result;
+      di_mode[0] = false;
+      initDop(data.rows());
+      result  = Iop[0] * result;
+      di_mode[0] = true;
+      initDop(data.rows());
+      result += Iop[0] * result;
+      result /= T(2);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -291,11 +293,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y0:
     {
-      initBump(data.rows(), data.cols());
-      assert(A.rows() == data.rows() && A.cols() == data.rows());
+      initBump(data.rows());
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
-      const auto dataA(compute(A * data, ABS));
-      const auto dataB(compute(B * data, ABS));
+      const auto dataA(compute(A[0] * data, ABS));
+      const auto dataB(compute(B[0] * data, ABS));
       const auto dataBc(compute(dataB, BCLIP));
       const auto datadyA(compute(dataA, DETECT_Y));
       const auto datadyB(compute(dataB, DETECT_Y));
@@ -368,7 +369,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < result.cols(); i ++) {
         T a(0), b(0), c(0);
         for(int j = 0; j < d0data.rows(); j ++) {
-          const T aa(- Dop(j, Dop.rows() - 1));
+          const T aa(- Dop[0](j, Dop[0].rows() - 1));
           const T bb(ddata(j, i) - d0data(j, i));
           a += aa * aa;
           b += aa * bb;
@@ -562,84 +563,89 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 
 template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   cerr << "." << flush;
-  if(Dop.rows() == size)
-    return;
-  xchg(Dop, bDop);
-  xchg(Dhop, bDhop);
-  xchg(Iop, bIop);
-  xchg(Eop, bEop);
-  if(Dop.rows() == size)
-    return;
+  for(int i = 0; i < 4; i ++)
+    if(Dop[i].rows() == size && di_mode[0] == di_mode[i + 1]) {
+      if(i) {
+        xchg(Dop[0],  Dop[i]);
+        xchg(Dhop[0], Dhop[i]);
+        xchg(Iop[0],  Iop[i]);
+        xchg(Eop[0],  Eop[i]);
+      }
+      di_mode[i + 1] = di_mode[1];
+      di_mode[1]     = di_mode[0];
+      return;
+    }
   cerr << "new" << flush;
   Vec vDop,  vDop0;
   Vec vDhop;
   Vec vIop;
   Vec vEop;
+  di_bump_mode[1] = di_bump_mode[0];
   makeDI(size, vDop, vDhop, vIop, vEop);
   vEop *= T(2);
-  Dop  = Mat(size, size);
-  Dhop = Mat(size, size);
-  Iop  = Mat(size, size);
-  Eop  = Mat(size, size);
+  Dop[0]  = Mat(size, size);
+  Dhop[0] = Mat(size, size);
+  Iop[0]  = Mat(size, size);
+  Eop[0]  = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < Dop.rows(); i ++)
-    for(int j = 0; j < Dop.cols(); j ++) {
-      Dop(i, j)  =   vDop[ getImgPt(j - i - size / 2, Dop.cols())];
-      Dhop(i, j) =   vDhop[getImgPt(j - i - size / 2, Dop.cols())];
-      Iop(i, j)  = - vIop[ getImgPt(j - i - size / 2, Dop.cols())];
-      Eop(i, j)  =   vEop[ getImgPt(j - i - size / 2, Dop.cols())];
+  for(int i = 0; i < Dop[0].rows(); i ++)
+    for(int j = 0; j < Dop[0].cols(); j ++) {
+      Dop[0](i, j)  =   vDop[ getImgPt(j - i - size / 2, Dop[0].cols())];
+      Dhop[0](i, j) =   vDhop[getImgPt(j - i - size / 2, Dop[0].cols())];
+      Iop[0](i, j)  = - vIop[ getImgPt(j - i - size / 2, Dop[0].cols())];
+      Eop[0](i, j)  =   vEop[ getImgPt(j - i - size / 2, Dop[0].cols())];
     }
-  Mat newEop(Eop.rows() * 2, Eop.cols());
+  Mat newEop(Eop[0].rows() * 2, Eop[0].cols());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < Eop.rows(); i ++) {
-    newEop.row(2 * i + 0) =   Eop.row(i);
-    newEop.row(2 * i + 1) = - Eop.row(i);
+  for(int i = 0; i < Eop[0].rows(); i ++) {
+    newEop.row(2 * i + 0) =   Eop[0].row(i);
+    newEop.row(2 * i + 1) = - Eop[0].row(i);
     newEop(2 * i + 0, i) += T(1);
     newEop(2 * i + 1, i) += T(1);
   }
-  Eop = newEop * T(2);
-  for(int i = 0; i < Eop.rows(); i ++) {
-    Eop.row(i) += newEop.row(min(i + 1, int(Eop.rows()) - 1));
-    Eop.row(i) += newEop.row(max(i - 1, 0));
+  Eop[0] = newEop * T(2);
+  for(int i = 0; i < Eop[0].rows(); i ++) {
+    Eop[0].row(i) += newEop.row(min(i + 1, int(Eop[0].rows()) - 1));
+    Eop[0].row(i) += newEop.row(max(i - 1, 0));
   }
-  Eop /= T(4);
+  Eop[0] /= T(4);
   return;
 }
 
-template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& cols) {
+template <typename T> void enlarger2ex<T>::initBump(const int& size) {
   cerr << "." << flush;
-  if(A.rows() == rows && di_bump_mode[1] == di_bump_mode[0])
-    return;
-  xchg(A, bA);
-  xchg(B, bB);
-  const auto di_bump_mode2(di_bump_mode[2]);
-  di_bump_mode[2] = di_bump_mode[1];
-  di_bump_mode[1] = di_bump_mode2;
-  if(A.rows() == rows && di_bump_mode[1] == di_bump_mode[0])
-    return;
-
+  for(int i = 0; i < 4; i ++)
+    if(A[i].rows() == size && di_bump_mode[0] == di_bump_mode[i + 1]) {
+      if(i) {
+        xchg(A[0], A[i]);
+        xchg(B[0], B[i]);
+      }
+      di_bump_mode[i + 1] = di_bump_mode[1];
+      di_bump_mode[1]     = di_bump_mode[0];
+      return;
+    }
   cerr << "new" << flush;
-  assert(0 < rows);
-  A = Mat(rows, rows);
-  B = Mat(rows, rows);
+  assert(0 < size);
+  A[0] = Mat(size, size);
+  B[0] = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < rows; i ++)
-    for(int j = 0; j < rows; j ++)
-      B(i, j) = A(i, j) = T(0);
+  for(int i = 0; i < size; i ++)
+    for(int j = 0; j < size; j ++)
+      B[0](i, j) = A[0](i, j) = T(0);
   Vec Dop0;
   Vec Dhop0;
   Vec Iop0;
   Vec Eop0;
   di_bump_mode[1] = di_bump_mode[0];
-  makeDI(min(max(7, int(sqrt(T(rows)))), int(rows)), Dop0, Dhop0, Iop0, Eop0);
+  makeDI(min(max(7, int(sqrt(T(size)))), int(size)), Dop0, Dhop0, Iop0, Eop0);
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
@@ -662,9 +668,9 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
 #pragma omp critical
 #endif
       {
-        for(int i = 0; i < A.rows(); i ++) {
-          A(i, getImgPt(i + y0, rows)) += Dop0[j] * T(zi + 1) * dratio;
-          B(i, getImgPt(i + y0, rows)) += Dop0[j];
+        for(int i = 0; i < A[0].rows(); i ++) {
+          A[0](i, getImgPt(i + y0, size)) += Dop0[j] * T(zi + 1) * dratio;
+          B[0](i, getImgPt(i + y0, size)) += Dop0[j];
         }
       }
     }
@@ -674,8 +680,8 @@ template <typename T> void enlarger2ex<T>::initBump(const int& rows, const int& 
     sumup += T(zi + 1) * dratio;
   }
   const T n2(T(1) / dratio);
-  A /= n2 * sumup;
-  B /= n2;
+  A[0] /= n2 * sumup;
+  B[0] /= n2;
   return;
 }
 
