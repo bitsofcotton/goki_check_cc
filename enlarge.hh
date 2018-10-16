@@ -577,6 +577,18 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       di_mode[1]     = di_mode[0];
       return;
     }
+  for(int i = 0; i < 4; i ++)
+    if(!Dop[i].rows()) {
+      if(i) {
+        xchg(Dop[0],  Dop[i]);
+        xchg(Dhop[0], Dhop[i]);
+        xchg(Iop[0],  Iop[i]);
+        xchg(Eop[0],  Eop[i]);
+      }
+      di_mode[i + 1] = di_mode[1];
+      di_mode[1]     = di_mode[0];
+      break;
+    }
   cerr << "new" << flush;
   Vec vDop,  vDop0;
   Vec vDhop;
@@ -632,6 +644,16 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       di_bump_mode[i + 1] = di_bump_mode[1];
       di_bump_mode[1]     = di_bump_mode[0];
       return;
+    }
+  for(int i = 0; i < 4; i ++)
+    if(!A[i].rows()) {
+      if(i) {
+        xchg(A[0], A[i]);
+        xchg(B[0], B[i]);
+      }
+      di_bump_mode[i + 1] = di_bump_mode[1];
+      di_bump_mode[1]     = di_bump_mode[0];
+      break;
     }
   cerr << "new" << flush;
   assert(0 < size);
