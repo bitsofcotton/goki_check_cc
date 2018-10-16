@@ -113,7 +113,7 @@ private:
   void initBump(const int& size);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
-  void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop);
+  void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop, const bool& mode);
   void xchg(Mat& a, Mat& b);
   Mat  round2y(const Mat& in, const int& h);
   U    I;
@@ -564,7 +564,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   cerr << "." << flush;
   for(int i = 0; i < 4; i ++)
-    if(Dop[i].rows() == size && di_mode[0] == di_mode[i + 1]) {
+    if(Dop[i].rows() == size &&
+       (( di_mode[0] &&  di_mode[i + 1]) ||
+        (!di_mode[0] && !di_mode[i + 1]))) {
       if(i) {
         xchg(Dop[0],  Dop[i]);
         xchg(Dhop[0], Dhop[i]);
@@ -581,7 +583,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   Vec vIop;
   Vec vEop;
   di_mode[1] = di_mode[0];
-  makeDI(size, vDop, vDhop, vIop, vEop);
+  makeDI(size, vDop, vDhop, vIop, vEop, di_mode[0]);
   vEop *= T(2);
   Dop[0]  = Mat(size, size);
   Dhop[0] = Mat(size, size);
@@ -620,7 +622,9 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 template <typename T> void enlarger2ex<T>::initBump(const int& size) {
   cerr << "." << flush;
   for(int i = 0; i < 4; i ++)
-    if(A[i].rows() == size && di_bump_mode[0] == di_bump_mode[i + 1]) {
+    if(A[i].rows() == size &&
+       (( di_bump_mode[0] &&  di_bump_mode[i + 1]) ||
+        (!di_bump_mode[0] && !di_bump_mode[i + 1]))) {
       if(i) {
         xchg(A[0], A[i]);
         xchg(B[0], B[i]);
@@ -645,7 +649,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
   Vec Iop0;
   Vec Eop0;
   di_bump_mode[1] = di_bump_mode[0];
-  makeDI(min(max(7, int(sqrt(T(size)))), int(size)), Dop0, Dhop0, Iop0, Eop0);
+  makeDI(min(max(7, int(sqrt(T(size)))), int(size)), Dop0, Dhop0, Iop0, Eop0, di_bump_mode[0]);
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
@@ -689,7 +693,7 @@ template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
   return int(abs(int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
 }
 
-template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop) {
+template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop, const bool& mode) {
   assert(6 < size);
   Dop  = Vec(size);
   Dhop = Vec(size);
@@ -752,7 +756,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       VecU lEop( IDFT.row(iidx) * DFTE);
 #endif
       // N.B. averate effect for each diffs.
-      const T ratio(di_bump_mode[0] ? T(ss) : T(1) / ss);
+      const T ratio(mode ? T(ss) : T(1) / ss);
       sumup += ratio;
       lDop  *= ratio;
       lDhop *= ratio;
