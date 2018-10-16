@@ -107,6 +107,7 @@ public:
   T    offset;
   bool di_mode[5];
   bool di_bump_mode[5];
+  bool in_bump;
   
 private:
   void initDop(const int& size);
@@ -133,6 +134,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   offset  = T(4) / T(256);
   for(int i = 0; i < 5; i ++)
     di_bump_mode[i] = di_mode[i] = false;
+  in_bump = false;
 }
 
 template <typename T> enlarger2ex<T>::enlarger2ex(const enlarger2ex<T>& src) {
@@ -156,6 +158,7 @@ template <typename T> enlarger2ex<T>& enlarger2ex<T>::operator = (const enlarger
     Eop[i]   = src.Eop[i];
     Iop[i]   = src.Iop[i];
   }
+  in_bump = false;
   return *this;
 }
 
@@ -233,22 +236,34 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(compute(data, DETECT_Y), ENLARGE_Y);
     break;
   case ENLARGE_Y:
-    di_mode[0] = false;
-    initDop(data.rows());
-    result  = compute(Eop[0] * data, CLIP);
-    di_mode[0] = true;
-    initDop(data.rows());
-    result += compute(Eop[0] * data, CLIP);
-    result /= T(2);
+    if(in_bump) {
+      di_mode[0] = di_bump_mode[0];
+      initDop(data.rows());
+      result  = compute(Eop[0] * data, CLIP);
+    } else {
+      di_mode[0] = false;
+      initDop(data.rows());
+      result  = compute(Eop[0] * data, CLIP);
+      di_mode[0] = true;
+      initDop(data.rows());
+      result += compute(Eop[0] * data, CLIP);
+      result /= T(2);
+    }
     break;
   case DETECT_Y:
-    di_mode[0] = false;
-    initDop(data.rows());
-    result  = Dop[0] * data;
-    di_mode[0] = true;
-    initDop(data.rows());
-    result += Dop[0] * data;
-    result /= T(2);
+    if(in_bump) {
+      di_mode[0] = di_bump_mode[0];
+      initDop(data.rows());
+      result  = Dop[0] * data;
+    } else {
+      di_mode[0] = false;
+      initDop(data.rows());
+      result  = Dop[0] * data;
+      di_mode[0] = true;
+      initDop(data.rows());
+      result += Dop[0] * data;
+      result /= T(2);
+    }
     break;
   case DETECT_NOP_Y:
     di_mode[0] = false;
@@ -274,13 +289,18 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         for(int j = 0; j < data.rows(); j ++)
           result(j, i) -= ms[i][0] + ms[i][1] * j;
       }
-      di_mode[0] = false;
-      initDop(data.rows());
-      result  = Iop[0] * result;
-      di_mode[0] = true;
-      initDop(data.rows());
-      result += Iop[0] * result;
-      result /= T(2);
+      if(in_bump) {
+        di_mode[0] = di_bump_mode[0];
+        result = Iop[0] * result;
+      } else {
+        di_mode[0] = false;
+        initDop(data.rows());
+        result  = Iop[0] * result;
+        di_mode[0] = true;
+        initDop(data.rows());
+        result += Iop[0] * result;
+        result /= T(2);
+      }
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -342,10 +362,12 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     }
     break;
   case BUMP_Y:
+    in_bump = true;
     di_bump_mode[0] = false;
     result  = compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
     di_bump_mode[0] = true;
     result += compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH);
+    in_bump = false;
     break;
   case EXTEND_Y0:
     {
