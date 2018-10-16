@@ -578,7 +578,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       return;
     }
   cerr << "new" << flush;
-  for(int i = 3; i < 0; i --) {
+  for(int i = 3; 0 < i; i --) {
     Dop[i]  = Dop[i - 1];
     Dhop[i] = Dhop[i - 1];
     Iop[i]  = Iop[i - 1];
@@ -643,7 +643,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
     } ;
   }
   cerr << "new" << flush;
-  for(int i = 3; i < 0; i --) {
+  for(int i = 3; 0 < i; i --) {
     A[i] = A[i - 1];
     B[i] = B[i - 1];
     di_bump_mode[i + 1] = di_bump_mode[i];
