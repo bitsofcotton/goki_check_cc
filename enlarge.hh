@@ -794,7 +794,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
       VecU lEop( IDFT.row(iidx) * DFTE);
 #endif
       // N.B. averate effect for each diffs.
-      const T ratio(mode ? T(ss) : T(1) / ss);
+      const T ratio(mode ? T(1) : ss);
       sumup += ratio;
       lDop  *= ratio;
       lDhop *= ratio;
