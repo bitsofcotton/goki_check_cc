@@ -481,7 +481,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < result.cols(); i ++) {
         T a(0), b(0), c(0);
         for(int j = 0; j < d0data.rows(); j ++) {
-          const T aa(- Dop[idx_d](j, Dop[0].rows() - 1));
+          const T aa(- Dop[idx_d](j, Dop[idx_d].rows() - 1));
           const T bb(ddata(j, i) - d0data(j, i));
           a += aa * aa;
           b += aa * bb;
@@ -731,7 +731,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     Eop[idx_d].row(i) += newEop.row(min(i + 1, int(Eop[idx_d].rows()) - 1));
     Eop[idx_d].row(i) += newEop.row(max(i - 1, 0));
   }
-  Eop[0] /= T(4);
+  Eop[idx_d] /= T(4);
   for(int i = 0; i < C[idx_d].rows(); i ++)
     for(int j = 0; j < C[idx_d].cols(); j ++)
       C[idx_d](i, j) = T(1) / (T(1 + abs(i - j)) / C[idx_d].rows() * blur);
@@ -750,8 +750,8 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
   A.push_back(Mat());
   B.push_back(Mat());
   assert(2 <= size);
-  A[0] = Mat(size, size);
-  B[0] = Mat(size, size);
+  A[idx_b] = Mat(size, size);
+  B[idx_b] = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
