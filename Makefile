@@ -9,7 +9,7 @@ CXXFLAGS+=	-std=c++11
 #CXXFLAGS+=	-std=c++17
 # -Ofast is something bugly on some compiler implementations but don't inspected the bug.
 # -mtune=native is not for porting.
-CXXFLAGS+=	-O2 -g2
+CXXFLAGS+=	-O3 -g2
 # Do not use this because of the slowness, so this implementation is for what around licenses.
 #CXXFLAGS+=	-D_WITHOUT_EIGEN_
 # Please read the library page before to use.
