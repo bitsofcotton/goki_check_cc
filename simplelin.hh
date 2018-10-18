@@ -20,45 +20,46 @@ using std::isnan;
 
 template <typename T> class SimpleVector {
 public:
-  SimpleVector();
-  SimpleVector(const int& size);
-  SimpleVector(const SimpleVector<T>& other);
-  SimpleVector(SimpleVector<T>&& other);
-  ~SimpleVector();
+  inline SimpleVector();
+  inline SimpleVector(const int& size);
+  inline SimpleVector(const SimpleVector<T>& other);
+  inline SimpleVector(SimpleVector<T>&& other);
+  inline ~SimpleVector();
   
-        SimpleVector<T>  operator -  () const;
-        SimpleVector<T>  operator +  (const SimpleVector<T>& other) const;
-        SimpleVector<T>& operator += (const SimpleVector<T>& other);
-        SimpleVector<T>  operator -  (const SimpleVector<T>& other) const;
-        SimpleVector<T>& operator -= (const SimpleVector<T>& other);
-        SimpleVector<T>  operator *  (const T& other) const;
-        SimpleVector<T>& operator *= (const T& other);
-        SimpleVector<T>  operator /  (const T& other) const;
-        SimpleVector<T>& operator /= (const T& other);
-        SimpleVector<T>& operator =  (const SimpleVector<T>& other);
-        T                dot         (const SimpleVector<T>& other) const;
-        T&               operator [] (const int& idx);
-  const T                operator [] (const int& idx) const;
-  const int& size() const;
+  inline       SimpleVector<T>  operator -  () const;
+  inline       SimpleVector<T>  operator +  (const SimpleVector<T>& other) const;
+  inline       SimpleVector<T>& operator += (const SimpleVector<T>& other);
+  inline       SimpleVector<T>  operator -  (const SimpleVector<T>& other) const;
+  inline       SimpleVector<T>& operator -= (const SimpleVector<T>& other);
+  inline       SimpleVector<T>  operator *  (const T& other) const;
+  inline       SimpleVector<T>& operator *= (const T& other);
+  inline       SimpleVector<T>  operator /  (const T& other) const;
+  inline       SimpleVector<T>& operator /= (const T& other);
+  inline       SimpleVector<T>& operator =  (const SimpleVector<T>& other);
+  inline       SimpleVector<T>& operator =  (SimpleVector<T>&& other);
+  inline       T                dot         (const SimpleVector<T>& other) const;
+  inline       T&               operator [] (const int& idx);
+  inline const T                operator [] (const int& idx) const;
+  inline const int& size() const;
         void resize(const int& size);
 private:
   T*  entity;
   int esize;
 };
 
-template <typename T> SimpleVector<T>::SimpleVector() {
+template <typename T> inline SimpleVector<T>::SimpleVector() {
   entity = NULL;
   esize  = 0;
 }
 
-template <typename T> SimpleVector<T>::SimpleVector(const int& size) {
+template <typename T> inline SimpleVector<T>::SimpleVector(const int& size) {
   assert(size > 0);
   this->entity = new T[size];
   this->esize  = size;
   return;
 }
 
-template <typename T> SimpleVector<T>::SimpleVector(const SimpleVector<T>& other) {
+template <typename T> inline SimpleVector<T>::SimpleVector(const SimpleVector<T>& other) {
   entity = new T[other.esize];
   esize  = other.esize;
 #if defined(_OPENMP)
@@ -69,24 +70,20 @@ template <typename T> SimpleVector<T>::SimpleVector(const SimpleVector<T>& other
   return;
 }
 
-template <typename T> SimpleVector<T>::SimpleVector(SimpleVector<T>&& other) {
-  entity = new T[other.esize];
+template <typename T> inline SimpleVector<T>::SimpleVector(SimpleVector<T>&& other) {
   esize  = move(other.esize);
-#if defined(_OPENMP)
-#pragma omp simd
-#endif
-  for(int i = 0; i < esize; i ++)
-    entity[i] = move(other.entity[i]);
+  entity = move(other.entity);
+  other.entity = 0;
   return;
 }
 
-template <typename T> SimpleVector<T>::~SimpleVector() {
+template <typename T> inline SimpleVector<T>::~SimpleVector() {
   if(entity)
     delete[] entity;
   return;
 }
 
-template <typename T> SimpleVector<T> SimpleVector<T>::operator - () const {
+template <typename T> inline SimpleVector<T> SimpleVector<T>::operator - () const {
   SimpleVector<T> res(esize);
 #if defined(_OPENMP)
 #pragma omp simd
@@ -96,12 +93,12 @@ template <typename T> SimpleVector<T> SimpleVector<T>::operator - () const {
   return res;
 }
 
-template <typename T> SimpleVector<T> SimpleVector<T>::operator + (const SimpleVector<T>& other) const {
+template <typename T> inline SimpleVector<T> SimpleVector<T>::operator + (const SimpleVector<T>& other) const {
   SimpleVector<T> res(*this);
   return res += other;
 }
 
-template <typename T> SimpleVector<T>& SimpleVector<T>::operator += (const SimpleVector<T>& other) {
+template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator += (const SimpleVector<T>& other) {
   assert(esize == other.esize);
 #if defined(_OPENMP)
 #pragma omp simd
@@ -111,21 +108,21 @@ template <typename T> SimpleVector<T>& SimpleVector<T>::operator += (const Simpl
   return *this;
 }
 
-template <typename T> SimpleVector<T> SimpleVector<T>::operator - (const SimpleVector<T>& other) const {
+template <typename T> inline SimpleVector<T> SimpleVector<T>::operator - (const SimpleVector<T>& other) const {
   SimpleVector<T> res(*this);
   return res -= other;
 }
 
-template <typename T> SimpleVector<T>& SimpleVector<T>::operator -= (const SimpleVector<T>& other) {
+template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator -= (const SimpleVector<T>& other) {
   return *this += - other;
 }
 
-template <typename T> SimpleVector<T> SimpleVector<T>::operator * (const T& other) const {
+template <typename T> inline SimpleVector<T> SimpleVector<T>::operator * (const T& other) const {
   SimpleVector<T> res(*this);
   return res *= other;
 }
 
-template <typename T> SimpleVector<T>& SimpleVector<T>::operator *= (const T& other) {
+template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator *= (const T& other) {
 #if defined(_OPENMP)
 #pragma omp simd
 #endif
@@ -134,12 +131,12 @@ template <typename T> SimpleVector<T>& SimpleVector<T>::operator *= (const T& ot
   return *this;
 }
 
-template <typename T> SimpleVector<T> SimpleVector<T>::operator / (const T& other) const {
+template <typename T> inline SimpleVector<T> SimpleVector<T>::operator / (const T& other) const {
   SimpleVector<T> res(*this);
   return res /= other;
 }
 
-template <typename T> SimpleVector<T>& SimpleVector<T>::operator = (const SimpleVector<T>& other) {
+template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator = (const SimpleVector<T>& other) {
   if(entity == other.entity && esize == other.esize)
     return *this;
   if(esize != other.esize) {
@@ -156,7 +153,17 @@ template <typename T> SimpleVector<T>& SimpleVector<T>::operator = (const Simple
   return *this;
 }
 
-template <typename T> SimpleVector<T>& SimpleVector<T>::operator /= (const T& other) {
+template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator = (SimpleVector<T>&& other) {
+  if(entity == other.entity && esize == other.esize)
+    return *this;
+  esize  = move(other.esize);
+  entity = move(other.entity);
+  other.esize  = 0;
+  other.entity = 0;
+  return *this;
+}
+
+template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator /= (const T& other) {
 #if defined(_OPENMP)
 #pragma omp simd
 #endif
@@ -165,7 +172,7 @@ template <typename T> SimpleVector<T>& SimpleVector<T>::operator /= (const T& ot
   return *this;
 }
 
-template <typename T> T SimpleVector<T>::dot(const SimpleVector<T>& other) const {
+template <typename T> inline T SimpleVector<T>::dot(const SimpleVector<T>& other) const {
   assert(esize == other.esize);
   T res(0);
   SimpleVector<T> work(other.size());
@@ -179,17 +186,17 @@ template <typename T> T SimpleVector<T>::dot(const SimpleVector<T>& other) const
   return res;
 }
 
-template <typename T> T& SimpleVector<T>::operator [] (const int& idx) {
+template <typename T> inline T& SimpleVector<T>::operator [] (const int& idx) {
   assert(0 <= idx && idx < esize && entity);
   return entity[idx];
 }
 
-template <typename T> const T SimpleVector<T>::operator [] (const int& idx) const {
+template <typename T> inline const T SimpleVector<T>::operator [] (const int& idx) const {
   assert(0 <= idx && idx < esize && entity);
   return entity[idx];
 }
 
-template <typename T> const int& SimpleVector<T>::size() const {
+template <typename T> inline const int& SimpleVector<T>::size() const {
   return esize;
 }
 
@@ -207,39 +214,40 @@ template <typename T> void SimpleVector<T>::resize(const int& size) {
 
 template <typename T> class SimpleMatrix {
 public:
-  SimpleMatrix();
-  SimpleMatrix(const int& rows, const int& cols);
-  SimpleMatrix(const SimpleMatrix<T>& other);
-  SimpleMatrix(SimpleMatrix<T>&& other);
-  ~SimpleMatrix();
+  inline SimpleMatrix();
+  inline SimpleMatrix(const int& rows, const int& cols);
+  inline SimpleMatrix(const SimpleMatrix<T>& other);
+  inline SimpleMatrix(SimpleMatrix<T>&& other);
+  inline ~SimpleMatrix();
   
-        SimpleMatrix<T>  operator -  () const;
-        SimpleMatrix<T>  operator +  (const SimpleMatrix<T>& other) const;
-        SimpleMatrix<T>& operator += (const SimpleMatrix<T>& other);
-        SimpleMatrix<T>  operator -  (const SimpleMatrix<T>& other) const;
-        SimpleMatrix<T>& operator -= (const SimpleMatrix<T>& other);
-        SimpleMatrix<T>  operator *  (const T& other) const;
-        SimpleMatrix<T>& operator *= (const T& other);
-        SimpleMatrix<T>  operator *  (const SimpleMatrix<T>& other) const;
-        SimpleMatrix<T>& operator *= (const SimpleMatrix<T>& other);
-        SimpleVector<T>  operator *  (const SimpleVector<T>& other) const;
-        SimpleMatrix<T>  operator /  (const T& other) const;
-        SimpleMatrix<T>& operator /= (const T& other);
-        SimpleMatrix<T>& operator =  (const SimpleMatrix<T>& other);
-        T&               operator () (const int& y, const int& x);
-  const T                operator () (const int& y, const int& x) const;
-        SimpleVector<T>& row(const int& y);
-  const SimpleVector<T>& row(const int& y) const;
-  const SimpleVector<T>  col(const int& x) const;
-        void             setCol(const int& x, const SimpleVector<T>& other);
-        SimpleMatrix<T>  transpose() const;
-        T                determinant() const;
-        SimpleVector<T>  solve(SimpleVector<T> other) const;
-        SimpleVector<T>  projectionPt(const SimpleVector<T>& other) const;
-        SimpleMatrix<T>  real() const;
-  template <typename U> SimpleMatrix<U> cast() const;
-  const int& rows() const;
-  const int& cols() const;
+  inline       SimpleMatrix<T>  operator -  () const;
+  inline       SimpleMatrix<T>  operator +  (const SimpleMatrix<T>& other) const;
+  inline       SimpleMatrix<T>& operator += (const SimpleMatrix<T>& other);
+  inline       SimpleMatrix<T>  operator -  (const SimpleMatrix<T>& other) const;
+  inline       SimpleMatrix<T>& operator -= (const SimpleMatrix<T>& other);
+  inline       SimpleMatrix<T>  operator *  (const T& other) const;
+  inline       SimpleMatrix<T>& operator *= (const T& other);
+  inline       SimpleMatrix<T>  operator *  (const SimpleMatrix<T>& other) const;
+  inline       SimpleMatrix<T>& operator *= (const SimpleMatrix<T>& other);
+  inline       SimpleVector<T>  operator *  (const SimpleVector<T>& other) const;
+  inline       SimpleMatrix<T>  operator /  (const T& other) const;
+  inline       SimpleMatrix<T>& operator /= (const T& other);
+  inline       SimpleMatrix<T>& operator =  (const SimpleMatrix<T>& other);
+  inline       SimpleMatrix<T>& operator =  (SimpleMatrix<T>&& other);
+  inline       T&               operator () (const int& y, const int& x);
+  inline const T                operator () (const int& y, const int& x) const;
+  inline       SimpleVector<T>& row(const int& y);
+  inline const SimpleVector<T>& row(const int& y) const;
+  inline const SimpleVector<T>  col(const int& x) const;
+  inline       void             setCol(const int& x, const SimpleVector<T>& other);
+  inline       SimpleMatrix<T>  transpose() const;
+  inline       T                determinant() const;
+  inline       SimpleVector<T>  solve(SimpleVector<T> other) const;
+  inline       SimpleVector<T>  projectionPt(const SimpleVector<T>& other) const;
+  inline       SimpleMatrix<T>  real() const;
+  template <typename U> inline SimpleMatrix<U> cast() const;
+  inline const int& rows() const;
+  inline const int& cols() const;
         void resize(const int& rows, const int& cols);
 private:
   SimpleVector<T>* entity;
@@ -247,14 +255,14 @@ private:
   int              ecols;
 };
 
-template <typename T> SimpleMatrix<T>::SimpleMatrix() {
+template <typename T> inline SimpleMatrix<T>::SimpleMatrix() {
   erows = 0;
   ecols = 0;
   entity = 0;
   return;
 }
 
-template <typename T> SimpleMatrix<T>::SimpleMatrix(const int& rows, const int& cols) {
+template <typename T> inline SimpleMatrix<T>::SimpleMatrix(const int& rows, const int& cols) {
   assert(rows > 0 && cols > 0);
   entity = new SimpleVector<T>[rows];
 #if defined(_OPENMP)
@@ -267,7 +275,7 @@ template <typename T> SimpleMatrix<T>::SimpleMatrix(const int& rows, const int& 
   return; 
 }
 
-template <typename T> SimpleMatrix<T>::SimpleMatrix(const SimpleMatrix<T>& other) {
+template <typename T> inline SimpleMatrix<T>::SimpleMatrix(const SimpleMatrix<T>& other) {
   erows = other.erows;
   ecols = other.ecols;
   entity = new SimpleVector<T>[other.erows];
@@ -279,25 +287,21 @@ template <typename T> SimpleMatrix<T>::SimpleMatrix(const SimpleMatrix<T>& other
   return;
 }
 
-template <typename T> SimpleMatrix<T>::SimpleMatrix(SimpleMatrix<T>&& other) {
-  erows = move(other.erows);
-  ecols = move(other.ecols);
-  entity = new SimpleVector<T>[other.erows];
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < erows; i++)
-    entity[i] = move(other.entity[i]);
+template <typename T> inline SimpleMatrix<T>::SimpleMatrix(SimpleMatrix<T>&& other) {
+  erows  = move(other.erows);
+  ecols  = move(other.ecols);
+  entity = move(other.entity);
+  other.entity = 0;
   return;
 }
 
-template <typename T> SimpleMatrix<T>::~SimpleMatrix() {
+template <typename T> inline SimpleMatrix<T>::~SimpleMatrix() {
   if(entity)
     delete[] entity;
   return;
 }
   
-template <typename T> SimpleMatrix<T> SimpleMatrix<T>::operator - () const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator - () const {
   SimpleMatrix<T> res(erows, ecols);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -307,12 +311,12 @@ template <typename T> SimpleMatrix<T> SimpleMatrix<T>::operator - () const {
   return res;
 }
 
-template <typename T> SimpleMatrix<T> SimpleMatrix<T>::operator + (const SimpleMatrix<T>& other) const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator + (const SimpleMatrix<T>& other) const {
   SimpleMatrix<T> res(*this);
   return res += other;
 }
 
-template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator += (const SimpleMatrix<T>& other) {
+template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator += (const SimpleMatrix<T>& other) {
   assert(erows == other.erows && ecols == other.ecols);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -322,21 +326,21 @@ template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator += (const Simpl
   return *this;
 }
 
-template <typename T> SimpleMatrix<T> SimpleMatrix<T>::operator - (const SimpleMatrix<T>& other) const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator - (const SimpleMatrix<T>& other) const {
   SimpleMatrix<T> res(*this);
   return res -= other;
 }
 
-template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator -= (const SimpleMatrix<T>& other) {
+template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator -= (const SimpleMatrix<T>& other) {
   return *this += - other;
 }
 
-template <typename T> SimpleMatrix<T> SimpleMatrix<T>::operator * (const T& other) const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator * (const T& other) const {
   SimpleMatrix<T> res(*this);
   return res *= other;
 }
 
-template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator *= (const T& other) {
+template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator *= (const T& other) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -345,7 +349,7 @@ template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator *= (const T& ot
   return *this;
 }
 
-template <typename T> SimpleMatrix<T> SimpleMatrix<T>::operator * (const SimpleMatrix<T>& other) const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator * (const SimpleMatrix<T>& other) const {
   assert(ecols == other.erows && entity && other.entity);
   SimpleMatrix<T> derived(other.transpose());
   SimpleMatrix<T> res(erows, other.ecols);
@@ -362,11 +366,11 @@ template <typename T> SimpleMatrix<T> SimpleMatrix<T>::operator * (const SimpleM
 
 }
 
-template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator *= (const SimpleMatrix<T>& other) {
+template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator *= (const SimpleMatrix<T>& other) {
   return *this = *this * other;
 }
 
-template <typename T> SimpleVector<T> SimpleMatrix<T>::operator * (const SimpleVector<T>& other) const {
+template <typename T> inline SimpleVector<T> SimpleMatrix<T>::operator * (const SimpleVector<T>& other) const {
   assert(ecols == other.size());
   SimpleVector<T> res(erows);
 #if defined(_OPENMP)
@@ -377,12 +381,12 @@ template <typename T> SimpleVector<T> SimpleMatrix<T>::operator * (const SimpleV
   return res;
 }
 
-template <typename T> SimpleMatrix<T> SimpleMatrix<T>::operator / (const T& other) const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator / (const T& other) const {
   SimpleMatrix<T> res(*this);
   return res /= other;
 }
 
-template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator /= (const T& other) {
+template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator /= (const T& other) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -391,7 +395,7 @@ template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator /= (const T& ot
   return *this;
 }
 
-template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator = (const SimpleMatrix<T>& other) {
+template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator = (const SimpleMatrix<T>& other) {
   if(entity == other.entity && erows == other.erows && ecols == other.ecols)
     return *this;
   if(erows != other.erows || ecols != other.ecols) {
@@ -414,27 +418,39 @@ template <typename T> SimpleMatrix<T>& SimpleMatrix<T>::operator = (const Simple
   return *this;
 }
 
-template <typename T> T& SimpleMatrix<T>::operator () (const int& y, const int& x) {
+template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator = (SimpleMatrix<T>&& other) {
+  if(entity == other.entity && erows == other.erows && ecols == other.ecols)
+    return *this;
+  erows  = move(other.erows);
+  ecols  = move(other.ecols);
+  entity = move(other.entity);
+  other.erows  = 0;
+  other.ecols  = 0;
+  other.entity = 0;
+  return *this;
+}
+
+template <typename T> inline T& SimpleMatrix<T>::operator () (const int& y, const int& x) {
   assert(0 <= y && y < erows && entity);
   return entity[y][x];
 }
 
-template <typename T> const T SimpleMatrix<T>::operator () (const int& y, const int& x) const {
+template <typename T> inline const T SimpleMatrix<T>::operator () (const int& y, const int& x) const {
   assert(0 <= y && y < erows && entity);
   return entity[y][x];
 }
 
-template <typename T> SimpleVector<T>& SimpleMatrix<T>::row(const int& y) {
+template <typename T> inline SimpleVector<T>& SimpleMatrix<T>::row(const int& y) {
   assert(0 <= y && y < erows && entity);
   return entity[y];
 }
 
-template <typename T> const SimpleVector<T>& SimpleMatrix<T>::row(const int& y) const {
+template <typename T> inline const SimpleVector<T>& SimpleMatrix<T>::row(const int& y) const {
   assert(0 <= y && y < erows && entity);
   return entity[y];
 }
 
-template <typename T> const SimpleVector<T> SimpleMatrix<T>::col(const int& x) const {
+template <typename T> inline const SimpleVector<T> SimpleMatrix<T>::col(const int& x) const {
   assert(0 <= erows && 0 <= x && x < ecols && entity);
   SimpleVector<T> res(erows);
 #if defined(_OPENMP)
@@ -445,7 +461,7 @@ template <typename T> const SimpleVector<T> SimpleMatrix<T>::col(const int& x) c
   return res;
 }
 
-template <typename T> void SimpleMatrix<T>::setCol(const int& x, const SimpleVector<T>& other) {
+template <typename T> inline void SimpleMatrix<T>::setCol(const int& x, const SimpleVector<T>& other) {
   assert(0 <= x && x < ecols && other.size() == erows);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -455,7 +471,7 @@ template <typename T> void SimpleMatrix<T>::setCol(const int& x, const SimpleVec
   return;
 }
 
-template <typename T> SimpleMatrix<T> SimpleMatrix<T>::transpose() const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::transpose() const {
   SimpleMatrix<T> res(ecols, erows);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -468,7 +484,7 @@ template <typename T> SimpleMatrix<T> SimpleMatrix<T>::transpose() const {
   return res;
 }
 
-template <typename T> T SimpleMatrix<T>::determinant() const {
+template <typename T> inline T SimpleMatrix<T>::determinant() const {
   assert(0 <= erows && 0 <= ecols && erows == ecols);
   T det(1);
   SimpleMatrix<T> work(*this);
@@ -494,7 +510,7 @@ template <typename T> T SimpleMatrix<T>::determinant() const {
   return isfinite(det) ? det : T(0);
 }
 
-template <typename T> SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector<T> other) const {
+template <typename T> inline SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector<T> other) const {
   assert(0 <= erows && 0 <= ecols && erows == ecols && entity && erows == other.size());
   SimpleMatrix<T> work(*this);
   for(int i = 0; i < erows; i ++) {
@@ -535,7 +551,7 @@ template <typename T> SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector<T> oth
   return other;
 }
 
-template <typename T> SimpleVector<T> SimpleMatrix<T>::projectionPt(const SimpleVector<T>& other) const {
+template <typename T> inline SimpleVector<T> SimpleMatrix<T>::projectionPt(const SimpleVector<T>& other) const {
   assert(0 < erows && 0 < ecols && ecols == other.size());
   // also needs class or this->transpose() * (*this) == I assertion is needed.
   SimpleMatrix<T> work(erows, ecols);
@@ -556,7 +572,7 @@ template <typename T> SimpleVector<T> SimpleMatrix<T>::projectionPt(const Simple
   return res;
 }
 
-template <typename T> SimpleMatrix<T> SimpleMatrix<T>::real() const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::real() const {
   assert(0 < erows && 0 < ecols);
   SimpleMatrix<T> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
@@ -565,7 +581,7 @@ template <typename T> SimpleMatrix<T> SimpleMatrix<T>::real() const {
   return res;
 }
 
-template <typename T> template <typename U> SimpleMatrix<U> SimpleMatrix<T>::cast() const {
+template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<T>::cast() const {
   assert(0 < erows && 0 < ecols);
   SimpleMatrix<U> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
@@ -574,11 +590,11 @@ template <typename T> template <typename U> SimpleMatrix<U> SimpleMatrix<T>::cas
   return res;
 }
 
-template <typename T> const int& SimpleMatrix<T>::rows() const {
+template <typename T> inline const int& SimpleMatrix<T>::rows() const {
   return erows;
 }
 
-template <typename T> const int& SimpleMatrix<T>::cols() const {
+template <typename T> inline const int& SimpleMatrix<T>::cols() const {
   return ecols;
 }
 
