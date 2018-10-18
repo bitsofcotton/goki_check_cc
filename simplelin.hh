@@ -41,7 +41,7 @@ public:
   inline       T&               operator [] (const int& idx);
   inline const T                operator [] (const int& idx) const;
   inline const int& size() const;
-        void resize(const int& size);
+  inline       void resize(const int& size);
 private:
   T*  entity;
   int esize;
@@ -200,7 +200,7 @@ template <typename T> inline const int& SimpleVector<T>::size() const {
   return esize;
 }
 
-template <typename T> void SimpleVector<T>::resize(const int& size) {
+template <typename T> inline void SimpleVector<T>::resize(const int& size) {
   assert(size > 0);
   if(size != esize) {
     esize = size;
@@ -248,7 +248,7 @@ public:
   template <typename U> inline SimpleMatrix<U> cast() const;
   inline const int& rows() const;
   inline const int& cols() const;
-        void resize(const int& rows, const int& cols);
+  inline       void resize(const int& rows, const int& cols);
 private:
   SimpleVector<T>* entity;
   int              erows;
@@ -598,7 +598,7 @@ template <typename T> inline const int& SimpleMatrix<T>::cols() const {
   return ecols;
 }
 
-template <typename T> void SimpleMatrix<T>::resize(const int& rows, const int& cols) {
+template <typename T> inline void SimpleMatrix<T>::resize(const int& rows, const int& cols) {
   assert(rows > 0 && cols > 0);
   if(rows != erows) {
     erows = rows;
