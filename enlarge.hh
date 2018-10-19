@@ -148,7 +148,7 @@ private:
   void initBump(const int& size);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
-  void makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop);
+  void makeDI(const int& size, Mat& Dop, Mat& Dhop, Mat& Iop, Mat& Eop);
   Mat  recursive(const Mat& data, const direction_t& dir, const direction_t& dir0);
   Mat  recursiveSumup(const Mat& data, const direction_t& dir, const direction_t& dir0);
   U    I;
@@ -693,10 +693,10 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   Iop.push_back(Mat());
   Eop.push_back(Mat());
   C.push_back(Mat());
-  Vec vDop;
-  Vec vDhop;
-  Vec vIop;
-  Vec vEop;
+  Mat vDop;
+  Mat vDhop;
+  Mat vIop;
+  Mat vEop;
   assert(2 <= size);
   makeDI(size, vDop, vDhop, vIop, vEop);
   Dop[idx_d]  = Mat(size, size);
@@ -709,11 +709,18 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
-    for(int j = 0; j < Dop[idx_d].cols(); j ++) {
-      Dop[idx_d](i, j)  =   vDop[ getImgPt(j - i - size / 2, Dop[idx_d].cols())];
-      Dhop[idx_d](i, j) =   vDhop[getImgPt(j - i - size / 2, Dop[idx_d].cols())];
-      Iop[idx_d](i, j)  = - vIop[ getImgPt(j - i - size / 2, Dop[idx_d].cols())];
-      Eop[idx_d](i, j)  =   vEop[ getImgPt(j - i - size / 2, Dop[idx_d].cols())];
+    for(int j = 0; j < Dop[idx_d].cols(); j ++)
+      Dop[idx_d](i, j) = Dhop[idx_d](i, j) = Iop[idx_d](i, j) = Eop[idx_d](i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < Dop[idx_d].rows(); i ++)
+    for(int j = 0; j < Dop[idx_d].cols() / 2; j ++) {
+      Dop[idx_d]( i, i / 2 + j) =   vDop( i / 2, j);
+      Dhop[idx_d](i, i / 2 + j) =   vDhop(i / 2, j);
+      Iop[idx_d]( i, i / 2 + j) = - vIop( i / 2, j);
+      Eop[idx_d]( i, i / 2 + j) =   vEop( i / 2, j);
     }
   Eop[idx_d] *= T(2);
   Mat newEop(Eop[idx_d].rows() * 2, Eop[idx_d].cols());
@@ -759,11 +766,11 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
   for(int i = 0; i < size; i ++)
     for(int j = 0; j < size; j ++)
       B[idx_b](i, j) = A[idx_b](i, j) = T(0);
-  Vec Dop0;
-  Vec Dhop0;
-  Vec Iop0;
-  Vec Eop0;
-  makeDI(min(max(2, int(sqrt(T(size)))), int(size)), Dop0, Dhop0, Iop0, Eop0);
+  Mat Dop0;
+  Mat Dhop0;
+  Mat Iop0;
+  Mat Eop0;
+  makeDI(max(3, int(T(2) * sqrt(T(size)))), Dop0, Dhop0, Iop0, Eop0);
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
@@ -771,9 +778,9 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
 #pragma omp for schedule(static, 1)
 #endif
   for(int zi = 0; zi < T(1) / dratio; zi ++) {
-    for(int j = 0; j < Dop0.size(); j ++) {
+    for(int j = 0; j < Dop0.rows() / 2; j ++) {
       Vec cpoint(2);
-      cpoint[0] = (j - T(Dop0.size() - 1) / 2);
+      cpoint[0] = (j - T(Dop0.rows() / 2 - 1) / 2);
       cpoint[1] = T(zi + 1) * dratio;
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
@@ -785,10 +792,16 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
 #pragma omp critical
 #endif
       {
-        for(int i = 0; i < A[idx_b].rows(); i ++) {
-          A[idx_b](i, getImgPt(i + y0, size)) += Dop0[j] * T(zi + 1) * dratio;
-          B[idx_b](i, getImgPt(i + y0, size)) += Dop0[j];
-        }
+        if(Dop0.rows() % 2 == 1 || Dop0.rows() <= 3)
+          for(int i = 0; i < A[idx_b].rows(); i ++) {
+            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * T(zi + 1) * dratio;
+            B[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j);
+          }
+        else
+          for(int i = 0; i < A[idx_b].rows(); i ++) {
+            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * T(zi + 1) * dratio;
+            B[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
+          }
       }
     }
   }
@@ -801,15 +814,9 @@ template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
   return int(abs(int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
 }
 
-template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec& Dhop, Vec& Iop, Vec& Eop) {
+template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat& Dhop, Mat& Iop, Mat& Eop) {
   assert(2 <= size);
-  Dop  = Vec(size);
-  Dhop = Vec(size);
-  Iop  = Vec(size);
-  Eop  = Vec(size);
-  for(int i = 0; i < Dop.size(); i ++)
-    Dop[i] = Dhop[i] = Iop[i] = Eop[i] = T(0);
-  const auto ss(size / 2);
+  const auto ss((size + 1) / 2);
         auto DFTD(seed(ss, false));
   const auto IDFT(seed(ss, true));
         auto DFTH(DFTD);
@@ -836,38 +843,16 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Vec& Dop, Vec
   }
   DFTE /= sqrt(norme2);
 #if defined(_WITHOUT_EIGEN_)
-  DFTD = DFTD.transpose();
-  DFTH = DFTH.transpose();
-  DFTI = DFTI.transpose();
-  DFTE = DFTE.transpose();
-#endif
-  for(int i = 0; i < IDFT.rows(); i ++) {
-    const int iidx(IDFT.rows() - 1 - i);
-#if defined(_WITHOUT_EIGEN_)
-    const VecU lDop( DFTD * IDFT.row(iidx));
-    const VecU lDhop(DFTH * IDFT.row(iidx));
-    const VecU lIop( DFTI * IDFT.row(iidx));
-    const VecU lEop( DFTE * IDFT.row(iidx));
+  Dop  = (IDFT * DFTD).template real<T>();
+  Dhop = (IDFT * DFTH).template real<T>();
+  Iop  = (IDFT * DFTI).template real<T>();
+  Eop  = (IDFT * DFTE).template real<T>();
 #else
-    const VecU lDop( IDFT.row(iidx) * DFTD);
-    const VecU lDhop(IDFT.row(iidx) * DFTH);
-    const VecU lIop( IDFT.row(iidx) * DFTI);
-    const VecU lEop( IDFT.row(iidx) * DFTE);
+  Dop  = (IDFT * DFTD).real().template cast<T>();
+  Dhop = (IDFT * DFTH).real().template cast<T>();
+  Iop  = (IDFT * DFTI).real().template cast<T>();
+  Eop  = (IDFT * DFTE).real().template cast<T>();
 #endif
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-    {
-      for(int j = i; j - i < lDop.size(); j ++) {
-        const int idx(j + size / 2 - IDFT.rows() + 1);
-        const int jdx(j - i);
-        Dop[idx]  += T(lDop[ jdx].real()) / lDop.size();
-        Dhop[idx] += T(lDhop[jdx].real()) / lDhop.size();
-        Iop[idx]  += T(lIop[ jdx].real()) / lIop.size();
-        Eop[idx]  += T(lEop[ jdx].real()) / lEop.size();
-      }
-    }
-  }
   return;
 }
 
@@ -904,29 +889,109 @@ template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(con
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0) {
   assert(4 <= sz_cell);
   Mat result;
-  if(sz_cell < data.rows()) {
-    // N.B. might have better result with data.rows() - 1
-    //      other than data.rows() / 2, but it's extremely slow.
-    Mat former(data.rows() / 2, data.cols());
-    Mat latter(data.rows() - data.rows() / 2, data.cols());
-    for(int i = 0; i < former.rows(); i ++)
-      former.row(i) = data.row(i);
-    for(int i = 0; i < latter.rows(); i ++)
-      latter.row(i) = data.row(former.rows() + i);
-    former = compute(former, dir);
-    latter = compute(latter, dir);
+  // N.B. might have better result with data.rows() - 1
+  //      other than data.rows() / 2, but it's extremely slow.
+  if(sz_cell < data.rows() && sz_cell < data.cols()) {
+    Mat a00((data.rows() + 1) / 2, (data.cols() + 1) / 2);
+    Mat a01(a00);
+    Mat a10(a00);
+    Mat a11(a00);
+    for(int i = 0; i < a00.rows(); i ++)
+      for(int j = 0; j < a00.cols(); j ++) {
+        a00(i, j) = data(i, j);
+        a01(i, j) = data(i, j - a00.cols() + data.cols());
+        a10(i, j) = data(i - a00.rows() + data.rows(), j);
+        a11(i, j) = data(i - a00.rows() + data.rows(), j - a00.cols() + data.cols());
+      }
+    a00 = compute(a00, dir) / T(2);
+    a01 = compute(a01, dir) / T(2);
+    a10 = compute(a10, dir) / T(2);
+    a11 = compute(a11, dir) / T(2);
     result = compute(data, dir0);
     switch(dir0) {
     case EXTEND_Y1:
-      result.row(0) = (former.row(0) + result.row(0)) / T(2);
-      result.row(data.rows() + 1) = (latter.row(latter.rows() - 1) + result.row(result.rows() - 1)) / T(2);
+      for(int i = 0; i < result.cols(); i ++) {
+        result(0, i) += i < a00.cols() ? a00(0, i) : a01(0, i - result.cols() + a01.cols());
+        result(data.rows() + 1, i) += i < a00.cols() ? a10(a10.rows() - 1, i) : a11(a11.rows() - 1, i - result.cols() + a11.cols());
+      }
+      result.row(0) /= T(3) / T(2);
+      result.row(result.rows() - 1) /= T(3) / T(2);
+      break;
+    default:
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++) {
+          result(i, j) += (i < a00.rows() ?
+                  (j < a00.cols() ? a00(i, j) :
+                                    a01(i, j - result.cols() + a01.cols())) :
+                  (j < a10.cols() ? a10(i - result.rows() + a10.rows(), j) :
+                                    a11(i - result.rows() + a11.rows(),
+                                        j - result.cols() + a11.cols())));
+        }
+      result /= T(3) / T(2);
+    }
+  } else if(sz_cell < data.rows()) { 
+    Mat former((data.rows() + 1) / 2, data.cols());
+    Mat latter((data.rows() + 1) / 2, data.cols());
+    for(int i = 0; i < former.rows(); i ++) {
+      former.row(i) = data.row(i);
+      latter.row(i) = data.row(i - former.rows() + data.rows());
+    }
+    former = compute(former, dir) / T(2);
+    latter = compute(latter, dir) / T(2);
+    result = compute(data, dir0);
+    switch(dir0) {
+    case EXTEND_Y1:
+      result.row(0) += former.row(0);
+      result.row(result.rows() - 1) += latter.row(latter.rows() - 1);
+      result.row(0) /= T(3) / T(2);
+      result.row(result.rows() - 1) /= T(3) / T(2);
       break;
     default:
       for(int i = 0; i < former.rows(); i ++)
         result.row(i) += former.row(i);
-      for(int i = 0; i < latter.rows(); i ++)
-        result.row(former.rows() + i) += latter.row(i);
-      result /= T(2);
+      for(int i = former.rows(); i < result.rows(); i ++)
+        result.row(i) += latter.row(i - result.rows() + latter.rows());
+      result /= T(3) / T(2);
+    }
+  } else if(sz_cell < data.cols()) {
+    Mat former(data.rows(), data.cols() / 2);
+    Mat latter(data.rows(), data.cols() - former.cols());
+#if defined(_WITHOUT_EIGEN_)
+    for(int i = 0; i < former.cols(); i ++)
+      former.setCol(i, data.col(i));
+    for(int i = former.cols(); i < data.cols(); i ++)
+      latter.setCol(i - data.cols() + latter.cols(), data.col(i));
+#else
+    for(int i = 0; i < former.cols(); i ++)
+      former.col(i) = data.col(i);
+    for(int i = former.cols(); i < data.cols(); i ++)
+      latter.col(i - data.cols() + latter.cols()) = data.col(i);
+#endif
+    former = compute(former, dir) / T(2);
+    latter = compute(latter, dir) / T(2);
+    result = compute(data, dir0);
+    switch(dir0) {
+    case EXTEND_Y1:
+      for(int i = 0; i < result.cols(); i ++) {
+        result(0, i) += i < former.cols() ? former(0, i) : latter(0, i - result.cols() + latter.cols());
+        result(result.rows() - 1, i) += i < former.cols() ? former(former.rows() - 1, i) : latter(latter.rows() - 1, i - result.cols() + latter.cols());
+      }
+      result.row(0) /= T(3) / T(2);
+      result.row(result.rows() - 1) /= T(3) / T(2);
+      break;
+    default:
+#if defined(_WITHOUT_EIGEN_)
+      for(int i = 0; i < former.cols(); i ++)
+        result.setCol(i, result.col(i) + former.col(i));
+      for(int i = former.cols(); i < result.cols(); i ++)
+        result.setCol(i, result.col(i) + latter.col(i - result.cols() + latter.cols()));
+#else
+      for(int i = 0; i < former.cols(); i ++)
+        result.col(i) += former.col(i);
+      for(int i = former.cols(); i < result.cols(); i ++)
+        result.col(i) += latter.col(i - result.cols() + latter.cols());
+#endif
+      result /= T(3) / T(2);
     }
   } else
     result = compute(data, dir0);

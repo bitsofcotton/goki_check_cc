@@ -9,8 +9,8 @@
 #include <assert.h>
 
 #if defined(_WITHOUT_EIGEN_)
-#include "simplelin.hh"
 #include <complex>
+#include "simplelin.hh"
 #else
 #include <Eigen/Core>
 #include <Eigen/LU>
