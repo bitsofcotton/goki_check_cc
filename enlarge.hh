@@ -153,6 +153,7 @@ private:
   Mat  recursiveSumup(const Mat& data, const direction_t& dir, const direction_t& dir0);
   U    I;
   T    Pi;
+  T    recursive_ratio;
   vector<Mat> A;
   vector<Mat> B;
   vector<Mat> C;
@@ -174,6 +175,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   st_cell = 1;
   idx_d   = - 1;
   idx_b   = - 1;
+  recursive_ratio = T(.5);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -888,6 +890,7 @@ template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(con
 // over all O(const. * lg(y) * (compute(f(y), dir0) + 2. * compute(f(y/2), dir0) + ...)
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(const Mat& data, const direction_t& dir, const direction_t& dir0) {
   assert(4 <= sz_cell);
+  assert(T(0) <= recursive_ratio);
   Mat result;
   // N.B. might have better result with data.rows() - 1
   //      other than data.rows() / 2, but it's extremely slow.
@@ -907,15 +910,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
     a01 = compute(a01, dir);
     a10 = compute(a10, dir);
     a11 = compute(a11, dir);
-    result = compute(data, dir0);
+    result = compute(data, dir0) * recursive_ratio;
     switch(dir0) {
     case EXTEND_Y1:
       for(int i = 0; i < result.cols(); i ++) {
         result(0, i) += i < a00.cols() ? a00(0, i) : a01(0, i - result.cols() + a01.cols());
         result(data.rows() + 1, i) += i < a00.cols() ? a10(a10.rows() - 1, i) : a11(a11.rows() - 1, i - result.cols() + a11.cols());
       }
-      result.row(0) /= T(2);
-      result.row(result.rows() - 1) /= T(2);
+      result.row(0) /= T(1) + recursive_ratio;
+      result.row(result.rows() - 1) /= T(1) + recursive_ratio;
       break;
     default:
       for(int i = 0; i < result.rows(); i ++)
@@ -927,7 +930,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
                                     a11(i - result.rows() + a11.rows(),
                                         j - result.cols() + a11.cols())));
         }
-      result /= T(2);
+      result /= T(1) + recursive_ratio;
     }
   } else if(sz_cell < data.rows()) { 
     Mat former((data.rows() + 1) / 2, data.cols());
@@ -938,20 +941,20 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
     }
     former = compute(former, dir);
     latter = compute(latter, dir);
-    result = compute(data, dir0);
+    result = compute(data, dir0) * recursive_ratio;
     switch(dir0) {
     case EXTEND_Y1:
       result.row(0) += former.row(0);
       result.row(result.rows() - 1) += latter.row(latter.rows() - 1);
-      result.row(0) /= T(2);
-      result.row(result.rows() - 1) /= T(2);
+      result.row(0) /= T(1) + recursive_ratio;
+      result.row(result.rows() - 1) /= T(1) + recursive_ratio;
       break;
     default:
       for(int i = 0; i < former.rows(); i ++)
         result.row(i) += former.row(i);
       for(int i = former.rows(); i < result.rows(); i ++)
         result.row(i) += latter.row(i - result.rows() + latter.rows());
-      result /= T(2);
+      result /= T(1) + recursive_ratio;
     }
   } else if(sz_cell < data.cols()) {
     Mat former(data.rows(), data.cols() / 2);
@@ -976,8 +979,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
         result(0, i) += i < former.cols() ? former(0, i) : latter(0, i - result.cols() + latter.cols());
         result(result.rows() - 1, i) += i < former.cols() ? former(former.rows() - 1, i) : latter(latter.rows() - 1, i - result.cols() + latter.cols());
       }
-      result.row(0) /= T(2);
-      result.row(result.rows() - 1) /= T(2);
+      result.row(0) /= T(1) + recursive_ratio;
+      result.row(result.rows() - 1) /= T(1) + recursive_ratio;
       break;
     default:
 #if defined(_WITHOUT_EIGEN_)
@@ -991,7 +994,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
       for(int i = former.cols(); i < result.cols(); i ++)
         result.col(i) += latter.col(i - result.cols() + latter.cols());
 #endif
-      result /= T(2);
+      result /= T(1) + recursive_ratio;
     }
   } else
     result = compute(data, dir0);
