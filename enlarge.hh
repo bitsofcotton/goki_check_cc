@@ -903,10 +903,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
         a10(i, j) = data(i - a00.rows() + data.rows(), j);
         a11(i, j) = data(i - a00.rows() + data.rows(), j - a00.cols() + data.cols());
       }
-    a00 = compute(a00, dir) / T(2);
-    a01 = compute(a01, dir) / T(2);
-    a10 = compute(a10, dir) / T(2);
-    a11 = compute(a11, dir) / T(2);
+    a00 = compute(a00, dir);
+    a01 = compute(a01, dir);
+    a10 = compute(a10, dir);
+    a11 = compute(a11, dir);
     result = compute(data, dir0);
     switch(dir0) {
     case EXTEND_Y1:
@@ -914,8 +914,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
         result(0, i) += i < a00.cols() ? a00(0, i) : a01(0, i - result.cols() + a01.cols());
         result(data.rows() + 1, i) += i < a00.cols() ? a10(a10.rows() - 1, i) : a11(a11.rows() - 1, i - result.cols() + a11.cols());
       }
-      result.row(0) /= T(3) / T(2);
-      result.row(result.rows() - 1) /= T(3) / T(2);
+      result.row(0) /= T(2);
+      result.row(result.rows() - 1) /= T(2);
       break;
     default:
       for(int i = 0; i < result.rows(); i ++)
@@ -927,7 +927,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
                                     a11(i - result.rows() + a11.rows(),
                                         j - result.cols() + a11.cols())));
         }
-      result /= T(3) / T(2);
+      result /= T(2);
     }
   } else if(sz_cell < data.rows()) { 
     Mat former((data.rows() + 1) / 2, data.cols());
@@ -936,22 +936,22 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
       former.row(i) = data.row(i);
       latter.row(i) = data.row(i - former.rows() + data.rows());
     }
-    former = compute(former, dir) / T(2);
-    latter = compute(latter, dir) / T(2);
+    former = compute(former, dir);
+    latter = compute(latter, dir);
     result = compute(data, dir0);
     switch(dir0) {
     case EXTEND_Y1:
       result.row(0) += former.row(0);
       result.row(result.rows() - 1) += latter.row(latter.rows() - 1);
-      result.row(0) /= T(3) / T(2);
-      result.row(result.rows() - 1) /= T(3) / T(2);
+      result.row(0) /= T(2);
+      result.row(result.rows() - 1) /= T(2);
       break;
     default:
       for(int i = 0; i < former.rows(); i ++)
         result.row(i) += former.row(i);
       for(int i = former.rows(); i < result.rows(); i ++)
         result.row(i) += latter.row(i - result.rows() + latter.rows());
-      result /= T(3) / T(2);
+      result /= T(2);
     }
   } else if(sz_cell < data.cols()) {
     Mat former(data.rows(), data.cols() / 2);
@@ -967,8 +967,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
     for(int i = former.cols(); i < data.cols(); i ++)
       latter.col(i - data.cols() + latter.cols()) = data.col(i);
 #endif
-    former = compute(former, dir) / T(2);
-    latter = compute(latter, dir) / T(2);
+    former = compute(former, dir);
+    latter = compute(latter, dir);
     result = compute(data, dir0);
     switch(dir0) {
     case EXTEND_Y1:
@@ -976,8 +976,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
         result(0, i) += i < former.cols() ? former(0, i) : latter(0, i - result.cols() + latter.cols());
         result(result.rows() - 1, i) += i < former.cols() ? former(former.rows() - 1, i) : latter(latter.rows() - 1, i - result.cols() + latter.cols());
       }
-      result.row(0) /= T(3) / T(2);
-      result.row(result.rows() - 1) /= T(3) / T(2);
+      result.row(0) /= T(2);
+      result.row(result.rows() - 1) /= T(2);
       break;
     default:
 #if defined(_WITHOUT_EIGEN_)
@@ -991,7 +991,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
       for(int i = former.cols(); i < result.cols(); i ++)
         result.col(i) += latter.col(i - result.cols() + latter.cols());
 #endif
-      result /= T(3) / T(2);
+      result /= T(2);
     }
   } else
     result = compute(data, dir0);
