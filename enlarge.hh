@@ -972,7 +972,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursive(con
 #endif
     former = compute(former, dir);
     latter = compute(latter, dir);
-    result = compute(data, dir0);
+    result = compute(data, dir0) * recursive_ratio;
     switch(dir0) {
     case EXTEND_Y1:
       for(int i = 0; i < result.cols(); i ++) {
