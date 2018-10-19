@@ -241,6 +241,7 @@ public:
   inline const SimpleVector<T>& row(const int& y) const;
   inline const SimpleVector<T>  col(const int& x) const;
   inline       void             setCol(const int& x, const SimpleVector<T>& other);
+  // N.B. transpose : exhaust of the resource, so Eigen library handles better.
   inline       SimpleMatrix<T>  transpose() const;
   inline       T                determinant() const;
   inline       SimpleVector<T>  solve(SimpleVector<T> other) const;
@@ -588,7 +589,7 @@ template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<
   SimpleMatrix<U> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
     for(int j = 0; j < ecols; j ++)
-      res(i, j) = entity[i][j].real();
+      res(i, j) = static_cast<const U&>(entity[i][j].real());
   return res;
 }
 
@@ -597,7 +598,7 @@ template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<
   SimpleMatrix<U> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
     for(int j = 0; j < ecols; j ++)
-      res(i, j) = U(entity[i][j]);
+      res(i, j) = static_cast<const U&>(entity[i][j]);
   return res;
 }
 
