@@ -17,6 +17,7 @@
 using std::move;
 using std::isfinite;
 using std::isnan;
+using std::complex;
 
 template <typename T> class SimpleVector {
 public:
@@ -245,6 +246,7 @@ public:
   inline       SimpleVector<T>  solve(SimpleVector<T> other) const;
   inline       SimpleVector<T>  projectionPt(const SimpleVector<T>& other) const;
   inline       SimpleMatrix<T>  real() const;
+  template <typename U> inline SimpleMatrix<U> real() const;
   template <typename U> inline SimpleMatrix<U> cast() const;
   inline const int& rows() const;
   inline const int& cols() const;
@@ -581,12 +583,21 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::real() const {
   return res;
 }
 
+template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<T>::real() const {
+  assert(0 < erows && 0 < ecols);
+  SimpleMatrix<U> res(erows, ecols);
+  for(int i = 0; i < erows; i ++)
+    for(int j = 0; j < ecols; j ++)
+      res(i, j) = entity[i][j].real();
+  return res;
+}
+
 template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<T>::cast() const {
   assert(0 < erows && 0 < ecols);
   SimpleMatrix<U> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
     for(int j = 0; j < ecols; j ++)
-      res(i, j) = static_cast<const U>(entity[i][j]);
+      res(i, j) = U(entity[i][j]);
   return res;
 }
 
