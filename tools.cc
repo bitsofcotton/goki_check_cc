@@ -185,7 +185,7 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
     typename simpleFile<double>::Mat data[3], mask[3];
-    int    xoffset(0);
+    double xoffset(0);
     int    vbox(2);
     double addstand(0);
     double ratio(1);
@@ -215,7 +215,7 @@ int main(int argc, const char* argv[]) {
         usage();
         return - 1;
       }
-      xoffset = std::atoi(argv[2]);
+      xoffset = std::atof(argv[2]);
       vbox    = std::atoi(argv[3]);
       if(!file.loadp2or3(data, argv[5]))
         return - 1;

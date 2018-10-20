@@ -179,9 +179,6 @@ public:
         lz = min(- data[i][2], lz);
       }
       if(aroffset != T(0)) {
-        match_t<T> m;
-        m.offset[1] += aroffset;
-        m.offset[2] -= T(.5);
         const T Pi(T(4) * atan2(T(1), T(1)));
         const T theta(2. * Pi * T(aroffset < T(0) ? 0 : 1) / T(2));
         const T lpsi(Pi * arrot);
@@ -205,12 +202,16 @@ public:
         R1(2, 0) = 0.;
         R1(2, 1) =   sin(lpsi);
         R1(2, 2) =   cos(lpsi);
-        m.rot    = R0.transpose() * R1 * R0;
+        match_t<T> m;
+        m.rot        = R0.transpose() * R1 * R0;
+        m.ratio     /= sqrt(Mh * Mh + Mw * Mw);
+        m.offset[0] += T(.5);
+        m.offset[1] += aroffset + T(.5);
+        m.offset[2] -= T(1.);
         for(int i = 0; i < data.size(); i ++) {
-          Vec3 workv(3);
-          workv[0] =   (  Mw / T(2) - data[i][0]) / sqrt(Mh * Mh + Mw * Mw);
-          workv[1] =   (- Mh / T(2) + data[i][1]) / sqrt(Mh * Mh + Mw * Mw);
-          workv[2] = - (  lz / T(2) + data[i][2]) / sqrt(Mh * Mh + Mw * Mw);
+          auto workv(data[i]);
+          workv[0] = - workv[0];
+          workv[2] = - workv[2];
           workv    = m.transform(workv);
           output << "v " << workv[1] << " " << workv[0] << " " << workv[2] << endl;
         }
