@@ -161,7 +161,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0), const T& aroffset = T(0), const T& arrot = T(.015)) {
+  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0), const T& xoffset = T(0), const T& arrot = T(.015)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -178,9 +178,9 @@ public:
         Mw = max(data[i][0], Mw);
         lz = min(- data[i][2], lz);
       }
-      if(aroffset != T(0)) {
+      if(xoffset != T(0)) {
         const T Pi(T(4) * atan2(T(1), T(1)));
-        const T theta(2. * Pi * T(aroffset < T(0) ? 0 : 1) / T(2));
+        const T theta(2. * Pi * T(xoffset < T(0) ? 0 : 1) / T(2));
         const T lpsi(Pi * arrot);
         Mat3x3 R0(3, 3);
         Mat3x3 R1(3, 3);
@@ -205,8 +205,8 @@ public:
         match_t<T> m;
         m.rot        = R0.transpose() * R1 * R0;
         m.ratio     /= sqrt(Mh * Mh + Mw * Mw);
-        m.offset[0] += T(.5);
-        m.offset[1] += aroffset + T(.5);
+        m.offset[0] += T(Mw) / sqrt(Mh * Mh + Mw * Mw) / T(2);
+        m.offset[1] -= T(Mh) / sqrt(Mh * Mh + Mw * Mw) / T(2) + xoffset;
         m.offset[2] -= T(1.);
         for(int i = 0; i < data.size(); i ++) {
           auto workv(data[i]);
