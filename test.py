@@ -57,16 +57,16 @@ for line in argv[3:]:
   elif(argv[2] == "mask"):
     subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
   elif(argv[2] == "obj"):
-    subprocess.call([argv[1], "obj", "0", "3", ".5", root + "-bump.ppm", root + ".obj"])
-    subprocess.call([argv[1], "obj", "  .2", "3", ".5", root + "-bump.ppm", root + "-L.obj"])
-    subprocess.call([argv[1], "obj", "- .2", "3", ".5", root + "-bump.ppm", root + "-R.obj"])
-    subprocess.call([argv[1], "obj", "0", "3", ".5", root + "-bump.ppm", root + "-mask.ppm", root + "-mask.obj"])
-    subprocess.call([argv[1], "obj", "stand", "3", ".2", "1", ".5", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
+    subprocess.call([argv[1], "obj", "  0", "3", ".15", root + "-bump.ppm", root + ".obj"])
+    subprocess.call([argv[1], "obj", " .2", "3", ".15", root + "-bump.ppm", root + "-L.obj"])
+    subprocess.call([argv[1], "obj", "-.2", "3", ".15", root + "-bump.ppm", root + "-R.obj"])
+    subprocess.call([argv[1], "obj", "  0", "3", ".15", root + "-bump.ppm", root + "-mask.ppm", root + "-mask.obj"])
+    subprocess.call([argv[1], "obj", "stand", "3", ".2", "1", ".15", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
   elif(argv[2] == "scn"):
     subprocess.call(["xcrun", "scntool", "--convert", root + "-L.obj", "--format", "scn", "--output", root + "-L.scn"])
     subprocess.call(["xcrun", "scntool", "--convert", root + "-R.obj", "--format", "scn", "--output", root + "-R.scn"])
   elif(argv[2] == "mtl"):
-    f = open(root + ".obj.mtl", "a")
+    f = open(root + ".obj.mtl", "w")
     f.write("newmtl material0\n")
     f.write("Ka 1.000000 1.000000 1.000000\n")
     f.write("Kd 1.000000 1.000000 1.000000\n")
@@ -80,8 +80,8 @@ for line in argv[3:]:
     subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
     subprocess.call(["cp", root + ".obj.mtl", root + "-stand.obj.mtl"])
   elif(argv[2] == "jps"):
-    subprocess.call([argv[1], "tilt", "1", "2", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-    subprocess.call([argv[1], "tilt", "0", "2", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+    subprocess.call([argv[1], "tilt", "0", "2", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+    subprocess.call([argv[1], "tilt", "1", "2", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
     subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
     subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
   elif(argv[2] == "tilt"):
@@ -104,7 +104,7 @@ for line in argv[3:]:
         subprocess.call([argv[1], "obj", "0", "3", ".15", root + "-bumpext" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".obj"])
       subprocess.call([argv[1], "habit", root + "-bumpext0.obj", root + "-bumpext2.obj", "2", "4", str(tam), root + "-bumpextA.obj"])
       subprocess.call([argv[1], "habit", root + "-bumpext1.obj", root + "-bumpext3.obj", "3", "4", str(tam), root + "-bumpextB.obj"])
-      subprocess.call([argv[1], "habit", root + "-bumpextA.obj", root + "-bumpextB.obj", "0", "1", str(tam), root + "-bumpext.obj"])
+      subprocess.call([argv[1], "habit", root + "-bumpextA.obj", root + "-bumpextB.obj", "0", "1", "0", root + "-bumpext.obj"])
       subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
   elif(argv[2] == "demosaic"):
     print pixels
@@ -112,7 +112,7 @@ for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
     for s in range(0, s0):
       subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
-      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "2x2", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "2x2", "-resize", "50%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
