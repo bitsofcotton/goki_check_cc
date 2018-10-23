@@ -178,7 +178,7 @@ int main(int argc, const char* argv[]) {
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
       auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTHQ));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTHQ), true, xye));
+      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTHQ), true, xye), (xye.rows() + xye.cols()) * 2);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))

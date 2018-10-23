@@ -87,7 +87,6 @@ public:
     BUMP_X,
     BUMP_XQ,
     BUMP_XQS,
-    BUMP_Y0,
     BUMP_Y,
     BUMP_YP,
     BUMP_YQ,
@@ -402,7 +401,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case IDETECT_Y_BOTH:
     result = compute(data, IDETECT_Y) + compute(compute(compute(data, REVERSE_Y), IDETECT_Y), REVERSE_Y);
     break;
-  case BUMP_Y0:
+  case BUMP_Y:
     {
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       initBump(data.rows());
@@ -445,14 +444,14 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       // result(i, j) = d2dxdx + d2dxdy + d2dydx + d2dydy;
       // N.B. in fact, in this case, so function don't have rotation related
       //      information, rotation + d/dt sumup is needed, but now, not so.
-      result = (compute(compute(d2xx, IDETECT_X), IDETECT_X) +
-                compute(compute(d2xy, IDETECT_Y), IDETECT_X) +
-                compute(compute(d2yx, IDETECT_X), IDETECT_Y) +
-                compute(compute(d2yy, IDETECT_Y), IDETECT_Y)) / T(4);
+      // N.B. logscale is artificial,
+      //      so this should not be needed but works well.
+      result = compute((compute(compute(d2xx, IDETECT_X), IDETECT_X) +
+                        compute(compute(d2xy, IDETECT_Y), IDETECT_X) +
+                        compute(compute(d2yx, IDETECT_X), IDETECT_Y) +
+                        compute(compute(d2yy, IDETECT_Y), IDETECT_Y)) / T(4),
+                       LOGSCALE);
     }
-    break;
-  case BUMP_Y:
-    result = (compute(data, BUMP_Y0) + compute(compute(compute(data, REVERSE_X), BUMP_Y0), REVERSE_X) + compute(compute(compute(data, REVERSE_Y), BUMP_Y0), REVERSE_Y) + compute(compute(compute(data, REVERSE_BOTH), BUMP_Y0), REVERSE_BOTH)) / T(4);
     break;
   case BUMP_YQ:
     result = recursive(data, BUMP_YQ, BUMP_Y);
