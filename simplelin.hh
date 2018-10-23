@@ -40,7 +40,7 @@ public:
   inline       SimpleVector<T>& operator =  (SimpleVector<T>&& other);
   inline       T                dot         (const SimpleVector<T>& other) const;
   inline       T&               operator [] (const int& idx);
-  inline const T                operator [] (const int& idx) const;
+  inline const T&               operator [] (const int& idx) const;
   inline const int& size() const;
   inline       void resize(const int& size);
 private:
@@ -192,7 +192,7 @@ template <typename T> inline T& SimpleVector<T>::operator [] (const int& idx) {
   return entity[idx];
 }
 
-template <typename T> inline const T SimpleVector<T>::operator [] (const int& idx) const {
+template <typename T> inline const T& SimpleVector<T>::operator [] (const int& idx) const {
   assert(0 <= idx && idx < esize && entity);
   return entity[idx];
 }
@@ -236,7 +236,7 @@ public:
   inline       SimpleMatrix<T>& operator =  (const SimpleMatrix<T>& other);
   inline       SimpleMatrix<T>& operator =  (SimpleMatrix<T>&& other);
   inline       T&               operator () (const int& y, const int& x);
-  inline const T                operator () (const int& y, const int& x) const;
+  inline const T&               operator () (const int& y, const int& x) const;
   inline       SimpleVector<T>& row(const int& y);
   inline const SimpleVector<T>& row(const int& y) const;
   inline const SimpleVector<T>  col(const int& x) const;
@@ -354,6 +354,21 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator *= (cons
 
 template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator * (const SimpleMatrix<T>& other) const {
   assert(ecols == other.erows && entity && other.entity);
+  SimpleMatrix<T> res(erows, other.ecols);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < erows; i ++)
+    for(int j = 0; j < other.ecols; j ++) {
+      res(i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp simd
+#endif
+      for(int k = 0; k < ecols; k ++)
+        // exhaust of the operator [], Eigen handles better.
+        res(i, j) += entity[i][k] * other.entity[k][j];
+    }
+/*
   SimpleMatrix<T> derived(other.transpose());
   SimpleMatrix<T> res(erows, other.ecols);
 #if defined(_OPENMP)
@@ -365,6 +380,7 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator * (const 
     for(int j = 0; j < other.ecols; j ++)
       resi[j] = ei.dot(derived.entity[j]);
   }
+*/
   return res;
 
 }
@@ -438,7 +454,7 @@ template <typename T> inline T& SimpleMatrix<T>::operator () (const int& y, cons
   return entity[y][x];
 }
 
-template <typename T> inline const T SimpleMatrix<T>::operator () (const int& y, const int& x) const {
+template <typename T> inline const T& SimpleMatrix<T>::operator () (const int& y, const int& x) const {
   assert(0 <= y && y < erows && entity);
   return entity[y][x];
 }
