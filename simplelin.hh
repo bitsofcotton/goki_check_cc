@@ -41,6 +41,9 @@ public:
   inline       T                dot         (const SimpleVector<T>& other) const;
   inline       T&               operator [] (const int& idx);
   inline const T&               operator [] (const int& idx) const;
+  template <typename U> inline SimpleVector<U> real() const;
+  template <typename U> inline SimpleVector<U> imag() const;
+  template <typename U> inline SimpleVector<U> cast() const;
   inline const int& size() const;
   inline       void resize(const int& size);
 private:
@@ -197,6 +200,27 @@ template <typename T> inline const T& SimpleVector<T>::operator [] (const int& i
   return entity[idx];
 }
 
+template <typename T> template <typename U> inline SimpleVector<U> SimpleVector<T>::real() const {
+  SimpleVector<U> result(esize);
+  for(int i = 0; i < esize; i ++)
+    result.entity[i] = U(entity[i].real());
+  return result;
+}
+
+template <typename T> template <typename U> inline SimpleVector<U> SimpleVector<T>::imag() const {
+  SimpleVector<U> result(esize);
+  for(int i = 0; i < esize; i ++)
+    result.entity[i] = U(entity[i].imag());
+  return result;
+}
+
+template <typename T> template <typename U> inline SimpleVector<U> SimpleVector<T>::cast() const {
+  SimpleVector<U> result(esize);
+  for(int i = 0; i < esize; i ++)
+    result.entity[i] = U(entity[i]);
+  return result;
+}
+
 template <typename T> inline const int& SimpleVector<T>::size() const {
   return esize;
 }
@@ -246,13 +270,14 @@ public:
   inline       T                determinant() const;
   inline       SimpleVector<T>  solve(SimpleVector<T> other) const;
   inline       SimpleVector<T>  projectionPt(const SimpleVector<T>& other) const;
-  inline       SimpleMatrix<T>  real() const;
   template <typename U> inline SimpleMatrix<U> real() const;
+  template <typename U> inline SimpleMatrix<U> imag() const;
   template <typename U> inline SimpleMatrix<U> cast() const;
   inline const int& rows() const;
   inline const int& cols() const;
   inline       void resize(const int& rows, const int& cols);
 private:
+  // this isn't better idea for faster calculations.
   SimpleVector<T>* entity;
   int              erows;
   int              ecols;
@@ -354,21 +379,6 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator *= (cons
 
 template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator * (const SimpleMatrix<T>& other) const {
   assert(ecols == other.erows && entity && other.entity);
-  SimpleMatrix<T> res(erows, other.ecols);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < erows; i ++)
-    for(int j = 0; j < other.ecols; j ++) {
-      res(i, j) = T(0);
-#if defined(_OPENMP)
-#pragma omp simd
-#endif
-      for(int k = 0; k < ecols; k ++)
-        // exhaust of the operator [], Eigen handles better.
-        res(i, j) += entity[i][k] * other.entity[k][j];
-    }
-/*
   SimpleMatrix<T> derived(other.transpose());
   SimpleMatrix<T> res(erows, other.ecols);
 #if defined(_OPENMP)
@@ -380,7 +390,6 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator * (const 
     for(int j = 0; j < other.ecols; j ++)
       resi[j] = ei.dot(derived.entity[j]);
   }
-*/
   return res;
 
 }
@@ -591,21 +600,21 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::projectionPt(const
   return res;
 }
 
-template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::real() const {
-  assert(0 < erows && 0 < ecols);
-  SimpleMatrix<T> res(erows, ecols);
-  for(int i = 0; i < erows; i ++)
-    for(int j = 0; j < ecols; j ++)
-      res(i, j) = entity[i][j].real();
-  return res;
-}
-
 template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<T>::real() const {
   assert(0 < erows && 0 < ecols);
   SimpleMatrix<U> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
     for(int j = 0; j < ecols; j ++)
-      res(i, j) = static_cast<const U&>(entity[i][j].real());
+      res(i, j) = U(entity[i][j].real());
+  return res;
+}
+
+template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<T>::imag() const {
+  assert(0 < erows && 0 < ecols);
+  SimpleMatrix<U> res(erows, ecols);
+  for(int i = 0; i < erows; i ++)
+    for(int j = 0; j < ecols; j ++)
+      res(i, j) = U(entity[i][j].imag());
   return res;
 }
 
@@ -614,7 +623,7 @@ template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<
   SimpleMatrix<U> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
     for(int j = 0; j < ecols; j ++)
-      res(i, j) = static_cast<const U&>(entity[i][j]);
+      res(i, j) = U(entity[i][j]);
   return res;
 }
 

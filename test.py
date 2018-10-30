@@ -80,13 +80,13 @@ for line in argv[3:]:
     subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
     subprocess.call(["cp", root + ".obj.mtl", root + "-stand.obj.mtl"])
   elif(argv[2] == "jps"):
-    subprocess.call([argv[1], "tilt", "0", "2", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-    subprocess.call([argv[1], "tilt", "1", "2", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+    subprocess.call([argv[1], "tilt", "0", "2", ".005", "0", root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+    subprocess.call([argv[1], "tilt", "1", "2", ".005", "0", root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
     subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
     subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
   elif(argv[2] == "tilt"):
     for s in range(0, 16):
-      subprocess.call([argv[1], "tilt", str(s), "16", ".05", "0", root + ".ppm", root + "-bump.ppm", root + "-tilt-base-" + str(s) + ".ppm"])
+      subprocess.call([argv[1], "tilt", str(s), "16", ".005", "0", root + ".ppm", root + "-bump.ppm", root + "-tilt-base-" + str(s) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "btilt"):
     for s in range(0, 32):
