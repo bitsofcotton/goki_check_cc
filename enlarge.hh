@@ -174,7 +174,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   st_cell = 1;
   idx_d   = - 1;
   idx_b   = - 1;
-  recursive_ratio = T(.5);
+  recursive_ratio = T(1.);
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {

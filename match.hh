@@ -271,9 +271,9 @@ public:
 #endif
   typedef complex<T> U;
   matchPartial();
-  matchPartial(const int& ndiv, const T& threshp, const T& threshs);
+  matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
   ~matchPartial();
-  void init(const int& ndiv, const T& threshp, const T& threshs);
+  void init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
   void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
@@ -296,6 +296,8 @@ private:
   T   Pi;
   // match theta  thresh in [0, 1].
   T   thresh;
+  // match rough  ratio  in [1, infty[ .
+  T   threshr;
   // match ratio  thresh in [0, 1].
   T   thresht;
 };
@@ -304,23 +306,25 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, .025, .1);
+  init(40, 1.5, .25, .1);
 }
 
-template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshp, const T& threshs) {
+template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
-  init(ndiv, threshp, threshs);
+  init(ndiv, threshr, threshp, threshs);
 }
 
 template <typename T> matchPartial<T>::~matchPartial() {
   ;
 }
 
-template <typename T> void matchPartial<T>::init(const int& ndiv, const T& threshp, const T& threshs) {
+template <typename T> void matchPartial<T>::init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
+  assert(0 < ndiv && T(1) <= threshr && T(0) <= threshp && threshp <= T(1));
   this->ndiv    = ndiv;
   this->thresh  = sin(T(2) * Pi / ndiv) / T(2);
   this->thresht = this->thresh;
+  this->threshr = threshr;
   this->threshp = threshp;
   this->threshs = threshs;
   return;
@@ -353,11 +357,11 @@ template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<
   // result.reserve(points.size() * shapebase.size());
   for(int k = 0; k < points.size(); k ++)
     for(int j = 0; j < shapebase.size(); j ++) {
-      const Vec3& aj(shapework[j]);
-      const Vec3& bk(pointswork[k]);
-      const T     t(aj.dot(bk) / bk.dot(bk));
-      const Vec3  lerr(aj - bk * t);
-      const T     err(lerr.dot(lerr) / sqrt(aj.dot(aj) * bk.dot(bk) * t * t));
+      const auto& aj(shapework[j]);
+      const auto& bk(pointswork[k]);
+      const auto  t(aj.dot(bk) / bk.dot(bk));
+      const auto  lerr(aj - bk * t);
+      const auto  err(lerr.dot(lerr) / sqrt(aj.dot(aj) * bk.dot(bk) * t * t));
       // if t <= T(0), it's mirrored and this should not match.
       if(T(0) <= t && err <= thresht * thresht && isfinite(t) && isfinite(err)) {
         msub_t<T> work;
