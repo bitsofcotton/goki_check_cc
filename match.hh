@@ -296,8 +296,6 @@ private:
   T   Pi;
   // match theta  thresh in [0, 1].
   T   thresh;
-  // match rough  ratio  in [1, infty[ .
-  T   threshr;
   // match ratio  thresh in [0, 1].
   T   thresht;
 };
@@ -323,8 +321,7 @@ template <typename T> void matchPartial<T>::init(const int& ndiv, const T& thres
   assert(0 < ndiv && T(1) <= threshr && T(0) <= threshp && threshp <= T(1));
   this->ndiv    = ndiv;
   this->thresh  = sin(T(2) * Pi / ndiv) / T(2);
-  this->thresht = this->thresh;
-  this->threshr = threshr;
+  this->thresht = this->thresh * threshr;
   this->threshp = threshp;
   this->threshs = threshs;
   return;
@@ -407,16 +404,20 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   }
   work.offset *= num / denom;
   work.ratio  *= num / denom;
+  denom        = T(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
+    const auto pointk(work.transform(points[work.srcpoints[k]]));
+    const auto err(shapebase[work.dstpoints[k]] - pointk);
     work.rdepth += err.dot(err);
+    denom       += pointk.dot(pointk);
   }
-  work.rdepth /= denom * work.dstpoints.size();
+  work.rdepth /= denom;
   if(!retry) {
     vector<pair<T, int>> errors;
     for(int k = 0; k < work.dstpoints.size(); k ++) {
-      const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
-      errors.push_back(make_pair(err.dot(err), k));
+      const auto pointk(work.transform(points[work.srcpoints[k]]));
+      const auto err(shapebase[work.dstpoints[k]] - pointk);
+      errors.push_back(make_pair(err.dot(err) / pointk.dot(pointk), k));
     }
     sort(errors.begin(), errors.end());
     vector<int> dstpoints;
@@ -424,14 +425,14 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     T err(0);
     for(int k = 0; k < errors.size(); k ++) {
       err += errors[k].first;
-      if(sqrt(thresh) < err / (k + 1))
+      if(thresh < err / (k + 1))
         break;
       dstpoints.push_back(work.dstpoints[errors[k].second]);
       srcpoints.push_back(work.srcpoints[errors[k].second]);
     }
     return complementMatch(work, shapebase, points, true);
   }
-  return abs(work.rdepth) < sqrt(sqrt(thresh)) && work.isValid();
+  return work.isValid();
 }
 
 template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
