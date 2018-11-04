@@ -153,7 +153,7 @@ private:
 };
 
 template <typename T> reDig<T>::reDig() {
-  initialize(3, 1);
+  initialize(3, .15);
 }
 
 template <typename T> reDig<T>::~reDig() {
@@ -221,9 +221,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
     for(int j = 0; j < emphs[i].size(); j ++)
       diff += rmatch.transform(dst[emphs[i][j]]) - triangles[i / 3].p.col(i % 3);
 #if defined(_WITHOUT_EIGEN_)
-    triangles[i / 3].p.setCol(i % 3, triangles[i / 3].p.col(i % 3) + diff * ratio / match.ratio / emphs[i].size());
+    triangles[i / 3].p.setCol(i % 3, triangles[i / 3].p.col(i % 3) + diff * ratio / emphs[i].size());
 #else
-    triangles[i / 3].p.col(i % 3) += diff * ratio / match.ratio / emphs[i].size();
+    triangles[i / 3].p.col(i % 3) += diff * ratio / emphs[i].size();
 #endif
   }
   return tilt(dstimg, triangles, match);
@@ -329,6 +329,7 @@ template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, const Vec3& lre
         Vec3 ldiff(lref2 - lref0);
   ldiff -= ldiff0 * ldiff.dot(ldiff0) / ldiff0.dot(ldiff0);
   const T    lnum(sqrt(ldiff.dot(ldiff)) + 1);
+  // XXX : tan theta depend loop num, this have glitches.
   for(int k = 0; k < lnum * 4; k ++) {
     const Vec3 l0(lref0 + (lref2 - lref0) * k / (lnum * 4));
     const Vec3 l1(lref1 + (lref2 - lref1) * k / (lnum * 4));
@@ -427,6 +428,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
   return result;
 }
 
+// XXX this have glitches.
 template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon, const int& mdiv) const {
   vector<Veci3> res;
   cerr << pp.size() << ":" << flush;
@@ -928,7 +930,7 @@ template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) {
           data[k](i, j) -= mm;
         else
           data[k](i, j)  = T(0);
-        assert(T(0) <= data[k](i, j) && data[k](i, j) <= MM - mm);
+        // assert(T(0) <= data[k](i, j) && data[k](i, j) <= MM - mm);
       }
     data[k] *= upper / (MM - mm);
   }

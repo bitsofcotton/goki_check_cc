@@ -397,8 +397,8 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   T num(0);
   T denom(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto shapek(shapebase[work.dstpoints[k]]);
-    const auto pointk(work.transform(points[work.srcpoints[k]]));
+    const auto& shapek(shapebase[work.dstpoints[k]]);
+    const auto  pointk(work.transform(points[work.srcpoints[k]]));
     num   += pointk.dot(shapek);
     denom += pointk.dot(pointk);
   }
@@ -413,7 +413,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   }
   work.rdepth /= denom;
   if(!retry) {
-    vector<pair<T, int>> errors;
+    vector<pair<T, int> > errors;
     for(int k = 0; k < work.dstpoints.size(); k ++) {
       const auto pointk(work.transform(points[work.srcpoints[k]]));
       const auto err(shapebase[work.dstpoints[k]] - pointk);
@@ -430,14 +430,14 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
       dstpoints.push_back(work.dstpoints[errors[k].second]);
       srcpoints.push_back(work.srcpoints[errors[k].second]);
     }
-    return complementMatch(work, shapebase, points, true);
+    return complementMatch(work, shapebase, points, !retry);
   }
   return work.isValid();
 }
 
 template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
-  const Vec3 gs(makeG(shapebase));
-  const Vec3 gp(makeG(points));
+  const auto gs(makeG(shapebase));
+  const auto gp(makeG(points));
   Vec3 gd(3);
   gd[0] = gd[1] = gd[2] = T(0);
   for(int i = 0; i < shapebase.size(); i ++) {
@@ -559,15 +559,15 @@ template <typename T> vector<match_t<T> > matchPartial<T>::elim(const vector<mat
 
 template <typename T> T matchPartial<T>::isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh) {
   assert(dst[0].rows() == tsrc[0].rows() && dst[0].cols() == tsrc[0].cols());
-  assert(dst[1].rows() == tsrc[1].rows() && dst[1].cols() == tsrc[2].cols());
+  assert(dst[1].rows() == tsrc[1].rows() && dst[1].cols() == tsrc[1].cols());
   assert(dst[2].rows() == tsrc[2].rows() && dst[2].cols() == tsrc[2].cols());
   assert(dst[0].rows() ==  dst[1].rows() && dst[0].cols() ==  dst[1].cols());
   assert(dst[0].rows() ==  dst[2].rows() && dst[0].cols() ==  dst[2].cols());
   vector<T> diffs;
   for(int i = 0; i < m.srcpoints.size(); i ++) {
-    const auto g(m.transform(srcpts[m.srcpoints[i]]));
-    const int  y(g[0]);
-    const int  x(g[1]);
+    const auto  g(m.transform(srcpts[m.srcpoints[i]]));
+    const auto& y(g[0]);
+    const auto& x(g[1]);
     if(0 <= y && y < tsrc[0].rows() && 0 <= x && x < tsrc[0].cols()) {
       if(tsrc[0](y, x) == T(0) && tsrc[1](y, x) == T(0) && tsrc[2](y, x) == T(0))
         continue;
