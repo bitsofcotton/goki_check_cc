@@ -533,7 +533,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * exp(T(1) + abs(data(i, j)));
+          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * (exp(T(1) + abs(data(i, j))) - exp(T(1)));
     }
     break;
   case LOGSCALE:
@@ -545,7 +545,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * (abs(data(i, j)) < exp(T(1)) ? abs(data(i, j)) / exp(T(1)) : log(abs(data(i, j)) + exp(T(1))));
+          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * (abs(data(i, j)) < exp(T(1)) ? abs(data(i, j)) / exp(T(1)) : log(abs(data(i, j))));
     }
     break;
   case NORMALIZE:
