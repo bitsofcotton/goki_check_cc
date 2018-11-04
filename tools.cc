@@ -73,7 +73,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   file.savep2or3(outfile.c_str(), outs, false);
   
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in0[idx], shape1, match, mhull1);
+    outs[idx] = redig.replace(in0[idx], match.transform(shape1), match_t<T>(), mhull1);
   outfile = outbase + std::string("-repl.ppm");
   file.savep2or3(outfile.c_str(), outs, false);
   
@@ -167,7 +167,6 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0) {
-      // collect.
       enlarger2ex<double> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
