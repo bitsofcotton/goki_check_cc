@@ -41,7 +41,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl-0.ppm"])
-    subprocess.call(["convert", root + "-enl-0.ppm", "-sharpen", "2x2", "-resize", "75%", root + "-enl.png"])
+    subprocess.call(["convert", root + "-enl-0.ppm", "-resize", "75%", root + "-enl.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
@@ -108,11 +108,11 @@ for line in argv[3:]:
       subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
   elif(argv[2] == "demosaic"):
     print pixels
-    s0  = int(np.ceil(np.log(pixels) / np.log(1.75)))
+    s0  = int(np.ceil(np.log(pixels) / np.log(1.5)))
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
     for s in range(0, s0):
       subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
-      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "2x2", "-resize", "50%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
