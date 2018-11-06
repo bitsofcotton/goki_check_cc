@@ -85,7 +85,7 @@ for line in argv[3:]:
   elif(argv[2] == "jps"):
     subprocess.call([argv[1], "tilt", "0", "2", ".005", "0", root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
     subprocess.call([argv[1], "tilt", "1", "2", ".005", "0", root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
-    subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
+    subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
     subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
   elif(argv[2] == "tilt"):
     for s in range(0, 16):
@@ -97,12 +97,12 @@ for line in argv[3:]:
       subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(32 * 2 - s - 1) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
   elif(argv[2] == "flicker"):
-    for s in range(0, 32):
-      subprocess.call([argv[1], "obj", "  0", "3", str(.4 / 32. * s), root + "-bump.ppm", root + "-flicker.obj"])
+    for s in range(0, 16):
+      subprocess.call([argv[1], "obj", "0", "3", str(.2 / 16. * s), root + "-bump.ppm", root + "-flicker.obj"])
       subprocess.call([argv[1], "tilt", "0", "2", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "1", "2", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
-      subprocess.call(["montage", root + "-flicker-base-" + str(s) + "-L.ppm", root + "-flicker-base-" + str(s) + "-R.ppm", "-geometry", "100%x100%", root + "-flicker-base-" + str(s) + ".png"])
-      subprocess.call(["cp", root + "-flicker-base-" + str(s) + ".png", root + "-flicker-base-" + str(32 * 2 - s - 1) + ".png"])
+      subprocess.call(["montage", root + "-flicker-base-" + str(s) + "-R.ppm", root + "-flicker-base-" + str(s) + "-L.ppm", "-geometry", "100%x100%", root + "-flicker-base-" + str(s) + ".png"])
+      subprocess.call(["cp", root + "-flicker-base-" + str(s) + ".png", root + "-flicker-base-" + str(16 * 2 - s - 1) + ".png"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-flicker-base-%d.png", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-ficker.mp4"])
   elif(argv[2] == "sbox"):
     for s in range(0, 4):
