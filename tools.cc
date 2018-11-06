@@ -420,6 +420,7 @@ int main(int argc, const char* argv[]) {
     std::cerr << matches.size() << "pending" << std::endl;
     for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
       std::cerr << "Writing " << n << " / " << matches.size();
+      std::cerr << matches[n] << std::endl;
       saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
       std::cerr << "Matchingsub: " << n << " / " << matches.size() << std::flush;
       std::vector<int> dstbuf(matches[n].dstpoints);
@@ -441,6 +442,7 @@ int main(int argc, const char* argv[]) {
       pmatches.resize(min(int(pmatches.size()), nhid));
       for(int m = 0; m < min(int(pmatches.size()), nshow); m ++) {
         std::cerr << "Writing " << m << " / " << pmatches.size() << " - " << n << " / " << matches.size();
+        std::cerr << pmatches[m] << std::endl;
         saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), pmatches[m], shape0a, shape1a, data, mout, bump0, bump1, emph);
       }
     }

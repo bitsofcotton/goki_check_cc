@@ -41,7 +41,10 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl-0.ppm"])
-    subprocess.call(["convert", root + "-enl-0.ppm", "-resize", "75%", root + "-enl.png"])
+    subprocess.call(["convert", root + "-enl-0.ppm", "-sharpen", "1", "-resize", "75%", root + "-enl.png"])
+  elif(argv[2] == "enl2"):
+    subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-res-0.ppm"])
+    subprocess.call(["convert", root + "-res-0.ppm", "-sharpen", "1", "-resize", "50%", root + "-res.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
@@ -92,7 +95,15 @@ for line in argv[3:]:
     for s in range(0, 32):
       subprocess.call([argv[1], "tilt", "0", "2", str((s - 16) / 16. * .1), "0", root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])
       subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(32 * 2 - s - 1) + ".ppm"])
-    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
+  elif(argv[2] == "flicker"):
+    for s in range(0, 32):
+      subprocess.call([argv[1], "obj", "  0", "3", str(.4 / 32. * s), root + "-bump.ppm", root + "-flicker.obj"])
+      subprocess.call([argv[1], "tilt", "0", "2", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "1", "2", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
+      subprocess.call(["montage", root + "-flicker-base-" + str(s) + "-L.ppm", root + "-flicker-base-" + str(s) + "-R.ppm", "-geometry", "100%x100%", root + "-flicker-base-" + str(s) + ".png"])
+      subprocess.call(["cp", root + "-flicker-base-" + str(s) + ".png", root + "-flicker-base-" + str(32 * 2 - s - 1) + ".png"])
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-flicker-base-%d.png", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-ficker.mp4"])
   elif(argv[2] == "sbox"):
     for s in range(0, 4):
       subprocess.call([argv[1], "sbox", str(- s * 16), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(3 - s) + ".ppm"])
@@ -112,7 +123,14 @@ for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
     for s in range(0, s0):
       subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
-      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "1", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
+  elif(argv[2] == "demosaic2"):
+    print pixels
+    s0  = int(np.ceil(np.log(pixels) / np.log(2)))
+    subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-resize", str(float(pixels) * 100.) + "%", "-compress", "none", root + "-0b.ppm"])
+    for s in range(0, s0):
+      subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + "b.ppm", root + "-" + str(s + 1) + "-0b.ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-0b.ppm", "-sharpen", "1", "-resize", "50%", "-compress", "none", root + "-" + str(s + 1) + "b.ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line

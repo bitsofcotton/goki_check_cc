@@ -35,6 +35,8 @@ using std::sort;
 using std::unique;
 using std::complex;
 using std::isfinite;
+using std::istream;
+using std::ostream;
 
 template <typename T> class msub_t {
 public:
@@ -252,6 +254,56 @@ public:
   }
   bool operator == (const match_t<T>& x) const {
     return ! (*this != x);
+  }
+  friend ostream& operator << (ostream& os, const match_t<T>& x) {
+    for(int i = 0; i < x.rot.rows(); i ++) {
+      for(int j = 0; j < x.rot.cols(); j ++)
+        os << x.rot(i, j) << " ";
+      os << endl;
+    }
+    for(int i = 0; i < x.offset.size(); i ++)
+      os << x.offset[i] << endl;
+    os << x.ratio  << endl;
+    os << x.rdepth << endl;
+    assert(x.dstpoints.size() == x.srcpoints.size());
+    os << x.dstpoints.size() << endl;
+    for(int i = 0; i < x.dstpoints.size(); i ++)
+      os << x.dstpoints[i] << " ";
+    os << endl;
+    for(int i = 0; i < x.srcpoints.size(); i ++)
+      os << x.srcpoints[i] << " ";
+    os << endl;
+    os << x.thresh  << endl;
+    os << x.rthresh << endl;
+    os << x.threshsize[0] << " " << x.threshsize[1] << endl;
+    return os;
+  }
+  friend istream& operator >> (istream& is, match_t<T>& x) {
+    try {
+      for(int i = 0; i < x.rot.rows(); i ++)
+        for(int j = 0; j < x.rot.cols(); j ++)
+          is >> x.rot(i, j);
+      for(int i = 0; i < x.offset.size(); i ++)
+        is >> x.offset[i];
+      is >> x.ratio;
+      is >> x.rdepth;
+      int size(0);
+      is >> size;
+      assert(size > 0);
+      x.dstpoints.resize(size);
+      x.srcpoints.resize(size);
+      for(int i = 0; i < size; i ++)
+        is >> x.dstpoints[i];
+      for(int i = 0; i < size; i ++)
+        is >> x.srcpoints[i];
+      is >> x.thresh;
+      is >> x.rthresh;
+      is >> x.threshsize[0];
+      is >> x.threshsize[1];
+    } catch(...) {
+      assert(0 && "match_t input failed.");
+    }
+    return is;
   }
 };
 
