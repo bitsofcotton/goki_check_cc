@@ -98,7 +98,7 @@ for line in argv[3:]:
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
   elif(argv[2] == "flicker"):
     for s in range(0, 16):
-      subprocess.call([argv[1], "obj", "0", "3", str(.2 / 16. * s), root + "-bump.ppm", root + "-flicker.obj"])
+      subprocess.call([argv[1], "obj", "0", "3", str(.15 / 16. * s), root + "-bump.ppm", root + "-flicker.obj"])
       subprocess.call([argv[1], "tilt", "0", "2", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "1", "2", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
       subprocess.call(["montage", root + "-flicker-base-" + str(s) + "-R.ppm", root + "-flicker-base-" + str(s) + "-L.ppm", "-geometry", "100%x100%", root + "-flicker-base-" + str(s) + ".png"])
