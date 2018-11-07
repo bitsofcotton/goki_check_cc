@@ -107,7 +107,7 @@ private:
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
   void makeDI(const int& size, Mat& Dop, Mat& Dhop, Mat& Iop, Mat& Eop);
-  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const Mat& Bc0, const int count, const T& dx = T(.5), const int count2 = 1);
+  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dx = T(.5), const int count2 = 1);
   U    I;
   T    Pi;
   vector<Mat> A;
@@ -261,7 +261,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result = recursivePTayl(dataA, dataB,
                               compute(dataB, DETECT_X),
                               compute(dataB, DETECT_Y),
-                              dataB, compute(dataB, BCLIP), rec_tayl);
+                              dataB, rec_tayl);
     }
     break;
   case EXTEND_Y0:
@@ -681,28 +681,29 @@ template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(con
   return result;
 }
 
-template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const Mat& Bc0, const int count, const T& dx, const int count2) {
+template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dx, const int count2) {
   assert(0 <= count);
   const auto datadxA(compute(A, DETECT_X));
   const auto datadyA(compute(A, DETECT_Y));
         auto BB(B);
+  const auto Bc(compute(B, BCLIP));
         Mat  datax(A.rows(), A.cols());
         Mat  datay(A.rows(), A.cols());
         Mat  datai(A.rows(), A.cols());
   for(int i = 0; i < BB.rows(); i ++)
     for(int j = 0; j < BB.cols(); j ++) {
-      BB(i, j)   *= Bc0(i, j);
+      BB(i, j)   *= B0(i, j);
       // d/dt (A / (B0^n)) = ((d/dt A) * B0 - n * A * (d/dt B0)) / (B0^(n+1))
       datax(i, j) = datadxA(i, j) * B0(i, j) - count2 * A(i, j) * ddxB(i, j);
       datay(i, j) = datadyA(i, j) * B0(i, j) - count2 * A(i, j) * ddyB(i, j);
-      datai(i, j) = A(i, j) / B(i, j);
+      datai(i, j) = A(i, j) / Bc(i, j);
     }
   if(count)
     // res = (A / B * 2 + integrate(d/dx (A / B), dx) + same for y) / n / 4.
     return (datai * T(2) +
-            (compute(recursivePTayl(datax, BB, ddxB, ddyB, B0, Bc0,
+            (compute(recursivePTayl(datax, BB, ddxB, ddyB, B0,
                count - 1, count2 + 1), IDETECT_X) + 
-            (compute(recursivePTayl(datay, BB, ddxB, ddyB, B0, Bc0,
+            (compute(recursivePTayl(datay, BB, ddxB, ddyB, B0,
                count - 1, count2 + 1), IDETECT_Y))) * dx) / T(4) / count2;
   return datai / count2;
 }
