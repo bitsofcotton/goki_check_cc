@@ -261,7 +261,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result = recursivePTayl(dataA, dataB,
                               compute(dataB, DETECT_X),
                               compute(dataB, DETECT_Y),
-                              dataB, rec_tayl);
+                              dataB, rec_tayl, T(2.) / dataB.rows());
     }
     break;
   case EXTEND_Y0:
