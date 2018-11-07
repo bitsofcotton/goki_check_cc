@@ -107,7 +107,7 @@ private:
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
   void makeDI(const int& size, Mat& Dop, Mat& Dhop, Mat& Iop, Mat& Eop);
-  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const Mat& Bc0, const int count, const int count2 = 1);
+  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const Mat& Bc0, const int count, const T& dx = T(.5), const int count2 = 1);
   U    I;
   T    Pi;
   vector<Mat> A;
@@ -681,7 +681,7 @@ template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(con
   return result;
 }
 
-template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const Mat& Bc0, const int count, const int count2) {
+template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const Mat& Bc0, const int count, const T& dx, const int count2) {
   assert(0 <= count);
   const auto datadxA(compute(A, DETECT_X));
   const auto datadyA(compute(A, DETECT_Y));
@@ -700,10 +700,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursivePTay
   if(count)
     // res = (A / B * 2 + integrate(d/dx (A / B), dx) + same for y) / n / 4.
     return (datai * T(2) +
-            compute(recursivePTayl(datax, BB, ddxB, ddyB, B0, Bc0,
-              count - 1, count2 + 1), IDETECT_X) + 
-            compute(recursivePTayl(datay, BB, ddxB, ddyB, B0, Bc0,
-              count - 1, count2 + 1), IDETECT_Y)) / T(4) / count2;
+            (compute(recursivePTayl(datax, BB, ddxB, ddyB, B0, Bc0,
+               count - 1, count2 + 1), IDETECT_X) + 
+            (compute(recursivePTayl(datay, BB, ddxB, ddyB, B0, Bc0,
+               count - 1, count2 + 1), IDETECT_Y))) * dx) / T(4) / count2;
   return datai / count2;
 }
 
