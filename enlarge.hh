@@ -105,6 +105,7 @@ private:
   int  getImgPt(const T& y, const T& h);
   void makeDI(const int& size, Mat& Dop, Mat& Dhop, Mat& Iop, Mat& Eop);
   Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dx = T(.5), const int count2 = 1);
+  Mat  recursiveETayl(const Mat& A, const int count, const T& dt = T(.5), const int count2 = 1);
   U    I;
   T    Pi;
   vector<Mat> A;
@@ -137,16 +138,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
               compute(compute(data, ENLARGE_Y), ENLARGE_X)) / T(2);
     break;
   case ENLARGE_FBOTH:
-    {
-      assert(0 <= rec_tayl);
-      result = compute(data, ENLARGE_BOTH);
-      auto work(data);
-      for(int i = 0; i < rec_tayl; i ++) {
-        work    = compute(data, DETECT_BOTH) / (i + 1) / sqrt(data.rows() * data.cols());
-        result += compute(work, ENLARGE_BOTH);
-      }
-      result /= rec_tayl + 1;
-    }
+    assert(0 <= rec_tayl);
+    result = recursiveETayl(data, rec_tayl, T(2) / sqrt(T(data.rows() * data.cols())));
     break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X)  + compute(data, DETECT_Y)) / T(2);
@@ -701,6 +694,16 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursivePTay
             (compute(recursivePTayl(datay, BB, ddxB, ddyB, B0,
                count - 1, count2 + 1), IDETECT_Y))) * dx) / T(4) / count2;
   return datai / count2;
+}
+
+template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveETayl(const Mat& A, const int count, const T& dt, const int count2) {
+  assert(0 <= count);
+  if(count)
+    return (compute(A, ENLARGE_BOTH) * T(2) +
+            (recursiveETayl(compute(A, DETECT_Y), count - 1, dt, count2 + 1) +
+             recursiveETayl(compute(A, DETECT_X), count - 1, dt, count2 + 1)) *
+           dt) / T(4) / count2;
+  return compute(A, ENLARGE_BOTH);
 }
 
 #define _ENLARGE2X_
