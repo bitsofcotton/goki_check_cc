@@ -247,10 +247,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       const auto dataA(compute(A[idx_b] * data, ABS));
       const auto dataB(compute(B[idx_b] * data, ABS));
       // N.B. similar to f(x) ~ f(x0) + f'(x0) * (x - x0) + f''(x0) * (x - x0)^ 2 / 2! + ...
-      result = recursivePTayl(dataA, dataB,
-                              compute(dataB, DETECT_X),
-                              compute(dataB, DETECT_Y),
-                              dataB, rec_tayl, T(2.) / dataB.rows());
+      result = - recursivePTayl(dataA, dataB,
+                                compute(dataB, DETECT_X),
+                                compute(dataB, DETECT_Y),
+                                dataB, rec_tayl, T(2.) / dataB.rows());
     }
     break;
   case EXTEND_Y0:
@@ -580,19 +580,19 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       {
         if(Dop0.rows() % 2 == 1 || Dop0.rows() <= 3)
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * T(zi + 1) * dratio;
+            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (T(1) - T(zi + 1) * dratio);
             B[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j);
           }
         else
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * T(zi + 1) * dratio;
+            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (T(1) - T(zi + 1) * dratio);
             B[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
           }
       }
     }
   }
   A[idx_b] *= dratio;
-  B[idx_b] *= dratio;
+  B[idx_b] *= T(.5);
   return;
 }
 
