@@ -39,11 +39,8 @@ public:
   typedef enum {
     ENLARGE_X,
     ENLARGE_Y,
-    ENLARGE_FX,
-    ENLARGE_FY,
     ENLARGE_BOTH,
     ENLARGE_FBOTH,
-    ENLARGE_3BOTH,
     DETECT_X,
     DETECT_Y,
     DETECT_NOP_Y,
@@ -140,12 +137,16 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
               compute(compute(data, ENLARGE_Y), ENLARGE_X)) / T(2);
     break;
   case ENLARGE_FBOTH:
-    result = (compute(compute(data, ENLARGE_FX), ENLARGE_FY) +
-              compute(compute(data, ENLARGE_FY), ENLARGE_FX)) / T(2);
-    break;
-  case ENLARGE_3BOTH:
-    result = compute(data, ENLARGE_BOTH) +
-             compute(data, ENLARGE_FBOTH) / T(2) / T(3);
+    {
+      assert(0 <= rec_tayl);
+      result = compute(data, ENLARGE_BOTH);
+      auto work(data);
+      for(int i = 0; i < rec_tayl; i ++) {
+        work    = compute(data, DETECT_BOTH) / (i + 1) / sqrt(data.rows() * data.cols());
+        result += compute(work, ENLARGE_BOTH);
+      }
+      result /= rec_tayl + 1;
+    }
     break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X)  + compute(data, DETECT_Y)) / T(2);
@@ -179,9 +180,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case ENLARGE_X:
     result = compute(data.transpose(), ENLARGE_Y).transpose();
     break;
-  case ENLARGE_FX:
-    result = compute(data.transpose(), ENLARGE_FY).transpose();
-    break;
   case DETECT_X:
     result = compute(data.transpose(), DETECT_Y).transpose();
     break;
@@ -205,9 +203,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case REVERSE_X:
     result = compute(data.transpose(), REVERSE_Y).transpose();
-    break;
-  case ENLARGE_FY:
-    result = compute(compute(data, DETECT_Y), ENLARGE_Y);
     break;
   case ENLARGE_Y:
     initDop(data.rows());
@@ -253,6 +248,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y:
     {
+      assert(0 <= rec_tayl);
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       initBump(data.rows());
       const auto dataA(compute(A[idx_b] * data, ABS));
