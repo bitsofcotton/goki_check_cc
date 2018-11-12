@@ -521,7 +521,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       Iop[idx_d]( i, i / 2 + j) = - vIop( i / 2, j);
       Eop[idx_d]( i, i / 2 + j) =   vEop( i / 2, j);
     }
-  Eop[idx_d] *= T(2);
   Mat newEop(Eop[idx_d].rows() * 2, Eop[idx_d].cols());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -637,7 +636,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
   DFTD /= T(2) * Pi;
   DFTH /= T(2) * Pi;
   DFTI /= T(2) * Pi;
-  DFTE /= T(2) * Pi;
+  DFTE /= T(2) * Pi * sqrt(T(DFTE.rows()));
 #if defined(_WITHOUT_EIGEN_)
   Dop  = (IDFT * DFTD).template real<T>();
   Dhop = (IDFT * DFTH).template real<T>();

@@ -41,10 +41,10 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl-0.ppm"])
-    subprocess.call(["convert", root + "-enl-0.ppm", "-sharpen", "1", "-resize", "75%", root + "-enl.png"])
+    subprocess.call(["convert", root + "-enl-0.ppm", "-sharpen", "2", "-resize", "75%", root + "-enl.png"])
   elif(argv[2] == "enl2"):
     subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-res-0.ppm"])
-    subprocess.call(["convert", root + "-res-0.ppm", "-sharpen", "1", "-resize", "50%", root + "-res.png"])
+    subprocess.call(["convert", root + "-res-0.ppm", "-sharpen", "2", "-resize", "50%", root + "-res.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
@@ -123,14 +123,14 @@ for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
     for s in range(0, s0):
       subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + "-0.ppm"])
-      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "1", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-0.ppm", "-sharpen", "2", "-resize", "75%", "-compress", "none", root + "-" + str(s + 1) + ".ppm"])
   elif(argv[2] == "demosaic2"):
     print pixels
     s0  = int(np.ceil(np.log(pixels) / np.log(2)))
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-resize", str(float(pixels) * 100.) + "%", "-compress", "none", root + "-0b.ppm"])
     for s in range(0, s0):
       subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + "b.ppm", root + "-" + str(s + 1) + "-0b.ppm"])
-      subprocess.call(["convert", root + "-" + str(s + 1) + "-0b.ppm", "-sharpen", "1", "-resize", "50%", "-compress", "none", root + "-" + str(s + 1) + "b.ppm"])
+      subprocess.call(["convert", root + "-" + str(s + 1) + "-0b.ppm", "-sharpen", "2", "-resize", "50%", "-compress", "none", root + "-" + str(s + 1) + "b.ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
