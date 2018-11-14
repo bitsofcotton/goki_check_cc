@@ -1072,9 +1072,9 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   Mat3x3 R0(3, 3);
   Mat3x3 R1(3, 3);
   R0(0, 0) =   cos(theta);
-  R0(0, 1) = - sin(theta);
+  R0(0, 1) =   sin(theta);
   R0(0, 2) = 0.;
-  R0(1, 0) =   sin(theta);
+  R0(1, 0) = - sin(theta);
   R0(1, 1) =   cos(theta);
   R0(1, 2) = 0.;
   R0(2, 0) = 0.;
@@ -1084,17 +1084,24 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   R1(0, 1) = 0.;
   R1(0, 2) = 0.;
   R1(1, 0) = 0.;
-  R1(1, 1) =   cos(lpsi);
-  R1(1, 2) = - sin(lpsi);
+  R1(1, 1) = 1.;
+  R1(1, 2) = 0.;
   R1(2, 0) = 0.;
-  R1(2, 1) =   sin(lpsi);
+  R1(2, 1) = 0.;
+  R1(2, 2) = 1.;
+  R1(0, 0) =   cos(lpsi);
+  R1(0, 2) = - sin(lpsi);
+  R1(2, 0) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
   Vec3 pcenter(3);
   pcenter[0] = T(in.rows() - 1.) / 2;
   pcenter[1] = T(in.cols() - 1.) / 2;
-  pcenter[2] = T(.5);
+  pcenter[2] = T(0);
   match_t<T> m;
   m.rot    = R0.transpose() * R1 * R0;
+  // x -> m.rot * x, same center
+  // x - pcenter -> m.rot * (x - pcenter)
+  // x -> m.rot * x - m.rot * pcenter + pcenter.
   m.offset = pcenter - m.rot * pcenter;
   m.ratio  = T(1);
   return m;

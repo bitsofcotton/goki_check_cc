@@ -42,7 +42,8 @@ void usage() {
   cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
-  cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
 }
@@ -145,7 +146,8 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
           const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_FBOTH));
-          data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_FBOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
+          data[i] = xye;
+          //data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_FBOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
@@ -181,7 +183,7 @@ int main(int argc, const char* argv[]) {
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
       auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = xye;
+      data[0] = data[1] = data[2] = redig.autoLevel(xye, xye.rows() + xye.cols());
       // data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
     }
     redig.normalize(data, 1.);
@@ -353,35 +355,45 @@ int main(int argc, const char* argv[]) {
       idx.push_back(j);
     res[0] = res[1] = res[2] = redig.showMatch(data[0] * 0., datapoly, polynorms, double(120));
     file.savep2or3(argv[4], res, true);
-  } else if(strcmp(argv[1], "match") == 0) {
-    if(argc < 11) {
+  } else if(strcmp(argv[1], "matcho") == 0) {
+    if(argc < 10) {
       usage();
       return - 1;
     }
-    int fnout(11);
-    int nshow(std::atoi(argv[2]));
-    int nhid(std::atoi(argv[3]));
-    int nemph(std::atoi(argv[4]));
-    int vboxdst(std::atoi(argv[5]));
-    int vboxsrc(std::atoi(argv[6]));
+    int fnout(10);
+    match_t<double> m;
+    std::ifstream input;
+    input.open(argv[2]);
+    if(input.is_open()) {
+      try {
+        input >> m;
+      } catch(...) {
+        usage();
+        return - 2;
+      }
+    }
+    input.close();
+    int nemph(std::atoi(argv[3]));
+    int vboxdst(std::atoi(argv[4]));
+    int vboxsrc(std::atoi(argv[5]));
     typename simpleFile<double>::Mat data[3], data1[3], bdata[3], bdata1[3], mdata[3], mdata1[3], mout[3], mmout1, bump1;
     std::vector<typename simpleFile<double>::Veci3> delau0, delau1;
     std::vector<typename simpleFile<double>::Vec3>  shape0, shape1;
-    if(!file.loadp2or3(data, argv[7]))
+    if(!file.loadp2or3(data, argv[6]))
       return - 2;
-    if(!file.loadp2or3(data1, argv[8]))
+    if(!file.loadp2or3(data1, argv[7]))
       return - 2;
-    if(!file.loadp2or3(bdata, argv[9]))
+    if(!file.loadp2or3(bdata, argv[8]))
       return - 2;
-    const std::string fn(argv[10]);
+    const std::string fn(argv[9]);
     if(fn[fn.size() - 1] == 'j') {
-      if(!file.loadobj(shape1, delau1, argv[10]))
+      if(!file.loadobj(shape1, delau1, argv[9]))
         return - 2;
       bdata1[0] = bdata1[1] = bdata1[2] = data1[0] * 0.;
     } else if(fn[fn.size() - 1] == 'f') {
       std::vector<typename simpleFile<double>::Vec3> center;
       std::vector<std::vector<typename simpleFile<double>::Veci4> > bone;
-      if(!file.loadglTF(shape1, delau1, center, bone, argv[10]))
+      if(!file.loadglTF(shape1, delau1, center, bone, argv[9]))
         return - 2;
       bdata1[0] = bdata1[1] = bdata1[2] = data1[0] * 0.;
     } else if(fn[fn.size() - 1] == 'm') {
@@ -392,11 +404,11 @@ int main(int argc, const char* argv[]) {
       return - 1;
     }
     if(12 < argc) {
-      if(!file.loadp2or3(mdata, argv[11]))
+      if(!file.loadp2or3(mdata, argv[10]))
         return - 2;
-      if(!file.loadp2or3(mdata1, argv[12]))
+      if(!file.loadp2or3(mdata1, argv[11]))
         return - 2;
-      fnout = 13;
+      fnout = 12;
     } else {
       mdata[0]  = mdata[1]  = mdata[2]  = data[0]  * 0.;
       mdata1[0] = mdata1[1] = mdata1[2] = data1[0] * 0.;
@@ -414,15 +426,80 @@ int main(int argc, const char* argv[]) {
       redig.getTileVec(bump1, shape1, delau1);
       redig.maskVectors(shape1, delau1, mmout1);
     }
+    saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, emph);
+  } else if(strcmp(argv[1], "match") == 0) {
+    if(argc < 10) {
+      usage();
+      return - 1;
+    }
+    int fnout(10);
+    int nshow(std::atoi(argv[2]));
+    int nhid(std::atoi(argv[3]));
+    int vboxdst(std::atoi(argv[4]));
+    int vboxsrc(std::atoi(argv[5]));
+    typename simpleFile<double>::Mat data[3], data1[3], bdata[3], bdata1[3], mdata[3], mdata1[3], mout[3], mmout1, bump1;
+    std::vector<typename simpleFile<double>::Veci3> delau0, delau1;
+    std::vector<typename simpleFile<double>::Vec3>  shape0, shape1;
+    if(!file.loadp2or3(data, argv[6]))
+      return - 2;
+    if(!file.loadp2or3(data1, argv[7]))
+      return - 2;
+    if(!file.loadp2or3(bdata, argv[8]))
+      return - 2;
+    const std::string fn(argv[9]);
+    if(fn[fn.size() - 1] == 'j') {
+      if(!file.loadobj(shape1, delau1, argv[9]))
+        return - 2;
+      bdata1[0] = bdata1[1] = bdata1[2] = data1[0] * 0.;
+    } else if(fn[fn.size() - 1] == 'f') {
+      std::vector<typename simpleFile<double>::Vec3> center;
+      std::vector<std::vector<typename simpleFile<double>::Veci4> > bone;
+      if(!file.loadglTF(shape1, delau1, center, bone, argv[9]))
+        return - 2;
+      bdata1[0] = bdata1[1] = bdata1[2] = data1[0] * 0.;
+    } else if(fn[fn.size() - 1] == 'm') {
+      if(!file.loadp2or3(bdata1, argv[10]))
+        return - 2;
+    } else {
+      usage();
+      return - 1;
+    }
+    if(12 < argc) {
+      if(!file.loadp2or3(mdata, argv[10]))
+        return - 2;
+      if(!file.loadp2or3(mdata1, argv[11]))
+        return - 2;
+      fnout = 12;
+    } else {
+      mdata[0]  = mdata[1]  = mdata[2]  = data[0]  * 0.;
+      mdata1[0] = mdata1[1] = mdata1[2] = data1[0] * 0.;
+    }
+    resizeDst2<double>(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
+    auto& bump0(bdata[0]);
+    redig.initialize(vboxdst);
+    redig.getTileVec(bump0, shape0, delau0);
+    redig.maskVectors(shape0, delau0, mdata[0]);
+    redig.initialize(vboxsrc);
+    if(fn[fn.size() - 1] == 'm') {
+      redig.getTileVec(bump1, shape1, delau1);
+      redig.maskVectors(shape1, delau1, mmout1);
+    }
     matchPartial<double> statmatch;
     auto matches(statmatch.match(shape0, shape1));
     // matches = statmatch.elim(matches, data, mout, bump1, shape1);
     matches.resize(min(int(matches.size()), nhid));
     std::cerr << matches.size() << "pending" << std::endl;
     for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-      std::cerr << "Writing " << n << " / " << matches.size();
-      std::cerr << matches[n] << std::endl;
-      saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1), matches[n], shape0, shape1, data, mout, bump0, bump1, emph);
+      std::ofstream output;
+      output.open((std::string(argv[fnout]) + std::to_string(n + 1) + std::string(".txt")).c_str());
+      if(output.is_open()) {
+        try {
+          output << matches[n];
+        } catch(...) {
+          ;
+        }
+      }
+      output.close();
       std::cerr << "Matchingsub: " << n << " / " << matches.size() << std::flush;
       std::vector<int> dstbuf(matches[n].dstpoints);
       std::vector<int> srcbuf(matches[n].srcpoints);
@@ -442,9 +519,16 @@ int main(int argc, const char* argv[]) {
       // pmatches = pstatmatch.elim(pmatches, data, mout, bump1, shape1a);
       pmatches.resize(min(int(pmatches.size()), nhid));
       for(int m = 0; m < min(int(pmatches.size()), nshow); m ++) {
-        std::cerr << "Writing " << m << " / " << pmatches.size() << " - " << n << " / " << matches.size();
-        std::cerr << pmatches[m] << std::endl;
-        saveMatches<double>(std::string(argv[fnout]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1), pmatches[m], shape0a, shape1a, data, mout, bump0, bump1, emph);
+        std::ofstream output;
+        output.open((std::string(argv[fnout]) + std::to_string(n + 1) + std::string("-") + std::to_string(m + 1) + std::string(".txt")).c_str());
+        if(output.is_open()) {
+          try {
+            output << pmatches[m];
+          } catch(...) {
+            ;
+          }
+        }
+        output.close();
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {
@@ -464,14 +548,12 @@ int main(int argc, const char* argv[]) {
       My = max(My, std::abs(psrc[i][0]));
       Mx = max(Mx, std::abs(psrc[i][1]));
     }
-    matchPartial<double> statmatch;
     if(argc > 7) {
-      const auto m0(redig.tiltprep(typename simpleFile<double>::Mat(int(My), int(Mx)), std::atoi(argv[4]), std::atoi(argv[5]), std::atof(argv[6])));
-            auto m1(redig.tiltprep(typename simpleFile<double>::Mat(int(My), int(Mx)), std::atoi(argv[4]), std::atoi(argv[5]), std::atof(argv[6]) * 2));
-      statmatch.complementMatch(m1, pdst, psrc);
-      file.saveobj(m0.transform(redig.takeShape(pdst, psrc, m1, poldst, polsrc, double(.5))),
+      const auto m(redig.tiltprep(typename simpleFile<double>::Mat(int(My), int(Mx)), - std::atoi(argv[4]), std::atoi(argv[5]), std::atof(argv[6])));
+      file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
                    poldst, argv[7]);
     } else {
+      matchPartial<double> statmatch;
       const auto m(statmatch.match(pdst, psrc)[0]);
       file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
                    poldst, argv[4]);
@@ -494,7 +576,7 @@ int main(int argc, const char* argv[]) {
       rbuf.resize(in.size(), 0.);
     const auto dft0(filter.seed(buf.rows(), false));
     const auto idft0(filter.seed(buf.rows(), true));
-    for(int i = 0; i < in.size() / buf.rows() / buf.rows(); i ++) {
+    for(int i = 0; i <= in.size() / buf.rows() / buf.rows(); i ++) {
       for(int j = 0; j < buf.rows(); j ++)
         for(int k = 0; k < buf.cols(); k ++)
           buf(j, k) = in[i * buf.rows() * buf.rows() + k * buf.rows() + j];
@@ -514,6 +596,7 @@ int main(int argc, const char* argv[]) {
             M = max(M, abs(buf2(j, k)));
             rbuf[i * buf.rows() * buf.rows() * 2 + k * buf.rows() + j] = buf2(j, k);
           }
+        continue;
       } else {
         enlarger2ex<double>::Mat buf2;
         if(strcmp(argv[3], "diff") == 0){

@@ -484,6 +484,10 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     }
     return complementMatch(work, shapebase, points, !retry);
   }
+  offset *= T(0);
+  for(int k = 0; k < work.dstpoints.size(); k ++)
+    offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
+  work.offset += offset / work.dstpoints.size();
   return work.isValid();
 }
 
