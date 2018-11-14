@@ -12,7 +12,6 @@ For speed, http://eigen.tuxfamily.org/ library is needed, and for bone informati
 * enlarge.hh
 * * dratio : z-axis step ratio relate to 1., must be &lt; 1.
 * * offset : color value ratio around convergences in making bump map.
-* * blur   : pixel number ratio for blurring.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
@@ -46,7 +45,8 @@ gltf2 compatibility is before alpha.
     gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>
-    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck bump input.png
     python test.py ./gokicheck obj  input.png
@@ -56,9 +56,8 @@ gltf2 compatibility is before alpha.
     python test.py ./gokicheck btilt input.png
     python test.py ./gokicheck pnga input.png
     python test.py ./gokicheck jps input.png
-    python test.py ./gokicheck match input0.png input1.png
-    python test.py ./gokicheck match input0.png input1.obj
-    python test.py ./gokicheck match input0.png input1.gltf
+    python test.py ./gokicheck match input0.png input1.(png|obj|gltf)
+    python test.py ./gokicheck matcho input0.png input1.(png|obj|gltf) match
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive (but include guard definition should harms).
