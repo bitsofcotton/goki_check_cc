@@ -484,10 +484,6 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     }
     return complementMatch(work, shapebase, points, !retry);
   }
-  offset *= T(0);
-  for(int k = 0; k < work.dstpoints.size(); k ++)
-    offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
-  work.offset += offset / work.dstpoints.size();
   return work.isValid();
 }
 
@@ -563,7 +559,8 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
             flagk[msub[t1].k] = true;
             tt = t1;
           }
-        t0 = tt;
+        // N.B. rough match.
+        t0 += max(1, (tt - t0) / 2);
         // if it's good:
         if(threshp <= work.dstpoints.size() /
                         T(min(shapebase.size(), points.size())) &&
