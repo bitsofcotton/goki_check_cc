@@ -12,7 +12,6 @@ Makefile を stdc++ を使えるように変更してください。
 * enlarge.hh
 * * dratio : z 軸を走査する際のステップ幅です。1 に対して記述し、1 より小さくなくてはいけません。
 * * offset : bump マップを作成する際の発散を防ぐための最小値の比率です。0 より大きく、また、小さい値の方が良い値を返します。
-* * blur   : BLUR フィルタに関しての隣接するピクセルの影響の範囲です。ピクセル数に関しての比率として記述します。
 * redig.hh
 * * vbox : ベクタ生成の際にまとめるピクセルの数です。
 * * rz   : 奥行きの乗数です。
@@ -44,7 +43,8 @@ Freeze 前の細かな実装のチェックをしています。特に、gltf2 �
     gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>
-    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck bump input.png
     python test.py ./gokicheck obj  input.png
@@ -52,11 +52,11 @@ Freeze 前の細かな実装のチェックをしています。特に、gltf2 �
     python test.py ./gokicheck scn  input.png
     python test.py ./gokicheck tilt input.png
     python test.py ./gokicheck btilt input.png
+    python test.py ./gokicheck flicker input.png
     python test.py ./gokicheck pnga input.png
     python test.py ./gokicheck jps input.png
-    python test.py ./gokicheck match input0.png input1.png
-    python test.py ./gokicheck match input0.png input1.obj
-    python test.py ./gokicheck match input0.png input1.gltf
+    python test.py ./gokicheck match input0.png input1.(png|obj|gltf)
+    python test.py ./gokicheck matcho input0.png input1.(png|obj|gltf) match
 
 # ライブラリとしての使い方
 tools.cc を参照してください。また、必要であれば namespace ブロックでスコープしてください。
