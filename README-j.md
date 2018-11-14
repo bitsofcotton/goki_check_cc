@@ -52,6 +52,7 @@ Freeze 前の細かな実装のチェックをしています。特に、gltf2 �
     python test.py ./gokicheck scn  input.png
     python test.py ./gokicheck tilt input.png
     python test.py ./gokicheck btilt input.png
+    python test.py ./gokicheck flicker input.png
     python test.py ./gokicheck pnga input.png
     python test.py ./gokicheck jps input.png
     python test.py ./gokicheck match input0.png input1.(png|obj|gltf)
