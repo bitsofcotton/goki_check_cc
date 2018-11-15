@@ -14,6 +14,8 @@ CXXFLAGS+=	-O3 -g2
 #CXXFLAGS+=	-D_WITHOUT_EIGEN_
 # Please read the library page before to use.
 #CXXFLAGS+=	-D_WITH_GLTF2_
+# Please read reference and search patents before to use.
+#CXXFLAGS+=	-D_WITH_EXTERNAL_
 LDFLAGS+=	-lc++
 
 CLEANFILES= *.o gokicheck

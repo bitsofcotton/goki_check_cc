@@ -24,14 +24,14 @@ if(argv[2] == "match" or argv[2] == "matcho"):
     if(argv[2] == "match"):
       subprocess.call([argv[1], "match", "4", "20", "6", "1", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
     else:
-      subprocess.call([argv[1], "matcho", argv[5], "8", "6", "1", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+      subprocess.call([argv[1], "matcho", argv[5], "4", "6", "1", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
     exit(0)
   elif(ext1 != ".ppm"):
     subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
   if(argv[2] == "match"):
-    subprocess.call([argv[1], "match", "4", "20", "56", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
+    subprocess.call([argv[1], "match", "4", "20", "15", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   else:
-    subprocess.call([argv[1], "matcho", argv[5], "8", "56", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
+    subprocess.call([argv[1], "matcho", argv[5], "4", "15", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   exit(0)
 
 pixels = 4
@@ -127,9 +127,8 @@ for line in argv[3:]:
   elif(argv[2] == "demosaic"):
     print pixels
     s0  = int(np.ceil(np.log(pixels) / np.log(2.)))
-    subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-0.ppm"])
-    for s in range(0, s0):
-      subprocess.call([argv[1], "enlarge", "1", root + "-" + str(s) + ".ppm", root + "-" + str(s + 1) + ".ppm"])
+    subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
+    subprocess.call([argv[1], "enlarge", str(s0), root + "-demosaic0.ppm", root + "-demosaic.ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
