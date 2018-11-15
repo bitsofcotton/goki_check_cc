@@ -43,8 +43,10 @@ public:
     ENLARGE_FBOTH,
     DETECT_X,
     DETECT_Y,
-    DETECT_NOP_Y,
     DETECT_BOTH,
+    DETECT_NOP_X,
+    DETECT_NOP_Y,
+    DETECT_NOP_BOTH,
     COLLECT_X,
     COLLECT_Y,
     COLLECT_BOTH,
@@ -58,22 +60,13 @@ public:
     EXTEND_Y0,
     EXTEND_Y,
     EXTEND_BOTH,
-    DIV2_X,
-    DIV2_Y,
-    DIV2_BOTH,
     REVERSE_X,
     REVERSE_Y,
     REVERSE_BOTH,
-    CLIP,
-    CLIPPM,
-    CLIPPLUS,
     BCLIP,
     ABS,
-    SQRTSCALE,
     EXPSCALE,
-    LOGSCALE,
-    NORMALIZE,
-    NORMALIZE_CLIP } direction_t;
+    LOGSCALE} direction_t;
   typedef complex<T> U;
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
@@ -99,12 +92,12 @@ private:
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
   void makeDI(const int& size, Mat& Dop, Mat& Dhop, Mat& Iop, Mat& Eop);
-  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dt = T(.5), const int count2 = 1);
-  Mat  recursiveETayl(const Mat& A, const int count, const T& dt = T(.5), const int count2 = 1);
+  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dt = T(.25), const int count2 = 1);
+  Mat  recursiveETayl(const Mat& A, const int count, const T& dt = T(.25), const int count2 = 1);
+  Mat  recursiveNopInt(const Mat& A, const int count, const T& dt = T(.25), const int count2 = 1);
   U    I;
   T    Pi;
   vector<Mat> A;
-  vector<Mat> rA;
   vector<Mat> B;
   vector<Mat> Dop;
   vector<Mat> Dhop;
@@ -132,11 +125,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
               compute(compute(data, ENLARGE_Y), ENLARGE_X)) / T(2);
     break;
   case ENLARGE_FBOTH:
-    assert(0 <= rec_tayl);
-    result = recursiveETayl(data, rec_tayl, T(2) / sqrt(T(data.rows() * data.cols())));
+    result = recursiveETayl(data, rec_tayl);
     break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X)  + compute(data, DETECT_Y)) / T(2);
+    break;
+  case DETECT_NOP_BOTH:
+    result = (compute(data, DETECT_NOP_X) + compute(data, DETECT_NOP_Y)) / T(2);
     break;
   case COLLECT_BOTH:
     result = (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / T(2);
@@ -155,9 +150,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
               compute(compute(data, EXTEND_Y), EXTEND_X)) / T(2);
     break;
-  case DIV2_BOTH:
-    result = compute(compute(data, DIV2_X), DIV2_Y);
-    break;
   case REVERSE_BOTH:
     result = compute(compute(data, REVERSE_X), REVERSE_Y);
     break;
@@ -166,6 +158,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case DETECT_X:
     result = compute(data.transpose(), DETECT_Y).transpose();
+    break;
+  case DETECT_NOP_X:
+    result = compute(data.transpose(), DETECT_NOP_Y).transpose();
     break;
   case COLLECT_X:
     result = compute(data.transpose(), COLLECT_Y).transpose();
@@ -179,15 +174,12 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
-  case DIV2_X:
-    result = compute(data.transpose(), DIV2_Y).transpose();
-    break;
   case REVERSE_X:
     result = compute(data.transpose(), REVERSE_Y).transpose();
     break;
   case ENLARGE_Y:
     initDop(data.rows());
-    result = compute(Eop[idx_d] * data, CLIP);
+    result = Eop[idx_d] * data;
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -225,19 +217,17 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y:
     {
-      assert(0 <= rec_tayl);
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       initBump(data.rows());
-      const auto dataA( compute( A[idx_b] * data, ABS));
-      const auto datarA(compute(rA[idx_b] * data, ABS));
-      const auto dataB( compute( B[idx_b] * data, ABS));
-      const auto dataxB(compute(dataB, DETECT_X));
-      const auto datayB(compute(dataB, DETECT_Y));
+      const auto dataA(compute(A[idx_b] * data, ABS));
+      const auto dataB(compute(B[idx_b] * data, ABS));
       // N.B. similar to f(x) ~ f(x0) + f'(x0) * (x - x0) + f''(x0) * (x - x0)^ 2 / 2! + ...
-      result = (recursivePTayl(dataA, dataB, dataxB, datayB, dataB,
-                               rec_tayl, T(2.) / dataB.rows()) -
-                recursivePTayl(datarA, dataB, dataxB, datayB, dataB,
-                               rec_tayl, T(2.) / dataB.rows())) / T(2);
+      result = recursivePTayl(dataA, dataB,
+                              compute(dataB, DETECT_X),
+                              compute(dataB, DETECT_Y),
+                              dataB, rec_tayl);
+      // N.B. artificial.
+      result = compute(recursiveNopInt(result, rec_tayl, T(2)), LOGSCALE);
     }
     break;
   case EXTEND_Y0:
@@ -289,62 +279,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result.row(data.rows() + 1) = buf0.row(data.rows() - 1);
     }
     break;
-  case DIV2_Y:
-    {
-      result = Mat(data.rows() / 2 + data.rows() % 2, data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = T(0);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.rows() / 2; i ++)
-        result.row(i / 2) += data.row(i) / T(2);
-      if(data.rows() % 2)
-        result.row(data.rows() / 2) = data.row(data.rows() - 1);
-    }
-    break;
   case REVERSE_Y:
     result = Mat(data.rows(), data.cols());
     for(int i = 0; i < data.rows(); i ++)
       result.row(result.rows() - i - 1) = data.row(i);
-    break;
-  case CLIP:
-    {
-      result = Mat(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = min(T(1), max(T(0), data(i, j)));
-    }
-    break;
-  case CLIPPM:
-    {
-      result = Mat(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = min(T(1), max(- T(1), data(i, j)));
-    }
-    break;
-  case CLIPPLUS:
-    {
-      result = Mat(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = max(T(0), data(i, j));
-    }
     break;
   case BCLIP:
     {
@@ -370,18 +308,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(i, j) = abs(data(i, j));
     }
     break;
-  case SQRTSCALE:
-    {
-      result = Mat(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * sqrt(abs(data(i, j)));
-    }
-    break;
   case EXPSCALE:
     {
       result = Mat(data.rows(), data.cols());
@@ -404,46 +330,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * (log(exp(T(1)) + abs(data(i, j))) - T(1));
-    }
-    break;
-  case NORMALIZE:
-    {
-      result = Mat(data.rows(), data.cols());
-      T MM(data(0, 0));
-      T mm(data(0, 0));
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++) {
-          MM = max(MM, data(i, j));
-          mm = min(mm, data(i, j));
-        }
-      if(mm == MM)
-        MM += T(1);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data(i, j) - mm) / (MM - mm);
-    }
-    break;
-  case NORMALIZE_CLIP:
-    {
-      result = Mat(data.rows(), data.cols());
-      vector<T> stat;
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          stat.push_back(data(i, j));
-      sort(stat.begin(), stat.end());
-      auto mm(stat[data.rows() + data.cols()]);
-      auto MM(stat[stat.size() - data.rows() - data.cols() - 1]);
-      if(mm <= MM + T(1))
-        MM += T(1);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = max(mm, min(MM, (data(i, j) - mm) / (MM - mm)));
     }
     break;
   default:
@@ -508,6 +394,20 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     Eop[idx_d].row(i) += newEop.row(max(i - 1, 0));
   }
   Eop[idx_d] /= T(4);
+#if defined(_WITH_EXTERNAL_)
+  // reverted.
+  // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
+  // But I don't know whether this method is open or not.
+  auto DFT2( seed(Eop[idx_d].rows(), false));
+  auto IDFT2(seed(DFT2.rows(), true));
+  for(int i = 0; i < DFT2.rows(); i ++)
+    DFT2.row(i) *= T(1.5) - T(.5) * exp(- pow(T(i) / DFT2.rows(), T(2)));
+#if defined(_WITHOUT_EIGEN_)
+  Eop[idx_d] = (IDFT2 * DFT2).template real<T>() * Eop[idx_d];
+#else
+  Eop[idx_d] = (IDFT2 * DFT2).real().template cast<T>() * Eop[idx_d];
+#endif
+#endif
   return;
 }
 
@@ -520,11 +420,9 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
   cerr << "n" << flush;
   idx_b = A.size();
   A.push_back(Mat());
-  rA.push_back(Mat());
   B.push_back(Mat());
   assert(2 <= size);
   A[idx_b] = Mat(size, size);
-  rA[idx_b] = Mat(size, size);
   B[idx_b] = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -532,7 +430,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
 #endif
   for(int i = 0; i < size; i ++)
     for(int j = 0; j < size; j ++)
-      B[idx_b](i, j) = rA[idx_b](i, j) = A[idx_b](i, j) = T(0);
+      B[idx_b](i, j) = A[idx_b](i, j) = T(0);
   Mat Dop0;
   Mat Dhop0;
   Mat Iop0;
@@ -562,22 +460,19 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       {
         if(Dop0.rows() % 2 == 1 || Dop0.rows() <= 3)
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            A[idx_b](i, getImgPt(i + y0, size))  += Dop0(Dop0.rows() / 2, j) * T(zi + 1) * dratio;
-            rA[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (T(1) - T(zi + 1) * dratio);
-            B[idx_b](i, getImgPt(i + y0, size))  += Dop0(Dop0.rows() / 2, j);
+            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * T(zi + 1) * dratio;
+            B[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j);
           }
         else
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            A[idx_b](i, getImgPt(i + y0, size))  += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * T(zi + 1) * dratio;
-            rA[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (T(1) - T(zi + 1) * dratio);
-            B[idx_b](i, getImgPt(i + y0, size))  += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
+            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * T(zi + 1) * dratio;
+            B[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
           }
       }
     }
   }
-  A[idx_b]  *= dratio;
-  rA[idx_b] *= dratio;
-  B[idx_b]  *= T(.5);
+  A[idx_b] *= dratio;
+  B[idx_b] *= T(.5);
   return;
 }
 
@@ -675,10 +570,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursivePTay
     // res = (A / B * 2 + integrate(d/dx (A / B), dx) + same for y) / n / 4.
     return (datai * T(2) +
             (compute(recursivePTayl(datax, BB, ddxB, ddyB, B0,
-               count - 1, dt, count2 + 1), IDETECT_X) + 
+                                    count - 1, dt, count2 + 1), IDETECT_X) +
              compute(recursivePTayl(datay, BB, ddxB, ddyB, B0,
-               count - 1, dt, count2 + 1), IDETECT_Y)) * dt) / T(4) / count2;
-  return datai / count2;
+                                    count - 1, dt, count2 + 1), IDETECT_Y))
+            * dt) / T(4) / count2;
+  return datai;
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveETayl(const Mat& A, const int count, const T& dt, const int count2) {
@@ -689,6 +585,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveETay
              recursiveETayl(compute(A, DETECT_X), count - 1, dt, count2 + 1)) *
            dt) / T(4) / count2;
   return compute(A, ENLARGE_BOTH);
+}
+
+template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveNopInt(const Mat& A, const int count, const T& dt, const int count2) {
+  assert(0 <= count);
+  if(count)
+    return (A * T(2) +
+            (recursiveNopInt(compute(A, DETECT_NOP_Y), count - 1, dt, count2 + 1) +
+             recursiveNopInt(compute(A, DETECT_NOP_X), count - 1, dt, count2 + 1)) * dt) / T(4) / count2;
+  return A;
 }
 
 #define _ENLARGE2X_
