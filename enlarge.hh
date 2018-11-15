@@ -66,6 +66,7 @@ public:
     REVERSE_Y,
     REVERSE_BOTH,
     BCLIP,
+    CLIP,
     ABS,
     EXPSCALE,
     LOGSCALE} direction_t;
@@ -256,22 +257,19 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.cols(); i ++) {
-        T d0d(0), d0t(0), d0n(0);
+        T a(0), b(0);
         for(int j = 0; j < d0data.rows(); j ++) {
-          // <d0data, ddata + Diff * t * e_k> == ||d0data||^2
-          // <d0data, ddata> + <d0data, Diff * t * e_k> == ||d0data||^2
-          d0d += d0data(j, i) * ddata(j, i);
-          d0t += d0data(j, i) * Dop0(j, Dop0.cols() - 1);
-          d0n += d0data(j, i) * d0data(j, i);
+          // <d0data, (ddata + Diff * t * e_k)> == <d0data, d0data> in cut.
+          a += Dop0(j, Dop0.cols() - 1);
+          b += d0data(j, i) * (d0data(j, i) - ddata(j, i));
         }
-        if(d0t == T(0)) {
-          cerr << "NG in EXTEND_Y0" << endl;
+        if(a == 0) {
+          cerr << "Error in EXTEND_Y0" << endl;
           result(data.rows(), i) = data(data.rows() - 1, i);
         } else
-          result(data.rows(), i) = (d0n - d0d) / d0t;
+          result(data.rows(), i) = b / a;
       }
-      for(int i = 0; i < result.cols(); i ++)
-        result(data.rows(), i) = max(T(0), min(T(1), result(data.rows(), i)));
+      result = compute(result, CLIP);
     }
     break;
   case EXTEND_Y:
@@ -298,6 +296,18 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * max(abs(data(i, j)), offset);
+    }
+    break;
+  case CLIP:
+    {
+      result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = max(T(0), min(T(1), data(i, j)));
     }
     break;
   case ABS:
