@@ -151,9 +151,30 @@ int main(int argc, const char* argv[]) {
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
-      for(int j = 0; j < ratio; j ++)
-        for(int i = 0; i < 3; i ++)
-          data[i] = extender.compute(data[i], extender.EXTEND_BOTH);
+      typename simpleFile<double>::Mat result[3];
+      for(int j = 0; j < 3; j ++) {
+        result[j] = typename simpleFile<double>::Mat(data[j].rows() + ratio * 2, data[j].cols());
+        for(int k = 0; k < result[j].rows(); k ++)
+          for(int l = 0; l < result[j].cols(); l ++)
+            result[j](k, l) = 0.;
+        for(int k = 0; k < data[j].rows(); k ++)
+          result[j].row(k + ratio) = data[j].row(k);
+      }
+      for(int j = 0; j < ratio; j ++) {
+        for(int i = 0; i < 3; i ++) {
+          typename simpleFile<double>::Mat work(data[i].rows() / (j + 1), data[i].cols());
+          for(int k = 0; k < data[i].rows() / (j + 1); k ++)
+            work.row(k) = data[i].row(k * (j + 1));
+          auto work2(extender.compute(work, extender.EXTEND_Y));
+          result[i].row(ratio - j - 1) = work2.row(0);
+          for(int k = 0; k < data[i].rows() / (j + 1); k ++)
+            work.row(k) = data[i].row(k * (j + 1) - (data[i].rows() / (j + 1) - 1) * (j + 1) + data[i].rows() - 1);
+          work2 = extender.compute(work, extender.EXTEND_Y);
+          result[i].row(result[i].rows() - ratio + j) = work2.row(work2.rows() - 1);
+        }
+      }
+      for(int i = 0; i < 3; i ++)
+        data[i] = result[i];
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[4], data, ! true))
