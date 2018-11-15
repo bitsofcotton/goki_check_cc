@@ -249,9 +249,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       Mat Dop0, Dhop0, Iop0, Eop0;
       makeDI(data.rows() * 2 - 1, Dop0, Dhop0, Iop0, Eop0);
       // N.B. nearest data in differential space.
-      const auto d0data(Dop0 * data);
+      const Mat d0data(Dop0 * data);
       makeDI(result.rows() * 2 - 1, Dop0, Dhop0, Iop0, Eop0);
-      const auto ddata(Dop0 * result);
+      const Mat ddata(Dop0 * result);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
