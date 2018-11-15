@@ -165,12 +165,11 @@ int main(int argc, const char* argv[]) {
           typename simpleFile<double>::Mat work(data[i].rows() / (j + 1), data[i].cols());
           for(int k = 0; k < data[i].rows() / (j + 1); k ++)
             work.row(k) = data[i].row(k * (j + 1));
-          auto work2(extender.compute(work, extender.EXTEND_Y));
-          result[i].row(ratio - j - 1) = work2.row(0);
+          result[i].row(ratio - j - 1) = extender.compute(extender.compute(work, extender.REVERSE_Y), extender.EXTEND_Y0).row(work.rows());
+          work = typename simpleFile<double>::Mat(data[i].rows() / (j + 1), data[i].cols());
           for(int k = 0; k < data[i].rows() / (j + 1); k ++)
             work.row(k) = data[i].row(k * (j + 1) - (data[i].rows() / (j + 1) - 1) * (j + 1) + data[i].rows() - 1);
-          work2 = extender.compute(work, extender.EXTEND_Y);
-          result[i].row(result[i].rows() - ratio + j) = work2.row(work2.rows() - 1);
+          result[i].row(result[i].rows() - ratio + j) = extender.compute(work, extender.EXTEND_Y0).row(work.rows());
         }
       }
       for(int i = 0; i < 3; i ++)
