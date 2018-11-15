@@ -151,6 +151,10 @@ int main(int argc, const char* argv[]) {
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
+      for(int i = 0; i < 3; i ++)
+        for(int j = 0; j < ratio; j ++)
+          data[i] = extender.compute(data[i], extender.EXTEND_Y);
+/*
       typename simpleFile<double>::Mat result[3];
       for(int j = 0; j < 3; j ++) {
         result[j] = typename simpleFile<double>::Mat(data[j].rows() + ratio * 2, data[j].cols());
@@ -174,6 +178,7 @@ int main(int argc, const char* argv[]) {
       }
       for(int i = 0; i < 3; i ++)
         data[i] = result[i];
+*/
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[4], data, ! true))
