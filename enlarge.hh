@@ -20,6 +20,8 @@ using std::abs;
 using std::sqrt;
 using std::exp;
 using std::pow;
+using std::sin;
+using std::cos;
 using std::tan;
 using std::atan2;
 using std::vector;
@@ -244,25 +246,29 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
+      Mat Dop0, Dhop0, Iop0, Eop0;
+      makeDI(data.rows() * 2 - 1, Dop0, Dhop0, Iop0, Eop0);
       // N.B. nearest data in differential space.
-      const auto d0data(compute(data, DETECT_Y));
-      const auto ddata(compute(result, DETECT_Y));
+      const auto d0data(Dop0 * data);
+      makeDI(result.rows() * 2 - 1, Dop0, Dhop0, Iop0, Eop0);
+      const auto ddata(Dop0 * result);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.cols(); i ++) {
-        T a(0), b(0), c(0);
+        T d0d(0), d0t(0), d0n(0);
         for(int j = 0; j < d0data.rows(); j ++) {
-          const T aa(- Dop[idx_d](j, Dop[idx_d].rows() - 1));
-          const T bb(ddata(j, i) - d0data(j, i));
-          a += aa * aa;
-          b += aa * bb;
-          c += bb * bb;
+          // <d0data, ddata + Diff * t * e_k> == ||d0data||^2
+          // <d0data, ddata> + <d0data, Diff * t * e_k> == ||d0data||^2
+          d0d += d0data(j, i) * ddata(j, i);
+          d0t += d0data(j, i) * Dop0(j, Dop0.cols() - 1);
+          d0n += d0data(j, i) * d0data(j, i);
         }
-        if(T(0) < b * b - a * c)
-          result(data.rows(), i) = - b / a + sqrt(b * b - a * c) / a;
-        else
-          result(data.rows(), i) = - b / a;
+        if(d0t == T(0)) {
+          cerr << "NG in EXTEND_Y0" << endl;
+          result(data.rows(), i) = data(data.rows() - 1, i);
+        } else
+          result(data.rows(), i) = (d0n - d0d) / d0t;
       }
       for(int i = 0; i < result.cols(); i ++)
         result(data.rows(), i) = max(T(0), min(T(1), result(data.rows(), i)));
@@ -270,13 +276,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case EXTEND_Y:
     {
-      const auto buf0(compute(data, EXTEND_Y0));
-      const auto buf1(compute(compute(compute(data, REVERSE_Y), EXTEND_Y0), REVERSE_Y));
       result = Mat(data.rows() + 2, data.cols());
-      result.row(0) = buf1.row(0);
+      result.row(0) = compute(compute(data, REVERSE_Y), EXTEND_Y0).row(data.rows());
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
-      result.row(data.rows() + 1) = buf0.row(data.rows() - 1);
+      result.row(data.rows() + 1) = compute(data, EXTEND_Y0).row(data.rows());
     }
     break;
   case REVERSE_Y:
