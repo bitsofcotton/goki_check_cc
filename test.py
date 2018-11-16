@@ -50,6 +50,8 @@ for line in argv[3:]:
     subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
+  elif(argv[2] == "bumpe"):
+    subprocess.call([argv[1], "bumpe", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
     subprocess.call([argv[1], "pextend", str(pixels), root + ".ppm", root + "-pextend.ppm"])
   elif(argv[2] == "emph"):

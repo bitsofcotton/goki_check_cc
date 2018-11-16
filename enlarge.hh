@@ -46,9 +46,6 @@ public:
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
-    DETECT_NOP_X,
-    DETECT_NOP_Y,
-    DETECT_NOP_BOTH,
     COLLECT_X,
     COLLECT_Y,
     COLLECT_BOTH,
@@ -65,6 +62,7 @@ public:
     REVERSE_X,
     REVERSE_Y,
     REVERSE_BOTH,
+    DEDGE,
     BCLIP,
     CLIP,
     ABS,
@@ -88,22 +86,22 @@ public:
   T    dratio;
   T    offset;
   int  rec_tayl;
+  T    thedge;
+  int  sq;
   
 private:
   void initDop(const int& size);
   void initBump(const int& size);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
-  void makeDI(const int& size, Mat& Dop, Mat& Dhop, Mat& Iop, Mat& Eop);
-  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dt = T(.25), const int count2 = 1);
-  Mat  recursiveETayl(const Mat& A, const int count, const T& dt = T(.25), const int count2 = 1);
-  Mat  recursiveNopInt(const Mat& A, const int count, const T& dt = T(.25), const int count2 = 1);
+  void makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop);
+  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dt, const int count2 = 1);
+  Mat  recursiveETayl(const Mat& A, const int count, const T& dt, const int count2 = 1);
   U    I;
   T    Pi;
   vector<Mat> A;
   vector<Mat> B;
   vector<Mat> Dop;
-  vector<Mat> Dhop;
   vector<Mat> Eop;
   vector<Mat> Iop;
   int idx_d;
@@ -113,9 +111,11 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  dratio   = T(.0005);
-  offset   = T(2) / T(256);
-  rec_tayl = 4;
+  dratio   = T(.00005);
+  offset   = T(1) / T(256);
+  rec_tayl = 5;
+  thedge   = T(.05);
+  sq       = 4;
   idx_d    = - 1;
   idx_b    = - 1;
 }
@@ -124,17 +124,14 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   Mat result;
   switch(dir) {
   case ENLARGE_BOTH:
-    result = (compute(compute(data, ENLARGE_X), ENLARGE_Y) +
-              compute(compute(data, ENLARGE_Y), ENLARGE_X)) / T(2);
+    // N.B. commutative.
+    result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
     break;
   case ENLARGE_FBOTH:
-    result = recursiveETayl(data, rec_tayl);
+    result = recursiveETayl(data, rec_tayl, T(1) / sqrt(T(data.rows() * data.cols())));
     break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X)  + compute(data, DETECT_Y)) / T(2);
-    break;
-  case DETECT_NOP_BOTH:
-    result = (compute(data, DETECT_NOP_X) + compute(data, DETECT_NOP_Y)) / T(2);
     break;
   case COLLECT_BOTH:
     result = (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / T(2);
@@ -143,11 +140,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / T(2);
     break;
   case BUMP_BOTH:
-    result = (compute(data, BUMP_Y) +
-              compute(data, BUMP_X) +
-              compute(compute(compute(data, REVERSE_Y), BUMP_Y), REVERSE_Y) +
-              compute(compute(compute(data, REVERSE_X), BUMP_X), REVERSE_X)) /
-              T(4);
+    result = (compute(data, BUMP_X)    + compute(data, BUMP_Y))    / T(2);
     break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
@@ -161,9 +154,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case DETECT_X:
     result = compute(data.transpose(), DETECT_Y).transpose();
-    break;
-  case DETECT_NOP_X:
-    result = compute(data.transpose(), DETECT_NOP_Y).transpose();
     break;
   case COLLECT_X:
     result = compute(data.transpose(), COLLECT_Y).transpose();
@@ -187,10 +177,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case DETECT_Y:
     initDop(data.rows());
     result = Dop[idx_d] * data;
-    break;
-  case DETECT_NOP_Y:
-    initDop(data.rows());
-    result = Dhop[idx_d] * data;
     break;
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
@@ -222,15 +208,14 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       initBump(data.rows());
-      const auto dataA(compute(A[idx_b] * data, ABS));
       const auto dataB(compute(B[idx_b] * data, ABS));
       // N.B. similar to f(x) ~ f(x0) + f'(x0) * (x - x0) + f''(x0) * (x - x0)^ 2 / 2! + ...
-      result = recursivePTayl(dataA, dataB,
-                              compute(dataB, DETECT_X),
-                              compute(dataB, DETECT_Y),
-                              dataB, rec_tayl);
+      result = - recursivePTayl(compute(A[idx_b] * data, ABS), dataB,
+                                compute(dataB, DETECT_X),
+                                compute(dataB, DETECT_Y),
+                                dataB, rec_tayl, T(1) / data.rows());
       // N.B. artificial.
-      result = compute(recursiveNopInt(result, rec_tayl, T(2)), LOGSCALE);
+      result = compute(result, LOGSCALE);
     }
     break;
   case EXTEND_Y0:
@@ -247,11 +232,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
-      Mat Dop0, Dhop0, Iop0, Eop0;
-      makeDI(data.rows() * 2 - 1, Dop0, Dhop0, Iop0, Eop0);
+      Mat Dop0, Iop0, Eop0;
+      makeDI(data.rows() * 2 - 1, Dop0, Iop0, Eop0);
       // N.B. nearest data in differential space.
       const Mat d0data(Dop0 * data);
-      makeDI(result.rows() * 2 - 1, Dop0, Dhop0, Iop0, Eop0);
+      makeDI(result.rows() * 2 - 1, Dop0, Iop0, Eop0);
       const Mat ddata(Dop0 * result);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -285,6 +270,44 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = Mat(data.rows(), data.cols());
     for(int i = 0; i < data.rows(); i ++)
       result.row(result.rows() - i - 1) = data.row(i);
+    break;
+  case DEDGE:
+    {
+      assert(T(0) <= thedge && 0 < sq);
+      vector<T> stat;
+      for(int i = 0; i < data.rows(); i ++)
+        for(int j = 0; j < data.cols(); j ++)
+          stat.push_back(data(i, j));
+      sort(stat.begin(), stat.end());
+      result = data;
+      for(int i = 0; i < data.rows(); i ++)
+        for(int j = 0; j < data.cols(); j ++)
+          if(data(i, j) <= stat[int((stat.size() - 1) * thedge)])
+            result(i, j) = - T(1);
+      bool flag(true);
+      while(flag) {
+        flag = false;
+        bool flag2(false);
+        for(int i = 0; i < result.rows(); i ++)
+          for(int j = 0; j < result.cols(); j ++)
+            if(result(i, j) < T(0)) {
+              int cnt(0);
+              T   sum(0);
+              for(int ii = max(0, i - sq + 1); ii < min(i + sq, int(result.rows())); ii ++)
+                for(int jj = max(0, j - sq + 1); jj < min(j + sq, int(result.cols())); jj ++)
+                  if(T(0) <= result(ii, jj)) {
+                    sum += result(ii, jj);
+                    cnt ++;
+                  }
+              if(cnt) {
+                result(i, j) = sum / cnt;
+                flag2 = true;
+              } else
+                flag  = true;
+            }
+        flag = flag && flag2;
+      }
+    }
     break;
   case BCLIP:
     {
@@ -361,17 +384,14 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   cerr << "n" << flush;
   idx_d = Dop.size();
   Dop.push_back(Mat());
-  Dhop.push_back(Mat());
   Iop.push_back(Mat());
   Eop.push_back(Mat());
   Mat vDop;
-  Mat vDhop;
   Mat vIop;
   Mat vEop;
   assert(2 <= size);
-  makeDI(size, vDop, vDhop, vIop, vEop);
+  makeDI(size, vDop, vIop, vEop);
   Dop[idx_d]  = Mat(size, size);
-  Dhop[idx_d] = Mat(size, size);
   Iop[idx_d]  = Mat(size, size);
   Eop[idx_d]  = Mat(size, size);
 #if defined(_OPENMP)
@@ -380,7 +400,7 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 #endif
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
     for(int j = 0; j < Dop[idx_d].cols(); j ++)
-      Dop[idx_d](i, j) = Dhop[idx_d](i, j) = Iop[idx_d](i, j) = Eop[idx_d](i, j) = T(0);
+      Dop[idx_d](i, j) = Iop[idx_d](i, j) = Eop[idx_d](i, j) = T(0);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -388,7 +408,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
     for(int j = 0; j < Dop[idx_d].cols() / 2; j ++) {
       Dop[idx_d]( i, i / 2 + j) =   vDop( i / 2, j);
-      Dhop[idx_d](i, i / 2 + j) =   vDhop(i / 2, j);
       Iop[idx_d]( i, i / 2 + j) = - vIop( i / 2, j);
       Eop[idx_d]( i, i / 2 + j) =   vEop( i / 2, j);
     }
@@ -446,10 +465,9 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
     for(int j = 0; j < size; j ++)
       B[idx_b](i, j) = A[idx_b](i, j) = T(0);
   Mat Dop0;
-  Mat Dhop0;
   Mat Iop0;
   Mat Eop0;
-  makeDI(max(3, int(T(2) * sqrt(T(size)))), Dop0, Dhop0, Iop0, Eop0);
+  makeDI(max(3, int(T(2) * sqrt(T(size)))), Dop0, Iop0, Eop0);
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
@@ -494,13 +512,12 @@ template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
   return int(abs(int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
 }
 
-template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat& Dhop, Mat& Iop, Mat& Eop) {
+template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop) {
   assert(2 <= size);
   const auto ss((size + 1) / 2);
         auto DFTD(seed(ss, false));
   DFTD.row(0) *= U(0);
   const auto IDFT(seed(ss, true));
-        auto DFTH(DFTD);
         auto DFTI(DFTD);
         auto DFTE(DFTD);
   for(int i = 1; i < DFTD.rows(); i ++) {
@@ -509,27 +526,22 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
     DFTD.row(i) *= phase;
     DFTI.row(i) /= phase;
     // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
-    DFTH.row(i) *= log(phase);
+    // DFTH.row(i) *= log(phase);
     // N.B. please refer enlarge.wxm, uses each freq.
     //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
     const T phase2(Pi * T(i + DFTE.rows()) / T(DFTE.rows()));
     const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
     DFTE.row(i) *= r;
   }
-  DFTD /= T(2) * Pi;
-  DFTH /= T(2) * Pi;
-  DFTI /= T(2) * Pi;
-  DFTE /= T(2) * Pi * sqrt(T(DFTE.rows()));
+  DFTE /= T(DFTE.rows());
 #if defined(_WITHOUT_EIGEN_)
-  Dop  = (IDFT * DFTD).template real<T>();
-  Dhop = (IDFT * DFTH).template real<T>();
-  Iop  = (IDFT * DFTI).template real<T>();
-  Eop  = (IDFT * DFTE).template real<T>();
+  Dop = (IDFT * DFTD).template real<T>();
+  Iop = (IDFT * DFTI).template real<T>();
+  Eop = (IDFT * DFTE).template real<T>();
 #else
-  Dop  = (IDFT * DFTD).real().template cast<T>();
-  Dhop = (IDFT * DFTH).real().template cast<T>();
-  Iop  = (IDFT * DFTI).real().template cast<T>();
-  Eop  = (IDFT * DFTE).real().template cast<T>();
+  Dop = (IDFT * DFTD).real().template cast<T>();
+  Iop = (IDFT * DFTI).real().template cast<T>();
+  Eop = (IDFT * DFTE).real().template cast<T>();
 #endif
   return;
 }
@@ -599,15 +611,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveETay
              recursiveETayl(compute(A, DETECT_X), count - 1, dt, count2 + 1)) *
            dt) / T(4) / count2;
   return compute(A, ENLARGE_BOTH);
-}
-
-template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveNopInt(const Mat& A, const int count, const T& dt, const int count2) {
-  assert(0 <= count);
-  if(count)
-    return (A * T(2) +
-            (recursiveNopInt(compute(A, DETECT_NOP_Y), count - 1, dt, count2 + 1) +
-             recursiveNopInt(compute(A, DETECT_NOP_X), count - 1, dt, count2 + 1)) * dt) / T(4) / count2;
-  return A;
 }
 
 #define _ENLARGE2X_

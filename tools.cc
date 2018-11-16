@@ -37,6 +37,7 @@ void usage() {
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck idetect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck bumpe   <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
@@ -185,7 +186,8 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "collect") == 0 ||
             strcmp(argv[1], "idetect") == 0 ||
-            strcmp(argv[1], "bump") == 0) {
+            strcmp(argv[1], "bump")  == 0 ||
+            strcmp(argv[1], "bumpe") == 0) {
     if(argc < 4) {
       usage();
       return 0;
@@ -210,6 +212,12 @@ int main(int argc, const char* argv[]) {
       auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
       data[0] = data[1] = data[2] = redig.autoLevel(xye, xye.rows() + xye.cols());
       // data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
+    } else if(strcmp(argv[1], "bumpe") == 0) {
+      enlarger2ex<double> bump;
+      const auto data0(bump.compute(redig.normalize(redig.rgb2d(data), 1.), bump.DEDGE));
+      auto xye(bump.compute(data0, bump.BUMP_BOTH));
+      data[0] = data[1] = data[2] = redig.autoLevel(xye, xye.rows() + xye.cols());
+      // data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(data0, false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
