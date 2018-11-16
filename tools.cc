@@ -52,7 +52,6 @@ void usage() {
 template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<typename simpleFile<T>::Vec3>& shape0, const std::vector<typename simpleFile<T>::Vec3>& shape1, const typename simpleFile<T>::Mat in0[3], const typename simpleFile<T>::Mat in1[3], const typename simpleFile<T>::Mat& bump0, const typename simpleFile<T>::Mat& bump1, const std::vector<T>& emph) {
   reDig<T> redig;
   simpleFile<T> file;
-  std::cerr << "(" << match.rdepth << ", " << match.ratio << ")" << std::endl;
   
   typename simpleFile<T>::Mat outs[3], outs2[3];
   const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
@@ -468,11 +467,20 @@ int main(int argc, const char* argv[]) {
       redig.getTileVec(bump1, shape1, delau1);
       redig.maskVectors(shape1, delau1, mmout1);
     }
-    if(strcmp(argv[1], "matcho") == 0)
-      saveMatches<double>(std::string(argv[fnout]), ~ m, shape1, shape0, mout, data, bump1, bump0, emph);
-    else { 
+    if(strcmp(argv[1], "matcho") == 0) {
+      if(fn[fn.size() - 1] == 'j' ||
+         fn[fn.size() - 1] == 'f')
+        saveMatches<double>(std::string(argv[fnout]), match_t<double>(), shape0, m.transform(shape1), data, mout, bump0, bump1, emph);
+      else
+        saveMatches<double>(std::string(argv[fnout]), ~ m, shape1, shape0, mout, data, bump1, bump0, emph);
+    } else { 
       matchPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
+      if(fn[fn.size() - 1] == 'j' ||
+         fn[fn.size() - 1] == 'f')
+        std::sort(matches.begin(), matches.end(), [] (const match_t<double>& dst, const match_t<double>& src) {
+          return dst.srcpoints.size() > src.srcpoints.size();
+        });
       // matches = statmatch.elim(matches, data, mout, bump1, shape1);
       matches.resize(min(int(matches.size()), nhid));
       std::cerr << matches.size() << "pending" << std::endl;

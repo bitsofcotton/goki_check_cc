@@ -356,7 +356,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, 1.5, .25, .1);
+  init(40, 1.5, .05, .1);
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
@@ -515,7 +515,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
     for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
-      match_t<T> work0(threshs, thresht * thresht, abs(gd[0]), abs(gd[1]));
+      match_t<T> work0(threshs, thresht, abs(gd[0]), abs(gd[1]));
       for(int k = 0; k < ddiv.size() / 2; k ++) {
         Mat3x3 lrot(3, 3);
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
@@ -564,9 +564,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
         // if it's good:
         if(threshp <= work.dstpoints.size() /
                         T(min(shapebase.size(), points.size())) &&
-          complementMatch(work, shapebase, points) &&
-          threshp <= work.dstpoints.size() /
-                        T(min(shapebase.size(), points.size()))) {
+           complementMatch(work, shapebase, points)) {
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
