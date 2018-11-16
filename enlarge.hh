@@ -42,7 +42,6 @@ public:
     ENLARGE_X,
     ENLARGE_Y,
     ENLARGE_BOTH,
-    ENLARGE_FBOTH,
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
@@ -85,7 +84,6 @@ public:
   MatU seed(const int& size, const bool& idft);
   T    dratio;
   T    offset;
-  int  rec_tayl;
   T    thedge;
   int  sq;
   
@@ -95,8 +93,6 @@ private:
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
   void makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop);
-  Mat  recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dt, const int count2 = 1);
-  Mat  recursiveETayl(const Mat& A, const int count, const T& dt, const int count2 = 1);
   U    I;
   T    Pi;
   vector<Mat> A;
@@ -113,7 +109,6 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   Pi = atan2(T(1), T(1)) * T(4);
   dratio   = T(.00005);
   offset   = T(1) / T(256);
-  rec_tayl = 5;
   thedge   = T(.05);
   sq       = 4;
   idx_d    = - 1;
@@ -126,9 +121,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case ENLARGE_BOTH:
     // N.B. commutative.
     result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
-    break;
-  case ENLARGE_FBOTH:
-    result = recursiveETayl(data, rec_tayl, T(1) / sqrt(T(data.rows() * data.cols())));
     break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X)  + compute(data, DETECT_Y)) / T(2);
@@ -208,14 +200,12 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       initBump(data.rows());
-      const auto dataB(compute(B[idx_b] * data, ABS));
-      // N.B. similar to f(x) ~ f(x0) + f'(x0) * (x - x0) + f''(x0) * (x - x0)^ 2 / 2! + ...
-      result = - recursivePTayl(compute(A[idx_b] * data, ABS), dataB,
-                                compute(dataB, DETECT_X),
-                                compute(dataB, DETECT_Y),
-                                dataB, rec_tayl, T(1) / data.rows());
-      // N.B. artificial.
-      result = compute(result, LOGSCALE);
+      const auto dataA( compute(A[idx_b] * data, ABS));
+      const auto dataBc(compute(compute(B[idx_b] * data, ABS), BCLIP));
+      result = Mat(data.rows(), data.cols());
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = dataA(i, j) / dataBc(i, j);
     }
     break;
   case EXTEND_Y0:
@@ -520,11 +510,14 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
   const auto IDFT(seed(ss, true));
         auto DFTI(DFTD);
         auto DFTE(DFTD);
+  T nd(0), ni(0);
   for(int i = 1; i < DFTD.rows(); i ++) {
     const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
     // N.B. d/dy, integrate.
     DFTD.row(i) *= phase;
     DFTI.row(i) /= phase;
+    nd += abs(phase) * abs(phase);
+    ni += T(1) / (abs(phase) * abs(phase));
     // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
     // DFTH.row(i) *= log(phase);
     // N.B. please refer enlarge.wxm, uses each freq.
@@ -533,6 +526,10 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
     const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
     DFTE.row(i) *= r;
   }
+  // N.B. similar to DFTI * DFTD == id.
+  const T ratio(sqrt(nd * ni));
+  DFTD /= ratio;
+  DFTI /= ratio;
   DFTE /= T(DFTE.rows());
 #if defined(_WITHOUT_EIGEN_)
   Dop = (IDFT * DFTD).template real<T>();
@@ -573,44 +570,6 @@ template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(con
   result[0] = (xdot * ysum - ydot * xsum) / (in.size() * xdot - xsum * xsum);
   result[1] = (in.size() * ydot - xsum * ysum) / (in.size() * xdot - xsum * xsum);
   return result;
-}
-
-template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursivePTayl(const Mat& A, const Mat& B, const Mat& ddxB, const Mat& ddyB, const Mat& B0, const int count, const T& dt, const int count2) {
-  assert(0 <= count);
-  const auto datadxA(compute(A, DETECT_X));
-  const auto datadyA(compute(A, DETECT_Y));
-        auto BB(B);
-  const auto Bc(compute(B, BCLIP));
-        Mat  datax(A.rows(), A.cols());
-        Mat  datay(A.rows(), A.cols());
-        Mat  datai(A.rows(), A.cols());
-  for(int i = 0; i < BB.rows(); i ++)
-    for(int j = 0; j < BB.cols(); j ++) {
-      BB(i, j)   *= B0(i, j);
-      // d/dt (A / (B0^n)) = ((d/dt A) * B0 - n * A * (d/dt B0)) / (B0^(n+1))
-      datax(i, j) = datadxA(i, j) * B0(i, j) - count2 * A(i, j) * ddxB(i, j);
-      datay(i, j) = datadyA(i, j) * B0(i, j) - count2 * A(i, j) * ddyB(i, j);
-      datai(i, j) = A(i, j) / Bc(i, j);
-    }
-  if(count)
-    // res = (A / B * 2 + integrate(d/dx (A / B), dx) + same for y) / n / 4.
-    return (datai * T(2) +
-            (compute(recursivePTayl(datax, BB, ddxB, ddyB, B0,
-                                    count - 1, dt, count2 + 1), IDETECT_X) +
-             compute(recursivePTayl(datay, BB, ddxB, ddyB, B0,
-                                    count - 1, dt, count2 + 1), IDETECT_Y))
-            * dt) / T(4) / count2;
-  return datai;
-}
-
-template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::recursiveETayl(const Mat& A, const int count, const T& dt, const int count2) {
-  assert(0 <= count);
-  if(count)
-    return (compute(A, ENLARGE_BOTH) * T(2) +
-            (recursiveETayl(compute(A, DETECT_Y), count - 1, dt, count2 + 1) +
-             recursiveETayl(compute(A, DETECT_X), count - 1, dt, count2 + 1)) *
-           dt) / T(4) / count2;
-  return compute(A, ENLARGE_BOTH);
 }
 
 #define _ENLARGE2X_

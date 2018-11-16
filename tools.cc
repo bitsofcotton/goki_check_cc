@@ -145,9 +145,9 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> enlarger, denlarger;
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
-          const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_FBOTH));
+          const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           data[i] = xye;
-          //data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_FBOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
+          //data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
