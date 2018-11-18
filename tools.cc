@@ -146,8 +146,7 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
           const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-          data[i] = xye;
-          //data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
+          data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
@@ -209,14 +208,12 @@ int main(int argc, const char* argv[]) {
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
       auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye, xye.rows() + xye.cols());
-      // data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
     } else if(strcmp(argv[1], "bumpe") == 0) {
       enlarger2ex<double> bump;
       const auto data0(bump.compute(redig.normalize(redig.rgb2d(data), 1.), bump.DEDGE));
       auto xye(bump.compute(data0, bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye, xye.rows() + xye.cols());
-      // data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(data0, false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(data0, false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))

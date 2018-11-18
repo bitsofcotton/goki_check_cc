@@ -61,6 +61,7 @@ public:
     REVERSE_X,
     REVERSE_Y,
     REVERSE_BOTH,
+    D2Y,
     DEDGE,
     BCLIP,
     CLIP,
@@ -200,12 +201,26 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       initBump(data.rows());
-      const auto dataA( compute(A[idx_b] * data, ABS));
-      const auto dataBc(compute(compute(B[idx_b] * data, ABS), BCLIP));
-      result = Mat(data.rows(), data.cols());
+      Mat result(data.rows(), data.cols());
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = dataA(i, j) / dataBc(i, j);
+          result(i, j) = T(0);
+      // N.B. there's better method with low freq, but that has a patent matter.
+      Mat work(data);
+      for( ; 4 < work.rows(); ) {
+        Mat w0(work);
+        for( ; w0.rows() < data.rows(); )
+          w0 = compute(w0, ENLARGE_Y);
+        Mat w1(data.rows(), data.cols());
+        for(int i = 0; i < w1.rows(); i ++)
+          w1.row(i) = w0.row(i);
+        const auto dataA(compute(A[idx_b] * w1, ABS));
+        const auto dataBc(compute(compute(B[idx_b] * w1, ABS), BCLIP));
+        for(int i = 0; i < result.rows(); i ++)
+          for(int j = 0; j < result.cols(); j ++)
+            result(i, j) += dataA(i, j) / dataBc(i, j);
+        work = compute(work, D2Y);
+      }
     }
     break;
   case EXTEND_Y0:
@@ -260,6 +275,16 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = Mat(data.rows(), data.cols());
     for(int i = 0; i < data.rows(); i ++)
       result.row(result.rows() - i - 1) = data.row(i);
+    break;
+  case D2Y:
+    result = Mat((data.rows() + 1) / 2, data.cols());
+    for(int i = 0; i < result.rows(); i ++) {
+      result.row(i) = data.row(i * 2);
+      if(i * 2 + 1 < data.rows()) {
+        result.row(i) += data.row(i * 2 + 1);
+        result.row(i) /= T(2);
+      }
+    }
     break;
   case DEDGE:
     {
