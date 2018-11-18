@@ -113,7 +113,8 @@ for line in argv[3:]:
     for s in range(0, 4):
       subprocess.call([argv[1], "sbox", str(- s * 16), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(3 - s) + ".ppm"])
   elif(argv[2] == "extend"):
-    for tam in [.5 / 12., .75 / 12., 1 / 12.]:
+    for tami in range(1, 8):
+      tam = tami / 120.
       for s in range(0, 4):
         subprocess.call([argv[1], "tilt", str(s), "4", str(tam), "0", root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
         subprocess.call([argv[1], "bump", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
