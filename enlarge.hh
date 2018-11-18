@@ -201,7 +201,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     {
       // |average(dC*z_k)/average(dC)| == dataA / dataB.
       initBump(data.rows());
-      Mat result(data.rows(), data.cols());
+      result = Mat(data.rows(), data.cols());
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = T(0);
