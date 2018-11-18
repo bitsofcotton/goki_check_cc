@@ -207,7 +207,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(i, j) = T(0);
       // N.B. there's better method with low freq, but that has a patent matter.
       Mat work(data);
-      for( ; 4 < work.rows(); ) {
+      for(int i0 = 1; 4 < work.rows(); i0 ++) {
         Mat w0(work);
         for( ; w0.rows() < data.rows(); )
           w0 = compute(w0, ENLARGE_Y);
@@ -218,7 +218,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         const auto dataBc(compute(compute(B[idx_b] * w1, ABS), BCLIP));
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
-            result(i, j) += dataA(i, j) / dataBc(i, j);
+            result(i, j) += dataA(i, j) / dataBc(i, j) / pow(T(2), i0);
         work = compute(work, D2Y);
       }
     }
