@@ -79,9 +79,13 @@ These program's match assumes one of vertices is full and another is lowPoly but
 enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
+And, generated bump map is NOT correct in global, so please change local-global ratio in enlarge.hh:enlarger2ex::compute::BUMP_Y.
 
-And, generated bumpmap is NOT correct in global, this is because of integrating the local pint that we get can't describe
-enough for global pints, so please try extend command with correct it by tilting little by little.
+If we use this program for 3D model input like blender, please make mask with mask0 or another softwares, and convert them
+with mask command, then, please use input-mask.obj . If we are lucky, in the blender example, large scaled input will inputted,
+then G, R, S command adjust, please use modifier as mirror -> solidify -> skin -> remesh , single sided experimental result
+will shown. And if we use another input instead of mirror, double sided experimental result will shown.
+And if we're using with rig and so on, the existance of z-axis cover harms.
 
 enlarger2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
 This is because we generate the one with DFT half space plausible ones by shifting frequency space intensities.
