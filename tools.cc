@@ -43,6 +43,8 @@ void usage() {
   cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
+  cout << "gokicheck drawr   <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
+  cout << "gokicheck drawm   <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
@@ -337,7 +339,9 @@ int main(int argc, const char* argv[]) {
       out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
     if(!file.savep2or3(argv[oidx], out, ! true))
       return - 1;
-  } else if(strcmp(argv[1], "draw") == 0) {
+  } else if(strcmp(argv[1], "draw") == 0 ||
+            strcmp(argv[1], "drawr") == 0 ||
+            strcmp(argv[1], "drawm") == 0) {
     if(argc < 5) {
       usage();
       return - 1;
@@ -382,7 +386,17 @@ int main(int argc, const char* argv[]) {
     std::vector<int> idx;
     for(int j = 0; j < datapoly.size(); j ++)
       idx.push_back(j);
-    res[0] = res[1] = res[2] = redig.showMatch(data[0] * 0., datapoly, polynorms, double(120));
+    if(strcmp(argv[1], "draw") == 0)
+      res[0] = res[1] = res[2] = redig.showMatch(data[0] * 0., datapoly, polynorms, double(120));
+    else if(strcmp(argv[1], "drawr") == 0)
+      res[0] = res[1] = res[2] = redig.replace(data[0] * 0., datapoly, match_t<double>(), polynorms);
+    else {
+      auto mwork(data[0]);
+      for(int i = 0; i < mwork.rows(); i ++)
+        for(int j = 0; j < mwork.cols(); j ++)
+          mwork(i, j) = 1.;
+      res[0] = res[1] = res[2] = mwork - redig.tilt(data[0] * 0., redig.tiltprep(datapoly, polynorms, mwork, match_t<double>()));
+    }
     file.savep2or3(argv[4], res, true);
   } else if(strcmp(argv[1], "matcho") == 0 ||
             strcmp(argv[1], "match") == 0) {
