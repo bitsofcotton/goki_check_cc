@@ -34,6 +34,13 @@ if(argv[2] == "match" or argv[2] == "matcho"):
     subprocess.call([argv[1], "matcho", argv[5], "4", "15", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   exit(0)
 
+if(argv[2] == "objtilt"):
+  root = os.path.splitext(argv[4])[0]
+  subprocess.call([argv[1], "drawr", argv[3], argv[4], root + "-drawr-bump.ppm"])
+  subprocess.call([argv[1], "drawm", argv[3], argv[4], root + "-drawr-mask.ppm"])
+  subprocess.call([argv[1], "obj", "0", "3", ".2", root + "-drawr-bump.ppm", root + "-drawr-mask.ppm", root + "-drawr.obj"])
+  exit(0)
+
 pixels = 4
 bhabit = ""
 for line in argv[3:]:
@@ -113,8 +120,8 @@ for line in argv[3:]:
     for s in range(0, 4):
       subprocess.call([argv[1], "sbox", str(- s * 16), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(3 - s) + ".ppm"])
   elif(argv[2] == "extend"):
-    for tami in range(1, 8):
-      tam = tami / 120.
+    for tami in range(1, 15):
+      tam = tami / 360.
       for s in range(0, 4):
         subprocess.call([argv[1], "tilt", str(s), "4", str(tam), "0", root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
         subprocess.call([argv[1], "bump", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])

@@ -105,6 +105,7 @@ public:
           if(line[1] == '2') {
             data[0] = Mat(h, w);
             loadstub(input, nmax, 1, data);
+            data[1] = data[2] = data[0];
           } else if(line[1] == '3') {
             for(int i = 0; i < 3; i ++)
               data[i] = Mat(h, w);

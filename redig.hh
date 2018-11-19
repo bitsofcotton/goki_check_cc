@@ -1118,8 +1118,12 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
       work.p.col(j) = m.transform(points[polys[i][j]]);
 #endif
     }
-    work.c = in(int(points[polys[i][0]][0]),
-                int(points[polys[i][0]][1]));
+    if(T(0) <= points[polys[i][0]][0] && points[polys[i][0]][0] < in.rows() &&
+       T(0) <= points[polys[i][0]][1] && points[polys[i][0]][1] < in.cols())
+      work.c = in(int(points[polys[i][0]][0]),
+                  int(points[polys[i][0]][1]));
+    else
+      work.c = T(0);
     result.push_back(work.solveN());
   }
   return result;
