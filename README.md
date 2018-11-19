@@ -87,6 +87,9 @@ then G, R, S command adjust, please use modifier as mirror -> solidify -> skin -
 will shown. And if we use another input instead of mirror, double sided experimental result will shown.
 And if we're using with rig and so on, the existance of z-axis cover harms.
 
+And for matching, .obj input is something bugly, so please use tilted obj image with bumpmap to obj command and mask.
+But this is only one sided half input.
+
 enlarger2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
 This is because we generate the one with DFT half space plausible ones by shifting frequency space intensities.
 
