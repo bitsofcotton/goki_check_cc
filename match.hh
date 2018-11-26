@@ -449,10 +449,10 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   sdotp    /= sqrt(alpha * beta);
   alpha    /= work.dstpoints.size();
   beta     /= work.dstpoints.size();
-  gamma     = sqrt(gamma) / work.dstpoints.size();
+  gamma    /= work.dstpoints.size();
   const auto theta((sdotp < T(0) ? - T(1) : T(1)) * acos(T(1) / sqrt(T(1) + sdotp * sdotp)));
-  work.ratio  *=          gamma / sqrt(alpha) * cos(theta / T(2));
-  work.offset += offset * gamma / sqrt(beta)  * sin(theta / T(2));
+  work.ratio  *=          sqrt(gamma / alpha) * cos(theta / T(2));
+  work.offset += offset * sqrt(gamma / beta)  * sin(theta / T(2));
   T denom(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto pointk(work.transform(points[work.srcpoints[k]]));

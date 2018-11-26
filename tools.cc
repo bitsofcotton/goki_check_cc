@@ -486,12 +486,8 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(shape1, delau1, mmout1);
     }
     if(strcmp(argv[1], "matcho") == 0) {
-    /*  if(fn[fn.size() - 1] == 'j' ||
-         fn[fn.size() - 1] == 'f')
-        saveMatches<double>(std::string(argv[fnout]), match_t<double>(), shape1, (~ m).transform(shape0), mout, data, bump1, bump0, emph);
-      else */
-      // saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, emph);
-      saveMatches<double>(std::string(argv[fnout]), m, shape1, shape0, mout, data, bump1, bump0, emph);
+      saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, emph);
+      // saveMatches<double>(std::string(argv[fnout]), m, shape1, shape0, mout, data, bump1, bump0, emph);
     } else { 
       matchPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
