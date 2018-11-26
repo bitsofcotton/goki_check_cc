@@ -356,7 +356,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, 1.5, .05, .1);
+  init(40, 1.5, .01, .1);
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
@@ -372,7 +372,7 @@ template <typename T> matchPartial<T>::~matchPartial() {
 template <typename T> void matchPartial<T>::init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
   assert(0 < ndiv && T(1) <= threshr && T(0) <= threshp && threshp <= T(1));
   this->ndiv    = ndiv;
-  this->thresh  = sin(T(2) * Pi / ndiv) / T(2);
+  this->thresh  = sin(T(2) * Pi / sqrt(T(ndiv))) / T(2);
   this->thresht = this->thresh * threshr;
   this->threshp = threshp;
   this->threshs = threshs;
@@ -429,34 +429,29 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   assert(work.dstpoints.size() == work.srcpoints.size());
   work.offset *= T(0);
   auto offset(work.offset);
-  Vec3 avgsk(3);
-  Vec3 avgpk(3);
-  avgsk[0] = avgsk[1] = avgsk[2] = T(0);
-  avgpk[0] = avgpk[1] = avgpk[2] = T(0);
-  // a * offset + b * pointk // shapebase in summation condition.
-  for(int k = 0; k < work.dstpoints.size(); k ++) {
-    offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
-    avgsk  += shapebase[work.dstpoints[k]];
-    avgpk  += work.transform(points[work.srcpoints[k]]);
-  }
-  offset /= work.dstpoints.size();
-  avgsk  /= work.dstpoints.size();
-  avgpk  /= work.dstpoints.size();
-  const auto a(avgsk.dot(offset));
-  const auto b(avgsk.dot(avgpk));
-  work.offset  = offset * a;
-  work.ratio  *= b;
-  T num(0);
-  T denom(0);
+  T alpha(0);
+  T beta(0);
+  T gamma(0);
+  T sdotp(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto& shapek(shapebase[work.dstpoints[k]]);
     const auto  pointk(work.transform(points[work.srcpoints[k]]));
-    num   += pointk.dot(shapek);
-    denom += pointk.dot(pointk);
+    offset += shapek - pointk;
   }
-  work.offset *= num / denom;
-  work.ratio  *= num / denom;
-  denom        = T(0);
+  for(int k = 0; k < work.dstpoints.size(); k ++) {
+    const auto& shapek(shapebase[work.dstpoints[k]]);
+    const auto  pointk(work.transform(points[work.srcpoints[k]]));
+    alpha  += pointk.dot(pointk);
+    beta   += offset.dot(offset);
+    sdotp  += pointk.dot(offset);
+    gamma  += shapek.dot(shapek);
+  }
+  sdotp    /= work.dstpoints.size() * sqrt(alpha * beta);
+  const auto theta((sdotp < T(0) ? - T(1) : T(1)) * acos(T(1) / sqrt(T(1) + sdotp * sdotp)));
+  gamma        = sqrt(gamma) / work.dstpoints.size();
+  work.ratio  *=          gamma / sqrt(alpha) * cos(theta / T(2));
+  work.offset += offset * gamma / sqrt(beta)  * sin(theta / T(2));
+  T denom(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto pointk(work.transform(points[work.srcpoints[k]]));
     const auto err(shapebase[work.dstpoints[k]] - pointk);
@@ -484,7 +479,13 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     }
     return complementMatch(work, shapebase, points, !retry);
   }
-  return work.isValid();
+  return true;
+/*
+  // XXX: Use this for strict matching but slips.
+  return threshp <= work.dstpoints.size() /
+           T(min(shapebase.size(), points.size())) &&
+         work.isValid();
+*/
 }
 
 template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
@@ -506,13 +507,14 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int nd = 0; nd <= ndiv / 2; nd ++) {
+  // for(int nd = 0; nd < ndiv; nd ++) {
+  for(int nd = 0; nd < 1; nd ++) {
     vector<T> ddiv;
     ddiv.resize(4, T(0));
     ddiv[0] = cos(2 * Pi * nd / ndiv);
     ddiv[1] = sin(2 * Pi * nd / ndiv);
-    // with t < 0 match.
-    for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
+    // for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
+    for(int nd2 = 0; nd2 < 1; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       match_t<T> work0(threshs, thresht, abs(gd[0]), abs(gd[1]));
@@ -520,13 +522,13 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
         Mat3x3 lrot(3, 3);
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
         lrot((k + 1) % 3, (k    ) % 3) =   ddiv[k * 2 + 1];
+        lrot((k + 2) % 3, (k    ) % 3) = T(0);
         lrot((k    ) % 3, (k + 1) % 3) = - ddiv[k * 2 + 1];
         lrot((k + 1) % 3, (k + 1) % 3) =   ddiv[k * 2 + 0];
-        lrot((k + 2) % 3, (k    ) % 3) = T(0);
         lrot((k + 2) % 3, (k + 1) % 3) = T(0);
-        lrot((k + 2) % 3, (k + 2) % 3) = T(1);
         lrot((k    ) % 3, (k + 2) % 3) = T(0);
         lrot((k + 1) % 3, (k + 2) % 3) = T(0);
+        lrot((k + 2) % 3, (k + 2) % 3) = T(1);
         work0.rot = lrot * work0.rot;
       }
       // for each near matches:
@@ -552,7 +554,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
              //   get condition sum||aj-abar||, sum||P*bk-bbar|| -> 0
              //   with this imcomplete set.
              // N.B. t >= 0 and msub is sorted by t0 > t1.
-             (msub[t0].t - msub[t1].t) / msub[t0].t <= thresht) {
+             (msub[t0].t - msub[t1].t) / msub[0].t <= thresht) {
             work.dstpoints.emplace_back(msub[t1].j);
             work.srcpoints.emplace_back(msub[t1].k);
             flagj[msub[t1].j] = true;

@@ -22,22 +22,25 @@ if(argv[2] == "match" or argv[2] == "matcho"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
   if(ext1 == ".obj" or ext1 == ".gltf"):
     if(argv[2] == "match"):
-      subprocess.call([argv[1], "match", "4", "20", "6", "1", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+      subprocess.call([argv[1], "match", "16", "40", "6", "1", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
     else:
       subprocess.call([argv[1], "matcho", argv[5], "4", "6", "1", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
     exit(0)
   elif(ext1 != ".ppm"):
     subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
   if(argv[2] == "match"):
-    subprocess.call([argv[1], "match", "4", "20", "15", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
+    subprocess.call([argv[1], "match", "16", "40", "15", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
     subprocess.call([argv[1], "matcho", argv[5], "4", "15", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   exit(0)
 
 if(argv[2] == "objtilt"):
+  root0, ext0 = os.path.splitext(argv[3])
+  if(ext0 != ".ppm"):
+    subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
   root = os.path.splitext(argv[4])[0]
-  subprocess.call([argv[1], "drawr", argv[3], argv[4], root + "-drawr-bump.ppm"])
-  subprocess.call([argv[1], "drawm", argv[3], argv[4], root + "-drawr-mask.ppm"])
+  subprocess.call([argv[1], "drawr", root0 + ".ppm", argv[4], root + "-drawr-bump.ppm"])
+  subprocess.call([argv[1], "drawm", root0 + ".ppm", argv[4], root + "-drawr-mask.ppm"])
   subprocess.call([argv[1], "obj", "0", "3", ".2", root + "-drawr-bump.ppm", root + "-drawr-mask.ppm", root + "-drawr.obj"])
   exit(0)
 
