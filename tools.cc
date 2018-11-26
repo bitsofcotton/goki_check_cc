@@ -388,9 +388,16 @@ int main(int argc, const char* argv[]) {
       idx.push_back(j);
     if(strcmp(argv[1], "draw") == 0)
       res[0] = res[1] = res[2] = redig.showMatch(data[0] * 0., datapoly, polynorms, double(120));
-    else if(strcmp(argv[1], "drawr") == 0)
-      res[0] = res[1] = res[2] = redig.replace(data[0] * 0., datapoly, match_t<double>(), polynorms);
-    else {
+    else if(strcmp(argv[1], "drawr") == 0) {
+      auto mwork(data[0]);
+      for(int i = 0; i < mwork.rows(); i ++)
+        for(int j = 0; j < mwork.cols(); j ++)
+          mwork(i, j) = 1.;
+      auto prep(redig.tiltprep(datapoly, polynorms, mwork, match_t<double>()));
+      for(int i = 0; i < prep.size(); i ++)
+        prep[i].c = (prep[i].p(2, 0) + prep[i].p(2, 1) + prep[i].p(2, 2)) / 3.;
+      res[0] = res[1] = res[2] = redig.tilt(data[0] * 0., prep);
+    } else {
       auto mwork(data[0]);
       for(int i = 0; i < mwork.rows(); i ++)
         for(int j = 0; j < mwork.cols(); j ++)
@@ -479,19 +486,11 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(shape1, delau1, mmout1);
     }
     if(strcmp(argv[1], "matcho") == 0) {
-      if(fn[fn.size() - 1] == 'j' ||
-         fn[fn.size() - 1] == 'f')
-        saveMatches<double>(std::string(argv[fnout]), match_t<double>(), shape0, m.transform(shape1), data, mout, bump0, bump1, emph);
-      else
-        saveMatches<double>(std::string(argv[fnout]), ~ m, shape1, shape0, mout, data, bump1, bump0, emph);
+      saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, emph);
+      // saveMatches<double>(std::string(argv[fnout]), m, shape1, shape0, mout, data, bump1, bump0, emph);
     } else { 
       matchPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
-      if(fn[fn.size() - 1] == 'j' ||
-         fn[fn.size() - 1] == 'f')
-        std::sort(matches.begin(), matches.end(), [] (const match_t<double>& dst, const match_t<double>& src) {
-          return dst.srcpoints.size() > src.srcpoints.size();
-        });
       // matches = statmatch.elim(matches, data, mout, bump1, shape1);
       matches.resize(min(int(matches.size()), nhid));
       std::cerr << matches.size() << "pending" << std::endl;

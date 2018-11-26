@@ -221,6 +221,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
             result(i, j) += dataA(i, j) / dataBc(i, j) / pow(T(2), i0);
         work = compute(work, D2Y);
       }
+      result = - result;
     }
     break;
   case EXTEND_Y0:

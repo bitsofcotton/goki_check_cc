@@ -177,7 +177,7 @@ public:
       for(int i = 0; i < data.size(); i ++) {
         Mh = max(data[i][1], Mh);
         Mw = max(data[i][0], Mw);
-        lz = min(- data[i][2], lz);
+        lz = min(data[i][2], lz);
       }
       if(xoffset != T(0)) {
         const T Pi(T(4) * atan2(T(1), T(1)));
@@ -218,12 +218,12 @@ public:
         }
       } else if(addstand != T(0)) {
         for(int i = 0; i < data.size(); i ++)
-          output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << - data[i][2] + addstand - lz << endl;
+          output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << data[i][2] + addstand - lz << endl;
         for(int i = 0; i < data.size(); i ++)
           output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << 0 << endl;
       } else {
         for(int i = 0; i < data.size(); i ++)
-          output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
+          output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] << endl;
       }
       for(int i = 0; i < data.size(); i ++)
         output << "vt " << data[i][1] / Mh << " " << 1. - data[i][0] / Mw << endl;
@@ -279,7 +279,6 @@ public:
           sub >> buf[0];
           sub >> buf[2];
           buf[0] = - buf[0];
-          buf[2] = - buf[2];
           data.push_back(buf);
         } else if(i + 1 < work.size() && work[i] == 'f' && work[i + 1] == ' ') {
           stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
