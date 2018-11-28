@@ -328,7 +328,7 @@ public:
   void init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
-  void match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result);
+  void match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result);
   
   Vec3 makeG(const vector<Vec3>& in) const;
   bool complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& retry = false) const;
@@ -342,7 +342,7 @@ public:
   T   threshs;
   
 private:
-  vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const match_t<T>& m) const;
+  vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const match_t<T>& m) const;
   T                  isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh);
   U   I;
   T   Pi;
@@ -393,21 +393,13 @@ template <typename T> typename matchPartial<T>::Vec3 matchPartial<T>::makeG(cons
   return result / in.size();
 }
 
-template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const Vec3& gs, const Vec3& gp, const match_t<T>& m) const {
+template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const match_t<T>& m) const {
   vector<msub_t<T> > result;
-  vector<Vec3> shapework;
-  vector<Vec3> pointswork;
-  shapework.reserve(shapebase.size());
-  pointswork.reserve(points.size());
-  for(int i = 0; i < shapebase.size(); i ++)
-    shapework.push_back(shapebase[i] - gs);
-  for(int i = 0; i < points.size(); i ++)
-    pointswork.push_back(m.transform(points[i] - gp));
   // result.reserve(points.size() * shapebase.size());
-  for(int k = 0; k < points.size(); k ++)
-    for(int j = 0; j < shapebase.size(); j ++) {
-      const auto& aj(shapework[j]);
-      const auto& bk(pointswork[k]);
+  for(int j = 0; j < shapebase.size(); j ++)
+    for(int k = 0; k < points.size(); k ++) {
+      const auto& aj(shapebase[j]);
+      const auto& bk(points[k]);
       const auto  t(aj.dot(bk) / bk.dot(bk));
       const auto  lerr(aj - bk * t);
       const auto  err(lerr.dot(lerr) / sqrt(aj.dot(aj) * bk.dot(bk) * t * t));
@@ -477,18 +469,24 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
          work.isValid();
 }
 
-template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
-  const auto gs(makeG(shapebase));
-  const auto gp(makeG(points));
+template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result) {
+  const auto gs(makeG(shapebase0));
+  const auto gp(makeG(points0));
+  vector<Vec3> shapebase;
+  vector<Vec3> points;
+  shapebase.reserve(shapebase0.size());
+  points.reserve(points.size());
   Vec3 gd(3);
   gd[0] = gd[1] = gd[2] = T(0);
   for(int i = 0; i < shapebase.size(); i ++) {
-    const auto diff(shapebase[i] - gs);
+    shapebase.emplace_back(shapebase0[i] - gs);
+    const auto& diff(shapebase[i]);
     gd[0] = max(gd[0], abs(diff[0]));
     gd[1] = max(gd[1], abs(diff[1]));
   }
   for(int i = 0; i < points.size(); i ++) {
-    const auto diff(points[i] - gp);
+    points.emplace_back(points0[i] - gp);
+    const auto& diff(points[i]);
     gd[0] = max(gd[0], abs(diff[0]));
     gd[1] = max(gd[1], abs(diff[1]));
   }
@@ -519,7 +517,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
         work0.rot = lrot * work0.rot;
       }
       // for each near matches:
-      const auto msub(makeMsub(shapebase, points, gs, gp, work0));
+      const auto msub(makeMsub(shapebase, points, work0));
       cerr << msub.size() << ":" << flush;
       if(msub.size() /
            T(min(shapebase.size(), points.size())) < threshp)
@@ -558,6 +556,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
 #pragma omp critical
 #endif
           {
+            work.offset += gs - work.ratio * work.rot * gp;
             int idx(- 1);
             int k0(distance(result.begin(), lower_bound(result.begin(), result.end(), work)));
             for(int k = k0; k < result.size(); k ++)
