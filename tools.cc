@@ -425,6 +425,7 @@ int main(int argc, const char* argv[]) {
       if(input.is_open()) {
         try {
           input >> m;
+          cerr << m;
         } catch(...) {
           usage();
           return - 2;
@@ -485,10 +486,9 @@ int main(int argc, const char* argv[]) {
       redig.getTileVec(bump1, shape1, delau1);
       redig.maskVectors(shape1, delau1, mmout1);
     }
-    if(strcmp(argv[1], "matcho") == 0) {
+    if(strcmp(argv[1], "matcho") == 0)
       saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, emph);
-      // saveMatches<double>(std::string(argv[fnout]), m, shape1, shape0, mout, data, bump1, bump0, emph);
-    } else { 
+    else { 
       matchPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
       // matches = statmatch.elim(matches, data, mout, bump1, shape1);

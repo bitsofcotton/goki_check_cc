@@ -237,8 +237,8 @@ public:
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
-    // N.B. parallel -> max, points ratio -> max.
-    return (rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio));
+    return dstpoints.size() > x1.dstpoints.size() ||
+      (dstpoints.size() == x1.dstpoints.size() && rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -372,7 +372,7 @@ template <typename T> matchPartial<T>::~matchPartial() {
 template <typename T> void matchPartial<T>::init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
   assert(0 < ndiv && T(1) <= threshr && T(0) <= threshp && threshp <= T(1));
   this->ndiv    = ndiv;
-  this->thresh  = sin(T(2) * Pi / sqrt(T(ndiv))) / T(2);
+  this->thresh  = sin(T(2) * Pi / ndiv) / T(2) * threshr;
   this->thresht = this->thresh * threshr;
   this->threshp = threshp;
   this->threshs = threshs;
@@ -427,40 +427,40 @@ template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<
 
 template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& retry) const {
   assert(work.dstpoints.size() == work.srcpoints.size());
+  work.ratio   = T(1);
   work.offset *= T(0);
   auto offset(work.offset);
-  T alpha(0);
-  T beta(0);
-  T gamma(0);
-  T sdotp(0);
+  for(int k = 0; k < work.dstpoints.size(); k ++)
+    offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
+  T xd(0);
+  T yd(0);
+  T xx(0);
+  T yy(0);
+  T xy(0);
+  T dd(0);
+  // ||s*Rx + t*d - y|| -> 0 in summation condition.
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto& shapek(shapebase[work.dstpoints[k]]);
     const auto  pointk(work.transform(points[work.srcpoints[k]]));
-    offset += shapek - pointk;
+    xd += pointk.dot(offset);
+    yd += shapek.dot(offset);
+    xx += pointk.dot(pointk);
+    yy += shapek.dot(shapek);
+    xy += shapek.dot(pointk);
+    dd += offset.dot(offset);
   }
-  for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto& shapek(shapebase[work.dstpoints[k]]);
-    const auto  pointk(work.transform(points[work.srcpoints[k]]));
-    alpha  += pointk.dot(pointk);
-    beta   += offset.dot(offset);
-    sdotp  += pointk.dot(offset);
-    gamma  += shapek.dot(shapek);
-  }
-  sdotp    /= sqrt(alpha * beta);
-  alpha    /= work.dstpoints.size();
-  beta     /= work.dstpoints.size();
-  gamma    /= work.dstpoints.size();
-  const auto theta((sdotp < T(0) ? - T(1) : T(1)) * acos(T(1) / sqrt(T(1) + sdotp * sdotp)));
-  work.ratio  *=          sqrt(gamma / alpha) * cos(theta / T(2));
-  work.offset += offset * sqrt(gamma / beta)  * sin(theta / T(2));
-  T denom(0);
+  const auto D(xx * dd - xd * xd);
+  if(D != T(0)) {
+    work.ratio *=          T(2) * (  xx * xy - xd * yd) / D;
+    work.offset = offset * T(2) * (- xd * xy + yy * yd) / D;
+  } else
+    return false;
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto pointk(work.transform(points[work.srcpoints[k]]));
     const auto err(shapebase[work.dstpoints[k]] - pointk);
     work.rdepth += err.dot(err);
-    denom       += pointk.dot(pointk);
   }
-  work.rdepth /= denom;
+  work.rdepth /= work.ratio;
   if(!retry) {
     vector<pair<T, int> > errors;
     for(int k = 0; k < work.dstpoints.size(); k ++) {
@@ -483,7 +483,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   }
   return true;
 /*
-  // XXX: Use this for strict matching but slips.
+  // XXX use this with strict match but slips.
   return threshp <= work.dstpoints.size() /
            T(min(shapebase.size(), points.size())) &&
          work.isValid();
@@ -510,13 +510,11 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase,
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int nd = 0; nd < ndiv; nd ++) {
-  // for(int nd = 0; nd < 1; nd ++) {
     vector<T> ddiv;
     ddiv.resize(4, T(0));
     ddiv[0] = cos(2 * Pi * nd / ndiv);
     ddiv[1] = sin(2 * Pi * nd / ndiv);
     for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
-    // for(int nd2 = 0; nd2 < 1; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       match_t<T> work0(threshs, thresht, abs(gd[0]), abs(gd[1]));
