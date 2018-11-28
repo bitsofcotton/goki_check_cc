@@ -432,47 +432,30 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   auto offset(work.offset);
   for(int k = 0; k < work.dstpoints.size(); k ++)
     offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
-  offset /= work.dstpoints.size();
-  T xd(0);
-  T yd(0);
-  T xx(0);
-  T yy(0);
-  T xy(0);
-  T dd(0);
-  // ||s*Rx + t*d - y|| -> 0 in summation condition.
+  work.offset = offset / work.dstpoints.size();
+  T num(0);
+  T denom(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto& shapek(shapebase[work.dstpoints[k]]);
     const auto  pointk(work.transform(points[work.srcpoints[k]]));
-    xd += pointk.dot(offset);
-    yd += shapek.dot(offset);
-    xx += pointk.dot(pointk);
-    yy += shapek.dot(shapek);
-    xy += shapek.dot(pointk);
-    dd += offset.dot(offset);
+    num   += shapek.dot(pointk);
+    denom += pointk.dot(pointk);
   }
-  const auto D(xx * dd - xd * xd);
-  if(D != T(0)) {
-    work.ratio *=          T(2) * (  dd * xy - xd * yd) / D;
-    work.offset = offset * T(2) * (- xd * xy + xx * yd) / D;
-  } else {
-    // x // d.
-    work.offset = offset;
-    work.ratio  = (xy - yd) / xx;
-  }
+  work.ratio *= num / denom;
   for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto pointk(work.transform(points[work.srcpoints[k]]));
-    const auto err(shapebase[work.dstpoints[k]] - pointk);
-    cerr << err.dot(err) / pointk.dot(pointk) << endl;
-    cerr << shapebase[work.dstpoints[k]].dot(shapebase[work.dstpoints[k]]) / pointk.dot(pointk) << endl;
-    work.rdepth += err.dot(err);
+    const auto& shapek(shapebase[work.dstpoints[k]]);
+    const auto  pointk(work.transform(points[work.srcpoints[k]]));
+    const auto  err(shapek - pointk);
+    work.rdepth += err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk));
   }
   work.rdepth /= work.ratio;
   if(!retry) {
     vector<pair<T, int> > errors;
     for(int k = 0; k < work.dstpoints.size(); k ++) {
-      const auto pointk(work.transform(points[work.srcpoints[k]]));
-      const auto err(shapebase[work.dstpoints[k]] - pointk);
-      errors.push_back(make_pair(err.dot(err) / pointk.dot(pointk), k));
+      const auto& shapek(shapebase[work.dstpoints[k]]);
+      const auto  pointk(work.transform(points[work.srcpoints[k]]));
+      const auto  err(shapek - pointk);
+      errors.push_back(make_pair(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk)) / work.ratio, k));
     }
     sort(errors.begin(), errors.end());
     vector<int> dstpoints;
@@ -487,13 +470,11 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     }
     return complementMatch(work, shapebase, points, !retry);
   }
-  return true;
-/*
-  // XXX use this with strict match but slips.
+  // XXX if slips:
+  // return true;
   return threshp <= work.dstpoints.size() /
            T(min(shapebase.size(), points.size())) &&
          work.isValid();
-*/
 }
 
 template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, vector<match_t<T> >& result) {
