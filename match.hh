@@ -454,8 +454,6 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto pointk(work.transform(points[work.srcpoints[k]]));
     const auto err(shapebase[work.dstpoints[k]] - pointk);
-    cerr << err.dot(err) / pointk.dot(pointk) << endl;
-    cerr << shapebase[work.dstpoints[k]].dot(shapebase[work.dstpoints[k]]) / pointk.dot(pointk) << endl;
     work.rdepth += err.dot(err);
   }
   work.rdepth /= work.ratio;
