@@ -463,7 +463,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     return complementMatch(work, shapebase, points, !retry);
   }
   // XXX if slips:
-  // return true;
+  //  return true;
   return threshp <= work.dstpoints.size() /
            T(min(shapebase.size(), points.size())) &&
          work.isValid();
@@ -475,16 +475,16 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
   vector<Vec3> shapebase;
   vector<Vec3> points;
   shapebase.reserve(shapebase0.size());
-  points.reserve(points.size());
+  points.reserve(points0.size());
   Vec3 gd(3);
   gd[0] = gd[1] = gd[2] = T(0);
-  for(int i = 0; i < shapebase.size(); i ++) {
+  for(int i = 0; i < shapebase0.size(); i ++) {
     shapebase.emplace_back(shapebase0[i] - gs);
     const auto& diff(shapebase[i]);
     gd[0] = max(gd[0], abs(diff[0]));
     gd[1] = max(gd[1], abs(diff[1]));
   }
-  for(int i = 0; i < points.size(); i ++) {
+  for(int i = 0; i < points0.size(); i ++) {
     points.emplace_back(points0[i] - gp);
     const auto& diff(points[i]);
     gd[0] = max(gd[0], abs(diff[0]));
