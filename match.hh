@@ -424,21 +424,39 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   auto offset(work.offset);
   for(int k = 0; k < work.dstpoints.size(); k ++)
     offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
-  work.offset = offset / work.dstpoints.size();
-  T num(0);
-  T denom(0);
+  offset /= work.dstpoints.size();
+  T xd(0);
+  T yd(0);
+  T xx(0);
+  T yy(0);
+  T xy(0);
+  T dd(0);
+  // ||s*Rx + t*d - y|| -> 0 in summation condition.
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto& shapek(shapebase[work.dstpoints[k]]);
     const auto  pointk(work.transform(points[work.srcpoints[k]]));
-    num   += shapek.dot(pointk);
-    denom += pointk.dot(pointk);
+    xd += pointk.dot(offset);
+    yd += shapek.dot(offset);
+    xx += pointk.dot(pointk);
+    yy += shapek.dot(shapek);
+    xy += shapek.dot(pointk);
+    dd += offset.dot(offset);
   }
-  work.ratio *= num / denom;
+  const auto D(xx * dd - xd * xd);
+  if(D != T(0)) {
+    work.ratio *=          T(2) * (  dd * xy - xd * yd) / D;
+    work.offset = offset * T(2) * (- xd * xy + xx * yd) / D;
+  } else {
+    // x // d.
+    work.offset = offset;
+    work.ratio  = (xy - yd) / xx;
+  }
   for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto& shapek(shapebase[work.dstpoints[k]]);
-    const auto  pointk(work.transform(points[work.srcpoints[k]]));
-    const auto  err(shapek - pointk);
-    work.rdepth += err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk));
+    const auto pointk(work.transform(points[work.srcpoints[k]]));
+    const auto err(shapebase[work.dstpoints[k]] - pointk);
+    cerr << err.dot(err) / pointk.dot(pointk) << endl;
+    cerr << shapebase[work.dstpoints[k]].dot(shapebase[work.dstpoints[k]]) / pointk.dot(pointk) << endl;
+    work.rdepth += err.dot(err);
   }
   work.rdepth /= work.ratio;
   if(!retry) {
@@ -462,11 +480,12 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     }
     return complementMatch(work, shapebase, points, !retry);
   }
-  // XXX if slips:
-  //  return true;
+  return true;
+/*
   return threshp <= work.dstpoints.size() /
            T(min(shapebase.size(), points.size())) &&
          work.isValid();
+*/
 }
 
 template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result) {
