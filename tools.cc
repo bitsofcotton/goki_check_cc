@@ -63,7 +63,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   for(int idx = 0; idx < 3; idx ++)
     sin1[idx] = redig.showMatch(in1[idx], shape1, mhull1);
   redig.normalize(sin1, 1.);
-  const auto tilt0(redig.tilt(redig.makeRefMatrix(in0[0], 1), bump1, match));
+  const auto tilt0(redig.tilt(redig.makeRefMatrix(in1[0], 1), bump1, match));
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = redig.pullRefMatrix(tilt0, 1, sin1[idx]);
   std::string outfile(outbase + std::string("-src.ppm"));
@@ -75,6 +75,10 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   outfile = outbase + std::string("-dst.ppm");
   file.savep2or3(outfile.c_str(), outs, false);
   
+  for(int i = 0; i < match.srcpoints.size(); i ++) {
+    cerr << shape0[match.dstpoints[i]].transpose() << endl;
+    cerr << (~match).transform(shape1[match.srcpoints[i]]).transpose() << endl;
+  }
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = redig.replace(in0[idx], match.transform(shape1), match_t<T>(), mhull1);
   outfile = outbase + std::string("-repl.ppm");

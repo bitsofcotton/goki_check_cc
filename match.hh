@@ -432,6 +432,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   auto offset(work.offset);
   for(int k = 0; k < work.dstpoints.size(); k ++)
     offset += shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]);
+  offset /= work.dstpoints.size();
   T xd(0);
   T yd(0);
   T xx(0);
@@ -451,16 +452,18 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   }
   const auto D(xx * dd - xd * xd);
   if(D != T(0)) {
-    work.ratio *=          T(2) * (  yy * xy - xd * yd) / D;
+    work.ratio *=          T(2) * (  dd * xy - xd * yd) / D;
     work.offset = offset * T(2) * (- xd * xy + xx * yd) / D;
   } else {
     // x // d.
-    work.offset = offset / work.dstpoints.size();
-    work.ratio  = (xy - yd / work.dstpoints.size()) / xx;
+    work.offset = offset;
+    work.ratio  = (xy - yd) / xx;
   }
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto pointk(work.transform(points[work.srcpoints[k]]));
     const auto err(shapebase[work.dstpoints[k]] - pointk);
+    cerr << err.dot(err) / pointk.dot(pointk) << endl;
+    cerr << shapebase[work.dstpoints[k]].dot(shapebase[work.dstpoints[k]]) / pointk.dot(pointk) << endl;
     work.rdepth += err.dot(err);
   }
   work.rdepth /= work.ratio;
