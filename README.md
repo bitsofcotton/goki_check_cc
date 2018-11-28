@@ -87,6 +87,10 @@ then G, R, S command adjust, please use modifier as mirror -> solidify -> skin -
 will shown. And if we use another input instead of mirror, double sided experimental result will shown.
 And if we're using with rig and so on, the existance of z-axis cover harms.
 
+Match matches including z-axis. So around this, if we match with .obj file, we don't have accurate z-axis ratio,
+bugly result returns. If we know angle with projected plane, please tilt with objtilt command and make one-sided result,
+match matches. If we should have correct matches, please configure z-axis ratio in tools.cc via redig.hh .
+
 enlarger2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
 This is because we generate the one with DFT half space plausible ones by shifting frequency space intensities.
 
