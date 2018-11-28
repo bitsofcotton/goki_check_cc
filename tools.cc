@@ -77,7 +77,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   
   for(int i = 0; i < match.srcpoints.size(); i ++) {
     cerr << shape0[match.dstpoints[i]].transpose() << endl;
-    cerr << (~match).transform(shape1[match.srcpoints[i]]).transpose() << endl;
+    cerr << match.transform(shape1[match.srcpoints[i]]).transpose() << endl;
   }
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = redig.replace(in0[idx], match.transform(shape1), match_t<T>(), mhull1);
@@ -491,8 +491,7 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(shape1, delau1, mmout1);
     }
     if(strcmp(argv[1], "matcho") == 0)
-      // saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, emph);
-      saveMatches<double>(std::string(argv[fnout]), ~ m, shape1, shape0, mout, data, bump1, bump0, emph);
+      saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, emph);
     else { 
       matchPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
