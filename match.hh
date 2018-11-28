@@ -237,8 +237,9 @@ public:
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
-    return dstpoints.size() > x1.dstpoints.size() ||
-      (dstpoints.size() == x1.dstpoints.size() && rratio < xratio);
+    return rdepth / dstpoints.size() < x1.rdepth / x1.dstpoints.size() ||
+      (rdepth / dstpoints.size() == x1.rdepth / x1.dstpoints.size() &&
+        rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -511,12 +512,14 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int nd = 0; nd < ndiv; nd ++) {
+  // for(int nd = 0; nd < ndiv; nd ++) {
+  for(int nd = 0; nd < 1; nd ++) {
     vector<T> ddiv;
     ddiv.resize(4, T(0));
     ddiv[0] = cos(2 * Pi * nd / ndiv);
     ddiv[1] = sin(2 * Pi * nd / ndiv);
-    for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
+    // for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
+    for(int nd2 = 0; nd2 < 1; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       match_t<T> work0(threshs, thresht, abs(gd[0]), abs(gd[1]));
