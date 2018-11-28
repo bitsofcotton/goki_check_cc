@@ -451,10 +451,13 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   }
   const auto D(xx * dd - xd * xd);
   if(D != T(0)) {
-    work.ratio *=          T(2) * (  xx * xy - xd * yd) / D;
-    work.offset = offset * T(2) * (- xd * xy + yy * yd) / D;
-  } else
-    return false;
+    work.ratio *=          T(2) * (  yy * xy - xd * yd) / D;
+    work.offset = offset * T(2) * (- xd * xy + xx * yd) / D;
+  } else {
+    // x // d.
+    work.offset = offset / work.dstpoints.size();
+    work.ratio  = (xy - yd / work.dstpoints.size()) / xx;
+  }
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto pointk(work.transform(points[work.srcpoints[k]]));
     const auto err(shapebase[work.dstpoints[k]] - pointk);
