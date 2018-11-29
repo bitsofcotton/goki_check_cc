@@ -15,10 +15,11 @@ For speed, http://eigen.tuxfamily.org/ library is needed, and for bone informati
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
-* scancontext.hh
-* * matchPartialPartial::ndiv    : number of divides that match angles, effects the matching errors.
-* * matchPartialPartial::threshp : ratio of threshold for matched points.
-* * matchPartialPartial::threshs : ratio of threshold for operator ==.
+* match.hh
+* * matchPartial::ndiv    : number of divides that match angles, effects the matching errors.
+* * matchPartial::threshr : error tolerance rate for matching, smaller is tight.
+* * matchPartial::threshp : ratio of threshold for matched points.
+* * matchPartial::threshs : ratio of threshold for operator ==.
 
 # Context
 This program is inspired from re-focus photo softwares.  
@@ -90,6 +91,7 @@ And if we're using with rig and so on, the existance of z-axis cover harms.
 Match matches including z-axis. So around this, if we match with .obj file, we don't have accurate z-axis ratio,
 bugly result returns. If we know angle with projected plane, please tilt with objtilt command and make one-sided result,
 match matches. If we should have correct matches, please configure z-axis ratio in tools.cc via redig.hh .
+matchPartial default threshr is severe, so please configure before to match.
 
 enlarger2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
 This is because we generate the one with DFT half space plausible ones by shifting frequency space intensities.
