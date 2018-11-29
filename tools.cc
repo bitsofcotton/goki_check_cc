@@ -53,32 +53,36 @@ void usage() {
 
 template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<typename simpleFile<T>::Vec3>& shape0, const std::vector<typename simpleFile<T>::Vec3>& shape1, const typename simpleFile<T>::Mat in0[3], const typename simpleFile<T>::Mat in1[3], const typename simpleFile<T>::Mat& bump0, const typename simpleFile<T>::Mat& bump1, const std::vector<T>& emph) {
   assert(in0[0].rows() == in1[0].rows() && in0[0].cols() == in1[0].cols());
-  reDig<T> redig;
+  reDig<T>      redig;
   simpleFile<T> file;
-  typename simpleFile<T>::Mat outs[3], outs2[3];
+  typename simpleFile<T>::Mat outs[3];
   const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
   const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
-  
-  for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in1[idx] * T(0), shape1, match, mhull1) +
-                redig.replace(in0[idx] * T(0), shape0, match_t<T>(), mhull0);
-  file.savep2or3((outbase + std::string("-match.ppm")).c_str(), outs, false);
-  
   const auto rin0(redig.makeRefMatrix(in0[0], 1));
   const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
+  for(int idx = 0; idx < 3; idx ++)
+    outs[idx] = redig.replace(in0[idx] * T(0), shape0, match_t<T>(), mhull0) +
+                redig.replace(in1[idx] * T(0), shape1, match, mhull1);
+  file.savep2or3((outbase + std::string("-match.ppm")).c_str(), outs, false);
+  for(int idx = 0; idx < 3; idx ++)
+    outs[idx] = (redig.emphasis(in0[idx], in1[idx], bump1, shape0, shape1, 
+                                match, mhull0, mhull1, T(.5)) + in0[idx]) / T(2);
+  file.savep2or3((outbase + std::string("-cover.ppm")).c_str(), outs, false);
+  
   for(int kk = 0; kk < emph.size(); kk ++) {
-    const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1, match, mhull0, mhull1, emph[kk]));
-    for(int idx = 0; idx < 3; idx ++) {
+    const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
+                                    match, mhull0, mhull1, emph[kk]));
+    for(int idx = 0; idx < 3; idx ++)
       outs[idx] = (in0[idx] * (emph.size() - 1 - kk) + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]) * kk) / double(emph.size() - 1);
-      outs2[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
-    }
     file.savep2or3((outbase + std::string("-emph-") + std::to_string(kk) +
                     std::string(".ppm")).c_str(), outs, false);
+    for(int idx = 0; idx < 3; idx ++)
+      outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
     file.savep2or3((outbase + std::string("-emph2-") + std::to_string(kk) +
-                    std::string(".ppm")).c_str(), outs2, false);
+                    std::string(".ppm")).c_str(), outs, false);
   }
   
-  file.saveobj(redig.takeShape(shape0, shape1, match, mhull0, mhull1,
+  file.saveobj(redig.takeShape(shape0, shape1,   match, mhull0, mhull1,
                                emph[emph.size() - 1]), mhull0,
                (outbase + std::string("-emph.obj")).c_str());
   file.saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0,

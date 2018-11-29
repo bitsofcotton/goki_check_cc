@@ -98,19 +98,20 @@ public:
     threshsize[0] = threshsize[1] = T(0);
     initId();
   }
-  match_t(const T& thresh, const T& rthresh, const T& h, const T& w) {
+  match_t(const T& thresh, const T& h, const T& w) {
     this->thresh        = thresh;
-    this->rthresh       = rthresh;
+    this->rthresh       = T(8) / sqrt(h * w);
     this->threshsize    = Vec2(2);
     this->threshsize[0] = h;
     this->threshsize[1] = w;
     initId();
   }
   void initId() {
-    rot = Mat3x3(3, 3);
+    rot       = Mat3x3(3, 3);
     rot(0, 0) = rot(1, 1) = rot(2, 2) = T(1);
-    rot(1, 0) = rot(2, 0) = rot(0, 1) = rot(2, 1) = rot(0, 2) = rot(1, 2) = T(0);
-    offset = Vec3(3);
+    rot(1, 0) = rot(2, 0) = rot(0, 1) = rot(2, 1)
+              = rot(0, 2) = rot(1, 2) = T(0);
+    offset    = Vec3(3);
     offset[0] = offset[1] = offset[2] = T(0);
     ratio     = T(1);
     rdepth    = T(0);
@@ -231,8 +232,8 @@ public:
     return result;
   }
   bool isValid() const {
-    const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
-    return rratio <= T(1) / rthresh && *this == *this;
+    const T rratio(min(abs(   ratio), T(1) / abs(   ratio)));
+    return rthresh <= rratio && *this == *this;
   }
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
@@ -457,7 +458,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
     vector<pair<T, int> > errors;
     for(int k = 0; k < m.dstpoints.size(); k ++) {
       const auto err(shapebase[m.dstpoints[k]] - mwork.transform(points[m.srcpoints[k]]));
-      errors.push_back(make_pair(sqrt(err.dot(err)) / m.ratio, k));
+      errors.push_back(make_pair(sqrt(err.dot(err)) * m.ratio, k));
     }
     sort(errors.begin(), errors.end());
     mwork.dstpoints = vector<int>();
@@ -465,7 +466,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
     T err(0);
     for(int k = 0; k < errors.size(); k ++) {
       err += errors[k].first;
-      if(thresh < err / (k + 1))
+      if(thresh < err / (k + 1) / (k + 1))
         break;
       mwork.dstpoints.push_back(m.dstpoints[errors[k].second]);
       mwork.srcpoints.push_back(m.srcpoints[errors[k].second]);
@@ -479,8 +480,8 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
     const auto err(shapebase[m.dstpoints[k]] - mwork.transform(points[m.srcpoints[k]]));
     m.rdepth += sqrt(err.dot(err));
   }
-  m.rdepth *= m.ratio / m.dstpoints.size();
-  return 3 <= m.dstpoints.size();
+  m.rdepth *= m.ratio / m.dstpoints.size() / m.dstpoints.size();
+  return 3 <= m.dstpoints.size() && m.isValid();
 /*
   return threshp <= m.dstpoints.size() /
            T(min(shapebase.size(), points.size())) &&
@@ -523,7 +524,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
     // for(int nd2 = 0; nd2 < 1; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
-      match_t<T> work0(threshs, thresht, abs(gd[0]), abs(gd[1]));
+      match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
       for(int k = 0; k < ddiv.size() / 2; k ++) {
         Mat3x3 lrot(3, 3);
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];

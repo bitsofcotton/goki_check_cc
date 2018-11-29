@@ -367,7 +367,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::makeRefMatrix(const Mat& 
 
 template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const {
   assert(orig.rows() == ref.rows() && orig.cols() == ref.cols());
-  Mat result(orig.rows(), orig.cols());
+  Mat result(ref.rows(), ref.cols());
   for(int i = 0; i < ref.rows() * ref.cols(); i ++) {
     const int ly(i % ref.rows());
     const int lx(i / ref.rows());
@@ -662,11 +662,11 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
       elimp.emplace_back(i);
   for(int i = 0, j = 0; i < elim.size(); i ++)
     points.erase(points.begin() + (elim[i] - i));
+  for(int i = 0; i < elimp.size(); i ++)
+    polys.erase(polys.begin() + (elimp[i] - i));
   for(int i = 0; i < polys.size(); i ++)
     for(int j = 0; j < polys[i].size(); j ++)
       polys[i][j] = after[polys[i][j]];
-  for(int i = 0; i < elimp.size(); i ++)
-    polys.erase(polys.begin() + (elimp[i] - i));
   return;
 }
 
@@ -983,8 +983,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
       Vec3 work(3);
       work[0] = i * vbox;
       work[1] = j * vbox;
-      const T intens(avg / vbox / vbox - aavg);
-      work[2] = intens * sqrt(T(in.rows() * in.cols())) * rz;
+      work[2] = sqrt(T(in.rows() * in.cols())) * rz * (avg / vbox / vbox - aavg);
       geoms.push_back(work);
     }
   Vec3 avg(3);
