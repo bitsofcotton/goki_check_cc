@@ -46,12 +46,12 @@ void usage() {
   cout << "gokicheck drawr   <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
   cout << "gokicheck drawm   <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck matcho  <match> <emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
 }
 
-template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<typename simpleFile<T>::Vec3>& shape0, const std::vector<typename simpleFile<T>::Vec3>& shape1, const typename simpleFile<T>::Mat in0[3], const typename simpleFile<T>::Mat in1[3], const typename simpleFile<T>::Mat& bump0, const typename simpleFile<T>::Mat& bump1, const std::vector<T>& emph) {
+template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<typename simpleFile<T>::Vec3>& shape0, const std::vector<typename simpleFile<T>::Vec3>& shape1, const typename simpleFile<T>::Mat in0[3], const typename simpleFile<T>::Mat in1[3], const typename simpleFile<T>::Mat& bump0, const typename simpleFile<T>::Mat& bump1, std::vector<typename simpleFile<T>::Veci3>& ohull0, std::vector<typename simpleFile<T>::Veci3>& ohull1, const T& emph = T(.5)) {
   assert(in0[0].rows() == in1[0].rows() && in0[0].cols() == in1[0].cols());
   reDig<T>      redig;
   simpleFile<T> file;
@@ -61,33 +61,19 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   const auto rin0(redig.makeRefMatrix(in0[0], 1));
   const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in0[idx] * T(0), shape0, match_t<T>(), mhull0) +
-                redig.replace(in1[idx] * T(0), shape1, match, mhull1);
+    outs[idx] = redig.replace(in0[idx] * T(0), shape0, ohull0) +
+                redig.replace(in1[idx] * T(0), match.transform(shape1), ohull1);
   file.savep2or3((outbase + std::string("-match.ppm")).c_str(), outs, false);
+  const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
+                                  match, ohull0, ohull1, emph));
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = (redig.emphasis(in0[idx], in1[idx], bump1, shape0, shape1, 
-                                match, mhull0, mhull1, T(.5)) + in0[idx]) / T(2);
+    outs[idx] = in0[idx] * (T(1) - emph) +
+      redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]) * emph;
   file.savep2or3((outbase + std::string("-cover.ppm")).c_str(), outs, false);
-  
-  for(int kk = 0; kk < emph.size(); kk ++) {
-    const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
-                                    match, mhull0, mhull1, emph[kk]));
-    for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = (in0[idx] * (emph.size() - 1 - kk) + redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]) * kk) / double(emph.size() - 1);
-    file.savep2or3((outbase + std::string("-emph-") + std::to_string(kk) +
-                    std::string(".ppm")).c_str(), outs, false);
-    for(int idx = 0; idx < 3; idx ++)
-      outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
-    file.savep2or3((outbase + std::string("-emph2-") + std::to_string(kk) +
-                    std::string(".ppm")).c_str(), outs, false);
-  }
-  
-  file.saveobj(redig.takeShape(shape0, shape1,   match, mhull0, mhull1,
-                               emph[emph.size() - 1]), mhull0,
-               (outbase + std::string("-emph.obj")).c_str());
-  file.saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0,
-                               emph[emph.size() - 1]), mhull1,
-               (outbase + std::string("-emphr.obj")).c_str());
+  file.saveobj(redig.takeShape(shape0, shape1,   match, mhull0, mhull1, emph),
+               ohull0, (outbase + std::string("-emph.obj")).c_str());
+  file.saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0, emph),
+               ohull1, (outbase + std::string("-emphr.obj")).c_str());
 /*
   file.saveglTF((outbase + std::string(".gltf")).c_str(),
                 shape0, mhull0, ~ match, center, bone);
@@ -402,7 +388,7 @@ int main(int argc, const char* argv[]) {
     int fnout(10);
     int nshow(0);
     int nhid(0);
-    int nemph(0);
+    float emph(0);
     match_t<double> m;
     if(strcmp(argv[1], "match") == 0) {
       nshow = std::atoi(argv[2]);
@@ -420,7 +406,7 @@ int main(int argc, const char* argv[]) {
         }
       }
       input.close();
-      nemph = std::atoi(argv[3]);
+      emph = std::atof(argv[3]);
     }
     int vboxdst(std::atoi(argv[4]));
     int vboxsrc(std::atoi(argv[5]));
@@ -462,9 +448,6 @@ int main(int argc, const char* argv[]) {
       mdata1[0] = mdata1[1] = mdata1[2] = data1[0] * 0.;
     }
     resizeDst2<double>(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
-    std::vector<double> emph;
-    for(int i = 0; i <= nemph; i ++)
-      emph.push_back(double(i) / nemph);
     auto& bump0(bdata[0]);
     redig.initialize(vboxdst);
     redig.getTileVec(bump0, shape0, delau0);
@@ -475,7 +458,7 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(shape1, delau1, mmout1);
     }
     if(strcmp(argv[1], "matcho") == 0)
-      saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, emph);
+      saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, delau0, delau1, emph);
     else { 
       matchPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
