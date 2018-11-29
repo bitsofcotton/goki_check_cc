@@ -471,6 +471,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     work.srcpoints = srcpoints;
     return complementMatch(work, shapebase, points, !retry);
   }
+  work.rdepth = T(0);
   for(int k = 0; k < work.dstpoints.size(); k ++) {
     const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
     work.rdepth += sqrt(err.dot(err));
