@@ -212,7 +212,6 @@ public:
         for(int i = 0; i < data.size(); i ++) {
           auto workv(data[i]);
           workv[0] = - workv[0];
-          workv[2] = - workv[2];
           workv    = m.transform(workv);
           output << "v " << workv[1] << " " << workv[0] << " " << workv[2] << endl;
         }
