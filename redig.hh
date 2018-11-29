@@ -110,7 +110,7 @@ public:
   ~reDig();
   void initialize(const int& vbox, const T& rz = - T(1));
   Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
-  Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const bool& elim = false);
+  Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim = false);
   Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(.2));
@@ -229,19 +229,18 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
   return tilt(dstimg, triangles, match);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const bool& elim) {
+template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim) {
   Mat result(dstimg);
-  vector<Vec3> tsrc;
-  T            M(0);
-  T            m(0);
+  T   M(0);
+  T   m(0);
   for(int i = 0; i < src.size(); i ++) {
-    tsrc.push_back(match.transform(src[i]));
     if(i) {
-      M = max(M, tsrc[i][2]);
-      m = min(m, tsrc[i][2]);
+      M = max(M, src[i][2]);
+      m = min(m, src[i][2]);
     } else
-      M = m = tsrc[i][2];
+      M = m = src[i][2];
   }
+  auto tsrc(src);
   if(M - m != T(0))
     for(int i = 0; i < tsrc.size(); i ++)
       tsrc[i][2] = elim ? T(0) : (tsrc[i][2] - m) / (M - m);
