@@ -16,10 +16,10 @@ Makefile を stdc++ を使えるように変更してください。
 * * vbox : ベクタ生成の際にまとめるピクセルの数です。
 * * rz   : 奥行きの乗数です。
 * match.hh
-* * matchPartialPartial::ndiv    : 合致する角度の分割数です。合致の誤差にも影響します。
-* * matchPartialPartial::threshr : 合致に許容する誤差の比率です。
-* * matchPartialPartial::threshp : 検出される最小の合致する点の数の比率です。
-* * matchPartialPartial::threshs : 合致が同じかどうか判定する閾値の比率です。
+* * matchPartial::ndiv    : 合致する角度の分割数です。合致の誤差にも影響します。
+* * matchPartial::threshr : 合致に許容する誤差の比率です。
+* * matchPartial::threshp : 検出される最小の合致する点の数の比率です。
+* * matchPartial::threshs : 合致が同じかどうか判定する閾値の比率です。
 
 # 文脈
 写真の後でのピント調整プログラムに刺激されました。また、この分野に関して、様々な(これと異なる)付帯条件での先行がたくさんありました。
