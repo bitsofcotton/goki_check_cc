@@ -478,7 +478,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
   }
   work.rdepth /= work.ratio * work.dstpoints.size();
   cerr << work.rdepth << endl;
-  return true;
+  return 3 <= work.dstpoints.size();
 /*
   return threshp <= work.dstpoints.size() /
            T(min(shapebase.size(), points.size())) &&
