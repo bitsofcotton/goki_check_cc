@@ -100,7 +100,7 @@ public:
   }
   match_t(const T& thresh, const T& h, const T& w) {
     this->thresh        = thresh;
-    this->rthresh       = T(8) / sqrt(h * w);
+    this->rthresh       = pow(h * w, - T(1) / T(4));
     this->threshsize    = Vec2(2);
     this->threshsize[0] = h;
     this->threshsize[1] = w;
@@ -356,7 +356,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, 8, .01, .1);
+  init(40, 2, .01, .1);
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
@@ -373,7 +373,7 @@ template <typename T> void matchPartial<T>::init(const int& ndiv, const T& thres
   assert(0 < ndiv && T(1) <= threshr && T(0) <= threshp && threshp <= T(1));
   this->ndiv    = ndiv;
   this->thresh  = sin(T(2) * Pi / ndiv) / T(2) * threshr;
-  this->thresht = this->thresh * threshr;
+  this->thresht = sin(T(2) * Pi / ndiv) / T(2) * threshr;
   this->threshp = threshp;
   this->threshs = threshs;
   return;
@@ -445,20 +445,22 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
   }
   const auto D(xx * dd - xd * xd);
   if(D != T(0)) {
-    m.ratio *=          T(2) * (  dd * xy - xd * yd) / D;
+    m.ratio  =          T(2) * (  dd * xy - xd * yd) / D;
     m.offset = offset * T(2) * (- xd * xy + xx * yd) / D;
   } else {
     // x // d.
-    m.offset = offset;
     m.ratio  = (xy - yd) / xx;
+    m.offset = offset;
   }
   match_t<T> mwork(m);
   mwork.rot = match_t<T>().rot;
   if(retry) {
     vector<pair<T, int> > errors;
     for(int k = 0; k < m.dstpoints.size(); k ++) {
-      const auto err(shapebase[m.dstpoints[k]] - mwork.transform(points[m.srcpoints[k]]));
-      errors.push_back(make_pair(sqrt(err.dot(err)) * m.ratio, k));
+      const auto& shapek(shapebase[m.dstpoints[k]]);
+      const auto  pointk(mwork.transform(points[m.srcpoints[k]]));
+      const auto  err(shapek - pointk);
+      errors.push_back(make_pair(sqrt(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk))), k));
     }
     sort(errors.begin(), errors.end());
     mwork.dstpoints = vector<int>();
@@ -477,16 +479,15 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
   }
   m.rdepth = T(0);
   for(int k = 0; k < m.dstpoints.size(); k ++) {
-    const auto err(shapebase[m.dstpoints[k]] - mwork.transform(points[m.srcpoints[k]]));
-    m.rdepth += sqrt(err.dot(err));
+    const auto& shapek(shapebase[m.dstpoints[k]]);
+    const auto  pointk(mwork.transform(points[m.srcpoints[k]]));
+    const auto  err(shapek - pointk);
+    m.rdepth += sqrt(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk)));
   }
-  m.rdepth *= m.ratio / m.dstpoints.size() / m.dstpoints.size();
-  return 3 <= m.dstpoints.size() && m.isValid();
-/*
+  m.rdepth /= m.dstpoints.size() * m.dstpoints.size();
   return threshp <= m.dstpoints.size() /
            T(min(shapebase.size(), points.size())) &&
          m.isValid();
-*/
 }
 
 template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result) {
@@ -514,14 +515,14 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int nd = 0; nd < ndiv; nd ++) {
-  // for(int nd = 0; nd < 1; nd ++) {
+  // for(int nd = 0; nd < ndiv; nd ++) {
+  for(int nd = 0; nd < 1; nd ++) {
     vector<T> ddiv;
     ddiv.resize(4, T(0));
     ddiv[0] = cos(2 * Pi * nd / ndiv);
     ddiv[1] = sin(2 * Pi * nd / ndiv);
-    for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
-    // for(int nd2 = 0; nd2 < 1; nd2 ++) {
+    // for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
+    for(int nd2 = 0; nd2 < 1; nd2 ++) {
       ddiv[2] = cos(2 * Pi * nd2 / ndiv);
       ddiv[3] = sin(2 * Pi * nd2 / ndiv);
       match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
