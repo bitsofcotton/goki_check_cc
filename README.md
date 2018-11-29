@@ -18,7 +18,7 @@ For speed, http://eigen.tuxfamily.org/ library is needed, and for bone informati
 * match.hh
 * * matchPartial::ndiv    : number of divides that match angles, effects the matching errors.
 * * matchPartial::threshr : error tolerance rate for matching, smaller is tight.
-* * matchPartial::threshp : ratio of threshold for matched points.
+* * matchPartial::threshp : ratio of threshold for number of matched points.
 * * matchPartial::threshs : ratio of threshold for operator ==.
 
 # Context
