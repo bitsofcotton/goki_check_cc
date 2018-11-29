@@ -237,9 +237,7 @@ public:
   bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
-    return rdepth / dstpoints.size() < x1.rdepth / x1.dstpoints.size() ||
-      (rdepth / dstpoints.size() == x1.rdepth / x1.dstpoints.size() &&
-        rratio < xratio);
+    return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
   }
   bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -332,7 +330,7 @@ public:
   void match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result);
   
   Vec3 makeG(const vector<Vec3>& in) const;
-  bool complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& retry = false) const;
+  bool complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& retry = true) const;
   vector<match_t<T> > elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh = T(4) / T(256));
   
   // theta resolution.
@@ -343,7 +341,7 @@ public:
   T   threshs;
   
 private:
-  vector<msub_t<T> > makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const match_t<T>& m) const;
+  vector<msub_t<T> > makeMsub(const match_t<T>& m, const vector<Vec3>& shapebase, const vector<Vec3>& points) const;
   T                  isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh);
   U   I;
   T   Pi;
@@ -394,13 +392,13 @@ template <typename T> typename matchPartial<T>::Vec3 matchPartial<T>::makeG(cons
   return result / in.size();
 }
 
-template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const vector<Vec3>& shapebase, const vector<Vec3>& points, const match_t<T>& m) const {
+template <typename T> vector<msub_t<T> > matchPartial<T>::makeMsub(const match_t<T>& m, const vector<Vec3>& shapebase, const vector<Vec3>& points) const {
   vector<msub_t<T> > result;
   // result.reserve(points.size() * shapebase.size());
   for(int j = 0; j < shapebase.size(); j ++)
     for(int k = 0; k < points.size(); k ++) {
       const auto& aj(shapebase[j]);
-      const auto& bk(points[k]);
+      const auto  bk(m.transform(points[k]));
       const auto  t(aj.dot(bk) / bk.dot(bk));
       const auto  lerr(aj - bk * t);
       const auto  err(lerr.dot(lerr) / sqrt(aj.dot(aj) * bk.dot(bk) * t * t));
@@ -452,19 +450,11 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     work.offset = offset;
     work.ratio  = (xy - yd) / xx;
   }
-  for(int k = 0; k < work.dstpoints.size(); k ++) {
-    const auto pointk(work.transform(points[work.srcpoints[k]]));
-    const auto err(shapebase[work.dstpoints[k]] - pointk);
-    work.rdepth += err.dot(err);
-  }
-  work.rdepth /= work.ratio;
-  if(!retry) {
+  if(retry) {
     vector<pair<T, int> > errors;
     for(int k = 0; k < work.dstpoints.size(); k ++) {
-      const auto& shapek(shapebase[work.dstpoints[k]]);
-      const auto  pointk(work.transform(points[work.srcpoints[k]]));
-      const auto  err(shapek - pointk);
-      errors.push_back(make_pair(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk)) / work.ratio, k));
+      const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
+      errors.push_back(make_pair(sqrt(err.dot(err)) / work.ratio, k));
     }
     sort(errors.begin(), errors.end());
     vector<int> dstpoints;
@@ -477,8 +467,17 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
       dstpoints.push_back(work.dstpoints[errors[k].second]);
       srcpoints.push_back(work.srcpoints[errors[k].second]);
     }
+    work.dstpoints = dstpoints;
+    work.srcpoints = srcpoints;
     return complementMatch(work, shapebase, points, !retry);
   }
+  work.rdepth = T(0);
+  for(int k = 0; k < work.dstpoints.size(); k ++) {
+    const auto err(shapebase[work.dstpoints[k]] - work.transform(points[work.srcpoints[k]]));
+    work.rdepth += sqrt(err.dot(err));
+  }
+  work.rdepth /= work.ratio * work.dstpoints.size();
+  cerr << work.rdepth << endl;
   return true;
 /*
   return threshp <= work.dstpoints.size() /
@@ -537,7 +536,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
         work0.rot = lrot * work0.rot;
       }
       // for each near matches:
-      const auto msub(makeMsub(shapebase, points, work0));
+      const auto msub(makeMsub(work0, shapebase, points));
       cerr << msub.size() << ":" << flush;
       if(msub.size() /
            T(min(shapebase.size(), points.size())) < threshp)

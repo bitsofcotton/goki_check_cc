@@ -52,6 +52,7 @@ void usage() {
 }
 
 template <typename T> void saveMatches(const std::string& outbase, const match_t<T>& match, const std::vector<typename simpleFile<T>::Vec3>& shape0, const std::vector<typename simpleFile<T>::Vec3>& shape1, const typename simpleFile<T>::Mat in0[3], const typename simpleFile<T>::Mat in1[3], const typename simpleFile<T>::Mat& bump0, const typename simpleFile<T>::Mat& bump1, const std::vector<T>& emph) {
+  assert(in0[0].rows() == in1[0].rows() && in0[0].cols() == in1[0].cols());
   reDig<T> redig;
   simpleFile<T> file;
   typename simpleFile<T>::Mat outs[3], outs2[3];
@@ -59,8 +60,8 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
   
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in1[idx], shape1, match, mhull1) +
-                redig.replace(in0[idx], shape0, match_t<T>(), mhull0);
+    outs[idx] = redig.replace(in1[idx] * T(0), shape1, match, mhull1) +
+                redig.replace(in0[idx] * T(0), shape0, match_t<T>(), mhull0);
   file.savep2or3((outbase + std::string("-match.ppm")).c_str(), outs, false);
   
   const auto rin0(redig.makeRefMatrix(in0[0], 1));
