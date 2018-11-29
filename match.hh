@@ -355,7 +355,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, 1.5, .01, .1);
+  init(40, 8, .01, .1);
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
@@ -477,7 +477,6 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& work, co
     work.rdepth += sqrt(err.dot(err));
   }
   work.rdepth /= work.ratio * work.dstpoints.size();
-  cerr << work.rdepth << endl;
   return 3 <= work.dstpoints.size();
 /*
   return threshp <= work.dstpoints.size() /
