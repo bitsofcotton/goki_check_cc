@@ -56,8 +56,6 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   reDig<T>      redig;
   simpleFile<T> file;
   typename simpleFile<T>::Mat outs[3];
-  const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
-  const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
   const auto rin0(redig.makeRefMatrix(in0[0], 1));
   const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
   for(int idx = 0; idx < 3; idx ++)
@@ -70,6 +68,8 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     outs[idx] = in0[idx] * (T(1) - emph) +
       redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]) * emph;
   file.savep2or3((outbase + std::string("-cover.ppm")).c_str(), outs, false);
+  const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
+  const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
   file.saveobj(redig.takeShape(shape0, shape1,   match, mhull0, mhull1, emph),
                ohull0, (outbase + std::string("-emph.obj")).c_str());
   file.saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0, emph),

@@ -93,7 +93,7 @@ private:
   void initBump(const int& size);
   Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
-  void makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop);
+  void makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop, const bool& recursive = true);
   U    I;
   T    Pi;
   vector<Mat> A;
@@ -108,12 +108,12 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  dratio   = T(.00005);
-  offset   = T(1) / T(256);
-  thedge   = T(.05);
-  sq       = 4;
-  idx_d    = - 1;
-  idx_b    = - 1;
+  dratio = T(.00005);
+  offset = T(1) / T(256);
+  thedge = T(.05);
+  sq     = 4;
+  idx_d  = - 1;
+  idx_b  = - 1;
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -218,7 +218,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         const auto dataBc(compute(compute(B[idx_b] * w1, ABS), BCLIP));
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
-            result(i, j) += dataA(i, j) / dataBc(i, j) / pow(T(2), i0);
+            result(i, j) += dataA(i, j) / dataBc(i, j) / i0;
         work = compute(work, D2Y);
       }
       result = - result;
@@ -519,8 +519,6 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       }
     }
   }
-  A[idx_b] *= dratio;
-  B[idx_b] *= T(.5);
   return;
 }
 
@@ -528,44 +526,74 @@ template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
   return int(abs(int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
 }
 
-template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop) {
+template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop, const bool& recursive) {
   assert(2 <= size);
   const auto ss((size + 1) / 2);
-        auto DFTD(seed(ss, false));
-  DFTD.row(0) *= U(0);
-  const auto IDFT(seed(ss, true));
-        auto DFTI(DFTD);
-        auto DFTE(DFTD);
-  T nd(0), ni(0);
-  for(int i = 1; i < DFTD.rows(); i ++) {
-    const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
-    // N.B. d/dy, integrate.
-    DFTD.row(i) *= phase;
-    DFTI.row(i) /= phase;
-    nd += abs(phase) * abs(phase);
-    ni += T(1) / (abs(phase) * abs(phase));
-    // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
-    // DFTH.row(i) *= log(phase);
-    // N.B. please refer enlarge.wxm, uses each freq.
-    //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
-    const T phase2(Pi * T(i + DFTE.rows()) / T(DFTE.rows()));
-    const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
-    DFTE.row(i) *= r;
-  }
-  // N.B. similar to DFTI * DFTD == id.
-  const T ratio(sqrt(nd * ni));
-  DFTD /= ratio;
-  DFTI /= ratio;
-  DFTE /= T(DFTE.rows());
-#if defined(_WITHOUT_EIGEN_)
-  Dop = (IDFT * DFTD).template real<T>();
-  Iop = (IDFT * DFTI).template real<T>();
-  Eop = (IDFT * DFTE).template real<T>();
-#else
-  Dop = (IDFT * DFTD).real().template cast<T>();
-  Iop = (IDFT * DFTI).real().template cast<T>();
-  Eop = (IDFT * DFTE).real().template cast<T>();
+  Dop = Mat(ss, ss);
+  for(int i = 0; i < Dop.rows(); i ++)
+    for(int j = 0; j < Dop.cols(); j ++)
+      Dop(i, j) = T(0);
+  Iop = Dop;
+  Eop = Dop;
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
 #endif
+  for(int s = (recursive ? 2 : ss); s <= ss; s ++) {
+          auto DFTD(seed(s, false));
+    DFTD.row(0) *= U(0);
+    const auto IDFT(seed(s, true));
+          auto DFTI(DFTD);
+          auto DFTE(DFTD);
+    T nd(0), ni(0);
+    for(int i = 1; i < DFTD.rows(); i ++) {
+      const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+      // N.B. d/dy, integrate.
+      DFTD.row(i) *= phase;
+      DFTI.row(i) /= phase;
+      nd += abs(phase) * abs(phase);
+      ni += T(1) / (abs(phase) * abs(phase));
+      // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
+      // DFTH.row(i) *= log(phase);
+      // N.B. please refer enlarge.wxm, uses each freq.
+      //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
+      const T phase2(Pi * T(i + DFTE.rows()) / T(DFTE.rows()));
+      const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
+      DFTE.row(i) *= r;
+    }
+    // N.B. similar to DFTI * DFTD == id.
+    const T ratio(sqrt(nd * ni));
+    DFTD /= ratio;
+    DFTI /= ratio;
+    DFTE /= T(DFTE.rows());
+#if defined(_WITHOUT_EIGEN_)
+    Mat lDop((IDFT * DFTD).template real<T>());
+    Mat lIop((IDFT * DFTI).template real<T>());
+    Mat lEop((IDFT * DFTE).template real<T>());
+#else
+    Mat lDop((IDFT * DFTD).real().template cast<T>());
+    Mat lIop((IDFT * DFTI).real().template cast<T>());
+    Mat lEop((IDFT * DFTE).real().template cast<T>());
+#endif
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+    {
+      for(int i = 0; i < Dop.rows(); i ++)
+        for(int j = 0; j < lDop.cols(); j ++) {
+          Dop(i, i * (Dop.cols() - lDop.cols()) / Dop.rows() + j) +=
+            lDop(i * lDop.rows() / Dop.rows(), j);
+          Iop(i, i * (Iop.cols() - lIop.cols()) / Iop.rows() + j) +=
+            lIop(i * lIop.rows() / Iop.rows(), j);
+          Eop(i, i * (Eop.cols() - lEop.cols()) / Eop.rows() + j) +=
+            lEop(i * lEop.rows() / Eop.rows(), j);
+        }
+    }
+  }
+  if(recursive) {
+    Dop /= ss - 1;
+    Iop /= ss - 1;
+    Eop /= ss - 1;
+  }
   return;
 }
 
