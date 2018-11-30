@@ -580,7 +580,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
 #pragma omp critical
 #endif
           {
-            work.offset += gs - work.ratio * work.rot * gp;
+            work.offset += gs - work.rot * gp * work.ratio;
             int idx(- 1);
             int k0(distance(result.begin(), lower_bound(result.begin(), result.end(), work)));
             for(int k = k0; k < result.size(); k ++)
