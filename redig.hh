@@ -166,6 +166,8 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
   this->vbox = vbox;
   if(T(0) < rz)
     this->rz = rz;
+  else
+    this->rz = T(.3);
   return;
 }
 
