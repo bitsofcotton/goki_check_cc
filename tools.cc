@@ -379,6 +379,7 @@ int main(int argc, const char* argv[]) {
           mwork(i, j) = 1.;
       res[0] = res[1] = res[2] = mwork - redig.tilt(data[0] * 0., redig.tiltprep(datapoly, polynorms, mwork, match_t<double>()));
     }
+    redig.normalize(res, 1.);
     file.savep2or3(argv[4], res, true);
   } else if(strcmp(argv[1], "matcho") == 0 ||
             strcmp(argv[1], "match") == 0) {
@@ -453,8 +454,8 @@ int main(int argc, const char* argv[]) {
     redig.initialize(vboxdst);
     redig.getTileVec(bump0, shape0, delau0);
     redig.maskVectors(shape0, delau0, mdata[0]);
-    redig.initialize(vboxsrc);
     if(fn[fn.size() - 1] == 'm') {
+      redig.initialize(vboxsrc);
       redig.getTileVec(bump1, shape1, delau1);
       redig.maskVectors(shape1, delau1, mmout1);
     }
