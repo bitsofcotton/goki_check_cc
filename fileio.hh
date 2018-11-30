@@ -318,7 +318,7 @@ public:
   // and thanks to: https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/SimpleMeshes
   bool loadglTF(vector<Vec3>& data, vector<Veci3>& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone, const char* filename, const T& bone01 = T(0)) {
 #if defined(_WITH_GLTF2_)
-    assert(0 && "not now);
+    assert(0 && "not now");
     return true;
 #else
     assert(0 && "Please compile with _WITH_GLTF2_");
