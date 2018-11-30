@@ -468,7 +468,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
     T err(0);
     for(int k = 0; k < errors.size(); k ++) {
       err += errors[k].first;
-      if(thresh < err / (k + 1) / (k + 1))
+      if(thresh < err / (k + 1))
         break;
       mwork.dstpoints.push_back(m.dstpoints[errors[k].second]);
       mwork.srcpoints.push_back(m.srcpoints[errors[k].second]);
