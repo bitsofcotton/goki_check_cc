@@ -221,7 +221,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
             result(i, j) += dataA(i, j) / dataBc(i, j) / i0;
         work = compute(work, D2Y);
       }
-      result = - result;
+      result = - compute(result, LOGSCALE);
     }
     break;
   case EXTEND_Y0:
@@ -495,7 +495,10 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
     for(int j = 0; j < Dop0.rows() / 2; j ++) {
       Vec cpoint(2);
       cpoint[0] = (j - T(Dop0.rows() / 2 - 1) / 2);
-      cpoint[1] = T(zi + 1) * dratio;
+      // cpoint[1] = T(zi + 1) * dratio;
+      // N.B. expscale then logscale.
+      cpoint[1] = T(T(zi + 1) * dratio < T(.5) ? - 1 : 1) *
+        exp(abs(T(zi + 1) * dratio - T(.5))) / exp(T(.5)) / T(2) + T(.5);
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0

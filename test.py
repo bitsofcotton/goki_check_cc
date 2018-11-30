@@ -81,7 +81,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "obj", " .2", "3", ".2", root + "-bump.ppm", root + "-L.obj"])
     subprocess.call([argv[1], "obj", "-.2", "3", ".2", root + "-bump.ppm", root + "-R.obj"])
     subprocess.call([argv[1], "obj", "  0", "3", ".2", root + "-bump.ppm", root + "-mask.ppm", root + "-mask.obj"])
-    subprocess.call([argv[1], "obj", "stand", "3", ".2", "1", ".002", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
+    subprocess.call([argv[1], "obj", "stand", "3", ".2", "1", ".2", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
   elif(argv[2] == "scn"):
     subprocess.call(["xcrun", "scntool", "--convert", root + "-L.obj", "--format", "scn", "--output", root + "-L.scn"])
     subprocess.call(["xcrun", "scntool", "--convert", root + "-R.obj", "--format", "scn", "--output", root + "-R.scn"])
