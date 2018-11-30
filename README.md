@@ -6,7 +6,7 @@ Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/
 Please touch Makefile for stdc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
 To convert image files to raw ppm, it is powerful tool that https://www.imagemagick.org/ with 'convert from.image -compress none to.ppm'.   
-For speed, http://eigen.tuxfamily.org/ library is needed, and for bone information, https://github.com/jessey-git/fx-gltf/ library is needed.
+For speed, we need http://eigen.tuxfamily.org/ library.
 
 # Parameters
 * enlarge.hh
@@ -27,12 +27,11 @@ And around this, there's many preceders that many approach to get bump maps with
 (such as multiple camera conditions, or, with layered objects, or, spherical, or, from movie, etcetc).
 There's a defocus photo algorithms http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf some words with googled. So it's accurate for most cameras, goki_check_cc is standing on another hypothesis that is not widely used (in another words, some transform or special camera is needed for photos...). And, there exists preceders that make it from multiple pint images, this makes very accurate results.  
 There's preceders to match 3D to 2D with many approaches. (s.t. detecting topology of junction point, or, machine learning, and so on.). And it is fater than this that PnP problem and specific point based matching.  
-By searching with some word that is not common, there exists the article https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ that I firstly know the gltf format by this.  
+By searching with some word that is not common, there exists the article https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ that I firstly know the gltf format by this. There's a https://github.com/jessey-git/fx-gltf/ library, but compatibility for this is abandoned.  
 Searching the Internet more...
 
 # Status
 Checking details of implementation before to freeze the library.  
-gltf2 compatibility is before alpha. match is beta.
 
 # Usage
     make tools
@@ -58,8 +57,8 @@ gltf2 compatibility is before alpha. match is beta.
     python test.py ./gokicheck flicker input.png
     python test.py ./gokicheck pnga input.png
     python test.py ./gokicheck jps input.png
-    python test.py ./gokicheck match input0.png input1.(png|obj|gltf)
-    python test.py ./gokicheck matcho input0.png input1.(png|obj|gltf) match
+    python test.py ./gokicheck match input0.png input1.(png|obj)
+    python test.py ./gokicheck matcho input0.png input1.(png|obj) match
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive (but include guard definition should harms).
