@@ -213,7 +213,7 @@ int main(int argc, const char* argv[]) {
       ratio    = std::atof(argv[5]);
       if(!file.loadp2or3(data, argv[7]))
         return - 1;
-      zratio = std::atof(argv[6]) * sqrt(double(data[0].rows() * data[0].cols()));
+      zratio = std::atof(argv[6]);
       if(9 < argc) {
         if(!file.loadp2or3(mask, argv[8]))
           return - 1;
