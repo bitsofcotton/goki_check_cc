@@ -6,7 +6,7 @@
 Makefile を stdc++ を使えるように変更してください。  
 このプログラムは ascii 形式の ppm ファイルを入出力に使用します。  
 変換の際は、例えばパワルフなツールである https://www.imagemagick.org/ の 'convert from.image -compress none to.ppm' が使用できます。  
-また、速度を担保するには http://eigen.tuxfamily.org/ ライブラリが、bone 情報を担保した合致をする際には https://github.com/jessey-git/fx-gltf/ ライブラリが必要です。
+また、速度を担保するには http://eigen.tuxfamily.org/ ライブラリが必要です。
 
 # 調整可能なパラメタ
 * enlarge.hh
@@ -26,11 +26,11 @@ Makefile を stdc++ を使えるように変更してください。
 (例えば、たくさんのカメラによる画像を使用するものや、あらかじめレイヤ毎に用意しておくもの、球状に膨らませるもの、動画から生成するものなどです。)
 検索結果に defocus photo アルゴリズムがありました。 http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.100.2308&rep=rep1&type=pdf 。これはほとんどの場合のカメラ撮影について、goki_check_cc よりも正確です。goki_check_cc は異なる仮定を用いていますが、一般的に使用されるカメラ撮影の場合には、事前のいくつかの変換が必要です。また、フォーカスをずらして 2 枚以上の写真を撮影できる場合には、より正確な先行結果があります。  
 また、合致の分野に対して、様々な(これと異なる)付帯条件での先行がたくさんありました。(例えば、トポロジを検出して端を合致するものや、機械学習を使うもの、および座標変換の変数を点の数で固定するものなどです。)。また、特徴点を利用した PnP 問題の合致の方がこちらよりも高速です。  
-検索によって限られた組み合わせの語句では見つからなかった https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ という記事さんがありました。gltf2 のライブラリは初めて知りました。  
+検索によって限られた組み合わせの語句では見つからなかった https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ という記事さんがありました。gltf2 のライブラリは初めて知りました。https://github.com/jessey-git/fx-gltf/ さんへの対応を検討していましたが、見送られました。  
 さらに検索中です。
 
 # 状態
-Freeze 前の細かな実装のチェックをしています。特に、gltf2 ライブラリへの対応はまだバグが潜在しています。また、合致周りは beta です。
+Freeze 前の細かな実装のチェックをしています。
 
 # 使い方
     make gokicheck
@@ -56,8 +56,8 @@ Freeze 前の細かな実装のチェックをしています。特に、gltf2 �
     python test.py ./gokicheck flicker input.png
     python test.py ./gokicheck pnga input.png
     python test.py ./gokicheck jps input.png
-    python test.py ./gokicheck match input0.png input1.(png|obj|gltf)
-    python test.py ./gokicheck matcho input0.png input1.(png|obj|gltf) match
+    python test.py ./gokicheck match input0.png input1.(png|obj)
+    python test.py ./gokicheck matcho input0.png input1.(png|obj) match
 
 # ライブラリとしての使い方
 tools.cc を参照してください。また、必要であれば namespace ブロックでスコープしてください。
