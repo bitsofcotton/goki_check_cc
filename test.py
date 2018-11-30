@@ -81,7 +81,7 @@ for line in argv[3:]:
     subprocess.call([argv[1], "obj", " .2", "3", ".2", root + "-bump.ppm", root + "-L.obj"])
     subprocess.call([argv[1], "obj", "-.2", "3", ".2", root + "-bump.ppm", root + "-R.obj"])
     subprocess.call([argv[1], "obj", "  0", "3", ".2", root + "-bump.ppm", root + "-mask.ppm", root + "-mask.obj"])
-    subprocess.call([argv[1], "obj", "stand", "3", ".2", "1", ".2", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
+    subprocess.call([argv[1], "obj", "stand", "3", ".2", "1", ".002", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
   elif(argv[2] == "scn"):
     subprocess.call(["xcrun", "scntool", "--convert", root + "-L.obj", "--format", "scn", "--output", root + "-L.scn"])
     subprocess.call(["xcrun", "scntool", "--convert", root + "-R.obj", "--format", "scn", "--output", root + "-R.scn"])
@@ -116,8 +116,8 @@ for line in argv[3:]:
   elif(argv[2] == "flicker"):
     for s in range(0, 16):
       subprocess.call([argv[1], "obj", "0", "3", str(.15 / 16. * s), root + "-bump.ppm", root + "-flicker.obj"])
-      subprocess.call([argv[1], "tilt", "0", "2", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
-      subprocess.call([argv[1], "tilt", "1", "2", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
+      subprocess.call([argv[1], "tilt", "1", "4", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "3", "4", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
       subprocess.call(["montage", root + "-flicker-base-" + str(s) + "-R.ppm", root + "-flicker-base-" + str(s) + "-L.ppm", "-geometry", "100%x100%", root + "-flicker-base-" + str(s) + ".png"])
       subprocess.call(["cp", root + "-flicker-base-" + str(s) + ".png", root + "-flicker-base-" + str(16 * 2 - s - 1) + ".png"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-flicker-base-%d.png", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-ficker.mp4"])
