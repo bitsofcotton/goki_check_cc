@@ -464,7 +464,8 @@ int main(int argc, const char* argv[]) {
     else { 
       matchPartial<double> statmatch;
       auto matches(statmatch.match(shape0, shape1));
-      // matches = statmatch.elim(matches, data, mout, bump1, shape1);
+      if(fn[fn.size() - 1] == 'm')
+        matches = statmatch.elim(matches, data, mout, bump1, shape1);
       matches.resize(min(int(matches.size()), nhid));
       std::cerr << matches.size() << "pending" << std::endl;
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
@@ -494,7 +495,8 @@ int main(int argc, const char* argv[]) {
         matchPartial<double> pstatmatch;
         pstatmatch.ndiv /= 2;
         auto pmatches(pstatmatch.match(shape0a, shape1a));
-        // pmatches = pstatmatch.elim(pmatches, data, mout, bump1, shape1a);
+        if(fn[fn.size() - 1] == 'm')
+          pmatches = pstatmatch.elim(pmatches, data, mout, bump1, shape1a);
         pmatches.resize(min(int(pmatches.size()), nhid));
         for(int m = 0; m < min(int(pmatches.size()), nshow); m ++) {
           std::ofstream output;
