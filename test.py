@@ -60,6 +60,8 @@ for line in argv[3:]:
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl.ppm"])
+    subprocess.call(["convert", root + ".ppm", "-resize", "200%", root + "-enli.png"])
+    subprocess.call(["convert", "-average", root + "-enl.ppm", root + "-enli.png", "-sharpen", "4", "-resize", "75%", root + "-enl.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "bumpe"):
@@ -100,8 +102,8 @@ for line in argv[3:]:
     subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
     subprocess.call(["cp", root + ".obj.mtl", root + "-stand.obj.mtl"])
   elif(argv[2] == "jps"):
-    subprocess.call([argv[1], "tilt", "0", "2", ".005", "0", root + ".ppm", root + ".obj", root + "-L.ppm"])
-    subprocess.call([argv[1], "tilt", "1", "2", ".005", "0", root + ".ppm", root + ".obj", root + "-R.ppm"])
+    subprocess.call([argv[1], "tilt", "1", "4", ".005", "0", root + ".ppm", root + ".obj", root + "-L.ppm"])
+    subprocess.call([argv[1], "tilt", "3", "4", ".005", "0", root + ".ppm", root + ".obj", root + "-R.ppm"])
     subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
     subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
   elif(argv[2] == "tilt"):
@@ -141,9 +143,11 @@ for line in argv[3:]:
       subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
   elif(argv[2] == "demosaic"):
     print pixels
-    s0  = int(np.ceil(np.log(pixels) / np.log(2.)))
+    s0  = int(np.ceil(np.log(pixels) / np.log(1.5)))
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
-    subprocess.call([argv[1], "enlarge", str(s0), root + "-demosaic0.ppm", root + "-demosaic.ppm"])
+    for s in range(0, s0 + 1):
+      subprocess.call(["python", argv[0], argv[1], "enl", root + "-demosaic" + str(s) + ".ppm"])
+      subprocess.call(["convert", root + "-demosaic" + str(s) + "-enl.png", "-compress", "none", root + "-demosaic" + str(s + 1) + ".ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
