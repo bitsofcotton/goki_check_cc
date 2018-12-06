@@ -62,10 +62,10 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
     outs[idx] = redig.replace(in0[idx] * T(0), shape0, ohull0) +
                 redig.replace(in1[idx] * T(0), match.transform(shape1), ohull1);
   file.savep2or3((outbase + std::string("-match.ppm")).c_str(), outs, false);
-  const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
-                                  match, ohull0, ohull1, emph));
   const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
   const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
+  const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
+                                  match, mhull0, mhull1, emph));
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = redig.showMatch(in0[idx], shape0, mhull0) * (T(1) - emph) +
       redig.showMatch(redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(),
