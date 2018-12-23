@@ -61,7 +61,7 @@ for line in argv[3:]:
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl.ppm"])
     subprocess.call(["convert", root + ".ppm", "-resize", "200%", root + "-enli.png"])
-    subprocess.call(["convert", "-average", root + "-enl.ppm", root + "-enli.png", "-sharpen", "4", "-resize", "75%", root + "-enl.png"])
+    subprocess.call(["convert", "-average", root + "-enl.ppm", root + "-enli.png", "-sharpen", "2x1.5", "-resize", "75%", root + "-enl.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "bumpe"):

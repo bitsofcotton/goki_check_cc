@@ -72,8 +72,10 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
                         in1[idx]), shape1, mhull1) * emph;
   file.savep2or3((outbase + std::string("-cover.ppm")).c_str(), outs, false);
   file.saveobj(redig.takeShape(shape0, shape1,   match, mhull0, mhull1, emph),
+               outs[0].rows(), outs[0].cols(),
                ohull0, (outbase + std::string("-emph.obj")).c_str());
   file.saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0, emph),
+               outs[0].rows(), outs[0].cols(),
                ohull1, (outbase + std::string("-emphr.obj")).c_str());
 /*
   file.saveglTF((outbase + std::string(".gltf")).c_str(),
@@ -256,7 +258,7 @@ int main(int argc, const char* argv[]) {
     if(M == m) M += 1.;
     for(int i = 0; i < points.size(); i ++)
       points[i][2] *= zratio / (M - m);
-    file.saveobj(points, facets, argv[sidx], edges, addstand, xoffset);
+    file.saveobj(points, data[0].rows(), data[0].cols(), facets, argv[sidx], edges, addstand, xoffset);
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if((strcmp(argv[1], "tilt") == 0 && argc < 9) ||
@@ -532,12 +534,12 @@ int main(int argc, const char* argv[]) {
     if(argc > 7) {
       const auto m(redig.tiltprep(typename simpleFile<double>::Mat(int(My), int(Mx)), - std::atoi(argv[4]), std::atoi(argv[5]), std::atof(argv[6])));
       file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
-                   poldst, argv[7]);
+                   My, Mx, poldst, argv[7]);
     } else {
       matchPartial<double> statmatch;
       const auto m(statmatch.match(pdst, psrc)[0]);
       file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
-                   poldst, argv[4]);
+                   My, Mx, poldst, argv[4]);
     }
   } else if(strcmp(argv[1], "omake") == 0) {
     std::vector<double> in;
