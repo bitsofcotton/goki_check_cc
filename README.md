@@ -102,3 +102,6 @@ This is because we generate the one with DFT half space plausible ones by shifti
 
 # Pre calculated samples
 ![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.jpeg)
+
+# Being examined
+It is searching that can we convert 3d model into the forests that is the center lines of metaball and depth simply.

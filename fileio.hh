@@ -162,23 +162,22 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec3>& data, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0), const T& xoffset = T(0), const T& arrot = T(.015)) {
+  bool saveobj(const vector<Vec3>& data, const int& Mw0, const int& Mh0, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0), const T& xoffset = T(0), const T& arrot = T(.015)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
-      double Mh(1), Mw(1), lz(0);
       int lfs(0);
+      const T Mh(Mh0 / T(2));
+      const T Mw(Mw0 / T(2));
       for(int fslash(0) ; filename[fslash]; fslash ++)
         if(filename[fslash] == '/')
           lfs = fslash;
       if(lfs) lfs ++;
       output << "mtllib " << &filename[lfs] << ".mtl" << endl;
       output << "usemtl material0" << endl;
-      for(int i = 0; i < data.size(); i ++) {
-        Mh = max(data[i][1], Mh);
-        Mw = max(data[i][0], Mw);
+      T lz(1);
+      for(int i = 0; i < data.size(); i ++)
         lz = min(data[i][2], lz);
-      }
       if(xoffset != T(0)) {
         const T Pi(T(4) * atan2(T(1), T(1)));
         const T theta(2. * Pi * T(xoffset < T(0) ? 0 : 1) / T(2));
@@ -215,7 +214,7 @@ public:
           workv    = m.transform(workv);
           output << "v " << workv[1] << " " << workv[0] << " " << workv[2] << endl;
         }
-      } else if(addstand != T(0)) {
+     } else if(addstand != T(0)) {
         for(int i = 0; i < data.size(); i ++)
           output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << data[i][2] + addstand - lz << endl;
         for(int i = 0; i < data.size(); i ++)
@@ -225,7 +224,7 @@ public:
           output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] << endl;
       }
       for(int i = 0; i < data.size(); i ++)
-        output << "vt " << data[i][1] / Mh << " " << 1. - data[i][0] / Mw << endl;
+        output << "vt " << data[i][1] / Mh / T(2) << " " << 1. - data[i][0] / Mw / T(2) << endl;
       // xchg with clockwise/counter clockwise.
       for(int i = 0; i < polys.size(); i ++) {
         const int i0(polys[i][0] + 1);
