@@ -258,7 +258,7 @@ int main(int argc, const char* argv[]) {
     if(M == m) M += 1.;
     for(int i = 0; i < points.size(); i ++)
       points[i][2] *= zratio / (M - m);
-    file.saveobj(points, data[0].rows(), data[0].cols(), facets, argv[sidx], edges, addstand, xoffset);
+    file.saveobj(points, ratio * data[0].rows(), ratio * data[0].cols(), facets, argv[sidx], edges, addstand, xoffset);
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if((strcmp(argv[1], "tilt") == 0 && argc < 9) ||
