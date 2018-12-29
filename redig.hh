@@ -125,7 +125,7 @@ public:
   Mat  rgb2xz(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   Mat  contrast(const Mat& in, const T& intensity, const T& thresh = T(.5));
-  Mat  tilt45(const Mat& in, const bool& invert, const Mat& orig = Mat());
+  Mat  applytilt(const Mat& in, const int& dx, const int& dy);
   Mat  normalize(const Mat& data, const T& upper);
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
@@ -146,6 +146,7 @@ private:
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5)) const;
   bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(1e8));
+  int  getImgPtRecursive(const T& h, const T& y) const;
   
   T   Pi;
   int vbox;
@@ -840,54 +841,14 @@ template <typename T> typename reDig<T>::Mat reDig<T>::contrast(const Mat& in, c
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt45(const Mat& in, const bool& invert, const Mat& orig) {
-  Mat res;
-  if(invert) {
-    assert(orig.rows() + orig.cols() == in.rows() &&
-           orig.rows() + orig.cols() == in.cols());
-    res = Mat(orig.rows(), orig.cols());
-    for(int i = 0; i < orig.rows(); i ++)
-      for(int j = 0; j < orig.cols(); j ++)
-        res(i, j) = in(i + j, orig.rows() - i + j);
-  } else {
-    res = Mat(in.rows() + in.cols(), in.cols() + in.rows());
-    for(int i = - in.rows() - in.cols(); i < 2 * in.rows() + in.cols(); i ++)
-      for(int j = - in.rows() - in.cols(); j < 2 * in.cols() + in.rows(); j ++) {
-        const int y(i + j);
-        const int x(in.rows() - i + j);
-        if(0 <= y && y < res.rows() && 0 <= x && x < res.cols())
-          res(y, x) = in(abs(abs((i + in.rows()) % (2 * in.rows())) - in.rows()) % in.rows(),
-                         abs(abs((j + in.cols()) % (2 * in.cols())) - in.cols()) % in.cols());
-      }
-    for(int i = - in.rows() - in.cols(); i < 2 * in.rows() + in.cols(); i ++)
-      for(int j = - in.rows() - in.cols(); j < 2 * in.cols() + in.rows(); j ++) {
-        const int y(i + j + 1);
-        const int x(in.rows() - i + j);
-        if(!(0 <= y && y < res.rows() && 0 <= x && x < res.cols()))
-          continue;
-        int cnt(0);
-        T   sum(0);
-        const int y0(abs(abs((i + in.rows()) % (2 * in.rows())) - in.rows()) % in.rows());
-        const int x0(abs(abs((j + in.cols()) % (2 * in.cols())) - in.cols()) % in.cols());
-        if(0 <= y0 - 1) {
-          sum += in(y0 - 1, x0);
-          cnt ++;
-        }
-        if(0 <= x0 - 1) {
-          sum += in(y0, x0 - 1);
-          cnt ++;
-        }
-        if(y0 + 1 < in.rows()) {
-          sum += in(y0 + 1, x0);
-          cnt ++;
-        }
-        if(x0 + 1 < in.cols()) {
-          sum += in(y0, x0 + 1);
-          cnt ++;
-        }
-        res(y, x) = sum / cnt;
-      }
-  }
+template <typename T> typename reDig<T>::Mat reDig<T>::applytilt(const Mat& in, const int& dx, const int& dy) {
+  assert(dx == 1 || dy == 1);
+  if(abs(dx) < abs(dy))
+    return applytilt(in.transpose(), dy, dx).transpose();
+  Mat res(in.rows(), in.cols());
+  for(int i = 0; i < in.rows(); i ++)
+    for(int j = 0; j < in.cols(); j ++)
+      res(i, j) = in(getImgPtRecursive(in.rows(), i + j / dx), j);
   return res;
 }
 
@@ -1196,6 +1157,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
       }
   }
   return result;
+}
+
+template <typename T> int reDig<T>::getImgPtRecursive(const T& h, const T& y) const {
+  return int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(h);
 }
 
 #define _REDIG_

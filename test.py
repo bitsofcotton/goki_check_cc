@@ -59,9 +59,8 @@ for line in argv[3:]:
   if(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
-    subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl.ppm"])
-    subprocess.call(["convert", root + ".ppm", "-resize", "200%", root + "-enli.png"])
-    subprocess.call(["convert", "-average", root + "-enl.ppm", root + "-enli.png", "-sharpen", "2x1.5", "-resize", "75%", root + "-enl.png"])
+    subprocess.call([argv[1], "enlarge", "2", root + ".ppm", root + "-enl.ppm"])
+    subprocess.call(["convert", root + "-enl.ppm", "-resize", "50%", root + "-enl.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "bumpe"):
@@ -143,7 +142,7 @@ for line in argv[3:]:
       subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
   elif(argv[2] == "demosaic"):
     print pixels
-    s0  = int(np.ceil(np.log(pixels) / np.log(1.5)))
+    s0 = int(np.ceil(np.log(pixels) / np.log(2.)))
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
     for s in range(0, s0 + 1):
       subprocess.call(["python", argv[0], argv[1], "enl", root + "-demosaic" + str(s) + ".ppm"])
