@@ -121,11 +121,15 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(data, argv[3]))
       return - 1;
     if(strcmp(argv[1], "enlarge") == 0) {
-      enlarger2ex<double> enlarger, denlarger;
+      enlarger2ex<double> enlarger;
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
-          const auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-          data[i] = xye + redig.tilt45(denlarger.compute(redig.tilt45(data[i], false), denlarger.ENLARGE_BOTH), true, xye) * sqrt(xye.rows() * xye.cols()) / double(xye.rows() + xye.cols());
+          auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
+          for(int k = 1; k < 8; k ++) {
+            xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], k, 1), enlarger.ENLARGE_BOTH), - k, 1);
+            xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - k, 1), enlarger.ENLARGE_BOTH), k, 1);
+          }
+          data[i] = xye / 15;
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
@@ -176,23 +180,23 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
-        data[i] = xye + redig.tilt45(ddetect.compute(redig.tilt45(data[i], false), ddetect.COLLECT_BOTH), true, xye);
+        data[i] = xye;
       }
     } else if(strcmp(argv[1], "idetect") == 0) {
       enlarger2ex<double> idetect, didetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(idetect.compute(data[i], idetect.IDETECT_BOTH));
-        data[i] = xye + redig.tilt45(didetect.compute(redig.tilt45(data[i], false), didetect.IDETECT_BOTH), true, xye);
+        data[i] = xye;
       }
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
       auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(redig.rgb2d(data), false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye);
     } else if(strcmp(argv[1], "bumpe") == 0) {
       enlarger2ex<double> bump;
       const auto data0(bump.compute(redig.normalize(redig.rgb2d(data), 1.), bump.DEDGE));
       auto xye(bump.compute(data0, bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye + redig.tilt45(bump.compute(redig.tilt45(data0, false), bump.BUMP_BOTH), true, xye), (xye.rows() + xye.cols()) * 2);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))

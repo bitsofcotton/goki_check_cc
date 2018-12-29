@@ -356,7 +356,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, 2, .01, .1);
+  init(40, 12, .01, .1);
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
@@ -376,6 +376,7 @@ template <typename T> void matchPartial<T>::init(const int& ndiv, const T& thres
   this->thresht = sin(T(2) * Pi / ndiv) / T(2) * threshr;
   this->threshp = threshp;
   this->threshs = threshs;
+  cerr << "e(" << this->thresh << ")" << endl;
   return;
 }
 

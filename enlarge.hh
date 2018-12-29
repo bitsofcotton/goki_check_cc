@@ -218,7 +218,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         const auto dataBc(compute(compute(B[idx_b] * w1, ABS), BCLIP));
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
-            result(i, j) += dataA(i, j) / dataBc(i, j) / i0;
+            result(i, j) += dataA(i, j) / dataBc(i, j);
         work = compute(work, D2Y);
       }
       result = - compute(result, LOGSCALE);
@@ -423,9 +423,9 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 #endif
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
     for(int j = 0; j < Dop[idx_d].cols() / 2; j ++) {
-      Dop[idx_d]( i, i / 2 + j) =   vDop( i / 2, j);
-      Iop[idx_d]( i, i / 2 + j) = - vIop( i / 2, j);
-      Eop[idx_d]( i, i / 2 + j) =   vEop( i / 2, j);
+      Dop[idx_d](i, i / 2 + j) =   vDop(i / 2, j);
+      Iop[idx_d](i, i / 2 + j) = - vIop(i / 2, j);
+      Eop[idx_d](i, i / 2 + j) =   vEop(i / 2, j);
     }
   Mat newEop(Eop[idx_d].rows() * 2, Eop[idx_d].cols());
 #if defined(_OPENMP)
@@ -437,26 +437,14 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     newEop(2 * i + 0, i) += T(1);
     newEop(2 * i + 1, i) += T(1);
   }
-  Eop[idx_d] = newEop * T(2);
+  Eop[idx_d] = newEop;
+/* * T(2);
   for(int i = 0; i < Eop[idx_d].rows(); i ++) {
     Eop[idx_d].row(i) += newEop.row(min(i + 1, int(Eop[idx_d].rows()) - 1));
     Eop[idx_d].row(i) += newEop.row(max(i - 1, 0));
   }
   Eop[idx_d] /= T(4);
-#if defined(_WITH_EXTERNAL_)
-  // reverted.
-  // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
-  // But I don't know whether this method is open or not.
-  auto DFT2( seed(Eop[idx_d].rows(), false));
-  auto IDFT2(seed(DFT2.rows(), true));
-  for(int i = 0; i < DFT2.rows(); i ++)
-    DFT2.row(i) *= T(1.5) - T(.5) * exp(- pow(T(i) / DFT2.rows(), T(2)));
-#if defined(_WITHOUT_EIGEN_)
-  Eop[idx_d] = (IDFT2 * DFT2).template real<T>() * Eop[idx_d];
-#else
-  Eop[idx_d] = (IDFT2 * DFT2).real().template cast<T>() * Eop[idx_d];
-#endif
-#endif
+*/
   return;
 }
 
