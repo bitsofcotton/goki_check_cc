@@ -125,12 +125,15 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
           auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-          for(int k = 1; k < 8; k ++) {
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1, 1), enlarger.ENLARGE_BOTH), - 1, 1);
+          for(int k = 2; k < 8; k ++) {
             xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], k, 1), enlarger.ENLARGE_BOTH), - k, 1);
             xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - k, 1), enlarger.ENLARGE_BOTH), k, 1);
           }
-          data[i] = xye / 15;
+          data[i] = xye / (6 * 2 + 2);
         }
+      for(int i = 0; i < 3; i ++)
+        data[i] = enlarger.compute(data[i], enlarger.CLIP);
     } else if(strcmp(argv[1], "pextend") == 0) {
       enlarger2ex<double> extender;
       for(int i = 0; i < 3; i ++)
@@ -161,8 +164,8 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = result[i];
 */
+      redig.normalize(data, 1.);
     }
-    redig.normalize(data, 1.);
     if(!file.savep2or3(argv[4], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "collect") == 0 ||

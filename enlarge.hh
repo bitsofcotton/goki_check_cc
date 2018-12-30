@@ -514,7 +514,8 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
 }
 
 template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
-  return int(abs(int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
+  const int lgyh(log(y) / log(h));
+  return int(abs(int(y - (lgyh ? pow(h, lgyh) : 0) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
 }
 
 template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop, const bool& recursive) {

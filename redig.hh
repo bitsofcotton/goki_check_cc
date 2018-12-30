@@ -1160,7 +1160,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
 }
 
 template <typename T> int reDig<T>::getImgPtRecursive(const T& h, const T& y) const {
-  return int(y - pow(h, int(log(y) / log(h))) + .5 + 2 * h * h + h) % int(h);
+  const int lgyh(log(y) / log(h));
+  return int(y - (lgyh ? pow(h, lgyh) : 0) + h * h) % int(h);
 }
 
 #define _REDIG_
