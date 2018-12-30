@@ -166,11 +166,11 @@ int main(int argc, const char* argv[]) {
       redig.normalize(data, 1.);
     } else if(strcmp(argv[1], "cenl") == 0) {
       typename simpleFile<double>::Mat datas[3];
+      enlarger2ex<double> cenl;
       if(!file.loadp2or3(datas, argv[4]))
         return - 1;
       for(int i = 0; i < 3; i ++)
-        data[i] += (data[i] - datas[i]) * ratio;
-      redig.normalize(data, 1.);
+        data[i] += cenl.compute((data[i] - datas[i]) * ratio, cenl.CLIP);
       if(!file.savep2or3(argv[5], data, ! true))
         return - 1;
       return 0;
