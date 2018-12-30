@@ -143,7 +143,7 @@ for line in argv[3:]:
     s0 = int(np.ceil(np.log(pixels) / np.log(2.)))
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
     subprocess.call([argv[1], "enlarge", str(s0), root + "-demosaic0.ppm", root + "-demosaic.ppm"])
-    subprocess.call(["convert", "(", root + "-demosaic.ppm", "(", root + ".ppm", "-resize", str(s0 * 100) + "%", ")", "-compose", "subtract", "-composite", ")", "(", root + "-demosaic0.ppm", "-resize", str(s0 * 100) + "%", ")", "-compose", "add", "-composite", "-auto-level", root + "-demosaic.png"])
+    subprocess.call(["convert", "(", root + "-demosaic.ppm", "(", root + ".ppm", "-resize", str(pow(2., s0) * 100) + "%", ")", "-compose", "subtract", "-composite", ")", "(", root + "-demosaic0.ppm", "-resize", str(pow(2., s0) * 100) + "%", ")", "-compose", "add", "-composite", "-auto-level", root + "-demosaic.png"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
