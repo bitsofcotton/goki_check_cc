@@ -170,7 +170,7 @@ int main(int argc, const char* argv[]) {
       if(!file.loadp2or3(datas, argv[4]))
         return - 1;
       for(int i = 0; i < 3; i ++)
-        data[i] += cenl.compute((data[i] - datas[i]) * ratio, cenl.CLIP);
+        data[i] = cenl.compute(data[i] + (data[i] - datas[i]) * ratio, cenl.CLIP);
       if(!file.savep2or3(argv[5], data, ! true))
         return - 1;
       return 0;
