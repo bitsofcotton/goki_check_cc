@@ -437,14 +437,12 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     newEop(2 * i + 0, i) += T(1);
     newEop(2 * i + 1, i) += T(1);
   }
-  Eop[idx_d] = newEop;
-/* * T(2);
+  Eop[idx_d] = newEop * T(2);
   for(int i = 0; i < Eop[idx_d].rows(); i ++) {
     Eop[idx_d].row(i) += newEop.row(min(i + 1, int(Eop[idx_d].rows()) - 1));
     Eop[idx_d].row(i) += newEop.row(max(i - 1, 0));
   }
   Eop[idx_d] /= T(4);
-*/
   return;
 }
 
