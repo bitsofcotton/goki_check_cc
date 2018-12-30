@@ -33,6 +33,7 @@ using std::endl;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck enlarge <ratio>  <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck cenl    <ratio>  <inputdst.ppm> <inputsrc.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck idetect <input.ppm> <output.ppm>" << endl;
@@ -110,8 +111,9 @@ int main(int argc, const char* argv[]) {
   simpleFile<double> file;
   reDig<double>      redig;
   if(strcmp(argv[1], "enlarge") == 0 ||
+     strcmp(argv[1], "cenl")    == 0 ||
      strcmp(argv[1], "pextend") == 0) {
-    if(argc < 5) {
+    if(argc < 5 || (strcmp(argv[1], "cenl") == 0 && argc < 6)) {
       usage();
       return 0;
     }
@@ -162,6 +164,16 @@ int main(int argc, const char* argv[]) {
         data[i] = result[i];
 */
       redig.normalize(data, 1.);
+    } else if(strcmp(argv[1], "cenl") == 0) {
+      typename simpleFile<double>::Mat datas[3];
+      enlarger2ex<double> cenl;
+      if(!file.loadp2or3(datas, argv[4]))
+        return - 1;
+      for(int i = 0; i < 3; i ++)
+        data[i] = cenl.compute(data[i] + (data[i] - datas[i]) * ratio, cenl.CLIP);
+      if(!file.savep2or3(argv[5], data, ! true))
+        return - 1;
+      return 0;
     }
     if(!file.savep2or3(argv[4], data, ! true))
       return - 1;
