@@ -170,6 +170,7 @@ int main(int argc, const char* argv[]) {
         return - 1;
       for(int i = 0; i < 3; i ++)
         data[i] += (data[i] - datas[i]) * ratio;
+      redig.normalize(data, 1.);
       if(!file.savep2or3(argv[5], data, ! true))
         return - 1;
       return 0;
