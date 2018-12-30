@@ -37,7 +37,6 @@ void usage() {
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck idetect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck bumpe   <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
@@ -126,11 +125,9 @@ int main(int argc, const char* argv[]) {
         for(int i = 0; i < 3; i ++) {
           auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1, 1), enlarger.ENLARGE_BOTH), - 1, 1);
-          for(int k = 2; k < 8; k ++) {
-            xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], k, 1), enlarger.ENLARGE_BOTH), - k, 1);
-            xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - k, 1), enlarger.ENLARGE_BOTH), k, 1);
-          }
-          data[i] = xye / (6 * 2 + 2);
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 2, 1), enlarger.ENLARGE_BOTH), - 2, 1);
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH), 2, 1);
+          data[i] = xye / 4;
         }
       for(int i = 0; i < 3; i ++)
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
@@ -170,8 +167,7 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "collect") == 0 ||
             strcmp(argv[1], "idetect") == 0 ||
-            strcmp(argv[1], "bump")  == 0 ||
-            strcmp(argv[1], "bumpe") == 0) {
+            strcmp(argv[1], "bump")  == 0) {
     if(argc < 4) {
       usage();
       return 0;
@@ -193,13 +189,12 @@ int main(int argc, const char* argv[]) {
       }
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
-      auto xye(bump.compute(redig.rgb2d(data), bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye);
-    } else if(strcmp(argv[1], "bumpe") == 0) {
-      enlarger2ex<double> bump;
-      const auto data0(bump.compute(redig.normalize(redig.rgb2d(data), 1.), bump.DEDGE));
-      auto xye(bump.compute(data0, bump.BUMP_BOTH));
-      data[0] = data[1] = data[2] = redig.autoLevel(xye);
+      const auto rgb2d(redig.rgb2d(data));
+      auto xye(bump.compute(rgb2d, bump.BUMP_BOTH));
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 1, 1), bump.BUMP_BOTH), - 1, 1);
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 2, 1), bump.BUMP_BOTH), - 2, 1);
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 1), bump.BUMP_BOTH), 2, 1);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye / 4);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))

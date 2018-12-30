@@ -59,15 +59,10 @@ for line in argv[3:]:
   if(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
-    subprocess.call([argv[1], "enlarge", "2", root + ".ppm", root + "-enl.ppm"])
-    subprocess.call(["convert", root + "-enl.ppm", "-blur", "4x1", "-resize", "50%", root + "-enl0.png"])
-    subprocess.call(["convert", root + ".ppm", "-resize", "200%", root + "-enl1.png"])
-    subprocess.call(["composite", "-compose", "subtract", root + "-enl1.png", root + "-enl0.png", root + "-enl2.png"])
-    subprocess.call(["composite", "-compose", "subtract", root + "-enl1.png", root + "-enl2.png", root + "-enl.png"])
+    subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl.ppm"])
+    subprocess.call(["convert", "(", root + "-enl.ppm", "(", root + ".ppm", "-resize", "200%", ")", "-compose", "subtract", "-composite", ")", "(", root + ".ppm", "-resize", "200%", ")", "-compose", "add", "-composite", "-auto-level", root + "-demosaic.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
-  elif(argv[2] == "bumpe"):
-    subprocess.call([argv[1], "bumpe", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
     subprocess.call([argv[1], "pextend", str(pixels), root + ".ppm", root + "-pextend.ppm"])
   elif(argv[2] == "emph"):
@@ -147,9 +142,8 @@ for line in argv[3:]:
     print pixels
     s0 = int(np.ceil(np.log(pixels) / np.log(2.)))
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
-    for s in range(0, s0 + 1):
-      subprocess.call(["python", argv[0], argv[1], "enl", root + "-demosaic" + str(s) + ".ppm"])
-      subprocess.call(["convert", root + "-demosaic" + str(s) + "-enl.png", "-compress", "none", root + "-demosaic" + str(s + 1) + ".ppm"])
+    subprocess.call([argv[1], "enlarge", str(s0), root + "-demosaic0.ppm", root + "-demosaic.ppm"])
+    subprocess.call(["convert", "(", root + "-demosaic.ppm", "(", root + "-demosaic0.ppm", "-resize", str(pow(2., s0) * 100) + "%", ")", "-compose", "subtract", "-composite", ")", "(", root + "-demosaic0.ppm", "-resize", str(pow(2., s0) * 100) + "%", ")", "-compose", "add", "-composite", "-auto-level", root + "-demosaic.png"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
