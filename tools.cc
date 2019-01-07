@@ -132,7 +132,7 @@ int main(int argc, const char* argv[]) {
           xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH), 2, 1);
           xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH), 2, 1);
           xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 2, 1), enlarger.ENLARGE_BOTH), - 2, 1);
-          data[i] = xye / 4;
+          data[i] = xye / 7;
         }
       for(int i = 0; i < 3; i ++)
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
@@ -212,7 +212,7 @@ int main(int argc, const char* argv[]) {
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 1), bump.BUMP_BOTH), 2, 1);
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 1), bump.BUMP_BOTH), 2, 1);
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 2, 1), bump.BUMP_BOTH), - 2, 1);
-      data[0] = data[1] = data[2] = redig.autoLevel(xye / 4);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye / 7);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
