@@ -108,7 +108,7 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  dratio = T(.00005);
+  dratio = T(.005);
   offset = T(1) / T(256);
   thedge = T(.05);
   sq     = 4;
@@ -221,7 +221,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
             result(i, j) += dataA(i, j) / dataBc(i, j);
         work = compute(work, D2Y);
       }
-      result = - compute(result, LOGSCALE);
+      result = - compute(result, LOGSCALE) * dratio;
     }
     break;
   case EXTEND_Y0:
@@ -481,10 +481,7 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
     for(int j = 0; j < Dop0.rows() / 2; j ++) {
       Vec cpoint(2);
       cpoint[0] = (j - T(Dop0.rows() / 2 - 1) / 2);
-      // cpoint[1] = T(zi + 1) * dratio;
-      // N.B. expscale then logscale.
-      cpoint[1] = T(T(zi + 1) * dratio < T(.5) ? - 1 : 1) *
-        exp(abs(T(zi + 1) * dratio - T(.5))) / exp(T(.5)) / T(2) + T(.5);
+      cpoint[1] = T(zi + 1) * dratio;
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0
@@ -497,12 +494,12 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       {
         if(Dop0.rows() % 2 == 1 || Dop0.rows() <= 3)
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * T(zi + 1) * dratio;
+            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * exp(T(zi + 1));
             B[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j);
           }
         else
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * T(zi + 1) * dratio;
+            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * exp(T(zi + 1));
             B[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
           }
       }
