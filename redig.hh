@@ -1143,7 +1143,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
         midgeom[0] = y;
         midgeom[1] = x;
         if(onTriangle(z, tri, midgeom) && isfinite(z)) {
-          z = - z;
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
