@@ -59,16 +59,18 @@ for line in argv[3:]:
   if(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
-    subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl0.ppm"])
-    subprocess.call(["convert", root + ".ppm", "-resize", "200%", "-compress", "none", root + "-enl1.ppm"])
+    subprocess.call([argv[1], "enlarge", "2", root + ".ppm", root + "-enl0.ppm"])
+    subprocess.call(["convert", root + ".ppm", "-resize", "400%", "-compress", "none", root + "-enl1.ppm"])
     subprocess.call([argv[1], "cenl", "2", root + "-enl1.ppm", root + "-enl0.ppm", root + "-enl.ppm"])
-    subprocess.call(["convert", root + "-enl.ppm", "-resize", "75%", root + "-enl.png"])
+    subprocess.call(["convert", root + "-enl.ppm", "-resize", "50%", root + "-enl.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
     subprocess.call([argv[1], "pextend", str(pixels), root + ".ppm", root + "-pextend.ppm"])
   elif(argv[2] == "emph"):
     subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])
+  elif(argv[2] == "emphe"):
+    subprocess.call(["convert", root + "-collect.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emphe" + ext])
   elif(argv[2] == "pnga"):
     subprocess.call(["convert", line, root + "-bump.ppm", "-channel-fx", "| gray=>alpha", root + "-alpha.png"])
   elif(argv[2] == "idet"):
@@ -126,8 +128,8 @@ for line in argv[3:]:
     for s in range(0, 4):
       subprocess.call([argv[1], "sbox", str(- s * 16), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(3 - s) + ".ppm"])
   elif(argv[2] == "extend"):
-    for tami in range(1, 15):
-      tam = tami / 360.
+    for tami in range(1, 4):
+      tam = tami / 360. * 4
       for s in range(0, 4):
         subprocess.call([argv[1], "tilt", str(s), "4", str(tam), "0", root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
         subprocess.call([argv[1], "bump", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
