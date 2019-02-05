@@ -48,7 +48,10 @@ Checking details of implementation before to freeze the library.
     gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
+    python test.py ./gokicheck col  input.png
     python test.py ./gokicheck bump input.png
+    python test.py ./gokicheck emph input.png
+    python test.py ./gokicheck emphe input.png
     python test.py ./gokicheck obj  input.png
     python test.py ./gokicheck mtl  input.png
     python test.py ./gokicheck scn  input.png
@@ -79,7 +82,8 @@ These program's match assumes one of vertices is full and another is lowPoly but
 enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
-And, generated bump map is NOT correct in global, so please change local-global ratio in enlarge.hh:enlarger2ex::compute::BUMP_Y.
+And, generated bump map is NOT correct in global, so please change local-global ratio in enlarge.hh:enlarger2ex::compute::BUMP_Y.  
+And, there's surely small chances that enhances bump command on emphe command processed image.
 
 If we use this program for 3D model input like blender, please make mask with mask0 or another softwares, and convert them
 with mask command, then, please use input-mask.obj . If we are lucky, in the blender example, large scaled input will inputted,
