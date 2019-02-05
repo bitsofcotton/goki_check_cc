@@ -47,7 +47,10 @@ Freeze 前の細かな実装のチェックをしています。
     gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
+    python test.py ./gokicheck col  input.png
     python test.py ./gokicheck bump input.png
+    python test.py ./gokicheck emph input.png
+    python test.py ./gokicheck emphe input.png
     python test.py ./gokicheck obj  input.png
     python test.py ./gokicheck mtl  input.png
     python test.py ./gokicheck scn  input.png
@@ -80,7 +83,8 @@ enlarger2ex はもっともらしいバンプマップを返しますが、正�
 これは、1 枚の画像のみを使用する事と仮定している構造である、もし焦点が合っていればより角が立ってみえる、という構造によるもので、
 ほとんどの場合では複数台のカメラあるいは複数のピントを使えば正しいバンプマップを返すことができます。
 (それができない場合には画像や色の解像度が足りないか、鏡など角度によって異なる色を返すものや、散乱やフォグなどの光学的事象がある際です)
-また、このプログラムは大域的には正しくないバンプマップを返します。補正するには enlarger2ex 内部で局所大域の比率を調整してください。
+また、このプログラムは大域的には正しくないバンプマップを返します。補正するには enlarger2ex 内部で局所大域の比率を調整してください。  
+また、稀に emphe コマンドで処理すると形状がより良い結果を返すことがあります。
 
 また、blender など 3D 編集ソフトへの入力として使用する際には mask0 コマンドでマスクを作ったあともしくは、他でマスクを作り、
 mask コマンドで変換後、filename-mask.obj ファイルを入力に使用してください。
