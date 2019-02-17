@@ -356,7 +356,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, 12, .01, .1);
+  init(40, 2, .01, .1);
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
@@ -376,6 +376,7 @@ template <typename T> void matchPartial<T>::init(const int& ndiv, const T& thres
   this->thresht = sin(T(2) * Pi / ndiv) / T(2) * threshr;
   this->threshp = threshp;
   this->threshs = threshs;
+  assert(this->thresh < T(1));
   cerr << "e(" << this->thresh << ")" << endl;
   return;
 }
@@ -513,9 +514,12 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
     gd[1] = max(gd[1], abs(diff[1]));
   }
   // for each rotation, we can now handle t <= 0:
+/*
+  // We need large memory for this.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
+*/
   for(int nd = 0; nd < ndiv; nd ++) {
   // for(int nd = 0; nd < 1; nd ++) {
     vector<T> ddiv;
