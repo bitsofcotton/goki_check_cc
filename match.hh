@@ -447,8 +447,12 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
   }
   const auto D(xx * dd - xd * xd);
   if(D != T(0)) {
+/*
     m.ratio  =          T(2) * (  dd * xy - xd * yd) / D;
     m.offset = offset * T(2) * (- xd * xy + xx * yd) / D;
+*/
+    m.ratio  =          (  dd * xy - xd * yd) / D;
+    m.offset = offset * (- xd * xy + xx * yd) / D;
   } else {
     // x // d.
     m.ratio  = (xy - yd) / xx;

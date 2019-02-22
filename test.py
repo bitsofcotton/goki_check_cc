@@ -22,18 +22,18 @@ if(argv[2] == "match" or argv[2] == "matcho"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
   if(ext1 == ".obj" or ext1 == ".gltf"):
     if(argv[2] == "match"):
-      subprocess.call([argv[1], "match", "16", "40", "15", "15", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+      subprocess.call([argv[1], "match", "16", "40", "5", "5", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
     else:
-      print argv[5]
-      subprocess.call([argv[1], "matcho", argv[5], ".5", "15", "15", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+      for s in [0, .25, .5, .75, 1]:
+        subprocess.call([argv[1], "matcho", argv[5], str(s), "5", "5", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4] + "-" + str(s)])
     exit(0)
   elif(ext1 != ".ppm"):
     subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
   if(argv[2] == "match"):
-    subprocess.call([argv[1], "match", "16", "40", "15", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
+    subprocess.call([argv[1], "match", "16", "40", "5", "5", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
-    print argv[5]
-    subprocess.call([argv[1], "matcho", argv[5], ".5", "15", "15", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
+    for s in [0, .25, .5, .75, 1]:
+      subprocess.call([argv[1], "matcho", argv[5], str(s), "5", "5", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1 + "-" + str(s)])
   exit(0)
 
 if(argv[2] == "objtilt"):
