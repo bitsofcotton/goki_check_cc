@@ -59,24 +59,32 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   const auto rin0(redig.makeRefMatrix(in0[0], 1));
   const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in0[idx] * T(0), shape0, ohull0) +
-                redig.replace(in1[idx] * T(0), match.transform(shape1), ohull1);
-  file.savep2or3((outbase + std::string("-match.ppm")).c_str(), outs, false);
+    outs[idx] = redig.replace(in0[idx] * T(0), shape0, ohull0);
+  file.savep2or3((outbase + std::string("-repl0.ppm")).c_str(), outs, false);
+  for(int idx = 0; idx < 3; idx ++)
+    outs[idx] = redig.replace(in1[idx] * T(0), match.transform(shape1), ohull1);
+  file.savep2or3((outbase + std::string("-repl1.ppm")).c_str(), outs, false);
   const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
   const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
   const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
                                   match, mhull0, mhull1, emph));
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.showMatch(in0[idx], shape0, mhull0) * (T(1) - emph) +
-      redig.showMatch(redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(),
-                        in1[idx]), shape1, mhull1) * emph;
-  file.savep2or3((outbase + std::string("-cover.ppm")).c_str(), outs, false);
+    outs[idx] = redig.showMatch(in0[idx], shape0, mhull0);
+  file.savep2or3((outbase + std::string("-c0.ppm")).c_str(), outs, false);
+  for(int idx = 0; idx < 3; idx ++)
+    outs[idx] = redig.showMatch(redig.pullRefMatrix(reref,
+                    1 + rin0.rows() * rin0.cols(), in1[idx]),
+                  match.transform(shape1), mhull1);
+  file.savep2or3((outbase + std::string("-c1.ppm")).c_str(), outs, false);
+  for(int idx = 0; idx < 3; idx ++)
+    outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
+  file.savep2or3((outbase + std::string("-c2.ppm")).c_str(), outs, false);
   file.saveobj(redig.takeShape(shape0, shape1,   match, mhull0, mhull1, emph),
                outs[0].rows(), outs[0].cols(),
-               ohull0, (outbase + std::string("-emph.obj")).c_str());
+               ohull0, (outbase + std::string("-emph0.obj")).c_str());
   file.saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0, emph),
                outs[0].rows(), outs[0].cols(),
-               ohull1, (outbase + std::string("-emphr.obj")).c_str());
+               ohull1, (outbase + std::string("-emph1.obj")).c_str());
 /*
   file.saveglTF((outbase + std::string(".gltf")).c_str(),
                 shape0, mhull0, ~ match, center, bone);
