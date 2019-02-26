@@ -220,7 +220,7 @@ int main(int argc, const char* argv[]) {
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 1), bump.BUMP_BOTH), 2, 1);
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 1), bump.BUMP_BOTH), 2, 1);
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 2, 1), bump.BUMP_BOTH), - 2, 1);
-      data[0] = data[1] = data[2] = redig.autoLevel(xye / 7);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye / 7, xye.rows() + xye.cols());
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
