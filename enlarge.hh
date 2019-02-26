@@ -221,7 +221,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
             result(i, j) += dataA(i, j) / dataBc(i, j);
         work = compute(work, D2Y);
       }
-      result = - compute(result, LOGSCALE) * dratio;
+      result = - result;
+      T mm(result(0, 0));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          mm = min(mm, result(i, j));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) -= mm;
+      result = compute(result, LOGSCALE) * dratio;
     }
     break;
   case EXTEND_Y0:
