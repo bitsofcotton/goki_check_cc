@@ -494,12 +494,12 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       {
         if(Dop0.rows() % 2 == 1 || Dop0.rows() <= 3)
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (- exp(T(zi + 1)));
+            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
             B[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j);
           }
         else
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (- exp(T(zi + 1)));
+            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (exp(T(1) / dratio) - exp(T(zi + 1)));
             B[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
           }
       }
