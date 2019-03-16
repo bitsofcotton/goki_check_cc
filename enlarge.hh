@@ -120,7 +120,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   Mat result;
   switch(dir) {
   case ENLARGE_BOTH:
-    // N.B. commutative.
     result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
     break;
   case DETECT_BOTH:
@@ -164,10 +163,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(data.transpose(), REVERSE_Y).transpose();
     break;
   case ENLARGE_Y:
-    initDop(data.rows());
-    result = Eop[idx_d] * data;
     {
       const auto delta(compute(data, DETECT_Y));
+      initDop(data.rows());
+      result = Eop[idx_d] * data;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -175,7 +174,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         for(int j = 0; j < delta.rows(); j ++)
           if((result(2 * j, i) - result(2 * j + 1, i)) * delta(j, i) > T(0)) {
             const T work(result(2 * j, i));
-            result(2 * j, i)     = result(2 * j + 1, i);
+            result(2 * j,     i) = result(2 * j + 1, i);
             result(2 * j + 1, i) = work;
           }
     }
@@ -286,9 +285,14 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     }
     break;
   case REVERSE_Y:
-    result = Mat(data.rows(), data.cols());
-    for(int i = 0; i < data.rows(); i ++)
-      result.row(result.rows() - i - 1) = data.row(i);
+    {
+      result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(result.rows() - i - 1) = data.row(i);
+    }
     break;
   case D2Y:
     result = Mat((data.rows() + 1) / 2, data.cols());
@@ -551,7 +555,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, uses each freq.
       //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
-      const T phase2(Pi * T(i + DFTE.rows()) / T(DFTE.rows()));
+      const T phase2(Pi * T(i) / T(DFTE.rows()));
       const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
       DFTE.row(i) *= r;
     }
@@ -559,7 +563,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
     const T ratio(sqrt(nd * ni));
     DFTD /= ratio;
     DFTI /= ratio;
-    DFTE /= T(2) * T(DFTE.rows());
+    DFTE /= T(DFTE.rows());
 #if defined(_WITHOUT_EIGEN_)
     Mat lDop((IDFT * DFTD).template real<T>());
     Mat lIop((IDFT * DFTI).template real<T>());

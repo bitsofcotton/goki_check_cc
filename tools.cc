@@ -134,12 +134,12 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
           auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1, 1), enlarger.ENLARGE_BOTH), - 1, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 1, 1), enlarger.ENLARGE_BOTH), 1, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 2, 1), enlarger.ENLARGE_BOTH), - 2, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH), 2, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH), 2, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 2, 1), enlarger.ENLARGE_BOTH), - 2, 1);
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 1), enlarger.ENLARGE_BOTH), - 1, 1);
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 1, 1), enlarger.ENLARGE_BOTH),   1, 1);
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 1), enlarger.ENLARGE_BOTH), - 2, 1);
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH),   2, 1);
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1,   2), enlarger.ENLARGE_BOTH), 1, - 2);
+          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1, - 2), enlarger.ENLARGE_BOTH), 1,   2);
           data[i] = xye / 7;
         }
       for(int i = 0; i < 3; i ++)
@@ -214,12 +214,12 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> bump;
       const auto rgb2d(redig.rgb2d(data));
       auto xye(bump.compute(rgb2d, bump.BUMP_BOTH));
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 1, 1), bump.BUMP_BOTH), - 1, 1);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 1, 1), bump.BUMP_BOTH), 1, 1);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 2, 1), bump.BUMP_BOTH), - 2, 1);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 1), bump.BUMP_BOTH), 2, 1);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 1), bump.BUMP_BOTH), 2, 1);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 2, 1), bump.BUMP_BOTH), - 2, 1);
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   1, 1), bump.BUMP_BOTH), - 1, 1);
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 1, 1), bump.BUMP_BOTH),   1, 1);
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   2, 1), bump.BUMP_BOTH), - 2, 1);
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 1), bump.BUMP_BOTH),   2, 1);
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 1,   2), bump.BUMP_BOTH), 1, - 2);
+      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 1, - 2), bump.BUMP_BOTH), 1,   2);
       data[0] = data[1] = data[2] = redig.autoLevel(xye / 7, xye.rows() + xye.cols());
     }
     redig.normalize(data, 1.);
