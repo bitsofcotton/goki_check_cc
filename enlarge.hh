@@ -86,7 +86,6 @@ public:
   T    dratio;
   T    offset;
   T    thedge;
-  T    eblur;
   int  sq;
   
 private:
@@ -101,7 +100,6 @@ private:
   vector<Mat> B;
   vector<Mat> Dop;
   vector<Mat> Eop;
-  vector<Mat> Fop;
   vector<Mat> Iop;
   int idx_d;
   int idx_b;
@@ -113,7 +111,6 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   dratio = T(.005);
   offset = T(1) / T(256);
   thedge = T(.05);
-  eblur  = - T(.05);
   sq     = 4;
   idx_d  = - 1;
   idx_b  = - 1;
@@ -123,7 +120,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   Mat result;
   switch(dir) {
   case ENLARGE_BOTH:
-    // N.B. commutative.
     result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
     break;
   case DETECT_BOTH:
@@ -168,10 +164,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case ENLARGE_Y:
     {
+      const auto delta(compute(data, DETECT_Y));
       initDop(data.rows());
       result = Eop[idx_d] * data;
-      const auto delta(compute(data, DETECT_Y));
-      const Mat  res0(Fop[idx_d] * data);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -179,19 +174,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         for(int j = 0; j < delta.rows(); j ++)
           if((result(2 * j, i) - result(2 * j + 1, i)) * delta(j, i) > T(0)) {
             const T work(result(2 * j, i));
-            result(2 * j, i)     = result(2 * j + 1, i);
+            result(2 * j,     i) = result(2 * j + 1, i);
             result(2 * j + 1, i) = work;
           }
-      result -= res0;
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) += res0(i, j) -
-            (result(i, j) + result(max(i - 1, 0), j) +
-                            result(min(i + 1, int(result.rows() - 1)), j)) /
-              T(3) * eblur;
     }
     break;
   case DETECT_Y:
@@ -300,9 +285,14 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     }
     break;
   case REVERSE_Y:
-    result = Mat(data.rows(), data.cols());
-    for(int i = 0; i < data.rows(); i ++)
-      result.row(result.rows() - i - 1) = data.row(i);
+    {
+      result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(result.rows() - i - 1) = data.row(i);
+    }
     break;
   case D2Y:
     result = Mat((data.rows() + 1) / 2, data.cols());
@@ -429,7 +419,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   Dop.push_back(Mat());
   Iop.push_back(Mat());
   Eop.push_back(Mat());
-  Fop.push_back(Mat());
   Mat vDop;
   Mat vIop;
   Mat vEop;
@@ -466,19 +455,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     newEop(2 * i + 1, i) += T(1);
   }
   Eop[idx_d] = newEop;
-  const auto newFop( seed(Eop[idx_d].cols(), false));
-  const auto new2Fop(seed(Eop[idx_d].rows(), true));
-  MatU new3Fop(new2Fop.rows(), newFop.rows());
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < new3Fop.cols(); i ++)
-    new3Fop.col(i) = new2Fop.col(i);
-#if defined(_WITHOUT_EIGEN_)
-  Fop[idx_d] = (new3Fop * newFop).template real<T>();
-#else
-  Fop[idx_d] = (new3Fop * newFop).real().template cast<T>();
-#endif
   return;
 }
 
@@ -579,7 +555,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, uses each freq.
       //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
-      const T phase2(Pi * T(i + DFTE.rows()) / T(DFTE.rows()));
+      const T phase2(Pi * T(i) / T(DFTE.rows()));
       const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
       DFTE.row(i) *= r;
     }
@@ -587,7 +563,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
     const T ratio(sqrt(nd * ni));
     DFTD /= ratio;
     DFTI /= ratio;
-    DFTE /= T(2) * T(DFTE.rows());
+    DFTE /= T(DFTE.rows());
 #if defined(_WITHOUT_EIGEN_)
     Mat lDop((IDFT * DFTD).template real<T>());
     Mat lIop((IDFT * DFTI).template real<T>());

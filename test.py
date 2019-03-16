@@ -60,7 +60,10 @@ for line in argv[3:]:
   elif(argv[2] == "enl"):
     subprocess.call(["python", argv[0], argv[1], "enlp", "1", root + ".ppm"])
   elif(argv[2] == "enlp"):
-    subprocess.call([argv[1], "enlarge", str(pixels), root + ".ppm", root + "-enl.ppm"])
+    subprocess.call(["cp", root + ".ppm", root + "-e0.ppm"])
+    for s in range(0, pixels):
+      subprocess.call([argv[1], "enlarge", str(1), root + "-e" + str(s) + ".ppm", root + "-e" + str(s + 1) + "-0.ppm"])
+      subprocess.call(["convert", root + "-e" + str(s + 1) + "-0.ppm", "-resize", "75%", "-compress", "none", root + "-e" + str(s + 1) + ".ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
@@ -143,7 +146,7 @@ for line in argv[3:]:
   elif(argv[2] == "demosaic"):
     print pixels
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
-    subprocess.call(["python", argv[0], argv[1], "enlp", str(int(np.ceil(np.log(pixels) / np.log(2.)))), root + "-demosaic0.ppm"])
+    subprocess.call(["python", argv[0], argv[1], "enlp", str(int(np.ceil(np.log(pixels) / np.log(1.5)))), root + "-demosaic0.ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
