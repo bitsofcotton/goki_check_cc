@@ -62,8 +62,8 @@ for line in argv[3:]:
   elif(argv[2] == "enlp"):
     subprocess.call(["cp", root + ".ppm", root + "-e0.ppm"])
     for s in range(0, pixels):
-      subprocess.call([argv[1], "enlarge", str(1), root + "-e" + str(s) + ".ppm", root + "-e" + str(s + 1) + "-0.ppm"])
-      subprocess.call(["convert", root + "-e" + str(s + 1) + "-0.ppm", "-resize", "75%", "-compress", "none", root + "-e" + str(s + 1) + ".ppm"])
+      subprocess.call([argv[1], "enlarge", str(pixels - s), root + "-e" + str(s) + ".ppm", root + "-e" + str(s + 1) + "-0.ppm"])
+      subprocess.call(["convert", root + "-e" + str(s + 1) + "-0.ppm", "-resize", str(75 * pow(.5, pixels - s - 1)) + "%", "-compress", "none", root + "-e" + str(s + 1) + ".ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
