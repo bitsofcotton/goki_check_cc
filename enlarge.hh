@@ -120,7 +120,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   Mat result;
   switch(dir) {
   case ENLARGE_BOTH:
-    result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
+    result = (compute(compute(data, ENLARGE_X), ENLARGE_Y) +
+              compute(compute(data, ENLARGE_Y), ENLARGE_X)) / T(2);
     break;
   case DETECT_BOTH:
     result = (compute(data, DETECT_X)  + compute(data, DETECT_Y)) / T(2);

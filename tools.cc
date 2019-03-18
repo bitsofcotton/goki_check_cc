@@ -142,11 +142,11 @@ int main(int argc, const char* argv[]) {
                 di(2 * ii + 1, 2 * jj + 1) = data[i](ii, jj);
           typename enlarger2ex<double>::Mat xye(di - enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           xye +=  di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 1), enlarger.ENLARGE_BOTH), - 1, 1);
-          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 1), enlarger.ENLARGE_BOTH), - 2, 1)) / 4.;
-          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH),   2, 1)) / 4.;
-          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1,   2), enlarger.ENLARGE_BOTH), 1, - 2)) / 4.;
-          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1, - 2), enlarger.ENLARGE_BOTH), 1,   2)) / 4.;
-          data[i] = enlarger.compute(di - xye / 3., enlarger.CLIP);
+          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 1), enlarger.ENLARGE_BOTH), - 2, 1));
+          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH),   2, 1));
+          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1,   2), enlarger.ENLARGE_BOTH), 1, - 2));
+          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1, - 2), enlarger.ENLARGE_BOTH), 1,   2));
+          data[i] = enlarger.compute(di - xye / 6., enlarger.CLIP);
         }
       for(int i = 0; i < 3; i ++)
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
