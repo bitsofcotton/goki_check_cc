@@ -58,12 +58,9 @@ for line in argv[3:]:
   if(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
-    subprocess.call(["python", argv[0], argv[1], "enlp", "1", root + ".ppm"])
+    subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl.ppm"])
   elif(argv[2] == "enlp"):
-    subprocess.call(["cp", root + ".ppm", root + "-e0.ppm"])
-    for s in range(0, pixels):
-      subprocess.call([argv[1], "enlarge", str(pixels - s), root + "-e" + str(s) + ".ppm", root + "-e" + str(s + 1) + "-0.ppm"])
-      subprocess.call(["convert", root + "-e" + str(s + 1) + "-0.ppm", "-resize", str(75 * pow(.5, pixels - s - 1)) + "%", "-compress", "none", root + "-e" + str(s + 1) + ".ppm"])
+    subprocess.call([argv[1], "enlarge", str(pixels), root + ".ppm", root + "-enl.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "pextend"):
@@ -130,7 +127,7 @@ for line in argv[3:]:
       subprocess.call([argv[1], "sbox", str(- s * 16), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(3 - s) + ".ppm"])
   elif(argv[2] == "extend"):
     for tami in range(1, 4):
-      tam = tami / 360. * 4
+      tam = tami / 360. * 8
       for s in range(0, 4):
         subprocess.call([argv[1], "tilt", str(s), "4", str(tam), "0", root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
         subprocess.call([argv[1], "bump", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
@@ -146,7 +143,7 @@ for line in argv[3:]:
   elif(argv[2] == "demosaic"):
     print pixels
     subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
-    subprocess.call(["python", argv[0], argv[1], "enlp", str(int(np.ceil(np.log(pixels) / np.log(1.5)))), root + "-demosaic0.ppm"])
+    subprocess.call(["python", argv[0], argv[1], "enlp", str(int(np.ceil(np.log(pixels) / np.log(2)))), root + "-demosaic0.ppm"])
   elif(argv[2] == "habit"):
     if(len(bhabit) <= 0):
       bhabit = line
