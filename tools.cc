@@ -133,14 +133,20 @@ int main(int argc, const char* argv[]) {
       enlarger2ex<double> enlarger;
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
-          auto xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 1), enlarger.ENLARGE_BOTH), - 1, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 1, 1), enlarger.ENLARGE_BOTH),   1, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 1), enlarger.ENLARGE_BOTH), - 2, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH),   2, 1);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1,   2), enlarger.ENLARGE_BOTH), 1, - 2);
-          xye += redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1, - 2), enlarger.ENLARGE_BOTH), 1,   2);
-          data[i] = xye / 7;
+          typename enlarger2ex<double>::Mat di(data[i].rows() * 2, data[i].cols() * 2);
+          for(int ii = 0; ii < data[i].rows(); ii ++)
+            for(int jj = 0; jj < data[i].cols(); jj ++)
+              di(2 * ii, 2 * jj) =
+                di(2 * ii + 1, 2 * jj)     =
+                di(2 * ii    , 2 * jj + 1) =
+                di(2 * ii + 1, 2 * jj + 1) = data[i](ii, jj);
+          typename enlarger2ex<double>::Mat xye(di - enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
+          xye +=  di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 1), enlarger.ENLARGE_BOTH), - 1, 1);
+          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 1), enlarger.ENLARGE_BOTH), - 2, 1)) / 4.;
+          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 1), enlarger.ENLARGE_BOTH),   2, 1)) / 4.;
+          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1,   2), enlarger.ENLARGE_BOTH), 1, - 2)) / 4.;
+          xye += (di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], 1, - 2), enlarger.ENLARGE_BOTH), 1,   2)) / 4.;
+          data[i] = enlarger.compute(di - xye / 3., enlarger.CLIP);
         }
       for(int i = 0; i < 3; i ++)
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
