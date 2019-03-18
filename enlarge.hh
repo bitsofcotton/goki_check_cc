@@ -165,8 +165,8 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case ENLARGE_Y:
     {
       initDop(data.rows());
-      const Mat enlarge(Eop[idx_d] * data);
-      const Mat delta(compute(data, DETECT_Y));
+      const auto enlarge(compute(Eop[idx_d] * data, ABS));
+      const auto delta(compute(data, DETECT_Y));
       result = Mat(data.rows() * 2, data.cols());
       for(int i = 0; i < data.rows(); i ++)
         for(int j = 0; j < data.cols(); j ++) {
@@ -441,19 +441,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       Iop[idx_d](i, i / 2 + j) = - vIop(i / 2, j);
       Eop[idx_d](i, i / 2 + j) =   vEop(i / 2, j);
     }
-/*
-  Mat newEop(Eop[idx_d].rows() * 2, Eop[idx_d].cols());
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < Eop[idx_d].rows(); i ++) {
-    newEop.row(2 * i + 0) =   Eop[idx_d].row(i);
-    newEop.row(2 * i + 1) = - Eop[idx_d].row(i);
-    newEop(2 * i,     i) += T(1);
-    newEop(2 * i + 1, i) += T(1);
-  }
-  Eop[idx_d]   = newEop;
-*/
   return;
 }
 
