@@ -61,6 +61,9 @@ public:
     REVERSE_X,
     REVERSE_Y,
     REVERSE_BOTH,
+    LANCZOS_X,
+    LANCZOS_Y,
+    LANCZOS_BOTH,
     D2Y,
     DEDGE,
     BCLIP,
@@ -86,6 +89,7 @@ public:
   T    dratio;
   T    offset;
   T    thedge;
+  T    lanczos;
   int  sq;
   
 private:
@@ -108,12 +112,13 @@ private:
 template <typename T> enlarger2ex<T>::enlarger2ex() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  dratio = T(.005);
-  offset = T(1) / T(256);
-  thedge = T(.05);
-  sq     = 4;
-  idx_d  = - 1;
-  idx_b  = - 1;
+  dratio  = T(.005);
+  offset  = T(1) / T(256);
+  thedge  = T(.05);
+  sq      = 4;
+  lanczos = T(6);
+  idx_d   = - 1;
+  idx_b   = - 1;
 }
 
 template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const Mat& data, const direction_t& dir) {
@@ -133,7 +138,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / T(2);
     break;
   case BUMP_BOTH:
-    result = (compute(data, BUMP_X)    + compute(data, BUMP_Y))    / T(2);
+    result = (compute(data, BUMP_X)    + compute(data, BUMP_Y) +
+              compute(compute(compute(data, REVERSE_X), BUMP_X), REVERSE_X) +
+              compute(compute(compute(data, REVERSE_Y), BUMP_Y), REVERSE_Y))
+             / T(4);
+    break;
+  case LANCZOS_BOTH:
+    result = (compute(data, LANCZOS_X) + compute(data, LANCZOS_Y)) / T(2);
     break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
@@ -157,6 +168,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
     break;
+  case LANCZOS_X:
+    result = compute(data.transpose(), LANCZOS_Y).transpose();
+    break;
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
@@ -174,6 +188,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(2 * i,     j) = data(i, j) - enlarge(i, j) * (delta(i, j) < T(0) ? - T(1) : T(1));
           result(2 * i + 1, j) = data(i, j) + enlarge(i, j) * (delta(i, j) < T(0) ? - T(1) : T(1));
         }
+      result = compute(result, LANCZOS_Y);
       break;
     }
     break;
@@ -185,6 +200,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(compute(data, DETECT_Y), ABS);
     break;
   case IDETECT_Y:
+    initDop(data.rows());
+    result = Iop[idx_d] * data;
+    break;
     {
       initDop(data.rows());
       Vec ms[data.cols()];
@@ -280,6 +298,20 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
       result.row(data.rows() + 1) = compute(data, EXTEND_Y0).row(data.rows());
+    }
+    break;
+  case LANCZOS_Y:
+    {
+      result = data;
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = - int(lanczos); j <= int(lanczos); j ++)
+          if(j)
+            result.row(i) += data.row(max(min(j + i, int(data.rows() - 1)), 0)) * sin(Pi * j / T(2)) * sin(Pi * j / T(2) / lanczos) / (Pi * Pi * j * j / T(2) / T(2) / lanczos);
+      T sum(1);
+      for(int j = - int(lanczos); j <= int(lanczos); j ++)
+        if(j)
+          sum += sin(Pi * j / T(2)) * sin(Pi * j / T(2) / lanczos) / (Pi * Pi * j * j / T(2) / T(2) / lanczos);
+      result /= sum;
     }
     break;
   case REVERSE_Y:
@@ -493,16 +525,18 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       {
         if(Dop0.rows() % 2 == 1 || Dop0.rows() <= 3)
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-          //  A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
-            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / sqrt(dratio)) - exp(T(zi + 1)));
-          //  A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (- exp(T(zi + 1)));
+            // for Photo
+            //  A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
+            // for Illusts
+            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (- exp(T(zi + 1)));
             B[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j);
           }
         else
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-          //  A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (exp(T(1) / dratio) - exp(T(zi + 1)));
-            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (exp(T(1) / sqrt(dratio)) - exp(T(zi + 1)));
-          //  A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (- exp(T(zi + 1)));
+            // for Photo
+            //  A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (exp(T(1) / dratio) - exp(T(zi + 1)));
+            // for Illusts.
+            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (- exp(T(zi + 1)));
             B[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
           }
       }
