@@ -116,7 +116,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   offset  = T(1) / T(256);
   thedge  = T(.05);
   sq      = 4;
-  lanczos = T(6);
+  lanczos = T(1);
   idx_d   = - 1;
   idx_b   = - 1;
 }
@@ -200,9 +200,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = compute(compute(data, DETECT_Y), ABS);
     break;
   case IDETECT_Y:
-    initDop(data.rows());
-    result = Iop[idx_d] * data;
-    break;
     {
       initDop(data.rows());
       Vec ms[data.cols()];
