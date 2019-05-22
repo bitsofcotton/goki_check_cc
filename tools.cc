@@ -38,6 +38,7 @@ void usage() {
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck idetect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
@@ -58,14 +59,17 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   typename simpleFile<T>::Mat outs[3];
   const auto rin0(redig.makeRefMatrix(in0[0], 1));
   const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
+  const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
+  const auto mhull1((~ match).hullConv(mhull0));
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in0[idx] * T(0), shape0, ohull0);
+    outs[idx] = redig.showMatch(redig.replace(in0[idx] * T(0), shape0, ohull0),
+                                shape0, mhull0);
   file.savep2or3((outbase + std::string("-repl0.ppm")).c_str(), outs, false);
   for(int idx = 0; idx < 3; idx ++)
-    outs[idx] = redig.replace(in1[idx] * T(0), match.transform(shape1), ohull1);
+    outs[idx] = redig.showMatch(redig.replace(in1[idx] * T(0),
+                                  match.transform(shape1), ohull1),
+                                match.transform(shape1), mhull1);
   file.savep2or3((outbase + std::string("-repl1.ppm")).c_str(), outs, false);
-  const auto mhull0(redig.delaunay2(shape0, match.dstpoints));
-  const auto mhull1(match.hull(match.srcpoints, match.reverseHull(match.dstpoints, mhull0)));
   const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
                                   match, mhull0, mhull1, emph));
   for(int idx = 0; idx < 3; idx ++)
@@ -74,7 +78,7 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = redig.showMatch(redig.pullRefMatrix(reref,
                     1 + rin0.rows() * rin0.cols(), in1[idx]),
-                  match.transform(shape1), mhull1);
+                    match.transform(shape1), mhull1);
   file.savep2or3((outbase + std::string("-c1.ppm")).c_str(), outs, false);
   for(int idx = 0; idx < 3; idx ++)
     outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
@@ -230,6 +234,22 @@ int main(int argc, const char* argv[]) {
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
+      return - 1;
+  } else if(strcmp(argv[1], "reshape") == 0) {
+    if(argc < 6) {
+      usage();
+      return 0;
+    }
+    int count(std::atoi(argv[2]));
+    typename simpleFile<double>::Mat datac[3], datas[3];
+    if(!file.loadp2or3(datac, argv[3]))
+      return - 1;
+    if(!file.loadp2or3(datas, argv[4]))
+      return - 1;
+    for(int i = 0; i < 3; i ++)
+      datac[i] = redig.reShape(datac[i], datas[i], count);
+    redig.normalize(datac, 1.);
+    if(!file.savep2or3(argv[5], datac, ! true))
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
     typename simpleFile<double>::Mat data[3], mask[3];

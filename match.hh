@@ -164,60 +164,19 @@ public:
     const auto d(transform(p) - other.transform(p));
     return sqrt(d.dot(d));
   }
-  vector<int> ptr(const vector<int>& orig, const vector<int>& p) const {
-    vector<int> res;
-    res.reserve(p.size());
-    for(int i = 0; i < p.size(); i ++)
-      if(0 <= p[i] && p[i] < orig.size())
-        res.emplace_back(orig[p[i]]);
-      else
-        res.push_back(- 1);
-    return res;
-  }
-  vector<int> reversePtr(const vector<int>& orig, const vector<int>& p) const {
-    vector<int> res;
-    res.reserve(p.size());
-    for(int i = 0; i < p.size(); i ++) {
-      int j0(- 1);
-      for(int j = 0; j < orig.size(); j ++)
-        if(orig[j] == p[i]) {
-          j0 = j;
-          break;
-        }
-      res.emplace_back(j0);
-    }
-    return res;
-  }
-  vector<Vec3i> hull(const vector<int>& orig, const vector<Vec3i>& p) const {
+  vector<Vec3i> hullConv(const vector<Vec3i>& srchull) const {
+    assert(srcpoints.size() == dstpoints.size());
     vector<Vec3i> res;
-    vector<int> work;
-    res.reserve(p.size());
-    work.reserve(p.size() * 3);
-    for(int i = 0; i < p.size(); i ++)
-      for(int j = 0; j < 3; j ++)
-        work.emplace_back(p[i][j]);
-    work = ptr(orig, work);
-    for(int i = 0; i < p.size(); i ++) {
+    res.reserve(srchull.size());
+    for(int i = 0; i < srchull.size(); i ++) {
       Vec3i tmp(3);
-      for(int j = 0; j < 3; j ++)
-        tmp[j] = work[i * 3 + j];
-      res.emplace_back(tmp);
-    }
-    return res;
-  }
-  vector<Vec3i> reverseHull(const vector<int>& orig, const vector<Vec3i>& p) const {
-    vector<Vec3i> res;
-    vector<int> work;
-    res.reserve(p.size());
-    work.reserve(p.size() * 3);
-    for(int i = 0; i < p.size(); i ++)
-      for(int j = 0; j < 3; j ++)
-        work.emplace_back(p[i][j]);
-    work = reversePtr(orig, work);
-    for(int i = 0; i < p.size(); i ++) {
-      Vec3i tmp(3);
-      for(int j = 0; j < 3; j ++)
-        tmp[j] = work[i * 3 + j];
+      tmp[0] = tmp[1] = tmp[2] = - 1;
+      for(int j = 0; j < srchull[i].size(); j ++)
+        for(int k = 0; k < srcpoints.size(); k ++)
+          if(srcpoints[k] == srchull[i][j]) {
+            tmp[j] = dstpoints[k];
+            break;
+          }
       res.emplace_back(tmp);
     }
     return res;

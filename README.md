@@ -91,6 +91,9 @@ then G, R, S command adjust, please use modifier as mirror -> solidify -> skin -
 will shown. And if we use another input instead of mirror, double sided experimental result will shown.
 And if we're using with rig and so on, the existance of z-axis cover harms.
 
+And if we use this program enlarge for vectorize software input like inkscape, region will gain better result, but,
+colour itself worse results. So first calculate region, then, please use average of the region for colors.
+
 Match matches including z-axis. So around this, if we match with .obj file, we don't have accurate z-axis ratio,
 bugly result returns. If we know angle with projected plane, please tilt with objtilt command and make one-sided result,
 match matches. If we should have correct matches, please configure z-axis ratio in tools.cc via redig.hh .
