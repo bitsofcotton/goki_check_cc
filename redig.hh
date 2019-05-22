@@ -119,6 +119,7 @@ public:
   vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1e-5), const int& mdiv = 400) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
+  Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2d(const Mat rgb[3]);
@@ -201,8 +202,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
     const auto  dp2(rmatch.transform(p2));
     for(int l = 0; l < triangles.size(); l ++)
       for(int ll = 0; ll < 3; ll ++) {
-        const auto& dq(triangles[l].p.col(ll));
-        const auto  q(match.transform(dq));
+        const auto dq(triangles[l].p.col(ll));
+        const auto q(match.transform(dq));
         if((sameSide3(p0, p1, p2, q) &&
             sameSide3(p1, p2, p0, q) &&
             sameSide3(p2, p0, p1, q)) ||
@@ -670,6 +671,39 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
     for(int j = 0; j < polys[i].size(); j ++)
       polys[i][j] = after[polys[i][j]];
   return;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase, const Mat& vbase, const int& count) {
+  assert(cbase.rows() == vbase.rows() && cbase.cols() && vbase.cols());
+  Mat res(vbase.rows(), vbase.cols());
+  vector<pair<T, pair<int, int> > > vpoints;
+  vpoints.reserve(vbase.rows() * vbase.cols());
+  for(int i = 0; i < vbase.rows(); i ++)
+    for(int j = 0; j < vbase.cols(); j ++)
+      vpoints.push_back(make_pair(vbase(i, j), make_pair(i, j)));
+  sort(vpoints.begin(), vpoints.end());
+  vector<T> vvpoints;
+  vvpoints.reserve(vpoints.size());
+  vvpoints.push_back(T(0));
+  for(int i = 1; i < vpoints.size(); i ++)
+    vvpoints.push_back(vvpoints[i - 1] + vpoints[i].first - vpoints[i - 1].first);
+  T avg(0);
+  for(int i = 0, ii = 0; i < vpoints.size(); i ++) {
+    if(abs(vvpoints[i] - vvpoints[ii]) < abs(vvpoints[vvpoints.size() - 1]) / count && i < vpoints.size() - 1)
+      avg += cbase(vpoints[i].second.first, vpoints[i].second.second);
+    else {
+      if(i == vpoints.size() - 1) {
+        avg += cbase(vpoints[i].second.first, vpoints[i].second.second);
+        i ++;
+      }
+      avg /= (i - ii + 1);
+      for(int j = ii; j < i; j ++)
+        res(vpoints[j].second.first, vpoints[j].second.second) = avg;
+      avg  = T(0);
+      ii   = i;
+    }
+  }
+  return res;
 }
 
 template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x) {
