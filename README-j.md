@@ -40,6 +40,7 @@ Freeze 前の細かな実装のチェックをしています。
     gokicheck collect <input.ppm> <output.ppm>
     gokicheck idetect <input.ppm> <output.ppm>
     gokicheck bump    <input.ppm> <output.ppm>
+    gokicheck reshape <num_of_color_depth> <input_color.ppm> <input_shape.ppm> <output.ppm>
     gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
@@ -49,6 +50,8 @@ Freeze 前の細かな実装のチェックをしています。
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck col  input.png
     python test.py ./gokicheck bump input.png
+    python test.py ./gokicheck enl  input.png
+    python test.py ./gokicheck reshape input.png
     python test.py ./gokicheck emph input.png
     python test.py ./gokicheck emphe input.png
     python test.py ./gokicheck obj  input.png
@@ -93,9 +96,6 @@ mask コマンドで変換後、filename-mask.obj ファイルを入力に使用
 mirror を裏表にすることにより、もしかするときちんとした両面の結果が得られます。
 また、Rig などとともに使用する際には、z 軸方向に重なりのない入力を使用しないとおかしな結果になります。
 
-また、inkscape などベクトル画像化ソフトへの入力として拡大を使用する際には、特性上領域としては概ね良い値を返しますが、
-色域としては非常に悪い結果を返します。領域を計算後、再度平均を取ってください。
-
 match コマンドは深度情報を含めて合致します。その際に、.obj データなどは若干おかしな結果が返ることがあります。
 その場合、objtilt コマンドで射影を生成してから使うとうまくいく場合がありますが、この場合角度がある程度見当がついている
 場合に限ります。より正確に合致するには深度情報の比率を適宜変えて合致してみてください。
@@ -110,7 +110,7 @@ enlarger2ex による拡大は大きな画像に対しては比較的安定な�
 * https://files.limpid-intensity.info/
 
 # あらかじめ計算されたサンプル
-![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.jpeg)
+![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.png)
 
 # 検討中のもの
 メタボールの中心となるような線分と重み付けの森を 3D 模型から計算することが簡単にできるか散策しています。
