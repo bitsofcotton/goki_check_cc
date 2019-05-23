@@ -33,14 +33,13 @@ using std::min;
 
 /*
  * This class is NOT thread safe.
- * When applying this to another sizes of images,
- * please create instances for each, or we get slow results.
  */
 template <typename T> class enlarger2ex {
 public:
   typedef enum {
     ENLARGE_X,
     ENLARGE_Y,
+    ENLARGE_Y1,
     ENLARGE_BOTH,
     DETECT_X,
     DETECT_Y,
@@ -92,6 +91,8 @@ public:
   T    lanczos;
   T    sharpen;
   int  sq;
+  // true for photo, false for illust.
+  bool photo_illust;
   
 private:
   void initDop(const int& size);
@@ -122,6 +123,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   sq      = 4;
   lanczos = T(1);
   sharpen = T(1);
+  photo_illust = ! true;
   idx_d   = - 1;
   idx_b   = - 1;
 }
@@ -182,23 +184,30 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case REVERSE_X:
     result = compute(data.transpose(), REVERSE_Y).transpose();
     break;
-  case ENLARGE_Y:
+  case ENLARGE_Y1:
     {
       initDop(data.rows());
-      const auto enlarge(compute(Eop[idx_d] * data, ABS));
-      const auto delta(compute(data, DETECT_Y));
+      const Mat dc(Eop[idx_d] * data);
+      const Mat delta(compute(data, DETECT_Y));
       result = Mat(data.rows() * 2, data.cols());
       for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++) {
-          result(2 * i,     j) = data(i, j) - enlarge(i, j) * (delta(i, j) < T(0) ? - T(1) : T(1));
-          result(2 * i + 1, j) = data(i, j) + enlarge(i, j) * (delta(i, j) < T(0) ? - T(1) : T(1));
-        }
+        for(int j = 0; j < data.cols(); j ++)
+          if(delta(i, j) < 0) {
+            result(2 * i,     j) = data(i, j) + dc(i, j);
+            result(2 * i + 1, j) = data(i, j) - dc(i, j);
+          } else {
+            result(2 * i,     j) = data(i, j) - dc(i, j);
+            result(2 * i + 1, j) = data(i, j) + dc(i, j);
+          }
       result = compute(result, LANCZOS_Y);
-#if defined(_WITH_EXTERNAL_)
-      result = Hop[idx_d] * result;
-#endif
-      break;
     }
+    break;
+  case ENLARGE_Y:
+    result = compute(data, ENLARGE_Y1);
+#if defined(_WITH_EXTERNAL_)
+    initDop(data.rows());
+    result = Hop[idx_d] * result;
+#endif
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -243,7 +252,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i0 = 1; 4 < work.rows(); i0 ++) {
         Mat w0(work);
         for( ; w0.rows() < data.rows(); )
-          w0 = compute(w0, ENLARGE_Y);
+          w0 = compute(w0, ENLARGE_Y1);
         Mat w1(data.rows(), data.cols());
         for(int i = 0; i < w1.rows(); i ++)
           w1.row(i) = w0.row(i);
@@ -543,18 +552,18 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
       {
         if(Dop0.rows() % 2 == 1 || Dop0.rows() <= 3)
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            // for Photo
-            // A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
-            // for Illusts
-            A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (- exp(T(zi + 1)));
+            if(photo_illust)
+              A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
+            else
+              A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (- exp(T(zi + 1)));
             B[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j);
           }
         else
           for(int i = 0; i < A[idx_b].rows(); i ++) {
-            // for Photo
-            // A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (exp(T(1) / dratio) - exp(T(zi + 1)));
-            // for Illusts.
-            A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (- exp(T(zi + 1)));
+            if(photo_illust)
+              A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (exp(T(1) / dratio) - exp(T(zi + 1)));
+            else
+              A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (- exp(T(zi + 1)));
             B[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
           }
       }
