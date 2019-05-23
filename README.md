@@ -41,6 +41,7 @@ Checking details of implementation before to freeze the library.
     gokicheck collect <input.ppm> <output.ppm>
     gokicheck idetect <input.ppm> <output.ppm>
     gokicheck bump    <input.ppm> <output.ppm>
+    gokicheck reshape <num_of_color_depth> <input_color.ppm> <input_shape.ppm> <output.ppm>
     gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
@@ -50,6 +51,8 @@ Checking details of implementation before to freeze the library.
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck col  input.png
     python test.py ./gokicheck bump input.png
+    python test.py ./gokicheck enl  input.png
+    python test.py ./gokicheck reshape input.png
     python test.py ./gokicheck emph input.png
     python test.py ./gokicheck emphe input.png
     python test.py ./gokicheck obj  input.png
@@ -91,9 +94,6 @@ then G, R, S command adjust, please use modifier as mirror -> solidify -> skin -
 will shown. And if we use another input instead of mirror, double sided experimental result will shown.
 And if we're using with rig and so on, the existance of z-axis cover harms.
 
-And if we use this program enlarge for vectorize software input like inkscape, region will gain better result, but,
-colour itself worse results. So first calculate region, then, please use average of the region for colors.
-
 Match matches including z-axis. So around this, if we match with .obj file, we don't have accurate z-axis ratio,
 bugly result returns. If we know angle with projected plane, please tilt with objtilt command and make one-sided result,
 match matches. If we should have correct matches, please configure z-axis ratio in tools.cc via redig.hh .
@@ -108,7 +108,7 @@ This is because we generate the one with DFT half space plausible ones by shifti
 * https://files.limpid-intensity.info/
 
 # Pre calculated samples
-![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.jpeg)
+![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.png)
 
 # Being examined
 It is searching that can we convert 3d model into the forests that is the center lines of metaball and depth simply.
