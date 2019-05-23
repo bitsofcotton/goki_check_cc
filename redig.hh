@@ -147,7 +147,7 @@ private:
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1e-5)) const;
   bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1e-5)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(1e8));
-  int  getImgPtRecursive(const T& h, const T& y) const;
+  int  getImgPtRecursive(const int& h, const int& y) const;
   
   T   Pi;
   int vbox;
@@ -677,7 +677,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase,
   assert(cbase.rows() && cbase.cols() && vbase.rows() && cbase.cols());
   assert(vbase.rows() % cbase.rows() == 0 && vbase.cols() % cbase.cols() == 0);
   assert(vbase.rows() / cbase.rows() == vbase.cols() / cbase.cols());
-  Mat res(vbase.rows(), vbase.cols());
   vector<pair<T, pair<int, int> > > vpoints;
   vpoints.reserve(vbase.rows() * vbase.cols());
   for(int i = 0; i < vbase.rows(); i ++)
@@ -689,17 +688,21 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase,
   vvpoints.push_back(T(0));
   for(int i = 1; i < vpoints.size(); i ++)
     vvpoints.push_back(vvpoints[i - 1] + vpoints[i].first - vpoints[i - 1].first);
-  T avg(0);
   const int ratio(vbase.rows() / cbase.rows());
+  assert(vbase.rows() == ratio * cbase.rows());
+  assert(vbase.cols() == ratio * cbase.cols());
+  Mat res(vbase.rows(), vbase.cols());
+  T   avg(0);
   for(int i = 0, ii = 0; i < vpoints.size(); i ++) {
     if(abs(vvpoints[i] - vvpoints[ii]) < abs(vvpoints[vvpoints.size() - 1]) / count && i < vpoints.size() - 1)
       avg += cbase(vpoints[i].second.first / ratio, vpoints[i].second.second / ratio);
     else {
+      assert(i != ii);
       if(i == vpoints.size() - 1) {
         avg += cbase(vpoints[i].second.first / ratio, vpoints[i].second.second / ratio);
         i ++;
       }
-      avg /= (i - ii + 1);
+      avg /= i - ii;
       for(int j = ii; j < i; j ++)
         res(vpoints[j].second.first, vpoints[j].second.second) = avg;
       avg  = T(0);
@@ -1193,9 +1196,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   return result;
 }
 
-template <typename T> int reDig<T>::getImgPtRecursive(const T& h, const T& y) const {
-  const int lgyh(log(y) / log(h));
-  return int(y - (lgyh ? pow(h, lgyh) : 0) + h * h) % int(h);
+template <typename T> int reDig<T>::getImgPtRecursive(const int& h, const int& y) const {
+  return ((y % h) + h) % h;
 }
 
 #define _REDIG_
