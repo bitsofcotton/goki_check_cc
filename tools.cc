@@ -10,6 +10,7 @@
 
 #if defined(_WITHOUT_EIGEN_)
 #include <complex>
+#include <cstring>
 #include "simplelin.hh"
 #else
 #include <Eigen/Core>
@@ -148,11 +149,7 @@ int main(int argc, const char* argv[]) {
           xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 0), enlarger.ENLARGE_BOTH), - 1, 0);
           xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 0), enlarger.ENLARGE_BOTH), - 2, 0);
           xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 0), enlarger.ENLARGE_BOTH),   2, 0);
-          xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   3, 0), enlarger.ENLARGE_BOTH), - 3, 0);
-          xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 3, 0), enlarger.ENLARGE_BOTH),   3, 0);
-          xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   0,   3), enlarger.ENLARGE_BOTH), 0, - 3);
-          xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   0, - 3), enlarger.ENLARGE_BOTH), 0,   3);
-          data[i] = enlarger.compute(di - xye / 8., enlarger.CLIP);
+          data[i] = di - xye / 4.;
         }
       for(int i = 0; i < 3; i ++)
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
@@ -229,11 +226,7 @@ int main(int argc, const char* argv[]) {
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   1, 0), bump.BUMP_BOTH), - 1, 0);
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   2, 0), bump.BUMP_BOTH), - 2, 0);
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 0), bump.BUMP_BOTH),   2, 0);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   3, 0), bump.BUMP_BOTH), - 3, 0);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 3, 0), bump.BUMP_BOTH),   3, 0);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 0,   3), bump.BUMP_BOTH), 0, - 3);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, 0, - 3), bump.BUMP_BOTH), 0,   3);
-      data[0] = data[1] = data[2] = redig.autoLevel(xye / 8, xye.rows() + xye.cols());
+      data[0] = data[1] = data[2] = redig.autoLevel(xye / 4., xye.rows() + xye.cols());
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))

@@ -105,6 +105,9 @@ private:
   vector<Mat> B;
   vector<Mat> Dop;
   vector<Mat> Eop;
+#if defined(_WITH_EXTERNAL_)
+  vector<Mat> Hop;
+#endif
   vector<Mat> Iop;
   int idx_d;
   int idx_b;
@@ -118,7 +121,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   thedge  = T(.05);
   sq      = 4;
   lanczos = T(1);
-  sharpen = T(2);
+  sharpen = T(1);
   idx_d   = - 1;
   idx_b   = - 1;
 }
@@ -191,6 +194,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
           result(2 * i + 1, j) = data(i, j) + enlarge(i, j) * (delta(i, j) < T(0) ? - T(1) : T(1));
         }
       result = compute(result, LANCZOS_Y);
+#if defined(_WITH_EXTERNAL_)
+      result = Hop[idx_d] * result;
+#endif
       break;
     }
     break;
@@ -476,13 +482,14 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 #if defined(_WITH_EXTERNAL_)
   // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
   // But I don't know whether this method is open or not.
-  auto DFT2(seed(Eop[idx_d].rows(), false));
+  auto DFT2(seed(Eop[idx_d].rows() * 2, false));
   for(int i = 0; i < DFT2.rows(); i ++)
-    DFT2.row(i) *= sharpen + T(1) - sharpen * exp(- pow(T(i) / Eop[idx_d].rows(), T(2)));
+    DFT2.row(i) *= sharpen + T(1) - sharpen * exp(- pow(T(i) / DFT2.rows(), T(2)));
+  Hop.push_back(Mat());
 #if defined(_WITHOUT_EIGEN_)
-  Eop[idx_d] = (seed(DFT2.rows(), true) * DFT2).template real<T>() * Eop[idx_d];
+  Hop[idx_d] = (seed(DFT2.rows(), true) * DFT2).template real<T>();
 #else
-  Eop[idx_d] = (seed(DFT2.rows(), true) * DFT2).real().template cast<T>() * Eop[idx_d];
+  Hop[idx_d] = (seed(DFT2.rows(), true) * DFT2).real().template cast<T>();
 #endif
 #endif
   return;
