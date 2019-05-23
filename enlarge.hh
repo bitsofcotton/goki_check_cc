@@ -90,6 +90,7 @@ public:
   T    offset;
   T    thedge;
   T    lanczos;
+  T    sharpen;
   int  sq;
   
 private:
@@ -117,6 +118,7 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   thedge  = T(.05);
   sq      = 4;
   lanczos = T(1);
+  sharpen = T(2);
   idx_d   = - 1;
   idx_b   = - 1;
 }
@@ -471,6 +473,18 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       Iop[idx_d](i, i / 2 + j) = - vIop(i / 2, j);
       Eop[idx_d](i, i / 2 + j) =   vEop(i / 2, j);
     }
+#if defined(_WITH_EXTERNAL_)
+  // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
+  // But I don't know whether this method is open or not.
+  auto DFT2(seed(Eop[idx_d].rows(), false));
+  for(int i = 0; i < DFT2.rows(); i ++)
+    DFT2.row(i) *= sharpen + T(1) - sharpen * exp(- pow(T(i) / Eop[idx_d].rows(), T(2)));
+#if defined(_WITHOUT_EIGEN_)
+  Eop[idx_d] = (seed(DFT2.rows(), true) * DFT2).template real<T>() * Eop[idx_d];
+#else
+  Eop[idx_d] = (seed(DFT2.rows(), true) * DFT2).real().template cast<T>() * Eop[idx_d];
+#endif
+#endif
   return;
 }
 

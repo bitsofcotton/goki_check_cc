@@ -879,13 +879,11 @@ template <typename T> typename reDig<T>::Mat reDig<T>::contrast(const Mat& in, c
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::applytilt(const Mat& in, const int& dx, const int& dy) {
-  assert(dx == 1 || dy == 1);
-  if(abs(dx) < abs(dy))
-    return applytilt(in.transpose(), dy, dx).transpose();
   Mat res(in.rows(), in.cols());
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
-      res(i, j) = in(getImgPtRecursive(in.rows(), i + j / dx), j);
+      res(i, j) = in(getImgPtRecursive(in.rows(), i + (dx ? j / dx : 0)),
+                     getImgPtRecursive(in.cols(), (dy ? i / dy : 0) + j));
   return res;
 }
 
