@@ -58,13 +58,15 @@ for line in argv[3:]:
   if(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
-    subprocess.call([argv[1], "enlarge", "1", root + ".ppm", root + "-enl.ppm"])
+    subprocess.call(["python", argv[0], argv[1], "enlp", "1", line])
   elif(argv[2] == "enlp"):
     subprocess.call([argv[1], "enlarge", str(pixels), root + ".ppm", root + "-enl.ppm"])
+    subprocess.call(["convert", root + ".ppm", "-resize", str(pow(2, pixels)) + "00%", "-compress", "none", root + "-enl-im.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "reshape"):
-    subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-enl.ppm", root + "-enlout.ppm"])
+    subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-enl.ppm", root + "-reshape.ppm"])
+    subprocess.call([argv[1], "reshape", str(pixels), root + "-enl.ppm", root + "-enl-im.ppm", root + "-reshape-rev.ppm"])
   elif(argv[2] == "pextend"):
     subprocess.call([argv[1], "pextend", str(pixels), root + ".ppm", root + "-pextend.ppm"])
   elif(argv[2] == "emph"):

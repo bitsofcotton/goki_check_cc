@@ -213,12 +213,6 @@ int main(int argc, const char* argv[]) {
         const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
         data[i] = xye;
       }
-    } else if(strcmp(argv[1], "idetect") == 0) {
-      enlarger2ex<double> idetect, didetect;
-      for(int i = 0; i < 3; i ++) {
-        const auto xye(idetect.compute(data[i], idetect.IDETECT_BOTH));
-        data[i] = xye;
-      }
     } else if(strcmp(argv[1], "bump") == 0) {
       enlarger2ex<double> bump;
       const auto rgb2d(redig.rgb2d(data));
@@ -640,16 +634,6 @@ int main(int argc, const char* argv[]) {
 #else
           const auto rp(filter.compute(dft.real(), filter.DETECT_X));
           const auto ip(filter.compute(dft.imag(), filter.DETECT_X));
-          buf2 = (idft0 * (rp.template cast<complex<double> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
-#endif
-        } else if(strcmp(argv[3], "integ") == 0){
-#if defined(_WITHOUT_EIGEN_)
-          const auto rp(filter.compute(dft.template real<double>(), filter.IDETECT_X));
-          const auto ip(filter.compute(dft.template imag<double>(), filter.IDETECT_X));
-          buf2 = (idft0.template cast<complex<double> >() * (rp.template cast<complex<double> >() + ip.template cast<complex<double> >() * sqrt(complex<double>(- 1)))).template real<double>();
-#else
-          const auto rp(filter.compute(dft.real(), filter.IDETECT_X));
-          const auto ip(filter.compute(dft.imag(), filter.IDETECT_X));
           buf2 = (idft0 * (rp.template cast<complex<double> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
 #endif
         } else if(strcmp(argv[3], "bump") == 0) {
