@@ -47,9 +47,6 @@ public:
     COLLECT_X,
     COLLECT_Y,
     COLLECT_BOTH,
-    IDETECT_X,
-    IDETECT_Y,
-    IDETECT_BOTH,
     BUMP_X,
     BUMP_Y,
     BUMP_BOTH,
@@ -97,19 +94,16 @@ public:
 private:
   void initDop(const int& size);
   void initBump(const int& size);
-  Vec  minSquare(const Vec& in);
   int  getImgPt(const T& y, const T& h);
-  void makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop, const bool& recursive = true);
+  void makeDI(const int& size, Mat& Dop, Mat& Eop, const bool& recursive = true);
   U    I;
   T    Pi;
   vector<Mat> A;
-  vector<Mat> B;
   vector<Mat> Dop;
   vector<Mat> Eop;
 #if defined(_WITH_EXTERNAL_)
   vector<Mat> Hop;
 #endif
-  vector<Mat> Iop;
   int idx_d;
   int idx_b;
 };
@@ -141,9 +135,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case COLLECT_BOTH:
     result = (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / T(2);
     break;
-  case IDETECT_BOTH:
-    result = (compute(data, IDETECT_X) + compute(data, IDETECT_Y)) / T(2);
-    break;
   case BUMP_BOTH:
     result = (compute(data, BUMP_X)    + compute(data, BUMP_Y) +
               compute(compute(compute(data, REVERSE_X), BUMP_X), REVERSE_X) +
@@ -169,9 +160,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case COLLECT_X:
     result = compute(data.transpose(), COLLECT_Y).transpose();
     break;
-  case IDETECT_X:
-    result = compute(data.transpose(), IDETECT_Y).transpose();
-    break;
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
     break;
@@ -187,7 +175,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case ENLARGE_Y1:
     {
       initDop(data.rows());
-      const Mat dc(Eop[idx_d] * data);
+      const Mat dc(compute(Eop[idx_d] * data, ABS));
       const Mat delta(compute(data, DETECT_Y));
       result = Mat(data.rows() * 2, data.cols());
       for(int i = 0; i < data.rows(); i ++)
@@ -216,38 +204,15 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
     break;
-  case IDETECT_Y:
-    {
-      initDop(data.rows());
-      Vec ms[data.cols()];
-      result = data;
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.cols(); i ++) {
-        ms[i] = minSquare(data.col(i));
-        for(int j = 0; j < data.rows(); j ++)
-          result(j, i) -= ms[i][0] + ms[i][1] * j;
-      }
-      result = Iop[idx_d] * result;
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.cols(); i ++)
-        for(int j = 0; j < data.rows(); j ++)
-          result(j, i) += ms[i][0] * j / data.rows() + ms[i][1] * j * j / 2 / data.rows() / data.rows();
-    }
-    break;
   case BUMP_Y:
     {
-      // |average(dC*z_k)/average(dC)| == dataA / dataB.
-      initBump(data.rows());
+      // |average((dC)/C*z_k)| == dataA / dataB.
       result = Mat(data.rows(), data.cols());
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = T(0);
       // N.B. there's better method with low freq, but that has a patent matter.
+      initBump(data.rows());
       Mat work(data);
       for(int i0 = 1; 4 < work.rows(); i0 ++) {
         Mat w0(work);
@@ -256,11 +221,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
         Mat w1(data.rows(), data.cols());
         for(int i = 0; i < w1.rows(); i ++)
           w1.row(i) = w0.row(i);
-        const auto dataA(compute(A[idx_b] * w1, ABS));
-        const auto dataBc(compute(compute(B[idx_b] * w1, ABS), BCLIP));
+        const auto dataA(compute(compute(A[idx_b] * w1, ABS), BCLIP));
+        const auto dataB(compute(compute(w1, ABS), BCLIP));
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
-            result(i, j) += dataA(i, j) / dataBc(i, j);
+            result(i, j) += dataA(i, j) / dataB(i, j);
         work = compute(work, D2Y);
       }
       result = - compute(result, LOGSCALE) * dratio;
@@ -280,11 +245,11 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
 #endif
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
-      Mat Dop0, Iop0, Eop0;
-      makeDI(data.rows() * 2 - 1, Dop0, Iop0, Eop0);
+      Mat Dop0, Eop0;
+      makeDI(data.rows() * 2 - 1, Dop0, Eop0);
       // N.B. nearest data in differential space.
       const Mat d0data(Dop0 * data);
-      makeDI(result.rows() * 2 - 1, Dop0, Iop0, Eop0);
+      makeDI(result.rows() * 2 - 1, Dop0, Eop0);
       const Mat ddata(Dop0 * result);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -462,14 +427,11 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
   idx_d = Dop.size();
   Dop.push_back(Mat());
   Eop.push_back(Mat());
-  Iop.push_back(Mat());
   Mat vDop;
-  Mat vIop;
   Mat vEop;
   assert(2 <= size);
-  makeDI(size, vDop, vIop, vEop);
+  makeDI(size, vDop, vEop);
   Dop[idx_d]  = Mat(size, size);
-  Iop[idx_d]  = Mat(size, size);
   Eop[idx_d]  = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -477,16 +439,15 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
 #endif
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
     for(int j = 0; j < Dop[idx_d].cols(); j ++)
-      Dop[idx_d](i, j) = Iop[idx_d](i, j) = Eop[idx_d](i, j) = T(0);
+      Dop[idx_d](i, j) = Eop[idx_d](i, j) = T(0);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
     for(int j = 0; j < Dop[idx_d].cols() / 2; j ++) {
-      Dop[idx_d](i, i / 2 + j) =   vDop(i / 2, j);
-      Iop[idx_d](i, i / 2 + j) = - vIop(i / 2, j);
-      Eop[idx_d](i, i / 2 + j) =   vEop(i / 2, j);
+      Dop[idx_d](i, i / 2 + j) = vDop(i / 2, j);
+      Eop[idx_d](i, i / 2 + j) = vEop(i / 2, j);
     }
 #if defined(_WITH_EXTERNAL_)
   // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
@@ -513,21 +474,18 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
   cerr << "n" << flush;
   idx_b = A.size();
   A.push_back(Mat());
-  B.push_back(Mat());
   assert(2 <= size);
   A[idx_b] = Mat(size, size);
-  B[idx_b] = Mat(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < size; i ++)
     for(int j = 0; j < size; j ++)
-      B[idx_b](i, j) = A[idx_b](i, j) = T(0);
+      A[idx_b](i, j) = T(0);
   Mat Dop0;
-  Mat Iop0;
   Mat Eop0;
-  makeDI(max(3, int(T(2) * sqrt(T(size)))), Dop0, Iop0, Eop0);
+  makeDI(max(3, int(T(2) * sqrt(T(size)))), Dop0, Eop0);
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
@@ -556,7 +514,6 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
               A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
             else
               A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (- exp(T(zi + 1)));
-            B[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j);
           }
         else
           for(int i = 0; i < A[idx_b].rows(); i ++) {
@@ -564,7 +521,6 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
               A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (exp(T(1) / dratio) - exp(T(zi + 1)));
             else
               A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (- exp(T(zi + 1)));
-            B[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2);
           }
       }
     }
@@ -573,18 +529,21 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
 }
 
 template <typename T> int enlarger2ex<T>::getImgPt(const T& y, const T& h) {
-  const int lgyh(log(y) / log(h));
-  return int(abs(int(y - (lgyh ? pow(h, lgyh) : 0) + .5 + 2 * h * h + h) % int(2 * h) - h)) % int(h);
+  int yy(int(y) % int(2 * h));
+  if(yy < 0)
+    yy = - yy;
+  if(yy >= int(h))
+    yy = int(h) - (yy - int(h));
+  return yy % int(h);
 }
 
-template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat& Iop, Mat& Eop, const bool& recursive) {
+template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat& Eop, const bool& recursive) {
   assert(2 <= size);
   const auto ss((size + 1) / 2);
   Dop = Mat(ss, ss);
   for(int i = 0; i < Dop.rows(); i ++)
     for(int j = 0; j < Dop.cols(); j ++)
       Dop(i, j) = T(0);
-  Iop = Mat(Dop);
   Eop = Mat(Dop);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -593,14 +552,14 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
           auto DFTD(seed(s, false));
     DFTD.row(0) *= U(0);
     const auto IDFT(seed(s, true));
-          auto DFTI(DFTD);
           auto DFTE(DFTD);
     T nd(0), ni(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
       const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
-      // N.B. d/dy, integrate.
+      // N.B. d/dy.
       DFTD.row(i) *= phase;
-      DFTI.row(i) /= phase;
+      // N.B. integrate.
+      // DFTI.row(i) /= phase;
       nd += abs(phase) * abs(phase);
       ni += T(1) / (abs(phase) * abs(phase));
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
@@ -614,15 +573,12 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
     // N.B. similar to DFTI * DFTD == id.
     const T ratio(sqrt(nd * ni));
     DFTD /= ratio;
-    DFTI /= ratio;
     DFTE /= T(DFTE.rows()) * T(DFTE.rows());
 #if defined(_WITHOUT_EIGEN_)
     Mat lDop((IDFT * DFTD).template real<T>());
-    Mat lIop((IDFT * DFTI).template real<T>());
     Mat lEop((IDFT * DFTE).template real<T>());
 #else
     Mat lDop((IDFT * DFTD).real().template cast<T>());
-    Mat lIop((IDFT * DFTI).real().template cast<T>());
     Mat lEop((IDFT * DFTE).real().template cast<T>());
 #endif
 #if defined(_OPENMP)
@@ -633,8 +589,6 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
         for(int j = 0; j < lDop.cols(); j ++) {
           Dop(i, i * (Dop.cols() - lDop.cols()) / Dop.rows() + j) +=
             lDop(i * lDop.rows() / Dop.rows(), j);
-          Iop(i, i * (Iop.cols() - lIop.cols()) / Iop.rows() + j) +=
-            lIop(i * lIop.rows() / Iop.rows(), j);
           Eop(i, i * (Eop.cols() - lEop.cols()) / Eop.rows() + j) +=
             lEop(i * lEop.rows() / Eop.rows(), j);
         }
@@ -642,7 +596,6 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
   }
   if(recursive) {
     Dop /= ss - 1;
-    Iop /= ss - 1;
     Eop /= ss - 1;
   }
   return;
@@ -657,23 +610,6 @@ template <typename T> typename enlarger2ex<T>::MatU enlarger2ex<T>::seed(const i
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = exp(U(- 2. * (idft ? - 1 : 1)) * Pi * I * U(i * j / T(size))) / T(idft ? size : 1);
-  return result;
-}
-
-template <typename T> typename enlarger2ex<T>::Vec enlarger2ex<T>::minSquare(const Vec& in) {
-  T xsum(0);
-  T ysum(0);
-  T xdot(0);
-  T ydot(0);
-  for(int i = 0; i < in.size(); i ++) {
-    xsum += T(i);
-    ysum += in[i];
-    xdot += T(i) * T(i);
-    ydot += T(i) * in[i];
-  }
-  Vec result(2);
-  result[0] = (xdot * ysum - ydot * xsum) / (in.size() * xdot - xsum * xsum);
-  result[1] = (in.size() * ydot - xsum * ysum) / (in.size() * xdot - xsum * xsum);
   return result;
 }
 
