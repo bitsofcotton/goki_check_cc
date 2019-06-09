@@ -88,8 +88,6 @@ public:
   T    lanczos;
   T    sharpen;
   int  sq;
-  // true for photo, false for illust.
-  bool photo_illust;
   
 private:
   void initDop(const int& size);
@@ -118,7 +116,6 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   sq      = 4;
   lanczos = T(1);
   sharpen = T(1);
-  photo_illust = true;
   idx_d   = - 1;
   idx_b   = - 1;
 }
@@ -137,7 +134,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     result = (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / T(2);
     break;
   case BUMP_BOTH:
-    result = (compute(data, BUMP_X) + compute(data, BUMP_Y)) / T(2);
+    result = (compute(data, BUMP_X) + compute(data, BUMP_Y) +
+              compute(compute(compute(data, REVERSE_X), BUMP_X), REVERSE_X) +
+              compute(compute(compute(data, REVERSE_Y), BUMP_Y), REVERSE_Y)) /
+             T(4);
     break;
   case LANCZOS_BOTH:
     result = (compute(data, LANCZOS_X) + compute(data, LANCZOS_Y)) / T(2);
@@ -204,12 +204,24 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
     break;
   case BUMP_Y:
     {
-      initDop(data.rows());
+      initDop( data.rows());
       initBump(data.rows());
-      // local  : exp|          average(d_k C * z_k)| / C == dataA / dataB
-      // global :    |integrate average(d_k C * z_k)| / C == result
-      result = - Iop[idx_d] * compute(compute(A[idx_b] * data, ABS), LOGSCALE) * dratio;
+      // local  :              |average(exp(d_k C * z_k))| / C == dataA / dataB
+      // global : integrate log|average(exp(d_k C * z_k))| / C == result
+      result = - compute(compute(A[idx_b] * data, ABS), LOGSCALE) * dratio;
       const auto dataB(compute(compute(data, ABS), BCLIP));
+      Vec avg(result.cols());
+      for(int i = 0; i < avg.size(); i ++) {
+        avg[i] = T(0);
+        for(int j = 0; j < result.rows(); j ++)
+          avg[i] += result(j, i);
+      }
+      avg /= result.rows();
+      result = Iop[idx_d] * result;
+      for(int i = 0; i < avg.size(); i ++) {
+        for(int j = 0; j < result.rows(); j ++)
+          result(j, i) += avg[i] * j / result.rows();
+      }
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) /= dataB(i, j);
@@ -497,20 +509,8 @@ template <typename T> void enlarger2ex<T>::initBump(const int& size) {
 #pragma omp critical
 #endif
       {
-        if(Dop0.rows() % 2 == 1 || Dop0.rows() <= 3)
-          for(int i = 0; i < A[idx_b].rows(); i ++) {
-            if(photo_illust)
-              A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
-            else
-              A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (- exp(T(zi + 1)));
-          }
-        else
-          for(int i = 0; i < A[idx_b].rows(); i ++) {
-            if(photo_illust)
-              A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (exp(T(1) / dratio) - exp(T(zi + 1)));
-            else
-              A[idx_b](i, getImgPt(i + y0, size)) += (Dop0(Dop0.rows() / 2, j) + Dop0(Dop0.rows() / 2 + 1, j)) / T(2) * (- exp(T(zi + 1)));
-          }
+        for(int i = 0; i < A[idx_b].rows(); i ++)
+          A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
       }
     }
   }
@@ -556,6 +556,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, uses each freq.
+      //      And then, we use the hypothesis dft space have very small tilt.
       //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
       const T phase2(Pi * T(i) / T(DFTE.rows()));
       const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
