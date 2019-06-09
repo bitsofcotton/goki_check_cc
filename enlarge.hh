@@ -220,7 +220,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       result = Iop[idx_d] * result;
       for(int i = 0; i < avg.size(); i ++) {
         for(int j = 0; j < result.rows(); j ++)
-          result(j, i) += avg[i] * j / result.rows();
+          result(j, i) += avg[i] * j;
       }
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
