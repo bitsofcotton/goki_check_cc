@@ -39,7 +39,6 @@ public:
   typedef enum {
     ENLARGE_X,
     ENLARGE_Y,
-    ENLARGE_Y1,
     ENLARGE_BOTH,
     DETECT_X,
     DETECT_Y,
@@ -57,9 +56,6 @@ public:
     REVERSE_X,
     REVERSE_Y,
     REVERSE_BOTH,
-    LANCZOS_X,
-    LANCZOS_Y,
-    LANCZOS_BOTH,
     D2Y,
     DEDGE,
     BCLIP,
@@ -85,8 +81,6 @@ public:
   T    dratio;
   T    offset;
   T    thedge;
-  T    lanczos;
-  T    sharpen;
   int  sq;
   
 private:
@@ -100,9 +94,6 @@ private:
   vector<Mat> Dop;
   vector<Mat> Iop;
   vector<Mat> Eop;
-#if defined(_WITH_EXTERNAL_)
-  vector<Mat> Hop;
-#endif
   int idx_d;
   int idx_b;
 };
@@ -114,8 +105,6 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   offset  = T(1) / T(256);
   thedge  = T(.05);
   sq      = 4;
-  lanczos = T(1);
-  sharpen = T(1);
   idx_d   = - 1;
   idx_b   = - 1;
 }
@@ -139,9 +128,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
               compute(compute(compute(data, REVERSE_Y), BUMP_Y), REVERSE_Y)) /
              T(4);
     break;
-  case LANCZOS_BOTH:
-    result = (compute(data, LANCZOS_X) + compute(data, LANCZOS_Y)) / T(2);
-    break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
               compute(compute(data, EXTEND_Y), EXTEND_X)) / T(2);
@@ -161,16 +147,13 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
     break;
-  case LANCZOS_X:
-    result = compute(data.transpose(), LANCZOS_Y).transpose();
-    break;
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
   case REVERSE_X:
     result = compute(data.transpose(), REVERSE_Y).transpose();
     break;
-  case ENLARGE_Y1:
+  case ENLARGE_Y:
     {
       initDop(data.rows());
       const Mat dc(compute(Eop[idx_d] * data, ABS));
@@ -185,15 +168,7 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
             result(2 * i,     j) = data(i, j) - dc(i, j);
             result(2 * i + 1, j) = data(i, j) + dc(i, j);
           }
-      result = compute(result, LANCZOS_Y);
     }
-    break;
-  case ENLARGE_Y:
-    result = compute(data, ENLARGE_Y1);
-#if defined(_WITH_EXTERNAL_)
-    initDop(data.rows());
-    result = Hop[idx_d] * result;
-#endif
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -273,20 +248,6 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
       result.row(data.rows() + 1) = compute(data, EXTEND_Y0).row(data.rows());
-    }
-    break;
-  case LANCZOS_Y:
-    {
-      result = data;
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = - int(lanczos); j <= int(lanczos); j ++)
-          if(j)
-            result.row(i) += data.row(max(min(j + i, int(data.rows() - 1)), 0)) * sin(Pi * j / T(2)) * sin(Pi * j / T(2) / lanczos) / (Pi * Pi * j * j / T(2) / T(2) / lanczos);
-      T sum(1);
-      for(int j = - int(lanczos); j <= int(lanczos); j ++)
-        if(j)
-          sum += sin(Pi * j / T(2)) * sin(Pi * j / T(2) / lanczos) / (Pi * Pi * j * j / T(2) / T(2) / lanczos);
-      result /= sum;
     }
     break;
   case REVERSE_Y:
@@ -449,19 +410,6 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
       Iop[idx_d](i, i / 2 + j) = vIop(i / 2, j);
       Eop[idx_d](i, i / 2 + j) = vEop(i / 2, j);
     }
-#if defined(_WITH_EXTERNAL_)
-  // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
-  // But I don't know whether this method is open or not.
-  auto DFT2(seed(Eop[idx_d].rows() * 2, false));
-  for(int i = 0; i < DFT2.rows(); i ++)
-    DFT2.row(i) *= sharpen + T(1) - sharpen * exp(- pow(T(i) / DFT2.rows(), T(2)));
-  Hop.push_back(Mat());
-#if defined(_WITHOUT_EIGEN_)
-  Hop[idx_d] = (seed(DFT2.rows(), true) * DFT2).template real<T>();
-#else
-  Hop[idx_d] = (seed(DFT2.rows(), true) * DFT2).real().template cast<T>();
-#endif
-#endif
   return;
 }
 
@@ -555,16 +503,15 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
       ni += T(1) / (abs(phase) * abs(phase));
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
-      // N.B. please refer enlarge.wxm, uses each freq.
-      //      working with t == 1 condition.
+      // N.B. please refer enlarge.wxm, half freq space refer and uses each.
       const T phase2(Pi * T(i) / T(DFTE.rows()));
-      DFTE.row(i) *= - (- T(2) * exp(T(4) * phase2) - T(6) + T(8) * exp(T(2) * phase2)) / (T(3) * exp(T(3) * phase2) - T(2) * exp(T(4) * phase2) + T(4) * exp(T(2) * phase2) - T(5) * exp(phase2)) - T(1);
+      DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi * T(i) / T(DFTE.rows())) - U(T(1));
     }
     // N.B. similar to DFTI * DFTD == id.
     const T ratio(sqrt(nd * ni));
     DFTD /= ratio;
     DFTI /= ratio;
-    DFTE /= T(DFTE.rows()) * T(DFTE.rows());
+    DFTE /= T(DFTE.rows() - 1);
 #if defined(_WITHOUT_EIGEN_)
     Mat lDop((IDFT * DFTD).template real<T>());
     Mat lIop((IDFT * DFTI).template real<T>());
