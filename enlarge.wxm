@@ -1,45 +1,45 @@
 /* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
-/* [ Created with wxMaxima version 15.04.0 ] */
-
+/* [ Created with wxMaxima version 19.01.0 ] */
 /* [wxMaxima: input   start ] */
-diff((1-%e^(-%pi*%i*th/N))*b(t)*%e^(-2*%pi*%i*t*th/N)=2*f(t)*%e^(-2*%pi*%i*t*th/N)-fs(t)*%e^(-%pi*%i*t*th/N),th);
+diff((a(t)+b(t)*%e^(-%pi*%i*th/N))*%e^(-2*%pi*%i*t*th/N)=f(t)*%e^(-%pi*%i*t*th/N),th);
 /* [wxMaxima: input   end   ] */
 
-/* [wxMaxima: input   start ] */
-solve(%o1,d0(t)),fs(t)=2*f(t)-b(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d0(t);
-/* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-(1-%e^(-%pi*%i*th/N))*b(t)*%e^(-2*%pi*%i*t*th/N)=2*f(t)*%e^(-2*%pi*%i*t*th/N)-fs(t)*%e^(-%pi*%i*t*th/N);
+solve(%o1,d0(t)),f(t)=a(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d0(t);
 /* [wxMaxima: input   end   ] */
 
-/* [wxMaxima: input   start ] */
-%o3,fs(t)=2*f(t)-b(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d(t);
-/* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-solve(%o4,d(t));
+solve((a(t)+b(t)*%e^(-%pi*%i*th/N))*%e^(-2*%pi*%i*t*th/N)=f(t)*%e^(-%pi*%i*t*th/N),d0(t)),f(t)=a(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d0(t);;
 /* [wxMaxima: input   end   ] */
 
-/* [wxMaxima: input   start ] */
-trigsimp(realpart(%o5));
-/* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-trigsimp(imagpart(%o5));
+(t*a(t)*%e^((%i*%pi*t*th)/N+(%i*%pi*th)/N)+t*f(t)*%e^((%i*%pi*t*th)/N)-2*t*a(t)*%e^((%i*%pi*th)/N)+(-2*t-1)*f(t))/(t*%e^((%i*%pi*t*th)/N)-2*t-1)=-a(t)*%e^((%i*%pi*th)/N)-f(t);
 /* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+solve(%o4,a(t))-f(t);
+/* [wxMaxima: input   end   ] */
+
 
 /* [wxMaxima: input   start ] */
 base(x,th):=sum(sum(f(L*x+l)*%e^(-2*%pi*%i*(L*x+l)*th/N),x,0,N/L),l,0,L-1)-2*sum(g(L*x)*%e^(-2*%pi*%i*(L*x)*th/N),x,0,N/L);
 /* [wxMaxima: input   end   ] */
 
+
 /* [wxMaxima: input   start ] */
 base(x,th)=0,L=2;
 /* [wxMaxima: input   end   ] */
+
 
 /* [wxMaxima: input   start ] */
 diff(base(x,th),th)=0,L=2;
 /* [wxMaxima: input   end   ] */
 
-/* Maxima can't load/batch files which end with a comment! */
-"Created with wxMaxima"$
+
+
+/* Old versions of Maxima abort on loading files that end in a comment. */
+"Created with wxMaxima 19.01.0"$

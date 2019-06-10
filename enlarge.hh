@@ -556,11 +556,10 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, uses each freq.
-      //      And then, we use the hypothesis dft space have very small tilt.
-      //      b(t) -> i * sin(phase) / (cos(phase) - 1) * f(t) for each phase.
+      //      working with t == 0 condition.
       const T phase2(Pi * T(i) / T(DFTE.rows()));
       const U r(sqrt(U(- 1)) * sin(phase2) / (cos(phase2) - U(1)));
-      DFTE.row(i) *= r;
+      DFTE.row(i) *= - (T(2) * exp(phase2) - T(6)) / (T(2) * exp(phase2 * T(2)) - T(5) * exp(phase2));
     }
     // N.B. similar to DFTI * DFTD == id.
     const T ratio(sqrt(nd * ni));
