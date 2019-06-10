@@ -12,8 +12,6 @@ CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-O3 -g2
 # Do not use this because of the slowness, so this implementation is for what around licenses.
 #CXXFLAGS+=	-D_WITHOUT_EIGEN_
-# With external methods for enlarging.
-#CXXFLAGS+=	-D_WITH_EXTERNAL_
 LDFLAGS+=	-lc++
 
 CLEANFILES= *.o gokicheck
