@@ -556,9 +556,9 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, uses each freq.
-      //      working with t == 0 condition.
+      //      working with t == 1 condition.
       const T phase2(Pi * T(i) / T(DFTE.rows()));
-      DFTE.row(i) *= (- T(2) + T(2) * exp(phase2 * T(2))) / (exp(phase2 * T(2) - exp(phase2))) / T(2) - T(1);
+      DFTE.row(i) *= - (- T(2) * exp(T(4) * phase2) - T(6) + T(8) * exp(T(2) * phase2)) / (T(3) * exp(T(3) * phase2) - T(2) * exp(T(4) * phase2) + T(4) * exp(T(2) * phase2) - T(5) * exp(phase2)) - T(1);
     }
     // N.B. similar to DFTI * DFTD == id.
     const T ratio(sqrt(nd * ni));
