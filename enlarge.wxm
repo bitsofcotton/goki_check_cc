@@ -1,27 +1,32 @@
 /* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
 /* [ Created with wxMaxima version 19.01.0 ] */
 /* [wxMaxima: input   start ] */
-diff((a(t)+b(t)*%e^(-%pi*%i*th/N))*%e^(-2*%pi*%i*t*th/N)=f(t)*%e^(-%pi*%i*t*th/N),th);
+f0(t,th):=(a(t)+(f(t)+d0(t))*%e^(-%pi*%i*th/N))*%e^(-2*%pi*%i*t*th/N);
 /* [wxMaxima: input   end   ] */
 
 
 /* [wxMaxima: input   start ] */
-solve(%o1,d0(t)),f(t)=a(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d0(t);
+f1(t,th):=(a(t)+(f(t)+d0(t)))*%e^(-%pi*%i*t*th/N);
 /* [wxMaxima: input   end   ] */
 
 
 /* [wxMaxima: input   start ] */
-solve((a(t)+b(t)*%e^(-%pi*%i*th/N))*%e^(-2*%pi*%i*t*th/N)=f(t)*%e^(-%pi*%i*t*th/N),d0(t)),f(t)=a(t)+b(t)*%e^(-%pi*%i*th/N),b(t)=f(t)+d0(t);;
+solve(diff(f0(t,th)=f1(t,th),th),d0(t));
 /* [wxMaxima: input   end   ] */
 
 
 /* [wxMaxima: input   start ] */
-(t*a(t)*%e^((%i*%pi*t*th)/N+(%i*%pi*th)/N)+t*f(t)*%e^((%i*%pi*t*th)/N)-2*t*a(t)*%e^((%i*%pi*th)/N)+(-2*t-1)*f(t))/(t*%e^((%i*%pi*t*th)/N)-2*t-1)=-a(t)*%e^((%i*%pi*th)/N)-f(t);
+solve(f0(t,th)=f1(t,th),d0(t));
 /* [wxMaxima: input   end   ] */
 
 
 /* [wxMaxima: input   start ] */
-solve(%o4,a(t))-f(t);
+((t*f(t)+t*a(t))*%e^((%i*%pi*t*th)/N+(%i*%pi*th)/N)-2*t*a(t)*%e^((%i*%pi*th)/N)+(-2*t-1)*f(t))/(t*%e^((%i*%pi*t*th)/N+(%i*%pi*th)/N)-2*t-1)=-((f(t)+a(t))*%e^((%i*%pi*t*th)/N+(%i*%pi*th)/N)-a(t)*%e^((%i*%pi*th)/N)-f(t))/(%e^((%i*%pi*t*th)/N+(%i*%pi*th)/N)-1);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+solve(%o5,a(t))-f(t);
 /* [wxMaxima: input   end   ] */
 
 
