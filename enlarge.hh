@@ -56,6 +56,9 @@ public:
     REVERSE_X,
     REVERSE_Y,
     REVERSE_BOTH,
+    LANCZOS_X,
+    LANCZOS_Y,
+    LANCZOS_BOTH,
     D2Y,
     DEDGE,
     BCLIP,
@@ -81,6 +84,8 @@ public:
   T    dratio;
   T    offset;
   T    thedge;
+  T    lanczos;
+  T    sharpen;
   int  sq;
   
 private:
@@ -94,6 +99,9 @@ private:
   vector<Mat> Dop;
   vector<Mat> Iop;
   vector<Mat> Eop;
+#if defined(_WITH_EXTERNAL_)
+  vector<Mat> Hop;
+#endif
   int idx_d;
   int idx_b;
 };
@@ -105,6 +113,8 @@ template <typename T> enlarger2ex<T>::enlarger2ex() {
   offset  = T(1) / T(256);
   thedge  = T(.05);
   sq      = 4;
+  lanczos = T(1);
+  sharpen = T(1);
   idx_d   = - 1;
   idx_b   = - 1;
 }
@@ -128,6 +138,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
               compute(compute(compute(data, REVERSE_Y), BUMP_Y), REVERSE_Y)) /
              T(4);
     break;
+  case LANCZOS_BOTH:
+    result = (compute(data, LANCZOS_X) + compute(data, LANCZOS_Y)) / T(2);
+    break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
               compute(compute(data, EXTEND_Y), EXTEND_X)) / T(2);
@@ -147,6 +160,9 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
     break;
+  case LANCZOS_X:
+    result = compute(data.transpose(), LANCZOS_Y).transpose();
+    break;
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
@@ -156,18 +172,10 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
   case ENLARGE_Y:
     {
       initDop(data.rows());
-      const Mat dc(compute(Eop[idx_d] * data, ABS));
-      const Mat delta(compute(data, DETECT_Y));
-      result = Mat(data.rows() * 2, data.cols());
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++)
-          if(delta(i, j) < 0) {
-            result(2 * i,     j) = data(i, j) + dc(i, j);
-            result(2 * i + 1, j) = data(i, j) - dc(i, j);
-          } else {
-            result(2 * i,     j) = data(i, j) - dc(i, j);
-            result(2 * i + 1, j) = data(i, j) + dc(i, j);
-          }
+      result = compute(Eop[idx_d] * data, LANCZOS_Y);
+#if defined(_WITH_EXTERNAL_)
+      result = Hop[idx_d] * result;
+#endif
     }
     break;
   case DETECT_Y:
@@ -248,6 +256,20 @@ template <typename T> typename enlarger2ex<T>::Mat enlarger2ex<T>::compute(const
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
       result.row(data.rows() + 1) = compute(data, EXTEND_Y0).row(data.rows());
+    }
+    break;
+  case LANCZOS_Y:
+    {
+      result = data;
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = - int(lanczos); j <= int(lanczos); j ++)
+          if(j)
+            result.row(i) += data.row(max(min(j + i, int(data.rows() - 1)), 0)) * sin(Pi * j / T(2)) * sin(Pi * j / T(2) / lanczos) / (Pi * Pi * j * j / T(2) / T(2) / lanczos);
+      T sum(1);
+      for(int j = - int(lanczos); j <= int(lanczos); j ++)
+        if(j)
+          sum += sin(Pi * j / T(2)) * sin(Pi * j / T(2) / lanczos) / (Pi * Pi * j * j / T(2) / T(2) / lanczos);
+      result /= sum;
     }
     break;
   case REVERSE_Y:
@@ -382,24 +404,22 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     }
   cerr << "n" << flush;
   idx_d = Dop.size();
-  Dop.push_back(Mat());
-  Iop.push_back(Mat());
-  Eop.push_back(Mat());
   Mat vDop;
   Mat vIop;
   Mat vEop;
   assert(2 <= size);
   makeDI(size, vDop, vIop, vEop);
-  Dop[idx_d]  = Mat(size, size);
-  Iop[idx_d]  = Mat(size, size);
-  Eop[idx_d]  = Mat(size, size);
+  Dop.push_back(Mat(size, size));
+  Iop.push_back(Mat(size, size));
+  Eop.push_back(Mat(size * 2, size));
+  Mat Eop0(size, size);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
     for(int j = 0; j < Dop[idx_d].cols(); j ++)
-      Dop[idx_d](i, j) = Iop[idx_d](i, j) = Eop[idx_d](i, j) = T(0);
+      Dop[idx_d](i, j) = Iop[idx_d](i, j) = Eop0(i, j) = T(0);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -408,8 +428,31 @@ template <typename T> void enlarger2ex<T>::initDop(const int& size) {
     for(int j = 0; j < Dop[idx_d].cols() / 2; j ++) {
       Dop[idx_d](i, i / 2 + j) = vDop(i / 2, j);
       Iop[idx_d](i, i / 2 + j) = vIop(i / 2, j);
-      Eop[idx_d](i, i / 2 + j) = vEop(i / 2, j);
+      Eop0(i, i / 2 + j)       = vEop(i / 2, j);
     }
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < Eop0.rows(); i ++) {
+    Eop[idx_d].row(i * 2 + 0) = - Eop0.row(i);
+    Eop[idx_d].row(i * 2 + 1) =   Eop0.row(i);
+    Eop[idx_d](i * 2 + 0, i) += T(1);
+    Eop[idx_d](i * 2 + 1, i) += T(1);
+  }
+#if defined(_WITH_EXTERNAL_)
+  // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
+  // But I don't know whether this method is open or not.
+  auto DFT2(seed(Eop[idx_d].rows(), false));
+  for(int i = 0; i < DFT2.rows(); i ++)
+    DFT2.row(i) *= sharpen + T(1) - sharpen * exp(- pow(T(i) / DFT2.rows(), T(2)));
+  Hop.push_back(Mat());
+#if defined(_WITHOUT_EIGEN_)
+  Hop[idx_d] = (seed(DFT2.rows(), true) * DFT2).template real<T>();
+#else
+  Hop[idx_d] = (seed(DFT2.rows(), true) * DFT2).real().template cast<T>();
+#endif
+#endif
   return;
 }
 
@@ -504,8 +547,7 @@ template <typename T> void enlarger2ex<T>::makeDI(const int& size, Mat& Dop, Mat
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-      const T phase2(Pi * T(i) / T(DFTE.rows()));
-      DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi * T(i) / T(DFTE.rows())) - U(T(1));
+      DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi * T(i) / T(2 * DFTE.rows())) - U(T(1));
     }
     // N.B. similar to DFTI * DFTD == id.
     const T ratio(sqrt(nd * ni));
