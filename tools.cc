@@ -135,26 +135,27 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(data, argv[3]))
       return - 1;
     if(strcmp(argv[1], "enlarge") == 0) {
-      enlarger2ex<double> enlarger;
+      Filter<double> enlarger;
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
-          typename enlarger2ex<double>::Mat di(data[i].rows() * 2, data[i].cols() * 2);
+          typename Filter<double>::Mat di(data[i].rows() * 2, data[i].cols() * 2);
           for(int ii = 0; ii < data[i].rows(); ii ++)
             for(int jj = 0; jj < data[i].cols(); jj ++)
               di(2 * ii, 2 * jj) =
                 di(2 * ii + 1, 2 * jj)     =
                 di(2 * ii    , 2 * jj + 1) =
                 di(2 * ii + 1, 2 * jj + 1) = data[i](ii, jj);
-          typename enlarger2ex<double>::Mat xye(di - enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
+          typename Filter<double>::Mat xye(di - enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 0), enlarger.ENLARGE_BOTH), - 1, 0);
           xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 0), enlarger.ENLARGE_BOTH), - 2, 0);
           xye += di - redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 0), enlarger.ENLARGE_BOTH),   2, 0);
           data[i] = di - xye / 4.;
         }
-      for(int i = 0; i < 3; i ++)
-        data[i] = enlarger.compute(data[i], enlarger.CLIP);
+    //  for(int i = 0; i < 3; i ++)
+    //    data[i] = enlarger.compute(data[i], enlarger.CLIP);
+      redig.normalize(data, 1.);
     } else if(strcmp(argv[1], "pextend") == 0) {
-      enlarger2ex<double> extender;
+      Filter<double> extender;
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < ratio; j ++)
           data[i] = extender.compute(data[i], extender.EXTEND_Y);
@@ -186,7 +187,7 @@ int main(int argc, const char* argv[]) {
       redig.normalize(data, 1.);
     } else if(strcmp(argv[1], "cenl") == 0) {
       typename simpleFile<double>::Mat datas[3];
-      enlarger2ex<double> cenl;
+      Filter<double> cenl;
       if(!file.loadp2or3(datas, argv[4]))
         return - 1;
       for(int i = 0; i < 3; i ++)
@@ -208,19 +209,19 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0) {
-      enlarger2ex<double> detect, ddetect;
+      Filter<double> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
         data[i] = xye;
       }
     } else if(strcmp(argv[1], "bump") == 0) {
-      enlarger2ex<double> bump;
+      Filter<double> bump;
       const auto rgb2d(redig.rgb2d(data));
       auto xye(bump.compute(rgb2d, bump.BUMP_BOTH));
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   1, 0), bump.BUMP_BOTH), - 1, 0);
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   2, 0), bump.BUMP_BOTH), - 2, 0);
       xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 0), bump.BUMP_BOTH),   2, 0);
-      data[0] = data[1] = data[2] = redig.autoLevel(xye / 4., (xye.rows() + xye.cols()) * 8);
+      data[0] = data[1] = data[2] = redig.autoLevel(xye / 4., (xye.rows() + xye.cols()) * 32);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
@@ -594,7 +595,7 @@ int main(int argc, const char* argv[]) {
       sl >> in[in.size() - 1];
     }
     simpleFile<double>::Mat buf(std::atoi(argv[2]), std::atoi(argv[2]));
-    enlarger2ex<double> filter;
+    Filter<double> filter;
     double M(0);
     std::vector<double> rbuf;
     if(strcmp(argv[3], "enlarge") == 0)
@@ -607,7 +608,7 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < buf.rows(); j ++)
         for(int k = 0; k < buf.cols(); k ++)
           buf(j, k) = in[i * buf.rows() * buf.rows() + k * buf.rows() + j];
-      enlarger2ex<double>::MatU dft(dft0 * buf.template cast<complex<double> >());
+      Filter<double>::MatU dft(dft0 * buf.template cast<complex<double> >());
       if(strcmp(argv[3], "enlarge") == 0) {
 #if defined(_WITHOUT_EIGEN_)
         const auto rp(filter.compute(dft.template real<double>(), filter.ENLARGE_X));
@@ -625,7 +626,7 @@ int main(int argc, const char* argv[]) {
           }
         continue;
       } else {
-        enlarger2ex<double>::Mat buf2;
+        Filter<double>::Mat buf2;
         if(strcmp(argv[3], "diff") == 0){
 #if defined(_WITHOUT_EIGEN_)
           const auto rp(filter.compute(dft.template real<double>(), filter.DETECT_X));

@@ -12,7 +12,7 @@ CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-O3 -g2
 # Do not use this because of the slowness, so this implementation is for what around licenses.
 #CXXFLAGS+=	-D_WITHOUT_EIGEN_
-# Please read enlarge.hh Hop initializer before to use.
+# Please read enlarge.hh Sharpen initializer before to use.
 #CXXFLAGS+=	-D_WITH_EXTERNAL_
 LDFLAGS+=	-lc++
 

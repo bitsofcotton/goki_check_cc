@@ -75,8 +75,6 @@ for line in argv[3:]:
     subprocess.call(["convert", root + "-collect.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emphe" + ext])
   elif(argv[2] == "pnga"):
     subprocess.call(["convert", line, root + "-bump.ppm", "-channel-fx", "| gray=>alpha", root + "-alpha.png"])
-  elif(argv[2] == "idet"):
-    subprocess.call([argv[1], "idetect", root + ".ppm", root + "-idet.ppm"])
   elif(argv[2] == "mask0"):
     subprocess.call(["convert", root + ".ppm", "-fill", "black", "-colorize", "100", root + "-mask.png"])
   elif(argv[2] == "mask"):
