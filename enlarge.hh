@@ -50,6 +50,9 @@ public:
     BUMP_X,
     BUMP_Y,
     BUMP_BOTH,
+    LTILT_X,
+    LTILT_Y, 
+    LTILT_BOTH,
     EXTEND_X,
     EXTEND_Y0,
     EXTEND_Y,
@@ -79,9 +82,8 @@ public:
   T    dratio;
   T    offset;
   T    thedge;
-  T    lanczos;
-  T    sharpen;
   int  sq;
+  Mat  gmean(const Mat& a, const Mat& b);
   
 private:
   void initDop(const int& size);
@@ -101,11 +103,9 @@ template <typename T> Filter<T>::Filter() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
   dratio  = T(.005);
-  offset  = T(1) / T(256);
+  offset  = T(1) / T(64);
   thedge  = T(.05);
   sq      = 4;
-  lanczos = T(1);
-  sharpen = T(1);
   idx_d   = - 1;
   idx_b   = - 1;
 }
@@ -123,13 +123,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
     break;
   case DETECT_BOTH:
-    result = (compute(data, DETECT_X)  + compute(data, DETECT_Y)) / T(2);
+    result = gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
     break;
   case COLLECT_BOTH:
-    result = (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / T(2);
+    result = gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
     break;
   case BUMP_BOTH:
-    result = (compute(data, BUMP_X)    + compute(data, BUMP_Y)) / T(2);
+    result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
+    break;
+  case LTILT_BOTH:
+    result = compute(compute(data, LTILT_Y), LTILT_X);
     break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
@@ -147,12 +150,31 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
     break;
+  case LTILT_X:
+    result = compute(data.transpose(), LTILT_Y).transpose();
+    break;
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
   case ENLARGE_Y:
-    initDop(data.rows());
-    result = Eop[idx_d] * data;
+    {
+      initDop(data.rows());
+      const Mat  diff(Dop[idx_d] * data);
+      const auto delta(compute(Eop[idx_d] * data, ABS));
+      result = Mat(data.rows() * 2, data.cols());
+      for(int i = 0; i < data.rows(); i ++) {
+        result.row(i * 2 + 0) = data.row(i);
+        result.row(i * 2 + 1) = data.row(i);
+        for(int j = 0; j < data.cols(); j ++)
+          if(diff(i, j) < T(0)) {
+            result(i * 2 + 0, j) += delta(i, j);
+            result(i * 2 + 1, j) -= delta(i, j);
+          } else {
+            result(i * 2 + 0, j) -= delta(i, j);
+            result(i * 2 + 1, j) += delta(i, j);
+          }
+      }
+    }
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -163,15 +185,29 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case BUMP_Y:
     {
-      initDop( data.rows());
       initBump(data.rows());
       // log(|average(d_k C * exp(z_k))| / |dC|) == result.
       result = compute(A[idx_b] * data, ABS);
-      const auto dataB(compute(compute(data, COLLECT_Y), BCLIP));
+      const auto dC(compute(compute(data, COLLECT_Y), BCLIP));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) /= dataB(i, j);
+          result(i, j) /= dC(i, j);
       result = compute(result, LOGSCALE) * dratio;
+    }
+    break;
+  case LTILT_Y:
+    {
+      T up(0);
+      T down(0);
+      for(int i = 0; i < data.cols(); i ++) {
+        up   += data(0,               i);
+        down += data(data.rows() - 1, i);
+      }
+      const auto delta((down - up) / data.cols() / data.rows());
+      result = Mat(data);
+      for(int i = 0; i < data.rows(); i ++)
+        for(int j = 0; j < data.cols(); j ++)
+          result(i, j) -= delta * i;
     }
     break;
   case EXTEND_Y0:
@@ -191,9 +227,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       Mat Dop0, Eop0;
       makeDI(data.rows() * 2 - 1, Dop0, Eop0);
       // N.B. nearest data in differential space.
-      const Mat d0data(Dop0 * data);
+      const Mat d0data(Dop0 * data / data.rows());
       makeDI(result.rows() * 2 - 1, Dop0, Eop0);
-      const Mat ddata(Dop0 * result);
+      const Mat ddata(Dop0 * result / result.rows());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -348,15 +384,14 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   assert(2 <= size);
   makeDI(size, vDop, vEop);
   Dop.push_back(Mat(size, size));
-  Eop.push_back(Mat(size * 2, size));
-  Mat Eop0(size, size);
+  Eop.push_back(Mat(size, size));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
     for(int j = 0; j < Dop[idx_d].cols(); j ++)
-      Dop[idx_d](i, j) = Eop0(i, j) = T(0);
+      Dop[idx_d](i, j) = Eop[idx_d](i, j) = T(0);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -364,40 +399,8 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   for(int i = 0; i < Dop[idx_d].rows(); i ++)
     for(int j = 0; j < Dop[idx_d].cols() / 2; j ++) {
       Dop[idx_d](i, i / 2 + j) = vDop(i / 2, j);
-      Eop0(i, i / 2 + j)       = vEop(i / 2, j);
+      Eop[idx_d](i, i / 2 + j) = vEop(i / 2, j);
     }
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < Eop0.rows(); i ++) {
-    Eop[idx_d].row(i * 2 + 0) = - Eop0.row(i);
-    Eop[idx_d].row(i * 2 + 1) =   Eop0.row(i);
-    Eop[idx_d](i * 2 + 0, i) += T(1);
-    Eop[idx_d](i * 2 + 1, i) += T(1);
-  }
-  Eop0 = Eop[idx_d];
-  for(int i = 0; i < Eop[idx_d].rows(); i ++)
-    for(int j = - int(lanczos); j <= int(lanczos); j ++)
-      if(j)
-        Eop[idx_d].row(i) += Eop0.row(max(min(j + i, int(Eop0.rows() - 1)), 0)) * sin(Pi * j / T(2)) * sin(Pi * j / T(2) / lanczos) / (Pi * Pi * j * j / T(2) / T(2) / lanczos);
-  T sum(1);
-  for(int j = - int(lanczos); j <= int(lanczos); j ++)
-    if(j)
-      sum += sin(Pi * j / T(2)) * sin(Pi * j / T(2) / lanczos) / (Pi * Pi * j * j / T(2) / T(2) / lanczos);
-  Eop[idx_d] /= sum;
-#if defined(_WITH_EXTERNAL_)
-  // This works perfectly (from referring https://web.stanford.edu/class/cs448f/lectures/2.1/Sharpening.pdf via reffering Q&A sites.).
-  // But I don't know whether this method is open or not.
-  auto DFT2(seed(Eop[idx_d].rows(), false));
-  for(int i = 0; i < DFT2.rows(); i ++)
-    DFT2.row(i) *= sharpen + T(1) - sharpen * exp(- pow(T(i) / DFT2.rows(), T(2)));
-#if defined(_WITHOUT_EIGEN_)
-  Eop[idx_d] = (seed(DFT2.rows(), true) * DFT2).template real<T>() * Eop[idx_d];
-#else
-  Eop[idx_d] = (seed(DFT2.rows(), true) * DFT2).real().template cast<T>() * Eop[idx_d];
-#endif
-#endif
   return;
 }
 
@@ -428,11 +431,11 @@ template <typename T> void Filter<T>::initBump(const int& size) {
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int zi = 0; zi < T(1) / dratio; zi ++) {
+  for(int zi = - T(1) / dratio; zi < T(1) / dratio; zi ++) {
     for(int j = 0; j < Dop0.rows() / 2; j ++) {
       Vec cpoint(2);
       cpoint[0] = (j - T(Dop0.rows() / 2 - 1) / 2);
-      cpoint[1] = T(zi + 1) * dratio;
+      cpoint[1] = T(zi) * dratio;
       // x-z plane projection of point p with camera geometry c to z=0.
       // c := camera, p := cpoint.
       // <c + (p - c) * t, [0, 1]> = 0
@@ -488,7 +491,7 @@ template <typename T> void Filter<T>::makeDI(const int& size, Mat& Dop, Mat& Eop
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-      DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi * T(i) / T(2 * DFTE.rows())) - U(T(1));
+      DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1));
     }
     // N.B. similar to DFTI * DFTD == id.
     const T ratio(sqrt(nd * ni));
@@ -531,6 +534,17 @@ template <typename T> typename Filter<T>::MatU Filter<T>::seed(const int& size, 
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = exp(U(- 2. * (idft ? - 1 : 1)) * Pi * I * U(i * j / T(size))) / T(idft ? size : 1);
   return result;
+}
+
+template <typename T> typename Filter<T>::Mat Filter<T>::gmean(const Mat& a, const Mat& b) {
+  assert(a.rows() == b.rows() && a.cols() == b.cols());
+  Mat res(a.rows(), a.cols());
+  for(int i = 0; i < a.rows(); i ++)
+    for(int j = 0; j < a.cols(); j ++) {
+      const auto lval(a(i, j) * b(i, j));
+      res(i, j) = (lval < T(0) ? - T(1) : T(1)) * sqrt(abs(lval));
+    }
+  return res;
 }
 
 #define _ENLARGE2X_

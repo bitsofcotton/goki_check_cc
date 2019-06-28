@@ -218,10 +218,11 @@ int main(int argc, const char* argv[]) {
       Filter<double> bump;
       const auto rgb2d(redig.rgb2d(data));
       auto xye(bump.compute(rgb2d, bump.BUMP_BOTH));
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   1, 0), bump.BUMP_BOTH), - 1, 0);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d,   2, 0), bump.BUMP_BOTH), - 2, 0);
-      xye += redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 0), bump.BUMP_BOTH),   2, 0);
-      data[0] = data[1] = data[2] = redig.autoLevel(xye / 4., (xye.rows() + xye.cols()) * 32);
+      // XXX: ratio.
+      xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d,   1, 0), bump.BUMP_BOTH), - 1, 0));
+      xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d,   2, 0), bump.BUMP_BOTH), - 2, 0));
+      xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 0), bump.BUMP_BOTH),  2, 0));
+      data[0] = data[1] = data[2] = bump.compute(redig.autoLevel(xye / 4., (xye.rows() + xye.cols()) * 32), bump.LTILT_BOTH);
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))

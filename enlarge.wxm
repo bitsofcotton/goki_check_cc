@@ -1,5 +1,5 @@
 /* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
-/* [ Created with wxMaxima version 19.01.0 ] */
+/* [ Created with wxMaxima version 19.05.7 ] */
 /* [wxMaxima: input   start ] */
 f0(t,th):=((f(t)-d0(t))+(f(t)+d0(t))*%e^(-%pi*%i*th/N/2))*%e^(-2*%pi*%i*t*th/N);
 /* [wxMaxima: input   end   ] */
@@ -11,7 +11,7 @@ f1(t,th):=f(t)*%e^(-2*%pi*%i*t*th/N);
 
 
 /* [wxMaxima: input   start ] */
-solve(f0(t,th)=f1(t,th),d0(t));
+integrate(solve(f0(t,th)=f1(t,th)*a,d0(t)),a);
 /* [wxMaxima: input   end   ] */
 
 
@@ -32,4 +32,4 @@ diff(base(x,th),th)=0,L=2;
 
 
 /* Old versions of Maxima abort on loading files that end in a comment. */
-"Created with wxMaxima 19.01.0"$
+"Created with wxMaxima 19.05.7"$
