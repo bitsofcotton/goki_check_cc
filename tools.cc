@@ -142,9 +142,8 @@ int main(int argc, const char* argv[]) {
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 0), enlarger.ENLARGE_BOTH), - 1, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 0), enlarger.ENLARGE_BOTH), - 2, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 0), enlarger.ENLARGE_BOTH),   2, 0));
-          data[i] = xye;
+          data[i] = enlarger.compute(xye, enlarger.CLIP);
         }
-      redig.normalize(data, 1.);
     } else if(strcmp(argv[1], "pextend") == 0) {
       Filter<double> extender;
       for(int i = 0; i < 3; i ++)
@@ -209,11 +208,11 @@ int main(int argc, const char* argv[]) {
       Filter<double> bump;
       const auto rgb2d(redig.rgb2d(data));
       auto xye(bump.compute(rgb2d, bump.BUMP_BOTH));
-      // XXX: ratio.
+      // XXX: geometric mean ratio.
       xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d,   1, 0), bump.BUMP_BOTH), - 1, 0));
       xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d,   2, 0), bump.BUMP_BOTH), - 2, 0));
       xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 0), bump.BUMP_BOTH),  2, 0));
-      data[0] = data[1] = data[2] = bump.compute(redig.autoLevel(xye / 4., (xye.rows() + xye.cols()) * 32), bump.LTILT_BOTH);
+      data[0] = data[1] = data[2] = xye;
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
