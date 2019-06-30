@@ -50,9 +50,6 @@ public:
     BUMP_X,
     BUMP_Y,
     BUMP_BOTH,
-    LTILT_X,
-    LTILT_Y, 
-    LTILT_BOTH,
     EXTEND_X,
     EXTEND_Y0,
     EXTEND_Y,
@@ -62,7 +59,7 @@ public:
     CLIP,
     ABS,
     EXPSCALE,
-    LOGSCALE} direction_t;
+    LOGSCALE } direction_t;
   typedef complex<T> U;
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
@@ -131,9 +128,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case BUMP_BOTH:
     result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
     break;
-  case LTILT_BOTH:
-    result = compute(compute(data, LTILT_Y), LTILT_X);
-    break;
   case EXTEND_BOTH:
     result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
               compute(compute(data, EXTEND_Y), EXTEND_X)) / T(2);
@@ -149,9 +143,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
-    break;
-  case LTILT_X:
-    result = compute(data.transpose(), LTILT_Y).transpose();
     break;
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
@@ -193,21 +184,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) /= dC(i, j);
       result = compute(result, LOGSCALE) * dratio;
-    }
-    break;
-  case LTILT_Y:
-    {
-      T up(0);
-      T down(0);
-      for(int i = 0; i < data.cols(); i ++) {
-        up   += data(0,               i);
-        down += data(data.rows() - 1, i);
-      }
-      const auto delta((down - up) / data.cols() / data.rows());
-      result = Mat(data);
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++)
-          result(i, j) -= delta * i;
     }
     break;
   case EXTEND_Y0:
@@ -431,7 +407,7 @@ template <typename T> void Filter<T>::initBump(const int& size) {
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int zi = - T(1) / dratio; zi < T(1) / dratio; zi ++) {
+  for(int zi = 0; zi < T(1) / dratio; zi ++) {
     for(int j = 0; j < Dop0.rows() / 2; j ++) {
       Vec cpoint(2);
       cpoint[0] = (j - T(Dop0.rows() / 2 - 1) / 2);
@@ -447,7 +423,7 @@ template <typename T> void Filter<T>::initBump(const int& size) {
 #endif
       {
         for(int i = 0; i < A[idx_b].rows(); i ++)
-          A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * (exp(T(1) / dratio) - exp(T(zi + 1)));
+          A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * exp(T(int(T(1) / dratio) - zi) * sqrt(dratio));
       }
     }
   }
@@ -479,7 +455,8 @@ template <typename T> void Filter<T>::makeDI(const int& size, Mat& Dop, Mat& Eop
     DFTD.row(0) *= U(0);
     const auto IDFT(seed(s, true));
           auto DFTE(DFTD);
-    T nd(0), ni(0);
+    T ni(0);
+    T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
       const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
       // N.B. d/dy.
@@ -493,9 +470,8 @@ template <typename T> void Filter<T>::makeDI(const int& size, Mat& Dop, Mat& Eop
       // N.B. please refer enlarge.wxm, half freq space refer and uses each.
       DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1));
     }
-    // N.B. similar to DFTI * DFTD == id.
-    const T ratio(sqrt(nd * ni));
-    DFTD /= ratio;
+    // similar to det(Iop * Dop) == 1.
+    DFTD /= sqrt(ni * nd) * DFTD.rows();
     DFTE /= T(DFTE.rows() - 1);
 #if defined(_WITHOUT_EIGEN_)
     Mat lDop((IDFT * DFTD).template real<T>());
