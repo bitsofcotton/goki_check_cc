@@ -37,7 +37,6 @@ void usage() {
   cout << "gokicheck cenl    <ratio>  <inputdst.ppm> <inputsrc.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck idetect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -139,6 +138,7 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) {
           typename Filter<double>::Mat xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
+          // XXX: geometric mean ratio.
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 0), enlarger.ENLARGE_BOTH), - 1, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 0), enlarger.ENLARGE_BOTH), - 2, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 0), enlarger.ENLARGE_BOTH),   2, 0));
@@ -189,7 +189,6 @@ int main(int argc, const char* argv[]) {
     if(!file.savep2or3(argv[4], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "collect") == 0 ||
-            strcmp(argv[1], "idetect") == 0 ||
             strcmp(argv[1], "bump")  == 0) {
     if(argc < 4) {
       usage();

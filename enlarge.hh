@@ -54,7 +54,6 @@ public:
     EXTEND_Y0,
     EXTEND_Y,
     EXTEND_BOTH,
-    DEDGE,
     BCLIP,
     CLIP,
     ABS,
@@ -75,25 +74,19 @@ public:
   Filter();
   Mat  compute(const Mat& data, const direction_t& dir);
   MatU seed(const int& size, const bool& idft);
+  Mat  gmean(const Mat& a, const Mat& b);
   void reinit();
   T    dratio;
   T    offset;
-  T    thedge;
-  int  sq;
-  Mat  gmean(const Mat& a, const Mat& b);
   
 private:
   void initDop(const int& size);
-  void initBump(const int& size);
   int  getImgPt(const T& y, const T& h);
-  void makeDI(const int& size, Mat& Dop, Mat& Eop, const bool& recursive = false);
   U    I;
   T    Pi;
-  vector<Mat> A;
   vector<Mat> Dop;
   vector<Mat> Eop;
-  int idx_d;
-  int idx_b;
+  int  idx;
 };
 
 template <typename T> Filter<T>::Filter() {
@@ -101,15 +94,12 @@ template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
   dratio  = T(.005);
   offset  = T(1) / T(64);
-  thedge  = T(.05);
-  sq      = 4;
-  idx_d   = - 1;
-  idx_b   = - 1;
+  idx     = - 1;
 }
 
 template <typename T> void Filter<T>::reinit() {
-  A     = Dop   = Eop = vector<Mat>();
-  idx_d = idx_b = - 1;
+  Dop = Eop = vector<Mat>();
+  idx = - 1;
 }
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir) {
@@ -129,8 +119,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
     break;
   case EXTEND_BOTH:
-    result = (compute(compute(data, EXTEND_X), EXTEND_Y) +
-              compute(compute(data, EXTEND_Y), EXTEND_X)) / T(2);
+    result = gmean(compute(compute(data, EXTEND_X), EXTEND_Y),
+                   compute(compute(data, EXTEND_Y), EXTEND_X));
     break;
   case ENLARGE_X:
     result = compute(data.transpose(), ENLARGE_Y).transpose();
@@ -150,8 +140,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case ENLARGE_Y:
     {
       initDop(data.rows());
-      const Mat  diff(Dop[idx_d] * data);
-      const auto delta(compute(Eop[idx_d] * data, ABS));
+      const Mat  diff(Dop[idx] * data);
+            auto delta(compute(Eop[idx] * data, ABS));
       result = Mat(data.rows() * 2, data.cols());
       for(int i = 0; i < data.rows(); i ++) {
         result.row(i * 2 + 0) = data.row(i);
@@ -169,16 +159,54 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case DETECT_Y:
     initDop(data.rows());
-    result = Dop[idx_d] * data;
+    result = Dop[idx] * data;
     break;
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
     break;
   case BUMP_Y:
     {
-      initBump(data.rows());
+      result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = T(0);
+      initDop(max(3, int(data.rows()) / 16));
+      Vec camera(2);
+      camera[0] = T(0);
+      camera[1] = T(1);
+      assert(0 < dratio);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int zi = 0; zi < T(1) / dratio; zi ++) {
+        Mat A(data.rows(), data.rows());
+        for(int i = 0; i < A.rows(); i ++)
+          for(int j = 0; j < A.cols(); j ++)
+            A(i, j) = T(0);
+        const auto& Dop0(Dop[idx]);
+        for(int j = 0; j < Dop0.rows() / 2; j ++) {
+          Vec cpoint(2);
+          cpoint[0] = (j - T(Dop0.rows() / 2 - 1) / 2);
+          cpoint[1] = T(zi) * dratio;
+          // x-z plane projection of point p with camera geometry c to z=0.
+          // c := camera, p := cpoint.
+          // <c + (p - c) * t, [0, 1]> = 0
+          const auto t(- camera[1] / (cpoint[1] - camera[1]));
+          const auto y0((camera + (cpoint - camera) * t)[0]);
+          // N.B. average_k(dC_k / dy * z_k).
+          for(int i = 0; i < A.rows(); i ++)
+            A(i, getImgPt(i + y0, data.rows())) += Dop0(Dop0.rows() / 2, j) * exp(T(int(T(1) / dratio) - zi) * sqrt(dratio));
+        }
+#if defined(_OPENMP)
+#pragma omp atomic
+#endif
+        result += compute(A * data, ABS);
+      }
       // log(|average(d_k C * exp(z_k))| / |dC|) == result.
-      result = compute(A[idx_b] * data, ABS);
       const auto dC(compute(compute(data, COLLECT_Y), BCLIP));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
@@ -200,12 +228,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
-      Mat Dop0, Eop0;
-      makeDI(data.rows() * 2 - 1, Dop0, Eop0);
+      initDop(data.rows());
       // N.B. nearest data in differential space.
-      const Mat d0data(Dop0 * data / data.rows());
-      makeDI(result.rows() * 2 - 1, Dop0, Eop0);
-      const Mat ddata(Dop0 * result / result.rows());
+      const Mat   d0data(Dop[idx] * data);
+      initDop(result.rows());
+      const Mat   ddata(Dop[idx] * result);
+      const auto& Dop0(Dop[idx]);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -213,7 +241,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         T a(0), b(0);
         for(int j = 0; j < d0data.rows(); j ++) {
           // <d0data, (ddata + Diff * t * e_k)> == <d0data, d0data> in cut.
-          a += Dop0(j, Dop0.cols() - 1);
+          a += d0data(j, i) * Dop0(j, Dop0.cols() - 1);
           b += d0data(j, i) * (d0data(j, i) - ddata(j, i));
         }
         if(a == 0) {
@@ -241,44 +269,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
       result.row(data.rows() + 1) = compute(data, EXTEND_Y0).row(data.rows());
-    }
-    break;
-  case DEDGE:
-    {
-      assert(T(0) <= thedge && 0 < sq);
-      vector<T> stat;
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++)
-          stat.push_back(data(i, j));
-      sort(stat.begin(), stat.end());
-      result = data;
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++)
-          if(data(i, j) <= stat[int((stat.size() - 1) * thedge)])
-            result(i, j) = - T(1);
-      bool flag(true);
-      while(flag) {
-        flag = false;
-        bool flag2(false);
-        for(int i = 0; i < result.rows(); i ++)
-          for(int j = 0; j < result.cols(); j ++)
-            if(result(i, j) < T(0)) {
-              int cnt(0);
-              T   sum(0);
-              for(int ii = max(0, i - sq + 1); ii < min(i + sq, int(result.rows())); ii ++)
-                for(int jj = max(0, j - sq + 1); jj < min(j + sq, int(result.cols())); jj ++)
-                  if(T(0) <= result(ii, jj)) {
-                    sum += result(ii, jj);
-                    cnt ++;
-                  }
-              if(cnt) {
-                result(i, j) = sum / cnt;
-                flag2 = true;
-              } else
-                flag  = true;
-            }
-        flag = flag && flag2;
-      }
     }
     break;
   case BCLIP:
@@ -350,83 +340,41 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 template <typename T> void Filter<T>::initDop(const int& size) {
   for(int i = 0; i < Dop.size(); i ++)
     if(Dop[i].rows() == size) {
-      idx_d = i;
+      idx = i;
       return;
     }
   cerr << "n" << flush;
-  idx_d = Dop.size();
-  Mat vDop;
-  Mat vEop;
   assert(2 <= size);
-  makeDI(size, vDop, vEop);
-  Dop.push_back(Mat(size, size));
-  Eop.push_back(Mat(size, size));
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < Dop[idx_d].rows(); i ++)
-    for(int j = 0; j < Dop[idx_d].cols(); j ++)
-      Dop[idx_d](i, j) = Eop[idx_d](i, j) = T(0);
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < Dop[idx_d].rows(); i ++)
-    for(int j = 0; j < Dop[idx_d].cols() / 2; j ++) {
-      Dop[idx_d](i, i / 2 + j) = vDop(i / 2, j);
-      Eop[idx_d](i, i / 2 + j) = vEop(i / 2, j);
-    }
-  return;
-}
-
-template <typename T> void Filter<T>::initBump(const int& size) {
-  for(int i = 0; i < A.size(); i ++)
-    if(A[i].rows() == size) {
-      idx_b = i;
-      return;
-    }
-  cerr << "n" << flush;
-  idx_b = A.size();
-  assert(2 <= size);
-  A.push_back(Mat(size, size));
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < size; i ++)
-    for(int j = 0; j < size; j ++)
-      A[idx_b](i, j) = T(0);
-  Mat Dop0;
-  Mat Eop0;
-  makeDI(max(3, size / 16), Dop0, Eop0);
-  Vec camera(2);
-  camera[0] = T(0);
-  camera[1] = T(1);
-  assert(0 < dratio);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int zi = 0; zi < T(1) / dratio; zi ++) {
-    for(int j = 0; j < Dop0.rows() / 2; j ++) {
-      Vec cpoint(2);
-      cpoint[0] = (j - T(Dop0.rows() / 2 - 1) / 2);
-      cpoint[1] = T(zi) * dratio;
-      // x-z plane projection of point p with camera geometry c to z=0.
-      // c := camera, p := cpoint.
-      // <c + (p - c) * t, [0, 1]> = 0
-      const auto t(- camera[1] / (cpoint[1] - camera[1]));
-      const auto y0((camera + (cpoint - camera) * t)[0]);
-      // N.B. average_k(dC_k / dy * z_k).
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-      {
-        for(int i = 0; i < A[idx_b].rows(); i ++)
-          A[idx_b](i, getImgPt(i + y0, size)) += Dop0(Dop0.rows() / 2, j) * exp(T(int(T(1) / dratio) - zi) * sqrt(dratio));
-      }
-    }
+        auto DFTD(seed(size, false));
+  DFTD.row(0) *= U(0);
+  const auto IDFT(seed(size, true));
+        auto DFTE(DFTD);
+  T ni(0);
+  T nd(0);
+  for(int i = 1; i < DFTD.rows(); i ++) {
+    const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+    const U phase2( U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+    // N.B. d/dy.
+    DFTD.row(i) *= phase;
+    nd += abs(phase)  * abs(phase);
+    ni += abs(phase2) * abs(phase2);
+    // N.B. integrate.
+    // DFTI.row(i) /= phase;
+    // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
+    // DFTH.row(i) *= log(phase);
+    // N.B. please refer enlarge.wxm, half freq space refer and uses each.
+    DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1));
   }
+  // N.B. similar to det(Dop * Iop) == 1
+  DFTD /= sqrt(nd * ni);
+  idx   = Dop.size();
+#if defined(_WITHOUT_EIGEN_)
+  Dop.push_back((IDFT * DFTD).template real<T>());
+  Eop.push_back((IDFT * DFTE).template real<T>());
+#else
+  Dop.push_back((IDFT * DFTD).real().template cast<T>());
+  Eop.push_back((IDFT * DFTE).real().template cast<T>());
+#endif
   return;
 }
 
@@ -439,67 +387,6 @@ template <typename T> int Filter<T>::getImgPt(const T& y, const T& h) {
   return yy % int(h);
 }
 
-template <typename T> void Filter<T>::makeDI(const int& size, Mat& Dop, Mat& Eop, const bool& recursive) {
-  assert(2 <= size);
-  const auto ss((size + 1) / 2);
-  Dop = Mat(ss, ss);
-  for(int i = 0; i < Dop.rows(); i ++)
-    for(int j = 0; j < Dop.cols(); j ++)
-      Dop(i, j) = T(0);
-  Eop = Mat(Dop);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int s = (recursive ? 2 : ss); s <= ss; s ++) {
-          auto DFTD(seed(s, false));
-    DFTD.row(0) *= U(0);
-    const auto IDFT(seed(s, true));
-          auto DFTE(DFTD);
-    T ni(0);
-    T nd(0);
-    for(int i = 1; i < DFTD.rows(); i ++) {
-      const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
-      // N.B. d/dy.
-      DFTD.row(i) *= phase;
-      // N.B. integrate.
-      // DFTI.row(i) /= phase;
-      nd += abs(phase) * abs(phase);
-      ni += T(1) / (abs(phase) * abs(phase));
-      // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
-      // DFTH.row(i) *= log(phase);
-      // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-      DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1));
-    }
-    // similar to det(Iop * Dop) == 1.
-    DFTD /= sqrt(ni * nd) * DFTD.rows();
-    DFTE /= T(DFTE.rows() - 1);
-#if defined(_WITHOUT_EIGEN_)
-    Mat lDop((IDFT * DFTD).template real<T>());
-    Mat lEop((IDFT * DFTE).template real<T>());
-#else
-    Mat lDop((IDFT * DFTD).real().template cast<T>());
-    Mat lEop((IDFT * DFTE).real().template cast<T>());
-#endif
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-    {
-      for(int i = 0; i < Dop.rows(); i ++)
-        for(int j = 0; j < lDop.cols(); j ++) {
-          Dop(i, i * (Dop.cols() - lDop.cols()) / Dop.rows() + j) +=
-            lDop(i * lDop.rows() / Dop.rows(), j);
-          Eop(i, i * (Eop.cols() - lEop.cols()) / Eop.rows() + j) +=
-            lEop(i * lEop.rows() / Eop.rows(), j);
-        }
-    }
-  }
-  if(recursive) {
-    Dop /= ss - 1;
-    Eop /= ss - 1;
-  }
-  return;
-}
-
 template <typename T> typename Filter<T>::MatU Filter<T>::seed(const int& size, const bool& idft) {
   MatU result(size, size);
 #if defined(_OPENMP)
@@ -508,7 +395,7 @@ template <typename T> typename Filter<T>::MatU Filter<T>::seed(const int& size, 
 #endif
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = exp(U(- 2. * (idft ? - 1 : 1)) * Pi * I * U(i * j / T(size))) / T(idft ? size : 1);
+      result(i, j) = exp(I * U(- 2. * Pi * T(idft ? - 1 : 1) * i * j / T(size))) / T(idft ? - size : 1);
   return result;
 }
 
