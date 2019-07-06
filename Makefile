@@ -12,8 +12,8 @@ CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-O3 -g2
 # Do not use this because of the slowness, so this implementation is for what around licenses.
 #CXXFLAGS+=	-D_WITHOUT_EIGEN_
-# Please read enlarge.hh Sharpen initializer before to use.
-#CXXFLAGS+=	-D_WITH_EXTERNAL_
+# If we want to use bump with more depth, we should include and link mpfr, and set this flag with bits:
+#CXXFLAGS+=	_WITH_MPFR_=512
 LDFLAGS+=	-lc++
 
 CLEANFILES= *.o gokicheck

@@ -8,6 +8,17 @@
 #include <cmath>
 #include <assert.h>
 
+#if defined(_WITH_MPFR_)
+#include <mpreal.h>
+typedef mpfr::mpreal num_t;
+using std::sqrt;
+using mpfr::pow;
+using mpfr::log;
+using mpfr::isfinite;
+#else
+typedef long double num_t;
+#endif
+
 #if defined(_WITHOUT_EIGEN_)
 #include <complex>
 #include <cstring>
@@ -204,14 +215,19 @@ int main(int argc, const char* argv[]) {
         data[i] = xye;
       }
     } else if(strcmp(argv[1], "bump") == 0) {
-      Filter<double> bump;
-      const auto rgb2d(redig.rgb2d(data));
+#if defined(_WITH_MPFR_)
+      num_t::set_default_prec(_WITH_MPFR_);
+#endif
+      Filter<num_t> bump;
+      const auto rgb2d(redig.rgb2d(data).template cast<num_t>());
       auto xye(bump.compute(rgb2d, bump.BUMP_BOTH));
-      // XXX: geometric mean ratio.
+      // XXX: geometric mean ratio and redig type.
+/*
       xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d,   1, 0), bump.BUMP_BOTH), - 1, 0));
       xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d,   2, 0), bump.BUMP_BOTH), - 2, 0));
       xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 0), bump.BUMP_BOTH),  2, 0));
-      data[0] = data[1] = data[2] = xye;
+*/
+      data[0] = data[1] = data[2] = - xye.template cast<double>();
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
