@@ -92,7 +92,8 @@ private:
 template <typename T> Filter<T>::Filter() {
   I  = sqrt(U(- 1.));
   Pi = atan2(T(1), T(1)) * T(4);
-  dratio  = T(.005);
+  // N.B. from accuracy reason, low depth.
+  dratio  = T(.05);
   offset  = T(1) / T(64);
   idx     = - 1;
 }
@@ -174,7 +175,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = T(0);
-      initDop(max(3, int(data.rows()) / 16));
+      initDop(max(3, min(int(data.rows()), int(T(1) / dratio / dratio)) / 16));
       Vec camera(2);
       camera[0] = T(0);
       camera[1] = T(1);
@@ -187,10 +188,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const auto& Dop0(Dop[idx]);
-        for(int j = 0; j < Dop0.rows() / 2; j ++) {
+        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) * sqrt(dratio)));
+        for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
-          cpoint[0] = (j - T(Dop0.rows() / 2 - 1) / 2);
+          cpoint[0] = j - T(Dop0.size() - 1) / 2;
           cpoint[1] = T(zi) * dratio;
           // x-z plane projection of point p with camera geometry c to z=0.
           // c := camera, p := cpoint.
@@ -199,14 +200,19 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           const auto y0((camera + (cpoint - camera) * t)[0]);
           // N.B. average_k(dC_k / dy * z_k).
           for(int i = 0; i < A.rows(); i ++)
-            A(i, getImgPt(i + y0, data.rows())) += Dop0(Dop0.rows() / 2, j) * exp(T(int(T(1) / dratio) - zi) * sqrt(dratio));
+            A(i, getImgPt(i + y0, data.rows())) += Dop0[j];
         }
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
         result += compute(A * data, ABS);
       }
-      // log(|average(d_k C * exp(z_k))| / |dC|) == result.
+      // N.B.
+      // From hypothesis, it is correct to use:
+      //   log(|average(d_k C * exp(z_k))| / |dC| == result.
+      // But it's not here, because of some calculation experiment
+      // causes some of false detection. So to avoid that, we use:
+      //   log(|average(d_k C * exp(z_k * sqrt(dratio)))| / |dC|) == result.
       const auto dC(compute(compute(data, COLLECT_Y), BCLIP));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
