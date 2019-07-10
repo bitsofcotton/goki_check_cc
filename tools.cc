@@ -16,7 +16,7 @@ using mpfr::pow;
 using mpfr::log;
 using mpfr::isfinite;
 #else
-typedef long double num_t;
+typedef double num_t;
 #endif
 
 #if defined(_WITHOUT_EIGEN_)
