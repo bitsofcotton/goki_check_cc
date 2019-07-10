@@ -10,11 +10,8 @@ For speed, we need http://eigen.tuxfamily.org/ library.
 
 # Parameters
 * enlarge.hh
-* * dratio : z-axis step ratio relate to 1., must be &lt; 1.
+* * dratio : z-axis step ratio relate to 1., must be &lt; 1. This hardly depends calculating accuracy and if it's too small, result will be vanished.
 * * offset : color value ratio around convergences in making bump map.
-* * photo_illust : assume photo or illust
-* * lanczos : lanczos pixels after enlarge
-* * sharpen : sharpen ratio after enlarge
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
