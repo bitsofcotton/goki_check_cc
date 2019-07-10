@@ -175,7 +175,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = T(0);
-      initDop(max(3, min(int(data.rows()), int(T(1) / dratio / dratio)) / 16));
+      initDop(max(3, min(int(data.rows()) / 16, int(T(1) / dratio / dratio))));
       Vec camera(2);
       camera[0] = T(0);
       camera[1] = T(1);
