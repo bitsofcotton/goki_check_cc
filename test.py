@@ -55,7 +55,28 @@ for line in argv[3:]:
     root, ext = os.path.splitext(line)
   if(ext != ".ppm"):
     subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-  if(argv[2] == "col"):
+  if(argv[2] == "sample"):
+    cmd = ["python", argv[0], argv[1], "col"]
+    cmd.extend(argv[3:])
+    subprocess.call(cmd)
+    cmd[3] = "bump"
+    subprocess.call(cmd)
+    cmd[3] = "obj"
+    subprocess.call(cmd)
+    cmd[3] = "mtl"
+    subprocess.call(cmd)
+    cmd[3] = "emph"
+    subprocess.call(cmd)
+    cmd[3] = "jps"
+    subprocess.call(cmd)
+    cmd[3] = "tilt"
+    subprocess.call(cmd)
+    cmd[3] = "btilt"
+    subprocess.call(cmd)
+    cmd[3] = "flicker"
+    subprocess.call(cmd)
+    subprocess.call(["mogrify", "-format", "png", "*.ppm"])
+  elif(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
     subprocess.call(["python", argv[0], argv[1], "enlp", "1", line])
@@ -66,10 +87,11 @@ for line in argv[3:]:
       subprocess.call(["convert", root + "-enl-" + str(s + 1) + "a.ppm", "-blur", "1", "-unsharp", "1", "-resize", "75%", "-compress", "none", root + "-enl-" + str(s + 1) + "b.ppm"])
     subprocess.call(["cp", root + "-enl-" + str(pixels) + "b.ppm", root + "-enl.ppm"])
     subprocess.call(["convert", root + ".ppm", "-resize", str(pow(2 * .75, pixels) * 100) + "%", "-compress", "none", root + "-enl-im.ppm"])
+    subprocess.call([argv[1], "cenl", "2.", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-cenl.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "reshape"):
-    subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-enl.ppm", root + "-reshape.ppm"])
+    subprocess.call([argv[1], "reshape", str(pixels), root + "-enl-im.ppm", root + "-enl.ppm", root + "-reshape.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + "-enl.ppm", root + "-enl-im.ppm", root + "-reshape-rev.ppm"])
   elif(argv[2] == "pextend"):
     subprocess.call([argv[1], "pextend", str(pixels), root + ".ppm", root + "-pextend.ppm"])
