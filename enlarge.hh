@@ -381,9 +381,9 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #pragma omp for schedule(static, 1)
 #endif
 #if defined(_RECURSIVE_)
-  for(int lsize = 2; lsize <= size; lsize ++) {
+  for(int lsize = 2; lsize <= size; lsize *= 2) {
 #else
-  for(int lsize = size; lsize <= size; lsize ++) {
+  for(int lsize = size; lsize <= size; lsize *= 2) {
 #endif
           auto DFTD(seed(lsize, false));
     DFTD.row(0) *= U(0);
@@ -419,18 +419,13 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #pragma omp critical
 #endif
     for(int i = 0; i < Dop[idx].rows(); i ++)
-      for(int j = - lDop.cols(); j <= lDop.cols(); j ++)
-        if(0 <= i + j && i + j + lDop.cols() - 1 < Dop[idx].cols() &&
-           0 <= - j + lDop.rows() &&
-               (- j + lDop.rows()) / 2 < lDop.rows()) {
-          for(int k = 0; k < lDop.cols(); k ++) {
-            Dop[idx](i, i + j + k) +=
-              lDop((- j + lDop.rows()) / 2, k);
-            Eop[idx](i, i + j + k) +=
-              lEop((- j + lEop.rows()) / 2, k);
-          }
-          cnt ++;
-        }
+      for(int j = 0; j < lDop.cols(); j ++) {
+        Dop[idx](i, i * (Dop[idx].cols() - lDop.cols()) / Dop[idx].cols() + j) +=
+          lDop(i * lDop.rows() / Dop[idx].rows(), j);
+        Eop[idx](i, i * (Eop[idx].cols() - lEop.cols()) / Eop[idx].cols() + j) +=
+          lEop(i * lEop.rows() / Eop[idx].rows(), j);
+      }
+    cnt ++;
   }
   Dop[idx] /= cnt;
   Eop[idx] /= cnt;
