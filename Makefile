@@ -11,7 +11,7 @@ CXXFLAGS+=	-std=c++11
 # -mtune=native is not for porting.
 CXXFLAGS+=	-O3 -g2
 # enlarge.hh apply recursive.
-CXXFLAGS+=	_RECURSIVE_
+CXXFLAGS+=	-D_RECURSIVE_
 # Do not use this because of the slowness, so this implementation is for what around licenses.
 #CXXFLAGS+=	-D_WITHOUT_EIGEN_
 # If we want to use bump with more depth, we should include and link mpfr, and set this flag with bits:
