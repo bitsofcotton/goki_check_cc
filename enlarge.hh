@@ -420,7 +420,9 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #endif
     for(int i = 0; i < Dop[idx].rows(); i ++)
       for(int j = max(0, int(i - lDop.cols())); j <= min(int(i + lDop.cols()), int(Dop[idx].cols() - lDop.cols())); j ++)
-        if(0 <= j - lDop.cols() && j - 1 < lDop.cols()) {
+        if(0 <= j - lDop.cols() && j - 1 < lDop.cols() &&
+           0 <= (i - j) / 2 + lDop.cols() / 2 &&
+                (i - j) / 2 + lDop.cols() < lDop.cols()) {
           for(int k = 0; k < lDop.cols(); k ++) {
             Dop[idx](i, j + k - lDop.cols()) +=
               lDop((i - j) / 2 + lDop.cols() / 2, k);
