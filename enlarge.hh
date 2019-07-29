@@ -420,13 +420,13 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #endif
     for(int i = 0; i < Dop[idx].rows(); i ++)
       for(int j = - lDop.cols(); j <= lDop.cols(); j ++)
-        if(0 <= i + j && i + j + lDop.cols() < Dop[idx].cols() &&
+        if(0 <= i + j && i + j + lDop.cols() - 1 < Dop[idx].cols() &&
            0 <= i - j + lDop.rows() &&
-               (i - j + lDop.rows() / 2 < lDop.rows()) {
+               (i - j + lDop.rows()) / 2 < lDop.rows()) {
           for(int k = 0; k < lDop.cols(); k ++) {
             Dop[idx](i, i + j + k) +=
               lDop((i - j + lDop.rows()) / 2, k);
-            Eop[idx](i, j + j + k) +=
+            Eop[idx](i, i + j + k) +=
               lEop((i - j + lEop.rows()) / 2, k);
           }
           cnt ++;
