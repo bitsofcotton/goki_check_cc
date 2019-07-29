@@ -88,6 +88,7 @@ for line in argv[3:]:
     subprocess.call(["cp", root + "-enl-" + str(pixels) + "b.ppm", root + "-enl.ppm"])
     subprocess.call(["convert", root + ".ppm", "-resize", str(pow(2 * .75, pixels) * 100) + "%", "-compress", "none", root + "-enl-im.ppm"])
     subprocess.call([argv[1], "cenl", "2.", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-cenl.ppm"])
+    subprocess.call([argv[1], "cenl", "2.", root + "-enl.ppm", root + "-enl-im.ppm", root + "-enl-denl.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "reshape"):

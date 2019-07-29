@@ -674,7 +674,7 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase, const Mat& vbase, const int& count) {
-  assert(cbase.rows() && cbase.cols() && vbase.rows() && cbase.cols());
+  assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
   assert(vbase.rows() % cbase.rows() == 0 && vbase.cols() % cbase.cols() == 0);
   assert(vbase.rows() / cbase.rows() == vbase.cols() / cbase.cols());
   vector<pair<T, pair<int, int> > > vpoints;
