@@ -145,7 +145,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             auto delta(compute(Eop[idx] * data, ABS));
       result = Mat(data.rows() * 2, data.cols());
       // ||data0 + delta + k1|| == ||data0|| * 2.
-      // k^2 ||1|| + 2k * <data0+delta,1> + ||data0 + delta|| - ||data0|| * 2 == ~.
+      // k^2 ||1||^2 + 2k * <data0+delta,1> + ||data0 + delta||^2 - ||data0||^2 * 2 == 0.
       T a(data.rows() * 2), b(0), c(0);
       Vec k(data.cols());
       for(int j = 0; j < data.cols(); j ++) {
