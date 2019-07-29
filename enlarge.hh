@@ -367,6 +367,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   cerr << "n" << flush;
   idx = Dop.size();
   Dop.push_back(Mat(size, size));
+  int cnt(0);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -419,13 +420,18 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #endif
     for(int i = 0; i < Dop[idx].rows(); i ++)
       for(int j = max(0, int(i - lDop.cols())); j <= min(int(i + lDop.cols()), int(Dop[idx].cols() - lDop.cols())); j ++)
-        for(int k = 0; k < lDop.cols(); k ++) {
-          Dop[idx](i, j + k - lDop.cols()) +=
-            lDop(max(0, min(int(lDop.cols() - 1), (i - j) / 2 + lDop.cols() / 2), k);
-          Eop[idx](i, j + k - lEop.cols()) +=
-            lEop(max(0, min(int(lEop.cols() - 1), (i - j) / 2 + lEop.cols() / 2), k);
+        if(0 <= j - lDop.cols() && j - 1 < lDop.cols()) {
+          for(int k = 0; k < lDop.cols(); k ++) {
+            Dop[idx](i, j + k - lDop.cols()) +=
+              lDop((i - j) / 2 + lDop.cols() / 2, k);
+            Eop[idx](i, j + k - lEop.cols()) +=
+              lEop((i - j) / 2 + lEop.cols() / 2, k);
+          }
+          cnt ++;
         }
   }
+  Dop[idx] /= cnt;
+  Eop[idx] /= cnt;
   return;
 }
 
