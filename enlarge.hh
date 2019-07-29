@@ -419,15 +419,15 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #pragma omp critical
 #endif
     for(int i = 0; i < Dop[idx].rows(); i ++)
-      for(int j = max(0, int(i - lDop.cols() / 2)); j <= min(int(i + lDop.cols() / 2), int(Dop[idx].cols() - lDop.cols())); j ++)
-        if(0 <= j - lDop.cols() / 2 &&
-                j - 1 < Dop[idx].cols() &&
-           (i - j) + lDop.rows() / 2 < lDop.rows()) {
+      for(int j = - lDop.cols(); j <= lDop.cols(); j ++)
+        if(0 <= i + j && i + j + lDop.cols() - 1 < Dop[idx].cols() &&
+           0 <= - j + lDop.rows() &&
+               (- j + lDop.rows()) / 2 < lDop.rows()) {
           for(int k = 0; k < lDop.cols(); k ++) {
-            Dop[idx](i, j + k - lDop.cols() / 2) +=
-              lDop((i - j) + lDop.rows() / 2, k);
-            Eop[idx](i, j + k - lEop.cols() / 2) +=
-              lEop((i - j) + lEop.rows() / 2, k);
+            Dop[idx](i, i + j + k) +=
+              lDop((- j + lDop.rows()) / 2, k);
+            Eop[idx](i, i + j + k) +=
+              lEop((- j + lEop.rows()) / 2, k);
           }
           cnt ++;
         }
