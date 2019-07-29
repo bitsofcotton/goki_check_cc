@@ -421,9 +421,9 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       for(int j = max(0, int(i - lDop.cols())); j <= min(int(i + lDop.cols()), int(Dop[idx].cols() - lDop.cols())); j ++)
         for(int k = 0; k < lDop.cols(); k ++) {
           Dop[idx](i, j + k - lDop.cols()) +=
-            lDop((j - i) / 2 + lDop.cols() / 2, k);
+            lDop((i - j) / 2 + lDop.cols() / 2, k);
           Eop[idx](i, j + k - lEop.cols()) +=
-            lEop((j - i) / 2 + lEop.cols() / 2, k);
+            lEop((i - j) / 2 + lEop.cols() / 2, k);
         }
   }
   return;
