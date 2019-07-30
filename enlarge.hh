@@ -78,7 +78,6 @@ public:
   void reinit();
   T    dratio;
   T    offset;
-  T    lanc;
   
 private:
   void initDop(const int& size);
@@ -97,7 +96,6 @@ template <typename T> Filter<T>::Filter() {
   // N.B. from accuracy reason, low depth.
   dratio  = T(.05);
   offset  = T(1) / T(64);
-  lanc    = T(3);
   idx     = - 1;
 }
 
