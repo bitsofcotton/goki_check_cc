@@ -147,14 +147,20 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "enlarge") == 0) {
       Filter<double> enlarger;
       for(int j = 0; j < ratio; j ++)
-        for(int i = 0; i < 3; i ++) {
+        for(int i = 0; i < 3; i ++) //{
+          data[i] = enlarger.compute(enlarger.compute(data[i], enlarger.ENLARGE_BOTH), enlarger.CLIP);
+/*
           typename Filter<double>::Mat xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           // XXX: geometric mean ratio.
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 0), enlarger.ENLARGE_BOTH), - 1, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 0), enlarger.ENLARGE_BOTH), - 2, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 0), enlarger.ENLARGE_BOTH),   2, 0));
-          data[i] = enlarger.compute(xye, enlarger.CLIP);
+          //data[i] = enlarger.compute(xye, enlarger.CLIP);
+          data[i] = xye;
         }
+      for(int i = 0; i < 3; i ++)
+        data[i] = enlarger.compute(data[i], enlarger.CLIP);
+*/
     } else if(strcmp(argv[1], "pextend") == 0) {
       Filter<double> extender;
       for(int i = 0; i < 3; i ++)

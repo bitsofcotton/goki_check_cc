@@ -78,6 +78,7 @@ public:
   void reinit();
   T    dratio;
   T    offset;
+  T    lanc;
   
 private:
   void initDop(const int& size);
@@ -86,6 +87,7 @@ private:
   T    Pi;
   vector<Mat> Dop;
   vector<Mat> Eop;
+  vector<Mat> Bop;
   int  idx;
 };
 
@@ -95,11 +97,12 @@ template <typename T> Filter<T>::Filter() {
   // N.B. from accuracy reason, low depth.
   dratio  = T(.05);
   offset  = T(1) / T(64);
+  lanc    = T(3);
   idx     = - 1;
 }
 
 template <typename T> void Filter<T>::reinit() {
-  Dop = Eop = vector<Mat>();
+  Dop = Eop = Bop = vector<Mat>();
   idx = - 1;
 }
 
@@ -143,15 +146,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       initDop(data.rows());
       const Mat  diff(Dop[idx] * data);
             auto delta(compute(Eop[idx] * data, ABS));
+      const Mat& noise(Bop[idx]);
       result = Mat(data.rows() * 2, data.cols());
       // ||data0 + delta + k1|| == ||data0|| * 2.
-      // k^2 ||1||^2 + 2k * <data0+delta,1> + ||data0 + delta||^2 - ||data0||^2 * 2 == 0.
-      T a(data.rows() * 2), b(0), c(0);
+      // k^2 ||1'||^2 + 2k * <data0+delta,1'> + ||data0 + delta||^2 - ||data0||^2 * 2 == 0.
       Vec k(data.cols());
       for(int j = 0; j < data.cols(); j ++) {
-        b = c = T(0);
+        T a(0), b(0), c(0);
         for(int i = 0; i < data.rows(); i ++) {
-          b += data(i, j) * 2;
+          a += noise(i, i) * noise(i, i);
+          b += data(i, j)  * noise(i, i);
           c += pow(data(i, j) + delta(i, j), T(2)) + pow(data(i, j) - delta(i, j), T(2)) - pow(data(i, j), T(2));
         }
         if(b * b - a * c < T(0))
@@ -159,16 +163,17 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         else
           k[j] = - b / a + sqrt(b * b - a * c) / a;
       }
+      k /= T(2);
       for(int i = 0; i < data.rows(); i ++) {
         result.row(i * 2 + 0) = data.row(i);
         result.row(i * 2 + 1) = data.row(i);
         for(int j = 0; j < data.cols(); j ++)
           if(diff(i, j) < T(0)) {
-            result(i * 2 + 0, j) += delta(i, j) + k[j];
-            result(i * 2 + 1, j) -= delta(i, j) + k[j];
+            result(i * 2 + 0, j) += delta(i, j) + k[j] * noise(i, i);
+            result(i * 2 + 1, j) -= delta(i, j) + k[j] * noise(i, i);
           } else {
-            result(i * 2 + 0, j) -= delta(i, j) + k[j];
-            result(i * 2 + 1, j) += delta(i, j) + k[j];
+            result(i * 2 + 0, j) -= delta(i, j) + k[j] * noise(i, i);
+            result(i * 2 + 1, j) += delta(i, j) + k[j] * noise(i, i);
           }
       }
     }
@@ -376,6 +381,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     for(int j = 0; j < size; j ++)
       Dop[idx](i, j) = T(0);
   Eop.push_back(Dop[idx]);
+  Bop.push_back(Dop[idx]);
   assert(2 <= size);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -389,6 +395,10 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     DFTD.row(0) *= U(0);
     const auto IDFT(seed(lsize, true));
           auto DFTE(DFTD);
+          auto DFTB(DFTD);
+    for(int i = 0; i < DFTB.rows(); i ++)
+      for(int j = 0; j < DFTB.cols(); j ++)
+        DFTB(i, j) = T(0);
     T ni(0);
     T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
@@ -404,6 +414,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, half freq space refer and uses each.
       DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1));
+      DFTB(i, i)   = U(T(1)) / (exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1)));
     }
     // N.B. similar to det(Dop * Iop) == 1
     DFTD /= sqrt(nd * ni);
@@ -411,9 +422,11 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
     const Mat lEop((IDFT * DFTE).template real<T>());
+    const Mat lBop((IDFT * DFTB).template real<T>());
 #else
     const Mat lDop((IDFT * DFTD).real().template cast<T>());
     const Mat lEop((IDFT * DFTE).real().template cast<T>());
+    const Mat lBop((IDFT * DFTB).real().template cast<T>());
 #endif
 #if defined(_OPENMP)
 #pragma omp critical
@@ -424,11 +437,14 @@ template <typename T> void Filter<T>::initDop(const int& size) {
           lDop(i * lDop.rows() / Dop[idx].rows(), j);
         Eop[idx](i, i * (Eop[idx].cols() - lEop.cols()) / Eop[idx].cols() + j) +=
           lEop(i * lEop.rows() / Eop[idx].rows(), j);
+        Bop[idx](i, i * (Bop[idx].cols() - lBop.cols()) / Bop[idx].cols() + j) +=
+          lBop(i * lBop.rows() / Bop[idx].rows(), j);
       }
     cnt ++;
   }
   Dop[idx] /= cnt;
   Eop[idx] /= cnt;
+  Bop[idx] /= cnt;
   return;
 }
 
