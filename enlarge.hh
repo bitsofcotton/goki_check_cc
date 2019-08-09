@@ -142,37 +142,32 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case ENLARGE_Y:
     {
       initDop(data.rows());
-      const Mat  diff(Dop[idx] * data);
-            auto delta(compute(Eop[idx] * data, ABS));
-      const Mat& noise(Bop[idx]);
+      const Mat   diff(Dop[idx] * data);
+            auto  delta(compute(Eop[idx] * data, ABS));
+      const auto& noise(Bop[idx]);
       result = Mat(data.rows() * 2, data.cols());
-      // ||data0 + delta + k1|| == ||data0|| * 2.
-      // k^2 ||1'||^2 + 2k * <data0+delta,1'> + ||data0 + delta||^2 - ||data0||^2 * 2 == 0.
+      // ||data0 + delta + k1|| == ||data0||.
+      // k^2 ||1'||^2 + 2k * <data0+delta,1'> + ||data0 + delta||^2 - ||data0||^2 == 0.
       Vec k(data.cols());
       for(int j = 0; j < data.cols(); j ++) {
         T a(0), b(0), c(0);
         for(int i = 0; i < data.rows(); i ++) {
-          a += noise(i, i) * noise(i, i);
-          b += data(i, j)  * noise(i, i);
-          c += pow(data(i, j) + delta(i, j), T(2)) + pow(data(i, j) - delta(i, j), T(2)) - pow(data(i, j), T(2));
+          a += noise(i, noise.cols() / 2) * noise(i, noise.cols() / 2);
+          b += noise(i, noise.cols() / 2) * data(i, j);
+          c += (pow(data(i, j) + delta(i, j), T(2)) + pow(data(i, j) - delta(i, j), T(2))) / T(2) - pow(data(i, j), T(2));
         }
         if(b * b - a * c < T(0))
           k[j] = - b / a;
         else
           k[j] = - b / a + sqrt(b * b - a * c) / a;
       }
-      k /= T(2);
       for(int i = 0; i < data.rows(); i ++) {
         result.row(i * 2 + 0) = data.row(i);
         result.row(i * 2 + 1) = data.row(i);
-        for(int j = 0; j < data.cols(); j ++)
-          if(diff(i, j) < T(0)) {
-            result(i * 2 + 0, j) += delta(i, j) + k[j] * noise(i, i);
-            result(i * 2 + 1, j) -= delta(i, j) + k[j] * noise(i, i);
-          } else {
-            result(i * 2 + 0, j) -= delta(i, j) + k[j] * noise(i, i);
-            result(i * 2 + 1, j) += delta(i, j) + k[j] * noise(i, i);
-          }
+        for(int j = 0; j < data.cols(); j ++) {
+          result(i * 2 + 0, j) += delta(i, j) + k[j] * noise(i, noise.cols() / 2);
+          result(i * 2 + 1, j) -= delta(i, j) + k[j] * noise(i, noise.cols() / 2);
+        }
       }
     }
     break;
