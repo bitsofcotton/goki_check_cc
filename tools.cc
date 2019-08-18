@@ -49,6 +49,7 @@ void usage() {
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck ibump   <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -206,6 +207,7 @@ int main(int argc, const char* argv[]) {
     if(!file.savep2or3(argv[4], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "collect") == 0 ||
+            strcmp(argv[1], "ibump")  == 0 ||
             strcmp(argv[1], "bump")  == 0) {
     if(argc < 4) {
       usage();

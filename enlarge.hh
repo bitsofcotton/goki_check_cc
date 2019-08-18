@@ -118,7 +118,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
     break;
   case BUMP_BOTH:
-    result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
+    result = gmean(compute(data, BUMP_X ), compute(data, BUMP_Y ));
     break;
   case EXTEND_BOTH:
     result = gmean(compute(compute(data, EXTEND_X), EXTEND_Y),
@@ -201,7 +201,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) * dratio));
+        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) * sqrt(dratio)));
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = j - T(Dop0.size() - 1) / 2;
@@ -230,7 +230,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) /= dC(i, j);
-      result = compute(result, LOGSCALE) * dratio;
+      result  = compute(result, LOGSCALE) * dratio;
+      // N.B. This is pseudo condition, doubles z-axis dist.
+      result += compute(result, DETECT_Y);
     }
     break;
   case EXTEND_Y0:
