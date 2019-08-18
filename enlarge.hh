@@ -230,7 +230,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) /= dC(i, j);
-      result  = compute(result, LOGSCALE) * dratio;
+      result  = compute(result, LOGSCALE) * sqrt(dratio);
       // N.B. This is pseudo condition, doubles z-axis dist.
       result += compute(result, DETECT_Y);
     }
