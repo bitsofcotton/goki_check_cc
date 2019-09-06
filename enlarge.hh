@@ -398,7 +398,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
       const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
-      const U phase2( U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+      const U phase2(U(T(1)) / phase);
       // N.B. d/dy.
       DFTD.row(i) *= phase;
       nd += abs(phase)  * abs(phase);
@@ -411,7 +411,8 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1));
       DFTB(i, i)   = U(T(1)) / (exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1)));
     }
-    // N.B. similar to det(Dop * Iop) == 1
+    // N.B. similar to det(Dop * Iop) == 1,
+    //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
     DFTD /= sqrt(nd * ni);
     DFTE /= T(2);
 #if defined(_WITHOUT_EIGEN_)
