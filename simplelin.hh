@@ -82,8 +82,8 @@ template <typename T> inline SimpleVector<T>::SimpleVector(SimpleVector<T>&& oth
 }
 
 template <typename T> inline SimpleVector<T>::~SimpleVector() {
-  if(entity)
-    delete[] entity;
+  delete[] entity;
+  entity = NULL;
   return;
 }
 
@@ -144,8 +144,7 @@ template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator = (const
   if(entity == other.entity && esize == other.esize)
     return *this;
   if(esize != other.esize) {
-    if(entity)
-      delete[] entity;
+    delete[] entity;
     entity = new T[other.esize];
   }
   esize = other.esize;
@@ -163,7 +162,7 @@ template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator = (Simpl
   esize  = move(other.esize);
   entity = move(other.entity);
   other.esize  = 0;
-  other.entity = 0;
+  other.entity = NULL;
   return *this;
 }
 
@@ -229,8 +228,7 @@ template <typename T> inline void SimpleVector<T>::resize(const int& size) {
   assert(size > 0);
   if(size != esize) {
     esize = size;
-    if(entity)
-      delete[] entity;
+    delete[] entity;
     entity = new T[esize];
   }
   return;
@@ -284,9 +282,9 @@ private:
 };
 
 template <typename T> inline SimpleMatrix<T>::SimpleMatrix() {
-  erows = 0;
-  ecols = 0;
-  entity = 0;
+  erows  = 0;
+  ecols  = 0;
+  entity = NULL;
   return;
 }
 
@@ -319,13 +317,13 @@ template <typename T> inline SimpleMatrix<T>::SimpleMatrix(SimpleMatrix<T>&& oth
   erows  = move(other.erows);
   ecols  = move(other.ecols);
   entity = move(other.entity);
-  other.entity = 0;
+  other.entity = NULL;
   return;
 }
 
 template <typename T> inline SimpleMatrix<T>::~SimpleMatrix() {
-  if(entity)
-    delete[] entity;
+  delete[] entity;
+  entity = NULL;
   return;
 }
   
@@ -454,7 +452,7 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator = (Simpl
   entity = move(other.entity);
   other.erows  = 0;
   other.ecols  = 0;
-  other.entity = 0;
+  other.entity = NULL;
   return *this;
 }
 
@@ -639,8 +637,7 @@ template <typename T> inline void SimpleMatrix<T>::resize(const int& rows, const
   assert(rows > 0 && cols > 0);
   if(rows != erows) {
     erows = rows;
-    if(entity)
-      delete[] entity;
+    delete[] entity;
     entity = new SimpleVector<T>[erows];
     ecols = 0;
   }
