@@ -411,9 +411,20 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1));
       DFTB(i, i)   = U(T(1)) / (exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1)));
     }
-    // N.B. similar to det(Dop * Iop) == 1,
+    // N.B. similar to det(Dop * Iop) == det(Dop) * det(Iop) == 1,
     //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
-    DFTD /= sqrt(nd * ni);
+    //      in matrix-matrix operation:
+    //      ||Dop * Iop * x|| / ||x|| == sum((d_k*i_k*x_k)^2)/sum(x_k^2)
+    //                                == sum(d_k^2*i_k^2)*cos theta cos psi
+    //                                == cos psi
+    //      in matrix-vector operation:
+    //      ||Dop * Iop * x|| / ||x|| == sum((d_k*i_k*x_k)^2)/sum(x_k^2)
+    //                                == sum(d_k^2)*cos theta'*sum(i_k^2)cos phi
+    //                                == ||Dop|| ||Iop|| cos theta' cos phi
+    //      so we choose matrix-vector operation with matrix-matrix style,
+    //      because of cosine range, we choose:
+    //        Dop' := Dop / sqrt(||Dop|| ||Iop||).
+    DFTD /= sqrt(sqrt(nd * ni));
     DFTE /= T(2);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
