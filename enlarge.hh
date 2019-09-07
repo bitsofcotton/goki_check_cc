@@ -230,9 +230,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) /= dC(i, j);
-      result  = compute(result, LOGSCALE) * sqrt(dratio);
-      // N.B. This is pseudo condition, doubles z-axis dist.
-      result += compute(result, DETECT_Y);
+      result = compute(result, LOGSCALE) * sqrt(dratio);
     }
     break;
   case EXTEND_Y0:
@@ -397,7 +395,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     T ni(0);
     T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
-      const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+      const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()) / sqrt(T(DFTD.rows())));
       const U phase2(U(T(1)) / phase);
       // N.B. d/dy.
       DFTD.row(i) *= phase;
