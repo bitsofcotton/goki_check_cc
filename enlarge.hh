@@ -416,7 +416,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //      in matrix-matrix operation:
     //      ||Dop * Iop * x|| / ||x|| == sum((d_k*i_k*x_k)^2)/sum(x_k^2)
     //                                == sum(d_k^2*i_k^2)*cos theta cos psi
-    //                                == cos psi
+    //                                == sqrt(n - 1) * cos psi
     //      in matrix-vector operation:
     //      ||Dop * Iop * x|| / ||x|| == sum((d_k*i_k*x_k)^2)/sum(x_k^2)
     //                                == sum(d_k^2)*cos theta'*sum(i_k^2)cos phi
@@ -424,7 +424,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //      so we choose matrix-vector operation with matrix-matrix style,
     //      because of cosine range, we choose:
     //        Dop' := Dop / sqrt(||Dop|| ||Iop||).
-    DFTD /= sqrt(sqrt(nd * ni));
+    DFTD *= sqrt((DFTD.rows() - 1) / sqrt(nd * ni));
     DFTE /= T(2);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
