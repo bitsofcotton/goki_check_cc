@@ -424,7 +424,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //      so we choose matrix-vector operation with matrix-matrix style,
     //      because of cosine range, we choose:
     //        Dop' := Dop / sqrt(||Dop|| ||Iop||).
-    DFTD *= sqrt((DFTD.rows() - 1) / sqrt(nd * ni));
+    DFTD *= sqrt(sqrt((DFTD.rows() - 1) / (nd * ni)));
     DFTE /= T(2);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
