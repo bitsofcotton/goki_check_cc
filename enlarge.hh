@@ -85,7 +85,6 @@ private:
   U    I;
   T    Pi;
   vector<Mat> Dop;
-  vector<Mat> BDop;
   vector<Mat> Eop;
   vector<Mat> Bop;
   int  idx;
@@ -101,7 +100,7 @@ template <typename T> Filter<T>::Filter() {
 }
 
 template <typename T> void Filter<T>::reinit() {
-  Dop = BDop = Eop = Bop = vector<Mat>();
+  Dop = Eop = Bop = vector<Mat>();
   idx = - 1;
 }
 
@@ -374,7 +373,6 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   for(int i = 0; i < size; i ++)
     for(int j = 0; j < size; j ++)
       Dop[idx](i, j) = T(0);
-  BDop.push_back(Dop[idx]);
   Eop.push_back(Dop[idx]);
   Bop.push_back(Dop[idx]);
   assert(2 <= size);
