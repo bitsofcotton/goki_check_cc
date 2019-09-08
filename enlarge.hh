@@ -427,7 +427,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //      And, if we change coefficients ratio on differential operator,
     //        and its inverse of integrate operator, it causes invalid
     //        on the meaning of DFT core, but in experiment,
-    //          if ||Dop|| ||Iop|| == 0 in that meaning,
+    //          if ||Dop|| ||Iop|| == 1 in that meaning,
     //          exists r in R, Dop * x == r * x results gains.
     DFTD *= sqrt(T(DFTD.rows() - 1) / (nd * ni));
     DFTE /= T(2);
