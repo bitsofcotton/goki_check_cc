@@ -395,8 +395,8 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     T ni(0);
     T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
-      const U phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()) / sqrt(T(DFTD.rows())));
-      const U phase2(U(T(1)) / phase);
+      const auto phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+      const auto phase2(U(T(1)) / phase);
       // N.B. d/dy.
       DFTD.row(i) *= phase;
       nd += abs(phase)  * abs(phase);
@@ -421,8 +421,15 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //                                == ||Dop|| ||Iop|| cos theta' cos phi
     //      so we choose matrix-vector operation with matrix-matrix style,
     //      because of cosine range, we choose:
-    //        Dop' := Dop / sqrt(||Dop|| ||Iop||).
-    DFTD *= sqrt(sqrt((DFTD.rows() - 1) / (nd * ni)));
+    //        Dop' := Dop sqrt(n - 1) / sqrt(||Dop|| ||Iop||).
+    //      (sqrt instead of sqrt(sqrt(...)) is because of
+    //        the ratio is applied to differential operator itself.)
+    //      And, if we change coefficients ratio on differential operator,
+    //        and its inverse of integrate operator, it causes invalid
+    //        on the meaning of DFT core, but in experiment,
+    //          if ||Dop|| ||Iop|| == 1 in that meaning,
+    //          exists r in R, Dop * x == r * x results gains.
+    DFTD *= sqrt(T(DFTD.rows() - 1) / (nd * ni));
     DFTE /= T(2);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
@@ -470,7 +477,7 @@ template <typename T> typename Filter<T>::MatU Filter<T>::seed(const int& size, 
 #endif
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = exp(I * U(- 2. * Pi * T(idft ? - 1 : 1) * i * j / T(size))) / T(idft ? - size : 1);
+      result(i, j) = exp(I * U(- 2. * Pi * T(idft ? - 1 : 1) * i * j / T(size))) / T(idft ? size : 1);
   return result;
 }
 
