@@ -161,7 +161,8 @@ template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator = (Simpl
     return *this;
   esize  = move(other.esize);
   entity = move(other.entity);
-  other.~SimpleVector<T>();
+  other.esize  = 0;
+  other.entity = NULL;
   return *this;
 }
 
@@ -449,7 +450,9 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator = (Simpl
   erows  = move(other.erows);
   ecols  = move(other.ecols);
   entity = move(other.entity);
-  other.~SimpleMatrix<T>();
+  other.erows  = 0;
+  other.ecols  = 0;
+  other.entity = NULL;
   return *this;
 }
 
