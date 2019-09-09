@@ -56,8 +56,7 @@ for line in argv[3:]:
   if(ext != ".ppm"):
     subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
   if(argv[2] == "sample"):
-    cmd = ["python", argv[0], argv[1], "col"]
-    cmd.extend(argv[3:])
+    cmd = ["python", argv[0], argv[1], "col", line]
     subprocess.call(cmd)
     cmd[3] = "bump"
     subprocess.call(cmd)
@@ -72,6 +71,8 @@ for line in argv[3:]:
     cmd[3] = "tilt"
     subprocess.call(cmd)
     cmd[3] = "btilt"
+    subprocess.call(cmd)
+    cmd[3] = "btilt2"
     subprocess.call(cmd)
     cmd[3] = "flicker"
     subprocess.call(cmd)
@@ -143,6 +144,10 @@ for line in argv[3:]:
       subprocess.call([argv[1], "tilt", "1", "4", str((s - 16) / 16. * .1), "0", root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
       subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(32 * 2 - s - 1) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
+  elif(argv[2] == "btilt2"):
+    subprocess.call([argv[1], "tilt", "1", "4", ".0125", "0", root + ".ppm", root + ".obj", root + "-btilt2-base-0.ppm"])
+    subprocess.call([argv[1], "tilt", "3", "4", ".0125", "0", root + ".ppm", root + ".obj", root + "-btilt2-base-1.ppm"])
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt2-base-%d.ppm", "-r", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b2.mp4"])
   elif(argv[2] == "flicker"):
     for s in range(0, 16):
       subprocess.call([argv[1], "obj", "0", "3", str(.15 / 16. * s), root + "-bump.ppm", root + "-flicker.obj"])
@@ -156,8 +161,7 @@ for line in argv[3:]:
       subprocess.call([argv[1], "sbox", str(- s * 16), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(3 - s) + ".ppm"])
   elif(argv[2] == "extend"):
     for tami in range(1, 40):
-      #tam = (40 - tami) / 360.
-      tam = 8 / 360.
+      tam = tami / 360.
       for s in range(0, 4):
         subprocess.call([argv[1], "tilt", str(s), "4", str(tam), "0", root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
         subprocess.call([argv[1], "bump", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
