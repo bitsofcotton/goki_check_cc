@@ -19,20 +19,25 @@ if(argv[2] == "match" or argv[2] == "matcho"):
   root1, ext1 = os.path.splitext(argv[4])
   if(ext0 != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
+  pixels = 5
+  if(argv[2] == "match" and len(argv) > 5):
+    pixels = int(argv[5])
+  elif(argv[2] == "matcho" and len(argv) > 6):
+    pixels = int(argv[6])
   if(ext1 == ".obj" or ext1 == ".gltf"):
     if(argv[2] == "match"):
-      subprocess.call([argv[1], "match", "16", "40", "5", "5", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+      subprocess.call([argv[1], "match", "16", "40", "1", str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
     else:
       for s in [0, .25, .5, .75, 1]:
-        subprocess.call([argv[1], "matcho", argv[5], str(s), "5", "5", root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4] + "-" + str(s)])
+        subprocess.call([argv[1], "matcho", argv[5], str(s), "1", str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4] + "-" + str(s)])
     exit(0)
   elif(ext1 != ".ppm"):
     subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
   if(argv[2] == "match"):
-    subprocess.call([argv[1], "match", "16", "40", "5", "5", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
+    subprocess.call([argv[1], "match", "16", "40", "1", str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
     for s in [0, .25, .5, .75, 1]:
-      subprocess.call([argv[1], "matcho", argv[5], str(s), "5", "5", root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1 + "-" + str(s)])
+      subprocess.call([argv[1], "matcho", argv[5], str(s), "1", str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1 + "-" + str(s)])
   exit(0)
 
 if(argv[2] == "objtilt"):
@@ -95,6 +100,8 @@ for line in argv[3:]:
   elif(argv[2] == "reshape"):
     subprocess.call([argv[1], "reshape", str(pixels), root + "-enl-im.ppm", root + "-enl.ppm", root + "-reshape.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + "-enl.ppm", root + "-enl-im.ppm", root + "-reshape-rev.ppm"])
+    subprocess.call([argv[1], "reshape", str(pixels), root + "-bump.ppm", root + ".ppm", root + "-reshape-bump.ppm"])
+    subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-reshape-bump-rev.ppm"])
   elif(argv[2] == "pextend"):
     subprocess.call([argv[1], "pextend", str(pixels), root + ".ppm", root + "-pextend.ppm"])
   elif(argv[2] == "emph"):
