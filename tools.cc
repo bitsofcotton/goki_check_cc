@@ -509,7 +509,7 @@ int main(int argc, const char* argv[]) {
       mdata1[0] = mdata1[1] = mdata1[2] = data1[0] * 0.;
     }
     resizeDst2<double>(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
-    auto& bump0(bdata[0]);
+    const auto& bump0(bdata[0]);
     redig.initialize(vboxdst);
     redig.getTileVec(bump0, shape0, delau0);
     redig.maskVectors(shape0, delau0, mdata[0]);
