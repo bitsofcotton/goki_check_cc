@@ -86,7 +86,9 @@ enlarger2ex generates the bumpmap that is pseudo plausible one because of one im
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
 And, generated bump map is NOT correct in global, so please change local-global ratio in enlarge.hh:enlarger2ex::compute::BUMP_Y.  
-And, there's surely small chances that enhances bump command on emphe command processed image.
+And, there's surely small chances that enhances bump command on emphe command processed image.  
+And, if the image contains fine structures or something like patterns, the input this program needs to be huge size.
+So if you want to use such images, please use some other programs that not depends on this hypothesis exactly.
 
 If we use this program for 3D model input like blender, please make mask with mask0 or another softwares, and convert them
 with mask command, then, please use input-mask.obj . If we are lucky, in the blender example, large scaled input will inputted,
