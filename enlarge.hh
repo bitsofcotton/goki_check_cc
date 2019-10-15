@@ -375,7 +375,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
   camera1[1] =   T(1);
   assert(0 < dratio);
   initDop(max(3, min(int(data0.rows()) / 16, int(T(1) / dratio / dratio))));
-//  const auto Dop0size(max(3, min(int(data0.rows()) / 16, int(T(1) / dratio / dratio))));
+  const auto dC(compute(compute(data0, COLLECT_Y) + compute(data1, COLLECT_Y), ABS));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -405,7 +405,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
     const auto work(compute(compute(A * data0 - B * data1, ABS), BCLIP));
     for(int i = 0; i < result.rows(); i ++)
       for(int j = 0; j < result.cols(); j ++)
-        result(i, j) += T(1) / work(i, j);
+        result(i, j) += dC(i, j) / work(i, j);
   }
   return - compute(result, LOGSCALE) * sqrt(dratio);
 }
