@@ -12,6 +12,7 @@ For speed, we need http://eigen.tuxfamily.org/ library.
 * enlarge.hh
 * * dratio : z-axis step ratio relate to 1., must be &lt; 1. This hardly depends calculating accuracy and if it's too small, result will be vanished.
 * * offset : color value ratio around convergences in making bump map.
+* * pixels : camera distance to calculate complement bumpmap.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
@@ -79,17 +80,15 @@ N.B. a file per 5 minutes, up to 20 Mo total upload size.
 These program's enlarge is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ graphics.  
+These program's bump2 assumes pseudo-tilt then pseudo-capture 2 of cameras.
 These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer.  
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
 
 # Specification
 enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
-if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.
-And, generated bump map is NOT correct in global, so please change local-global ratio in enlarge.hh:enlarger2ex::compute::BUMP_Y.  
-And, there's surely small chances that enhances bump command on emphe command processed image.  
-And, if the image contains fine structures or something like patterns, the input this program needs to be huge size.
-So if you want to use such images, please use some other programs that not depends on this hypothesis exactly.
+if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.  
+And, bump2 command can pseudo-correct the bumpmap with hypothesis little tilt approximates little distance camera, but the result is also pseudo-one.
 
 If we use this program for 3D model input like blender, please make mask with mask0 or another softwares, and convert them
 with mask command, then, please use input-mask.obj . If we are lucky, in the blender example, large scaled input will inputted,
