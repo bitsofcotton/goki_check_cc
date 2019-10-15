@@ -73,6 +73,7 @@ public:
 #endif
   Filter();
   Mat  compute(const Mat& data, const direction_t& dir);
+  Mat  bump2(const Mat& data0, const Mat& data1, const T& pixels = T(1));
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
   void reinit();
@@ -222,7 +223,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       }
       // N.B.
       // From hypothesis, it is correct to use:
-      //   log(|average(d_k C * exp(z_k))| / |dC| == result.
+      //   log(|average(d_k C * exp(z_k))| / |dC|) == result.
       // But it's not here, because of some calculation experiment
       // causes some of false detection. So to avoid that, we use:
       //   log(|average(d_k C * exp(z_k * sqrt(dratio)))| / |dC|) == result.
@@ -356,6 +357,59 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   return result;
 }
 
+template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0, const Mat& data1, const T& pixels) {
+  assert(data0.rows() == data1.rows() && data0.cols() == data0.cols());
+  Mat result(data0.rows(), data0.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = T(0);
+  Vec camera0(2);
+  Vec camera1(2);
+  camera0[0] =   pixels;
+  camera0[1] =   T(1);
+  camera1[0] = - pixels;
+  camera1[1] =   T(1);
+  assert(0 < dratio);
+  initDop(max(3, min(int(data0.rows()) / 16, int(T(1) / dratio / dratio))));
+//  const auto Dop0size(max(3, min(int(data0.rows()) / 16, int(T(1) / dratio / dratio))));
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int zi = 0; zi < T(1) / dratio; zi ++) {
+    Mat A(data0.rows(), data0.rows());
+    for(int i = 0; i < A.rows(); i ++)
+      for(int j = 0; j < A.cols(); j ++)
+        A(i, j) = T(0);
+    Mat B(A);
+    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) * sqrt(dratio)));
+    for(int i = 0; i < A.rows(); i ++)
+      for(int j = 0; j < Dop0.size(); j ++) {
+        Vec cpoint(2);
+        cpoint[0] = j - T(Dop0.size() - 1) / 2;
+        cpoint[1] = T(zi) * dratio;
+        // x-z plane projection of point p with camera geometry c to z=0.
+        // c := camera, p := cpoint.
+        // <c + (p - c) * t, [0, 1]> = 0
+        const auto t0(- camera0[1] / (cpoint[1] - camera0[1]));
+        const auto y0((camera0 + (cpoint - camera0) * t0)[0]);
+        const auto t1(- camera1[1] / (cpoint[1] - camera1[1]));
+        const auto y1((camera1 + (cpoint - camera1) * t1)[0]);
+        // N.B. average_k(dC_k / dy * z_k).
+        A(i, getImgPt(i + y0, data0.rows())) += Dop0[j];
+        B(i, getImgPt(i + y1, data0.rows())) += Dop0[j];
+      }
+    const auto work(compute(compute(A * data0 - B * data1, ABS), BCLIP));
+    for(int i = 0; i < result.rows(); i ++)
+      for(int j = 0; j < result.cols(); j ++)
+        result(i, j) += T(1) / work(i, j);
+  }
+  return - compute(result, LOGSCALE) * sqrt(dratio);
+}
+
 template <typename T> void Filter<T>::initDop(const int& size) {
   for(int i = 0; i < Dop.size(); i ++)
     if(Dop[i].rows() == size) {
@@ -421,7 +475,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //                                == ||Dop|| ||Iop|| cos theta' cos phi
     //      so we choose matrix-vector operation with matrix-matrix style,
     //      because of cosine range, we choose:
-    //        Dop' := Dop sqrt(n - 1) / sqrt(||Dop|| ||Iop||).
+    //        Dop' := Dop sqrt(n - 1) / (||Dop|| ||Iop||).
     //      (sqrt instead of sqrt(sqrt(...)) is because of
     //        the ratio is applied to differential operator itself.)
     //      And, if we change coefficients ratio on differential operator,
