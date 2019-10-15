@@ -49,6 +49,7 @@ void usage() {
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck bump2   <input0.ppm> <input1.ppm> <delta_pixels> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -237,6 +238,22 @@ int main(int argc, const char* argv[]) {
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
+      return - 1;
+  } else if(strcmp(argv[1], "bump2") == 0) {
+    if(argc < 5) {
+      usage();
+      return 0;
+    }
+    typename simpleFile<double>::Mat data0[3], data1[3], out[3];
+    if(!file.loadp2or3(data0, argv[2]))
+      return - 1;
+    if(!file.loadp2or3(data1, argv[3]))
+      return - 1;
+    const auto pixels(std::atof(argv[4]));
+    Filter<num_t> bump;
+    out[0] = out[1] = out[2] = redig.autoLevel(- bump.bump2(redig.rgb2d(data0).transpose(), redig.rgb2d(data1).transpose(), pixels).transpose(), data0[0].rows() + data0[0].cols());
+    redig.normalize(out, 1.);
+    if(!file.savep2or3(argv[5], out, ! true))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0) {
     if(argc < 6) {
