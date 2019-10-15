@@ -52,6 +52,7 @@ Freeze 前の細かな実装のチェックをしています。
     python test.py ./gokicheck bump input.png
     python test.py ./gokicheck enl  input.png
     python test.py ./gokicheck reshape input.png
+    python test.py ./gokicheck extend input.png
     python test.py ./gokicheck emph input.png
     python test.py ./gokicheck emphe input.png
     python test.py ./gokicheck obj  input.png
