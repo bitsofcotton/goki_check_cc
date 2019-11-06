@@ -429,8 +429,8 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   for(int lsize = size; lsize <= size; lsize *= 2) {
 #endif
           auto DFTD(seed(lsize, false));
-    DFTD.row(0) *= U(T(0));
     const auto IDFT(seed(lsize, true));
+    DFTD.row(0) *= U(T(0));
           auto DFTE(DFTD);
           auto DFTB(DFTD);
     for(int i = 0; i < DFTB.rows(); i ++)

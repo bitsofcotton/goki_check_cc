@@ -14,6 +14,7 @@ CXXFLAGS+=	-O3 -g2
 #CXXFLAGS+=	-D_RECURSIVE_
 # Do not use this because of the slowness, so this implementation is for what around licenses.
 #CXXFLAGS+=	-D_WITHOUT_EIGEN_
+#CXXFLAGS+=	-D_WITH_NO_FLOAT_
 # If we want to use bump with more depth, we should include and link mpfr, and set this flag with bits:
 #CXXFLAGS+=	_WITH_MPFR_=512
 LDFLAGS+=	-lc++
