@@ -17,7 +17,7 @@ using mpfr::log;
 using mpfr::isfinite;
 #elif defined(_WITH_NO_FLOAT_)
 #include "ifloat.hh"
-typedef SimpleFloat<uint16_t, 16, char> num_t;
+typedef SimpleFloat<uint16_t, uint32_t, 16, char> num_t;
 #else
 typedef double num_t;
 #endif
@@ -475,7 +475,7 @@ int main(int argc, const char* argv[]) {
     int fnout(10);
     int nshow(0);
     int nhid(0);
-    float emph(0);
+    num_t emph(0);
     match_t<num_t> m;
     if(strcmp(argv[1], "match") == 0) {
       nshow = std::atoi(argv[2]);
@@ -673,7 +673,7 @@ int main(int argc, const char* argv[]) {
 #else
           const auto rp(filter.compute(dft.real(), filter.DETECT_X));
           const auto ip(filter.compute(dft.imag(), filter.DETECT_X));
-          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
+          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- 1.)) * ip.template cast<complex<num_t> >())).real();
 #endif
         } else if(strcmp(argv[3], "bump") == 0) {
 #if defined(_WITHOUT_EIGEN_)
