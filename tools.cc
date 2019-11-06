@@ -37,6 +37,18 @@ using std::complex;
 using std::complex;
 #endif
 
+#if ! defined(_WITH_NO_FLOAT_)
+using std::sqrt;
+using std::exp;
+using std::log;
+using std::pow;
+using std::sin;
+using std::cos;
+using std::tan;
+using std::atan2;
+using std::ceil;
+#endif
+
 #if defined(_WITH_GLTF2_)
 #include <fx/gltf.h>
 #endif

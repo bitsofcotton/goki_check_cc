@@ -23,11 +23,9 @@ using std::getline;
 using std::istringstream;
 using std::stringstream;
 using std::ofstream;
-using std::sqrt;
 using std::vector;
 using std::pair;
 using std::make_pair;
-using std::atan2;
 
 template <typename T> class match_t;
 

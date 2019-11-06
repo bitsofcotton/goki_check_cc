@@ -15,8 +15,6 @@
 #if !defined(_SIMPLELIN_)
 
 using std::move;
-using std::isfinite;
-using std::isnan;
 
 template <typename T> class SimpleVector {
 public:

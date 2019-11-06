@@ -15,17 +15,8 @@
 
 using std::cerr;
 using std::flush;
-using std::abs;
-using std::sqrt;
-using std::exp;
-using std::pow;
-using std::sin;
-using std::cos;
-using std::tan;
-using std::atan2;
 using std::vector;
 using std::sort;
-using std::ceil;
 using std::vector;
 using std::max;
 using std::min;

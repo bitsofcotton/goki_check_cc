@@ -15,13 +15,6 @@
 
 template <typename T> class reDig;
 
-using std::sqrt;
-using std::atan2;
-using std::abs;
-using std::log;
-using std::sin;
-using std::cos;
-using std::sin;
 using std::min;
 using std::max;
 using std::cerr;
