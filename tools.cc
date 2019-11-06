@@ -155,7 +155,13 @@ int main(int argc, const char* argv[]) {
   }
   simpleFile<num_t> file;
   reDig<num_t>      redig;
-  if(strcmp(argv[1], "enlarge") == 0 ||
+  if(strcmp(argv[1], "test") == 0) {
+    typename simpleFile<num_t>::Mat data[3];
+    if(!file.loadp2or3(data, argv[2]))
+      return -1;
+    if(!file.savep2or3(argv[3], data, ! true))
+      return - 1;
+  } else if(strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "cenl")    == 0 ||
      strcmp(argv[1], "pextend") == 0) {
     if(argc < 5 || (strcmp(argv[1], "cenl") == 0 && argc < 6)) {
