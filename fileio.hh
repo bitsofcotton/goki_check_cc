@@ -147,10 +147,13 @@ public:
             if(gray)
               output << int(data[0](i, j) * T(255)) << "\n";
             else
-              for(int k = 0; k < 3; k ++)
+              for(int k = 0; k < 3; k ++) {
                 output << int(data[k](i, j) * T(255)) << "\n";
+              }
       } catch (const ofstream::failure& e) {
         cerr << "An error has occured while writing file." << endl;
+      } catch(const char* e) {
+        cerr << e << endl;
       }
       output.close();
     } else {

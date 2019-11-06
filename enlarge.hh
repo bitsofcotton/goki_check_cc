@@ -82,7 +82,7 @@ private:
 };
 
 template <typename T> Filter<T>::Filter() {
-  I  = sqrt(U(- 1.));
+  I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // N.B. from accuracy reason, low depth.
   dratio  = T(005) / T(100);
@@ -429,7 +429,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   for(int lsize = size; lsize <= size; lsize *= 2) {
 #endif
           auto DFTD(seed(lsize, false));
-    DFTD.row(0) *= U(0);
+    DFTD.row(0) *= U(T(0));
     const auto IDFT(seed(lsize, true));
           auto DFTE(DFTD);
           auto DFTB(DFTD);
@@ -439,7 +439,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     T ni(0);
     T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
-      const auto phase(- U(2.) * Pi * sqrt(U(- 1)) * T(i) / T(DFTD.rows()));
+      const auto phase(- U(T(2)) * Pi * sqrt(U(- T(1))) * T(i) / T(DFTD.rows()));
       const auto phase2(U(T(1)) / phase);
       // N.B. d/dy.
       DFTD.row(i) *= phase;
@@ -450,8 +450,8 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-      DFTE.row(i) /= exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1));
-      DFTB(i, i)   = U(T(1)) / (exp(sqrt(U(- 1)) * Pi / T(2 * DFTE.rows())) - U(T(1)));
+      DFTE.row(i) /= exp(sqrt(U(- T(1))) * Pi / T(2 * DFTE.rows())) - U(T(1));
+      DFTB(i, i)   = U(T(1)) / (exp(sqrt(U(- T(1))) * Pi / T(2 * DFTE.rows())) - U(T(1)));
     }
     // N.B. similar to det(Dop * Iop) == det(Dop) * det(Iop) == 1,
     //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
@@ -498,9 +498,9 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       }
     cnt ++;
   }
-  Dop[idx] /= cnt;
-  Eop[idx] /= cnt;
-  Bop[idx] /= cnt;
+  Dop[idx] /= T(cnt);
+  Eop[idx] /= T(cnt);
+  Bop[idx] /= T(cnt);
   return;
 }
 

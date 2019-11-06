@@ -17,7 +17,8 @@ using mpfr::log;
 using mpfr::isfinite;
 #elif defined(_WITH_NO_FLOAT_)
 #include "ifloat.hh"
-typedef SimpleFloat<uint16_t, uint32_t, 16, char> num_t;
+/// typedef SimpleFloat<uint16_t, uint32_t, 16, char> num_t;
+typedef SimpleFloat<uint32_t, uint64_t, 16, short> num_t;
 #else
 typedef double num_t;
 #endif
@@ -219,7 +220,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = result[i];
 */
-      redig.normalize(data, 1.);
+      redig.normalize(data, num_t(1));
     } else if(strcmp(argv[1], "cenl") == 0) {
       typename simpleFile<num_t>::Mat datas[3];
       Filter<num_t> cenl;
@@ -245,7 +246,8 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "collect") == 0) {
       Filter<num_t> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
-        const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
+    //    const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
+        const auto xye(detect.compute(data[i], detect.DETECT_Y));
         data[i] = xye;
       }
     } else if(strcmp(argv[1], "bump") == 0) {
@@ -263,7 +265,7 @@ int main(int argc, const char* argv[]) {
 */
       data[0] = data[1] = data[2] = redig.autoLevel(- xye.template cast<num_t>(), (xye.rows() + xye.cols()));
     }
-    redig.normalize(data, 1.);
+    redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "bump2") == 0) {
@@ -279,7 +281,7 @@ int main(int argc, const char* argv[]) {
     const auto pixels(std::atof(argv[4]));
     Filter<num_t> bump;
     out[0] = out[1] = out[2] = redig.autoLevel(- bump.bump2(redig.rgb2d(data0).transpose(), redig.rgb2d(data1).transpose(), pixels).transpose(), data0[0].rows() + data0[0].cols());
-    redig.normalize(out, 1.);
+    redig.normalize(out, num_t(1));
     if(!file.savep2or3(argv[5], out, ! true))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0) {
@@ -295,7 +297,7 @@ int main(int argc, const char* argv[]) {
       return - 1;
     for(int i = 0; i < 3; i ++)
       datac[i] = redig.reShape(datac[i], datas[i], count);
-    redig.normalize(datac, 1.);
+    redig.normalize(datac, num_t(1));
     if(!file.savep2or3(argv[5], datac, ! true))
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
@@ -356,7 +358,7 @@ int main(int argc, const char* argv[]) {
       M = std::max(points[i][2], M);
       m = std::min(points[i][2], m);
     }
-    if(M == m) M += 1.;
+    if(M == m) M += num_t(1);
     for(int i = 0; i < points.size(); i ++)
       points[i][2] *= zratio / (M - m);
     file.saveobj(points, ratio * num_t(data[0].rows()), ratio * num_t(data[0].cols()), facets, argv[sidx], edges, addstand, xoffset);
@@ -470,7 +472,7 @@ int main(int argc, const char* argv[]) {
       auto mwork(data[0]);
       for(int i = 0; i < mwork.rows(); i ++)
         for(int j = 0; j < mwork.cols(); j ++)
-          mwork(i, j) = 1.;
+          mwork(i, j) = num_t(1);
       auto prep(redig.tiltprep(datapoly, polynorms, mwork, match_t<num_t>()));
       for(int i = 0; i < prep.size(); i ++)
         prep[i].c = (prep[i].p(2, 0) + prep[i].p(2, 1) + prep[i].p(2, 2)) / num_t(3);
@@ -482,7 +484,7 @@ int main(int argc, const char* argv[]) {
           mwork(i, j) = num_t(1);
       res[0] = res[1] = res[2] = mwork - redig.tilt(data[0] * num_t(0), redig.tiltprep(datapoly, polynorms, mwork, match_t<num_t>()));
     }
-    redig.normalize(res, 1.);
+    redig.normalize(res, num_t(1));
     file.savep2or3(argv[4], res, true);
   } else if(strcmp(argv[1], "matcho") == 0 ||
             strcmp(argv[1], "match") == 0) {
@@ -669,11 +671,11 @@ int main(int argc, const char* argv[]) {
 #if defined(_WITHOUT_EIGEN_)
         const auto rp(filter.compute(dft.template real<num_t>(), filter.ENLARGE_X));
         const auto ip(filter.compute(dft.template imag<num_t>(), filter.ENLARGE_X));
-        const auto buf2((idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- 1.)))).template real<num_t>());
+        const auto buf2((idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- num_t(1))))).template real<num_t>());
 #else
         const auto rp(filter.compute(dft.real(), filter.ENLARGE_X));
         const auto ip(filter.compute(dft.imag(), filter.ENLARGE_X));
-        const auto buf2((idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- 1.)))).real());
+        const auto buf2((idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- num_t(l))))).real());
 #endif
         for(int j = 0; j < buf2.rows(); j ++)
           for(int k = 0; k < buf2.cols(); k ++) {
@@ -691,7 +693,7 @@ int main(int argc, const char* argv[]) {
 #else
           const auto rp(filter.compute(dft.real(), filter.DETECT_X));
           const auto ip(filter.compute(dft.imag(), filter.DETECT_X));
-          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- 1.)) * ip.template cast<complex<num_t> >())).real();
+          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- num_t(1))) * ip.template cast<complex<num_t> >())).real();
 #endif
         } else if(strcmp(argv[3], "bump") == 0) {
 #if defined(_WITHOUT_EIGEN_)
@@ -701,7 +703,7 @@ int main(int argc, const char* argv[]) {
 #else
           const auto rp(filter.compute(dft.real(), filter.BUMP_X));
           const auto ip(filter.compute(dft.imag(), filter.BUMP_X));
-          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- 1.)) * ip.template cast<complex<num_t> >())).real();
+          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- num_t(1))) * ip.template cast<complex<num_t> >())).real();
 #endif
         }
         for(int j = 0; j < buf2.rows(); j ++)
