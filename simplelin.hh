@@ -17,7 +17,6 @@
 using std::move;
 using std::isfinite;
 using std::isnan;
-using std::complex;
 
 template <typename T> class SimpleVector {
 public:
@@ -614,7 +613,7 @@ template <typename T> template <typename U> inline SimpleMatrix<U> SimpleMatrix<
   SimpleMatrix<U> res(erows, ecols);
   for(int i = 0; i < erows; i ++)
     for(int j = 0; j < ecols; j ++)
-      res(i, j) = U(entity[i][j].imag());
+      res(i, j) = T(entity[i][j].imag());
   return res;
 }
 

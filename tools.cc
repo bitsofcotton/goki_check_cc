@@ -15,17 +15,26 @@ using std::sqrt;
 using mpfr::pow;
 using mpfr::log;
 using mpfr::isfinite;
+#elif defined(_WITH_NO_FLOAT_)
+#include "ifloat.hh"
+typedef SimpleFloat<uint16_t, 16, char> num_t;
 #else
 typedef double num_t;
 #endif
 
 #if defined(_WITHOUT_EIGEN_)
+#if defined(_WITH_NO_FLOAT_)
+template <typename T> using complex = Complex<T>;
+#else
 #include <complex>
+using std::complex;
+#endif
 #include <cstring>
 #include "simplelin.hh"
 #else
 #include <Eigen/Core>
 #include <Eigen/LU>
+using std::complex;
 #endif
 
 #if defined(_WITH_GLTF2_)
@@ -132,8 +141,8 @@ int main(int argc, const char* argv[]) {
     usage();
     return 0;
   }
-  simpleFile<double> file;
-  reDig<double>      redig;
+  simpleFile<num_t> file;
+  reDig<num_t>      redig;
   if(strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "cenl")    == 0 ||
      strcmp(argv[1], "pextend") == 0) {
@@ -142,16 +151,16 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     const auto ratio(std::atoi(argv[2]));
-    typename simpleFile<double>::Mat data[3];
+    typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[3]))
       return - 1;
     if(strcmp(argv[1], "enlarge") == 0) {
-      Filter<double> enlarger;
+      Filter<num_t> enlarger;
       for(int j = 0; j < ratio; j ++)
         for(int i = 0; i < 3; i ++) //{
           data[i] = enlarger.compute(enlarger.compute(data[i], enlarger.ENLARGE_BOTH), enlarger.CLIP);
 /*
-          typename Filter<double>::Mat xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
+          typename Filter<num_t>::Mat xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           // XXX: geometric mean ratio.
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 0), enlarger.ENLARGE_BOTH), - 1, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 0), enlarger.ENLARGE_BOTH), - 2, 0));
@@ -163,14 +172,14 @@ int main(int argc, const char* argv[]) {
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
 */
     } else if(strcmp(argv[1], "pextend") == 0) {
-      Filter<double> extender;
+      Filter<num_t> extender;
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < ratio; j ++)
           data[i] = extender.compute(data[i], extender.EXTEND_Y);
 /*
-      typename simpleFile<double>::Mat result[3];
+      typename simpleFile<num_t>::Mat result[3];
       for(int j = 0; j < 3; j ++) {
-        result[j] = typename simpleFile<double>::Mat(data[j].rows() + ratio * 2, data[j].cols());
+        result[j] = typename simpleFile<num_t>::Mat(data[j].rows() + ratio * 2, data[j].cols());
         for(int k = 0; k < result[j].rows(); k ++)
           for(int l = 0; l < result[j].cols(); l ++)
             result[j](k, l) = 0.;
@@ -179,11 +188,11 @@ int main(int argc, const char* argv[]) {
       }
       for(int j = 0; j < ratio; j ++) {
         for(int i = 0; i < 3; i ++) {
-          typename simpleFile<double>::Mat work(data[i].rows() / (j + 1), data[i].cols());
+          typename simpleFile<num_t>::Mat work(data[i].rows() / (j + 1), data[i].cols());
           for(int k = 0; k < data[i].rows() / (j + 1); k ++)
             work.row(k) = data[i].row(k * (j + 1));
           result[i].row(ratio - j - 1) = extender.compute(extender.compute(work, extender.REVERSE_Y), extender.EXTEND_Y0).row(work.rows());
-          work = typename simpleFile<double>::Mat(data[i].rows() / (j + 1), data[i].cols());
+          work = typename simpleFile<num_t>::Mat(data[i].rows() / (j + 1), data[i].cols());
           for(int k = 0; k < data[i].rows() / (j + 1); k ++)
             work.row(k) = data[i].row(k * (j + 1) - (data[i].rows() / (j + 1) - 1) * (j + 1) + data[i].rows() - 1);
           result[i].row(result[i].rows() - ratio + j) = extender.compute(work, extender.EXTEND_Y0).row(work.rows());
@@ -194,12 +203,12 @@ int main(int argc, const char* argv[]) {
 */
       redig.normalize(data, 1.);
     } else if(strcmp(argv[1], "cenl") == 0) {
-      typename simpleFile<double>::Mat datas[3];
-      Filter<double> cenl;
+      typename simpleFile<num_t>::Mat datas[3];
+      Filter<num_t> cenl;
       if(!file.loadp2or3(datas, argv[4]))
         return - 1;
       for(int i = 0; i < 3; i ++)
-        data[i] = cenl.compute(data[i] + (data[i] - datas[i]) * ratio, cenl.CLIP);
+        data[i] = cenl.compute(data[i] + (data[i] - datas[i]) * num_t(ratio), cenl.CLIP);
       if(!file.savep2or3(argv[5], data, ! true))
         return - 1;
       return 0;
@@ -212,11 +221,11 @@ int main(int argc, const char* argv[]) {
       usage();
       return 0;
     }
-    typename simpleFile<double>::Mat data[3];
+    typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0) {
-      Filter<double> detect, ddetect;
+      Filter<num_t> detect, ddetect;
       for(int i = 0; i < 3; i ++) {
         const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
         data[i] = xye;
@@ -234,7 +243,7 @@ int main(int argc, const char* argv[]) {
       xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d,   2, 0), bump.BUMP_BOTH), - 2, 0));
       xye = bump.gmean(xye, redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 2, 0), bump.BUMP_BOTH),  2, 0));
 */
-      data[0] = data[1] = data[2] = redig.autoLevel(- xye.template cast<double>(), (xye.rows() + xye.cols()));
+      data[0] = data[1] = data[2] = redig.autoLevel(- xye.template cast<num_t>(), (xye.rows() + xye.cols()));
     }
     redig.normalize(data, 1.);
     if(!file.savep2or3(argv[3], data, ! true))
@@ -244,7 +253,7 @@ int main(int argc, const char* argv[]) {
       usage();
       return 0;
     }
-    typename simpleFile<double>::Mat data0[3], data1[3], out[3];
+    typename simpleFile<num_t>::Mat data0[3], data1[3], out[3];
     if(!file.loadp2or3(data0, argv[2]))
       return - 1;
     if(!file.loadp2or3(data1, argv[3]))
@@ -261,7 +270,7 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     int count(std::atoi(argv[2]));
-    typename simpleFile<double>::Mat datac[3], datas[3];
+    typename simpleFile<num_t>::Mat datac[3], datas[3];
     if(!file.loadp2or3(datac, argv[3]))
       return - 1;
     if(!file.loadp2or3(datas, argv[4]))
@@ -272,12 +281,12 @@ int main(int argc, const char* argv[]) {
     if(!file.savep2or3(argv[5], datac, ! true))
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
-    typename simpleFile<double>::Mat data[3], mask[3];
-    double xoffset(0);
+    typename simpleFile<num_t>::Mat data[3], mask[3];
+    num_t xoffset(0);
     int    vbox(2);
-    double addstand(0);
-    double ratio(1);
-    double zratio(1);
+    num_t addstand(0);
+    num_t ratio(1);
+    num_t zratio(1);
     int    sidx(0);
     if(strcmp(argv[2], "stand") == 0) {
       if(argc < 9) {
@@ -295,7 +304,7 @@ int main(int argc, const char* argv[]) {
           return - 1;
         sidx = 9;
       } else {
-        mask[0] = mask[1] = mask[2] = data[0] * 0.;
+        mask[0] = mask[1] = mask[2] = data[0] * num_t(0);
         sidx = 8;
       }
     } else {
@@ -307,7 +316,7 @@ int main(int argc, const char* argv[]) {
       vbox    = std::atoi(argv[3]);
       if(!file.loadp2or3(data, argv[5]))
         return - 1;
-      zratio  = std::atof(argv[4]) * sqrt(double(data[0].rows() * data[0].cols()));
+      zratio  = num_t(std::atof(argv[4])) * sqrt(num_t(data[0].rows() * data[0].cols()));
       if(7 < argc) {
         if(!file.loadp2or3(mask, argv[6]))
           return - 1;
@@ -315,8 +324,8 @@ int main(int argc, const char* argv[]) {
       } else
         sidx = 6;
     }
-    std::vector<typename simpleFile<double>::Vec3>  points;
-    std::vector<typename simpleFile<double>::Veci3> facets;
+    std::vector<typename simpleFile<num_t>::Vec3>  points;
+    std::vector<typename simpleFile<num_t>::Veci3> facets;
     redig.initialize(vbox);
     redig.getTileVec(data[0], points, facets);
     const auto edges(redig.getEdges(mask[0], points));
@@ -324,7 +333,7 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(points, facets, mask[0]);
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
-    double M(points[0][2]), m(points[0][2]);
+    num_t M(points[0][2]), m(points[0][2]);
     for(int i = 1; i < points.size(); i ++) {
       M = std::max(points[i][2], M);
       m = std::min(points[i][2], m);
@@ -332,7 +341,7 @@ int main(int argc, const char* argv[]) {
     if(M == m) M += 1.;
     for(int i = 0; i < points.size(); i ++)
       points[i][2] *= zratio / (M - m);
-    file.saveobj(points, ratio * data[0].rows(), ratio * data[0].cols(), facets, argv[sidx], edges, addstand, xoffset);
+    file.saveobj(points, ratio * num_t(data[0].rows()), ratio * num_t(data[0].cols()), facets, argv[sidx], edges, addstand, xoffset);
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if((strcmp(argv[1], "tilt") == 0 && argc < 9) ||
@@ -342,7 +351,7 @@ int main(int argc, const char* argv[]) {
     }
     int    index(std::atoi(argv[2]));
     int    Mindex(std::atoi(argv[3]));
-    double psi(0);
+    num_t psi(0);
     int    offsetx(0);
     int    ipidx(6);
     int    iidx(7);
@@ -355,9 +364,9 @@ int main(int argc, const char* argv[]) {
       iidx  = 5;
       oidx  = 6;
     }
-    typename simpleFile<double>::Mat data[3], bump[3], out[3];
-    std::vector<typename simpleFile<double>::Vec3>  points;
-    std::vector<typename simpleFile<double>::Veci3> polys;
+    typename simpleFile<num_t>::Mat data[3], bump[3], out[3];
+    std::vector<typename simpleFile<num_t>::Vec3>  points;
+    std::vector<typename simpleFile<num_t>::Veci3> polys;
     if(!file.loadp2or3(data, argv[ipidx]))
       return - 2;
     const std::string fn(argv[iidx]);
@@ -371,13 +380,13 @@ int main(int argc, const char* argv[]) {
       is_obj = true;
     } else
       return - 2;
-    typename simpleFile<double>::Mat tilt0;
+    typename simpleFile<num_t>::Mat tilt0;
     if(strcmp(argv[1], "sbox") == 0) {
-      const match_t<double> mtilt;
+      const match_t<num_t> mtilt;
       if(is_obj)
-        tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt), index / (double)Mindex);
+        tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt), num_t(index) / num_t(Mindex));
       else
-        tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, index / (double)Mindex);
+        tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, num_t(index) / num_t(Mindex));
     } else {
       auto mtilt(redig.tiltprep(data[0], index, Mindex, psi));
       mtilt.offset[2] += offsetx * data[0].cols();
@@ -397,18 +406,18 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    typename simpleFile<double>::Mat data[3];
+    typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[2]))
       return - 2;
-    std::vector<typename simpleFile<double>::Vec3>  datapoly;
-    std::vector<typename simpleFile<double>::Veci3> polynorms;
+    std::vector<typename simpleFile<num_t>::Vec3>  datapoly;
+    std::vector<typename simpleFile<num_t>::Veci3> polynorms;
     const std::string fn(argv[3]);
     if(fn[fn.size() - 1] == 'j') {
       if(!file.loadobj(datapoly, polynorms, argv[3]))
         return - 2;
     } else if(fn[fn.size() - 1] == 'f') {
-      std::vector<typename simpleFile<double>::Vec3> center;
-      std::vector<std::vector<typename simpleFile<double>::Veci4> > bone;
+      std::vector<typename simpleFile<num_t>::Vec3> center;
+      std::vector<std::vector<typename simpleFile<num_t>::Veci4> > bone;
       if(!file.loadglTF(datapoly, polynorms, center, bone, argv[3]))
         return - 2;
     } else {
@@ -416,44 +425,44 @@ int main(int argc, const char* argv[]) {
       return - 1;
     }
     assert(datapoly.size());
-    double My(datapoly[0][0]);
-    double Mx(datapoly[0][1]);
-    double my(My);
-    double mx(Mx);
+    num_t My(datapoly[0][0]);
+    num_t Mx(datapoly[0][1]);
+    num_t my(My);
+    num_t mx(Mx);
     for(int i = 0; i < datapoly.size(); i ++) {
       My = max(My, datapoly[i][0]);
       Mx = max(Mx, datapoly[i][1]);
       my = min(my, datapoly[i][0]);
       mx = min(mx, datapoly[i][1]);
     }
-    match_t<double> m;
-    const double ratio(sqrt(double(data[0].rows() * data[0].cols())) / max(My - my, Mx - mx));
+    match_t<num_t> m;
+    const num_t ratio(sqrt(num_t(data[0].rows() * data[0].cols())) / num_t(max(My - my, Mx - mx)));
     m.ratio     *= ratio;
     m.offset[0] -= my * ratio;
     m.offset[1] -= mx * ratio;
     for(int i = 0; i < datapoly.size(); i ++)
       datapoly[i] = m.transform(datapoly[i]);
-    typename simpleFile<double>::Mat res[3];
+    typename simpleFile<num_t>::Mat res[3];
     std::vector<int> idx;
     for(int j = 0; j < datapoly.size(); j ++)
       idx.push_back(j);
     if(strcmp(argv[1], "draw") == 0)
-      res[0] = res[1] = res[2] = redig.showMatch(data[0] * 0., datapoly, polynorms, double(120));
+      res[0] = res[1] = res[2] = redig.showMatch(data[0] * num_t(0), datapoly, polynorms, num_t(120));
     else if(strcmp(argv[1], "drawr") == 0) {
       auto mwork(data[0]);
       for(int i = 0; i < mwork.rows(); i ++)
         for(int j = 0; j < mwork.cols(); j ++)
           mwork(i, j) = 1.;
-      auto prep(redig.tiltprep(datapoly, polynorms, mwork, match_t<double>()));
+      auto prep(redig.tiltprep(datapoly, polynorms, mwork, match_t<num_t>()));
       for(int i = 0; i < prep.size(); i ++)
-        prep[i].c = (prep[i].p(2, 0) + prep[i].p(2, 1) + prep[i].p(2, 2)) / 3.;
-      res[0] = res[1] = res[2] = redig.tilt(data[0] * 0., prep);
+        prep[i].c = (prep[i].p(2, 0) + prep[i].p(2, 1) + prep[i].p(2, 2)) / num_t(3);
+      res[0] = res[1] = res[2] = redig.tilt(data[0] * num_t(0), prep);
     } else {
       auto mwork(data[0]);
       for(int i = 0; i < mwork.rows(); i ++)
         for(int j = 0; j < mwork.cols(); j ++)
-          mwork(i, j) = 1.;
-      res[0] = res[1] = res[2] = mwork - redig.tilt(data[0] * 0., redig.tiltprep(datapoly, polynorms, mwork, match_t<double>()));
+          mwork(i, j) = num_t(1);
+      res[0] = res[1] = res[2] = mwork - redig.tilt(data[0] * num_t(0), redig.tiltprep(datapoly, polynorms, mwork, match_t<num_t>()));
     }
     redig.normalize(res, 1.);
     file.savep2or3(argv[4], res, true);
@@ -467,7 +476,7 @@ int main(int argc, const char* argv[]) {
     int nshow(0);
     int nhid(0);
     float emph(0);
-    match_t<double> m;
+    match_t<num_t> m;
     if(strcmp(argv[1], "match") == 0) {
       nshow = std::atoi(argv[2]);
       nhid  = std::atoi(argv[3]);
@@ -488,9 +497,9 @@ int main(int argc, const char* argv[]) {
     }
     int vboxdst(std::atoi(argv[4]));
     int vboxsrc(std::atoi(argv[5]));
-    typename simpleFile<double>::Mat data[3], data1[3], bdata[3], bdata1[3], mdata[3], mdata1[3], mout[3], mmout1, bump1;
-    std::vector<typename simpleFile<double>::Veci3> delau0, delau1;
-    std::vector<typename simpleFile<double>::Vec3>  shape0, shape1;
+    typename simpleFile<num_t>::Mat data[3], data1[3], bdata[3], bdata1[3], mdata[3], mdata1[3], mout[3], mmout1, bump1;
+    std::vector<typename simpleFile<num_t>::Veci3> delau0, delau1;
+    std::vector<typename simpleFile<num_t>::Vec3>  shape0, shape1;
     if(!file.loadp2or3(data, argv[6]))
       return - 2;
     if(!file.loadp2or3(data1, argv[7]))
@@ -501,13 +510,13 @@ int main(int argc, const char* argv[]) {
     if(fn[fn.size() - 1] == 'j') {
       if(!file.loadobj(shape1, delau1, argv[9]))
         return - 2;
-      bdata1[0] = bdata1[1] = bdata1[2] = data1[0] * 0.;
+      bdata1[0] = bdata1[1] = bdata1[2] = data1[0] * num_t(0);
     } else if(fn[fn.size() - 1] == 'f') {
-      std::vector<typename simpleFile<double>::Vec3> center;
-      std::vector<std::vector<typename simpleFile<double>::Veci4> > bone;
+      std::vector<typename simpleFile<num_t>::Vec3> center;
+      std::vector<std::vector<typename simpleFile<num_t>::Veci4> > bone;
       if(!file.loadglTF(shape1, delau1, center, bone, argv[9]))
         return - 2;
-      bdata1[0] = bdata1[1] = bdata1[2] = data1[0] * 0.;
+      bdata1[0] = bdata1[1] = bdata1[2] = data1[0] * num_t(0);
     } else if(fn[fn.size() - 1] == 'm') {
       if(!file.loadp2or3(bdata1, argv[9]))
         return - 2;
@@ -522,10 +531,10 @@ int main(int argc, const char* argv[]) {
         return - 2;
       fnout = 12;
     } else {
-      mdata[0]  = mdata[1]  = mdata[2]  = data[0]  * 0.;
-      mdata1[0] = mdata1[1] = mdata1[2] = data1[0] * 0.;
+      mdata[0]  = mdata[1]  = mdata[2]  = data[0]  * num_t(0);
+      mdata1[0] = mdata1[1] = mdata1[2] = data1[0] * num_t(0);
     }
-    resizeDst2<double>(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
+    resizeDst2<num_t>(mout, bump1, mmout1, data1, bdata1[0], mdata1[0], data[0].rows(), data[0].cols());
     const auto& bump0(bdata[0]);
     redig.initialize(vboxdst);
     redig.getTileVec(bump0, shape0, delau0);
@@ -536,9 +545,9 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(shape1, delau1, mmout1);
     }
     if(strcmp(argv[1], "matcho") == 0)
-      saveMatches<double>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, delau0, delau1, emph);
+      saveMatches<num_t>(std::string(argv[fnout]), m, shape0, shape1, data, mout, bump0, bump1, delau0, delau1, emph);
     else { 
-      matchPartial<double> statmatch;
+      matchPartial<num_t> statmatch;
       auto matches(statmatch.match(shape0, shape1));
       if(fn[fn.size() - 1] == 'm')
         matches = statmatch.elim(matches, data, mout, bump1, shape1);
@@ -558,8 +567,8 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Matchingsub: " << n << " / " << matches.size() << std::flush;
         std::vector<int> dstbuf(matches[n].dstpoints);
         std::vector<int> srcbuf(matches[n].srcpoints);
-        std::vector<typename simpleFile<double>::Vec3> shape0a;
-        std::vector<typename simpleFile<double>::Vec3> shape1a;
+        std::vector<typename simpleFile<num_t>::Vec3> shape0a;
+        std::vector<typename simpleFile<num_t>::Vec3> shape1a;
         std::sort(dstbuf.begin(), dstbuf.end());
         std::sort(srcbuf.begin(), srcbuf.end());
         for(int j = 0; j < shape0.size(); j ++)
@@ -568,7 +577,7 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < shape1.size(); j ++)
           if(!binary_search(srcbuf.begin(), srcbuf.end(), j))
             shape1a.push_back(shape1[j]);
-        matchPartial<double> pstatmatch;
+        matchPartial<num_t> pstatmatch;
         pstatmatch.ndiv /= 2;
         auto pmatches(pstatmatch.match(shape0a, shape1a));
         if(fn[fn.size() - 1] == 'm')
@@ -589,44 +598,44 @@ int main(int argc, const char* argv[]) {
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {
-    std::vector<typename simpleFile<double>::Vec3>  pdst,   psrc;
-    std::vector<typename simpleFile<double>::Veci3> poldst, polsrc;
+    std::vector<typename simpleFile<num_t>::Vec3>  pdst,   psrc;
+    std::vector<typename simpleFile<num_t>::Veci3> poldst, polsrc;
     if(argc < 5 || !file.loadobj(pdst, poldst, argv[2]) ||
                    !file.loadobj(psrc, polsrc, argv[3])) {
       usage();
       return - 2;
     }
-    double Mx(0), My(0);
+    num_t Mx(0), My(0);
     for(int i = 0; i < pdst.size(); i ++) {
-      My = max(My, std::abs(pdst[i][0]));
-      Mx = max(Mx, std::abs(pdst[i][1]));
+      My = max(num_t(My), abs(pdst[i][0]));
+      Mx = max(num_t(Mx), abs(pdst[i][1]));
     }
     for(int i = 0; i < psrc.size(); i ++) {
-      My = max(My, std::abs(psrc[i][0]));
-      Mx = max(Mx, std::abs(psrc[i][1]));
+      My = max(num_t(My), abs(psrc[i][0]));
+      Mx = max(num_t(Mx), abs(psrc[i][1]));
     }
     if(argc > 7) {
-      const auto m(redig.tiltprep(typename simpleFile<double>::Mat(int(My), int(Mx)), - std::atoi(argv[4]), std::atoi(argv[5]), std::atof(argv[6])));
-      file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
+      const auto m(redig.tiltprep(typename simpleFile<num_t>::Mat(int(My), int(Mx)), - std::atoi(argv[4]), std::atoi(argv[5]), std::atof(argv[6])));
+      file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, num_t(1) / num_t(2)),
                    My, Mx, poldst, argv[7]);
     } else {
-      matchPartial<double> statmatch;
+      matchPartial<num_t> statmatch;
       const auto m(statmatch.match(pdst, psrc)[0]);
-      file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, double(.5)),
+      file.saveobj(redig.takeShape(pdst, psrc, m, poldst, polsrc, num_t(1) / num_t(2)),
                    My, Mx, poldst, argv[4]);
     }
   } else if(strcmp(argv[1], "omake") == 0) {
-    std::vector<double> in;
+    std::vector<num_t> in;
     std::string line;
     while (std::getline(std::cin, line)) {
       std::stringstream sl(line);
       in.push_back(0);
       sl >> in[in.size() - 1];
     }
-    simpleFile<double>::Mat buf(std::atoi(argv[2]), std::atoi(argv[2]));
-    Filter<double> filter;
-    double M(0);
-    std::vector<double> rbuf;
+    simpleFile<num_t>::Mat buf(std::atoi(argv[2]), std::atoi(argv[2]));
+    Filter<num_t> filter;
+    num_t M(0);
+    std::vector<num_t> rbuf;
     if(strcmp(argv[3], "enlarge") == 0)
       rbuf.resize(in.size() * 2, 0.);
     else
@@ -637,16 +646,16 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < buf.rows(); j ++)
         for(int k = 0; k < buf.cols(); k ++)
           buf(j, k) = in[i * buf.rows() * buf.rows() + k * buf.rows() + j];
-      Filter<double>::MatU dft(dft0 * buf.template cast<complex<double> >());
+      Filter<num_t>::MatU dft(dft0 * buf.template cast<complex<num_t> >());
       if(strcmp(argv[3], "enlarge") == 0) {
 #if defined(_WITHOUT_EIGEN_)
-        const auto rp(filter.compute(dft.template real<double>(), filter.ENLARGE_X));
-        const auto ip(filter.compute(dft.template imag<double>(), filter.ENLARGE_X));
-        const auto buf2((idft0.template cast<complex<double> >() * (rp.template cast<complex<double> >() + ip.template cast<complex<double> >() * sqrt(complex<double>(- 1.)))).template real<double>());
+        const auto rp(filter.compute(dft.template real<num_t>(), filter.ENLARGE_X));
+        const auto ip(filter.compute(dft.template imag<num_t>(), filter.ENLARGE_X));
+        const auto buf2((idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- 1.)))).template real<num_t>());
 #else
         const auto rp(filter.compute(dft.real(), filter.ENLARGE_X));
         const auto ip(filter.compute(dft.imag(), filter.ENLARGE_X));
-        const auto buf2((idft0.template cast<complex<double> >() * (rp.template cast<complex<double> >() + ip.template cast<complex<double> >() * sqrt(complex<double>(- 1.)))).real());
+        const auto buf2((idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- 1.)))).real());
 #endif
         for(int j = 0; j < buf2.rows(); j ++)
           for(int k = 0; k < buf2.cols(); k ++) {
@@ -655,26 +664,26 @@ int main(int argc, const char* argv[]) {
           }
         continue;
       } else {
-        Filter<double>::Mat buf2;
+        Filter<num_t>::Mat buf2;
         if(strcmp(argv[3], "diff") == 0){
 #if defined(_WITHOUT_EIGEN_)
-          const auto rp(filter.compute(dft.template real<double>(), filter.DETECT_X));
-          const auto ip(filter.compute(dft.template imag<double>(), filter.DETECT_X));
-          buf2 = (idft0.template cast<complex<double> >() * (rp.template cast<complex<double> >() + ip.template cast<complex<double> >() * sqrt(complex<double>(- 1)))).template real<double>();
+          const auto rp(filter.compute(dft.template real<num_t>(), filter.DETECT_X));
+          const auto ip(filter.compute(dft.template imag<num_t>(), filter.DETECT_X));
+          buf2 = (idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- 1)))).template real<num_t>();
 #else
           const auto rp(filter.compute(dft.real(), filter.DETECT_X));
           const auto ip(filter.compute(dft.imag(), filter.DETECT_X));
-          buf2 = (idft0 * (rp.template cast<complex<double> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
+          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
 #endif
         } else if(strcmp(argv[3], "bump") == 0) {
 #if defined(_WITHOUT_EIGEN_)
-          const auto rp(filter.compute(dft.template real<double>(), filter.BUMP_X));
-          const auto ip(filter.compute(dft.template imag<double>(), filter.BUMP_X));
-          buf2 = (idft0.template cast<complex<double> >() * (rp.template cast<complex<double> >() + ip.template cast<complex<double> >() * sqrt(complex<double>(- 1)))).template real<double>();
+          const auto rp(filter.compute(dft.template real<num_t>(), filter.BUMP_X));
+          const auto ip(filter.compute(dft.template imag<num_t>(), filter.BUMP_X));
+          buf2 = (idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- 1)))).template real<num_t>();
 #else
           const auto rp(filter.compute(dft.real(), filter.BUMP_X));
           const auto ip(filter.compute(dft.imag(), filter.BUMP_X));
-          buf2 = (idft0 * (rp.template cast<complex<double> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
+          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- 1.)) * ip.template cast<complex<num_t> >())).real();
 #endif
         }
         for(int j = 0; j < buf2.rows(); j ++)
