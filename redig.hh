@@ -15,17 +15,9 @@
 
 template <typename T> class match_t;
 
-using std::sqrt;
-using std::atan2;
 using std::abs;
-using std::log;
-using std::sin;
-using std::cos;
-using std::sin;
 using std::min;
 using std::max;
-using std::ceil;
-using std::floor;
 using std::cerr;
 using std::endl;
 using std::flush;
@@ -35,7 +27,6 @@ using std::upper_bound;
 using std::distance;
 using std::sort;
 using std::unique;
-using std::isfinite;
 
 template <typename T> bool less0(const T& x, const T& y) {
   return x.first[0] < y.first[0] || (x.first[0] == y.first[0] && x.first[1] < y.first[1]);

@@ -17,7 +17,7 @@ using mpfr::log;
 using mpfr::isfinite;
 #elif defined(_WITH_NO_FLOAT_)
 #include "ifloat.hh"
-typedef SimpleFloat<uint16_t, 16, char> num_t;
+typedef SimpleFloat<uint16_t, uint32_t, 16, char> num_t;
 #else
 typedef double num_t;
 #endif
@@ -35,6 +35,18 @@ using std::complex;
 #include <Eigen/Core>
 #include <Eigen/LU>
 using std::complex;
+#endif
+
+#if ! defined(_WITH_NO_FLOAT_)
+using std::sqrt;
+using std::exp;
+using std::log;
+using std::pow;
+using std::sin;
+using std::cos;
+using std::tan;
+using std::atan2;
+using std::ceil;
 #endif
 
 #if defined(_WITH_GLTF2_)
@@ -143,7 +155,13 @@ int main(int argc, const char* argv[]) {
   }
   simpleFile<num_t> file;
   reDig<num_t>      redig;
-  if(strcmp(argv[1], "enlarge") == 0 ||
+  if(strcmp(argv[1], "test") == 0) {
+    typename simpleFile<num_t>::Mat data[3];
+    if(!file.loadp2or3(data, argv[2]))
+      return -1;
+    if(!file.savep2or3(argv[3], data, ! true))
+      return - 1;
+  } else if(strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "cenl")    == 0 ||
      strcmp(argv[1], "pextend") == 0) {
     if(argc < 5 || (strcmp(argv[1], "cenl") == 0 && argc < 6)) {
@@ -475,7 +493,7 @@ int main(int argc, const char* argv[]) {
     int fnout(10);
     int nshow(0);
     int nhid(0);
-    float emph(0);
+    num_t emph(0);
     match_t<num_t> m;
     if(strcmp(argv[1], "match") == 0) {
       nshow = std::atoi(argv[2]);
@@ -673,7 +691,7 @@ int main(int argc, const char* argv[]) {
 #else
           const auto rp(filter.compute(dft.real(), filter.DETECT_X));
           const auto ip(filter.compute(dft.imag(), filter.DETECT_X));
-          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<double>(- 1.)) * ip.template cast<complex<double> >())).real();
+          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- 1.)) * ip.template cast<complex<num_t> >())).real();
 #endif
         } else if(strcmp(argv[3], "bump") == 0) {
 #if defined(_WITHOUT_EIGEN_)
