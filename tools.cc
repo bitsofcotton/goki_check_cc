@@ -17,8 +17,8 @@ using mpfr::log;
 using mpfr::isfinite;
 #elif defined(_WITH_NO_FLOAT_)
 #include "ifloat.hh"
-/// typedef SimpleFloat<uint16_t, uint32_t, 16, char> num_t;
-typedef SimpleFloat<uint32_t, uint64_t, 16, short> num_t;
+typedef SimpleFloat<uint16_t, uint32_t, 16, char> num_t;
+//typedef SimpleFloat<uint32_t, uint64_t, 32, short> num_t;
 #else
 typedef double num_t;
 #endif
@@ -244,10 +244,9 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0) {
-      Filter<num_t> detect, ddetect;
+      Filter<num_t> detect;
       for(int i = 0; i < 3; i ++) {
-    //    const auto xye(detect.compute(data[i], detect.COLLECT_BOTH));
-        const auto xye(detect.compute(data[i], detect.DETECT_Y));
+        const auto xye(detect.compute(detect.compute(data[i], detect.COLLECT_BOTH), detect.CLIP));
         data[i] = xye;
       }
     } else if(strcmp(argv[1], "bump") == 0) {
