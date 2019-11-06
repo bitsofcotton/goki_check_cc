@@ -17,7 +17,6 @@
 using std::move;
 using std::isfinite;
 using std::isnan;
-using std::complex;
 
 template <typename T> class SimpleVector {
 public:

@@ -33,7 +33,6 @@ using std::upper_bound;
 using std::distance;
 using std::sort;
 using std::unique;
-using std::complex;
 using std::isfinite;
 using std::istream;
 using std::ostream;
@@ -93,7 +92,7 @@ public:
   Vec2        threshsize;
   match_t() {
     thresh  = T(0);
-    rthresh = T(1e-2);
+    rthresh = T(1) / T(100);
     threshsize    = Vec2(2);
     threshsize[0] = threshsize[1] = T(0);
     initId();
@@ -208,7 +207,7 @@ public:
            !(sqrt(test.dot(test) / 
                (offset.dot(offset) + x.offset.dot(x.offset))) /
                  sqrt(threshsize[0] * threshsize[1]) <= thresh) ||
-           ratio * x.ratio < 0 ||
+           ratio * x.ratio < T(0) ||
            !(abs(ratio - x.ratio) / sqrt(ratio * x.ratio) <= thresh);
   }
   bool operator == (const match_t<T>& x) const {
@@ -315,7 +314,7 @@ template <typename T> matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, 2, .01, .1);
+  init(40, 2, T(1) / T(100), T(1) / T(10));
 }
 
 template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
@@ -331,8 +330,8 @@ template <typename T> matchPartial<T>::~matchPartial() {
 template <typename T> void matchPartial<T>::init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
   assert(0 < ndiv && T(1) <= threshr && T(0) <= threshp && threshp <= T(1));
   this->ndiv    = ndiv;
-  this->thresh  = sin(T(2) * Pi / ndiv) / T(2) * threshr;
-  this->thresht = sin(T(2) * Pi / ndiv) / T(2) * threshr;
+  this->thresh  = sin(T(2) * Pi / T(ndiv)) / T(2) * threshr;
+  this->thresht = sin(T(2) * Pi / T(ndiv)) / T(2) * threshr;
   this->threshp = threshp;
   this->threshs = threshs;
   assert(this->thresh < T(1));
@@ -433,7 +432,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
     T err(0);
     for(int k = 0; k < errors.size(); k ++) {
       err += errors[k].first;
-      if(thresh < err / (k + 1))
+      if(thresh < err / T(k + 1))
         break;
       mwork.dstpoints.push_back(m.dstpoints[errors[k].second]);
       mwork.srcpoints.push_back(m.srcpoints[errors[k].second]);
@@ -450,7 +449,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
     m.rdepth += sqrt(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk)));
   }
   m.rdepth /= m.dstpoints.size() * m.dstpoints.size();
-  return threshp <= m.dstpoints.size() /
+  return threshp <= T(m.dstpoints.size()) /
            T(min(shapebase.size(), points.size())) &&
          m.isValid();
 }
@@ -477,8 +476,8 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
     gd[1] = max(gd[1], abs(diff[1]));
   }
   // for each rotation, we can now handle t <= 0:
-/*
   // We need large memory for this.
+/*
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -487,12 +486,12 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
   // for(int nd = 0; nd < 1; nd ++) {
     vector<T> ddiv;
     ddiv.resize(4, T(0));
-    ddiv[0] = cos(2 * Pi * nd / ndiv);
-    ddiv[1] = sin(2 * Pi * nd / ndiv);
+    ddiv[0] = cos(T(2) * Pi * T(nd) / T(ndiv));
+    ddiv[1] = sin(T(2) * Pi * T(nd) / T(ndiv));
     for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
     // for(int nd2 = 0; nd2 < 1; nd2 ++) {
-      ddiv[2] = cos(2 * Pi * nd2 / ndiv);
-      ddiv[3] = sin(2 * Pi * nd2 / ndiv);
+      ddiv[2] = cos(T(2) * Pi * T(nd2) / T(ndiv));
+      ddiv[3] = sin(T(2) * Pi * T(nd2) / T(ndiv));
       match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
       for(int k = 0; k < ddiv.size() / 2; k ++) {
         Mat3x3 lrot(3, 3);
@@ -511,7 +510,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
       const auto tpoints(work0.transform(points));
       const auto msub(makeMsub(shapebase, tpoints));
       cerr << msub.size() << ":" << flush;
-      if(msub.size() /
+      if(T(msub.size()) /
            T(min(shapebase.size(), points.size())) < threshp)
         continue;
       // get nearer matches:
@@ -541,7 +540,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
         // N.B. rough match.
         t0 += max(1, (tt - t0) / 2);
         // if it's good:
-        if(threshp <= work.dstpoints.size() /
+        if(threshp <= T(work.dstpoints.size()) /
                         T(min(shapebase.size(), points.size())) &&
            complementMatch(work, shapebase, tpoints)) {
 #if defined(_OPENMP)
@@ -599,7 +598,7 @@ template <typename T> T matchPartial<T>::isElim(const match_t<T>& m, const Mat d
     const auto  g(m.transform(srcpts[m.srcpoints[i]]));
     const auto& y(g[0]);
     const auto& x(g[1]);
-    if(0 <= y && y < tsrc[0].rows() && 0 <= x && x < tsrc[0].cols()) {
+    if(T(0) <= y && y < T(tsrc[0].rows()) && T(0) <= x && x < T(tsrc[0].cols())) {
       if(tsrc[0](y, x) == T(0) && tsrc[1](y, x) == T(0) && tsrc[2](y, x) == T(0))
         continue;
       T diff(0);
@@ -613,7 +612,7 @@ template <typename T> T matchPartial<T>::isElim(const match_t<T>& m, const Mat d
   for(int i = 1; i < diffs.size(); i ++)
     ddiffs.push_back(diffs[i] - diffs[i - 1]);
   sort(ddiffs.begin(), ddiffs.end());
-  return ddiffs.size() ? T(1) - distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh)) / T(ddiffs.size()) : T(0);
+  return ddiffs.size() ? T(1) - T(distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh))) / T(ddiffs.size()) : T(0);
 }
 
 
