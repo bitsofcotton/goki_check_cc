@@ -514,7 +514,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 }
 
 template <typename T> int Filter<T>::getImgPt(const T& y, const T& h) {
-  int yy(int(y) % (2 * int(h)));
+  int yy(int(y) % int(T(2) * h));
   if(yy < 0)
     yy = - yy;
   if(yy >= int(h))
