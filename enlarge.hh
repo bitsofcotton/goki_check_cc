@@ -520,9 +520,8 @@ template <typename T> typename Filter<T>::MatU Filter<T>::seed(const int& size, 
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++) {
+    for(int j = 0; j < result.cols(); j ++)
       result(i, j) = exp(I * U(- T(2) * Pi * T(idft ? - 1 : 1) * T(i) * T(j) / T(size))) / T(idft ? size : 1);
-    }
   return result;
 }
 
