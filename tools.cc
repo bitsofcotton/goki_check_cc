@@ -176,7 +176,7 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "enlarge") == 0) {
       Filter<num_t> enlarger;
       for(int j = 0; j < ratio; j ++)
-        for(int i = 0; i < 3; i ++) //{
+        for(int i = 0; i < 3; i ++)
           data[i] = enlarger.compute(enlarger.compute(data[i], enlarger.ENLARGE_BOTH), enlarger.CLIP);
 /*
           typename Filter<num_t>::Mat xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
@@ -184,12 +184,12 @@ int main(int argc, const char* argv[]) {
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 0), enlarger.ENLARGE_BOTH), - 1, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   2, 0), enlarger.ENLARGE_BOTH), - 2, 0));
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i], - 2, 0), enlarger.ENLARGE_BOTH),   2, 0));
-          //data[i] = enlarger.compute(xye, enlarger.CLIP);
-          data[i] = xye;
+          data[i] = enlarger.compute(xye, enlarger.CLIP);
+          // data[i] = xye;
         }
+*/
       for(int i = 0; i < 3; i ++)
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
-*/
     } else if(strcmp(argv[1], "pextend") == 0) {
       Filter<num_t> extender;
       for(int i = 0; i < 3; i ++)
@@ -226,8 +226,9 @@ int main(int argc, const char* argv[]) {
       Filter<num_t> cenl;
       if(!file.loadp2or3(datas, argv[4]))
         return - 1;
+      const auto t(num_t(ratio) / num_t(100));
       for(int i = 0; i < 3; i ++)
-        data[i] = cenl.compute(data[i] + (data[i] - datas[i]) * num_t(ratio), cenl.CLIP);
+        data[i] = cenl.compute(data[i] * t + datas[i] * (num_t(1) - t), cenl.CLIP);
       if(!file.savep2or3(argv[5], data, ! true))
         return - 1;
       return 0;

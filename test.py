@@ -93,14 +93,16 @@ for line in argv[3:]:
       subprocess.call(["convert", root + "-enl-" + str(s + 1) + "a.ppm", "-blur", "1", "-unsharp", "1", "-resize", "75%", "-compress", "none", root + "-enl-" + str(s + 1) + "b.ppm"])
     subprocess.call(["cp", root + "-enl-" + str(pixels) + "b.ppm", root + "-enl.ppm"])
     subprocess.call(["convert", root + ".ppm", "-resize", str(pow(2 * .75, pixels) * 100) + "%", "-compress", "none", root + "-enl-im.ppm"])
-    subprocess.call([argv[1], "cenl", "2.", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-cenl.ppm"])
-    subprocess.call([argv[1], "cenl", "2.", root + "-enl.ppm", root + "-enl-im.ppm", root + "-enl-denl.ppm"])
+    subprocess.call([argv[1], "cenl", "50", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-cenl.ppm"])
+    subprocess.call([argv[1], "cenl", "150", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-denl.ppm"])
+    subprocess.call([argv[1], "cenl", "-50", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-eenl.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "bump2"):
+    subprocess.call([argv[1], "obj", "0", "1", ".2", root + "-bump.ppm", root + ".obj"])
     subprocess.call([argv[1], "tilt", "1", "4", ".005", "0", root + ".ppm", root + ".obj", root + "-R.ppm"])
     subprocess.call([argv[1], "tilt", "3", "4", ".005", "0", root + ".ppm", root + ".obj", root + "-L.ppm"])
-    subprocess.call([argv[1], "bump2", root + "-L.ppm", root + "-R.ppm", str(pixels), root + "-bump2.ppm"])
+    subprocess.call([argv[1], "bump2", root + "-R.ppm", root + "-L.ppm", str(pixels), root + "-bump2.ppm"])
   elif(argv[2] == "reshape"):
     subprocess.call([argv[1], "reshape", str(pixels), root + "-enl-im.ppm", root + "-enl.ppm", root + "-reshape.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + "-enl.ppm", root + "-enl-im.ppm", root + "-reshape-rev.ppm"])

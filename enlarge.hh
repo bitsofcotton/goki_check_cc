@@ -77,7 +77,6 @@ private:
   T    Pi;
   vector<Mat> Dop;
   vector<Mat> Eop;
-  vector<Mat> Bop;
   int  idx;
 };
 
@@ -91,7 +90,7 @@ template <typename T> Filter<T>::Filter() {
 }
 
 template <typename T> void Filter<T>::reinit() {
-  Dop = Eop = Bop = vector<Mat>();
+  Dop = Eop = vector<Mat>();
   idx = - 1;
 }
 
@@ -135,29 +134,13 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       initDop(data.rows());
       const Mat   diff(Dop[idx] * data);
             auto  delta(compute(Eop[idx] * data, ABS));
-      const auto& noise(Bop[idx]);
       result = Mat(data.rows() * 2, data.cols());
-      // ||data0 + delta + k1|| == ||data0||.
-      // k^2 ||1'||^2 + 2k * <data0+delta,1'> + ||data0 + delta||^2 - ||data0||^2 == 0.
-      Vec k(data.cols());
-      for(int j = 0; j < data.cols(); j ++) {
-        T a(0), b(0), c(0);
-        for(int i = 0; i < data.rows(); i ++) {
-          a += noise(i, noise.cols() / 2) * noise(i, noise.cols() / 2);
-          b += noise(i, noise.cols() / 2) * data(i, j);
-          c += (pow(data(i, j) + delta(i, j), T(2)) + pow(data(i, j) - delta(i, j), T(2))) / T(2) - pow(data(i, j), T(2));
-        }
-        if(b * b - a * c < T(0))
-          k[j] = - b / a;
-        else
-          k[j] = - b / a + sqrt(b * b - a * c) / a;
-      }
       for(int i = 0; i < data.rows(); i ++) {
         result.row(i * 2 + 0) = data.row(i);
         result.row(i * 2 + 1) = data.row(i);
         for(int j = 0; j < data.cols(); j ++) {
-          result(i * 2 + 0, j) += delta(i, j) + k[j] * noise(i, noise.cols() / 2);
-          result(i * 2 + 1, j) -= delta(i, j) + k[j] * noise(i, noise.cols() / 2);
+          result(i * 2 + 0, j) += delta(i, j);
+          result(i * 2 + 1, j) -= delta(i, j);
         }
       }
     }
@@ -418,7 +401,6 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     for(int j = 0; j < size; j ++)
       Dop[idx](i, j) = T(0);
   Eop.push_back(Dop[idx]);
-  Bop.push_back(Dop[idx]);
   assert(2 <= size);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -432,10 +414,6 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     const auto IDFT(seed(lsize, true));
     DFTD.row(0) *= U(T(0));
           auto DFTE(DFTD);
-          auto DFTB(DFTD);
-    for(int i = 0; i < DFTB.rows(); i ++)
-      for(int j = 0; j < DFTB.cols(); j ++)
-        DFTB(i, j) = T(0);
     T ni(0);
     T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
@@ -450,8 +428,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-      DFTE.row(i) /= exp(sqrt(U(- T(1))) * Pi / T(2 * DFTE.rows())) - U(T(1));
-      DFTB(i, i)   = U(T(1)) / (exp(sqrt(U(- T(1))) * Pi / T(2 * DFTE.rows())) - U(T(1)));
+      DFTE.row(i) /= exp(sqrt(U(- T(1))) * Pi * U(T(i)) / T(DFTE.rows())) - U(T(1));
     }
     // N.B. similar to det(Dop * Iop) == det(Dop) * det(Iop) == 1,
     //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
@@ -474,15 +451,13 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //          if ||Dop|| ||Iop|| == 1 in that meaning,
     //          exists r in R, Dop * x == r * x results gains.
     DFTD *= sqrt(T(DFTD.rows() - 1) / (nd * ni));
-    DFTE /= T(2);
+    DFTE /= T(DFTE.rows()) - T(1);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
     const Mat lEop((IDFT * DFTE).template real<T>());
-    const Mat lBop((IDFT * DFTB).template real<T>());
 #else
     const Mat lDop((IDFT * DFTD).real().template cast<T>());
     const Mat lEop((IDFT * DFTE).real().template cast<T>());
-    const Mat lBop((IDFT * DFTB).real().template cast<T>());
 #endif
 #if defined(_OPENMP)
 #pragma omp critical
@@ -493,14 +468,11 @@ template <typename T> void Filter<T>::initDop(const int& size) {
           lDop(i * lDop.rows() / Dop[idx].rows(), j);
         Eop[idx](i, i * (Eop[idx].cols() - lEop.cols()) / Eop[idx].cols() + j) +=
           lEop(i * lEop.rows() / Eop[idx].rows(), j);
-        Bop[idx](i, i * (Bop[idx].cols() - lBop.cols()) / Bop[idx].cols() + j) +=
-          lBop(i * lBop.rows() / Bop[idx].rows(), j);
       }
     cnt ++;
   }
   Dop[idx] /= T(cnt);
   Eop[idx] /= T(cnt);
-  Bop[idx] /= T(cnt);
   return;
 }
 
