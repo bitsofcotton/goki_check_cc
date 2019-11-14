@@ -87,15 +87,18 @@ for line in argv[3:]:
   elif(argv[2] == "enl"):
     subprocess.call(["python", argv[0], argv[1], "enlp", "1", line])
   elif(argv[2] == "enlp"):
-    subprocess.call(["cp", root + ".ppm", root + "-enl-0b.ppm"])
+    subprocess.call(["cp", root + ".ppm", root + "-enl-0c.ppm"])
     for s in range(0, pixels):
-      subprocess.call([argv[1], "enlarge", "1", root + "-enl-" + str(s) + "b.ppm", root + "-enl-" + str(s + 1) + "a.ppm"])
-      subprocess.call(["convert", root + "-enl-" + str(s + 1) + "a.ppm", "-blur", "1", "-unsharp", "1", "-resize", "75%", "-compress", "none", root + "-enl-" + str(s + 1) + "b.ppm"])
+      subprocess.call([argv[1], "enlarge", "2", root + "-enl-" + str(s) + "c.ppm", root + "-enl-" + str(s + 1) + "a.ppm"])
+      subprocess.call(["convert", root + "-enl-" + str(s + 1) + "a.ppm", "-blur", "1", "-unsharp", "1", "-resize", "50%", "-compress", "none", root + "-enl-" + str(s + 1) + "b.ppm"])
+      subprocess.call(["convert", root + ".ppm", "-resize", str(pow(2, s + 1) * 100) + "%", "-compress", "none", root + "-enl-im.ppm"])
+      #subprocess.call([argv[1], "cenl", "150", root + "-enl-im.ppm", root + "-enl-" + str(s + 1) + "b.ppm", root + "-enl-" + str(s + 1) + "c.ppm"])
+      subprocess.call([argv[1], "cenl", "150", root + "-enl-im.ppm", root + "-enl-" + str(s + 1) + "b.ppm", root + "-enl-" + str(s + 1) + "c.ppm"])
     subprocess.call(["cp", root + "-enl-" + str(pixels) + "b.ppm", root + "-enl.ppm"])
-    subprocess.call(["convert", root + ".ppm", "-resize", str(pow(2 * .75, pixels) * 100) + "%", "-compress", "none", root + "-enl-im.ppm"])
-    subprocess.call([argv[1], "cenl", "50", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-cenl.ppm"])
-    subprocess.call([argv[1], "cenl", "150", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-denl.ppm"])
-    subprocess.call([argv[1], "cenl", "-50", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-eenl.ppm"])
+    #subprocess.call(["convert", root + ".ppm", "-resize", str(pow(2 * .75, pixels) * 100) + "%", "-compress", "none", root + "-enl-im.ppm"])
+    #subprocess.call([argv[1], "cenl", "50", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-cenl.ppm"])
+    #subprocess.call([argv[1], "cenl", "150", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-denl.ppm"])
+    #subprocess.call([argv[1], "cenl", "-50", root + "-enl-im.ppm", root + "-enl.ppm", root + "-enl-eenl.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "bump2"):
