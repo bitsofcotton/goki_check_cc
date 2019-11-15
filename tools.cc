@@ -176,9 +176,8 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "enlarge") == 0) {
       Filter<num_t> enlarger;
       for(int j = 0; j < ratio; j ++)
-        for(int i = 0; i < 3; i ++)
-          data[i] = enlarger.compute(enlarger.compute(data[i], enlarger.ENLARGE_BOTH), enlarger.CLIP);
-/*
+        for(int i = 0; i < 3; i ++) {
+          // data[i] = enlarger.compute(enlarger.compute(data[i], enlarger.ENLARGE_BOTH), enlarger.CLIP);
           typename Filter<num_t>::Mat xye(enlarger.compute(data[i], enlarger.ENLARGE_BOTH));
           // XXX: geometric mean ratio.
           xye = enlarger.gmean(xye, redig.applytilt(enlarger.compute(redig.applytilt(data[i],   1, 0), enlarger.ENLARGE_BOTH), - 1, 0));
@@ -187,7 +186,6 @@ int main(int argc, const char* argv[]) {
           data[i] = enlarger.compute(xye, enlarger.CLIP);
           // data[i] = xye;
         }
-*/
       for(int i = 0; i < 3; i ++)
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
     } else if(strcmp(argv[1], "pextend") == 0) {
