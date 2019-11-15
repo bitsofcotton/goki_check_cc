@@ -139,8 +139,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         result.row(i * 2 + 0) = data.row(i);
         result.row(i * 2 + 1) = data.row(i);
         for(int j = 0; j < data.cols(); j ++) {
-          result(i * 2 + 0, j) += delta(i, j);
-          result(i * 2 + 1, j) -= delta(i, j);
+          result(i * 2 + 0, j) -= delta(i, j);
+          result(i * 2 + 1, j) += delta(i, j);
         }
       }
     }
