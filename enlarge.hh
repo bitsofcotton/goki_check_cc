@@ -39,6 +39,8 @@ public:
     COLLECT_BOTH,
     BUMP_X,
     BUMP_Y,
+    BUMP_Y_SHORT,
+    BUMP_Y0,
     BUMP_BOTH,
     EXTEND_X,
     EXTEND_Y0,
@@ -154,6 +156,31 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case BUMP_Y:
     {
+      result = compute(data, BUMP_Y0);
+      Mat shrink(data);
+      for(int i0 = 1; 16 <= shrink.rows(); i0 ++) {
+        Mat work((shrink.rows() + 1) / 2, shrink.cols());
+        for(int i = 0; i < work.rows(); i ++)
+          if(i * 2 + 1 < shrink.rows())
+            work.row(i) = (shrink.row(i * 2) + shrink.row(i * 2 + 1)) / T(2);
+          else
+            work.row(i) =  shrink.row(i * 2);
+        shrink = work;
+        while(work.rows() < data.rows())
+          work = compute(work, ENLARGE_Y);
+        Mat work2(data.rows(), data.cols());
+        for(int i = 0; i < work2.rows(); i ++)
+          work2.row(i) = work.row(i);
+        result += compute(work2, BUMP_Y0);
+      }
+      result = - compute(result, LOGSCALE) * sqrt(dratio);
+    }
+    break;
+  case BUMP_Y_SHORT:
+    result = - compute(compute(data, BUMP_Y0), LOGSCALE) * sqrt(dratio);
+    break;
+  case BUMP_Y0:
+    {
       result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -167,7 +194,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       camera[0] = T(0);
       camera[1] = T(1);
       assert(T(0) < dratio);
-      const auto rxy(sqrt(T(data.rows() - 1) * T(data.cols() - 1) / T(4)));
+      const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -176,7 +203,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) * sqrt(dratio)));
+        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
@@ -205,7 +232,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) /= dC(i, j);
-      result = - compute(result, LOGSCALE) * sqrt(dratio);
     }
     break;
   case EXTEND_Y0:
@@ -341,16 +367,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = T(1);
-  Vec camera0(2);
-  Vec camera1(2);
-  camera0[0] =   pixels;
-  camera0[1] =   T(1);
-  camera1[0] = - pixels;
-  camera1[1] =   T(1);
   assert(T(0) < dratio);
   initDop(max(3, min(int(data0.rows()) / 16, int(T(1) / dratio / dratio))));
   const auto dC(compute(compute(data0, COLLECT_Y) + compute(data1, COLLECT_Y), ABS));
-  const auto rxy(sqrt(T(data0.rows() - 1) * T(data0.cols() - 1) / T(4)));
+  const auto rxy(sqrt(T(data0.rows()) * T(data0.cols())));
+  Vec camera0(2);
+  Vec camera1(2);
+  camera0[0] =   pixels / rxy;
+  camera0[1] =   T(1);
+  camera1[0] = - pixels / rxy;
+  camera1[1] =   T(1);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -360,7 +386,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
       for(int j = 0; j < A.cols(); j ++)
         A(i, j) = T(0);
     Mat B(A);
-    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(- T(zi) * sqrt(dratio)));
+    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
     for(int i = 0; i < A.rows(); i ++)
       for(int j = 0; j < Dop0.size(); j ++) {
         Vec cpoint(2);
