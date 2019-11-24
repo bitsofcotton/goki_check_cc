@@ -98,7 +98,6 @@ for line in argv[3:]:
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "bump2"):
-    subprocess.call([argv[1], "obj", "0", "1", ".2", root + "-bump.ppm", root + ".obj"])
     subprocess.call([argv[1], "tilt", "1", "4", ".05", "0", root + ".ppm", root + ".obj", root + "-R.ppm"])
     subprocess.call([argv[1], "tilt", "3", "4", ".05", "0", root + ".ppm", root + ".obj", root + "-L.ppm"])
     subprocess.call([argv[1], "bump2", root + "-R.ppm", root + "-L.ppm", str(pixels), root + "-bump2.ppm"])
@@ -176,7 +175,7 @@ for line in argv[3:]:
   elif(argv[2] == "extend"):
     for s in range(0, pixels):
       subprocess.call(["python", argv[0], argv[1], "bump2", root + ".ppm"])
-      subprocess.call(["python", argv[0], argv[1], "obj", root + ".ppm"])
+      subprocess.call(["python", argv[0], argv[1], "obj", "1", root + ".ppm"])
       subprocess.call(["cp", root + "-2.obj", root + ".obj"])
   elif(argv[2] == "demosaic"):
     print pixels
