@@ -189,7 +189,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = T(0);
-      initDop(max(3, min(int(data.rows()) / 16, int(T(1) / dratio / dratio))));
+      // XXX:
+      // initDop(max(3, min(int(data.rows()) / 16, int(T(1) / dratio / dratio))));
+      initDop(60);
       Vec camera(2);
       camera[0] = T(0);
       camera[1] = T(1);
@@ -222,12 +224,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
         result += compute(A * data, ABS);
       }
-      // N.B.
-      // From hypothesis, it is correct to use:
-      //   log(|average(d_k C * exp(z_k))| / |dC|) == result.
-      // But it's not here, because of some calculation experiment
-      // causes some of false detection. So to avoid that, we use:
-      //   log(|average(d_k C * exp(z_k * sqrt(dratio)))| / |dC|) == result.
+      // N.B. log(|average(d_k C * exp(z_k))| / |dC|) == result.
       const auto dC(compute(compute(data, COLLECT_Y), BCLIP));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
@@ -248,29 +245,18 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
-      initDop(data.rows());
-      // N.B. nearest data in differential space.
-      const Mat   d0data(Dop[idx] * data);
-      initDop(result.rows());
-      const Mat   ddata(Dop[idx] * result);
-      const auto& Dop0(Dop[idx]);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < result.cols(); i ++) {
-        T a(0), b(0);
-        for(int j = 0; j < d0data.rows(); j ++) {
-          // <d0data, (ddata + Diff * t * e_k)> == <d0data, d0data> in cut.
-          a += d0data(j, i) * Dop0(j, Dop0.cols() - 1);
-          b += d0data(j, i) * (d0data(j, i) - ddata(j, i));
+      for(int i = 0; i < data.cols(); i ++) {
+        for(int k = 1; k < 8; k ++) {
+          P0<T, complex<T> > p(data.rows() / k / 2);
+          for(int j = (data.rows() % k + k - 1) % k; j < data.rows() - k; j += k)
+            p.nextNoreturn(data(j, i));
+          result(data.rows(), i) += p.next(data(data.rows() - 1, i));
         }
-        if(a == T(0)) {
-          cerr << "Error in EXTEND_Y0" << endl;
-          result(data.rows(), i) = data(data.rows() - 1, i);
-        } else
-          result(data.rows(), i) = b / a;
+        result(data.rows(), i) /= T(7);
       }
-      result = compute(result, CLIP);
     }
     break;
   case EXTEND_Y:
@@ -289,6 +275,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
       result.row(data.rows() + 1) = compute(data, EXTEND_Y0).row(data.rows());
+      result = compute(result, CLIP);
     }
     break;
   case BCLIP:
