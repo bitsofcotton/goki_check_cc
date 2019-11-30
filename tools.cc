@@ -192,34 +192,11 @@ int main(int argc, const char* argv[]) {
         data[i] = enlarger.compute(data[i], enlarger.CLIP);
     } else if(strcmp(argv[1], "pextend") == 0) {
       Filter<num_t> extender;
+      extender.pstart = ratio;
+      extender.pend   = ratio + 8;
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < ratio; j ++)
           data[i] = extender.compute(data[i], extender.EXTEND_BOTH);
-/*
-      typename simpleFile<num_t>::Mat result[3];
-      for(int j = 0; j < 3; j ++) {
-        result[j] = typename simpleFile<num_t>::Mat(data[j].rows() + ratio * 2, data[j].cols());
-        for(int k = 0; k < result[j].rows(); k ++)
-          for(int l = 0; l < result[j].cols(); l ++)
-            result[j](k, l) = 0.;
-        for(int k = 0; k < data[j].rows(); k ++)
-          result[j].row(k + ratio) = data[j].row(k);
-      }
-      for(int j = 0; j < ratio; j ++) {
-        for(int i = 0; i < 3; i ++) {
-          typename simpleFile<num_t>::Mat work(data[i].rows() / (j + 1), data[i].cols());
-          for(int k = 0; k < data[i].rows() / (j + 1); k ++)
-            work.row(k) = data[i].row(k * (j + 1));
-          result[i].row(ratio - j - 1) = extender.compute(extender.compute(work, extender.REVERSE_Y), extender.EXTEND_Y0).row(work.rows());
-          work = typename simpleFile<num_t>::Mat(data[i].rows() / (j + 1), data[i].cols());
-          for(int k = 0; k < data[i].rows() / (j + 1); k ++)
-            work.row(k) = data[i].row(k * (j + 1) - (data[i].rows() / (j + 1) - 1) * (j + 1) + data[i].rows() - 1);
-          result[i].row(result[i].rows() - ratio + j) = extender.compute(work, extender.EXTEND_Y0).row(work.rows());
-        }
-      }
-      for(int i = 0; i < 3; i ++)
-        data[i] = result[i];
-*/
       redig.normalize(data, num_t(1));
     } else if(strcmp(argv[1], "cenl") == 0) {
       typename simpleFile<num_t>::Mat datas[3];
