@@ -55,6 +55,8 @@ using std::ceil;
 #endif
 
 namespace goki {
+using std::vector;
+#include "p0.hh"
 #include "fileio.hh"
 #include "enlarge.hh"
 #include "match.hh"
@@ -192,7 +194,7 @@ int main(int argc, const char* argv[]) {
       Filter<num_t> extender;
       for(int i = 0; i < 3; i ++)
         for(int j = 0; j < ratio; j ++)
-          data[i] = extender.compute(data[i], extender.EXTEND_Y);
+          data[i] = extender.compute(data[i], extender.EXTEND_BOTH);
 /*
       typename simpleFile<num_t>::Mat result[3];
       for(int j = 0; j < 3; j ++) {

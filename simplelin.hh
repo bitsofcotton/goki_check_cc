@@ -35,6 +35,8 @@ public:
   inline       SimpleVector<T>& operator /= (const T& other);
   inline       SimpleVector<T>& operator =  (const SimpleVector<T>& other);
   inline       SimpleVector<T>& operator =  (SimpleVector<T>&& other);
+  inline       bool             operator == (const SimpleVector<T>& other) const;
+  inline       bool             operator != (const SimpleVector<T>& other) const;
   inline       T                dot         (const SimpleVector<T>& other) const;
   inline       T&               operator [] (const int& idx);
   inline const T&               operator [] (const int& idx) const;
@@ -162,6 +164,19 @@ template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator = (Simpl
   other.esize  = 0;
   other.entity = NULL;
   return *this;
+}
+
+template <typename T> inline bool SimpleVector<T>::operator == (const SimpleVector<T>& other) const {
+  return ! (*this != other);
+}
+
+template <typename T> inline bool SimpleVector<T>::operator != (const SimpleVector<T>& other) const {
+  if(esize != other.esize)
+    return true;
+  for(int i = 0; i < esize; i ++)
+    if(entity[i] != other.entity[i])
+      return true;
+  return false;
 }
 
 template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator /= (const T& other) {
