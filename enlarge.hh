@@ -71,6 +71,8 @@ public:
   void reinit();
   T    dratio;
   T    offset;
+  int  pstart;
+  int  pend;
   
 private:
   void initDop(const int& size);
@@ -88,6 +90,8 @@ template <typename T> Filter<T>::Filter() {
   // N.B. from accuracy reason, low depth.
   dratio  = T(005) / T(100);
   offset  = T(1) / T(64);
+  pstart  = 1;
+  pend    = 8;
   idx     = - 1;
 }
 
@@ -245,11 +249,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
+      assert(0 < pstart && pstart < pend);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.cols(); i ++) {
-        for(int k = 1; k < 8; k ++) {
+        for(int k = pstart; k < min(pend, int(data.rows()) / 8); k ++) {
           P0<T, complex<T> > p(data.rows() / k / 2);
           for(int j = (data.rows() % k + k - 1) % k; j < data.rows() - k; j += k)
             p.nextNoreturn(data(j, i));
