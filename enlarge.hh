@@ -452,15 +452,16 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //                                == ||Dop|| ||Iop|| cos theta' cos phi
     //      so we choose matrix-vector operation with matrix-matrix style,
     //      because of cosine range, we choose:
-    //        Dop' := Dop sqrt(n - 1) / sqrt(||Dop|| ||Iop||).
-    //      (sqrt instead of sqrt(sqrt(...)) is because of
-    //        the ratio is applied to differential operator itself.)
+    //        Dop' := Dop sqrt(sqrt(n - 1)) / sqrt(||Dop|| ||Iop||).
+    //        Iop' := Iop sqrt(sqrt(n - 1)) / sqrt(||Dop|| ||Iop||).
+    //      then we get:
+    //        Iop' * Dop' == Iop * Dop * sqrt(n - 1) / (||Dop|| * ||Iop)
     //      And, if we change coefficients ratio on differential operator,
     //        and its inverse of integrate operator, it causes invalid
     //        on the meaning of DFT core, but in experiment,
     //          if ||Dop|| ||Iop|| == 1 in that meaning,
     //          exists r in R, Dop * x == r * x results gains.
-    DFTD *= sqrt(sqrt(T(DFTD.rows() - 1)) / sqrt(nd * ni));
+    DFTD *= sqrt(sqrt(T(DFTD.rows() - 1)) / (nd * ni));
     DFTE /= T(DFTE.rows()) - T(1);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
