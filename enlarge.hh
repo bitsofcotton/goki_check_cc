@@ -136,20 +136,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
   case ENLARGE_Y:
-    {
-      initDop(data.rows());
-      const Mat   diff(Dop[idx] * data);
-            auto  delta(compute(Eop[idx] * data, ABS));
-      result = Mat(data.rows() * 2, data.cols());
-      for(int i = 0; i < data.rows(); i ++) {
-        result.row(i * 2 + 0) = data.row(i);
-        result.row(i * 2 + 1) = data.row(i);
-        for(int j = 0; j < data.cols(); j ++) {
-          result(i * 2 + 0, j) -= delta(i, j);
-          result(i * 2 + 1, j) += delta(i, j);
-        }
-      }
-    }
+    initDop(data.rows());
+    result = Eop[idx] * data;
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -255,7 +243,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.cols(); i ++) {
         for(int k = pstart; k < min(pend, int(data.rows()) / 8); k ++) {
-          P0<T, complex<T> > p(data.rows() / k / 2);
+          // out of range prediction causes low frequency.
+          P0<T, complex<T> > p(data.rows() * 2 / k);
           for(int j = (data.rows() % k + k - 1) % k; j < data.rows() - k; j += k)
             p.nextNoreturn(data(j, i));
           result(data.rows(), i) += p.next(data(data.rows() - 1, i));
@@ -462,7 +451,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //                                == ||Dop|| ||Iop|| cos theta' cos phi
     //      so we choose matrix-vector operation with matrix-matrix style,
     //      because of cosine range, we choose:
-    //        Dop' := Dop sqrt(n - 1) / (||Dop|| ||Iop||).
+    //        Dop' := Dop sqrt(n - 1) / sqrt(||Dop|| ||Iop||).
     //      (sqrt instead of sqrt(sqrt(...)) is because of
     //        the ratio is applied to differential operator itself.)
     //      And, if we change coefficients ratio on differential operator,
@@ -470,7 +459,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //        on the meaning of DFT core, but in experiment,
     //          if ||Dop|| ||Iop|| == 1 in that meaning,
     //          exists r in R, Dop * x == r * x results gains.
-    DFTD *= sqrt(T(DFTD.rows() - 1) / (nd * ni));
+    DFTD *= sqrt(T(DFTD.rows() - 1) / sqrt(nd * ni));
     DFTE /= T(DFTE.rows()) - T(1);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
@@ -493,6 +482,14 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   }
   Dop[idx] /= T(cnt);
   Eop[idx] /= T(cnt);
+  Mat Eop2x(Eop[idx].rows() * 2, Eop[idx].cols());
+  for(int i = 0; i < Eop[idx].rows(); i ++) {
+    Eop2x.row(2 * i + 0) = - Eop[idx].row(i);
+    Eop2x.row(2 * i + 1) =   Eop[idx].row(i);
+    Eop2x(2 * i + 0, i) += T(1);
+    Eop2x(2 * i + 1, i) += T(1);
+  }
+  Eop[idx] = Eop2x;
   return;
 }
 
