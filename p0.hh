@@ -110,8 +110,8 @@ template <typename T, typename U> const typename P0<T,U>::Mat& P0<T,U>::diff(con
     nd += abs(phase)  * abs(phase);
     ni += abs(phase2) * abs(phase2);
   }
-  d = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1)) / (nd * ni));
-  i = (seed(size, true) * II).template real<T>() * sqrt(sqrt(T(II.rows() - 1)) / (nd * ni));
+  d = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1) / (nd * ni)));
+  i = (seed(size, true) * II).template real<T>() * sqrt(sqrt(T(II.rows() - 1) / (nd * ni)));
   if(integrate)
     return i;
   return d;

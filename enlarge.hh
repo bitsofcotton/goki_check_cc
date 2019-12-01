@@ -461,7 +461,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //        on the meaning of DFT core, but in experiment,
     //          if ||Dop|| ||Iop|| == 1 in that meaning,
     //          exists r in R, Dop * x == r * x results gains.
-    DFTD *= sqrt(sqrt(T(DFTD.rows() - 1)) / (nd * ni));
+    DFTD *= sqrt(sqrt(T(DFTD.rows() - 1) / (nd * ni)));
     DFTE /= T(DFTE.rows()) - T(1);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
