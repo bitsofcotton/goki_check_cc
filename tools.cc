@@ -187,7 +187,7 @@ int main(int argc, const char* argv[]) {
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       Filter<num_t> extender;
-      extender.pstart = ratio;
+      extender.pstart = 1;
       extender.pend   = ratio + 8;
       for(int i = 0; i < 3; i ++) {
         const auto orig(data[i]);
