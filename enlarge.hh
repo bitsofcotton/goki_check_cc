@@ -249,7 +249,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             p.nextNoreturn(data(j, i));
           result(data.rows(), i) += p.next(data(data.rows() - 1, i));
         }
-        result(data.rows(), i) /= T(7);
+        result(data.rows(), i) /= T(min(pend, int(data.rows()) / 8) - pstart);
       }
     }
     break;
