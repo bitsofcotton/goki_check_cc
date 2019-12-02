@@ -15,7 +15,7 @@ private:
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size, const bool& integrate);
   const Vec&  nextTaylor(const int& size);
-  const Vec&  nextDeepTaylor(const int& size, const int& shrink);
+  const Vec&  nextDeepTaylor(const int& size);
   const T& Pi() const;
   const U& J()  const;
   Vec buf;
@@ -26,7 +26,7 @@ template <typename T, typename U> P0<T,U>::P0(const int& range, const int& shrin
   buf.resize(range);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
-  const auto& pred0(nextDeepTaylor(range * shrink, shrink));
+  const auto& pred0(nextDeepTaylor(range * shrink));
   pred.resize(range);
   for(int i = 0; i < pred.size(); i ++)
     pred[i] = T(0);
@@ -148,7 +148,7 @@ template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextTayl
   return v;
 }
 
-template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextDeepTaylor(const int& size, const int& shrink) {
+template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextDeepTaylor(const int& size) {
   assert(0 < size);
   static vector<Vec> dtayl;
   if(dtayl.size() <= size)
@@ -157,12 +157,13 @@ template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextDeep
     return dtayl[size];
   auto& p(dtayl[size]);
   p = nextTaylor(size);
-  for(int i = shrink + 1; i < p.size(); i ++) {
+  p[p.size() - 1] += T(1);
+  for(int i = 2; i < p.size(); i ++) {
     const auto& q(nextTaylor(i));
     for(int j = 0; j < q.size(); j ++)
       p[p.size() + j - q.size()] += q[j];
   }
-  return p /= T(p.size() - 1);
+  return p /= T(p.size());
 }
 
 #define _P0_
