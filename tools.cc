@@ -187,18 +187,14 @@ int main(int argc, const char* argv[]) {
         }
     } else if(strcmp(argv[1], "pextend") == 0) {
       Filter<num_t> extender;
-      extender.pstart = ratio;
-      extender.pend   = ratio + 8;
+      extender.plen = ratio;
       for(int i = 0; i < 3; i ++) {
         const auto orig(data[i]);
-        for(int j = 0; j < ratio; j ++)
-          data[i] = extender.compute(data[i], extender.EXTEND_BOTH);
+        data[i] = extender.compute(data[i], extender.EXTEND_BOTH);
         auto work(redig.applytilt(orig, 1, 0));
-        for(int j = 0; j < ratio; j ++)
-          work = extender.compute(work, extender.EXTEND_BOTH);
+        work = extender.compute(work, extender.EXTEND_BOTH);
         auto work2(redig.applytilt(orig, - 1, 0));
-        for(int j = 0; j < ratio; j ++)
-          work2 = extender.compute(work2, extender.EXTEND_BOTH);
+        work2 = extender.compute(work2, extender.EXTEND_BOTH);
         data[i] = extender.gmean(data[i],
           extender.gmean(redig.applytilt(work, - 1, 0),
                          redig.applytilt(work2,  1, 0)));
