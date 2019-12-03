@@ -211,11 +211,11 @@ template <typename T, int bits> inline int DUInt<T,bits>::getMSB() const {
 template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator /= (const DUInt<T,bits>& src) {
   const static auto hbits(bits >> 1);
   const static auto lmask((T(1) << hbits) - T(1));
-  if(! *this)
-    return *this;
   const auto shift(src.getMSB());
   if(shift < 0)
     throw "Zero division";
+  if(! *this)
+    return *this;
   const auto dblocks(shift / hbits + 1);
   const auto lshift(dblocks * hbits - shift - 1);
   assert(0 <= lshift && lshift < hbits && !((shift + lshift + 1) % hbits));
@@ -664,9 +664,8 @@ template <typename T, typename W, int bits, typename U>        SimpleFloat<T,W,b
   if((s |= src.s & (1 << INF)) & (1 << INF))
     return *this;
   if((! m) || (! src.m)) {
-    m ^= m;
-    e ^= e;
-    return *this;
+    s |= 1 << DWRK;
+    return ensureFlag();
   }
   auto mm(W(m) * W(src.m));
   s |= safeAdd(e, src.e);
@@ -697,8 +696,11 @@ template <typename T, typename W, int bits, typename U>        SimpleFloat<T,W,b
     s |= 1 << DWRK;
     return ensureFlag();
   }
-  if(s & (1 << INF))
+  if(s & (1 << INF)) {
+    if(src.s & (1 << INF))
+      s |= 1 << NaN;
     return *this;
+  }
   if(! src.m) {
     throw "Zero division";
     s |= 1 << NaN;
@@ -819,12 +821,14 @@ template <typename T, typename W, int bits, typename U> inline                  
     throw "NaN to convert int";
   if(! deci.m)
     return T(0);
-  if(bits <= deci.e || (U(0) < deci.e && ! (deci.m <<= deci.e)))
+  if(bits <= deci.e || (U(0) < deci.e && (deci.m <<= deci.e) >> deci.e != deci.m))
     throw "Overflow to convert int.";
   if(deci.e <= - bits)
     return T(0);
   if(deci.e <  U(0))
     deci.m >>= - deci.e;
+  else if(U(0) < deci.e)
+    deci.m <<=   deci.e;
   return deci.m;
 }
 
@@ -1178,7 +1182,12 @@ template <typename T, typename W, int bits, typename U> const SimpleFloat<T,W,bi
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::sqrt() const {
   if(s & ((1 << INF) | (1 << NaN)))
     return *this;
-  return (this->log() >> U(1)).exp();
+  auto res((this->log() >> U(1)).exp());
+  // get better accuracy (is this enough?, double accuracy on one loop.)
+  // newton's method: 0 == f'(x_n) (x_{n+1} - x_n) + f(x_n)
+  //            x_{n+1} := x_n - f(x_n)/f'(x_n).
+  //         where f(x) := x_n * x_n - *this
+  return (res + *this / res) >> U(1);
 }
 
 template <typename T, typename W, int bits, typename U> std::ostream& operator << (std::ostream& os, const SimpleFloat<T,W,bits,U>& v) {
