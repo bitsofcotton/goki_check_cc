@@ -71,8 +71,7 @@ public:
   void reinit();
   T    dratio;
   T    offset;
-  int  pstart;
-  int  pend;
+  int  plen;
   
 private:
   void initDop(const int& size);
@@ -90,8 +89,7 @@ template <typename T> Filter<T>::Filter() {
   // N.B. from accuracy reason, low depth.
   dratio  = T(005) / T(100);
   offset  = T(1) / T(64);
-  pstart  = 1;
-  pend    = 8;
+  plen    = 1;
   idx     = - 1;
 }
 
@@ -225,7 +223,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case EXTEND_Y0:
     {
-      result = Mat(data.rows() + 1, data.cols());
+      assert(0 < plen);
+      result = Mat(data.rows() + plen, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -237,39 +236,48 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.cols(); i ++)
         result(data.rows(), i) = T(0);
-      assert(0 < pstart && pstart < pend);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < data.cols(); i ++) {
-        for(int k = pstart; k < min(pend, int(data.rows()) / 8); k ++) {
-          // out of range prediction causes low frequency.
-          P0<T, complex<T> > p(data.rows() / 2 / k, 1);
-          int j;
-          for(j = data.rows() % k; j < data.rows() - k; j += k)
-            p.nextNoreturn(data(j, i));
-          result(data.rows(), i) += p.next(data(j, i));
+      for(int i = 0; i < data.cols(); i ++)
+        for(int j = 0; j < plen; j ++) {
+          P0<T, complex<T> > p(min(int(data.rows()) / 2, plen * 8), 2, j + 1);
+          for(int k = 0; k < data.rows() - 1; k ++)
+            p.nextNoreturn(data(k, i));
+          result(data.rows() + j, i) += p.next(data(data.rows() - 1, i));
+          if(! i)
+            cerr << "." << flush;
         }
-        result(data.rows(), i) /= T(min(pend, int(data.rows()) / 8) - pstart);
-      }
     }
     break;
   case EXTEND_Y:
     {
-      result = Mat(data.rows() + 2, data.cols());
+      assert(0 < plen);
+      result = Mat(data.rows() + 2 * plen, data.cols());
       Mat revdata(data.rows(), data.cols());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
         revdata.row(i) = data.row(data.rows() - i - 1);
-      result.row(0) = compute(revdata, EXTEND_Y0).row(data.rows());
+      const auto revext(compute(revdata, EXTEND_Y0));
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < plen; i ++)
+        result.row(plen - i - 1) = revext.row(revdata.rows() + i);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
-        result.row(i + 1) = data.row(i);
-      result.row(data.rows() + 1) = compute(data, EXTEND_Y0).row(data.rows());
+        result.row(i + plen) = data.row(i);
+      const auto ext(compute(data, EXTEND_Y0));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+      for(int i = 0; i < plen; i ++)
+        result.row(data.rows() + plen + i) = ext.row(data.rows() + i);
       result = compute(result, CLIP);
     }
     break;

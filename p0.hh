@@ -6,7 +6,7 @@ public:
   typedef SimpleVector<U> VecU;
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<U> MatU;
-  inline P0(const int& range, const int& shrink = 3);
+  inline P0(const int& range, const int& shrink = 3, const int& look = 1);
   inline ~P0();
   inline void nextNoreturn(const T& in);
   inline T next(const T& in);
@@ -21,12 +21,12 @@ private:
   Vec buf;
 };
 
-template <typename T, typename U> P0<T,U>::P0(const int& range, const int& shrink) {
+template <typename T, typename U> P0<T,U>::P0(const int& range, const int& shrink, const int& look) {
   assert(1 < range && 0 < shrink);
   buf.resize(range);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
-  const auto& pred0(nextDeepTaylor(range * shrink, shrink));
+  const auto& pred0(nextDeepTaylor(range * shrink, shrink * look));
   pred.resize(range);
   for(int i = 0; i < pred.size(); i ++)
     pred[i] = T(0);
@@ -125,13 +125,15 @@ template <typename T, typename U> const typename P0<T,U>::Mat& P0<T,U>::diff(con
 
 template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextTaylor(const int& size, const int& step) {
   assert(0 < size);
-  static vector<Vec> ntayl;
+  static vector<vector<Vec> > ntayl;
   if(ntayl.size() <= size)
-    ntayl.resize(size + 1, Vec());
-  if(ntayl[size].size() == size)
-    return ntayl[size];
-  ntayl[size].resize(size);
-        auto& v(ntayl[size]);
+    ntayl.resize(size + 1, vector<Vec>());
+  if(ntayl[size].size() <= step)
+    ntayl[size].resize(step + 1, Vec());
+  if(ntayl[size][step].size() == size)
+    return ntayl[size][step];
+  ntayl[size][step].resize(size);
+        auto& v(ntayl[size][step]);
   const auto& D(diff(size, false));
         auto  dd(D.row(D.rows() - 1) * T(step));
   for(int i = 0; i < v.size() - 1; i ++)
@@ -149,12 +151,14 @@ template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextTayl
 
 template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextDeepTaylor(const int& size, const int& step) {
   assert(0 < size);
-  static vector<Vec> dtayl;
+  static vector<vector<Vec> > dtayl;
   if(dtayl.size() <= size)
-    dtayl.resize(size + 1, Vec());
-  if(dtayl[size].size() == size)
-    return dtayl[size];
-  auto& p(dtayl[size]);
+    dtayl.resize(size + 1, vector<Vec>());
+  if(dtayl[size].size() <= step)
+    dtayl[size].resize(step + 1, Vec());
+  if(dtayl[size][step].size() == size)
+    return dtayl[size][step];
+  auto& p(dtayl[size][step]);
   p = nextTaylor(size, step);
   for(int i = step; i < p.size(); i ++) {
     const auto& q(nextTaylor(i, step));
