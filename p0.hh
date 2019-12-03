@@ -6,7 +6,7 @@ public:
   typedef SimpleVector<U> VecU;
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<U> MatU;
-  inline P0(const int& range, const int& shrink = 4);
+  inline P0(const int& range, const int& shrink = 3);
   inline ~P0();
   inline void nextNoreturn(const T& in);
   inline T next(const T& in);
@@ -14,8 +14,8 @@ private:
   Vec pred;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size, const bool& integrate);
-  const Vec&  nextTaylor(const int& size);
-  const Vec&  nextDeepTaylor(const int& size);
+  const Vec&  nextTaylor(const int& size, const int& step);
+  const Vec&  nextDeepTaylor(const int& size, const int& step);
   const T& Pi() const;
   const U& J()  const;
   Vec buf;
@@ -26,13 +26,12 @@ template <typename T, typename U> P0<T,U>::P0(const int& range, const int& shrin
   buf.resize(range);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
-  const auto& pred0(nextDeepTaylor(range * shrink));
+  const auto& pred0(nextDeepTaylor(range * shrink, shrink));
   pred.resize(range);
   for(int i = 0; i < pred.size(); i ++)
     pred[i] = T(0);
   for(int i = 0; i < pred0.size(); i ++)
     pred[i / shrink] += pred0[i];
-  pred /= T(shrink);
 }
 
 template <typename T, typename U> P0<T,U>::~P0() {
@@ -124,7 +123,7 @@ template <typename T, typename U> const typename P0<T,U>::Mat& P0<T,U>::diff(con
   return d;
 }
 
-template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextTaylor(const int& size) {
+template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextTaylor(const int& size, const int& step) {
   assert(0 < size);
   static vector<Vec> ntayl;
   if(ntayl.size() <= size)
@@ -134,7 +133,7 @@ template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextTayl
   ntayl[size].resize(size);
         auto& v(ntayl[size]);
   const auto& D(diff(size, false));
-        auto  dd(D.row(D.rows() - 1));
+        auto  dd(D.row(D.rows() - 1) * T(step));
   for(int i = 0; i < v.size() - 1; i ++)
     v[i] = T(0);
   v[v.size() - 1] = T(1);
@@ -143,12 +142,12 @@ template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextTayl
     v += dd;
     if(bv == v)
       break;
-    dd = (D * dd) / T(i);
+    dd = (D * dd) / T(i) * T(step);
   }
   return v;
 }
 
-template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextDeepTaylor(const int& size) {
+template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextDeepTaylor(const int& size, const int& step) {
   assert(0 < size);
   static vector<Vec> dtayl;
   if(dtayl.size() <= size)
@@ -156,14 +155,13 @@ template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextDeep
   if(dtayl[size].size() == size)
     return dtayl[size];
   auto& p(dtayl[size]);
-  p = nextTaylor(size);
-  p[p.size() - 1] += T(1);
-  for(int i = 2; i < p.size(); i ++) {
-    const auto& q(nextTaylor(i));
+  p = nextTaylor(size, step);
+  for(int i = step; i < p.size(); i ++) {
+    const auto& q(nextTaylor(i, step));
     for(int j = 0; j < q.size(); j ++)
       p[p.size() + j - q.size()] += q[j];
   }
-  return p /= T(p.size());
+  return p /= T(p.size() - step + 1);
 }
 
 #define _P0_

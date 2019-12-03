@@ -244,7 +244,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < data.cols(); i ++) {
         for(int k = pstart; k < min(pend, int(data.rows()) / 8); k ++) {
           // out of range prediction causes low frequency.
-          P0<T, complex<T> > p(data.rows() / 2 / k);
+          P0<T, complex<T> > p(data.rows() / 2 / k, 1);
           int j;
           for(j = data.rows() % k; j < data.rows() - k; j += k)
             p.nextNoreturn(data(j, i));
