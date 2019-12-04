@@ -26,7 +26,11 @@ template <typename T, typename U> P0<T,U>::P0(const int& range, const int& shrin
   buf.resize(range);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
+#if defined(_RECURSIVE_)
   const auto& pred0(nextDeepTaylor(range * shrink, shrink * look));
+#else
+  const auto& pred0(nextTaylor(range * shrink, shrink * look));
+#endif
   pred.resize(range);
   for(int i = 0; i < pred.size(); i ++)
     pred[i] = T(0);

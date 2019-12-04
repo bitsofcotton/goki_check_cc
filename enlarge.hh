@@ -235,16 +235,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.cols(); i ++)
-        result(data.rows(), i) = T(0);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.cols(); i ++)
         for(int j = 0; j < plen; j ++) {
-          P0<T, complex<T> > p(min(int(data.rows()) / 2, plen * 8), 2, j + 1);
+          P0<T, complex<T> > p(data.rows(), 2, j + 1);
           for(int k = 0; k < data.rows() - 1; k ++)
             p.nextNoreturn(data(k, i));
-          result(data.rows() + j, i) += p.next(data(data.rows() - 1, i));
+          result(data.rows() + j, i) = p.next(data(data.rows() - 1, i));
           if(! i)
             cerr << "." << flush;
         }
