@@ -243,13 +243,13 @@ template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator /=
       d =  (e[0] << hbits) / dlast;
       break;
     case 0:
-      d =   e[0] / dlast;
+      d =  (e[0]) / dlast;
       break;
     case 1:
       d = ((e[0] >> hbits) | (e[1] << hbits)) / dlast;
       break;
     case 2:
-      d =   e[1] / dlast;
+      d =  (e[1]) / dlast;
       break;
     default:
       assert(0 && "Should not be reached.");
@@ -491,7 +491,7 @@ template <typename T, int bits> std::istream&  operator >> (std::istream& is, DU
 template <typename T, typename W, int bits, typename U> class SimpleFloat {
 public:
   inline SimpleFloat();
-  inline SimpleFloat(const int& src);
+  inline SimpleFloat(const T& src);
   inline SimpleFloat(const SimpleFloat<T,W,bits,U>& src);
   inline SimpleFloat(SimpleFloat<T,W,bits,U>&& src);
   inline ~SimpleFloat();
@@ -570,12 +570,13 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
   assert(0 < bits && ! (bits & 1));
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>::SimpleFloat(const int& src) {
+template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>::SimpleFloat(const T& src) {
+  const static T tzero(0);
   s ^= s;
-  m  = std::abs(src);
+  m  = src < tzero ? - src : src;
   e ^= e;
   s |= safeAdd(e, normalize(m));
-  if(src < 0)
+  if(src < tzero)
     s |= 1 << SIGN;
   ensureFlag();
 }
@@ -729,6 +730,8 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
 }
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>& SimpleFloat<T,W,bits,U>::operator <<= (const U& b) {
+  if(s & ((1 << INF) | (1 << NaN)))
+    return *this;
   s |= safeAdd(e, b);
   return ensureFlag();
 }
@@ -739,6 +742,8 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
 }
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>& SimpleFloat<T,W,bits,U>::operator >>= (const U& b) {
+  if(s & ((1 << INF) | (1 << NaN)))
+    return *this;
   s |= safeAdd(e, - b);
   return ensureFlag();
 }
@@ -821,7 +826,7 @@ template <typename T, typename W, int bits, typename U> inline                  
     throw "NaN to convert int";
   if(! deci.m)
     return T(0);
-  if(bits <= deci.e || (U(0) < deci.e && (deci.m <<= deci.e) >> deci.e != deci.m))
+  if(bits <= deci.e || (U(0) < deci.e && (deci.m << deci.e) >> deci.e != deci.m))
     throw "Overflow to convert int.";
   if(deci.e <= - bits)
     return T(0);
