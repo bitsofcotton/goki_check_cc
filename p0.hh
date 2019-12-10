@@ -163,13 +163,13 @@ template <typename T, typename U> const typename P0<T,U>::Vec& P0<T,U>::nextDeep
   if(dtayl[size][step].size() == size)
     return dtayl[size][step];
   auto& p(dtayl[size][step]);
-  p = nextTaylor(size, step);
-  for(int i = step; i < p.size(); i ++) {
+  p = nextTaylor(size, step) * T(size);
+  for(int i = max(step, 3); i < p.size(); i ++) {
     const auto& q(nextTaylor(i, step));
     for(int j = 0; j < q.size(); j ++)
-      p[p.size() + j - q.size()] += q[j];
+      p[p.size() + j - q.size()] += q[j] * T(i);
   }
-  return p /= T(p.size() - step + 1);
+  return p /= T((p.size() + 1) * p.size() / 2 - max(step, 3) * (max(step, 3) - 1) / 2);
 }
 
 #define _P0_
