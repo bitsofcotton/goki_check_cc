@@ -81,7 +81,8 @@ template <typename T> inline SimpleVector<T>::SimpleVector(SimpleVector<T>&& oth
 }
 
 template <typename T> inline SimpleVector<T>::~SimpleVector() {
-  delete[] entity;
+  if(entity)
+    delete[] entity;
   entity = NULL;
   return;
 }
@@ -143,8 +144,12 @@ template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator = (const
   if(entity == other.entity && esize == other.esize)
     return *this;
   if(esize != other.esize) {
-    delete[] entity;
-    entity = new T[other.esize];
+    if(entity)
+      delete[] entity;
+    if(other.esize)
+      entity = new T[other.esize];
+    else
+      entity = NULL;
   }
   esize = other.esize;
 #if defined(_OPENMP)
@@ -159,7 +164,8 @@ template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator = (Simpl
   if(entity == other.entity && esize == other.esize)
     return *this;
   esize  = move(other.esize);
-  delete[] entity;
+  if(entity)
+    delete[] entity;
   entity = move(other.entity);
   other.esize  = 0;
   other.entity = NULL;
@@ -190,14 +196,14 @@ template <typename T> inline SimpleVector<T>& SimpleVector<T>::operator /= (cons
 
 template <typename T> inline T SimpleVector<T>::dot(const SimpleVector<T>& other) const {
   assert(esize == other.esize);
-  T res(0);
   SimpleVector<T> work(other.size());
 #if defined(_OPENMP)
 #pragma omp simd
 #endif
   for(int i = 0; i < esize; i ++)
     work[i] = entity[i] * other.entity[i];
-  for(int i = 0; i < esize; i ++)
+  auto res(work[0]);
+  for(int i = 1; i < esize; i ++)
     res += work[i];
   return res;
 }
@@ -241,7 +247,8 @@ template <typename T> inline void SimpleVector<T>::resize(const int& size) {
   assert(size > 0);
   if(size != esize) {
     esize = size;
-    delete[] entity;
+    if(entity)
+      delete[] entity;
     entity = new T[esize];
   }
   return;
@@ -270,6 +277,8 @@ public:
   inline       SimpleMatrix<T>& operator /= (const T& other);
   inline       SimpleMatrix<T>& operator =  (const SimpleMatrix<T>& other);
   inline       SimpleMatrix<T>& operator =  (SimpleMatrix<T>&& other);
+  inline       bool             operator == (const SimpleMatrix<T>& other) const;
+  inline       bool             operator != (const SimpleMatrix<T>& other) const;
   inline       T&               operator () (const int& y, const int& x);
   inline const T&               operator () (const int& y, const int& x) const;
   inline       SimpleVector<T>& row(const int& y);
@@ -335,7 +344,8 @@ template <typename T> inline SimpleMatrix<T>::SimpleMatrix(SimpleMatrix<T>&& oth
 }
 
 template <typename T> inline SimpleMatrix<T>::~SimpleMatrix() {
-  delete[] entity;
+  if(entity)
+    delete[] entity;
   entity = NULL;
   return;
 }
@@ -440,7 +450,10 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator = (const
   if(erows != other.erows || ecols != other.ecols) {
     if(entity)
       delete[] entity;
-    entity = new SimpleVector<T>[other.erows];
+    if(other.erows)
+      entity = new SimpleVector<T>[other.erows];
+    else
+      entity = NULL;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -462,12 +475,26 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator = (Simpl
     return *this;
   erows  = move(other.erows);
   ecols  = move(other.ecols);
-  delete[] entity;
+  if(entity)
+    delete[] entity;
   entity = move(other.entity);
   other.erows  = 0;
   other.ecols  = 0;
   other.entity = NULL;
   return *this;
+}
+
+template <typename T> inline bool SimpleMatrix<T>::operator == (const SimpleMatrix<T>& other) const {
+  return ! (*this != other);
+}
+
+template <typename T> inline bool SimpleMatrix<T>::operator != (const SimpleMatrix<T>& other) const {
+  if(erows != other.erows || ecols != other.ecols)
+    return true;
+  for(int i = 0; i < erows; i ++)
+    if(entity[i] != other.entity[i])
+      return true;
+  return false;
 }
 
 template <typename T> inline T& SimpleMatrix<T>::operator () (const int& y, const int& x) {
@@ -651,7 +678,8 @@ template <typename T> inline void SimpleMatrix<T>::resize(const int& rows, const
   assert(rows > 0 && cols > 0);
   if(rows != erows) {
     erows = rows;
-    delete[] entity;
+    if(entity)
+      delete[] entity;
     entity = new SimpleVector<T>[erows];
     ecols = 0;
   }
