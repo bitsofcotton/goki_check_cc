@@ -1003,7 +1003,7 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::sin() const {
   if(s & ((1 << INF) | (1 << NaN)))
     return *this;
-  if(- quatpi() <= *this && *this <= quatpi()) {
+  if(- one() <= *this && *this <= one()) {
     // sin(x) = x - x^3/3! + x^5/5! - ...
     const auto sqx(*this * *this);
           auto denom(one());
@@ -1021,6 +1021,8 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
   }
   if(- halfpi() <= *this && *this <= halfpi())
     return ((*this - quatpi()).cos() + (*this - quatpi()).sin()) / sqrt2();
+  if(this->abs() == pi())
+    return zero();
   if(- pi() <= *this && *this <= pi())
     return (halfpi() - *this).cos();
   if(- twopi() <= *this && *this <= twopi())
@@ -1031,7 +1033,7 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::cos() const {
   if(s & ((1 << INF) | (1 << NaN)))
     return *this;
-  if(- quatpi() <= *this && *this <= quatpi()) {
+  if(- one() <= *this && *this <= one()) {
     // cos(x) = 1 - x^2/2! + x^4/4! - ...
     const auto sqx(*this * *this);
           auto denom(one());
@@ -1047,8 +1049,12 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
     }
     return res;
   }
+  if(this->abs() == halfpi())
+    return zero();
   if(- halfpi() <= *this && *this <= halfpi())
     return ((*this - quatpi()).cos() - (*this - quatpi()).sin()) / sqrt2();
+  if(this->abs() == pi())
+    return - one();
   if(- pi() <= *this && *this <= pi())
     return (halfpi() - *this).sin();
   if(- twopi() <= *this && *this <= twopi())

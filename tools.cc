@@ -50,11 +50,16 @@ using std::atan2;
 using std::ceil;
 #endif
 
+using std::max;
+using std::min;
+
 #if defined(_WITH_GLTF2_)
 #include <fx/gltf.h>
 #endif
 
 namespace goki {
+using std::pair;
+using std::make_pair;
 using std::vector;
 #include "p0.hh"
 #include "fileio.hh"
@@ -177,32 +182,16 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(strcmp(argv[1], "enlarge") == 0) {
       Filter<num_t> enlarger;
-      for(int j = 0; j < ratio; j ++)
-        for(int i = 0; i < 3; i ++) {
-          const auto orig(data[i]);
+      for(int i = 0; i < 3; i ++) {
+        for(int j = 0; j < ratio; j ++)
           data[i] = enlarger.compute(data[i], enlarger.ENLARGE_BOTH);
-          auto work( redig.applytilt(enlarger.compute(redig.applytilt(orig,   1, 0), enlarger.ENLARGE_BOTH), - 1, 0));
-          auto work2(redig.applytilt(enlarger.compute(redig.applytilt(orig, - 1, 0), enlarger.ENLARGE_BOTH),   1, 0));
-          data[i] = enlarger.compute(enlarger.gmean(data[i], enlarger.gmean(work, work2)), enlarger.CLIP);
-        }
+        data[i] = enlarger.compute(data[i], enlarger.CLIP);
+      }
     } else if(strcmp(argv[1], "pextend") == 0) {
       Filter<num_t> extender;
       extender.plen = ratio;
-      for(int i = 0; i < 3; i ++) {
-        const auto orig(data[i]);
-        data[i] = extender.compute(data[i], extender.EXTEND_BOTH);
-        auto work(redig.applytilt(orig, 1, 0));
-        work = extender.compute(work, extender.EXTEND_BOTH);
-        auto work2(redig.applytilt(orig, - 1, 0));
-        work2 = extender.compute(work2, extender.EXTEND_BOTH);
-        data[i] = extender.gmean(data[i],
-          extender.gmean(redig.applytilt(work, - 1, 0),
-                         redig.applytilt(work2,  1, 0)));
-        for(int j = 0; j < orig.rows(); j ++)
-          for(int k = 0; k < orig.cols(); k ++)
-            data[i](j + ratio, k + ratio) = orig(j, k);
-      }
-      redig.normalize(data, num_t(1));
+      for(int i = 0; i < 3; i ++)
+        data[i] = extender.compute(extender.compute(data[i], extender.EXTEND_BOTH), extender.CLIP);
     } else if(strcmp(argv[1], "cenl") == 0) {
       typename simpleFile<num_t>::Mat datas[3];
       Filter<num_t> cenl;
@@ -228,20 +217,14 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(strcmp(argv[1], "collect") == 0) {
       Filter<num_t> detect;
-      for(int i = 0; i < 3; i ++) {
-        const auto xye(detect.compute(detect.compute(data[i], detect.COLLECT_BOTH), detect.CLIP));
-        data[i] = xye;
-      }
+      for(int i = 0; i < 3; i ++)
+        data[i] = detect.compute(detect.compute(data[i], detect.COLLECT_BOTH), detect.CLIP);
     } else if(strcmp(argv[1], "bump") == 0) {
 #if defined(_WITH_MPFR_)
       num_t::set_default_prec(_WITH_MPFR_);
 #endif
       Filter<num_t> bump;
-      const auto rgb2d(redig.rgb2d(data).template cast<num_t>());
-      data[0] = bump.compute(rgb2d, bump.BUMP_BOTH);
-      data[1] = redig.applytilt(bump.compute(redig.applytilt(rgb2d,   1, 0), bump.BUMP_BOTH), - 1, 0);
-      data[2] = redig.applytilt(bump.compute(redig.applytilt(rgb2d, - 1, 0), bump.BUMP_BOTH),   1, 0);
-      data[0] = data[1] = data[2] = - bump.gmean(data[0], bump.gmean(data[1], data[2]));
+      data[0] = data[1] = data[2] = bump.compute(redig.rgb2d(data).template cast<num_t>(), bump.BUMP_BOTH);
     }
     redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true))
