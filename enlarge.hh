@@ -84,7 +84,7 @@ private:
 };
 
 template <typename T> Filter<T>::Filter() {
-  I  = sqrt(U(- T(1)));
+  I  = U(T(0), T(1));
   Pi = atan2(T(1), T(1)) * T(4);
   // N.B. from accuracy reason, low depth.
   dratio  = T(005) / T(100);
@@ -137,8 +137,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       const auto diff(Eop[idx] * data);
             Mat  diff0(data.rows(), data.cols());
       for(int i = 0; i < diff0.rows(); i ++)
-        for(int j = 0; j < diff0.cols(); j ++)
-          diff0(i, j) = (- data(i / 2, j) + data(min((i + 1) / 2, int(data.rows() - 1)), j)) / T(2);
+        diff0.row(i) = (- data.row(i / 2) + data.row(min((i + 1) / 2, int(data.rows() - 1)))) / T(2);
       result = Mat(data.rows() * 2, data.cols());
       for(int i = 0; i < data.rows(); i ++) {
         result.row(i * 2 + 0) = data.row(i);
@@ -254,8 +253,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.cols(); i ++) {
         for(int j = 0; j < plen; j ++) {
-          const auto pl(min(data.rows() / (j + 1), 8));
-          P0<T> p(pl, 1);
+          const auto pl(data.rows() / (j + 1));
+          P0<T> p(pl);
           for(int k = 0; k < pl; k ++) {
             T sum(0);
             for(int kk = (k - pl) * (j + 1) + data.rows();
