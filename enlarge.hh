@@ -136,7 +136,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       const auto diff(Eop[idx] * data);
             Mat  diff0(data.rows(), data.cols());
       for(int i = 0; i < diff0.rows(); i ++)
-        diff0.row(i) = (- data.row(i / 2) + data.row(min((i + 1) / 2, int(data.rows() - 1)))) / T(2);
+        diff0.row(i) = (- data.row(i) + data.row(min(i + 1, int(data.rows() - 1)))) / T(2);
       result = Mat(data.rows() * 2, data.cols());
       for(int i = 0; i < data.rows(); i ++) {
         result.row(i * 2 + 0) = data.row(i);
