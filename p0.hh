@@ -23,6 +23,7 @@ public:
   inline ~P0();
   inline void nextVoid(const T& in);
   inline T    next(const T& in);
+  inline const Vec& predref() const;
 private:
   Vec pred;
   Vec buf;
@@ -50,9 +51,11 @@ template <typename T> inline P0<T>::~P0() {
   ;
 }
 
+template <typename T> inline const typename P0<T>::Vec& P0<T>::predref() const {
+  return pred;
+}
+
 template <typename T> inline void P0<T>::nextVoid(const T& in) {
-  if(in == buf[buf.size() - 1] || in == T(0))
-    return;
   for(int i = 1; i < buf.size(); i ++)
     buf[i - 1] = buf[i];
   buf[buf.size() - 1] = in;
