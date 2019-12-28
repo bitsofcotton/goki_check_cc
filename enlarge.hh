@@ -43,7 +43,6 @@ public:
     BUMP_Y0,
     BUMP_BOTH,
     EXTEND_X,
-    EXTEND_Y0,
     EXTEND_Y,
     EXTEND_BOTH,
     BCLIP,
@@ -238,67 +237,51 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           result(i, j) /= dC(i, j);
     }
     break;
-  case EXTEND_Y0:
-    {
-      assert(0 < plen);
-      result = Mat(data.rows() + plen, data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.rows(); i ++)
-        result.row(i) = data.row(i);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.cols(); i ++) {
-        for(int j = 0; j < plen; j ++) {
-          const auto pl(data.rows() / (j + 1));
-          P0<T> p(pl);
-          for(int k = 0; k < pl; k ++) {
-            T sum(0);
-            for(int kk = (k - pl) * (j + 1) + data.rows();
-                kk < (k + 1 - pl) * (j + 1) + data.rows();
-                kk ++)
-              sum += data(kk, i);
-            result(data.rows() + j, i) = p.next(sum);
-          }
-          for(int jj = 0; jj < j; jj ++)
-            result(data.rows() + j, i) -= result(data.rows() + jj, i);
-        }
-        if(! i)
-          cerr << "." << flush;
-      }
-    }
-    break;
   case EXTEND_Y:
     {
       assert(0 < plen);
-      result = Mat(data.rows() + 2 * plen, data.cols());
-      Mat revdata(data.rows(), data.cols());
+      result = Mat(data.rows() + plen * 2, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
-        revdata.row(i) = data.row(data.rows() - i - 1);
-      const auto revext(compute(revdata, EXTEND_Y0));
+        result.row(i + plen) = data.row(i);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < plen; i ++)
-        result.row(plen - i - 1) = revext.row(revdata.rows() + i);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.rows(); i ++)
-        result.row(i + plen) = data.row(i);
-      const auto ext(compute(data, EXTEND_Y0));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < plen; i ++)
-        result.row(data.rows() + plen + i) = ext.row(data.rows() + i);
+      for(int j = 0; j < plen; j ++) {
+        for(int i = 0; i < data.cols(); i ++) {
+          const auto pl((data.rows() - 1) / (j + 1));
+          P0<T> p(pl);
+          P0<T> q(pl);
+          for(int k = 0; k < pl; k ++) {
+            T sum0(0);
+            T sum1(0);
+            for(int kk = (k     - pl) * (j + 1) + data.rows();
+                    kk < (k + 1 - pl) * (j + 1) + data.rows();
+                    kk ++)
+              sum0 += data(kk, i);
+            for(int kk =  ((data.rows() - 1) / (j + 1) -  k     ) * (j + 1);
+                    kk >= ((data.rows() - 1) / (j + 1) - (k + 1)) * (j + 1);
+                    kk --)
+              sum1 += data(kk, i);
+            if(k == pl - 1) {
+              result(data.rows() + j + plen, i) = p.next(sum0);
+              result(plen - j - 1, i)           = q.next(sum1);
+            } else {
+              p.nextVoid(sum0);
+              q.nextVoid(sum1);
+            }
+          }
+          for(int jj = 0; jj < j; jj ++) {
+            result(data.rows() + j + plen, i) -= result(data.rows() + plen + jj, i);
+            result(plen - j - 1, i)           -= result(plen - jj - 1, i);
+          }
+        }
+        result.row(plen - j - 1)           *= sqrt(result.row(plen - j).dot(result.row(plen - j)) / result.row(plen - j - 1).dot(result.row(plen - j - 1)));
+        result.row(data.rows() + j + plen) *= sqrt(result.row(data.rows() + j + plen - 1).dot(result.row(data.rows() + j + plen - 1)) / result.row(data.rows() + j + plen).dot(result.row(data.rows() + j + plen)));
+      }
       result = compute(result, CLIP);
     }
     break;
