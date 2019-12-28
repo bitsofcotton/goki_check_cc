@@ -160,6 +160,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
     break;
+/*
   case BUMP_Y:
     {
       result = compute(data, BUMP_Y0);
@@ -183,6 +184,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     }
     break;
   case BUMP_Y_SHORT:
+*/
+  case BUMP_Y:
     result = - compute(compute(data, BUMP_Y0), LOGSCALE) * sqrt(dratio);
     break;
   case BUMP_Y0:
@@ -211,7 +214,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
+        const Vec Dop0(Dop[idx] * Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
