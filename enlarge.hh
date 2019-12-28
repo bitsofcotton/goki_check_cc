@@ -39,8 +39,6 @@ public:
     COLLECT_BOTH,
     BUMP_X,
     BUMP_Y,
-    BUMP_Y_SHORT,
-    BUMP_Y0,
     BUMP_BOTH,
     EXTEND_X,
     EXTEND_Y,
@@ -160,35 +158,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
     break;
-/*
   case BUMP_Y:
-    {
-      result = compute(data, BUMP_Y0);
-      Mat shrink(data);
-      for(int i0 = 1; 16 <= shrink.rows(); i0 ++) {
-        Mat work((shrink.rows() + 1) / 2, shrink.cols());
-        for(int i = 0; i < work.rows(); i ++)
-          if(i * 2 + 1 < shrink.rows())
-            work.row(i) = (shrink.row(i * 2) + shrink.row(i * 2 + 1)) / T(2);
-          else
-            work.row(i) =  shrink.row(i * 2);
-        shrink = work;
-        while(work.rows() < data.rows())
-          work = compute(work, ENLARGE_Y);
-        Mat work2(data.rows(), data.cols());
-        for(int i = 0; i < work2.rows(); i ++)
-          work2.row(i) = work.row(i);
-        result += compute(work2, BUMP_Y0);
-      }
-      result = - compute(result, LOGSCALE) * sqrt(dratio);
-    }
-    break;
-  case BUMP_Y_SHORT:
-*/
-  case BUMP_Y:
-    result = - compute(compute(data, BUMP_Y0), LOGSCALE) * sqrt(dratio);
-    break;
-  case BUMP_Y0:
     {
       result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
@@ -214,7 +184,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec Dop0(Dop[idx] * Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
+        const Vec Dop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2) * exp(T(zi)));
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
@@ -238,6 +208,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) /= dC(i, j);
+      result = - compute(data, LOGSCALE) * sqrt(dratio);
     }
     break;
   case EXTEND_Y:
