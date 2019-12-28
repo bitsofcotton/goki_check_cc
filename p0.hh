@@ -9,14 +9,14 @@ public:
   inline P0();
   inline P0(const int& range, const int& look = 1);
   inline ~P0();
-  inline T next(const T& in);
+  inline void nextVoid(const T& in);
+  inline T    next(const T& in);
 private:
   int look;
   Vec buf;
-  inline Vec  e2(const Vec& x);
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size, const bool& integrate);
-  const Mat&  enlarge2(const int& size);
+  const Mat&  lhpf(const int& size, const bool& hpf);
   const Vec&  nextTaylor(const int& size, const int& step);
   const T& Pi() const;
   const complex<T>& J() const;
@@ -38,30 +38,17 @@ template <typename T> inline P0<T>::~P0() {
   ;
 }
 
-template <typename T> inline T P0<T>::next(const T& in) {
+template <typename T> inline void P0<T>::nextVoid(const T& in) {
   if(in == buf[buf.size() - 1] || in == T(0))
-    return in;
+    return;
   for(int i = 1; i < buf.size(); i ++)
     buf[i - 1] = buf[i];
   buf[buf.size() - 1] = in;
-  return (nextTaylor(buf.size() * 2, look * 2) + nextTaylor(buf.size() * 2, look * 2 - 1)).dot(e2(buf)) / T(2);
 }
 
-template <typename T> inline typename P0<T>::Vec P0<T>::e2(const Vec& x) {
-        Vec  res(x.size() * 2);
-  const auto delta(enlarge2(x.size()) * x);
-        Vec  delta0(x.size());
-  for(int i = 0; i < x.size(); i ++)
-    delta0[i] = (- x[i] + x[min(i, int(x.size() - 1))]) / T(2);
-  const auto r(sqrt(delta0.dot(delta0) / delta.dot(delta)));
-  for(int i = 0; i < x.size(); i ++)
-    res[i * 2] = res[i * 2 + 1] = x[i];
-  if(isfinite(r))
-    for(int i = 0; i < x.size(); i ++) {
-      res[i * 2 + 0] -= r * delta[i];
-      res[i * 2 + 1] += r * delta[i];
-    }
-  return res;
+template <typename T> inline T P0<T>::next(const T& in) {
+  nextVoid(in);
+  return nextTaylor(buf.size(), look).dot(lhpf(buf.size(), false) * buf);
 }
 
 template <typename T> const T& P0<T>::Pi() const {
@@ -137,20 +124,31 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size, co
   return d;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::enlarge2(const int& size) {
+template <typename T> const typename P0<T>::Mat& P0<T>::lhpf(const int& size, const bool& hpf) {
   assert(0 < size);
-  static vector<Mat> E;
-  if(E.size() <= size)
-    E.resize(size + 1, Mat());
-  if(E[size].rows() == size && E[size].cols() == size)
-    return E[size];
-  auto& e(E[size]);
-  auto  D(seed(size, false));
-  D.row(0) *= complex<T>(T(0));
-  for(int i = 1; i < D.rows(); i ++)
-    D.row(i) /= exp(J() * Pi() * complex<T>(T(i)) / T(D.rows())) - complex<T>(T(1));
-  D /= T(D.rows() - 1);
-  return e = (seed(size, true) * D).template real<T>();
+  static vector<Mat> L;
+  static vector<Mat> H;
+  if(L.size() <= size)
+    L.resize(size + 1, Mat());
+  if(H.size() <= size)
+    H.resize(size + 1, Mat());
+  if((!hpf) && L[size].rows() == size && L[size].cols() == size)
+    return L[size];
+  if(  hpf  && H[size].rows() == size && H[size].cols() == size)
+    return H[size];
+  auto& l(L[size]);
+  auto& h(H[size]);
+  auto  ll(seed(size, false));
+  auto  hh(seed(size, false));
+  for(int i = 0; i < size / 2; i ++)
+    hh.row(i) *= complex<T>(T(0));
+  for(int i = size / 2; i < size; i ++)
+    ll.row(i) *= complex<T>(T(0));
+  l = (seed(size, true) * ll).template real<T>();
+  h = (seed(size, true) * hh).template real<T>();
+  if(hpf)
+    return h;
+  return l;
 }
 
 template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& size, const int& step) {
