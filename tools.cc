@@ -73,7 +73,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck sharpen <ratio>  <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck enlarge <ratio>  <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck cenl    <ratio>  <inputdst.ppm> <inputsrc.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
@@ -181,11 +181,11 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(data, argv[3]))
       return - 1;
     if(strcmp(argv[1], "sharpen") == 0) {
-      Filter<num_t> sharpener;
+      Filter<num_t> enlargeer;
       for(int i = 0; i < 3; i ++) {
         for(int j = 0; j < ratio; j ++)
-          data[i] = sharpener.compute(data[i], sharpener.SHARPEN_BOTH);
-        data[i] = sharpener.compute(data[i], sharpener.CLIP);
+          data[i] = enlargeer.compute(data[i], enlargeer.SHARPEN_BOTH);
+        data[i] = enlargeer.compute(data[i], enlargeer.CLIP);
       }
     } else if(strcmp(argv[1], "pextend") == 0) {
       Filter<num_t> extender;
@@ -617,7 +617,7 @@ int main(int argc, const char* argv[]) {
     Filter<num_t> filter;
     num_t M(0);
     std::vector<num_t> rbuf;
-    if(strcmp(argv[3], "enlarge") == 0)
+    if(strcmp(argv[3], "sharpen") == 0)
       rbuf.resize(in.size() * 2, 0.);
     else
       rbuf.resize(in.size(), 0.);
