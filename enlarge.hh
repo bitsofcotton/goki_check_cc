@@ -385,8 +385,6 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     // N.B. please refer enlarge.wxm, half freq space refer and uses each.
     DFTE.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTE.rows())) - U(T(1));
   }
-  for(int i = DFTL.rows() / 2; i < DFTL.rows(); i ++)
-    DFTL.row(i) *= U(T(0));
   // N.B. similar to det(Dop * Iop) == det(Dop) * det(Iop) == 1,
   //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
   //      in matrix-matrix operation:
@@ -409,7 +407,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   //          if ||Dop|| ||Iop|| == 1 in that meaning,
   //          exists r in R, Dop * x == r * x results gains.
   DFTD *= sqrt(sqrt(T(DFTD.rows() - 1) / (nd * ni)));
-  DFTE /= T(DFTE.rows() - 1);
+  DFTE /= T(DFTE.rows()  - 1);
 #if defined(_WITHOUT_EIGEN_)
   Dop[idx] = (IDFT * DFTD).template real<T>();
   const Mat EE((IDFT * DFTE).template real<T>());
@@ -417,18 +415,23 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #else
   Dop[idx] = (IDFT * DFTD).real().template cast<T>();
   const Mat EE((IDFT * DFTE).real().template cast<T>());
-  const Mat LL((seed(size * 2, true) * DFTL).real().template cast<T>());
+  const Mat LL((seed(size * 2, true) * DFTL).template real<T>());
 #endif
-  Mat EEop(size * 2, size);
-  Mat LLop(size, size * 2);
+  Mat Eop(size * 2, size);
+  Mat Lop(size, size * 2);
   for(int i = 0; i < EE.rows(); i ++) {
-    EEop.row(i * 2 + 0) = - EE.row(i);
-    EEop.row(i * 2 + 1) =   EE.row(i);
-    EEop(i * 2 + 0, i) += T(1);
-    EEop(i * 2 + 1, i) += T(1);
-    LLop.row(i)         = (LL.row(i * 2) + LL.row(i * 2 + 1)) / T(2);
+    Eop.row(i * 2 + 0) = - EE.row(i);
+    Eop.row(i * 2 + 1) =   EE.row(i);
+    Eop(i * 2 + 0, i) += T(1);
+    Eop(i * 2 + 1, i) += T(1);
+    Lop.row(i)         = LL.row(i * 2);
   }
-  Sop[idx] = LLop * EEop;
+  Sop[idx]  = Lop * Eop;
+  const Mat SS(Sop[idx]);
+  for(int i = 0; i < SS.rows(); i ++)
+    for(int j = 0; j < SS.cols(); j ++)
+      Sop[idx](SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
+  Sop[idx] /= T(2);
   return;
 }
 

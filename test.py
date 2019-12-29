@@ -85,11 +85,8 @@ for line in argv[3:]:
   elif(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
   elif(argv[2] == "enl"):
-    subprocess.call(["python", argv[0], argv[1], "enlp", "1", line])
-  elif(argv[2] == "enlp"):
-    subprocess.call(["convert", root + ".ppm", "-resize", str(pow(2, pixels) * 100.) + "%", "-compress", "none", root + "-enl0.ppm"])
-    subprocess.call([argv[1], "sharpen", str(pixels), root + "-enl0.ppm", root + "-enl1.ppm"])
-    subprocess.call(["convert", root + "-enl1.ppm", root + "-enl.png"])
+    subprocess.call([argv[1], "sharpen", "1", root + ".ppm", root + "-sharpen.ppm"])
+    subprocess.call(["convert", root + "-sharpen.ppm", "-resize", "200%", root + "-enl.png"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "bump2"):
