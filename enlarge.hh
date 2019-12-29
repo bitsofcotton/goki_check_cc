@@ -21,16 +21,13 @@ using std::vector;
 using std::max;
 using std::min;
 
-/*
- * This class is NOT thread safe.
- * Please re-initialize when parameters changed.
- */
+// This class is NOT thread safe.
 template <typename T> class Filter {
 public:
   typedef enum {
-    ENLARGE_X,
-    ENLARGE_Y,
-    ENLARGE_BOTH,
+    SHARPEN_X,
+    SHARPEN_Y,
+    SHARPEN_BOTH,
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
@@ -65,7 +62,6 @@ public:
   Mat  bump2(const Mat& data0, const Mat& data1, const T& pixels = T(1));
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
-  void reinit();
   T    dratio;
   T    offset;
   int  plen;
@@ -73,33 +69,26 @@ public:
 private:
   void initDop(const int& size);
   int  getImgPt(const T& y, const T& h);
-  U    I;
   T    Pi;
   vector<Mat> Dop;
-  vector<Mat> Eop;
+  vector<Mat> Sop;
   int  idx;
 };
 
 template <typename T> Filter<T>::Filter() {
-  I  = U(T(0), T(1));
   Pi = atan2(T(1), T(1)) * T(4);
   // N.B. from accuracy reason, low depth.
-  dratio  = T(005) / T(100);
-  offset  = T(1) / T(64);
-  plen    = 1;
-  idx     = - 1;
-}
-
-template <typename T> void Filter<T>::reinit() {
-  Dop = Eop = vector<Mat>();
-  idx = - 1;
+  dratio = T(005) / T(100);
+  offset = T(1) / T(64);
+  plen   = 1;
+  idx    = - 1;
 }
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir) {
   Mat result;
   switch(dir) {
-  case ENLARGE_BOTH:
-    result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
+  case SHARPEN_BOTH:
+    result = compute(compute(data, SHARPEN_X), SHARPEN_Y);
     break;
   case DETECT_BOTH:
     result = gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
@@ -113,8 +102,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case EXTEND_BOTH:
     result = compute(compute(data, EXTEND_X), EXTEND_Y);
     break;
-  case ENLARGE_X:
-    result = compute(data.transpose(), ENLARGE_Y).transpose();
+  case SHARPEN_X:
+    result = compute(data.transpose(), SHARPEN_Y).transpose();
     break;
   case DETECT_X:
     result = compute(data.transpose(), DETECT_Y).transpose();
@@ -128,28 +117,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case EXTEND_X:
     result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
-  case ENLARGE_Y:
-    {
-      initDop(data.rows());
-      const auto diff(Eop[idx] * data);
-            Mat  diff0(data.rows(), data.cols());
-      for(int i = 0; i < diff0.rows(); i ++)
-        diff0.row(i) = (- data.row(i) + data.row(min(i + 1, int(data.rows() - 1)))) / T(2);
-      result = Mat(data.rows() * 2, data.cols());
-      for(int i = 0; i < data.rows(); i ++) {
-        result.row(i * 2 + 0) = data.row(i);
-        result.row(i * 2 + 1) = data.row(i);
-      }
-      // ||diff.col(i)|| == ||diff0.col(i)||
-      for(int i = 0; i < diff.cols(); i ++) {
-        const auto r(sqrt(diff0.col(i).dot(diff0.col(i)) / diff.col(i).dot(diff.col(i))));
-        if(isfinite(r))
-          for(int j = 0; j < data.rows(); j ++) {
-            result(j * 2 + 0, i) -= diff(j, i) * r;
-            result(j * 2 + 1, i) += diff(j, i) * r;
-          }
-      }
-    }
+  case SHARPEN_Y:
+    initDop(data.rows());
+    result = Sop[idx] * data;
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -391,25 +361,18 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     }
   cerr << "n" << flush;
   idx = Dop.size();
-  Dop.push_back(Mat(size, size));
-  int cnt(0);
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < size; i ++)
-    for(int j = 0; j < size; j ++)
-      Dop[idx](i, j) = T(0);
-  Eop.push_back(Dop[idx]);
+  Dop.push_back(Mat());
+  Sop.push_back(Mat());
   assert(2 <= size);
         auto DFTD(seed(size, false));
+        auto DFTL(seed(size * 2, false));
   const auto IDFT(seed(size, true));
   DFTD.row(0) *= U(T(0));
         auto DFTE(DFTD);
   T ni(0);
   T nd(0);
   for(int i = 1; i < DFTD.rows(); i ++) {
-    const auto phase(- U(T(2)) * Pi * sqrt(U(- T(1))) * T(i) / T(DFTD.rows()));
+    const auto phase(- U(T(2)) * Pi * U(T(0), T(1)) * T(i) / T(DFTD.rows()));
     const auto phase2(U(T(1)) / phase);
     // N.B. d/dy.
     DFTD.row(i) *= phase;
@@ -420,8 +383,10 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
     // DFTH.row(i) *= log(phase);
     // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-    DFTE.row(i) /= exp(sqrt(U(- T(1))) * Pi * U(T(i)) / T(DFTE.rows())) - U(T(1));
+    DFTE.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTE.rows())) - U(T(1));
   }
+  for(int i = DFTL.rows() / 2; i < DFTL.rows(); i ++)
+    DFTL.row(i) *= U(T(0));
   // N.B. similar to det(Dop * Iop) == det(Dop) * det(Iop) == 1,
   //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
   //      in matrix-matrix operation:
@@ -447,11 +412,23 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   DFTE /= T(DFTE.rows() - 1);
 #if defined(_WITHOUT_EIGEN_)
   Dop[idx] = (IDFT * DFTD).template real<T>();
-  Eop[idx] = (IDFT * DFTE).template real<T>();
+  const Mat EE((IDFT * DFTE).template real<T>());
+  const Mat LL((seed(size * 2, true) * DFTL).template real<T>());
 #else
   Dop[idx] = (IDFT * DFTD).real().template cast<T>();
-  Eop[idx] = (IDFT * DFTE).real().template cast<T>();
+  const Mat EE((IDFT * DFTE).real().template cast<T>());
+  const Mat LL((seed(size * 2, true) * DFTL).real().template cast<T>());
 #endif
+  Mat EEop(size * 2, size);
+  Mat LLop(size, size * 2);
+  for(int i = 0; i < EE.rows(); i ++) {
+    EEop.row(i * 2 + 0) = - EE.row(i);
+    EEop.row(i * 2 + 1) =   EE.row(i);
+    EEop(i * 2 + 0, i) += T(1);
+    EEop(i * 2 + 1, i) += T(1);
+    LLop.row(i)         = (LL.row(i * 2) + LL.row(i * 2 + 1)) / T(2);
+  }
+  Sop[idx] = LLop * EEop;
   return;
 }
 
@@ -471,8 +448,10 @@ template <typename T> typename Filter<T>::MatU Filter<T>::seed(const int& size, 
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = exp(I * U(- T(2) * Pi * T(idft ? - 1 : 1) * T(i) * T(j) / T(size))) / T(idft ? size : 1);
+    for(int j = 0; j < result.cols(); j ++) {
+      const auto phase(- T(2) * Pi * T(idft ? - 1 : 1) * T(i) * T(j) / T(size));
+      result(i, j) = U(cos(phase), sin(phase)) / T(idft ? size : 1);
+    }
   return result;
 }
 

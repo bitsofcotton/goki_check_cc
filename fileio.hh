@@ -313,6 +313,24 @@ public:
     return true;
   }
   
+  bool saveMTL(const char* photo, const char* filename) {
+    ofstream output;
+    output.open(filename, std::ios::out);
+    if(output.is_open()) {
+      output << "newmtl material0" << std::endl;
+      output << "Ka 1.000000 1.000000 1.000000" << std::endl;
+      output << "Kd 1.000000 1.000000 1.000000" << std::endl;
+      output << "Ks 0.000000 0.000000 0.000000" << std::endl;
+      output << "illum 1" << std::endl;
+      output << "map_Ka \"" << photo << "\"" << std::endl;
+      output << "map_Kd \"" << photo << "\"" << std::endl << std::endl;
+    } else {
+      cerr << "Unable to open file for write: " << filename << endl;
+      return false;
+    }
+    return true;
+  }
+  
   // ( Please read the page before to compile )
   // thanks to: https://github.com/jessey-git/fx-gltf/
   // and thanks to: https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/SimpleMeshes
