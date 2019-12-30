@@ -173,11 +173,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
         result += compute(A * data, ABS);
       }
-      // N.B. log(|average(d_k C * exp(z_k))| / |dC|) == result.
-      const auto dC(compute(compute(data, COLLECT_Y), BCLIP));
+      // N.B. log(|average(d^2_k C * exp(z_k))| / |d^2C|) == result.
+      const auto ddC(compute(compute(data, DETECT_Y), COLLECT_Y));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) /= dC(i, j);
+          result(i, j) /= ddC(i, j);
       result = - compute(data, LOGSCALE) * sqrt(dratio);
     }
     break;

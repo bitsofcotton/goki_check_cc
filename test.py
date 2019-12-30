@@ -73,6 +73,8 @@ for line in argv[3:]:
     subprocess.call(cmd)
     cmd[3] = "jps"
     subprocess.call(cmd)
+    cmd[3] = "sharpen"
+    subprocess.call(cmd)
     cmd[3] = "tilt"
     subprocess.call(cmd)
     cmd[3] = "btilt"
@@ -87,6 +89,9 @@ for line in argv[3:]:
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "sharpen", "1", root + ".ppm", root + "-sharpen.ppm"])
     subprocess.call(["convert", root + "-sharpen.ppm", "-resize", "200%", root + "-enl.png"])
+  elif(argv[2] == "sharpen"):
+    subprocess.call([argv[1], "sharpen", str(pixels), root + ".ppm", root + "-sharpen.ppm"])
+    subprocess.call([argv[1], "sharpen", "80", root + ".ppm", root + "-sharpen80.ppm"])
   elif(argv[2] == "bump"):
     subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
   elif(argv[2] == "bump2"):
