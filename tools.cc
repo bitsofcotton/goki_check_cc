@@ -224,7 +224,7 @@ int main(int argc, const char* argv[]) {
       num_t::set_default_prec(_WITH_MPFR_);
 #endif
       Filter<num_t> bump;
-      data[0] = data[1] = data[2] = bump.compute(redig.rgb2d(data).template cast<num_t>(), bump.BUMP_BOTH);
+      data[0] = data[1] = data[2] = - bump.compute(redig.rgb2d(data).template cast<num_t>(), bump.BUMP_BOTH);
     }
     redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true))
