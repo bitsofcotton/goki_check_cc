@@ -26,18 +26,18 @@ if(argv[2] == "match" or argv[2] == "matcho"):
     pixels = int(argv[6])
   if(ext1 == ".obj" or ext1 == ".gltf"):
     if(argv[2] == "match"):
-      subprocess.call([argv[1], "match", "16", "40", "1", str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+      subprocess.call([argv[1], "match", "16", "40", str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
     else:
       for s in [0, .25, .5, .75, 1]:
-        subprocess.call([argv[1], "matcho", argv[5], str(s), "1", str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4] + "-" + str(s)])
+        subprocess.call([argv[1], "matcho", argv[5], str(s), str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4] + "-" + str(s)])
     exit(0)
   elif(ext1 != ".ppm"):
     subprocess.call(["convert", argv[4], "-compress", "none", root1 + ".ppm"])
   if(argv[2] == "match"):
-    subprocess.call([argv[1], "match", "16", "40", "1", str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
+    subprocess.call([argv[1], "match", "16", "40", str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
     for s in [0, .25, .5, .75, 1]:
-      subprocess.call([argv[1], "matcho", argv[5], str(s), "1", str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1 + "-" + str(s)])
+      subprocess.call([argv[1], "matcho", argv[5], str(s), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1 + "-" + str(s)])
   exit(0)
 
 if(argv[2] == "objtilt"):
@@ -89,6 +89,8 @@ for line in argv[3:]:
   elif(argv[2] == "enl"):
     subprocess.call([argv[1], "sharpen", "1", root + ".ppm", root + "-sharpen.ppm"])
     subprocess.call(["convert", root + "-sharpen.ppm", "-resize", "200%", root + "-enl.png"])
+  elif(argv[2] == "light"):
+    subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
   elif(argv[2] == "sharpen"):
     subprocess.call([argv[1], "sharpen", str(pixels), root + ".ppm", root + "-sharpen.ppm"])
     subprocess.call([argv[1], "sharpen", "80", root + ".ppm", root + "-sharpen80.ppm"])
