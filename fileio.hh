@@ -131,7 +131,7 @@ public:
     return true;
   }
 
-  bool savep2or3(const char* filename, Mat data[3], const bool& gray) {
+  bool savep2or3(const char* filename, Mat data[3], const bool& gray, const int& depth = 255) {
     ofstream output;
     output.open(filename);
     if(output.is_open()) {
@@ -141,14 +141,14 @@ public:
         else
           output << "P3" << "\n";
         output << data[0].cols() << " " << data[0].rows() << "\n";
-        output << 255 << "\n";
+        output << depth << "\n";
         for(int i = 0; i < data[0].rows(); i ++)
           for(int j = 0; j < data[0].cols(); j ++)
             if(gray)
-              output << int(data[0](i, j) * T(255)) << "\n";
+              output << int(data[0](i, j) * T(depth)) << "\n";
             else
               for(int k = 0; k < 3; k ++) {
-                output << int(data[k](i, j) * T(255)) << "\n";
+                output << int(data[k](i, j) * T(depth)) << "\n";
               }
       } catch (const ofstream::failure& e) {
         cerr << "An error has occured while writing file." << endl;
