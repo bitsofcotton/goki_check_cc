@@ -1,15 +1,3 @@
-/* BSD 3-Clause License:
- * Copyright (c) 2019, bitsofcotton.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
- *
- *    Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
- *    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation or other materials provided with the distribution.
- *    Neither the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 #if !defined(_P0_)
 
 template <typename T> class P0 {
@@ -21,17 +9,14 @@ public:
   inline P0();
   inline P0(const int& range, const int& look = 1);
   inline ~P0();
-  inline void nextVoid(const T& in);
-  inline T    next(const T& in);
-  inline const Vec& predref() const;
+  inline T next(const Vec& in);
 private:
-  Vec pred;
-  Vec buf;
+  Vec   pred;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size, const bool& integrate);
-  const Mat&  lhpf(const int& size, const bool& hpf);
+  const Mat&  lpf(const int& size);
   const Vec&  nextTaylor(const int& size, const int& step);
-  const T& Pi() const;
+  const T&    Pi() const;
   const complex<T>& J() const;
 };
 
@@ -41,29 +26,15 @@ template <typename T> inline P0<T>::P0() {
 
 template <typename T> inline P0<T>::P0(const int& range, const int& look) {
   assert(1 < range && 0 < look);
-  buf.resize(range);
-  for(int i = 0; i < buf.size(); i ++)
-    buf[i] = T(0);
-  pred = lhpf(buf.size(), false).transpose() * nextTaylor(buf.size(), look);
+  pred = lpf(range).transpose() * nextTaylor(range, look) - lpf(range).row(range - 1);
 }
 
 template <typename T> inline P0<T>::~P0() {
   ;
 }
 
-template <typename T> inline const typename P0<T>::Vec& P0<T>::predref() const {
-  return pred;
-}
-
-template <typename T> inline void P0<T>::nextVoid(const T& in) {
-  for(int i = 1; i < buf.size(); i ++)
-    buf[i - 1] = buf[i];
-  buf[buf.size() - 1] = in;
-}
-
-template <typename T> inline T P0<T>::next(const T& in) {
-  nextVoid(in);
-  return pred.dot(buf);
+template <typename T> inline T P0<T>::next(const Vec& in) {
+  return pred.dot(in);
 }
 
 template <typename T> const T& P0<T>::Pi() const {
@@ -139,30 +110,18 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size, co
   return d;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::lhpf(const int& size, const bool& hpf) {
+template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size) {
   assert(0 < size);
   static vector<Mat> L;
-  static vector<Mat> H;
   if(L.size() <= size)
     L.resize(size + 1, Mat());
-  if(H.size() <= size)
-    H.resize(size + 1, Mat());
-  if((!hpf) && L[size].rows() == size && L[size].cols() == size)
+  if(L[size].rows() == size && L[size].cols() == size)
     return L[size];
-  if(  hpf  && H[size].rows() == size && H[size].cols() == size)
-    return H[size];
   auto& l(L[size]);
-  auto& h(H[size]);
   auto  ll(seed(size, false));
-  auto  hh(seed(size, false));
-  for(int i = 0; i < size / 2; i ++)
-    hh.row(i) *= complex<T>(T(0));
   for(int i = size / 2; i < size; i ++)
     ll.row(i) *= complex<T>(T(0));
   l = (seed(size, true) * ll).template real<T>();
-  h = (seed(size, true) * hh).template real<T>();
-  if(hpf)
-    return h;
   return l;
 }
 
