@@ -200,7 +200,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < data.cols(); i ++) {
           const auto pl((data.rows() - 1) / (j + 1));
           P0<T> p(pl);
-          P0<T> q(pl);
+          P1<T> q(pl - (pl / 3), pl / 3, 1);
+          SimpleVector<T> cachen(pl);
+          SimpleVector<T> cacheb(pl);
           for(int k = 0; k < pl; k ++) {
             T sum0(0);
             T sum1(0);
@@ -212,14 +214,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
                     kk >= ((data.rows() - 1) / (j + 1) - (k + 1)) * (j + 1);
                     kk --)
               sum1 += data(kk, i);
-            if(k == pl - 1) {
-              result(nextk, i) = p.next(sum0);
-              result(backk, i) = q.next(sum1);
-            } else {
-              p.nextVoid(sum0);
-              q.nextVoid(sum1);
-            }
+            cachen[k] = sum0;
+            cacheb[k] = sum1;
           }
+          result(nextk, i) = (p.next(cachen) + q.next(cachen)) / T(2);
+          result(backk, i) = (p.next(cacheb) + q.next(cacheb)) / T(2);
           for(int jj = 0; jj < j; jj ++) {
             result(nextk, i) -= result(data.rows() + plen + jj, i);
             result(backk, i) -= result(plen - jj - 1, i);

@@ -605,7 +605,8 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector
   for(int i = erows - 1; 0 <= i; i --) {
     const T buf(other[i] / work.entity[i][i]);
     if(!isfinite(buf) || isnan(buf)) {
-      assert(!isfinite(work.entity[i][i] / other[i]) || isnan(work.entity[i][i] / other[i]));
+      // throw "Non full rank";
+      // assert(!isfinite(work.entity[i][i] / other[i]) || isnan(work.entity[i][i] / other[i]));
       continue;
     }
     other[i]    = buf;
