@@ -703,7 +703,7 @@ template <typename T, typename W, int bits, typename U>        SimpleFloat<T,W,b
     return *this;
   }
   if(! src.m) {
-    throw "Zero division";
+  //  throw "Zero division";
     s |= 1 << NaN;
     return *this;
   }
@@ -773,13 +773,15 @@ template <typename T, typename W, int bits, typename U> inline bool             
 
 template <typename T, typename W, int bits, typename U> inline bool             SimpleFloat<T,W,bits,U>::operator <  (const SimpleFloat<T,W,bits,U>& src) const {
   if((s | src.s) & (1 << NaN))
-    throw "compair NaN";
+    return true;
+    // throw "compair NaN";
   const auto s_is_minus(s & (1 << SIGN));
   if(s_is_minus ^ (src.s & (1 << SIGN)))
     return s_is_minus;
   if(s & (1 << INF)) {
     if(src.s & (1 << INF))
-      throw "compair INF";
+      //throw "compair INF";
+      ;
     return s_is_minus;
   }
   if(src.s & (1 << INF))
@@ -856,7 +858,7 @@ template <typename T, typename W, int bits, typename U> template <typename V> in
   return - shift;
 }
 
-template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U>& SimpleFloat<T,W,bits,U>::ensureFlag() {
+template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>& SimpleFloat<T,W,bits,U>::ensureFlag() {
   if(! m || (s & (1 << DWRK))) {
     e ^= e;
     m ^= m;
@@ -1000,7 +1002,7 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
   return result *= residue.exp();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::sin() const {
+template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::sin() const {
   if(s & ((1 << INF) | (1 << NaN)))
     return *this;
   if(- one() <= *this && *this <= one()) {
@@ -1030,7 +1032,7 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
   return (*this % twopi()).sin();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::cos() const {
+template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::cos() const {
   if(s & ((1 << INF) | (1 << NaN)))
     return *this;
   if(- one() <= *this && *this <= one()) {
@@ -1062,7 +1064,7 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
   return (*this % twopi()).cos();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::atan() const {
+template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::atan() const {
   if(s & ((1 << INF) | (1 << NaN)))
     return *this;
   static const auto half(one() >> U(1));
@@ -1272,55 +1274,55 @@ template <typename T, typename W, int bits, typename U> std::istream& operator >
   return is;
 }
 
-template <typename T, typename W, int bits, typename U> inline bool isinf(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline bool isinf(const SimpleFloat<T,W,bits,U>& src) {
   return src.s & (1 << src.INF);
 }
 
-template <typename T, typename W, int bits, typename U> inline bool isnan(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline bool isnan(const SimpleFloat<T,W,bits,U>& src) {
   return src.s & (1 << src.NaN);
 }
 
-template <typename T, typename W, int bits, typename U> inline bool isfinite(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline bool isfinite(const SimpleFloat<T,W,bits,U>& src) {
   return ! (src.s & ((1 << src.INF) | (1 << src.NaN)));
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> floor(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> floor(const SimpleFloat<T,W,bits,U>& src) {
   return src.floor();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> ceil(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> ceil(const SimpleFloat<T,W,bits,U>& src) {
   return src.ceil();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> abs(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> abs(const SimpleFloat<T,W,bits,U>& src) {
   return src.abs();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> sqrt(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> sqrt(const SimpleFloat<T,W,bits,U>& src) {
   return src.sqrt();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> exp(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> exp(const SimpleFloat<T,W,bits,U>& src) {
   return src.exp();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> log(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> log(const SimpleFloat<T,W,bits,U>& src) {
   return src.log();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> sin(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> sin(const SimpleFloat<T,W,bits,U>& src) {
   return src.sin();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> cos(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> cos(const SimpleFloat<T,W,bits,U>& src) {
   return src.cos();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> tan(const SimpleFloat<T,W,bits,U>& src) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> tan(const SimpleFloat<T,W,bits,U>& src) {
   return src.sin() / src.cos();
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> atan2(const SimpleFloat<T,W,bits,U>& y, const SimpleFloat<T,W,bits,U>& x) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> atan2(const SimpleFloat<T,W,bits,U>& y, const SimpleFloat<T,W,bits,U>& x) {
   auto atan0(y.halfpi());
   if(! x && ! y)
     return x / y;
@@ -1351,7 +1353,7 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
   return atan0;
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> pow(const SimpleFloat<T,W,bits,U>& src, const SimpleFloat<T,W,bits,U>& dst) {
+template <typename T, typename W, int bits, typename U> static inline SimpleFloat<T,W,bits,U> pow(const SimpleFloat<T,W,bits,U>& src, const SimpleFloat<T,W,bits,U>& dst) {
   if(! dst) {
     if(! src)
       throw "0^0";
@@ -1604,11 +1606,11 @@ template <typename T> const Complex<T>& Complex<T>::i() const {
   return I;
 }
 
-template <typename T> T Complex<T>::abs() const {
+template <typename T> inline T Complex<T>::abs() const {
   return sqrt(_real * _real + _imag * _imag);
 }
 
-template <typename T> T Complex<T>::arg() const {
+template <typename T> inline T Complex<T>::arg() const {
   return atan2(_imag, _real);
 }
 
@@ -1633,56 +1635,56 @@ template <typename T> std::ostream& operator << (std::ostream& os, const Complex
 }
 
 
-template <typename T> T abs(const Complex<T>& s) {
+template <typename T> static inline T abs(const Complex<T>& s) {
   return s.abs();
 }
 
-template <typename T> T arg(const Complex<T>& s) {
+template <typename T> static inline T arg(const Complex<T>& s) {
   return s.arg();
 }
 
-template <typename T> const T& real(const Complex<T>& s) {
+template <typename T> static inline const T& real(const Complex<T>& s) {
   return s.real();
 }
 
-template <typename T> const T& imag(const Complex<T>& s) {
+template <typename T> static inline const T& imag(const Complex<T>& s) {
   return s.imag();
 }
 
-template <typename T> Complex<T> exp(const Complex<T>& s) {
+template <typename T> static inline Complex<T> exp(const Complex<T>& s) {
   return Complex<T>(exp(s.real())) * Complex<T>(cos(s.imag()), sin(s.imag()));
 }
 
-template <typename T> Complex<T> log(const Complex<T>& s) {
+template <typename T> static inline Complex<T> log(const Complex<T>& s) {
   // N.B. main branch
   return Complex<T>(log(abs(s)), arg(s));
 }
 
-template <typename T> Complex<T> sqrt(const Complex<T>& s) {
+template <typename T> static inline Complex<T> sqrt(const Complex<T>& s) {
   return exp(log(s) * Complex<T>(T(1) / T(2)));
 }
 
-template <typename T> Complex<T> csin(const Complex<T>& s) {
+template <typename T> static inline Complex<T> csin(const Complex<T>& s) {
   return (exp(Complex<T>(T(0), s)) - exp(Complex<T>(T(0), - s))) / Complex<T>(T(0), T(2));
 }
 
-template <typename T> Complex<T> ccos(const Complex<T>& s) {
+template <typename T> static inline Complex<T> ccos(const Complex<T>& s) {
   return (exp(Complex<T>(T(0), s)) + exp(Complex<T>(T(0), - s))) / T(2);
 }
 
-template <typename T> Complex<T> ctan(const Complex<T>& s) {
+template <typename T> static inline Complex<T> ctan(const Complex<T>& s) {
   return csin(s) / ccos(s);
 }
 
-template <typename T> Complex<T> ccsc(const Complex<T>& s) {
+template <typename T> static inline Complex<T> ccsc(const Complex<T>& s) {
   return Complex<T>(T(1)) / csin(s);
 }
 
-template <typename T> Complex<T> csec(const Complex<T>& s) {
+template <typename T> static inline Complex<T> csec(const Complex<T>& s) {
   return Complex<T>(T(1)) / ccos(s);
 }
 
-template <typename T> T ccot(const T& s) {
+template <typename T> static inline T ccot(const T& s) {
   return Complex<T>(T(1)) / ctan(s);
 }
 
