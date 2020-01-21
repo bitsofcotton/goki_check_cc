@@ -170,8 +170,7 @@ int main(int argc, const char* argv[]) {
       return -1;
     if(!file.savep2or3(argv[3], data, ! true))
       return - 1;
-  } else if(strcmp(argv[1], "sharpen") == 0 ||
-     strcmp(argv[1], "cenl")    == 0 ||
+  } else if(strcmp(argv[1], "cenl") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "light")   == 0) {
     if(argc < 5 || (strcmp(argv[1], "cenl") == 0 && argc < 6)) {
@@ -182,14 +181,7 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[3]))
       return - 1;
-    if(strcmp(argv[1], "sharpen") == 0) {
-      Filter<num_t> enlarger;
-      for(int i = 0; i < 3; i ++) {
-        for(int j = 0; j < ratio; j ++)
-          data[i] = enlarger.compute(data[i], enlarger.SHARPEN_BOTH);
-        data[i] = enlarger.compute(data[i], enlarger.CLIP);
-      }
-    } else if(strcmp(argv[1], "pextend") == 0) {
+    if(strcmp(argv[1], "pextend") == 0) {
       Filter<num_t> extender;
       extender.plen = ratio;
       for(int i = 0; i < 3; i ++)
@@ -207,23 +199,9 @@ int main(int argc, const char* argv[]) {
       return 0;
     } else if(strcmp(argv[1], "light") == 0) {
       Filter<num_t> enlarger;
-      typename simpleFile<num_t>::Mat yrev[3];
-      for(int i = 0; i < 3; i ++) {
-        yrev[i].resize(data[i].rows(), data[i].cols());
-        for(int j = 0; j < data[i].rows(); j ++)
-          yrev[i].row(j) = data[i].row(data[i].rows() - 1 - j);
-      }
-      for(int i = 0; i < 3; i ++) {
-        for(int j = 0; j < ratio; j ++) {
-          data[i] = enlarger.compute(data[i], enlarger.SHARPEN_Y);
-          yrev[i] = enlarger.compute(yrev[i], enlarger.SHARPEN_Y);
-        }
-        data[i] = enlarger.compute(data[i], enlarger.CLIP);
-        yrev[i] = enlarger.compute(yrev[i], enlarger.CLIP);
-      }
+      enlarger.lrecur = ratio;
       for(int i = 0; i < 3; i ++)
-        for(int j = 0; j < data[i].rows(); j ++)
-          data[i].row(j) += yrev[i].row(yrev[i].rows() - 1 - j);
+        data[i] = enlarger.compute(enlarger.compute(data[i], enlarger.SHARPEN_BOTH), enlarger.CLIP);
       redig.normalize(data, 1.);
     }
     if(!file.savep2or3(argv[4], data, ! true, 65535))
@@ -639,7 +617,7 @@ int main(int argc, const char* argv[]) {
     Filter<num_t> filter;
     num_t M(0);
     std::vector<num_t> rbuf;
-    if(strcmp(argv[3], "sharpen") == 0)
+    if(strcmp(argv[3], "light") == 0)
       rbuf.resize(in.size() * 2, 0.);
     else
       rbuf.resize(in.size(), 0.);
@@ -650,7 +628,7 @@ int main(int argc, const char* argv[]) {
         for(int k = 0; k < buf.cols(); k ++)
           buf(j, k) = in[i * buf.rows() * buf.rows() + k * buf.rows() + j];
       Filter<num_t>::MatU dft(dft0 * buf.template cast<complex<num_t> >());
-      if(strcmp(argv[3], "sharpen") == 0) {
+      if(strcmp(argv[3], "light") == 0) {
 #if defined(_WITHOUT_EIGEN_)
         const auto rp(filter.compute(dft.template real<num_t>(), filter.SHARPEN_X));
         const auto ip(filter.compute(dft.template imag<num_t>(), filter.SHARPEN_X));

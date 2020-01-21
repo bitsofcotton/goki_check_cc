@@ -11,7 +11,7 @@ public:
   inline ~P0();
   inline T next(const Vec& in);
 private:
-  Vec   pred;
+  Vec pred;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size, const bool& integrate);
   const Mat&  lpf(const int& size);
@@ -34,6 +34,7 @@ template <typename T> inline P0<T>::~P0() {
 }
 
 template <typename T> inline T P0<T>::next(const Vec& in) {
+  assert(pred.size() == in.size());
   return pred.dot(in);
 }
 
