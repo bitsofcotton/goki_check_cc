@@ -66,9 +66,10 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline P1();
-  inline P1(const int& statlen, const int& varlen, const int& vanlen);
+  inline P1(const int& statlen, const int& varlen);
   inline ~P1();
   const T& next(const Vec& in);
+  T    lasterr;
 private:
   Vec  a;
   Mat  A;
@@ -76,7 +77,6 @@ private:
   T    M;
   int  statlen;
   int  varlen;
-  int  vanish;
   T    threshold_feas;
   T    threshold_p0;
   T    threshold_inner;
@@ -92,19 +92,18 @@ private:
 };
 
 template <typename T> inline P1<T>::P1() {
-  statlen = varlen = vanish = 0;
-  M = threshold_feas = threshold_p0 = threshold_inner = T(0);
+  statlen = varlen = 0;
+  M = threshold_feas = threshold_p0 = threshold_inner = lasterr = T(0);
 }
 
-template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen, const int& vanlen) {
-  assert(1 < varlen && varlen < statlen && 0 <= vanlen);
-  this->vanish  = vanlen;
+template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen) {
+  assert(1 < varlen && varlen < statlen);
   this->statlen = statlen;
   this->varlen  = varlen;
   b.resize(statlen * 2);
   A.resize(b.size(), varlen + 1);
   a.resize(A.cols());
-  M = T(0);
+  M = lasterr = T(0);
   const auto epsilon(std::numeric_limits<T>::epsilon());
   // const auto epsilon(T(1) >> short(62));
   threshold_feas    = pow(epsilon, T(5) / T(6));
@@ -147,10 +146,13 @@ template <typename T> const T& P1<T>::next(const Vec& in) {
     a[i] = in[statlen + varlen - i - 1];
   a[varlen] = MM;
   try {
-    const auto ratio(sqrt(threshold_inner));
-    Vec rvec;
-    for(int i = 0; i < vanish; i ++) {
-      int v0(- 1);
+    Vec rvec(a.size());
+    for(int i = 0; i < rvec.size(); i ++)
+      rvec[i] = T(0);
+    lasterr = T(1) / threshold_inner;
+    for(T ratio0 = T(1) / threshold_inner / T(2);
+        threshold_inner <= ratio0; ratio0 /= T(2)) {
+      const auto ratio(lasterr - ratio0);
       int n_fixed;
       T   ratiob;
       T   normb0;
@@ -249,14 +251,11 @@ template <typename T> const T& P1<T>::next(const Vec& in) {
             T    errorM(0);
       const auto err(Pt.transpose() * rvec - b - one * ratio);
       for(int i = 0; i < b.size(); i ++)
-        if(!isfinite(err[i]) || errorM < err[i]) {
+        if(!isfinite(err[i]) || errorM < err[i])
           errorM = err[i];
-          v0     = i;
-        }
       rvec = R.solve(rvec);
-      if((isfinite(errorM) && errorM <= sqrt(threshold_inner) * normb0) || v0 < 0)
-        break;
-      A.row(v0) *= T(0);
+      if(isfinite(errorM) && errorM <= sqrt(threshold_inner) * normb0)
+        lasterr -= ratio0;
     }
     M = a.dot(rvec) - a[0];
   } catch (const char* e) {

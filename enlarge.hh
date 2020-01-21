@@ -65,6 +65,7 @@ public:
   T    dratio;
   T    offset;
   int  plen;
+  int  lrecur;
 
 private:
   void initDop(const int& size);
@@ -81,6 +82,7 @@ template <typename T> Filter<T>::Filter() {
   dratio = T(005) / T(100);
   offset = T(1) / T(64);
   plen   = 1;
+  lrecur = 8;
   idx    = - 1;
 }
 
@@ -197,10 +199,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int j = 0; j < plen; j ++) {
         const auto nextk(data.rows() + j + plen);
         const auto backk(plen - j - 1);
+        const auto pl((data.rows() - 1) / (j + 1));
+        P0<T> p(pl);
+        P1<T> q(pl - min(20, pl / 3), min(20, pl / 3));
         for(int i = 0; i < data.cols(); i ++) {
-          const auto pl((data.rows() - 1) / (j + 1));
-          P0<T> p(pl);
-          P1<T> q(pl - (pl / 3), pl / 3, 1);
           SimpleVector<T> cachen(pl);
           SimpleVector<T> cacheb(pl);
           for(int k = 0; k < pl; k ++) {
@@ -217,8 +219,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             cachen[k] = sum0;
             cacheb[k] = sum1;
           }
-          result(nextk, i) = (p.next(cachen) + q.next(cachen)) / T(2);
-          result(backk, i) = (p.next(cacheb) + q.next(cacheb)) / T(2);
+          result(nextk, i) = result(nextk - 1, i) + (p.next(cachen) + q.next(cachen)) / T(2);
+          result(backk, i) = result(backk + 1, i) + (p.next(cacheb) + q.next(cacheb)) / T(2);
           for(int jj = 0; jj < j; jj ++) {
             result(nextk, i) -= result(data.rows() + plen + jj, i);
             result(backk, i) -= result(plen - jj - 1, i);
@@ -431,6 +433,8 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     for(int j = 0; j < SS.cols(); j ++)
       Sop[idx](SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
   Sop[idx] /= T(2);
+  for(int i = 0; i < lrecur; i ++)
+    Sop[idx] = Sop[idx] * Sop[idx];
   return;
 }
 
