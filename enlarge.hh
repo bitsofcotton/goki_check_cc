@@ -219,8 +219,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             cachen[k] = sum0;
             cacheb[k] = sum1;
           }
-          result(nextk, i) = result(nextk - 1, i) + (p.next(cachen) + q.next(cachen)) / T(2);
-          result(backk, i) = result(backk + 1, i) + (p.next(cacheb) + q.next(cacheb)) / T(2);
+          result(nextk, i) = cachen[cachen.size() - 1] + (p.next(cachen) + q.next(cachen)) / T(2);
+          result(backk, i) = cacheb[cacheb.size() - 1] + (p.next(cacheb) + q.next(cacheb)) / T(2);
           for(int jj = 0; jj < j; jj ++) {
             result(nextk, i) -= result(data.rows() + plen + jj, i);
             result(backk, i) -= result(plen - jj - 1, i);
