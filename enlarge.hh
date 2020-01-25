@@ -35,6 +35,7 @@ public:
     COLLECT_Y,
     COLLECT_BOTH,
     BUMP_X,
+    BUMP_Y0,
     BUMP_Y,
     BUMP_BOTH,
     EXTEND_X,
@@ -43,7 +44,6 @@ public:
     BCLIP,
     CLIP,
     ABS,
-    EXPSCALE,
     LOGSCALE } direction_t;
   typedef complex<T> U;
 #if defined(_WITHOUT_EIGEN_)
@@ -132,6 +132,27 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case BUMP_Y:
     {
+      result = compute(data, BUMP_Y0);
+      auto work(data);
+      for( ; 64 < work.rows(); ) {
+        Mat buf(work.rows() / 2, work.cols());
+        for(int i = 0; i < buf.rows(); i ++)
+          buf.row(i) = (work.row(i * 2) + work.row(i * 2 + 1)) / T(2);
+        auto enl(seed(buf.rows(), false) * compute(work = buf, BUMP_Y0).template cast<complex<T> >() / U(T(buf.rows())));
+        MatU enlidft(data.rows(), enl.cols());
+        for(int i = 0; i < enlidft.rows(); i ++)
+          for(int j = 0; j < enlidft.cols(); j ++)
+            enlidft(i, j) = i < enl.rows() && j < enl.cols() ? enl(i, j) : U(T(0));
+#if defined(_WITHOUT_EIGEN_)
+        result += (seed(data.rows(), true) * enlidft).template real<T>();
+#else
+        result += (seed(data.rows(), true) * enlidft).real().template cast<T>();
+#endif
+      }
+    }
+    break;
+  case BUMP_Y0:
+    {
       result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -156,7 +177,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec DDop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2) * exp(T(zi)));
+        const Vec DDop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
         for(int j = 0; j < DDop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(DDop0.size() - 1) / T(2)) / rxy;
@@ -175,12 +196,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
         result += compute(A * data, ABS);
       }
-      // N.B. log(|average(d^2_k C * exp(z_k))| / |d^2C|) == result.
-      const auto ddC(compute(compute(data, DETECT_Y), COLLECT_Y));
+      // N.B. log(|average(d_k C * exp(z_k))| / |dC|) == result.
+      const auto dC(compute(data, COLLECT_Y));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) /= ddC(i, j);
-      result = - compute(data, LOGSCALE) * sqrt(dratio);
+          result(i, j) /= dC(i, j);
+      result = - compute(compute(result, BCLIP), LOGSCALE) * sqrt(dratio);
     }
     break;
   case EXTEND_Y:
@@ -268,28 +289,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           result(i, j) = abs(data(i, j));
     }
     break;
-  case EXPSCALE:
-    {
-      result = Mat(data.rows(), data.cols());
-      // N.B. might sigmoid is better.
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * (exp(T(1) + abs(data(i, j))) - exp(T(1)));
-    }
-    break;
   case LOGSCALE:
     {
       result = Mat(data.rows(), data.cols());
-      // N.B. might be sigmoid is better.
+      // N.B. before to use, please BCLIP.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * (log(exp(T(1)) + abs(data(i, j))) - T(1));
+          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * log(abs(data(i, j)) / offset) * offset;
     }
     break;
   default:
@@ -351,7 +360,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
       for(int j = 0; j < result.cols(); j ++)
         result(i, j) += dC(i, j) / work(i, j);
   }
-  return compute(result, LOGSCALE) * dratio;
+  return compute(compute(result, BCLIP), LOGSCALE) * dratio;
 }
 
 template <typename T> void Filter<T>::initDop(const int& size) {
@@ -375,10 +384,13 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   for(int i = 1; i < DFTD.rows(); i ++) {
     const auto phase(- U(T(2)) * Pi * U(T(0), T(1)) * T(i) / T(DFTD.rows()));
     const auto phase2(U(T(1)) / phase);
-    // N.B. d/dy.
-    DFTD.row(i) *= phase;
-    nd += abs(phase)  * abs(phase);
-    ni += abs(phase2) * abs(phase2);
+    // N.B. d/dy with sampling theorem.
+    if(i < DFTD.rows() / 2) {
+      DFTD.row(i) *= phase;
+      nd += abs(phase)  * abs(phase);
+      ni += abs(phase2) * abs(phase2);
+    } else
+      DFTD.row(i) *= U(T(0));
     // N.B. integrate.
     // DFTI.row(i) /= phase;
     // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
