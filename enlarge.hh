@@ -138,7 +138,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         Mat buf(work.rows() / 2, work.cols());
         for(int i = 0; i < buf.rows(); i ++)
           buf.row(i) = (work.row(i * 2) + work.row(i * 2 + 1)) / T(2);
-        auto enl(seed(buf.rows(), false) * compute(work = buf, BUMP_Y0).template cast<complex<T> >() / U(T(buf.rows())));
+        auto enl(seed(buf.rows(), false) * compute(work = buf, BUMP_Y0).template cast<complex<T> >() * U(T(data.rows())) / U(T(buf.rows())));
         MatU enlidft(data.rows(), enl.cols());
         for(int i = 0; i < enlidft.rows(); i ++)
           for(int j = 0; j < enlidft.cols(); j ++)
