@@ -7,14 +7,14 @@ public:
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
-  inline P0(const int& range, const int& look = 1);
+  inline P0(const int& range, const int& lpfr = 2, const int& look = 1);
   inline ~P0();
   inline T next(const Vec& in);
 private:
   Vec pred;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size, const bool& integrate);
-  const Mat&  lpf(const int& size);
+  const Mat&  lpf(const int& size, const int& lpfr);
   const Vec&  nextTaylor(const int& size, const int& step);
   const T&    Pi() const;
   const complex<T>& J() const;
@@ -24,9 +24,9 @@ template <typename T> inline P0<T>::P0() {
   ;
 }
 
-template <typename T> inline P0<T>::P0(const int& range, const int& look) {
+template <typename T> inline P0<T>::P0(const int& range, const int& lpfr, const int& look) {
   assert(1 < range && 0 < look);
-  pred = lpf(range).transpose() * nextTaylor(range, look) - lpf(range).row(range - 1);
+  pred = lpf(range, lpfr).transpose() * nextTaylor(range, look) - lpf(range, lpfr).row(range - 1);
 }
 
 template <typename T> inline P0<T>::~P0() {
@@ -111,19 +111,20 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size, co
   return d;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size) {
+template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size, const int& lpfr) {
   assert(0 < size);
-  static vector<Mat> L;
+  static vector<vector<Mat> > L;
   if(L.size() <= size)
-    L.resize(size + 1, Mat());
-  if(L[size].rows() == size && L[size].cols() == size)
-    return L[size];
-  auto& l(L[size]);
+    L.resize(size + 1, vector<Mat>());
+  if(L[size].size() <= lpfr)
+    L[size].resize(lpfr + 1, Mat());
+  if(L[size][lpfr].rows() == size && L[size][lpfr].cols() == size)
+    return L[size][lpfr];
+  auto& l(L[size][lpfr]);
   auto  ll(seed(size, false));
-  for(int i = size / 2; i < size; i ++)
+  for(int i = size / lpfr; i < size; i ++)
     ll.row(i) *= complex<T>(T(0));
-  l = (seed(size, true) * ll).template real<T>();
-  return l;
+  return l = (seed(size, true) * ll).template real<T>();
 }
 
 template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& size, const int& step) {

@@ -130,6 +130,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
     break;
+/*
   case BUMP_Y:
     {
       result = compute(data, BUMP_Y0);
@@ -152,6 +153,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     }
     break;
   case BUMP_Y0:
+*/
+  case BUMP_Y:
     {
       result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
@@ -177,19 +180,19 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec DDop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
-        for(int j = 0; j < DDop0.size(); j ++) {
+        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
+        for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
-          cpoint[0] = (T(j) - T(DDop0.size() - 1) / T(2)) / rxy;
-          cpoint[1] = T(zi) * dratio;
+          cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
+          cpoint[1] = T(zi) * dratio / T(2);
           // x-z plane projection of point p with camera geometry c to z=0.
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-          // N.B. average_k(dC_k / dy * z_k).
+          //  N.B. average_k(dC_k / dy * z_k).
           for(int i = 0; i < A.rows(); i ++)
-            A(i, getImgPt(i + int(y0), data.rows())) += DDop0[j];
+            A(i, getImgPt(i + y0, data.rows())) += Dop0[j];
         }
 #if defined(_OPENMP)
 #pragma omp atomic
@@ -336,11 +339,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
       for(int j = 0; j < A.cols(); j ++)
         A(i, j) = T(0);
     Mat B(A);
-    const Vec DDop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
+    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
     for(int i = 0; i < A.rows(); i ++)
-      for(int j = 0; j < DDop0.size(); j ++) {
+      for(int j = 0; j < Dop0.size(); j ++) {
         Vec cpoint(2);
-        cpoint[0] = (T(j) - T(DDop0.size() - 1) / T(2)) / rxy;
+        cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
         cpoint[1] = T(zi) * dratio;
         // x-z plane projection of point p with camera geometry c to z=0.
         // c := camera, p := cpoint.
@@ -350,10 +353,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
         const auto y0((camera0 + (cpoint - camera0) * t0)[0] * rxy);
         const auto y1((camera1 + (cpoint - camera1) * t1)[0] * rxy);
         // N.B. average_k(dC_k / dy * z_k).
-        if(j <= DDop0.size() / 2)
-          A(i, getImgPt(i + int(y0), data0.rows())) += DDop0[j];
-        if(DDop0.size() / 2 <= j)
-          B(i, getImgPt(i + int(y1), data0.rows())) += DDop0[j];
+        if(j <= Dop0.size() / 2)
+          A(i, getImgPt(i + int(y0), data0.rows())) += Dop0[j];
+        if(Dop0.size() / 2 <= j)
+          B(i, getImgPt(i + int(y1), data0.rows())) += Dop0[j];
       }
     const auto work(compute(compute(A * data0 + B * data1, ABS), BCLIP));
     for(int i = 0; i < result.rows(); i ++)

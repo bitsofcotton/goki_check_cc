@@ -31,8 +31,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P1_)
 
-using std::vector;
-
 // data depend prediction:
 //   in taylor series meaning,
 //     f(x)=sum a_k*x_k^k, if such with relation, f(x)=sum a_k*x_k*(x_k\pm b_k).
@@ -70,6 +68,7 @@ public:
   inline ~P1();
   const T& next(const Vec& in);
   T    lasterr;
+  Vec  fvec;
 private:
   Vec  a;
   Mat  A;
@@ -81,8 +80,8 @@ private:
   T    threshold_p0;
   T    threshold_inner;
   Vec  one;
-  vector<bool> checked;
-  vector<bool> fix;
+  SimpleVector<bool> checked;
+  SimpleVector<bool> fix;
   Mat  Pverb;
   Vec  norm;
   Vec  orth;
@@ -121,6 +120,7 @@ template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen) {
   Pt.resize(A.cols(), A.rows());
   F.resize(A.cols(), A.cols());
   f.resize(A.cols());
+  fvec.resize(A.cols());
 }
 
 template <typename T> inline P1<T>::~P1() {
@@ -146,19 +146,19 @@ template <typename T> const T& P1<T>::next(const Vec& in) {
     a[i] = in[statlen + varlen - i - 1];
   a[varlen] = MM;
   try {
-    Vec rvec(a.size());
-    for(int i = 0; i < rvec.size(); i ++)
-      rvec[i] = T(0);
-    lasterr = T(1) / threshold_inner;
-    for(T ratio0 = T(1) / threshold_inner / T(2);
-        threshold_inner <= ratio0; ratio0 /= T(2)) {
+    for(int i = 0; i < fvec.size(); i ++)
+      fvec[i] = T(0);
+    lasterr = MM * T(4);
+    for(auto ratio0(MM * T(2)); MM * threshold_inner <= ratio0; ratio0 /= T(2)) {
       const auto ratio(lasterr - ratio0);
       int n_fixed;
       T   ratiob;
       T   normb0;
+      Vec rvec;
       Vec on;
       Vec deltab;
       Vec mbb;
+      Vec bb;
       for(int i = 0; i < Pt.rows(); i ++)
         for(int j = 0; j < Pt.cols(); j ++)
           Pt(i, j) = T(0);
@@ -169,15 +169,15 @@ template <typename T> const T& P1<T>::next(const Vec& in) {
       }
       const auto R(Pt * A);
       if(A.cols() == A.rows()) {
-        rvec = R.solve(Pt * (one * ratio + b));
-        break;
+        rvec = Pt * (one * ratio + b);
+        goto pnext;
       }
 #if defined(_OPENMP)
 #pragma omp simd
 #endif
       for(int i = 0; i < one.size(); i ++)
         fix[i]  = false;
-      auto bb(b - Pt.projectionPt(b));
+      bb = b - Pt.projectionPt(b);
       if(sqrt(bb.dot(bb)) <= threshold_feas * sqrt(b.dot(b))) {
         for(int i = 0; i < bb.size(); i ++)
           bb[i] = sqrt(Pt.col(i).dot(Pt.col(i)));
@@ -248,16 +248,16 @@ template <typename T> const T& P1<T>::next(const Vec& in) {
       } else
         rvec = Pt * (on * ratiob + deltab + b);
      pnext:
-            T    errorM(0);
       const auto err(Pt.transpose() * rvec - b - one * ratio);
-      for(int i = 0; i < b.size(); i ++)
-        if(!isfinite(err[i]) || errorM < err[i])
-          errorM = err[i];
-      rvec = R.solve(rvec);
-      if(isfinite(errorM) && errorM <= sqrt(threshold_inner) * normb0)
+            T    errorM(0);
+      for(int i = 0; i < b.size(); i ++) if(errorM < err[i])
+        errorM = err[i];
+      if(isfinite(errorM) && errorM <= sqrt(threshold_inner) * normb0) {
         lasterr -= ratio0;
+        fvec     = R.solve(rvec);
+      }
     }
-    M = a.dot(rvec) - a[0];
+    M = a.dot(fvec);
   } catch (const char* e) {
     M = T(0);
   }
