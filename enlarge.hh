@@ -35,7 +35,6 @@ public:
     COLLECT_Y,
     COLLECT_BOTH,
     BUMP_X,
-    BUMP_Y0,
     BUMP_Y,
     BUMP_BOTH,
     EXTEND_X,
@@ -79,7 +78,8 @@ private:
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
   // N.B. from accuracy reason, low depth.
-  dratio = T(005) / T(100);
+  //dratio = T(005) / T(100);
+  dratio = T(05) / T(10);
   offset = T(1) / T(64);
   plen   = 1;
   lrecur = 8;
@@ -130,30 +130,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
     break;
-/*
-  case BUMP_Y:
-    {
-      result = compute(data, BUMP_Y0);
-      auto work(data);
-      for( ; 64 < work.rows(); ) {
-        Mat buf(work.rows() / 2, work.cols());
-        for(int i = 0; i < buf.rows(); i ++)
-          buf.row(i) = (work.row(i * 2) + work.row(i * 2 + 1)) / T(2);
-        auto enl(seed(buf.rows(), false) * compute(work = buf, BUMP_Y0).template cast<complex<T> >() * U(T(data.rows())) / U(T(buf.rows())));
-        MatU enlidft(data.rows(), enl.cols());
-        for(int i = 0; i < enlidft.rows(); i ++)
-          for(int j = 0; j < enlidft.cols(); j ++)
-            enlidft(i, j) = i < enl.rows() && j < enl.cols() ? enl(i, j) : U(T(0));
-#if defined(_WITHOUT_EIGEN_)
-        result += (seed(data.rows(), true) * enlidft).template real<T>();
-#else
-        result += (seed(data.rows(), true) * enlidft).real().template cast<T>();
-#endif
-      }
-    }
-    break;
-  case BUMP_Y0:
-*/
   case BUMP_Y:
     {
       result = Mat(data.rows(), data.cols());
@@ -166,7 +142,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           result(i, j) = T(0);
       // XXX:
       // initDop(max(3, min(int(data.rows()) / 16, int(T(1) / dratio / dratio))));
-      initDop(60);
+      initDop(61);
       Vec camera(2);
       camera[0] = T(0);
       camera[1] = T(1);
@@ -192,7 +168,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
           //  N.B. average_k(dC_k / dy * z_k).
           for(int i = 0; i < A.rows(); i ++)
-            A(i, getImgPt(i + y0, data.rows())) += Dop0[j];
+            A(i, getImgPt(T(i) + y0, T(data.rows()))) += Dop0[j];
         }
 #if defined(_OPENMP)
 #pragma omp atomic
@@ -220,38 +196,15 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int j = 0; j < plen; j ++) {
-        const auto nextk(data.rows() + j + plen);
-        const auto backk(plen - j - 1);
-        const auto pl((data.rows() - 1) / (j + 1));
-        P0<T> p(pl);
-        P1<T> q(pl - min(20, pl / 3), min(20, pl / 3));
-        for(int i = 0; i < data.cols(); i ++) {
-          SimpleVector<T> cachen(pl);
-          SimpleVector<T> cacheb(pl);
-          for(int k = 0; k < pl; k ++) {
-            T sum0(0);
-            T sum1(0);
-            for(int kk = (k     - pl) * (j + 1) + data.rows();
-                    kk < (k + 1 - pl) * (j + 1) + data.rows();
-                    kk ++)
-              sum0 += data(kk, i);
-            for(int kk =  ((data.rows() - 1) / (j + 1) -  k     ) * (j + 1);
-                    kk >= ((data.rows() - 1) / (j + 1) - (k + 1)) * (j + 1);
-                    kk --)
-              sum1 += data(kk, i);
-            cachen[k] = sum0;
-            cacheb[k] = sum1;
-          }
-          result(nextk, i) = cachen[cachen.size() - 1] + (p.next(cachen) + q.next(cachen)) / T(2);
-          result(backk, i) = cacheb[cacheb.size() - 1] + (p.next(cacheb) + q.next(cacheb)) / T(2);
-          for(int jj = 0; jj < j; jj ++) {
-            result(nextk, i) -= result(data.rows() + plen + jj, i);
-            result(backk, i) -= result(plen - jj - 1, i);
-          }
+      for(int i = 0; i < data.cols(); i ++) {
+        SimpleVector<T> cacheb(data.rows());
+        for(int j = 0; j < data.rows(); j ++)
+          cacheb[j] = data(data.rows() - j - 1, i);
+        for(int j = 0; j < plen; j ++) {
+          P0<T> p(data.rows(), 2, j + 1);
+          result(data.rows() + j + plen, i) = p.next(data.col(i));
+          result(plen - j - 1, i) = p.next(cacheb);
         }
-        result.row(nextk) *= sqrt(result.row(nextk - 1).dot(result.row(nextk - 1)) / result.row(nextk).dot(result.row(nextk)));
-        result.row(backk) *= sqrt(result.row(backk + 1).dot(result.row(backk + 1)) / result.row(backk).dot(result.row(backk)));
       }
       result = compute(result, CLIP);
     }
