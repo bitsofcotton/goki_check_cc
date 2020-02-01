@@ -61,7 +61,7 @@ for line in argv[3:]:
   if(ext != ".ppm"):
     subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
   if(argv[2] == "sample"):
-    cmd = ["python", argv[0], argv[1], "col", line]
+    cmd = ["python2", argv[0], argv[1], "col", line]
     subprocess.call(cmd)
     cmd[3] = "bump"
     subprocess.call(cmd)

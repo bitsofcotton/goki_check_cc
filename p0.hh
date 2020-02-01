@@ -26,7 +26,7 @@ template <typename T> inline P0<T>::P0() {
 
 template <typename T> inline P0<T>::P0(const int& range, const int& lpfr, const int& look) {
   assert(1 < range && 0 < look);
-  pred = lpf(range, lpfr).transpose() * nextTaylor(range, look) - lpf(range, lpfr).row(range - 1);
+  pred = lpf(range, lpfr).transpose() * nextTaylor(range, look);
 }
 
 template <typename T> inline P0<T>::~P0() {
