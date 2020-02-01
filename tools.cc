@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -8,37 +9,15 @@
 #include <cmath>
 #include <assert.h>
 
-#if defined(_WITH_MPFR_)
-#include <mpreal.h>
-typedef mpfr::mpreal num_t;
-using std::sqrt;
-using mpfr::pow;
-using mpfr::log;
-using mpfr::isfinite;
-#elif defined(_WITH_NO_FLOAT_)
+#if defined(_WITH_NO_FLOAT)
+
 #include "ifloat.hh"
+template <typename T> using complex = Complex<T>;
 typedef SimpleFloat<uint16_t, uint32_t, 16, char> num_t;
 //typedef SimpleFloat<uint32_t, uint64_t, 32, short> num_t;
-#else
-typedef double num_t;
-#endif
 
-#if defined(_WITHOUT_EIGEN_)
-#if defined(_WITH_NO_FLOAT_)
-template <typename T> using complex = Complex<T>;
 #else
-#include <complex>
-using std::complex;
-#endif
-#include <cstring>
-#include "simplelin.hh"
-#else
-#include <Eigen/Core>
-#include <Eigen/LU>
-using std::complex;
-#endif
 
-#if ! defined(_WITH_NO_FLOAT_)
 using std::sqrt;
 using std::exp;
 using std::log;
@@ -48,19 +27,40 @@ using std::cos;
 using std::tan;
 using std::atan2;
 using std::ceil;
+
+#include <complex>
+using std::complex;
+
+#  if defined(_WITH_MPFR_)
+
+#include <mpreal.h>
+typedef mpfr::mpreal num_t;
+using std::sqrt;
+using mpfr::pow;
+using mpfr::log;
+using mpfr::isfinite;
+
+#  else
+
+typedef double num_t;
+
+#  endif
+#endif
+
+#if defined(_WITHOUT_EIGEN_)
+#include "simplelin.hh"
+#else
+#include <Eigen/Core>
+#include <Eigen/LU>
 #endif
 
 using std::max;
 using std::min;
-
-#if defined(_WITH_GLTF2_)
-#include <fx/gltf.h>
-#endif
-
-namespace goki {
 using std::pair;
 using std::make_pair;
 using std::vector;
+
+namespace goki {
 #include "p0.hh"
 #include "p1.hh"
 #include "fileio.hh"
@@ -75,19 +75,14 @@ using std::endl;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck enlarge <ratio>  <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck cenl    <ratio>  <inputdst.ppm> <inputsrc.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck bump2   <input0.ppm> <input1.ppm> <delta_pixels> <output.ppm>" << endl;
+  cout << "gokicheck bump    <delta_pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
-  cout << "gokicheck drawr   <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
-  cout << "gokicheck drawm   <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
@@ -164,86 +159,53 @@ int main(int argc, const char* argv[]) {
   }
   simpleFile<num_t> file;
   reDig<num_t>      redig;
-  if(strcmp(argv[1], "test") == 0) {
-    typename simpleFile<num_t>::Mat data[3];
-    if(!file.loadp2or3(data, argv[2]))
-      return -1;
-    if(!file.savep2or3(argv[3], data, ! true))
-      return - 1;
-  } else if(strcmp(argv[1], "cenl") == 0 ||
+  Filter<num_t>     filter;
+  if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
-     strcmp(argv[1], "light")   == 0) {
-    if(argc < 5 || (strcmp(argv[1], "cenl") == 0 && argc < 6)) {
+     strcmp(argv[1], "light")   == 0 ||
+     strcmp(argv[1], "bump")    == 0) {
+    const auto f_col( ! strcmp(argv[1], "collect"));
+    const auto f_bump(! strcmp(argv[1], "bump"));
+    if((f_col && argc < 4) || ((! f_col) && argc < 5) || (f_bump && argc < 6)) {
       usage();
       return 0;
     }
-    const auto ratio(std::atoi(argv[2]));
+    const auto ratio(f_col ? 0 : std::atoi(argv[2]));
+    const auto psi(f_bump ? std::atof(argv[3]) : std::atof("0"));
+    const auto inidx(f_col ? 2 : (f_bump ? 4 : 3));
     typename simpleFile<num_t>::Mat data[3];
-    if(!file.loadp2or3(data, argv[3]))
-      return - 1;
-    if(strcmp(argv[1], "pextend") == 0) {
-      Filter<num_t> extender;
-      extender.plen = ratio;
-      for(int i = 0; i < 3; i ++)
-        data[i] = extender.compute(extender.compute(data[i], extender.EXTEND_BOTH), extender.CLIP);
-    } else if(strcmp(argv[1], "cenl") == 0) {
-      typename simpleFile<num_t>::Mat datas[3];
-      Filter<num_t> cenl;
-      if(!file.loadp2or3(datas, argv[4]))
-        return - 1;
-      const auto t(num_t(ratio) / num_t(100));
-      for(int i = 0; i < 3; i ++)
-        data[i] = cenl.compute(data[i] * t + datas[i] * (num_t(1) - t), cenl.CLIP);
-      if(!file.savep2or3(argv[5], data, ! true))
-        return - 1;
-      return 0;
-    } else if(strcmp(argv[1], "light") == 0) {
-      Filter<num_t> enlarger;
-      enlarger.lrecur = ratio;
-      for(int i = 0; i < 3; i ++)
-        data[i] = enlarger.compute(enlarger.compute(data[i], enlarger.SHARPEN_BOTH), enlarger.CLIP);
-      redig.normalize(data, 1.);
-    }
-    if(!file.savep2or3(argv[4], data, ! true, 65535))
-      return - 1;
-  } else if(strcmp(argv[1], "collect") == 0 ||
-            strcmp(argv[1], "bump")  == 0) {
-    if(argc < 4) {
-      usage();
-      return 0;
-    }
-    typename simpleFile<num_t>::Mat data[3];
-    if(!file.loadp2or3(data, argv[2]))
+    if(!file.loadp2or3(data, argv[inidx]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0) {
-      Filter<num_t> detect;
       for(int i = 0; i < 3; i ++)
-        data[i] = detect.compute(detect.compute(data[i], detect.COLLECT_BOTH), detect.CLIP);
+        data[i] = filter.compute(filter.compute(data[i], filter.COLLECT_BOTH), filter.CLIP);
+    } else if(strcmp(argv[1], "pextend") == 0) {
+      filter.plen = ratio;
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH), filter.CLIP);
+    } else if(strcmp(argv[1], "light") == 0) {
+      filter.lrecur = ratio;
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH), filter.CLIP);
     } else if(strcmp(argv[1], "bump") == 0) {
 #if defined(_WITH_MPFR_)
       num_t::set_default_prec(_WITH_MPFR_);
 #endif
-      Filter<num_t> bump;
-      data[0] = data[1] = data[2] = bump.compute(redig.rgb2d(data).template cast<num_t>(), bump.BUMP_BOTH);
+      const auto bump0(filter.compute(redig.rgb2d(data).template cast<num_t>(), filter.BUMP_X));
+      auto mtilt(redig.tiltprep(bump0, 1, 4, psi));
+      mtilt.offset[2] += ratio * num_t(bump0.cols());
+      const auto tilt0(redig.tilt(redig.makeRefMatrix(bump0, 1), bump0, mtilt));
+      mtilt = redig.tiltprep(bump0, 3, 4, psi);
+      mtilt.offset[2] -= ratio * num_t(bump0.cols() * 2);
+      const auto tilt1(redig.tilt(redig.makeRefMatrix(bump0, 1), bump0, mtilt));
+      typename simpleFile<num_t>::Mat left[3], right[3];
+      for(int i = 0; i < 3; i ++) {
+        left[i]  = redig.pullRefMatrix(tilt0, 1, data[i]);
+        right[i] = redig.pullRefMatrix(tilt1, 1, data[i]);
+      }
+      data[0] = data[1] = data[2] = redig.normalize(filter.bump2(redig.rgb2d(left), redig.rgb2d(right), ratio), num_t(1));
     }
-    redig.normalize(data, num_t(1));
-    if(!file.savep2or3(argv[3], data, ! true))
-      return - 1;
-  } else if(strcmp(argv[1], "bump2") == 0) {
-    if(argc < 5) {
-      usage();
-      return 0;
-    }
-    typename simpleFile<num_t>::Mat data0[3], data1[3], out[3];
-    if(!file.loadp2or3(data0, argv[2]))
-      return - 1;
-    if(!file.loadp2or3(data1, argv[3]))
-      return - 1;
-    const auto pixels(std::atof(argv[4]));
-    Filter<num_t> bump;
-    out[0] = out[1] = out[2] = redig.autoLevel(- bump.bump2(redig.rgb2d(data0).transpose(), redig.rgb2d(data1).transpose(), pixels).transpose(), data0[0].rows() + data0[0].cols());
-    redig.normalize(out, num_t(1));
-    if(!file.savep2or3(argv[5], out, ! true))
+    if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0) {
     if(argc < 6) {
@@ -264,11 +226,11 @@ int main(int argc, const char* argv[]) {
   } else if(strcmp(argv[1], "obj") == 0) {
     typename simpleFile<num_t>::Mat data[3], mask[3];
     num_t xoffset(0);
-    int    vbox(2);
+    int   vbox(2);
     num_t addstand(0);
     num_t ratio(1);
     num_t zratio(1);
-    int    sidx(0);
+    int   sidx(0);
     if(strcmp(argv[2], "stand") == 0) {
       if(argc < 9) {
         usage();
@@ -380,73 +342,6 @@ int main(int argc, const char* argv[]) {
       out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
     if(!file.savep2or3(argv[oidx], out, ! true))
       return - 1;
-  } else if(strcmp(argv[1], "draw") == 0 ||
-            strcmp(argv[1], "drawr") == 0 ||
-            strcmp(argv[1], "drawm") == 0) {
-    if(argc < 5) {
-      usage();
-      return - 1;
-    }
-    typename simpleFile<num_t>::Mat data[3];
-    if(!file.loadp2or3(data, argv[2]))
-      return - 2;
-    std::vector<typename simpleFile<num_t>::Vec3>  datapoly;
-    std::vector<typename simpleFile<num_t>::Veci3> polynorms;
-    const std::string fn(argv[3]);
-    if(fn[fn.size() - 1] == 'j') {
-      if(!file.loadobj(datapoly, polynorms, argv[3]))
-        return - 2;
-    } else if(fn[fn.size() - 1] == 'f') {
-      std::vector<typename simpleFile<num_t>::Vec3> center;
-      std::vector<std::vector<typename simpleFile<num_t>::Veci4> > bone;
-      if(!file.loadglTF(datapoly, polynorms, center, bone, argv[3]))
-        return - 2;
-    } else {
-      usage();
-      return - 1;
-    }
-    assert(datapoly.size());
-    num_t My(datapoly[0][0]);
-    num_t Mx(datapoly[0][1]);
-    num_t my(My);
-    num_t mx(Mx);
-    for(int i = 0; i < datapoly.size(); i ++) {
-      My = max(My, datapoly[i][0]);
-      Mx = max(Mx, datapoly[i][1]);
-      my = min(my, datapoly[i][0]);
-      mx = min(mx, datapoly[i][1]);
-    }
-    match_t<num_t> m;
-    const num_t ratio(sqrt(num_t(data[0].rows() * data[0].cols())) / num_t(max(My - my, Mx - mx)));
-    m.ratio     *= ratio;
-    m.offset[0] -= my * ratio;
-    m.offset[1] -= mx * ratio;
-    for(int i = 0; i < datapoly.size(); i ++)
-      datapoly[i] = m.transform(datapoly[i]);
-    typename simpleFile<num_t>::Mat res[3];
-    std::vector<int> idx;
-    for(int j = 0; j < datapoly.size(); j ++)
-      idx.push_back(j);
-    if(strcmp(argv[1], "draw") == 0)
-      res[0] = res[1] = res[2] = redig.showMatch(data[0] * num_t(0), datapoly, polynorms, num_t(120));
-    else if(strcmp(argv[1], "drawr") == 0) {
-      auto mwork(data[0]);
-      for(int i = 0; i < mwork.rows(); i ++)
-        for(int j = 0; j < mwork.cols(); j ++)
-          mwork(i, j) = num_t(1);
-      auto prep(redig.tiltprep(datapoly, polynorms, mwork, match_t<num_t>()));
-      for(int i = 0; i < prep.size(); i ++)
-        prep[i].c = (prep[i].p(2, 0) + prep[i].p(2, 1) + prep[i].p(2, 2)) / num_t(3);
-      res[0] = res[1] = res[2] = redig.tilt(data[0] * num_t(0), prep);
-    } else {
-      auto mwork(data[0]);
-      for(int i = 0; i < mwork.rows(); i ++)
-        for(int j = 0; j < mwork.cols(); j ++)
-          mwork(i, j) = num_t(1);
-      res[0] = res[1] = res[2] = mwork - redig.tilt(data[0] * num_t(0), redig.tiltprep(datapoly, polynorms, mwork, match_t<num_t>()));
-    }
-    redig.normalize(res, num_t(1));
-    file.savep2or3(argv[4], res, true);
   } else if(strcmp(argv[1], "matcho") == 0 ||
             strcmp(argv[1], "match") == 0) {
     if(argc < 10) {

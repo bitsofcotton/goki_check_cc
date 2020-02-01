@@ -68,7 +68,7 @@ public:
 
 private:
   void initDop(const int& size);
-  int  getImgPt(const T& y, const T& h);
+  int  getImgPt(const int& y, const int& h);
   T    Pi;
   vector<Mat> Dop;
   vector<Mat> Sop;
@@ -168,7 +168,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
           //  N.B. average_k(dC_k / dy * z_k).
           for(int i = 0; i < A.rows(); i ++)
-            A(i, getImgPt(T(i) + y0, T(data.rows()))) += Dop0[j];
+            A(i, getImgPt(i + int(y0), data.rows())) += Dop0[j];
         }
 #if defined(_OPENMP)
 #pragma omp atomic
@@ -296,20 +296,20 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
     for(int i = 0; i < A.rows(); i ++)
       for(int j = 0; j < Dop0.size(); j ++) {
         Vec cpoint(2);
-        cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
+        cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2) + T(i) - T(data0.rows() - 1) / T(2)) / rxy;
         cpoint[1] = T(zi) * dratio;
         // x-z plane projection of point p with camera geometry c to z=0.
         // c := camera, p := cpoint.
         // <c + (p - c) * t, [0, 1]> = 0
         const auto t0(- camera0[1] / (cpoint[1] - camera0[1]));
         const auto t1(- camera1[1] / (cpoint[1] - camera1[1]));
-        const auto y0((camera0 + (cpoint - camera0) * t0)[0] * rxy);
-        const auto y1((camera1 + (cpoint - camera1) * t1)[0] * rxy);
+        const auto y0((camera0 + (cpoint - camera0) * t0)[0] * rxy + T(data0.rows() - 1) / T(2));
+        const auto y1((camera1 + (cpoint - camera1) * t1)[0] * rxy + T(data0.rows() - 1) / T(2));
         // N.B. average_k(dC_k / dy * z_k).
         if(j <= Dop0.size() / 2)
-          A(i, getImgPt(i + int(y0), data0.rows())) += Dop0[j];
+          A(i, getImgPt(int(y0), data0.rows())) += Dop0[j];
         if(Dop0.size() / 2 <= j)
-          B(i, getImgPt(i + int(y1), data0.rows())) += Dop0[j];
+          B(i, getImgPt(int(y1), data0.rows())) += Dop0[j];
       }
     const auto work(compute(compute(A * data0 + B * data1, ABS), BCLIP));
     for(int i = 0; i < result.rows(); i ++)
@@ -406,13 +406,13 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   return;
 }
 
-template <typename T> int Filter<T>::getImgPt(const T& y, const T& h) {
-  int yy(int(y) % int(T(2) * h));
+template <typename T> int Filter<T>::getImgPt(const int& y, const int& h) {
+  int yy(y % (2 * h));
   if(yy < 0)
     yy = - yy;
-  if(yy >= int(h))
-    yy = int(h) - (yy - int(h));
-  return yy % int(h);
+  if(yy >= h)
+    yy = h - (yy - h);
+  return yy % h;
 }
 
 template <typename T> typename Filter<T>::MatU Filter<T>::seed(const int& size, const bool& idft) {

@@ -653,7 +653,7 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
        std::binary_search(elim.begin(), elim.end(), polys[i][1]) ||
        std::binary_search(elim.begin(), elim.end(), polys[i][2]))
       elimp.emplace_back(i);
-  for(int i = 0, j = 0; i < elim.size(); i ++)
+  for(int i = 0; i < elim.size(); i ++)
     points.erase(points.begin() + (elim[i] - i));
   for(int i = 0; i < elimp.size(); i ++)
     polys.erase(polys.begin() + (elimp[i] - i));
