@@ -165,14 +165,12 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "light")   == 0 ||
      strcmp(argv[1], "bump")    == 0) {
     const auto f_col( ! strcmp(argv[1], "collect"));
-    const auto f_bump(! strcmp(argv[1], "bump"));
-    if((f_col && argc < 4) || ((! f_col) && argc < 5) || (f_bump && argc < 6)) {
+    if((f_col && argc < 4) || ((! f_col) && argc < 5)) {
       usage();
       return 0;
     }
-    const auto ratio(f_col ? 0 : std::atoi(argv[2]));
-    const auto psi(f_bump ? std::atof(argv[3]) : std::atof("0"));
-    const auto inidx(f_col ? 2 : (f_bump ? 4 : 3));
+    const auto ratio(f_col ? 0. : std::atof(argv[2]));
+    const auto inidx(f_col ? 2  : 3);
     typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[inidx]))
       return - 1;
@@ -192,8 +190,8 @@ int main(int argc, const char* argv[]) {
       num_t::set_default_prec(_WITH_MPFR_);
 #endif
       const auto bump(filter.compute(redig.rgb2d(data).template cast<num_t>(), filter.BUMP_X));
-      const auto mtilt0(redig.tiltprep(bump, 1, 4, psi));
-      const auto mtilt1(redig.tiltprep(bump, 3, 4, psi));
+      const auto mtilt0(redig.tiltprep(bump, 1, 4, ratio));
+      const auto mtilt1(redig.tiltprep(bump, 3, 4, ratio));
       const auto tilt0(redig.tilt(redig.makeRefMatrix(bump, 1), bump, mtilt0));
       const auto tilt1(redig.tilt(redig.makeRefMatrix(bump, 1), bump, mtilt1));
       typename simpleFile<num_t>::Mat left[3], right[3];
@@ -201,7 +199,7 @@ int main(int argc, const char* argv[]) {
         left[i]  = redig.pullRefMatrix(tilt0, 1, data[i]);
         right[i] = redig.pullRefMatrix(tilt1, 1, data[i]);
       }
-      data[0] = data[1] = data[2] = redig.normalize(filter.bump2(redig.rgb2d(left), redig.rgb2d(right), ratio), num_t(1));
+      data[0] = data[1] = data[2] = redig.normalize(filter.bump2(redig.rgb2d(left), redig.rgb2d(right)), num_t(1));
     }
     if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
       return - 1;

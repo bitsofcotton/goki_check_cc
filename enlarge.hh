@@ -58,7 +58,7 @@ public:
 #endif
   Filter();
   Mat  compute(const Mat& data, const direction_t& dir);
-  Mat  bump2(const Mat& data0, const Mat& data1, const T& pixels = T(1));
+  Mat  bump2(const Mat& data0, const Mat& data1);
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
   T    dratio;
@@ -263,7 +263,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   return result;
 }
 
-template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0, const Mat& data1, const T& pixels) {
+template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0, const Mat& data1) {
   assert(data0.rows() == data1.rows() && data0.cols() == data0.cols());
   Mat result(data0.rows(), data0.cols());
 #if defined(_OPENMP)
@@ -275,14 +275,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
       result(i, j) = T(1);
   assert(T(0) < dratio);
   initDop(max(3, min(int(data0.rows()) / 16, int(T(1) / dratio / dratio))));
-  const auto dC(compute(compute(data0, COLLECT_Y) + compute(data1, COLLECT_Y), ABS));
+  const auto dC(compute(compute(compute(data0, COLLECT_Y) + compute(data1, COLLECT_Y), ABS), BCLIP));
   const auto rxy(sqrt(T(data0.rows()) * T(data0.cols())));
-  Vec camera0(2);
-  Vec camera1(2);
-  camera0[0] =   pixels / rxy;
-  camera0[1] =   T(1);
-  camera1[0] = - pixels / rxy;
-  camera1[1] =   T(1);
+  Vec camera(2);
+  camera[0] = T(0);
+  camera[1] = T(1);
+  auto work(data0 * T(0));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -301,21 +299,22 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
         // x-z plane projection of point p with camera geometry c to z=0.
         // c := camera, p := cpoint.
         // <c + (p - c) * t, [0, 1]> = 0
-        const auto t0(- camera0[1] / (cpoint[1] - camera0[1]));
-        const auto t1(- camera1[1] / (cpoint[1] - camera1[1]));
-        const auto y0((camera0 + (cpoint - camera0) * t0)[0] * rxy + T(data0.rows() - 1) / T(2));
-        const auto y1((camera1 + (cpoint - camera1) * t1)[0] * rxy + T(data0.rows() - 1) / T(2));
+        const auto t(- camera[1] / (cpoint[1] - camera[1]));
+        const auto y((camera + (cpoint - camera) * t)[0] * rxy + T(data0.rows() - 1) / T(2));
         // N.B. average_k(dC_k / dy * z_k).
         if(j <= Dop0.size() / 2)
-          A(i, getImgPt(int(y0), data0.rows())) += Dop0[j];
+          A(i, getImgPt(int(y), data0.rows())) += Dop0[j];
         if(Dop0.size() / 2 <= j)
-          B(i, getImgPt(int(y1), data0.rows())) += Dop0[j];
+          B(i, getImgPt(int(y), data0.rows())) += Dop0[j];
       }
     const auto work(compute(compute(A * data0 + B * data1, ABS), BCLIP));
     for(int i = 0; i < result.rows(); i ++)
       for(int j = 0; j < result.cols(); j ++)
-        result(i, j) += dC(i, j) / work(i, j);
+        result(i, j) += work(i, j);
   }
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) /= dC(i, j);
   return compute(compute(result, BCLIP), LOGSCALE) * dratio;
 }
 
