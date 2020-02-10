@@ -75,12 +75,19 @@ for line in argv[3:]:
   elif(argv[2] == "col"):
     subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
     subprocess.call(["convert", root + "-collect.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emphe" + ext])
+  elif(argv[2] == "penetrate"):
+    subprocess.call(["cp", root + ".ppm", root + "-penetrate-light.ppm"])
+    for s in range(0, pixels):
+      subprocess.call(["convert", root + "-penetrate-light.ppm", "-blur", "2x2", "-compress", "none", root + "-penetrate.ppm"])
+      subprocess.call([argv[1], "light", "1", root + "-penetrate.ppm", root + "-penetrate-light.ppm"])
+    subprocess.call(["convert", root + "-penetrate-light.ppm", root + "-penetrate.png"])
   elif(argv[2] == "enlp"):
     subprocess.call(["cp", root + ".ppm", root + "-enl.ppm"])
     for s in range(0, pixels):
-      subprocess.call([argv[1], "light", "1", root + "-enl.ppm", root + "-enl-light.ppm"])
+      subprocess.call([argv[1], "light", "8", root + "-enl.ppm", root + "-enl-light.ppm"])
       subprocess.call(["convert", root + "-enl-light.ppm", "-resize", "200%", "-compress", "none", root + "-enl.ppm"])
-    subprocess.call([argv[1], "light", "1", root + "-enl.ppm", root + "-enl.png"])
+    subprocess.call([argv[1], "light", "1", root + "-enl.ppm", root + "-enl.ppm"])
+    subprocess.call(["convert", root + "-enl.ppm", root + "-enl.png"])
   elif(argv[2] == "light"):
     subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
   elif(argv[2] == "bump"):

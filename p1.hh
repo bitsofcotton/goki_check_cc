@@ -66,7 +66,7 @@ public:
   inline P1();
   inline P1(const int& statlen, const int& varlen);
   inline ~P1();
-  const T& next(const Vec& in);
+  const T& next(const Vec& in, const int& step = 1);
   T    lasterr;
   Vec  fvec;
 private:
@@ -127,29 +127,30 @@ template <typename T> inline P1<T>::~P1() {
   ;
 }
 
-template <typename T> const T& P1<T>::next(const Vec& in) {
-  assert(in.size() == statlen + varlen);
+template <typename T> const T& P1<T>::next(const Vec& in, const int& step) {
+  assert(in.size() == statlen + varlen + step - 1);
   T MM(0);
-  for(int i = 0; i < in.size(); i ++)
-    MM = max(MM, abs(in[i]));
   for(int i = 0; i < statlen; i ++) {
     for(int j = 0; j < varlen; j ++)
-      A(i, j) = in[i + varlen - j - 1];
-    b[i]         = in[i + varlen];
-    A(i, varlen) = MM;
+      MM = max(MM, abs(A(i, j) = in[i + varlen - j - 1] - in[0]));
+    MM = max(MM, abs(b[i]      = in[i + varlen + step - 1] - in[0]));
   }
+  for(int i = 0; i < statlen; i ++)
+    A(i, varlen) = MM;
   for(int i = 0; i < statlen; i ++) {
     A.row(statlen + i) = - A.row(i);
     b[statlen + i]     = - b[i];
   }
   for(int i = 0; i < varlen; i ++)
-    a[i] = in[statlen + varlen - i - 1];
+    a[i] = in[statlen + varlen - i - 1 + step - 1] - in[0];
   a[varlen] = MM;
+  A /= MM;
+  b /= MM;
   try {
     for(int i = 0; i < fvec.size(); i ++)
       fvec[i] = T(0);
-    lasterr = MM * T(4);
-    for(auto ratio0(MM * T(2)); MM * threshold_inner <= ratio0; ratio0 /= T(2)) {
+    lasterr = T(statlen);
+    for(auto ratio0(T(2)); threshold_inner <= ratio0; ratio0 /= T(2)) {
       const auto ratio(lasterr - ratio0);
       int n_fixed;
       T   ratiob;
@@ -197,8 +198,6 @@ template <typename T> const T& P1<T>::next(const Vec& in) {
 #endif
         for(int j = 0; j < Pverb.cols(); j ++) {
           norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
-          if(j < statlen)
-            norm[j] /= T(2);
           checked[j] = fix[j] || norm[j] <= threshold_p0;
         }
         auto mb(mbb + norm * normb0 * ratio);
@@ -240,7 +239,7 @@ template <typename T> const T& P1<T>::next(const Vec& in) {
           if(fix[i]) {
             const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i)) + b[i] * b[i]));
             F.row(j) = Pt.col(i) / lratio;
-            f[j]     = b[i]      / lratio + (i < statlen ? ratio / T(2) : ratio);
+            f[j]     = b[i]      / lratio + ratio;
             j ++;
           }
         assert(j == f.size());
@@ -257,7 +256,7 @@ template <typename T> const T& P1<T>::next(const Vec& in) {
         fvec     = R.solve(rvec);
       }
     }
-    M = a.dot(fvec);
+    M = a.dot(fvec) + in[0];
   } catch (const char* e) {
     M = T(0);
   }

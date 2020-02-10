@@ -190,10 +190,8 @@ int main(int argc, const char* argv[]) {
       num_t::set_default_prec(_WITH_MPFR_);
 #endif
       const auto bump(filter.compute(redig.rgb2d(data).template cast<num_t>(), filter.BUMP_X));
-      const auto mtilt0(redig.tiltprep(bump, 1, 4, ratio));
-      const auto mtilt1(redig.tiltprep(bump, 3, 4, ratio));
-      const auto tilt0(redig.tilt(redig.makeRefMatrix(bump, 1), bump, mtilt0));
-      const auto tilt1(redig.tilt(redig.makeRefMatrix(bump, 1), bump, mtilt1));
+      const auto tilt0(redig.tilt(redig.makeRefMatrix(bump, 1), bump, redig.tiltprep(bump, 1, 4, ratio)));
+      const auto tilt1(redig.tilt(redig.makeRefMatrix(bump, 1), bump, redig.tiltprep(bump, 3, 4, ratio)));
       typename simpleFile<num_t>::Mat left[3], right[3];
       for(int i = 0; i < 3; i ++) {
         left[i]  = redig.pullRefMatrix(tilt0, 1, data[i]);
