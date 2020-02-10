@@ -156,7 +156,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
+        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(- T(zi)));
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
@@ -290,7 +290,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
       for(int j = 0; j < A.cols(); j ++)
         A(i, j) = T(0);
     Mat B(A);
-    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi)));
+    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(- T(zi)));
     for(int i = 0; i < A.rows(); i ++)
       for(int j = 0; j < Dop0.size(); j ++) {
         Vec cpoint(2);
