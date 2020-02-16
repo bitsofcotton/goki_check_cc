@@ -156,7 +156,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(- T(zi)));
+        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) / sqrt(dratio)));
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
@@ -272,15 +272,15 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
 #endif
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = T(1);
+      result(i, j) = T(0);
   assert(T(0) < dratio);
   initDop(max(3, min(int(data0.rows()) / 16, int(T(1) / dratio / dratio))));
-  const auto dC(compute(compute(compute(data0, COLLECT_Y) + compute(data1, COLLECT_Y), ABS), BCLIP));
+  const auto dC(compute(compute(data0, COLLECT_Y) + compute(data1, COLLECT_Y), BCLIP));
   const auto rxy(sqrt(T(data0.rows()) * T(data0.cols())));
   Vec camera(2);
   camera[0] = T(0);
   camera[1] = T(1);
-  auto work(data0 * T(0));
+  auto work(result);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -290,7 +290,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
       for(int j = 0; j < A.cols(); j ++)
         A(i, j) = T(0);
     Mat B(A);
-    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(- T(zi)));
+    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) / sqrt(dratio)));
     for(int i = 0; i < A.rows(); i ++)
       for(int j = 0; j < Dop0.size(); j ++) {
         Vec cpoint(2);
@@ -307,15 +307,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
         if(Dop0.size() / 2 <= j)
           B(i, getImgPt(int(y), data0.rows())) += Dop0[j];
       }
-    const auto work(compute(compute(A * data0 + B * data1, ABS), BCLIP));
-    for(int i = 0; i < result.rows(); i ++)
-      for(int j = 0; j < result.cols(); j ++)
-        result(i, j) += work(i, j);
+    result += compute(compute(A * data0 + B * data1, ABS), BCLIP);
   }
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) /= dC(i, j);
-  return compute(compute(result, BCLIP), LOGSCALE) * dratio;
+  return compute(compute(result, BCLIP), LOGSCALE) * sqrt(dratio);
 }
 
 template <typename T> void Filter<T>::initDop(const int& size) {
