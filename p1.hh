@@ -64,18 +64,17 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline P1();
-  inline P1(const int& statlen, const int& varlen);
+  inline P1(const int& statlen, const int& varlen, const bool& addconst = false);
   inline ~P1();
-  const T& next(const Vec& in, const int& step = 1);
+  const Vec& next(const Vec& in, const int& step = 1, const bool& vanish = false);
   T    lasterr;
   Vec  fvec;
 private:
-  Vec  a;
   Mat  A;
   Vec  b;
-  T    M;
   int  statlen;
   int  varlen;
+  bool addconst;
   T    threshold_feas;
   T    threshold_p0;
   T    threshold_inner;
@@ -91,18 +90,19 @@ private:
 };
 
 template <typename T> inline P1<T>::P1() {
-  statlen = varlen = 0;
-  M = threshold_feas = threshold_p0 = threshold_inner = lasterr = T(0);
+  statlen  = varlen = 0;
+  addconst = false;
+  threshold_feas = threshold_p0 = threshold_inner = lasterr = T(0);
 }
 
-template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen) {
+template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen, const bool& addconst) {
   assert(1 < varlen && varlen < statlen);
-  this->statlen = statlen;
-  this->varlen  = varlen;
-  b.resize(statlen * 2);
-  A.resize(b.size(), varlen + 1);
-  a.resize(A.cols());
-  M = lasterr = T(0);
+  this->statlen  = statlen;
+  this->varlen   = varlen;
+  this->addconst = addconst;
+  b.resize(statlen * 2 + 1);
+  A.resize(b.size(), varlen + (addconst ? 1 : 0));
+  lasterr = T(0);
   const auto epsilon(std::numeric_limits<T>::epsilon());
   // const auto epsilon(T(1) >> short(62));
   threshold_feas    = pow(epsilon, T(5) / T(6));
@@ -127,30 +127,32 @@ template <typename T> inline P1<T>::~P1() {
   ;
 }
 
-template <typename T> const T& P1<T>::next(const Vec& in, const int& step) {
-  assert(in.size() == statlen + varlen + step - 1);
+template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in, const int& step, const bool& vanish) {
+  assert(in.size() == statlen + varlen * step);
   T MM(0);
   for(int i = 0; i < statlen; i ++) {
     for(int j = 0; j < varlen; j ++)
-      MM = max(MM, abs(A(i, j) = in[i + varlen - j - 1] - in[0]));
-    MM = max(MM, abs(b[i]      = in[i + varlen + step - 1] - in[0]));
+      MM = max(MM, abs(A(i, j) = in[i + (varlen - j - 1) * step + (vanish ? step : 0)]));
+    if(vanish)
+      b[i] = T(0);
+    else
+      MM = max(MM, abs(b[i] = in[i + varlen * step]));
   }
-  for(int i = 0; i < statlen; i ++)
-    A(i, varlen) = MM;
   for(int i = 0; i < statlen; i ++) {
+    if(addconst) A(i, varlen) = MM;
     A.row(statlen + i) = - A.row(i);
     b[statlen + i]     = - b[i];
   }
-  for(int i = 0; i < varlen; i ++)
-    a[i] = in[statlen + varlen - i - 1 + step - 1] - in[0];
-  a[varlen] = MM;
+  A(statlen * 2, 0) = b[statlen * 2] = - T(1);
   A /= MM;
   b /= MM;
   try {
     for(int i = 0; i < fvec.size(); i ++)
       fvec[i] = T(0);
-    lasterr = T(statlen);
-    for(auto ratio0(T(2)); threshold_inner <= ratio0; ratio0 /= T(2)) {
+    lasterr = T(statlen * 2 + 1);
+    for(auto ratio0(lasterr / T(2));
+             threshold_inner <= ratio0;
+             ratio0 /= T(2)) {
       const auto ratio(lasterr - ratio0);
       int n_fixed;
       T   ratiob;
@@ -170,7 +172,7 @@ template <typename T> const T& P1<T>::next(const Vec& in, const int& step) {
       }
       const auto R(Pt * A);
       if(A.cols() == A.rows()) {
-        rvec = Pt * (one * ratio + b);
+        rvec = Pt * b;
         goto pnext;
       }
 #if defined(_OPENMP)
@@ -247,22 +249,18 @@ template <typename T> const T& P1<T>::next(const Vec& in, const int& step) {
       } else
         rvec = Pt * (on * ratiob + deltab + b);
      pnext:
-      const auto err(Pt.transpose() * rvec - b - one * ratio);
-            T    errorM(0);
-      for(int i = 0; i < b.size(); i ++) if(errorM < err[i])
-        errorM = err[i];
-      if(isfinite(errorM) && errorM <= sqrt(threshold_inner) * normb0) {
+      const auto err0(Pt.transpose() * rvec);
+            auto err(err0 - b - one * ratio);
+      for(int i = 0; i < b.size(); i ++) if(err[i] <= T(0)) err[i] = T(0);
+      if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0))) {
         lasterr -= ratio0;
         fvec     = R.solve(rvec);
       }
     }
-    M = a.dot(fvec) + in[0];
   } catch (const char* e) {
-    M = T(0);
+    fvec *= T(0);
   }
-  if(isfinite(M) && ! isinf(M))
-    return M;
-  return M = T(0);
+  return fvec;
 }
 
 #define _P1_
