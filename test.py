@@ -91,7 +91,8 @@ for line in argv[3:]:
   elif(argv[2] == "light"):
     subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
   elif(argv[2] == "bump"):
-    subprocess.call([argv[1], "bump", ".005", root + ".ppm", root + "-bump.ppm"])
+    subprocess.call([argv[1], "bump", ".075", root + ".ppm", root + "-bump0.ppm"])
+    subprocess.call(["convert", root + "-bump0.ppm", "-negate", "-compress", "none", root + "-bump.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + "-bump.ppm", root + ".ppm", root + "-reshape-bump.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-reshape-bump-rev.ppm"])
     subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])
