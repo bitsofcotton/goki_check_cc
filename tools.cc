@@ -74,17 +74,16 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck enlarge <ratio>  <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck bump    <delta_pixels> <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>" << endl;
-  cout << "gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
+  cout << "gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck matcho  <match> <emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck matcho  <match> <emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
 }
@@ -126,10 +125,6 @@ template <typename T> void saveMatches(const std::string& outbase, const match_t
   file.saveobj(redig.takeShape(shape1, shape0, ~ match, mhull1, mhull0, emph),
                outs[0].rows(), outs[0].cols(),
                ohull1, (outbase + std::string("-emph1.obj")).c_str());
-/*
-  file.saveglTF((outbase + std::string(".gltf")).c_str(),
-                shape0, mhull0, ~ match, center, bone);
-*/
   return;
 }
 
@@ -176,7 +171,7 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(strcmp(argv[1], "collect") == 0) {
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.compute(data[i], filter.COLLECT_BOTH), filter.CLIP);
+        data[i] = filter.compute(data[i], filter.COLLECT_BOTH);
     } else if(strcmp(argv[1], "pextend") == 0) {
       filter.plen = ratio;
       for(int i = 0; i < 3; i ++)
@@ -184,7 +179,7 @@ int main(int argc, const char* argv[]) {
     } else if(strcmp(argv[1], "light") == 0) {
       filter.lrecur = ratio;
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH), filter.CLIP);
+        data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     } else if(strcmp(argv[1], "bump") == 0) {
 #if defined(_WITH_MPFR_)
       num_t::set_default_prec(_WITH_MPFR_);
@@ -207,7 +202,7 @@ int main(int argc, const char* argv[]) {
       usage();
       return 0;
     }
-    int count(std::atoi(argv[2]));
+    const auto count(std::atoi(argv[2]));
     typename simpleFile<num_t>::Mat datac[3], datas[3];
     if(!file.loadp2or3(datac, argv[3]))
       return - 1;
@@ -282,38 +277,31 @@ int main(int argc, const char* argv[]) {
     file.saveobj(points, ratio * num_t(data[0].rows()), ratio * num_t(data[0].cols()), facets, argv[sidx], edges, addstand, xoffset);
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
-    if((strcmp(argv[1], "tilt") == 0 && argc < 9) ||
+    if((strcmp(argv[1], "tilt") == 0 && argc < 8) ||
        (strcmp(argv[1], "sbox") == 0 && argc < 7)) {
       usage();
       return - 1;
     }
-    int    index(std::atoi(argv[2]));
-    int    Mindex(std::atoi(argv[3]));
+    const auto index(std::atoi(argv[2]));
+    const auto Mindex(std::atoi(argv[3]));
     num_t psi(0);
-    int    offsetx(0);
-    int    ipidx(6);
-    int    iidx(7);
-    int    oidx(8);
-    if(strcmp(argv[1], "tilt") == 0) {
+    int   ipidx(5);
+    if(strcmp(argv[1], "tilt") == 0)
       psi = std::atof(argv[4]);
-      offsetx = std::atoi(argv[5]);
-    } else {
-      ipidx = 4;
-      iidx  = 5;
-      oidx  = 6;
-    }
-    typename simpleFile<num_t>::Mat data[3], bump[3], out[3];
+    else
+      ipidx --;
+    typename simpleFile<num_t>::Mat data[3], bump[3];
     std::vector<typename simpleFile<num_t>::Vec3>  points;
     std::vector<typename simpleFile<num_t>::Veci3> polys;
     if(!file.loadp2or3(data, argv[ipidx]))
       return - 2;
-    const std::string fn(argv[iidx]);
+    const std::string fn(argv[ipidx + 1]);
     bool is_obj(false);
     if(fn[fn.size() - 1] == 'm') {
-      if(!file.loadp2or3(bump, argv[iidx]))
+      if(!file.loadp2or3(bump, argv[ipidx + 1]))
         return - 2;
     } else if(fn[fn.size() - 1] == 'j') {
-      if(!file.loadobj(points, polys, argv[iidx]))
+      if(!file.loadobj(points, polys, argv[ipidx + 1]))
         return - 2;
       is_obj = true;
     } else
@@ -326,16 +314,15 @@ int main(int argc, const char* argv[]) {
       else
         tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, num_t(index) / num_t(Mindex));
     } else {
-      auto mtilt(redig.tiltprep(data[0], index, Mindex, psi));
-      mtilt.offset[2] += offsetx * data[0].cols();
+      const auto mtilt(redig.tiltprep(data[0], index, Mindex, psi));
       if(is_obj)
         tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
       else
         tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt);
     }
     for(int j = 0; j < 3; j ++)
-      out[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
-    if(!file.savep2or3(argv[oidx], out, ! true))
+      data[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
+    if(!file.savep2or3(argv[ipidx + 2], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "matcho") == 0 ||
             strcmp(argv[1], "match") == 0) {
@@ -366,8 +353,8 @@ int main(int argc, const char* argv[]) {
       input.close();
       emph = std::atof(argv[3]);
     }
-    int vboxdst(std::atoi(argv[4]));
-    int vboxsrc(std::atoi(argv[5]));
+    const auto vboxdst(std::atoi(argv[4]));
+    const auto vboxsrc(std::atoi(argv[5]));
     typename simpleFile<num_t>::Mat data[3], data1[3], bdata[3], bdata1[3], mdata[3], mdata1[3], mout[3], mmout1, bump1;
     std::vector<typename simpleFile<num_t>::Veci3> delau0, delau1;
     std::vector<typename simpleFile<num_t>::Vec3>  shape0, shape1;
@@ -496,76 +483,61 @@ int main(int argc, const char* argv[]) {
                    My, Mx, poldst, argv[4]);
     }
   } else if(strcmp(argv[1], "omake") == 0) {
-    std::vector<num_t> in;
+    std::vector<num_t> inout;
     std::string line;
     while (std::getline(std::cin, line)) {
       std::stringstream sl(line);
-      in.push_back(0);
-      sl >> in[in.size() - 1];
+      inout.push_back(0);
+      sl >> inout[inout.size() - 1];
     }
     simpleFile<num_t>::Mat buf(std::atoi(argv[2]), std::atoi(argv[2]));
-    Filter<num_t> filter;
     num_t M(0);
-    std::vector<num_t> rbuf;
-    if(strcmp(argv[3], "light") == 0)
-      rbuf.resize(in.size() * 2, 0.);
-    else
-      rbuf.resize(in.size(), 0.);
-    const auto dft0(filter.seed(buf.rows(), false));
-    const auto idft0(filter.seed(buf.rows(), true));
-    for(int i = 0; i <= in.size() / buf.rows() / buf.rows(); i ++) {
+    const auto dft(filter.seed(buf.rows(), false));
+    const auto idft(filter.seed(buf.rows(), true));
+    for(int i = 0; i <= inout.size() / buf.rows() / buf.rows(); i ++) {
       for(int j = 0; j < buf.rows(); j ++)
         for(int k = 0; k < buf.cols(); k ++)
-          buf(j, k) = in[i * buf.rows() * buf.rows() + k * buf.rows() + j];
-      Filter<num_t>::MatU dft(dft0 * buf.template cast<complex<num_t> >());
-      if(strcmp(argv[3], "light") == 0) {
+          buf(j, k) = inout[i * buf.rows() * buf.rows() + k * buf.rows() + j];
+      Filter<num_t>::Mat buf2;
+      if(strcmp(argv[3], "diff") == 0){
 #if defined(_WITHOUT_EIGEN_)
-        const auto rp(filter.compute(dft.template real<num_t>(), filter.SHARPEN_X));
-        const auto ip(filter.compute(dft.template imag<num_t>(), filter.SHARPEN_X));
-        const auto buf2((idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- num_t(1))))).template real<num_t>());
+        buf2 = (idft * (
+          filter.compute(dft.template real<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
+          filter.compute(dft.template imag<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-        const auto rp(filter.compute(dft.real(), filter.SHARPEN_X));
-        const auto ip(filter.compute(dft.imag(), filter.SHARPEN_X));
-        const auto buf2((idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- num_t(l))))).real());
+        buf2 = (idft * (
+          filter.compute(dft.real() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
+          filter.compute(dft.imag() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
-        for(int j = 0; j < buf2.rows(); j ++)
-          for(int k = 0; k < buf2.cols(); k ++) {
-            M = max(M, abs(buf2(j, k)));
-            rbuf[i * buf.rows() * buf.rows() * 2 + k * buf.rows() + j] = buf2(j, k);
-          }
-        continue;
-      } else {
-        Filter<num_t>::Mat buf2;
-        if(strcmp(argv[3], "diff") == 0){
+      } else if(strcmp(argv[3], "light") == 0) {
 #if defined(_WITHOUT_EIGEN_)
-          const auto rp(filter.compute(dft.template real<num_t>(), filter.DETECT_X));
-          const auto ip(filter.compute(dft.template imag<num_t>(), filter.DETECT_X));
-          buf2 = (idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- 1)))).template real<num_t>();
+        buf2 = (idft * (
+          filter.compute(dft.template real<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
+          filter.compute(dft.template imag<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-          const auto rp(filter.compute(dft.real(), filter.DETECT_X));
-          const auto ip(filter.compute(dft.imag(), filter.DETECT_X));
-          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- num_t(1))) * ip.template cast<complex<num_t> >())).real();
+        buf2 = (idft * (
+          filter.compute(dft.real() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
+          filter.compute(dft.imag() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
-        } else if(strcmp(argv[3], "bump") == 0) {
+      } else if(strcmp(argv[3], "bump") == 0) {
 #if defined(_WITHOUT_EIGEN_)
-          const auto rp(filter.compute(dft.template real<num_t>(), filter.BUMP_X));
-          const auto ip(filter.compute(dft.template imag<num_t>(), filter.BUMP_X));
-          buf2 = (idft0.template cast<complex<num_t> >() * (rp.template cast<complex<num_t> >() + ip.template cast<complex<num_t> >() * sqrt(complex<num_t>(- 1)))).template real<num_t>();
+        buf2 = (idft * (
+          filter.compute(dft.template real<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
+          filter.compute(dft.template imag<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-          const auto rp(filter.compute(dft.real(), filter.BUMP_X));
-          const auto ip(filter.compute(dft.imag(), filter.BUMP_X));
-          buf2 = (idft0 * (rp.template cast<complex<num_t> >() + sqrt(complex<num_t>(- num_t(1))) * ip.template cast<complex<num_t> >())).real();
+        buf2 = (idft * (
+          filter.compute(dft.real() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
+          filter.compute(dft.imag() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
-        }
-        for(int j = 0; j < buf2.rows(); j ++)
-          for(int k = 0; k < buf2.cols(); k ++) {
-            M = max(M, abs(buf2(j, k)));
-            rbuf[i * buf.rows() * buf.rows() + k * buf.rows() + j] = buf2(j, k);
-          }
       }
+      for(int j = 0; j < buf2.rows(); j ++)
+        for(int k = 0; k < buf2.cols(); k ++) {
+          M = max(M, abs(buf2(j, k)));
+          inout[i * buf.rows() * buf.rows() + k * buf.rows() + j] = buf2(j, k);
+        }
     }
-    for(int i = 0; i < rbuf.size(); i ++)
-      std::cout << rbuf[i] / M << "\r" << std::endl;
+    for(int i = 0; i < inout.size(); i ++)
+      std::cout << inout[i] / M << "\r" << std::endl;
   } else {
     usage();
     return - 1;
