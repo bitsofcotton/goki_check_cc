@@ -120,6 +120,7 @@ public:
   Mat  normalize(const Mat& data, const T& upper);
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
+  void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
@@ -943,6 +944,24 @@ template <typename T> typename reDig<T>::Mat reDig<T>::autoLevel(const Mat& data
     for(int j = 0; j < data.cols(); j ++)
       result(i, j) = max(min(data(i, j), res[res.size() - count - 1]), res[count]);
   return result;
+}
+
+template <typename T> void reDig<T>::autoLevel(Mat data[3], const int& count) {
+  vector<T> res;
+  res.reserve(data[0].rows() * data[0].cols() * 3);
+  for(int k = 0; k < 3; k ++)
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++)
+        res.push_back(data[k](i, j));
+  sort(res.begin(), res.end());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int k = 0; k < 3; k ++)
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++)
+        data[k](i, j) = max(min(data[k](i, j), res[res.size() - count - 1]), res[count]);
+  return;
 }
 
 // get bump with multiple scale and vectorized result.

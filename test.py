@@ -84,14 +84,14 @@ for line in argv[3:]:
   elif(argv[2] == "enlp"):
     subprocess.call(["cp", root + ".ppm", root + "-enl.ppm"])
     for s in range(0, pixels):
-      subprocess.call([argv[1], "light", "8", root + "-enl.ppm", root + "-enl-light.ppm"])
+      subprocess.call([argv[1], "light", "2", root + "-enl.ppm", root + "-enl-light.ppm"])
       subprocess.call(["convert", root + "-enl-light.ppm", "-resize", "200%", "-compress", "none", root + "-enl.ppm"])
     subprocess.call([argv[1], "light", "1", root + "-enl.ppm", root + "-enl.ppm"])
     subprocess.call(["convert", root + "-enl.ppm", root + "-enl.png"])
   elif(argv[2] == "light"):
     subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
   elif(argv[2] == "bump"):
-    subprocess.call([argv[1], "bump", ".025", root + ".ppm", root + "-bump.ppm"])
+    subprocess.call([argv[1], "bump", ".005", root + ".ppm", root + "-bump.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + "-bump.ppm", root + ".ppm", root + "-reshape-bump.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-reshape-bump-rev.ppm"])
     subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])

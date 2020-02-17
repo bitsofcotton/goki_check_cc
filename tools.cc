@@ -189,15 +189,16 @@ int main(int argc, const char* argv[]) {
 #if defined(_WITH_MPFR_)
       num_t::set_default_prec(_WITH_MPFR_);
 #endif
-      const auto bump(filter.compute(redig.rgb2d(data).template cast<num_t>(), filter.BUMP_X));
-      const auto tilt0(redig.tilt(redig.makeRefMatrix(bump, 1), bump, redig.tiltprep(bump, 1, 4, ratio)));
-      const auto tilt1(redig.tilt(redig.makeRefMatrix(bump, 1), bump, redig.tiltprep(bump, 3, 4, ratio)));
-      typename simpleFile<num_t>::Mat left[3], right[3];
-      for(int i = 0; i < 3; i ++) {
-        left[i]  = redig.pullRefMatrix(tilt0, 1, data[i]);
-        right[i] = redig.pullRefMatrix(tilt1, 1, data[i]);
-      }
-      data[0] = data[1] = data[2] = redig.normalize(filter.bump2(redig.rgb2d(left), redig.rgb2d(right)), num_t(1));
+      const auto light(redig.rgb2d(data));
+      const auto bump(filter.compute(light, filter.BUMP_Y));
+      data[0] = data[1] = data[2] =
+        filter.bump2(
+          redig.tilt(light, bump, redig.tiltprep(bump, 0, 4, ratio)),
+          redig.tilt(light, bump, redig.tiltprep(bump, 2, 4, ratio)) );
+    }
+    if(strcmp(argv[1], "pextend") != 0) {
+      redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
+      redig.normalize(data, num_t(1));
     }
     if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
       return - 1;
