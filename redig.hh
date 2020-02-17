@@ -687,8 +687,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase,
   for(int i = 0, ii = 0; i < vpoints.size(); i ++) {
     if(abs(vvpoints[i] - vvpoints[ii]) < abs(vvpoints[vvpoints.size() - 1]) / T(count) && i < vpoints.size() - 1)
       avg += cbase(vpoints[i].second.first / ratio, vpoints[i].second.second / ratio);
-    else {
-      assert(i != ii);
+    else if(i != ii) {
       if(i == vpoints.size() - 1) {
         avg += cbase(vpoints[i].second.first / ratio, vpoints[i].second.second / ratio);
         i ++;
