@@ -318,7 +318,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
       }
     }
     auto lres(compute(compute(A * data0 + B * data1, ABS), BCLIP));
-    C = compute(compute(C, ABS), BCLIP);
+    C = compute(compute(C * (data0 + data1), ABS), BCLIP);
     for(int i = 0; i < C.rows(); i ++)
       for(int j = 0; j < C.cols(); j ++)
         lres(i, j) /= C(i, j);
