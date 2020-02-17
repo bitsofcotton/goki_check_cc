@@ -126,28 +126,28 @@ for line in argv[3:]:
     subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
     subprocess.call(["cp", root + ".obj.mtl", root + "-stand.obj.mtl"])
   elif(argv[2] == "jps"):
-    subprocess.call([argv[1], "tilt", "1", "4", ".005", "0", root + ".ppm", root + ".obj", root + "-L.ppm"])
-    subprocess.call([argv[1], "tilt", "3", "4", ".005", "0", root + ".ppm", root + ".obj", root + "-R.ppm"])
+    subprocess.call([argv[1], "tilt", "1", "4", ".005", root + ".ppm", root + ".obj", root + "-L.ppm"])
+    subprocess.call([argv[1], "tilt", "3", "4", ".005", root + ".ppm", root + ".obj", root + "-R.ppm"])
     subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
     subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
   elif(argv[2] == "tilt"):
     for s in range(0, 16):
-      subprocess.call([argv[1], "tilt", str(s), "16", ".05", "0", root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
+      subprocess.call([argv[1], "tilt", str(s), "16", ".05", root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
   elif(argv[2] == "btilt"):
     for s in range(0, 32):
-      subprocess.call([argv[1], "tilt", "1", "4", str((s - 16) / 16. * .1), "0", root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
+      subprocess.call([argv[1], "tilt", "1", "4", str((s - 16) / 16. * .1), root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
       subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(32 * 2 - s - 1) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
   elif(argv[2] == "btilt2"):
-    subprocess.call([argv[1], "tilt", "1", "4", ".0125", "0", root + ".ppm", root + ".obj", root + "-btilt2-base-0.ppm"])
-    subprocess.call([argv[1], "tilt", "3", "4", ".0125", "0", root + ".ppm", root + ".obj", root + "-btilt2-base-1.ppm"])
+    subprocess.call([argv[1], "tilt", "1", "4", ".0125", root + ".ppm", root + ".obj", root + "-btilt2-base-0.ppm"])
+    subprocess.call([argv[1], "tilt", "3", "4", ".0125", root + ".ppm", root + ".obj", root + "-btilt2-base-1.ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt2-base-%d.ppm", "-r", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b2.mp4"])
   elif(argv[2] == "flicker"):
     for s in range(0, 16):
       subprocess.call([argv[1], "obj", "0", str(pixels), str(.15 / 16. * s), root + "-bump.ppm", root + "-flicker.obj"])
-      subprocess.call([argv[1], "tilt", "1", "4", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
-      subprocess.call([argv[1], "tilt", "3", "4", "0.25", "0", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
+      subprocess.call([argv[1], "tilt", "1", "4", "0.25", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "3", "4", "0.25", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
       subprocess.call(["montage", root + "-flicker-base-" + str(s) + "-R.ppm", root + "-flicker-base-" + str(s) + "-L.ppm", "-geometry", "100%x100%", root + "-flicker-base-" + str(s) + ".png"])
       subprocess.call(["cp", root + "-flicker-base-" + str(s) + ".png", root + "-flicker-base-" + str(16 * 2 - s - 1) + ".png"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-flicker-base-%d.png", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-ficker.mp4"])
