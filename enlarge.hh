@@ -285,7 +285,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
   const auto rxy(sqrt(T(data0.rows()) * T(data0.cols())));
   Vec camera(2);
   camera[0] = T(0);
-  camera[1] = T(1);
+  camera[1] = T(20);
   auto work(result);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -317,7 +317,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0,
           C(i, getImgPt(int(y), data0.rows())) += T(1);
       }
     }
-    auto lres(compute(compute(A * data0 + B * data1, ABS), BCLIP));
+    auto lres(compute(A * data0 + B * data1, ABS));
     C = compute(compute(C * (data0 + data1), ABS), BCLIP);
     for(int i = 0; i < C.rows(); i ++)
       for(int j = 0; j < C.cols(); j ++)

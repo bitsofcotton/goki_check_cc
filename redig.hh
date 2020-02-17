@@ -666,30 +666,21 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
 
 template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase, const Mat& vbase, const int& count) {
   assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
-  assert(vbase.rows() % cbase.rows() == 0 && vbase.cols() % cbase.cols() == 0);
-  assert(vbase.rows() / cbase.rows() == vbase.cols() / cbase.cols());
+  assert(cbase.rows() == vbase.rows() && cbase.cols() == vbase.cols());
   vector<pair<T, pair<int, int> > > vpoints;
   vpoints.reserve(vbase.rows() * vbase.cols());
   for(int i = 0; i < vbase.rows(); i ++)
     for(int j = 0; j < vbase.cols(); j ++)
       vpoints.push_back(make_pair(vbase(i, j), make_pair(i, j)));
   sort(vpoints.begin(), vpoints.end());
-  vector<T> vvpoints;
-  vvpoints.reserve(vpoints.size());
-  vvpoints.push_back(T(0));
-  for(int i = 1; i < vpoints.size(); i ++)
-    vvpoints.push_back(vvpoints[i - 1] + vpoints[i].first - vpoints[i - 1].first);
-  const int ratio(vbase.rows() / cbase.rows());
-  assert(vbase.rows() == ratio * cbase.rows());
-  assert(vbase.cols() == ratio * cbase.cols());
   Mat res(vbase.rows(), vbase.cols());
   T   avg(0);
   for(int i = 0, ii = 0; i < vpoints.size(); i ++) {
-    if(abs(vvpoints[i] - vvpoints[ii]) < abs(vvpoints[vvpoints.size() - 1]) / T(count) && i < vpoints.size() - 1)
-      avg += cbase(vpoints[i].second.first / ratio, vpoints[i].second.second / ratio);
+    if(abs(vpoints[i].first - vpoints[ii].first) < abs(vpoints[vpoints.size() - 1].first - vpoints[0].first) / T(count) && i < vpoints.size() - 1)
+      avg += cbase(vpoints[i].second.first, vpoints[i].second.second);
     else if(i != ii) {
       if(i == vpoints.size() - 1) {
-        avg += cbase(vpoints[i].second.first / ratio, vpoints[i].second.second / ratio);
+        avg += cbase(vpoints[i].second.first, vpoints[i].second.second);
         i ++;
       }
       avg /= i - ii;
