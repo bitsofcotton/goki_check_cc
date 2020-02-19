@@ -40,7 +40,6 @@ Freeze 前の細かな実装のチェックをしています。
 # 使い方
     make gokicheck
     
-    gokicheck collect <input.ppm> <output.ppm>
     gokicheck bump    <psi> <input.ppm> <output.ppm>
     gokicheck pextend <pixels> <input.ppm> <output.ppm>
     gokicheck collect <input.ppm> <output.ppm>
