@@ -20,6 +20,7 @@ using std::sort;
 using std::vector;
 using std::max;
 using std::min;
+template <typename T> class reDig;
 
 // This class is NOT thread safe.
 template <typename T> class Filter {
@@ -35,6 +36,7 @@ public:
     COLLECT_Y,
     COLLECT_BOTH,
     BUMP_X,
+    BUMP_Y_SHALLOW,
     BUMP_Y,
     BUMP_BOTH,
     EXTEND_X,
@@ -64,6 +66,7 @@ public:
   Mat  gmean(const Mat& a, const Mat& b);
   T    dratio;
   T    offset;
+  T    dbratio;
   int  plen;
   int  lrecur;
   int  bumpd;
@@ -80,13 +83,13 @@ private:
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
   // N.B. from accuracy reason, low depth.
-  //dratio = T(005) / T(100);
-  dratio = T(05) / T(10);
-  offset = T(1) / T(64);
-  plen   = 1;
-  lrecur = 8;
-  bumpd  = 65;
-  idx    = - 1;
+  dratio  = T(005) / T(100);
+  dbratio = T(01)  / T(10);
+  offset  = T(1)   / T(64);
+  plen    = 1;
+  lrecur  = 8;
+  bumpd   = 65;
+  idx     = - 1;
 }
 
 template <typename T> Filter<T>::~Filter() {
@@ -137,7 +140,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
     break;
-  case BUMP_Y:
+  case BUMP_Y_SHALLOW:
     {
       result = Mat(data.rows(), data.cols());
 #if defined(_OPENMP)
@@ -147,8 +150,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = T(0);
-      // XXX:
-      // initDop(max(3, min(int(data.rows()) / 16, int(T(1) / dratio / dratio))));
       initDop(bumpd);
       Vec camera(2);
       camera[0] = T(0);
@@ -188,6 +189,37 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) /= dC(i, j);
       result = - compute(compute(result, BCLIP), LOGSCALE) * sqrt(dratio);
+    }
+    break;
+  case BUMP_Y:
+    {
+      reDig<T> redig;
+      const auto bump(compute(data, BUMP_Y_SHALLOW));
+      const auto t0(redig.tilt(redig.makeRefMatrix(data, 1), bump,
+                               redig.tiltprep(bump, 0, 4, dbratio)));
+      result = bump2(redig.pullRefMatrix(t0, 1, data),
+                 redig.tilt(data, bump, redig.tiltprep(bump, 2, 4, dbratio)) );
+      int ii(0);
+      for(int i = 0; i < t0.rows(); i ++)
+        if(t0(i, 0) != T(0)) {
+          ii = i;
+          break;
+        }
+      MatU b0(t0.rows() - ii * 2, t0.cols());
+      for(int i = 0; i < b0.rows(); i ++)
+        for(int j = 0; j < b0.cols(); j ++)
+          b0(i, j) = U(result(i + ii, j));
+      b0 = seed(b0.rows(), false) * b0 / sqrt(T(b0.rows()));
+      MatU b1(t0.rows(), t0.cols());
+      for(int i = 0; i < b0.rows(); i ++)
+        b1.row(i) = b0.row(i);
+      for(int i = b0.rows(); i < b1.rows(); i ++)
+        b1.row(i) *= U(T(0));
+#if defined(_WITHOUT_EIGEN_)
+      result = (seed(t0.rows(), true) * b1).template real<T>() * sqrt(T(t0.rows()));
+#else
+      result = (seed(t0.rows(), true) * b1).template real().template cast<T>() * sqrt(T(t0.rows()));
+#endif
     }
     break;
   case EXTEND_Y:

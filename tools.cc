@@ -152,6 +152,9 @@ int main(int argc, const char* argv[]) {
     usage();
     return 0;
   }
+#if defined(_WITH_MPFR_)
+      num_t::set_default_prec(_WITH_MPFR_);
+#endif
   simpleFile<num_t> file;
   reDig<num_t>      redig;
   Filter<num_t>     filter;
@@ -181,15 +184,8 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     } else if(strcmp(argv[1], "bump") == 0) {
-#if defined(_WITH_MPFR_)
-      num_t::set_default_prec(_WITH_MPFR_);
-#endif
-      const auto light(redig.rgb2d(data));
-      const auto bump(filter.compute(light, filter.BUMP_Y));
-      data[0] = data[1] = data[2] =
-        filter.bump2(
-          redig.tilt(light, bump, redig.tiltprep(bump, 0, 4, ratio)),
-          redig.tilt(light, bump, redig.tiltprep(bump, 2, 4, ratio)) );
+      filter.dbratio = ratio;
+      data[0] = data[1] = data[2] = filter.compute(redig.rgb2d(data), filter.BUMP_BOTH);
     }
     if(strcmp(argv[1], "pextend") != 0) {
       redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
