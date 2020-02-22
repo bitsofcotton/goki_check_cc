@@ -10,9 +10,12 @@ For speed, we need http://eigen.tuxfamily.org/ library.
 
 # Parameters
 * enlarge.hh
-* * dratio : z-axis step ratio relate to 1., must be &lt; 1. This hardly depends calculating accuracy and if it's too small, result will be vanished.
-* * offset : color value ratio around convergences in making bump map.
-* * pixels : camera distance to calculate complement bumpmap.
+* * dratio  : z-axis step ratio relate to 1., must be &lt; 1. This hardly depends calculating accuracy and if it's too small, result will be vanished.
+* * dbratio : z-axis tilt psi for bump from two of images, relate to 1., must be &lt; 1. if it's too small, result will be vanished.
+* * offset  : color value ratio around convergences in making bump map.
+* * plen    : extend pixels.
+* * lrecur  : recursive number for sharpen.
+* * bumpd   : z-axis differential pixel number.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
@@ -37,33 +40,33 @@ Checking details of implementation before to freeze the library.
 # Usage
     make tools
     
-    gokicheck enlarge <ratio>  <input.ppm> <output.ppm>
+    gokicheck bump    <psi> <input.ppm> <output.ppm>
     gokicheck pextend <pixels> <input.ppm> <output.ppm>
     gokicheck collect <input.ppm> <output.ppm>
-    gokicheck idetect <input.ppm> <output.ppm>
-    gokicheck bump    <input.ppm> <output.ppm>
+    gokicheck light   <n_recur> <input.ppm> <output.ppm>
     gokicheck reshape <num_of_color_depth> <input_color.ppm> <input_shape.ppm> <output.ppm>
     gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
-    gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
-    gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>
-    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
-    gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
+    gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
+    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck col  input.png
+    python test.py ./gokicheck penetrate input.png
     python test.py ./gokicheck bump input.png
-    python test.py ./gokicheck enl  input.png
-    python test.py ./gokicheck reshape input.png
-    python test.py ./gokicheck extend input.png
-    python test.py ./gokicheck emph input.png
-    python test.py ./gokicheck emphe input.png
+    python test.py ./gokicheck enlp input.png
+    python test.py ./gokicheck light input.png
+    python test.py ./gokicheck pextend input.png
+    python test.py ./gokicheck mask0 input.png
+    python test.py ./gokicheck mask  input.png
     python test.py ./gokicheck obj  input.png
     python test.py ./gokicheck mtl  input.png
     python test.py ./gokicheck scn  input.png
     python test.py ./gokicheck tilt input.png
     python test.py ./gokicheck btilt input.png
+    python test.py ./gokicheck btilt2 input.png
     python test.py ./gokicheck flicker input.png
-    python test.py ./gokicheck pnga input.png
     python test.py ./gokicheck jps input.png
     python test.py ./gokicheck match input0.png input1.(png|obj)
     python test.py ./gokicheck matcho input0.png input1.(png|obj) match

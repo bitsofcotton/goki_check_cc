@@ -10,9 +10,12 @@ Makefile を stdc++ を使えるように変更してください。
 
 # 調整可能なパラメタ
 * enlarge.hh
-* * dratio : z 軸を走査する際のステップ幅です。1 に対して記述し、1 より小さくなくてはいけません。精度に強く依存し、小さすぎると bumpmap が真っ白になります。
-* * offset : bump マップを作成する際の発散を防ぐための最小値の比率です。0 より大きく、また、小さい値の方が良い値を返します。
-* * pixels : bump マップを補正する際に使うカメラの距離です。調整によって深度が変わります。
+* * dratio  : z 軸を走査する際のステップ幅です。1 に対して記述し、1 より小さくなくてはいけません。精度に強く依存し、小さすぎると bumpmap が真っ白になります。
+* * dbratio : z 軸を 2 つに分けて傾けて計算する際の傾きの度合いです。1 に対して記述し、1 より小さくなくてはいけません。小さすぎると傾けないことと同等のため真っ白な結果が返ります。
+* * offset  : bump マップを作成する際の発散を防ぐための最小値の比率です。0 より大きく、また、小さい値の方が良い値を返します。
+* * plen    : EXTEND の際に補完するピクセル数です。
+* * lrecur  : SHARPEN の際に再帰的に繰り返す回数です。
+* * bumpd   : z 軸を計算する際に傾きを取得するピクセルの幅数です。
 * redig.hh
 * * vbox : ベクタ生成の際にまとめるピクセルの数です。
 * * rz   : 奥行きの乗数です。
@@ -37,33 +40,33 @@ Freeze 前の細かな実装のチェックをしています。
 # 使い方
     make gokicheck
     
-    gokicheck enlarge <ratio>  <input.ppm> <output.ppm>
+    gokicheck bump    <psi> <input.ppm> <output.ppm>
     gokicheck pextend <pixels> <input.ppm> <output.ppm>
     gokicheck collect <input.ppm> <output.ppm>
-    gokicheck idetect <input.ppm> <output.ppm>
-    gokicheck bump    <input.ppm> <output.ppm>
+    gokicheck light   <n_recur> <input.ppm> <output.ppm>
     gokicheck reshape <num_of_color_depth> <input_color.ppm> <input_shape.ppm> <output.ppm>
     gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
-    gokicheck tilt    <index> <max_index> <psi> <shift_x_pixels> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
-    gokicheck draw    <input-mask.ppm> <input-obj.(obj|gltf)> <output.ppm>
-    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
-    gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj|gltf)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
+    gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
+    gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck col  input.png
+    python test.py ./gokicheck penetrate input.png
     python test.py ./gokicheck bump input.png
-    python test.py ./gokicheck enl  input.png
-    python test.py ./gokicheck reshape input.png
-    python test.py ./gokicheck extend input.png
-    python test.py ./gokicheck emph input.png
-    python test.py ./gokicheck emphe input.png
+    python test.py ./gokicheck enlp input.png
+    python test.py ./gokicheck light input.png
+    python test.py ./gokicheck pextend input.png
+    python test.py ./gokicheck mask0 input.png
+    python test.py ./gokicheck mask  input.png
     python test.py ./gokicheck obj  input.png
     python test.py ./gokicheck mtl  input.png
     python test.py ./gokicheck scn  input.png
     python test.py ./gokicheck tilt input.png
     python test.py ./gokicheck btilt input.png
+    python test.py ./gokicheck btilt2 input.png
     python test.py ./gokicheck flicker input.png
-    python test.py ./gokicheck pnga input.png
     python test.py ./gokicheck jps input.png
     python test.py ./gokicheck match input0.png input1.(png|obj)
     python test.py ./gokicheck matcho input0.png input1.(png|obj) match
