@@ -185,6 +185,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     } else if(strcmp(argv[1], "bump") == 0) {
       filter.dbratio = ratio;
+      //data[0] = data[1] = data[2] = filter.compute(redig.rgb2d(data), filter.BUMP_BOTH);
       data[0] = data[1] = data[2] = filter.compute(redig.rgb2d(data), filter.BUMP_BOTH);
     }
     if(strcmp(argv[1], "pextend") != 0) {

@@ -24,7 +24,7 @@ if(argv[2] == "match" or argv[2] == "matcho"):
     pixels = int(argv[5])
   elif(argv[2] == "matcho" and len(argv) > 6):
     pixels = int(argv[6])
-  if(ext1 == ".obj" or ext1 == ".gltf"):
+  if(ext1 == ".obj"):
     if(argv[2] == "match"):
       subprocess.call([argv[1], "match", "16", "40", str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
     else:
@@ -91,8 +91,7 @@ for line in argv[3:]:
   elif(argv[2] == "light"):
     subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
   elif(argv[2] == "bump"):
-    subprocess.call([argv[1], "bump", ".075", root + ".ppm", root + "-bump0.ppm"])
-    subprocess.call(["convert", root + "-bump0.ppm", "-negate", "-compress", "none", root + "-bump.ppm"])
+    subprocess.call([argv[1], "bump", ".075", root + ".ppm", root + "-bump.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + "-bump.ppm", root + ".ppm", root + "-reshape-bump.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-reshape-bump-rev.ppm"])
     subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])

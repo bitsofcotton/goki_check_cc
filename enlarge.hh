@@ -61,7 +61,6 @@ public:
   Filter();
   ~Filter();
   Mat  compute(const Mat& data, const direction_t& dir);
-  Mat  bump2(const Mat& data0, const Mat& data1);
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
   T    dratio;
@@ -83,9 +82,9 @@ private:
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
   // N.B. from accuracy reason, low depth.
-  dratio  = T(005) / T(100);
-  dbratio = T(01)  / T(10);
-  offset  = T(1)   / T(64);
+  dratio  = T(01) / T(10);
+  dbratio = T(01) / T(10);
+  offset  = T(1)  / T(64);
   plen    = 1;
   lrecur  = 8;
   bumpd   = 65;
@@ -160,7 +159,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #pragma omp for schedule(static, 1)
 #endif
       for(int zi = 0; T(zi) < T(1) / dratio; zi ++) {
-        Mat A(data.rows(), data.rows());
+        Mat A(data.rows(), data.cols());
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
@@ -176,12 +175,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
           //  N.B. average_k(dC_k / dy * z_k).
           for(int i = 0; i < A.rows(); i ++)
-            A(i, getImgPt(i + int(y0), data.rows())) += Dop0[j];
+            A.row(i) += data.row(getImgPt(i + int(y0), data.rows())) * Dop0[j];
         }
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
-        result += compute(A * data, ABS);
+        result += compute(A, ABS);
       }
       // N.B. log(|average(d_k C * exp(z_k))| / |dC|) == result.
       const auto dC(compute(data, COLLECT_Y));
@@ -197,14 +196,74 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       const auto bump(compute(data, BUMP_Y_SHALLOW));
       const auto t0(redig.tilt(redig.makeRefMatrix(data, 1), bump,
                                redig.tiltprep(bump, 0, 4, dbratio)));
-      result = bump2(redig.pullRefMatrix(t0, 1, data),
-                 redig.tilt(data, bump, redig.tiltprep(bump, 2, 4, dbratio)) );
+      const auto data0(redig.pullRefMatrix(t0, 1, data));
+      const auto data1(redig.tilt(data, bump, redig.tiltprep(bump, 2, 4, dbratio)) );
+      result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) = T(0);
+      assert(T(0) < dratio);
+      initDop(bumpd);
+      const auto rxy(sqrt(T(data0.rows()) * T(data0.cols())));
+      Vec camera(2);
+      camera[0] = T(0);
+      camera[1] = T(20);
+      auto work(result);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int zi = 0; T(zi) < T(1) / dratio; zi ++) {
+        Mat A(data0.rows(), data0.cols());
+        for(int i = 0; i < A.rows(); i ++)
+          for(int j = 0; j < A.cols(); j ++)
+            A(i, j) = T(0);
+        Mat C(A);
+        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) / sqrt(dratio)));
+        for(int i = 0; i < A.rows(); i ++) {
+          for(int j = 0; j < Dop0.size(); j ++) {
+            Vec cpoint(2);
+            cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2) + T(i) - T(data0.rows() - 1) / T(2)) / rxy;
+            cpoint[1] = T(zi) * dratio / T(2);
+            // x-z plane projection of point p with camera geometry c to z=0.
+            // c := camera, p := cpoint.
+            // <c + (p - c) * t, [0, 1]> = 0
+            const auto t(- camera[1] / (cpoint[1] - camera[1]));
+            const auto y((camera + (cpoint - camera) * t)[0] * rxy + T(data0.rows() - 1) / T(2));
+            // N.B. average_k(dC_k / dy * z_k).
+            const auto idx(getImgPt(int(y), data0.rows()));
+            if(j <= Dop0.size() / 2)
+              A.row(i) += data0.row(idx) * Dop0[j];
+            if(Dop0.size() / 2 <= j)
+              A.row(i) += data1.row(idx) * Dop0[j];
+            if(j == Dop0.size() / 2)
+              C.row(i) += data0.row(idx) + data1.row(idx);
+          }
+        }
+        auto lres(compute(A, ABS));
+        C = compute(compute(C, ABS), BCLIP);
+        for(int i = 0; i < C.rows(); i ++)
+          for(int j = 0; j < C.cols(); j ++)
+            lres(i, j) /= C(i, j);
+        result += lres;
+      }
+      result = compute(compute(result, BCLIP), LOGSCALE) * sqrt(dratio);
       int ii(0);
-      for(int i = 0; i < t0.rows(); i ++)
-        if(t0(i, 0) != T(0)) {
+      for(int i = 0; i < t0.rows(); i ++) {
+        bool flg(true);
+        for(int j = 0; j < t0.cols(); j ++)
+          flg = flg &&
+            (t0(i, j) != T(0) && t0(t0.rows() - i - 1, j) != T(0) &&
+             abs(result(i, j)) < abs(result(0, j)) &&
+             abs(result(t0.rows() - i - 1, j)) < abs(result(t0.rows() - 1, j)));
+        if(flg) {
           ii = i;
           break;
         }
+      }
       MatU b0(t0.rows() - ii * 2, t0.cols());
       for(int i = 0; i < b0.rows(); i ++)
         for(int j = 0; j < b0.cols(); j ++)
@@ -300,63 +359,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     assert(0 && "unknown command in Filter (should not be reached.)");
   }
   return result;
-}
-
-template <typename T> typename Filter<T>::Mat Filter<T>::bump2(const Mat& data0, const Mat& data1) {
-  assert(data0.rows() == data1.rows() && data0.cols() == data1.cols());
-  Mat result(data0.rows(), data0.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = T(0);
-  assert(T(0) < dratio);
-  initDop(bumpd);
-  const auto rxy(sqrt(T(data0.rows()) * T(data0.cols())));
-  Vec camera(2);
-  camera[0] = T(0);
-  camera[1] = T(20);
-  auto work(result);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int zi = 0; T(zi) < T(1) / dratio; zi ++) {
-    Mat A(data0.rows(), data0.rows());
-    for(int i = 0; i < A.rows(); i ++)
-      for(int j = 0; j < A.cols(); j ++)
-        A(i, j) = T(0);
-    Mat B(A);
-    Mat C(A);
-    const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi) / sqrt(dratio)));
-    for(int i = 0; i < A.rows(); i ++) {
-      for(int j = 0; j < Dop0.size(); j ++) {
-        Vec cpoint(2);
-        cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2) + T(i) - T(data0.rows() - 1) / T(2)) / rxy;
-        cpoint[1] = T(zi) * dratio / T(2);
-        // x-z plane projection of point p with camera geometry c to z=0.
-        // c := camera, p := cpoint.
-        // <c + (p - c) * t, [0, 1]> = 0
-        const auto t(- camera[1] / (cpoint[1] - camera[1]));
-        const auto y((camera + (cpoint - camera) * t)[0] * rxy + T(data0.rows() - 1) / T(2));
-        // N.B. average_k(dC_k / dy * z_k).
-        if(j <= Dop0.size() / 2)
-          A(i, getImgPt(int(y), data0.rows())) += Dop0[j];
-        if(Dop0.size() / 2 <= j)
-          B(i, getImgPt(int(y), data0.rows())) += Dop0[j];
-        if(j == Dop0.size() / 2)
-          C(i, getImgPt(int(y), data0.rows())) += T(1);
-      }
-    }
-    auto lres(compute(A * data0 + B * data1, ABS));
-    C = compute(compute(C * (data0 + data1), ABS), BCLIP);
-    for(int i = 0; i < C.rows(); i ++)
-      for(int j = 0; j < C.cols(); j ++)
-        lres(i, j) /= C(i, j);
-    result += lres;
-  }
-  return compute(compute(result, BCLIP), LOGSCALE) * sqrt(dratio);
 }
 
 template <typename T> void Filter<T>::initDop(const int& size) {
