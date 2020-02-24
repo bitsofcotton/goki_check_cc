@@ -50,6 +50,7 @@ typedef double num_t;
 #if defined(_WITHOUT_EIGEN_)
 #include "simplelin.hh"
 #else
+#include "simplelin.hh"
 #include <Eigen/Core>
 #include <Eigen/LU>
 #endif
@@ -177,8 +178,13 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(data[i], filter.COLLECT_BOTH);
     } else if(strcmp(argv[1], "pextend") == 0) {
       filter.plen = ratio;
+      typename simpleFile<num_t>::Mat xyz[3];
+      redig.rgb2xyz(xyz, data);
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH), filter.CLIP);
+        xyz[i] = filter.compute(xyz[i], filter.EXTEND_BOTH);
+      redig.xyz2rgb(data, xyz);
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter.compute(data[i], filter.CLIP);
     } else if(strcmp(argv[1], "light") == 0) {
       filter.lrecur = ratio;
       for(int i = 0; i < 3; i ++)

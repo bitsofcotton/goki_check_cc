@@ -115,6 +115,7 @@ public:
   Mat  rgb2d(const Mat rgb[3]);
   Mat  rgb2xz(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
+  void xyz2rgb(Mat rgb[3], const Mat xyz[3]);
   Mat  contrast(const Mat& in, const T& intensity, const T& thresh = T(1) / T(2));
   Mat  applytilt(const Mat& in, const int& dx, const int& dy);
   Mat  normalize(const Mat& data, const T& upper);
@@ -846,9 +847,54 @@ template <typename T> typename reDig<T>::Mat reDig<T>::rgb2xz(const Mat rgb[3]) 
 
 template <typename T> void reDig<T>::rgb2xyz(Mat xyz[3], const Mat rgb[3]) {
   // CIE 1931 XYZ from wikipedia.org
-  xyz[0] = rgb[0] * T(49000)/T(17697) + rgb[1] * T(31000)/T(17697)  + rgb[2] * T(30000)/T(17697);
-  xyz[1] = rgb[0] * T(17697)/T(17697) + rgb[1] * T(81240)/T(17697)  + rgb[2] * T(010630)/T(176970);
-  xyz[2] =                          rgb[1] * T(010000)/T(176970) + rgb[2] * T(99000)/T(176970);
+  Mat3x3 mRGB2XYZ(3, 3);
+  mRGB2XYZ(0, 0) = T(49000);
+  mRGB2XYZ(0, 1) = T(31000);
+  mRGB2XYZ(0, 2) = T(20000);
+  mRGB2XYZ(1, 0) = T(17697);
+  mRGB2XYZ(1, 1) = T(81240);
+  mRGB2XYZ(1, 2) = T( 1063);
+  mRGB2XYZ(2, 0) = T(0);
+  mRGB2XYZ(2, 1) = T( 1000);
+  mRGB2XYZ(2, 2) = T(99000);
+  mRGB2XYZ /= T(17697);
+  xyz[0] = rgb[0] * mRGB2XYZ(0, 0) + rgb[1] * mRGB2XYZ(0, 1) + rgb[2] * mRGB2XYZ(0, 2);
+  xyz[1] = rgb[0] * mRGB2XYZ(1, 0) + rgb[1] * mRGB2XYZ(1, 1) + rgb[2] * mRGB2XYZ(1, 2);
+  xyz[2] = rgb[0] * mRGB2XYZ(2, 0) + rgb[1] * mRGB2XYZ(2, 1) + rgb[2] * mRGB2XYZ(2, 2);
+  return;
+}
+
+template <typename T> void reDig<T>::xyz2rgb(Mat rgb[3], const Mat xyz[3]) {
+  // CIE 1931 XYZ from wikipedia.org
+/*
+  Mat3x3 mRGB2XYZ(3, 3);
+  mRGB2XYZ(0, 0) = T(49000);
+  mRGB2XYZ(0, 1) = T(31000);
+  mRGB2XYZ(0, 2) = T(20000);
+  mRGB2XYZ(1, 0) = T(17697);
+  mRGB2XYZ(1, 1) = T(81240);
+  mRGB2XYZ(1, 2) = T( 1063);
+  mRGB2XYZ(2, 0) = T(0);
+  mRGB2XYZ(2, 1) = T( 1000);
+  mRGB2XYZ(2, 2) = T(99000);
+  mRGB2XYZ /= T(17697);
+  Mat3x3 mXYZ2RGB(3, 3);
+  mXYZ2RGB = mRGB2XYZ.inverse();
+*/
+  Mat3x3 mXYZ2RGB(3, 3);
+  mXYZ2RGB(0, 0) =   T(418466000);
+  mXYZ2RGB(0, 1) = - T(158664000);
+  mXYZ2RGB(0, 2) = - T( 82834900);
+  mXYZ2RGB(1, 0) = - T( 91169000);
+  mXYZ2RGB(1, 1) =   T(252431000);
+  mXYZ2RGB(1, 2) =   T( 15707500);
+  mXYZ2RGB(2, 0) =   T(   920899);
+  mXYZ2RGB(2, 1) = - T(  2549810);
+  mXYZ2RGB(2, 2) =   T(178599000);
+  mXYZ2RGB /= T(1000000000);
+  rgb[0] = xyz[0] * mXYZ2RGB(0, 0) + xyz[1] * mXYZ2RGB(0, 1) + xyz[2] * mXYZ2RGB(0, 2);
+  rgb[1] = xyz[0] * mXYZ2RGB(1, 0) + xyz[1] * mXYZ2RGB(1, 1) + xyz[2] * mXYZ2RGB(1, 2);
+  rgb[2] = xyz[0] * mXYZ2RGB(2, 0) + xyz[1] * mXYZ2RGB(2, 1) + xyz[2] * mXYZ2RGB(2, 2);
   return;
 }
 
