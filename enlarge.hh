@@ -403,16 +403,17 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     }
     // N.B. similar to det(Dop * Iop) == det(Dop) * det(Iop) == 1,
     //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
+    //      with omitting IDFT and DFT on both side, ||.||_2^2,
     //      in matrix-matrix operation:
-    //      ||Dop * Iop * x|| / ||x|| == sum((d_k*i_k*x_k)^2)/sum(x_k^2)
-    //                                == sum(d_k^2*i_k^2)*cos theta cos psi
-    //                                == sqrt(n - 1) * cos psi
+    //      ||Dop * Iop * x|| / ||x|| == sum(d_k*i_l*x_m)^2/sum(x_k)^2
+    //                                == sum(d_k)^2*sum(i_l)^2*cos theta cos psi
+    //                                == (n - 1) * cos psi
     //      in matrix-vector operation:
-    //      ||Dop * Iop * x|| / ||x|| == sum((d_k*i_k*x_k)^2)/sum(x_k^2)
-    //                                == sum(d_k^2)*cos theta'*sum(i_k^2)cos phi
+    //      ||Dop * Iop * x|| / ||x|| == sum(d_k*i_l*x_m)^2/sum(x_k)^2
+    //                                == sum(d_k)^2*cos theta'*sum(i_l)^2cos phi
     //                                == ||Dop|| ||Iop|| cos theta' cos phi
     //      so we choose matrix-vector operation with matrix-matrix style,
-    //      because of cosine range, we choose:
+    //      because of cosine range, with normal ||.||_2, we choose:
     //        Dop' := Dop sqrt(sqrt(n - 1)) / sqrt(||Dop|| ||Iop||).
     //        Iop' := Iop sqrt(sqrt(n - 1)) / sqrt(||Dop|| ||Iop||).
     //      then we get:
