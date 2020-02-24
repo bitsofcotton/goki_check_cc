@@ -405,12 +405,12 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
     //      with omitting IDFT and DFT on both side, ||.||_2^2,
     //      in matrix-matrix operation:
-    //      ||Dop * Iop * x|| / ||x|| == sum(d_k*i_l*x_m)^2/sum(x_k)^2
-    //                                == sum(d_k)^2*sum(i_l)^2*cos theta cos psi
+    //      ||Dop * Iop * x|| / ||x|| == sum(sum(d_k*i_l*x_m)^2)/sum(x_k^2)
+    //                                == sum(d_k^2)*sum(i_l^2)*cos theta cos psi
     //                                == (n - 1) * cos psi
     //      in matrix-vector operation:
-    //      ||Dop * Iop * x|| / ||x|| == sum(d_k*i_l*x_m)^2/sum(x_k)^2
-    //                                == sum(d_k)^2*cos theta'*sum(i_l)^2cos phi
+    //      ||Dop * Iop * x|| / ||x|| == sum(sum(d_k*i_l*x_m)^2)/sum(x_k^2)
+    //                                == sum(d_k^2)*cos theta'*sum(i_l^2)cos phi
     //                                == ||Dop|| ||Iop|| cos theta' cos phi
     //      so we choose matrix-vector operation with matrix-matrix style,
     //      because of cosine range, with normal ||.||_2, we choose:
