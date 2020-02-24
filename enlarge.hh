@@ -277,7 +277,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #if defined(_WITHOUT_EIGEN_)
       result = (seed(t0.rows(), true) * b1).template real<T>() * sqrt(T(t0.rows()));
 #else
-      result = (seed(t0.rows(), true) * b1).template real().template cast<T>() * sqrt(T(t0.rows()));
+      result = (seed(t0.rows(), true) * b1).real().template cast<T>() * sqrt(T(t0.rows()));
 #endif
     }
     break;
@@ -296,15 +296,17 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.cols(); i ++) {
         SimpleVector<T> cacheb(data.rows());
-        for(int j = 0; j < data.rows(); j ++)
+        SimpleVector<T> cachen(data.rows());
+        for(int j = 0; j < data.rows(); j ++) {
           cacheb[j] = data(data.rows() - j - 1, i);
+          cachen[j] = data(j, i);
+        }
         for(int j = 0; j < plen; j ++) {
           P0<T> p(data.rows(), 2, j + 1);
-          result(data.rows() + j + plen, i) = p.next(data.col(i));
+          result(data.rows() + j + plen, i) = p.next(cachen);
           result(plen - j - 1, i) = p.next(cacheb);
         }
       }
-      result = compute(result, CLIP);
     }
     break;
   case BCLIP:
@@ -432,7 +434,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #else
     const Mat lDop((IDFT * DFTD).real().template cast<T>());
     const Mat EE((IDFT * DFTE).real().template cast<T>());
-    const Mat LL((seed(ss * 2, true) * DFTL).template real<T>());
+    const Mat LL((seed(ss * 2, true) * DFTL).real().template cast<T>());
 #endif
     Mat Eop(ss * 2, ss);
     Mat Lop(ss, ss * 2);
