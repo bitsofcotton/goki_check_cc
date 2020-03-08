@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include <assert.h>
 
 #if defined(_WITH_NO_FLOAT)
