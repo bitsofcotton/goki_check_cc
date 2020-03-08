@@ -44,6 +44,12 @@ public:
   typedef Eigen::Matrix<int, 3, 1> Veci3;
   typedef Eigen::Matrix<int, 4, 1> Veci4;
 #endif
+  
+  bool whiteline(const std::string& s) {
+    for(int i = 0; i < s.size() - 1; i ++)
+      if(! std::isspace(s[i])) return false;
+    return true;
+  }
 
   bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Mat* datas) {
     int i = 0, j = 0, k = 0;
@@ -82,11 +88,11 @@ public:
     if(input.is_open()) {
       try {
         getline(input, line);
-        while(line[0] == '#' && getline(input, line) && !input.eof() && !input.bad()) ;
+        while((line[0] == '#' || whiteline(line)) && getline(input, line) && !input.eof() && !input.bad()) ;
         getline(input, line2);
-        while(line2[0] == '#' && getline(input, line2) && !input.eof() && !input.bad()) ;
+        while((line2[0] == '#' || whiteline(line)) && getline(input, line2) && !input.eof() && !input.bad()) ;
         getline(input, line3);
-        while(line3[0] == '#' && getline(input, line3) && !input.eof() && !input.bad()) ;
+        while((line3[0] == '#' || whiteline(line)) && getline(input, line3) && !input.eof() && !input.bad()) ;
         istringstream iline2(line2);
         int w, h;
         iline2 >> w;
