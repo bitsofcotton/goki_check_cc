@@ -581,11 +581,6 @@ template <typename T> vector<match_t<T> > matchPartial<T>::elim(const vector<mat
 }
 
 template <typename T> T matchPartial<T>::isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh) {
-  assert(dst[0].rows() == tsrc[0].rows() && dst[0].cols() == tsrc[0].cols());
-  assert(dst[1].rows() == tsrc[1].rows() && dst[1].cols() == tsrc[1].cols());
-  assert(dst[2].rows() == tsrc[2].rows() && dst[2].cols() == tsrc[2].cols());
-  assert(dst[0].rows() ==  dst[1].rows() && dst[0].cols() ==  dst[1].cols());
-  assert(dst[0].rows() ==  dst[2].rows() && dst[0].cols() ==  dst[2].cols());
   vector<T> diffs;
   for(int i = 0; i < m.srcpoints.size(); i ++) {
     const auto  g(m.transform(srcpts[m.srcpoints[i]]));
