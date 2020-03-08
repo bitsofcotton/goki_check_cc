@@ -91,7 +91,8 @@ for line in argv[3:]:
   elif(argv[2] == "light"):
     subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
   elif(argv[2] == "bump"):
-    subprocess.call([argv[1], "bump", ".075", root + ".ppm", root + "-bump.ppm"])
+    #subprocess.call([argv[1], "bump", ".075", root + ".ppm", root + "-bump.ppm"])
+    subprocess.call([argv[1], "bump", ".2", root + ".ppm", root + "-bump.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + "-bump.ppm", root + ".ppm", root + "-reshape-bump.ppm"])
     subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-reshape-bump-rev.ppm"])
     subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])
@@ -103,28 +104,9 @@ for line in argv[3:]:
   elif(argv[2] == "mask"):
     subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
   elif(argv[2] == "obj"):
-    subprocess.call([argv[1], "obj", "  0", str(pixels), ".2", root + "-bump.ppm", root + ".obj"])
-    subprocess.call([argv[1], "obj", "  0", str(pixels), ".2", root + "-bump.ppm", root + "-mask.ppm", root + "-mask.obj"])
-    subprocess.call([argv[1], "obj", "stand", str(pixels), ".2", "1", ".2", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
-  elif(argv[2] == "scn"):
-    subprocess.call([argv[1], "obj", " .2", str(pixels), ".2", root + "-bump.ppm", root + "-L.obj"])
-    subprocess.call([argv[1], "obj", "-.2", str(pixels), ".2", root + "-bump.ppm", root + "-R.obj"])
-    subprocess.call(["xcrun", "scntool", "--convert", root + "-L.obj", "--format", "scn", "--output", root + "-L.scn"])
-    subprocess.call(["xcrun", "scntool", "--convert", root + "-R.obj", "--format", "scn", "--output", root + "-R.scn"])
-  elif(argv[2] == "mtl"):
-    f = open(root + ".obj.mtl", "w")
-    f.write("newmtl material0\n")
-    f.write("Ka 1.000000 1.000000 1.000000\n")
-    f.write("Kd 1.000000 1.000000 1.000000\n")
-    f.write("Ks 0.000000 0.000000 0.000000\n")
-    f.write("illum 1\n")
-    f.write("map_Ka " + line + "\n")
-    f.write("map_Kd " + line + "\n\n")
-    f.close()
-    subprocess.call(["cp", root + ".obj.mtl", root + "-L.obj.mtl"])
-    subprocess.call(["cp", root + ".obj.mtl", root + "-R.obj.mtl"])
-    subprocess.call(["cp", root + ".obj.mtl", root + "-mask.obj.mtl"])
-    subprocess.call(["cp", root + ".obj.mtl", root + "-stand.obj.mtl"])
+    subprocess.call([argv[1], "obj", str(pixels), "1", ".001", "0", root + "-bump.ppm", root + ".obj"])
+    subprocess.call([argv[1], "obj", str(pixels), ".2", ".001", "2", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
+    subprocess.call(["xcrun", "scntool", "--convert", root + ".obj", "--format", "scn", "--output", root + ".scn"])
   elif(argv[2] == "jps"):
     subprocess.call([argv[1], "tilt", "1", "4", ".005", root + ".ppm", root + ".obj", root + "-L.ppm"])
     subprocess.call([argv[1], "tilt", "3", "4", ".005", root + ".ppm", root + ".obj", root + "-R.ppm"])

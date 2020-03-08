@@ -163,7 +163,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec3>& data, const T& Mw0, const T& Mh0, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0), const T& xoffset = T(0), const T& arrot = T(0015) / T(1000)) {
+  bool saveobj(const vector<Vec3>& data, const T& Mw0, const T& Mh0, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -179,43 +179,7 @@ public:
       T lz(1);
       for(int i = 0; i < data.size(); i ++)
         lz = min(data[i][2], lz);
-      if(xoffset != T(0)) {
-        const T Pi(T(4) * atan2(T(1), T(1)));
-        const T theta(T(2) * Pi * T(xoffset < T(0) ? 0 : 1) / T(2));
-        const T lpsi(Pi * arrot);
-        Mat3x3 R0(3, 3);
-        Mat3x3 R1(3, 3);
-        R0(0, 0) =   cos(theta);
-        R0(0, 1) = - sin(theta);
-        R0(0, 2) = 0.;
-        R0(1, 0) =   sin(theta);
-        R0(1, 1) =   cos(theta);
-        R0(1, 2) = 0.;
-        R0(2, 0) = 0.;
-        R0(2, 1) = 0.;
-        R0(2, 2) = 1.;
-        R1(0, 0) = 1.;
-        R1(0, 1) = 0.;
-        R1(0, 2) = 0.;
-        R1(1, 0) = 0.;
-        R1(1, 1) =   cos(lpsi);
-        R1(1, 2) = - sin(lpsi);
-        R1(2, 0) = 0.;
-        R1(2, 1) =   sin(lpsi);
-        R1(2, 2) =   cos(lpsi);
-        match_t<T> m;
-        m.rot        = R0.transpose() * R1 * R0;
-        m.ratio     /= sqrt(Mh * Mh + Mw * Mw);
-        m.offset[0] += T(Mw) / sqrt(Mh * Mh + Mw * Mw) / T(2);
-        m.offset[1] -= T(Mh) / sqrt(Mh * Mh + Mw * Mw) / T(2) + xoffset;
-        m.offset[2] -= T(1.);
-        for(int i = 0; i < data.size(); i ++) {
-          auto workv(data[i]);
-          workv[0] = - workv[0];
-          workv    = m.transform(workv);
-          output << "v " << workv[1] << " " << workv[0] << " " << workv[2] << endl;
-        }
-     } else if(addstand != T(0)) {
+      if(addstand != T(0)) {
         for(int i = 0; i < data.size(); i ++)
           output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << data[i][2] + addstand - lz << endl;
         for(int i = 0; i < data.size(); i ++)
@@ -317,13 +281,19 @@ public:
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
+      std::string pstr(photo);
+      for(int i = 0; i < pstr.size(); i ++)
+        if(pstr[pstr.size() - i - 1] == '.') {
+          pstr = pstr.substr(0, i) + std::string(".ppm");
+          break;
+        }
       output << "newmtl material0" << std::endl;
       output << "Ka 1.000000 1.000000 1.000000" << std::endl;
       output << "Kd 1.000000 1.000000 1.000000" << std::endl;
       output << "Ks 0.000000 0.000000 0.000000" << std::endl;
       output << "illum 1" << std::endl;
-      output << "map_Ka \"" << photo << "\"" << std::endl;
-      output << "map_Kd \"" << photo << "\"" << std::endl << std::endl;
+      output << "map_Ka \"" << pstr << "\"" << std::endl;
+      output << "map_Kd \"" << pstr << "\"" << std::endl << std::endl;
     } else {
       cerr << "Unable to open file for write: " << filename << endl;
       return false;
