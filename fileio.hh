@@ -46,8 +46,9 @@ public:
 #endif
   
   bool whiteline(const std::string& s) {
-    for(int i = 0; i < s.size() - 1; i ++)
-      if(! std::isspace(s[i])) return false;
+    for(auto ss(s.begin()); ss < s.end(); ++ ss)
+      if(! std::isspace(* ss) && *ss != '\n')
+        return false;
     return true;
   }
 
@@ -90,9 +91,9 @@ public:
         getline(input, line);
         while((line[0] == '#' || whiteline(line)) && getline(input, line) && !input.eof() && !input.bad()) ;
         getline(input, line2);
-        while((line2[0] == '#' || whiteline(line)) && getline(input, line2) && !input.eof() && !input.bad()) ;
+        while((line2[0] == '#' || whiteline(line2)) && getline(input, line2) && !input.eof() && !input.bad()) ;
         getline(input, line3);
-        while((line3[0] == '#' || whiteline(line)) && getline(input, line3) && !input.eof() && !input.bad()) ;
+        while((line3[0] == '#' || whiteline(line3)) && getline(input, line3) && !input.eof() && !input.bad()) ;
         istringstream iline2(line2);
         int w, h;
         iline2 >> w;
