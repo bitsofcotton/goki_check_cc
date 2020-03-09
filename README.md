@@ -74,11 +74,6 @@ Checking details of implementation before to freeze the library.
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive (but include guard definition should harms).
 
-# Demos
-https://services.limpid-intensity.info/ have a sample interface working demos.
-Please bookmark output directory page after sending images, then please wait some minutes.  
-N.B. a file per 5 minutes, up to 20 Mo total upload size.
-
 # Tips
 These program's enlarge is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
@@ -110,10 +105,7 @@ This is because we generate the one with DFT half space plausible ones by shifti
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://files.limpid-intensity.info/
-
-# Pre calculated samples
-![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.png)
+* https://sites.google.com/view/bitsofcotton/
 
 # Being examined
 It is searching that can we convert 3d model into the forests that is the center lines of metaball and depth simply.
