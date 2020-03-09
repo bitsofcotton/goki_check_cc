@@ -75,11 +75,6 @@ Freeze 前の細かな実装のチェックをしています。
 tools.cc を参照してください。また、必要であれば namespace ブロックでスコープしてください。
 ただし、高確率でインクルードガードの定義が有害です。
 
-# デモ
-https://services.limpid-intensity.info/ にサンプルがあります。  
-画像をアップロードした後、リンク先のページをブックマークしてください。その後、計算終了までに空いていて数分かかります。  
-N.B. 5分に一回バッチが回ります。アップロードのサイズを 20Mo までに制限してあります。
-
 # Tips
 enlarge は DFT 時の半整数空間から擬似的にとってきています。  
 collect は単純に DFT 微分の後、abs をとってきています。  
@@ -113,10 +108,7 @@ enlarger2ex による拡大は大きな画像に対しては比較的安定な�
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://files.limpid-intensity.info/
-
-# あらかじめ計算されたサンプル
-![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.png)
+* https://sites.google.com/view/bitsofcotton/
 
 # 検討中のもの
 メタボールの中心となるような線分と重み付けの森を 3D 模型から計算することが簡単にできるか散策しています。
