@@ -45,8 +45,7 @@ Checking details of implementation before to freeze the library.
     gokicheck collect <input.ppm> <output.ppm>
     gokicheck light   <n_recur> <input.ppm> <output.ppm>
     gokicheck reshape <num_of_color_depth> <input_color.ppm> <input_shape.ppm> <output.ppm>
-    gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>
-    gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
+    gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
@@ -62,7 +61,6 @@ Checking details of implementation before to freeze the library.
     python test.py ./gokicheck mask  input.png
     python test.py ./gokicheck obj  input.png
     python test.py ./gokicheck mtl  input.png
-    python test.py ./gokicheck scn  input.png
     python test.py ./gokicheck tilt input.png
     python test.py ./gokicheck btilt input.png
     python test.py ./gokicheck btilt2 input.png
@@ -91,7 +89,6 @@ These program's match assumes one of vertices is full and another is lowPoly but
 enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.  
-And, bump2 command can pseudo-correct the bumpmap with hypothesis little tilt approximates little distance camera, but the result is also pseudo-one.
 
 If we use this program for 3D model input like blender, please make mask with mask0 or another softwares, and convert them
 with mask command, then, please use input-mask.obj . If we are lucky, in the blender example, large scaled input will inputted,
@@ -110,10 +107,7 @@ This is because we generate the one with DFT half space plausible ones by shifti
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://files.limpid-intensity.info/
-
-# Pre calculated samples
-![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.png)
+* https://sites.google.com/view/bitsofcotton
 
 # Being examined
 It is searching that can we convert 3d model into the forests that is the center lines of metaball and depth simply.
