@@ -298,8 +298,8 @@ public:
       output << "Kd 1.000000 1.000000 1.000000" << std::endl;
       output << "Ks 0.000000 0.000000 0.000000" << std::endl;
       output << "illum 1" << std::endl;
-      output << "map_Ka \"" << pstr << "\"" << std::endl;
-      output << "map_Kd \"" << pstr << "\"" << std::endl << std::endl;
+      output << "map_Ka " << pstr << std::endl;
+      output << "map_Kd " << pstr << std::endl << std::endl;
     } else {
       cerr << "Unable to open file for write: " << filename << endl;
       return false;
