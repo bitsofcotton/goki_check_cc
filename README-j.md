@@ -45,8 +45,7 @@ Freeze 前の細かな実装のチェックをしています。
     gokicheck collect <input.ppm> <output.ppm>
     gokicheck light   <n_recur> <input.ppm> <output.ppm>
     gokicheck reshape <num_of_color_depth> <input_color.ppm> <input_shape.ppm> <output.ppm>
-    gokicheck obj     <shift_x_pixels> <gather_pixels> <zratio> <input.ppm> <mask.ppm>? <output.obj>
-    gokicheck obj     stand <gather_pixels> <thin> <ratio> <zratio> <input.ppm> <mask.ppm>? <output.obj>
+    gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
@@ -62,7 +61,6 @@ Freeze 前の細かな実装のチェックをしています。
     python test.py ./gokicheck mask  input.png
     python test.py ./gokicheck obj  input.png
     python test.py ./gokicheck mtl  input.png
-    python test.py ./gokicheck scn  input.png
     python test.py ./gokicheck tilt input.png
     python test.py ./gokicheck btilt input.png
     python test.py ./gokicheck btilt2 input.png
@@ -93,7 +91,6 @@ enlarger2ex はもっともらしいバンプマップを返しますが、正�
 これは、1 枚の画像のみを使用する事と仮定している構造である、もし焦点が合っていればより角が立ってみえる、という構造によるもので、
 ほとんどの場合では複数台のカメラあるいは複数のピントを使えば正しいバンプマップを返すことができます。
 (それができない場合には画像や色の解像度が足りないか、鏡など角度によって異なる色を返すものや、散乱やフォグなどの光学的事象がある際です)
-また、bump2 コマンドでバンプマップを疑似的に補正することができますが、この場合にも返ってくるバンプマップはもっともらしいですが、擬似的なものです。
 
 また、blender など 3D 編集ソフトへの入力として使用する際には mask0 コマンドでマスクを作ったあともしくは、他でマスクを作り、
 mask コマンドで変換後、filename-mask.obj ファイルを入力に使用してください。
@@ -113,10 +110,7 @@ enlarger2ex による拡大は大きな画像に対しては比較的安定な�
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://files.limpid-intensity.info/
-
-# あらかじめ計算されたサンプル
-![photosample pseudo bumpmap](https://files.limpid-intensity.info/photosample-bump.png)
+* https://sites.google.com/view/bitsofcotton
 
 # 検討中のもの
 メタボールの中心となるような線分と重み付けの森を 3D 模型から計算することが簡単にできるか散策しています。
