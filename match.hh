@@ -36,24 +36,24 @@ public:
   int j;
   int k;
   T   err;
-  msub_t() {
+  inline msub_t() {
     t = err = T(0);
     j = k = 0;
   }
-  msub_t(const msub_t<T>& x) {
+  inline msub_t(const msub_t<T>& x) {
     *this = x;
   }
-  ~msub_t() {
+  inline ~msub_t() {
     ;
   }
-  msub_t<T>& operator = (const msub_t<T>& x) {
+  inline msub_t<T>& operator = (const msub_t<T>& x) {
     t   = T(x.t);
     j   = x.j;
     k   = x.k;
     err = T(x.err);
     return *this;
   }
-  bool operator < (const msub_t<T>& x) const {
+  inline bool operator < (const msub_t<T>& x) const {
     return  t >  x.t ||
            (t == x.t && err <  x.err) ||
            (t == x.t && err == x.err && j <  x.j) ||
@@ -83,14 +83,14 @@ public:
   T           thresh;
   T           rthresh;
   Vec2        threshsize;
-  match_t() {
+  inline match_t() {
     thresh  = T(0);
     rthresh = T(1) / T(100);
     threshsize    = Vec2(2);
     threshsize[0] = threshsize[1] = T(0);
     initId();
   }
-  match_t(const T& thresh, const T& h, const T& w) {
+  inline match_t(const T& thresh, const T& h, const T& w) {
     this->thresh        = thresh;
     this->rthresh       = pow(h * w, - T(1) / T(4));
     this->threshsize    = Vec2(2);
@@ -98,7 +98,7 @@ public:
     this->threshsize[1] = w;
     initId();
   }
-  void initId() {
+  inline void initId() {
     rot       = Mat3x3(3, 3);
     rot(0, 0) = rot(1, 1) = rot(2, 2) = T(1);
     rot(1, 0) = rot(2, 0) = rot(0, 1) = rot(2, 1)
@@ -108,10 +108,10 @@ public:
     ratio     = T(1);
     rdepth    = T(0);
   }
-  match_t(const match_t<T>& other) {
+  inline match_t(const match_t<T>& other) {
     *this = other;
   }
-  match_t<T>  operator ~ () const {
+  inline match_t<T>  operator ~ () const {
     match_t<T> result;
     result.rot    = rot.transpose();
     result.ratio  = T(1) / ratio;
@@ -124,7 +124,7 @@ public:
     result.threshsize = threshsize;
     return result;
   }
-  match_t<T>  operator / (const match_t<T>& src) const {
+  inline match_t<T>  operator / (const match_t<T>& src) const {
     match_t<T> result;
     result.rot    = rot   * src.rot.transpose();
     result.ratio  = ratio / src.ratio;
@@ -140,7 +140,7 @@ public:
         }
     return result;
   }
-  match_t<T>& operator = (const match_t<T>& other) {
+  inline match_t<T>& operator = (const match_t<T>& other) {
     rot        = other.rot;
     offset     = other.offset;
     ratio      = other.ratio;
@@ -152,11 +152,11 @@ public:
     threshsize = other.threshsize;
     return *this;
   }
-  T distance(const match_t<T>& other, const Vec3& p) {
+  inline T distance(const match_t<T>& other, const Vec3& p) {
     const auto d(transform(p) - other.transform(p));
     return sqrt(d.dot(d));
   }
-  vector<Vec3i> hullConv(const vector<Vec3i>& srchull) const {
+  inline vector<Vec3i> hullConv(const vector<Vec3i>& srchull) const {
     assert(srcpoints.size() == dstpoints.size());
     vector<Vec3i> res;
     res.reserve(srchull.size());
@@ -173,25 +173,25 @@ public:
     }
     return res;
   }
-  Vec3 transform(const Vec3& x) const {
+  inline Vec3 transform(const Vec3& x) const {
     return rot * x * ratio + offset;
   }
-  vector<Vec3> transform(const vector<Vec3>& x) const {
+  inline vector<Vec3> transform(const vector<Vec3>& x) const {
     vector<Vec3> result(x);
     for(int i = 0; i < result.size(); i ++)
       result[i] = transform(result[i]);
     return result;
   }
-  bool isValid() const {
+  inline bool isValid() const {
     const T rratio(min(abs(   ratio), T(1) / abs(   ratio)));
     return rthresh <= rratio && *this == *this;
   }
-  bool operator < (const match_t<T>& x1) const {
+  inline bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
     return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
   }
-  bool operator != (const match_t<T>& x) const {
+  inline bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
     const auto roterr(rot * x.rot.transpose());
     return !(abs(T(1) - roterr(0, 0)) <= thresh) ||
@@ -203,7 +203,7 @@ public:
            ratio * x.ratio < T(0) ||
            !(abs(ratio - x.ratio) / sqrt(ratio * x.ratio) <= thresh);
   }
-  bool operator == (const match_t<T>& x) const {
+  inline bool operator == (const match_t<T>& x) const {
     return ! (*this != x);
   }
   friend ostream& operator << (ostream& os, const match_t<T>& x) {
@@ -273,9 +273,9 @@ public:
   typedef Eigen::Matrix<T, 3, 1>                           Vec3;
 #endif
   typedef complex<T> U;
-  matchPartial();
-  matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
-  ~matchPartial();
+  inline matchPartial();
+  inline matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
+  inline ~matchPartial();
   void init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
   
   vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
@@ -303,20 +303,20 @@ private:
   T   thresht;
 };
 
-template <typename T> matchPartial<T>::matchPartial() {
+template <typename T> inline matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
   init(40, 2, T(1) / T(100), T(1) / T(10));
 }
 
-template <typename T> matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
+template <typename T> inline matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   init(ndiv, threshr, threshp, threshs);
 }
 
-template <typename T> matchPartial<T>::~matchPartial() {
+template <typename T> inline matchPartial<T>::~matchPartial() {
   ;
 }
 
@@ -618,8 +618,8 @@ public:
   typedef Eigen::Matrix<int, 4, 1>                         Veci4;
 #endif
   typedef complex<T> U;
-  matchWhole();
-  ~matchWhole();
+  inline matchWhole();
+  inline ~matchWhole();
   void init(const int& ndiv, const T& threshp, const T& threshs);
 
   vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<vector<Veci4> >& bones, const int& ntry = 6);
@@ -631,13 +631,13 @@ private:
   T   threshs;
 };
 
-template <typename T> matchWhole<T>::matchWhole() {
+template <typename T> inline matchWhole<T>::matchWhole() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   init(40, .05, .1);
 }
 
-template <typename T> matchWhole<T>::~matchWhole() {
+template <typename T> inline matchWhole<T>::~matchWhole() {
   ;
 }
 

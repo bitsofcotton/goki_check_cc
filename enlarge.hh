@@ -15,7 +15,6 @@
 
 using std::cerr;
 using std::flush;
-using std::vector;
 using std::sort;
 using std::vector;
 using std::max;
@@ -248,6 +247,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < C.rows(); i ++)
           for(int j = 0; j < C.cols(); j ++)
             lres(i, j) /= C(i, j);
+#if defined(_OPENMP)
+#pragma omp atomic
+#endif
         result += lres;
       }
       result = compute(compute(result, BCLIP), LOGSCALE) * sqrt(dratio);

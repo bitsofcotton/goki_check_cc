@@ -45,14 +45,14 @@ public:
   typedef Eigen::Matrix<int, 4, 1> Veci4;
 #endif
   
-  bool whiteline(const std::string& s) {
+  inline bool whiteline(const std::string& s) {
     for(auto ss(s.begin()); ss < s.end(); ++ ss)
       if(! std::isspace(* ss) && *ss != '\n')
         return false;
     return true;
   }
 
-  bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Mat* datas) {
+  inline bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Mat* datas) {
     int i = 0, j = 0, k = 0;
     char buf;
     int  work = 0;
@@ -89,16 +89,16 @@ public:
     if(input.is_open()) {
       try {
         getline(input, line);
-        while((line[0] == '#' || whiteline(line)) && getline(input, line) && !input.eof() && !input.bad()) ;
+        while((whiteline(line) || line[0] == '#') && getline(input, line) && !input.eof() && !input.bad()) ;
         getline(input, line2);
-        while((line2[0] == '#' || whiteline(line2)) && getline(input, line2) && !input.eof() && !input.bad()) ;
+        while((whiteline(line2) || line2[0] == '#') && getline(input, line2) && !input.eof() && !input.bad()) ;
         getline(input, line3);
-        while((line3[0] == '#' || whiteline(line3)) && getline(input, line3) && !input.eof() && !input.bad()) ;
+        while((whiteline(line3) || line3[0] == '#') && getline(input, line3) && !input.eof() && !input.bad()) ;
         istringstream iline2(line2);
         int w, h;
         iline2 >> w;
         iline2 >> h;
-        if(w <= 0 || h <= 0) {
+        if(line.size() < 2 || w <= 0 || h <= 0) {
           cerr << "unknown size." << endl;
           input.close();
           return false;
@@ -207,7 +207,6 @@ public:
         output << " "  << i2 << "/" << i2 << "/" << i2 << endl;
       }
       if(addstand != T(0)) {
-        cerr << "in" << endl;
         for(int i = 0; i < polys.size(); i ++) {
           output << "f " << data.size() + polys[i][0] + 1;
           output << " "  << data.size() + polys[i][2] + 1;
@@ -241,7 +240,7 @@ public:
       string work;
       while(getline(input, work) && !input.eof() && !input.bad()) {
         int i = 0;
-        for(; i < work.size() && work[i] == ' '; i ++);
+        for( ; i < work.size() && work[i] == ' '; i ++);
         if(i + 1 < work.size() && work[i] == 'v' && work[i + 1] == ' ') {
           stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
           Vec3 buf(3);
@@ -306,29 +305,6 @@ public:
       return false;
     }
     return true;
-  }
-  
-  // ( Please read the page before to compile )
-  // thanks to: https://github.com/jessey-git/fx-gltf/
-  // and thanks to: https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/SimpleMeshes
-  bool loadglTF(vector<Vec3>& data, vector<Veci3>& polys, vector<Vec3>& center, vector<vector<Veci4> >& bone, const char* filename, const T& bone01 = T(0)) {
-#if defined(_WITH_GLTF2_)
-    assert(0 && "not now");
-    return true;
-#else
-    assert(0 && "Please compile with _WITH_GLTF2_");
-    return false;
-#endif
-  }
-
-  bool saveglTF(const char* filename, const vector<Vec3>& data, const vector<Veci3>& polys, const match_t<T>& m, const vector<Vec3>& center, const vector<vector<Veci4> >& bone) {
-#if defined(_WITH_GLTF2_)
-    assert(0 && "not now.");
-    return true;
-#else
-    assert(0 && "Please compile with _WITH_GLTF2_");
-    return false;
-#endif
   }
 };
 

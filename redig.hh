@@ -28,7 +28,7 @@ using std::distance;
 using std::sort;
 using std::unique;
 
-template <typename T> bool less0(const T& x, const T& y) {
+template <typename T> static inline bool less0(const T& x, const T& y) {
   return x.first[0] < y.first[0] || (x.first[0] == y.first[0] && x.first[1] < y.first[1]);
 }
 
@@ -45,11 +45,11 @@ public:
   Vec3   n;
   T      c;
   T      z;
-  triangles_t() {
+  inline triangles_t() {
     p = Mat3x3(3, 3);
     n = Vec3(3);
   }
-  triangles_t<T>& rotate(const Mat3x3& R, const Vec3& origin) {
+  inline triangles_t<T>& rotate(const Mat3x3& R, const Vec3& origin) {
     for(int i = 0; i < 3; i ++)
 #if defined(_WITHOUT_EIGEN_)
       p.setCol(i, R * (p.col(i) - origin) + origin);
@@ -58,7 +58,7 @@ public:
 #endif
     return *this;
   }
-  triangles_t<T>& solveN() {
+  inline triangles_t<T>& solveN() {
     const auto pq(p.col(1) - p.col(0));
     const auto pr(p.col(2) - p.col(0));
     n[0] =   (pq[1] * pr[2] - pq[2] * pr[1]);
