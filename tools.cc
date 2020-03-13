@@ -95,7 +95,7 @@ int main(int argc, const char* argv[]) {
     return 0;
   }
 #if defined(_WITH_MPFR_)
-      num_t::set_default_prec(_WITH_MPFR_);
+  num_t::set_default_prec(_WITH_MPFR_);
 #endif
   simpleFile<num_t> file;
   reDig<num_t>      redig;
@@ -132,7 +132,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     } else if(strcmp(argv[1], "bump") == 0) {
       filter.dbratio = ratio;
-      data[0] = data[1] = data[2] = filter.compute(redig.rgb2d(data), filter.BUMP_BOTH);
+      data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
     }
     if(strcmp(argv[1], "pextend") != 0) {
       redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
@@ -280,12 +280,6 @@ int main(int argc, const char* argv[]) {
     const std::string fn(argv[9]);
     if(fn[fn.size() - 1] == 'j') {
       if(!file.loadobj(shape1, delau1, argv[9]))
-        return - 2;
-      bump1orig[0] = bump1orig[1] = bump1orig[2] = in1[0] * num_t(0);
-    } else if(fn[fn.size() - 1] == 'f') {
-      std::vector<typename simpleFile<num_t>::Vec3> center;
-      std::vector<std::vector<typename simpleFile<num_t>::Veci4> > bone;
-      if(!file.loadglTF(shape1, delau1, center, bone, argv[9]))
         return - 2;
       bump1orig[0] = bump1orig[1] = bump1orig[2] = in1[0] * num_t(0);
     } else if(fn[fn.size() - 1] == 'm') {
