@@ -151,8 +151,9 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(!file.loadp2or3(datas, argv[4]))
       return - 1;
+    const auto datav(redig.rgb2l(datas));
     for(int i = 0; i < 3; i ++)
-      datac[i] = redig.reShape(datac[i], datas[i], count);
+      datac[i] = redig.reShape(datac[i], datav, count);
     redig.normalize(datac, num_t(1));
     if(!file.savep2or3(argv[5], datac, ! true))
       return - 1;
