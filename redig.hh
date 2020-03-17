@@ -525,9 +525,8 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
           q[3] = p[pp[l]];
           if(isDelaunay2(cw, q, epsilon)) {
             k     = l;
-            q[2]  = q[3];
             qq[0] = q[2];
-            qq[1] = q[3];
+            qq[1] = q[2] = q[3];
           }
         }
         q[2]   = qq[0];
