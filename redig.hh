@@ -451,6 +451,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
     int last(0);
     for(int i = 0; i < delaunay.size(); i ++) {
       for(int j = 0; j < delaunay[i].size(); j ++) {
+        last = res.size();
         for(int ii = 0; ii < 3; ii ++) {
           const auto itr(upper_bound(div.begin(), div.end(),
                            make_pair(p[delaunay[i][j][ii]],
