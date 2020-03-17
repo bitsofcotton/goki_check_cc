@@ -425,8 +425,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
 // XXX this have glitches.
 template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon) const {
   vector<Veci3> res;
-  cerr << pp.size() << ":" << flush;
   if(mdiv < pp.size()) {
+    cerr << "d(" << pp.size() << ")" << flush;
     vector<pair<Vec3, int> > div;
     div.reserve(pp.size());
     for(int i = 0; i < pp.size(); i ++)
@@ -435,28 +435,36 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
     assert(4 < mdiv);
     vector<vector<Veci3> > delaunay;
     for(int i = 0;
-        i < div.size() * 2 / mdiv &&
-          (i + 1) / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 < div.size();
+        (i + 1) / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 < div.size();
         i ++) {
       vector<int> work;
-      for(int j = 0;
-          i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + j < div.size();
-          j ++)
+      for(int j = 0; j < mdiv; j ++)
         work.emplace_back(div[i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + j].second);
       delaunay.emplace_back(delaunay2(p, work, epsilon));
+      cerr << ".";
     }
-    for(int i = 0; i < delaunay.size(); i ++)
+    vector<int> work;
+    for(int j = div.size() - mdiv; j < div.size(); j ++)
+      work.emplace_back(div[j].second);
+    delaunay.emplace_back(delaunay2(p, work, epsilon));
+    int blast(0);
+    int last(0);
+    for(int i = 0; i < delaunay.size(); i ++) {
       for(int j = 0; j < delaunay[i].size(); j ++) {
         for(int ii = 0; ii < 3; ii ++) {
           const auto itr(upper_bound(div.begin(), div.end(),
                            make_pair(p[delaunay[i][j][ii]],
                                      delaunay[i][j][ii]),
                            less0<pair<Vec3, int> >));
-          if(i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + mdiv / 4 <
-               distance(div.begin(), itr) && i < delaunay.size() - 1)
+          if((distance(div.begin(), itr) <
+                i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + mdiv / 3
+              && i) ||
+             (i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + mdiv * 2 / 3 <
+                distance(div.begin(), itr)
+              && i < delaunay.size() - 1))
             goto fixnext0;
         }
-        for(int jj = 0; jj < res.size(); jj ++)
+        for(int jj = blast; jj < res.size(); jj ++)
           for(int i0 = 0; i0 < 3; i0 ++)
             for(int j0 = 0; j0 < 3; j0 ++)
               if(isCrossing(p[res[jj][ i0      % 3]],
@@ -465,9 +473,14 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
                             p[delaunay[i][j][(j0 + 1) % 3]]))
                 goto fixnext0;
         res.emplace_back(delaunay[i][j]);
+        for(int jj = 0; jj < 3; jj ++)
+          last = max(last, delaunay[i][j][jj]);
+        cerr << ".";
        fixnext0:
         ;
       }
+      blast = last;
+    }
   } else {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
