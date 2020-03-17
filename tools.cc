@@ -84,7 +84,7 @@ void usage() {
   cout << "gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck matcho  <match> <emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
 }
@@ -246,7 +246,7 @@ int main(int argc, const char* argv[]) {
     int fnout(10);
     int nshow(0);
     int nhid(0);
-    num_t emph(0);
+    int nemph(0);
     match_t<num_t> m;
     if(strcmp(argv[1], "match") == 0) {
       nshow = std::atoi(argv[2]);
@@ -264,7 +264,7 @@ int main(int argc, const char* argv[]) {
         }
       }
       input.close();
-      emph = std::atof(argv[3]);
+      nemph = std::atoi(argv[3]);
     }
     const auto vboxdst(std::atoi(argv[4]));
     const auto vboxsrc(std::atoi(argv[5]));
@@ -327,25 +327,37 @@ int main(int argc, const char* argv[]) {
                                       m.transform(shape1), delau1),
                                     m.transform(shape1), mhull1);
       file.savep2or3((outbase + std::string("-repl1.ppm")).c_str(), outs, false);
-      const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
-                                      m, mhull0, mhull1, emph));
       for(int idx = 0; idx < 3; idx ++)
         outs[idx] = redig.showMatch(in0[idx], shape0, mhull0);
       file.savep2or3((outbase + std::string("-c0.ppm")).c_str(), outs, false);
-      for(int idx = 0; idx < 3; idx ++)
-        outs[idx] = redig.showMatch(redig.pullRefMatrix(reref,
-                      1 + rin0.rows() * rin0.cols(), in1[idx]),
-                      m.transform(shape1), mhull1);
-      file.savep2or3((outbase + std::string("-c1.ppm")).c_str(), outs, false);
-      for(int idx = 0; idx < 3; idx ++)
-        outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
-      file.savep2or3((outbase + std::string("-c2.ppm")).c_str(), outs, false);
-      file.saveobj(redig.takeShape(shape0, shape1, m, mhull0, mhull1, emph),
-                   outs[0].rows(), outs[0].cols(),
-                   delau0, (outbase + std::string("-emph0.obj")).c_str());
-      file.saveobj(redig.takeShape(shape1, shape0, ~ m, mhull1, mhull0, emph),
-                   outs[0].rows(), outs[0].cols(),
-                   delau1, (outbase + std::string("-emph1.obj")).c_str());
+      for(int i = 0; i < nemph; i ++) {
+        const auto iemph(num_t(i) / num_t(nemph));
+        const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
+                                        m, mhull0, mhull1, iemph));
+        for(int idx = 0; idx < 3; idx ++)
+          outs[idx] = redig.showMatch(redig.pullRefMatrix(reref,
+                        1 + rin0.rows() * rin0.cols(), in1[idx]),
+                        m.transform(shape1), mhull1);
+        file.savep2or3((outbase + std::string("-") +
+                                  std::to_string(iemph) +
+                                  std::string("-c1.ppm")).c_str(), outs, false);
+        for(int idx = 0; idx < 3; idx ++)
+          outs[idx] = redig.pullRefMatrix(reref,
+                        1 + rin0.rows() * rin0.cols(), in1[idx]);
+        file.savep2or3((outbase + std::string("-") +
+                                  std::to_string(iemph) +
+                                  std::string("-c2.ppm")).c_str(), outs, false);
+        file.saveobj(redig.takeShape(shape0, shape1, m, mhull0, mhull1, iemph),
+                     outs[0].rows(), outs[0].cols(),
+                     delau0, (outbase + std::string("-") +
+                                        std::to_string(iemph) +
+                                        std::string("-emph0.obj")).c_str());
+        file.saveobj(redig.takeShape(shape1, shape0, ~m, mhull1, mhull0, iemph),
+                     outs[0].rows(), outs[0].cols(),
+                     delau1, (outbase + std::string("-") +
+                                        std::to_string(iemph) +
+                                        std::string("-emph1.obj")).c_str());
+      }
     } else { 
       matchPartial<num_t> statmatch;
       auto matches(statmatch.match(shape0, shape1));
