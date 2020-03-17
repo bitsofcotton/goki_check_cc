@@ -106,7 +106,7 @@ public:
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
-  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1) / T(100000), const int& mdiv = 80) const;
+  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1) / T(100000)) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
@@ -144,6 +144,7 @@ private:
   T   Pi;
   int vbox;
   T   rz;
+  int mdiv;
 };
 
 template <typename T> reDig<T>::reDig() {
@@ -162,6 +163,7 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
     this->rz = rz;
   else
     this->rz = T(03) / T(10);
+  mdiv       = 80;
   return;
 }
 
@@ -421,93 +423,51 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
 }
 
 // XXX this have glitches.
-template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon, const int& mdiv) const {
+template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon) const {
   vector<Veci3> res;
   cerr << pp.size() << ":" << flush;
-  if(pp.size() > mdiv) {
+  if(mdiv < pp.size()) {
     vector<pair<Vec3, int> > div;
     div.reserve(pp.size());
     for(int i = 0; i < pp.size(); i ++)
       div.push_back(make_pair(p[pp[i]], pp[i]));
     sort(div.begin(), div.end(), less0<pair<Vec3, int> >);
-    vector<int> lo, mid, hi;
-    lo.reserve( div.size() / 2);
-    mid.reserve(div.size() / 2);
-    hi.reserve( div.size() / 2);
-    for(int i = 0; i < div.size() / 2; i ++)
-      lo.emplace_back(div[i].second);
-    for(int i = div.size() / 4; i < div.size() * 3 / 4; i ++)
-      mid.emplace_back(div[i].second);
-    for(int i = div.size() / 2; i < div.size(); i ++)
-      hi.emplace_back(div[i].second);
-    const auto left(  delaunay2(p, lo,  epsilon));
-    const auto middle(delaunay2(p, mid, epsilon));
-    const auto right( delaunay2(p, hi,  epsilon));
-    std::cerr << "(" << left.size() << "," << middle.size() << "," << right.size() << ")";
-    res.reserve(left.size() + right.size());
-    for(int i = 0; i < left.size(); i ++) {
-      for(int ii = 0; ii < 3; ii ++) {
-        const auto itr(upper_bound(div.begin(), div.end(),
-                         make_pair(p[left[i][ii]], left[i][ii]),
-                         less0<pair<Vec3, int> >));
-        if(div.size() * 3 / 8 < distance(div.begin(), itr))
-          goto nextl;
-      }
-      res.emplace_back(left[i]);
-     nextl:
-      ;
+    assert(4 < mdiv);
+    vector<vector<Veci3> > delaunay;
+    for(int i = 0;
+        i < div.size() * 2 / mdiv &&
+          (i + 1) / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 < div.size();
+        i ++) {
+      vector<int> work;
+      for(int j = 0;
+          i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + j < div.size();
+          j ++)
+        work.emplace_back(div[i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + j].second);
+      delaunay.emplace_back(delaunay2(p, work, epsilon));
     }
-    for(int i = 0; i < right.size(); i ++) {
-      for(int ii = 0; ii < 3; ii ++) {
-        const auto itr(upper_bound(div.begin(), div.end(),
-                         make_pair(p[right[i][ii]], right[i][ii]),
-                         less0<pair<Vec3, int> >));
-        if(distance(div.begin(), itr) < div.size() * 5 / 8)
-          goto nextr;
+    for(int i = 0; i < delaunay.size(); i ++)
+      for(int j = 0; j < delaunay[i].size(); j ++) {
+        for(int ii = 0; ii < 3; ii ++) {
+          const auto itr(upper_bound(div.begin(), div.end(),
+                           make_pair(p[delaunay[i][j][ii]],
+                                     delaunay[i][j][ii]),
+                           less0<pair<Vec3, int> >));
+          if(i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + mdiv / 4 <
+               distance(div.begin(), itr) && i < delaunay.size() - 1)
+            goto fixnext0;
+        }
+        for(int jj = 0; jj < res.size(); jj ++)
+          for(int i0 = 0; i0 < 3; i0 ++)
+            for(int j0 = 0; j0 < 3; j0 ++)
+              if(isCrossing(p[res[jj][ i0      % 3]],
+                            p[res[jj][(i0 + 1) % 3]],
+                            p[delaunay[i][j][ j0      % 3]],
+                            p[delaunay[i][j][(j0 + 1) % 3]]))
+                goto fixnext0;
+        res.emplace_back(delaunay[i][j]);
+       fixnext0:
+        ;
       }
-      res.emplace_back(right[i]);
-     nextr:
-      ;
-    }
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int ii = 0; ii < middle.size(); ii ++) {
-      const int& i(middle[ii][0]);
-      const int& j(middle[ii][1]);
-      const int& k(middle[ii][2]);
-      T cw;
-      Veci3 idx(3);
-      Vec3 q[4];
-      assert(middle.size());
-      for(int jj = 0; jj < res.size(); jj ++)
-        for(int i0 = 0; i0 < 3; i0 ++)
-          for(int j0 = 0; j0 < 3; j0 ++)
-            if(isCrossing(p[res[jj][ i0      % 3]],
-                          p[res[jj][(i0 + 1) % 3]],
-                          p[middle[ii][ j0      % 3]],
-                          p[middle[ii][(j0 + 1) % 3]]))
-              goto fixnext0;
-      q[0] = p[i]; q[1] = p[j]; q[2] = p[k];
-      q[3] = p[middle[0][0]];
-      isDelaunay2(cw, q, epsilon);
-      idx[0] = i;
-      if(cw < T(0)) {
-        idx[1] = k;
-        idx[2] = j;
-      } else {
-        idx[1] = j;
-        idx[2] = k;
-      }
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-      {
-        res.emplace_back(idx);
-      }
-     fixnext0:
-      ;
-    }
   } else {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -550,9 +510,9 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
                               p[res[jj][(i0 + 1) % 3]],
                               p[idx[ j0      % 3]],
                               p[idx[(j0 + 1) % 3]]))
-              goto fixnext00;
+              goto fixnext;
           res.emplace_back(idx);
-         fixnext00:
+         fixnext:
           ;
         }
       }
