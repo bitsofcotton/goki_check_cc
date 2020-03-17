@@ -106,7 +106,7 @@ public:
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
-  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1) / T(100000), const int& mdiv = 8000) const;
+  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1) / T(100000), const int& mdiv = 80) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
@@ -544,9 +544,18 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
 #pragma omp critical
 #endif
         {
+          for(int jj = 0; jj < res.size(); jj ++)
+            for(int i0 = 0; i0 < 3; i0 ++)
+              for(int j0 = 0; j0 < 3; j0 ++)
+                if(isCrossing(p[res[jj][ i0      % 3]],
+                              p[res[jj][(i0 + 1) % 3]],
+                              p[idx[ j0      % 3]],
+                              p[idx[(j0 + 1) % 3]]))
+              goto fixnext00;
           res.emplace_back(idx);
+         fixnext00:
+          ;
         }
-        std::cerr << ".";
       }
   }
   return res;
