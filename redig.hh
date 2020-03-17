@@ -447,6 +447,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
     for(int j = div.size() - mdiv; j < div.size(); j ++)
       work.emplace_back(div[j].second);
     delaunay.emplace_back(delaunay2(p, work, epsilon));
+    int blast(0);
     int last(0);
     for(int i = 0; i < delaunay.size(); i ++) {
       for(int j = 0; j < delaunay[i].size(); j ++) {
@@ -464,7 +465,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
               && i < delaunay.size() - 1))
             goto fixnext0;
         }
-        for(int jj = last; jj < res.size(); jj ++)
+        for(int jj = blast; jj < res.size(); jj ++)
           for(int i0 = 0; i0 < 3; i0 ++)
             for(int j0 = 0; j0 < 3; j0 ++)
               if(isCrossing(p[res[jj][ i0      % 3]],
@@ -479,6 +480,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
        fixnext0:
         ;
       }
+      blast = last;
     }
   } else {
 #if defined(_OPENMP)
