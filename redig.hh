@@ -103,10 +103,10 @@ public:
   Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim = false);
   Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
-  Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(2) / T(10));
+  Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
-  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1) / T(100000), const int& mdiv = 400) const;
+  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1) / T(100000), const int& mdiv = 80) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
@@ -338,10 +338,7 @@ template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, const Vec3& lre
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph) {
-  Mat map(dstimg.rows(), dstimg.cols());
-  for(int i = 0; i < map.rows(); i ++)
-    for(int j = 0; j < map.cols(); j ++)
-      map(i, j) = T(0);
+  Mat map(dstimg);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -350,7 +347,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::showMatch(const Mat& dsti
     drawMatchLine(map, dst[hull[k][1]], dst[hull[k][2]], emph);
     drawMatchLine(map, dst[hull[k][2]], dst[hull[k][0]], emph);
   }
-  return dstimg + map;
+  return map;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::makeRefMatrix(const Mat& orig, const int& start) const {
@@ -446,18 +443,16 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
     const auto left(  delaunay2(p, lo,  epsilon));
     const auto middle(delaunay2(p, mid, epsilon));
     const auto right( delaunay2(p, hi,  epsilon));
-    vector<Veci3> work;
-    work.reserve(left.size() + right.size());
-    res.reserve(middle.size());
+    res.reserve(left.size() + right.size());
     for(int i = 0; i < left.size(); i ++) {
       for(int ii = 0; ii < 3; ii ++) {
         const auto itr(upper_bound(div.begin(), div.end(),
                          make_pair(p[left[i][ii]], left[i][ii]),
                          less0<pair<Vec3, int> >));
-        if(div.size() * 7 / 16 < distance(div.begin(), itr))
+        if(div.size() * 3 / 8 < distance(div.begin(), itr))
           goto nextl;
       }
-      work.emplace_back(left[i]);
+      res.emplace_back(left[i]);
      nextl:
       ;
     }
@@ -466,44 +461,31 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
         const auto itr(upper_bound(div.begin(), div.end(),
                          make_pair(p[right[i][ii]], right[i][ii]),
                          less0<pair<Vec3, int> >));
-        if(distance(div.begin(), itr) < div.size() * 9 / 16)
+        if(distance(div.begin(), itr) < div.size() * 5 / 8)
           goto nextr;
       }
-      work.emplace_back(right[i]);
+      res.emplace_back(right[i]);
      nextr:
-      ;
-    }
-    for(int i = 0; i < middle.size(); i ++) {
-      for(int ii = 0; ii < 3; ii ++) {
-        const auto itr(upper_bound(div.begin(), div.end(),
-                         make_pair(p[middle[i][ii]], middle[i][ii]),
-                         less0<pair<Vec3, int> >));
-        if(distance(div.begin(), itr) < div.size() * 5 / 16 ||
-                 div.size() * 11 / 16 < distance(div.begin(), itr) )
-          goto next;
-      }
-      res.emplace_back(middle[i]);
-     next:
       ;
     }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int ii = 0; ii < work.size(); ii ++) {
-      const int& i(work[ii][0]);
-      const int& j(work[ii][1]);
-      const int& k(work[ii][2]);
+    for(int ii = 0; ii < middle.size(); ii ++) {
+      const int& i(middle[ii][0]);
+      const int& j(middle[ii][1]);
+      const int& k(middle[ii][2]);
       T cw;
-      Veci3 idx;
+      Veci3 idx(3);
       Vec3 q[4];
       assert(middle.size());
-      for(int jj = 0; jj < middle.size(); jj ++)
+      for(int jj = 0; jj < res.size(); jj ++)
         for(int i0 = 0; i0 < 3; i0 ++)
           for(int j0 = 0; j0 < 3; j0 ++)
-            if(isCrossing(p[work[ii][   i0      % 3]],
-                          p[work[ii][  (i0 + 1) % 3]],
-                          p[middle[jj][ j0      % 3]],
-                          p[middle[jj][(j0 + 1) % 3]]))
+            if(isCrossing(p[res[jj][ i0      % 3]],
+                          p[res[jj][(i0 + 1) % 3]],
+                          p[middle[ii][ j0      % 3]],
+                          p[middle[ii][(j0 + 1) % 3]]))
               goto fixnext0;
       q[0] = p[i]; q[1] = p[j]; q[2] = p[k];
       q[3] = p[middle[0][0]];
@@ -533,7 +515,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
       for(int j = i + 1; j < pp.size(); j ++)
         for(int k = j + 1; k < pp.size(); k ++) {
           T cw;
-          Veci3 idx;
+          Veci3 idx(3);
           Vec3 q[4];
           q[0] = p[pp[i]]; q[1] = p[pp[j]]; q[2] = p[pp[k]];
           for(int l = 0; l < pp.size(); l ++) {
