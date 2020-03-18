@@ -163,7 +163,7 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
     this->rz = rz;
   else
     this->rz = T(03) / T(10);
-  mdiv       = 60 * 3;
+  mdiv       = 120 * 3;
   return;
 }
 
@@ -457,10 +457,11 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
                                      delaunay[i][j][ii]),
                            less0<pair<Vec3, int> >));
           const auto idx(i * mdiv / 3);
-          if((distance(div.begin(), itr) < idx + mdiv / 3 && i) ||
-             (idx + mdiv * 2 / 3 < distance(div.begin(), itr)
-              && i < delaunay.size() - 1))
+          if(distance(div.begin(), itr) < idx + mdiv / 3 && i)
             iii ++;
+          else if(idx + mdiv * 2 / 3 < distance(div.begin(), itr) &&
+                  i < delaunay.size() - 1)
+            goto fixnext0;
         }
         if(3 <= iii)
           goto fixnext0;
@@ -506,9 +507,12 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
         T   cw;
         Veci3 idx(3);
         Vec3 q[4], qq[2];
-        q[0] = p[pp[i]]; q[1] = p[pp[j]]; q[2] = p[pp[0]];
-        qq[0] = p[pp[0]]; qq[1] = p[pp[1]];
-        for(int l = 1; l < pp.size(); l ++) {
+        q[0] = p[pp[i]]; q[1] = p[pp[j]];
+        for(k = 0; k < pp.size(); k ++)
+          if(i != k && j != k) break;
+        q[2]  = qq[0] = p[pp[k]];
+        qq[1] = p[pp[k + 1]];
+        for(int l = k + 1; l < pp.size(); l ++) {
           if(l == i || l == j || l == k) continue;
           q[3] = p[pp[l]];
           if(isDelaunay2(cw, q)) {
