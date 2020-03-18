@@ -434,12 +434,10 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
     sort(div.begin(), div.end(), less0<pair<Vec3, int> >);
     assert(4 < mdiv);
     vector<vector<Veci3> > delaunay;
-    for(int i = 0;
-        (i + 1) / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 < div.size();
-        i ++) {
+    for(int i = 0; i + mdiv / 2 < div.size(); i += mdiv / 2) {
       vector<int> work;
-      for(int j = 0; j < mdiv; j ++)
-        work.emplace_back(div[i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + j].second);
+      for(int j = i; j < min(i + mdiv, int(div.size())); j ++)
+        work.emplace_back(div[j].second);
       delaunay.emplace_back(delaunay2(p, work, epsilon));
       cerr << ".";
     }
@@ -450,18 +448,16 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
     int blast(0);
     int last(0);
     for(int i = 0; i < delaunay.size(); i ++) {
+      last = res.size();
       for(int j = 0; j < delaunay[i].size(); j ++) {
-        last = res.size();
         for(int ii = 0; ii < 3; ii ++) {
           const auto itr(upper_bound(div.begin(), div.end(),
                            make_pair(p[delaunay[i][j][ii]],
                                      delaunay[i][j][ii]),
                            less0<pair<Vec3, int> >));
-          if((distance(div.begin(), itr) <
-                i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + mdiv / 3
-              && i) ||
-             (i / 2 * div.size() / mdiv + (i % 2) * mdiv / 2 + mdiv * 2 / 3 <
-                distance(div.begin(), itr)
+          const auto idx(i * mdiv / 2);
+          if((distance(div.begin(), itr) < idx + mdiv / 3 && i) ||
+             (idx + mdiv * 2 / 3 < distance(div.begin(), itr)
               && i < delaunay.size() - 1))
             goto fixnext0;
         }
@@ -473,9 +469,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
                             p[delaunay[i][j][ j0      % 3]],
                             p[delaunay[i][j][(j0 + 1) % 3]]))
                 goto fixnext0;
-        res.emplace_back(delaunay[i][j]);
-        for(int jj = 0; jj < 3; jj ++)
-          last = max(last, delaunay[i][j][jj]);
+        res.push_back(delaunay[i][j]);
         cerr << ".";
        fixnext0:
         ;
