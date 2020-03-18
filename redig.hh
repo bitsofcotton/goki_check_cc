@@ -106,7 +106,7 @@ public:
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
-  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon = T(1) / T(100000)) const;
+  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
@@ -131,8 +131,8 @@ public:
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
   void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
-  bool isDelaunay2(T& cw, const Vec3 p[4], const T& epsilon) const;
-  bool isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1, const T& err = T(1) / T(100)) const;
+  bool isDelaunay2(T& cw, const Vec3 p[4]) const;
+  bool isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1) const;
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
@@ -163,7 +163,7 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
     this->rz = rz;
   else
     this->rz = T(03) / T(10);
-  mdiv       = 80;
+  mdiv       = 60 * 3;
   return;
 }
 
@@ -423,7 +423,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
 }
 
 // XXX this have glitches.
-template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp, const T& epsilon) const {
+template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp) const {
   vector<Veci3> res;
   if(mdiv < pp.size()) {
     cerr << "d(" << pp.size() << ")" << flush;
@@ -434,41 +434,61 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
     sort(div.begin(), div.end(), less0<pair<Vec3, int> >);
     assert(4 < mdiv);
     vector<vector<Veci3> > delaunay;
-    for(int i = 0; i + mdiv / 2 < div.size(); i += mdiv / 2) {
+    for(int i = 0; i + mdiv / 3 < div.size(); i += mdiv / 3) {
       vector<int> work;
       for(int j = i; j < min(i + mdiv, int(div.size())); j ++)
         work.emplace_back(div[j].second);
-      delaunay.emplace_back(delaunay2(p, work, epsilon));
+      delaunay.emplace_back(delaunay2(p, work));
       cerr << ".";
     }
     vector<int> work;
     for(int j = div.size() - mdiv; j < div.size(); j ++)
       work.emplace_back(div[j].second);
-    delaunay.emplace_back(delaunay2(p, work, epsilon));
+    delaunay.emplace_back(delaunay2(p, work));
     int blast(0);
     int last(0);
     for(int i = 0; i < delaunay.size(); i ++) {
       last = res.size();
       for(int j = 0; j < delaunay[i].size(); j ++) {
+        int iii(0);
         for(int ii = 0; ii < 3; ii ++) {
           const auto itr(upper_bound(div.begin(), div.end(),
                            make_pair(p[delaunay[i][j][ii]],
                                      delaunay[i][j][ii]),
                            less0<pair<Vec3, int> >));
-          const auto idx(i * mdiv / 2);
+          const auto idx(i * mdiv / 3);
           if((distance(div.begin(), itr) < idx + mdiv / 3 && i) ||
              (idx + mdiv * 2 / 3 < distance(div.begin(), itr)
               && i < delaunay.size() - 1))
+            iii ++;
+        }
+        if(3 <= iii)
+          goto fixnext0;
+        for(int jj = blast; jj < res.size(); jj ++) {
+          const auto& rjj(res[jj]);
+          const auto& dij(delaunay[i][j]);
+          int mrd(0);
+          for(int i0 = 0; i0 < rjj.size(); i0 ++)
+            for(int j0 = 0; j0 < dij.size(); j0 ++)
+              if(rjj[i0] == dij[j0]) {
+                mrd ++;
+                break;
+              }
+          if(3 <= mrd)
+            continue;
+          else if(2 <= mrd)
+            ;
+          else if(isCrossing(p[rjj[0]], p[rjj[1]], p[dij[0]], p[dij[1]]) ||
+                  isCrossing(p[rjj[0]], p[rjj[1]], p[dij[1]], p[dij[2]]) ||
+                  isCrossing(p[rjj[0]], p[rjj[1]], p[dij[2]], p[dij[0]]) ||
+                  isCrossing(p[rjj[1]], p[rjj[2]], p[dij[0]], p[dij[1]]) ||
+                  isCrossing(p[rjj[1]], p[rjj[2]], p[dij[1]], p[dij[2]]) ||
+                  isCrossing(p[rjj[1]], p[rjj[2]], p[dij[2]], p[dij[0]]) ||
+                  isCrossing(p[rjj[2]], p[rjj[0]], p[dij[0]], p[dij[1]]) ||
+                  isCrossing(p[rjj[2]], p[rjj[0]], p[dij[1]], p[dij[2]]) ||
+                  isCrossing(p[rjj[2]], p[rjj[0]], p[dij[2]], p[dij[0]]) )
             goto fixnext0;
         }
-        for(int jj = blast; jj < res.size(); jj ++)
-          for(int i0 = 0; i0 < 3; i0 ++)
-            for(int j0 = 0; j0 < 3; j0 ++)
-              if(isCrossing(p[res[jj][ i0      % 3]],
-                            p[res[jj][(i0 + 1) % 3]],
-                            p[delaunay[i][j][ j0      % 3]],
-                            p[delaunay[i][j][(j0 + 1) % 3]]))
-                goto fixnext0;
         res.push_back(delaunay[i][j]);
         cerr << ".";
        fixnext0:
@@ -491,7 +511,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
         for(int l = 1; l < pp.size(); l ++) {
           if(l == i || l == j || l == k) continue;
           q[3] = p[pp[l]];
-          if(isDelaunay2(cw, q, epsilon)) {
+          if(isDelaunay2(cw, q)) {
             k     = l;
             qq[0] = q[2];
             qq[1] = q[2] = q[3];
@@ -499,6 +519,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
         }
         q[2]   = qq[0];
         q[3]   = qq[1];
+        isDelaunay2(cw, q);
         idx[0] = pp[i];
         if(cw < T(0)) {
           idx[1] = pp[k];
@@ -511,14 +532,31 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
 #pragma omp critical
 #endif
         {
-          for(int jj = 0; jj < res.size(); jj ++)
-            for(int i0 = 0; i0 < 3; i0 ++)
-              for(int j0 = 0; j0 < 3; j0 ++)
-                if(isCrossing(p[res[jj][ i0      % 3]],
-                              p[res[jj][(i0 + 1) % 3]],
-                              p[idx[ j0      % 3]],
-                              p[idx[(j0 + 1) % 3]]))
+          for(int jj = 0; jj < res.size(); jj ++) {
+            const auto& rjj(res[jj]);
+            const auto& dij(idx);
+            int mrd(0);
+            for(int i0 = 0; i0 < rjj.size(); i0 ++)
+              for(int j0 = 0; j0 < dij.size(); j0 ++)
+                if(rjj[i0] == dij[j0]) {
+                  mrd ++;
+                  break;
+                }
+            if(3 <= mrd)
+              continue;
+            else if(2 <= mrd)
+              ;
+            else if(isCrossing(p[rjj[0]], p[rjj[1]], p[dij[0]], p[dij[1]]) ||
+                    isCrossing(p[rjj[0]], p[rjj[1]], p[dij[1]], p[dij[2]]) ||
+                    isCrossing(p[rjj[0]], p[rjj[1]], p[dij[2]], p[dij[0]]) ||
+                    isCrossing(p[rjj[1]], p[rjj[2]], p[dij[0]], p[dij[1]]) ||
+                    isCrossing(p[rjj[1]], p[rjj[2]], p[dij[1]], p[dij[2]]) ||
+                    isCrossing(p[rjj[1]], p[rjj[2]], p[dij[2]], p[dij[0]]) ||
+                    isCrossing(p[rjj[2]], p[rjj[0]], p[dij[0]], p[dij[1]]) ||
+                    isCrossing(p[rjj[2]], p[rjj[0]], p[dij[1]], p[dij[2]]) ||
+                    isCrossing(p[rjj[2]], p[rjj[0]], p[dij[2]], p[dij[0]]) )
               goto fixnext;
+          }
           res.emplace_back(idx);
          fixnext:
           ;
@@ -528,14 +566,14 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
   return res;
 }
 
-template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T& epsilon) const {
+template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4]) const {
   // sameline?
   Vec3 bcn(p[1] - p[2]);
   bcn[2] = T(0);
   Vec3 err(p[0] - p[2]);
   err[2] = T(0);
   err   -= bcn * err.dot(bcn) / bcn.dot(bcn);
-  if(err.dot(err) <= epsilon)
+  if(err.dot(err) <= T(0))
     return false;
   const auto g((p[0] + p[1] + p[2]) / T(3));
   Mat4x4 dc(4, 4);
@@ -552,7 +590,7 @@ template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T
     dc0(i, 2) = p[i][1] - g[1];
   }
   cw = dc0.determinant();
-  if(abs(cw) <= pow(epsilon, T(3)))
+  if(abs(cw) <= T(0))
     cw = T(0);
   else if(cw < T(0))
     cw = - T(1);
@@ -563,7 +601,7 @@ template <typename T> bool reDig<T>::isDelaunay2(T& cw, const Vec3 p[4], const T
   return false;
 }
 
-template <typename T> bool reDig<T>::isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1, const T& err) const {
+template <typename T> bool reDig<T>::isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1) const {
   // t * p0 + (1 - t) * p1 == s * q0 + (1 - s) * q1
   // <=> p1 + (p0 - p1) t == q1 + (q0 - q1) s
   // <=> [(p0 - p1), (q1 - q0)][t, s] == q1 - p1.
@@ -576,15 +614,15 @@ template <typename T> bool reDig<T>::isCrossing(const Vec3& p0, const Vec3& p1, 
   A(1, 1) = q1[1] - q0[1];
   b[0]    = q1[0] - p1[0];
   b[1]    = q1[1] - p1[1];
-  if(abs(A.determinant()) <= pow(err, T(2)))
+  if(abs(A.determinant()) <= T(0))
     return false;
 #if defined(_WITHOUT_EIGEN_)
   auto x(A.solve(b));
 #else
   auto x(A.inverse() * b);
 #endif
-  return (err <= x[0] && x[0] <= T(1) - err) &&
-         (err <= x[1] && x[1] <= T(1) - err);
+  return T(0) <= x[0] && x[0] <= T(1) &&
+         T(0) <= x[1] && x[1] <= T(1);
 }
 
 template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask) {
