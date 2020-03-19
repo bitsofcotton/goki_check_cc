@@ -562,7 +562,7 @@ template <typename T> inline bool reDig<T>::isDelaunay2(const Vec3 p[4]) const {
     dc(i, 2) = dc(i, 0) * dc(i, 0) + dc(i, 1) * dc(i, 1);
     dc(i, 3) = T(1);
   }
-  if(T(0) < dc.determinant() * (- isClockwise(p)))
+  if(T(0) < dc.determinant() * (isClockwise(p) ? - T(1) : T(1)))
     return true;
   return false;
 }
