@@ -480,7 +480,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int i = 0; i < pp.size() - 1; i ++)
+    for(int i = 0; i < pp.size() - 1; i ++) {
       for(int j0 = i + 1; j0 < pp.size(); j0 ++) {
         int j(j0);
         int k(j0 + 1);
@@ -535,9 +535,10 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
          fixnext:
           ;
         }
-       fnext:
-        ;
       }
+     fnext:
+      ;
+    }
   }
   return res;
 }
