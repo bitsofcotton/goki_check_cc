@@ -480,46 +480,56 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int i = 0; i < pp.size(); i ++)
-      for(int j = i + 1; j < pp.size(); j ++) {
-        int k(0);
-        for(k = 0; k < pp.size(); k ++)
-          if(i != k && j != k) break;
+    for(int i = 0; i < pp.size() - 1; i ++)
+      for(int j0 = i + 1; j0 < pp.size(); j0 ++) {
+        int j(j0);
+        int k(j0 + 1);
         Vec3 q[4];
-        Vec3 qq(3);
+        Vec3 qj(3);
+        Vec3 qk(3);
         q[0] = p[pp[i]];
-        q[1] = p[pp[j]];
-        q[2] = qq = p[pp[k]];
-        for(int l = k + 1; l < pp.size(); l ++) {
-          if(l == i || l == j || l == k) continue;
+        q[1] = qj = p[pp[j]];
+        q[2] = qk = p[pp[k]];
+        for(int l = j0 + 1; l < pp.size(); l ++) {
           q[3] = p[pp[l]];
           if(isDelaunay2(q)) {
-            k  = l;
-            qq = q[2] = q[3];
+            Vec3 qq[4];
+            qq[0] = q[0];
+            qq[1] = q[1];
+            qq[2] = q[3];
+            qq[3] = q[2];
+            if(isDelaunay2(qq)) {
+              j  = l;
+              qj = q[1] = q[3];;
+            } else {
+              k  = l;
+              qk = q[2] = q[3];
+            }
           }
         }
-        q[2] = qq;
-        Veci3 idx(3);
-        idx[0] = pp[i];
-        if(isClockwise(q)) {
-          idx[1] = pp[k];
-          idx[2] = pp[j];
-        } else {
-          idx[1] = pp[j];
-          idx[2] = pp[k];
-        }
+      q[1] = qj;
+      q[2] = qk;
+      Veci3 idx(3);
+      idx[0] = pp[i];
+      if(isClockwise(q)) {
+        idx[1] = pp[k];
+        idx[2] = pp[j];
+      } else {
+        idx[1] = pp[j];
+        idx[2] = pp[k];
+      }
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-        {
-          for(int jj = 0; jj < res.size(); jj ++)
-            if(isCrossTriangle(p, res[jj], idx))
-              goto fixnext;
-          res.emplace_back(idx);
-         fixnext:
-          ;
-        }
+      {
+        for(int jj = 0; jj < res.size(); jj ++)
+          if(isCrossTriangle(p, res[jj], idx))
+            goto fixnext;
+        res.emplace_back(idx);
+       fixnext:
+        ;
       }
+    }
   }
   return res;
 }
