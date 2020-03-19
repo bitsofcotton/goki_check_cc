@@ -507,29 +507,29 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
             }
           }
         }
-      q[1] = qj;
-      q[2] = qk;
-      Veci3 idx(3);
-      idx[0] = pp[i];
-      if(isClockwise(q)) {
-        idx[1] = pp[k];
-        idx[2] = pp[j];
-      } else {
-        idx[1] = pp[j];
-        idx[2] = pp[k];
-      }
+        q[1] = qj;
+        q[2] = qk;
+        Veci3 idx(3);
+        idx[0] = pp[i];
+        if(isClockwise(q)) {
+          idx[1] = pp[k];
+          idx[2] = pp[j];
+        } else {
+          idx[1] = pp[j];
+          idx[2] = pp[k];
+        }
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-      {
-        for(int jj = 0; jj < res.size(); jj ++)
-          if(isCrossTriangle(p, res[jj], idx))
-            goto fixnext;
-        res.emplace_back(idx);
-       fixnext:
-        ;
+        {
+          for(int jj = 0; jj < res.size(); jj ++)
+            if(isCrossTriangle(p, res[jj], idx))
+              goto fixnext;
+          res.emplace_back(idx);
+         fixnext:
+          ;
+        }
       }
-    }
   }
   return res;
 }
