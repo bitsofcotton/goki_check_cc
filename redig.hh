@@ -106,7 +106,7 @@ public:
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
-  vector<Veci3> delaunay2(const vector<Vec3>& p, const vector<int>& pp) const;
+  vector<Veci3> mesh2(const vector<Vec3>& p, const vector<int>& pp) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
@@ -132,9 +132,6 @@ private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
   void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
   inline bool isClockwise(const Vec3 p[3]) const;
-  inline bool isDelaunay2(const Vec3 p[4]) const;
-  inline bool isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1) const;
-  inline bool isCrossTriangle(const vector<Vec3>& p, const Veci3& pp, const Veci3& pq) const;
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
@@ -422,73 +419,38 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
   return result;
 }
 
-template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp) const {
-  vector<Veci3> res;
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < pp.size() - 2; i ++) {
-    for(int j0 = i + 1; j0 < pp.size() - 1; j0 ++) {
-      int j(j0);
-      int k(j0 + 1);
-      Veci3 idx(3);
-      Vec3 q[4];
-      Vec3 qj(3);
-      Vec3 qk(3);
-      q[0] = p[pp[i]];
-      q[1] = qj = p[pp[j]];
-      q[2] = qk = p[pp[k]];
-      for(int l = j0 + 1; l < pp.size(); l ++) {
-        if(i == l || j == l || k == l) continue;
-        q[3] = p[pp[l]];
-        if(isDelaunay2(q)) {
-          Vec3 qq[4];
-          qq[0] = q[3];
-          qq[1] = q[1];
-          qq[2] = q[2];
-          qq[3] = q[0];
-          if(! isDelaunay2(qq))
-            goto fnext;
-          qq[0] = q[0];
-          qq[1] = q[1];
-          qq[2] = q[3];
-          qq[3] = q[2];
-          if(isDelaunay2(qq)) {
-            j  = l;
-            qj = q[1] = q[3];;
-          } else {
-            k  = l;
-            qk = q[2] = q[3];
-          }
-        }
-      }
-      q[1] = qj;
-      q[2] = qk;
-      idx[0] = pp[i];
-      if(isClockwise(q)) {
-        idx[1] = pp[k];
-        idx[2] = pp[j];
-      } else {
-        idx[1] = pp[j];
-        idx[2] = pp[k];
-      }
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-      {
-/*
-        for(int jj = 0; jj < res.size(); jj ++)
-          if(isCrossTriangle(p, res[jj], idx))
-            goto fixnext;
-*/
-        res.emplace_back(idx);
-       fixnext:
-        ;
-      }
-    }
-   fnext:
-    ;
+template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vector<Vec3>& p, const vector<int>& pp) const {
+  vector<pair<Vec3, int> > sp;
+  T m0(0);
+  T m1(0);
+  T M0(0);
+  T M1(0);
+  for(int i = 0; i < pp.size(); i ++) {
+    sp.emplace_back(make_pair(p[pp[i]], i));
+    m0 = min(m0, p[i][0]);
+    m1 = min(m1, p[i][1]);
+    M0 = max(M0, p[i][0]);
+    M1 = max(M1, p[i][1]);
   }
+  m0 -= T(1);
+  m1 -= T(1);
+  M0 += T(1);
+  M1 += T(1);
+  sp.emplace_back(make_pair(Vec3(3), sp.size()));
+  sp.emplace_back(make_pair(Vec3(3), sp.size()));
+  sp.emplace_back(make_pair(Vec3(3), sp.size()));
+  sp.emplace_back(make_pair(Vec3(3), sp.size()));
+  sp[sp.size() - 4][0] = m0;
+  sp[sp.size() - 4][1] = m1;
+  sp[sp.size() - 4][2] = T(0);
+  sp[sp.size() - 3]    = sp[sp.size() - 4];
+  sp[sp.size() - 3][0] = M0;
+  sp[sp.size() - 2]    = sp[sp.size() - 4];
+  sp[sp.size() - 2][1] = M1;
+  sp[sp.size() - 1]    = sp[sp.size() - 3];
+  sp[sp.size() - 1][1] = M1;
+  sort(sp.begin(), sp.end(), less0<pair<Vec3, int> >);
+  vector<Veci3> res;
   return res;
 }
 
@@ -500,69 +462,6 @@ template <typename T> inline bool reDig<T>::isClockwise(const Vec3 p[3]) const {
     dc(i, 2) = p[i][1];
   }
   return dc.determinant() <= T(0);
-}
-
-// Thanks to : https://www.wikiwand.com/en/Delaunay_triangulation 2020/03/19
-template <typename T> inline bool reDig<T>::isDelaunay2(const Vec3 p[4]) const {
-  Mat4x4 dc(4, 4);
-  for(int i = 0; i < 4; i ++) {
-    dc(i, 0) = p[i][0];
-    dc(i, 1) = p[i][1];
-    dc(i, 2) = dc(i, 0) * dc(i, 0) + dc(i, 1) * dc(i, 1);
-    dc(i, 3) = T(1);
-  }
-  if(T(0) < dc.determinant() * (isClockwise(p) ? - T(1) : T(1)))
-    return true;
-  return false;
-}
-
-template <typename T> inline bool reDig<T>::isCrossing(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1) const {
-  if((p0[0] == q0[0] && p0[1] == q0[1]) ||
-     (p0[0] == q1[0] && p0[1] == q1[1]) ||
-     (p1[0] == q0[0] && p1[1] == q0[1]) ||
-     (p1[0] == q1[0] && p1[1] == q1[1]))
-    return true;
-  // t * p0 + (1 - t) * p1 == s * q0 + (1 - s) * q1
-  // <=> p1 + (p0 - p1) t == q1 + (q0 - q1) s
-  // <=> [(p0 - p1), (q1 - q0)][t, s] == q1 - p1.
-  // <=> Ax==b.
-  Mat2x2 A(2, 2);
-  Vec2   b(2);
-  A(0, 0) = p0[0] - p1[0];
-  A(1, 0) = p0[1] - p1[1];
-  A(0, 1) = q1[0] - q0[0];
-  A(1, 1) = q1[1] - q0[1];
-  b[0]    = q1[0] - p1[0];
-  b[1]    = q1[1] - p1[1];
-  if(abs(A.determinant()) <= T(0))
-    return false;
-#if defined(_WITHOUT_EIGEN_)
-  auto x(A.solve(b));
-#else
-  auto x(A.inverse() * b);
-#endif
-  return T(0) < x[0] && x[0] < T(1) &&
-         T(0) < x[1] && x[1] < T(1);
-}
-
-template <typename T> inline bool reDig<T>::isCrossTriangle(const vector<Vec3>& p, const Veci3& pp, const Veci3& pq) const {
-  int mrd(0);
-  for(int i0 = 0; i0 < pp.size(); i0 ++)
-    for(int j0 = 0; j0 < pq.size(); j0 ++)
-      if(pp[i0] == pq[j0]) {
-        mrd ++;
-        break;
-      }
-  return ! mrd &&
-    (isCrossing(p[pp[0]], p[pp[1]], p[pq[0]], p[pq[1]]) ||
-     isCrossing(p[pp[0]], p[pp[1]], p[pq[1]], p[pq[2]]) ||
-     isCrossing(p[pp[0]], p[pp[1]], p[pq[2]], p[pq[0]]) ||
-     isCrossing(p[pp[1]], p[pp[2]], p[pq[0]], p[pq[1]]) ||
-     isCrossing(p[pp[1]], p[pp[2]], p[pq[1]], p[pq[2]]) ||
-     isCrossing(p[pp[1]], p[pp[2]], p[pq[2]], p[pq[0]]) ||
-     isCrossing(p[pp[2]], p[pp[0]], p[pq[0]], p[pq[1]]) ||
-     isCrossing(p[pp[2]], p[pp[0]], p[pq[1]], p[pq[2]]) ||
-     isCrossing(p[pp[2]], p[pp[0]], p[pq[2]], p[pq[0]]));
 }
 
 template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask) {
