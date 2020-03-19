@@ -146,7 +146,6 @@ private:
   T   Pi;
   int vbox;
   T   rz;
-  int mdiv;
 };
 
 template <typename T> reDig<T>::reDig() {
@@ -165,7 +164,6 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
     this->rz = rz;
   else
     this->rz = T(03) / T(10);
-  mdiv       = 40 * 3;
   return;
 }
 
@@ -426,119 +424,70 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
 
 template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const vector<Vec3>& p, const vector<int>& pp) const {
   vector<Veci3> res;
-  if(mdiv < pp.size()) {
-    cerr << "d(" << pp.size() << ")" << flush;
-    vector<pair<Vec3, int> > div;
-    div.reserve(pp.size());
-    for(int i = 0; i < pp.size(); i ++)
-      div.push_back(make_pair(p[pp[i]], pp[i]));
-    sort(div.begin(), div.end(), less0<pair<Vec3, int> >);
-    assert(4 < mdiv);
-    vector<vector<Veci3> > delaunay;
-    for(int i = 0; i + mdiv / 3 < div.size(); i += mdiv / 3) {
-      vector<int> work;
-      for(int j = i; j < min(i + mdiv, int(div.size())); j ++)
-        work.emplace_back(div[j].second);
-      delaunay.emplace_back(delaunay2(p, work));
-      cerr << ".";
-    }
-    vector<int> work;
-    for(int j = div.size() - mdiv; j < div.size(); j ++)
-      work.emplace_back(div[j].second);
-    delaunay.emplace_back(delaunay2(p, work));
-    int blast(0);
-    int last(0);
-    for(int i = 0; i < delaunay.size(); i ++) {
-      last = res.size();
-      for(int j = 0; j < delaunay[i].size(); j ++) {
-        int iii(0);
-        for(int ii = 0; ii < 3; ii ++) {
-          const auto itr(upper_bound(div.begin(), div.end(),
-                           make_pair(p[delaunay[i][j][ii]],
-                                     delaunay[i][j][ii]),
-                           less0<pair<Vec3, int> >));
-          const auto idx(i * mdiv / 3);
-          if(distance(div.begin(), itr) < idx + mdiv / 3 && i)
-            iii ++;
-          else if(idx + mdiv * 2 / 3 < distance(div.begin(), itr) &&
-                  i < delaunay.size() - 1)
-            goto fixnext0;
-        }
-        if(3 <= iii)
-          goto fixnext0;
-        for(int jj = blast; jj < res.size(); jj ++)
-          if(isCrossTriangle(p, res[jj], delaunay[i][j]))
-            goto fixnext0;
-        res.push_back(delaunay[i][j]);
-        cerr << ".";
-       fixnext0:
-        ;
-      }
-      blast = last;
-    }
-  } else {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int i = 0; i < pp.size() - 1; i ++) {
-      for(int j0 = i + 1; j0 < pp.size(); j0 ++) {
-        int j(j0);
-        int k(j0 + 1);
-        Veci3 idx(3);
-        Vec3 q[4];
-        Vec3 qj(3);
-        Vec3 qk(3);
-        q[0] = p[pp[i]];
-        q[1] = qj = p[pp[j]];
-        q[2] = qk = p[pp[k]];
-        for(int l = j0 + 1; l < pp.size(); l ++) {
-          q[3] = p[pp[l]];
-          if(isDelaunay2(q)) {
-            Vec3 qq[4];
-            qq[0] = q[3];
-            qq[1] = q[1];
-            qq[2] = q[2];
-            qq[3] = q[0];
-            if(! isDelaunay2(qq))
-              goto fnext;
-            qq[0] = q[0];
-            qq[1] = q[1];
-            qq[2] = q[3];
-            qq[3] = q[2];
-            if(isDelaunay2(qq)) {
-              j  = l;
-              qj = q[1] = q[3];;
-            } else {
-              k  = l;
-              qk = q[2] = q[3];
-            }
+  for(int i = 0; i < pp.size() - 2; i ++) {
+    for(int j0 = i + 1; j0 < pp.size() - 1; j0 ++) {
+      int j(j0);
+      int k(j0 + 1);
+      Veci3 idx(3);
+      Vec3 q[4];
+      Vec3 qj(3);
+      Vec3 qk(3);
+      q[0] = p[pp[i]];
+      q[1] = qj = p[pp[j]];
+      q[2] = qk = p[pp[k]];
+      for(int l = j0 + 1; l < pp.size(); l ++) {
+        if(i == l || j == l || k == l) continue;
+        q[3] = p[pp[l]];
+        if(isDelaunay2(q)) {
+          Vec3 qq[4];
+          qq[0] = q[3];
+          qq[1] = q[1];
+          qq[2] = q[2];
+          qq[3] = q[0];
+          if(! isDelaunay2(qq))
+            goto fnext;
+          qq[0] = q[0];
+          qq[1] = q[1];
+          qq[2] = q[3];
+          qq[3] = q[2];
+          if(isDelaunay2(qq)) {
+            j  = l;
+            qj = q[1] = q[3];;
+          } else {
+            k  = l;
+            qk = q[2] = q[3];
           }
         }
-        q[1] = qj;
-        q[2] = qk;
-        idx[0] = pp[i];
-        if(isClockwise(q)) {
-          idx[1] = pp[k];
-          idx[2] = pp[j];
-        } else {
-          idx[1] = pp[j];
-          idx[2] = pp[k];
-        }
+      }
+      q[1] = qj;
+      q[2] = qk;
+      idx[0] = pp[i];
+      if(isClockwise(q)) {
+        idx[1] = pp[k];
+        idx[2] = pp[j];
+      } else {
+        idx[1] = pp[j];
+        idx[2] = pp[k];
+      }
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-        {
-          for(int jj = 0; jj < res.size(); jj ++)
-            if(isCrossTriangle(p, res[jj], idx))
-              goto fixnext;
-          res.emplace_back(idx);
-         fixnext:
-          ;
-        }
+      {
+/*
+        for(int jj = 0; jj < res.size(); jj ++)
+          if(isCrossTriangle(p, res[jj], idx))
+            goto fixnext;
+*/
+        res.emplace_back(idx);
+       fixnext:
+        ;
       }
-     fnext:
-      ;
     }
+   fnext:
+    ;
   }
   return res;
 }
