@@ -484,6 +484,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
       for(int j0 = i + 1; j0 < pp.size(); j0 ++) {
         int j(j0);
         int k(j0 + 1);
+        Veci3 idx(3);
         Vec3 q[4];
         Vec3 qj(3);
         Vec3 qk(3);
@@ -494,6 +495,12 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
           q[3] = p[pp[l]];
           if(isDelaunay2(q)) {
             Vec3 qq[4];
+            qq[0] = q[3];
+            qq[1] = q[1];
+            qq[2] = q[2];
+            qq[3] = q[0];
+            if(! isDelaunay2(qq))
+              goto fnext;
             qq[0] = q[0];
             qq[1] = q[1];
             qq[2] = q[3];
@@ -509,7 +516,6 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
         }
         q[1] = qj;
         q[2] = qk;
-        Veci3 idx(3);
         idx[0] = pp[i];
         if(isClockwise(q)) {
           idx[1] = pp[k];
@@ -529,6 +535,8 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::delaunay2(const
          fixnext:
           ;
         }
+       fnext:
+        ;
       }
   }
   return res;
