@@ -426,31 +426,63 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
   T M0(0);
   T M1(0);
   for(int i = 0; i < pp.size(); i ++) {
-    sp.emplace_back(make_pair(p[pp[i]], i));
-    m0 = min(m0, p[i][0]);
-    m1 = min(m1, p[i][1]);
-    M0 = max(M0, p[i][0]);
-    M1 = max(M1, p[i][1]);
+    sp.emplace_back(make_pair(p[pp[i]], pp[i]));
+    m0 = min(m0, sp[i].first[0]);
+    m1 = min(m1, sp[i].first[1]);
+    M0 = max(M0, sp[i].first[0]);
+    M1 = max(M1, sp[i].first[1]);
   }
   m0 -= T(1);
   m1 -= T(1);
   M0 += T(1);
   M1 += T(1);
-  sp.emplace_back(make_pair(Vec3(3), sp.size()));
-  sp.emplace_back(make_pair(Vec3(3), sp.size()));
-  sp.emplace_back(make_pair(Vec3(3), sp.size()));
-  sp.emplace_back(make_pair(Vec3(3), sp.size()));
-  sp[sp.size() - 4][0] = m0;
-  sp[sp.size() - 4][1] = m1;
-  sp[sp.size() - 4][2] = T(0);
-  sp[sp.size() - 3]    = sp[sp.size() - 4];
-  sp[sp.size() - 3][0] = M0;
-  sp[sp.size() - 2]    = sp[sp.size() - 4];
-  sp[sp.size() - 2][1] = M1;
-  sp[sp.size() - 1]    = sp[sp.size() - 3];
-  sp[sp.size() - 1][1] = M1;
+  sp.emplace_back(make_pair(Vec3(3), p.size()));
+  sp.emplace_back(make_pair(Vec3(3), p.size() + 1));
+  sp.emplace_back(make_pair(Vec3(3), p.size() + 2));
+  sp.emplace_back(make_pair(Vec3(3), p.size() + 3));
+  sp[sp.size() - 4].first[0] = m0;
+  sp[sp.size() - 4].first[1] = m1;
+  sp[sp.size() - 4].first[2] = T(0);
+  sp[sp.size() - 3].first    = sp[sp.size() - 4].first;
+  sp[sp.size() - 3].first[0] = M0;
+  sp[sp.size() - 2].first    = sp[sp.size() - 4].first;
+  sp[sp.size() - 2].first[1] = M1;
+  sp[sp.size() - 1].first    = sp[sp.size() - 3].first;
+  sp[sp.size() - 1].first[1] = M1;
+  sp[sp.size() - 4].first[0] -= T(1);
+  sp[sp.size() - 3].first[0] += T(1);
   sort(sp.begin(), sp.end(), less0<pair<Vec3, int> >);
+  vector<Veci3> res0;
+  for(int i = 2; i < sp.size(); i ++) {
+    Veci3 lres(3);
+    lres[0] = lres[1] = lres[2] = i;
+    for(int j = i - 1; 0 <= j; j --)
+      if(sp[j].first[1] <= sp[i].first[1] &&
+         (lres[1] == i ||
+          abs(sp[j].first[1] - sp[i].first[1]) <
+            abs(sp[lres[1]].first[1] - sp[i].first[1]) ) )
+        lres[1] = j;
+    for(int j = i - 1; 0 <= j; j --)
+      if(sp[j].first[1] >= sp[i].first[1] &&
+         ! (sp[j].first[0] == sp[lres[0]].first[0] &&
+            sp[j].first[0] == sp[lres[1]].first[0]) &&
+         ! (sp[j].first[1] == sp[lres[0]].first[1] &&
+            sp[j].first[1] == sp[lres[1]].first[1]) &&
+         (lres[2] == i ||
+          abs(sp[j].first[1] - sp[i].first[1]) <
+            abs(sp[lres[2]].first[1] - sp[i].first[1]) ) )
+        lres[2] = j;
+    res0.emplace_back(lres);
+  }
   vector<Veci3> res;
+  for(int i = 0; i < res0.size(); i ++)
+    if(sp[res0[i][0]].second < p.size() &&
+       sp[res0[i][1]].second < p.size() &&
+       sp[res0[i][2]].second < p.size()) {
+      for(int j = 0; j < res0[i].size(); j ++)
+        res0[i][j] = sp[res0[i][j]].second;
+      res.emplace_back(res0[i]);
+  }
   return res;
 }
 

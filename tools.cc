@@ -315,7 +315,7 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<num_t>::Mat outs[3];
       const auto rin0(redig.makeRefMatrix(in0[0], 1));
       const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
-      const auto mhull0(redig.delaunay2(shape0, m.dstpoints));
+      const auto mhull0(redig.mesh2(shape0, m.dstpoints));
       const auto mhull1((~ m).hullConv(mhull0));
       const std::string outbase(argv[fnout]);
       for(int idx = 0; idx < 3; idx ++)
