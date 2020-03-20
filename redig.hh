@@ -168,14 +168,22 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
   cerr << "m" << flush;
   assert(hulldst.size() == hullsrc.size());
   vector<Triangles> triangles;
-  triangles.reserve((srcimg.rows() - 1) * (srcimg.cols() - 1) * 2);
-  for(int i = 0; i < srcimg.rows() - 1; i ++)
-    for(int j = 0; j < srcimg.cols() - 1; j ++) {
-      triangles.push_back(makeTriangle(i, j, srcimg, srcbump, false));
-      triangles[triangles.size() - 1].c = srcimg(i, j);
-      triangles.push_back(makeTriangle(i, j, srcimg, srcbump, true));
-      triangles[triangles.size() - 1].c = srcimg(i, j);
+  triangles.reserve(hullsrc.size());
+  for(int i = 0; i < hullsrc.size(); i ++) {
+    triangles_t<T> t;
+    t.c = T(0);
+    for(int j = 0; j < hullsrc[i].size(); j ++) {
+#if defined(_WITHOUT_EIGEN_)
+      t.p.setCol(j, src[hullsrc[i][j]]);
+#else
+      t.p.col(j) = src[hullsrc[i][j]];
+#endif
+      t.c += srcimg(max(0, min(int(srcimg.rows() - 1), int(t.p(0, j)))),
+                    max(0, min(int(srcimg.cols() - 1), int(t.p(1, j)))));
     }
+    t.c /= T(3);
+    triangles.push_back(t.solveN());
+  }
   
   cerr << "e(" << hulldst.size() << ")" << endl;
   const auto rmatch(~ match);
@@ -221,7 +229,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
     triangles[i / 3].p.col(i % 3) += diff * ratio / emphs[i].size();
 #endif
   }
-  return tilt(dstimg, triangles, match);
+  return tilt(dstimg * T(0), triangles, match);
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim) {
