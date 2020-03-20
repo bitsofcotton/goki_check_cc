@@ -293,20 +293,20 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + plen) = data.row(i);
+      Mat rdata(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int i = 0; i < data.cols(); i ++) {
-        SimpleVector<T> cacheb(data.rows());
-        SimpleVector<T> cachen(data.rows());
-        for(int j = 0; j < data.rows(); j ++) {
-          cacheb[j] = data(data.rows() - j - 1, i);
-          cachen[j] = data(j, i);
-        }
-        for(int j = 0; j < plen; j ++) {
-          P0<T> p(data.rows(), 2, j + 1);
-          result(data.rows() + j + plen, i) = p.next(cachen);
-          result(plen - j - 1, i) = p.next(cacheb);
+      for(int i = 0; i < data.rows(); i ++)
+        rdata.row(data.rows() - 1 - i) = data.row(i);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int j = 0; j < plen; j ++) {
+        P0<T> p(data.rows(), 2, j + 1);
+        for(int i = 0; i < data.cols(); i ++) {
+          result(data.rows() + j + plen, i) = p.next(data.col(i));
+          result(plen - j - 1, i) = p.next(rdata.col(i));
         }
       }
     }
