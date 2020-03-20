@@ -1,9 +1,8 @@
 # Goki Check
 These program aims to get prepared model geometry in A still image in a deterministic way.  
-Please refer older information at https://sourceforge.net/p/gokicheck/wiki/Home/ .
 
 # How to use
-Please touch Makefile for stdc++ enabled.  
+Please touch Makefile for libc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
 To convert image files to raw ppm, it is powerful tool that https://www.imagemagick.org/ with 'convert from.image -compress none to.ppm'.   
 For speed, we need http://eigen.tuxfamily.org/ library.
@@ -20,10 +19,10 @@ For speed, we need http://eigen.tuxfamily.org/ library.
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
 * match.hh
-* * matchPartial::ndiv    : number of divides that match angles, effects the matching errors.
-* * matchPartial::threshr : error tolerance rate for matching, smaller is tight.
-* * matchPartial::threshp : ratio of threshold for number of matched points.
-* * matchPartial::threshs : ratio of threshold for operator ==.
+* * ndiv    : number of divides that match angles, effects the matching errors.
+* * threshr : error tolerance rate for matching, smaller is tight.
+* * threshp : ratio of threshold for number of matched points.
+* * threshs : ratio of threshold for operator ==.
 
 # Context
 This program is inspired from re-focus photo softwares.  
@@ -73,20 +72,17 @@ Checking details of implementation before to freeze the library.
 Please refer tools.cc, and please include with namespace directive (but include guard definition should harms).
 
 # Demos
-https://services.limpid-intensity.info/ have a sample interface working demos.
-Please bookmark output directory page after sending images, then please wait some minutes.  
-N.B. a file per 5 minutes, up to 20 Mo total upload size.
+https://konbu.azurewebsites.net/ preparing a sample interface working demos.
 
 # Tips
 These program's enlarge is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
-These program's bump assumes F=∞ graphics.  
-These program's bump2 assumes pseudo-tilt then pseudo-capture 2 of cameras.
+These program's bump assumes F=∞ graphics, and pseudo-tilt then pseudo-capture 2 of cameras.   
 These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer.  
 These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
 
 # Specification
-enlarger2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
+filter2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.  
 
@@ -101,7 +97,7 @@ bugly result returns. If we know angle with projected plane, please tilt with ob
 match matches. If we should have correct matches, please configure z-axis ratio in tools.cc via redig.hh .
 matchPartial default threshr is severe, so please configure before to match.
 
-enlarger2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
+filter2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
 This is because we generate the one with DFT half space plausible ones by shifting frequency space intensities.
 
 # Another downloads
@@ -111,3 +107,4 @@ This is because we generate the one with DFT half space plausible ones by shifti
 
 # Being examined
 It is searching that can we convert 3d model into the forests that is the center lines of metaball and depth simply.
+
