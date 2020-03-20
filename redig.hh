@@ -170,18 +170,37 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
   vector<Triangles> triangles;
   triangles.reserve(hullsrc.size());
   for(int i = 0; i < hullsrc.size(); i ++) {
-    triangles_t<T> t;
+    Triangles t;
+    int       cnt(0);
+    vector<pair<Vec3, int> > pp;
     t.c = T(0);
+    pp.reserve(3);
     for(int j = 0; j < hullsrc[i].size(); j ++) {
 #if defined(_WITHOUT_EIGEN_)
       t.p.setCol(j, src[hullsrc[i][j]]);
 #else
       t.p.col(j) = src[hullsrc[i][j]];
 #endif
-      t.c += srcimg(max(0, min(int(srcimg.rows() - 1), int(t.p(0, j)))),
-                    max(0, min(int(srcimg.cols() - 1), int(t.p(1, j)))));
+      pp.emplace_back(make_pair(t.p.col(j), j));
     }
-    t.c /= T(3);
+    sort(pp.begin(), pp.end(), less0<pair<Vec3, int> >);
+    const auto midx(pp[1].first[1] < pp[2].first[1] ? 1 : 2);
+    const auto Midx(pp[1].first[1] < pp[2].first[1] ? 2 : 1);
+    for(int j = pp[0].first[0]; j < pp[2].first[0] - pp[0].first[0]; j ++) {
+      const auto lratio((pp[1].first[0] - pp[0].first[0]) /
+                        (pp[2].first[0] - pp[0].first[0]));
+      const auto lgth(pp[Midx].first[1] - pp[midx].first[1]);
+      for(int k = pp[midx].first[1]; k < pp[Midx].first[1]; k ++) {
+        const auto qq(pp[0].first +
+                      (pp[midx].first - pp[0].first) *
+                        (lgth - T(k)) * lratio / lgth +
+                      (pp[Midx].first - pp[0].first) * T(k) / lgth);
+        cnt ++;
+        t.c += srcimg(max(0, min(int(srcimg.rows() - 1), int(qq[0]))),
+                      max(0, min(int(srcimg.cols() - 1), int(qq[1]))));
+      }
+    }
+    t.c /= T(cnt);
     triangles.push_back(t.solveN());
   }
   
@@ -925,7 +944,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
   return;
 }
 
-template <typename T> triangles_t<T> reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
+template <typename T> typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
   Triangles work;
   if(flg) {
     work.p(0, 0) = u;
