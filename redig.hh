@@ -174,6 +174,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
     int       cnt(0);
     vector<pair<Vec3, int> > pp;
     t.c = T(0);
+    assert(hullsrc[i].size() == 3);
     pp.reserve(3);
     for(int j = 0; j < hullsrc[i].size(); j ++) {
 #if defined(_WITHOUT_EIGEN_)
@@ -186,16 +187,18 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
     sort(pp.begin(), pp.end(), less0<pair<Vec3, int> >);
     const auto midx(pp[1].first[1] < pp[2].first[1] ? 1 : 2);
     const auto Midx(pp[1].first[1] < pp[2].first[1] ? 2 : 1);
-    for(int j = pp[0].first[0]; j < pp[2].first[0] - pp[0].first[0]; j ++) {
-      const auto lratio((pp[1].first[0] - pp[0].first[0]) /
-                        (pp[2].first[0] - pp[0].first[0]));
+    const auto lgth0(pp[2].first[0] - pp[0].first[0]);
+    for(int j = 0; j <= lgth0; j ++) {
+      const auto lratio(abs((pp[1].first[0] - pp[0].first[0]) /
+                            (pp[2].first[0] - pp[0].first[0])));
       const auto lgth(pp[Midx].first[1] - pp[midx].first[1]);
-      for(int k = pp[midx].first[1]; k < pp[Midx].first[1]; k ++) {
-        const auto qq(pp[0].first +
-                      (pp[midx].first - pp[0].first) *
-                        (lgth - T(k)) * lratio / lgth +
-                      (pp[Midx].first - pp[0].first) * T(k) / lgth);
+      for(int k = 0; k <= lgth; k ++) {
+        const auto qq((pp[0].first * T(lgth0 - j) +
+                       ((pp[midx].first - pp[0].first) * T(lgth - k) / T(lgth) +
+                        (pp[Midx].first - pp[0].first) * T(k) / T(lgth)) *
+                        T(j)) / T(lgth0));
         cnt ++;
+        std::cerr << qq[0] << ", " << qq[1] << " / " << srcimg.rows() << ", " << srcimg.cols() << std::endl;
         t.c += srcimg(max(0, min(int(srcimg.rows() - 1), int(qq[0]))),
                       max(0, min(int(srcimg.cols() - 1), int(qq[1]))));
       }
