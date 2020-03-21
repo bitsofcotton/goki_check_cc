@@ -278,8 +278,8 @@ public:
   inline ~matchPartial();
   void init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
   
-  vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points);
-  void match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result);
+  vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& norot = false);
+  void match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result, const bool& norot = false);
   
   Vec3 makeG(const vector<Vec3>& in) const;
   bool complementMatch(match_t<T>& work, const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& retry = true) const;
@@ -332,9 +332,9 @@ template <typename T> void matchPartial<T>::init(const int& ndiv, const T& thres
   return;
 }
 
-template <typename T> vector<match_t<T> > matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points) {
+template <typename T> vector<match_t<T> > matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& norot) {
   vector<match_t<T> > result;
-  match(shapebase, points, result);
+  match(shapebase, points, result, norot);
   return result;
 }
 
@@ -447,7 +447,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
          m.isValid();
 }
 
-template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result) {
+template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result, const bool& norot) {
   const auto gs(makeG(shapebase0));
   const auto gp(makeG(points0));
   vector<Vec3> shapebase;
@@ -475,14 +475,12 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
 #pragma omp parallel for schedule(static, 1)
 #endif
 */
-  for(int nd = 0; nd < ndiv; nd ++) {
-  // for(int nd = 0; nd < 1; nd ++) {
+  for(int nd = 0; nd < (norot ? 1 : ndiv); nd ++) {
     vector<T> ddiv;
     ddiv.resize(4, T(0));
     ddiv[0] = cos(T(2) * Pi * T(nd) / T(ndiv));
     ddiv[1] = sin(T(2) * Pi * T(nd) / T(ndiv));
-    for(int nd2 = 0; nd2 < ndiv; nd2 ++) {
-    // for(int nd2 = 0; nd2 < 1; nd2 ++) {
+    for(int nd2 = 0; nd2 < (norot ? 1 : ndiv); nd2 ++) {
       ddiv[2] = cos(T(2) * Pi * T(nd2) / T(ndiv));
       ddiv[3] = sin(T(2) * Pi * T(nd2) / T(ndiv));
       match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
