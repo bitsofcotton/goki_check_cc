@@ -446,7 +446,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
     for(int j = i - 1; 0 <= j; j --)
       if(sp2[j].first[1] >= sp2[i].first[1] &&
          (lres[1] == i ||
-          abs(sp2[j].first[1] - sp2[i].first[1]) >
+          abs(sp2[j].first[1] - sp2[i].first[1]) <
             abs(sp2[lres[1]].first[1] - sp2[i].first[1]) ) )
         lres[1] = j;
     for(int j = i - 1; 0 <= j; j --)
@@ -456,7 +456,7 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
          ! (sp2[j].first[1] == sp2[lres[0]].first[1] &&
             sp2[j].first[1] == sp2[lres[1]].first[1]) &&
          (lres[2] == i ||
-          abs(sp2[j].first[1] - sp2[i].first[1]) >
+          abs(sp2[j].first[1] - sp2[i].first[1]) <
             abs(sp2[lres[2]].first[1] - sp2[i].first[1]) ) )
         lres[2] = j;
     for(int j = 0; j < lres.size(); j ++)
