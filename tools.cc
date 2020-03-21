@@ -83,6 +83,7 @@ void usage() {
   cout << "gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
+  cout << "gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
@@ -238,7 +239,8 @@ int main(int argc, const char* argv[]) {
     if(!file.savep2or3(argv[ipidx + 2], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "matcho") == 0 ||
-            strcmp(argv[1], "match") == 0) {
+            strcmp(argv[1], "match") == 0 ||
+            strcmp(argv[1], "match0") == 0) {
     if(argc < 10) {
       usage();
       return - 1;
@@ -248,7 +250,7 @@ int main(int argc, const char* argv[]) {
     int nhid(0);
     int nemph(0);
     match_t<num_t> m;
-    if(strcmp(argv[1], "match") == 0) {
+    if(strcmp(argv[1], "match") == 0 || strcmp(argv[1], "match0") == 0) {
       nshow = std::atoi(argv[2]);
       nhid  = std::atoi(argv[3]);
     } else {
@@ -352,7 +354,7 @@ int main(int argc, const char* argv[]) {
       }
     } else { 
       matchPartial<num_t> statmatch;
-      auto matches(statmatch.match(shape0, shape1));
+      auto matches(statmatch.match(shape0, shape1, strcmp(argv[1], "match0") == 0));
       matches.resize(min(int(matches.size()), nhid));
       if(fn[fn.size() - 1] == 'm')
         matches = statmatch.elim(matches, in0, in1, bump1, shape1);

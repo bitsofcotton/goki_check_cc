@@ -11,24 +11,24 @@ bhabit = ""
 
 if(len(argv) < 4):
   print "no much argments."
-elif(argv[2] == "match" or argv[2] == "matcho"):
+elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
   nemph       = 4
-  if(argv[2] == "match" and len(argv) > 5):
+  if((argv[2] == "match" or argv[2] == "match0") and len(argv) > 5):
     pixels = int(argv[5])
   elif(argv[2] == "matcho" and len(argv) > 6):
     pixels = int(argv[6])
     if(len(argv) > 7):
       nemph = int(argv[7])
-  if(ext1 == ".obj" and argv[2] == "match"):
-    subprocess.call([argv[1], "match", "16", "40", str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+  if(ext1 == ".obj" and (argv[2] == "match" or argv[2] == "match0")):
+    subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
   elif(ext1 == ".obj" and argv[2] != "match"):
-    subprocess.call([argv[1], "matcho", argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], argv[5]])
-  elif(argv[2] == "match"):
-    subprocess.call([argv[1], "match", "16", "40", str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
+    subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], argv[5]])
+  elif(argv[2] == "match" or argv[2] == "match0"):
+    subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
-    subprocess.call([argv[1], "matcho", argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
+    subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
 else:
   for line in argv[3:]:
     try:
