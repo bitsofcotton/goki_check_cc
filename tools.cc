@@ -329,34 +329,27 @@ int main(int argc, const char* argv[]) {
       file.savep2or3((outbase + std::string("-repl1.ppm")).c_str(), outs, false);
       for(int idx = 0; idx < 3; idx ++)
         outs[idx] = redig.showMatch(in0[idx], shape0, mhull0);
-      file.savep2or3((outbase + std::string("-c0.ppm")).c_str(), outs, false);
+      file.savep2or3((outbase + std::string(".ppm")).c_str(), outs, false);
       for(int i = 0; i < nemph; i ++) {
         const auto iemph(num_t(i) / num_t(nemph));
         const auto reref(redig.emphasis(rin0, rin1, bump1, shape0, shape1,
                                         m, mhull0, mhull1, iemph));
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = redig.showMatch(redig.pullRefMatrix(reref,
-                        1 + rin0.rows() * rin0.cols(), in1[idx]),
-                        m.transform(shape1), mhull1);
-        file.savep2or3((outbase + std::string("-") +
-                                  std::to_string(iemph) +
-                                  std::string("-c1.ppm")).c_str(), outs, false);
-        for(int idx = 0; idx < 3; idx ++)
           outs[idx] = redig.pullRefMatrix(reref,
                         1 + rin0.rows() * rin0.cols(), in1[idx]);
         file.savep2or3((outbase + std::string("-") +
                                   std::to_string(iemph) +
-                                  std::string("-c2.ppm")).c_str(), outs, false);
+                                  std::string(".ppm")).c_str(), outs, false);
         file.saveobj(redig.takeShape(shape0, shape1, m, mhull0, mhull1, iemph),
                      outs[0].rows(), outs[0].cols(),
-                     delau0, (outbase + std::string("-") +
+                     delau0, (outbase + std::string("-emph0-") +
                                         std::to_string(iemph) +
-                                        std::string("-emph0.obj")).c_str());
+                                        std::string(".obj")).c_str());
         file.saveobj(redig.takeShape(shape1, shape0, ~m, mhull1, mhull0, iemph),
                      outs[0].rows(), outs[0].cols(),
-                     delau1, (outbase + std::string("-") +
+                     delau1, (outbase + std::string("-emph1-") +
                                         std::to_string(iemph) +
-                                        std::string("-emph1.obj")).c_str());
+                                        std::string(".obj")).c_str());
       }
     } else { 
       matchPartial<num_t> statmatch;
