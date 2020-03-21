@@ -24,11 +24,11 @@ elif(argv[2] == "match" or argv[2] == "matcho"):
   if(ext1 == ".obj" and argv[2] == "match"):
     subprocess.call([argv[1], "match", "16", "40", str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
   elif(ext1 == ".obj" and argv[2] != "match"):
-    subprocess.call([argv[1], "matcho", argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
+    subprocess.call([argv[1], "matcho", argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], argv[5]])
   elif(argv[2] == "match"):
     subprocess.call([argv[1], "match", "16", "40", str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
-    subprocess.call([argv[1], "matcho", argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
+    subprocess.call([argv[1], "matcho", argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
 else:
   for line in argv[3:]:
     try:
