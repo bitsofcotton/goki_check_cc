@@ -167,91 +167,26 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
 template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   cerr << "m" << flush;
   assert(hulldst.size() == hullsrc.size());
-  vector<Triangles> triangles;
-  triangles.reserve(hullsrc.size());
-  for(int i = 0; i < hullsrc.size(); i ++) {
-    Triangles t;
-    int       cnt(0);
-    vector<pair<Vec3, int> > pp;
-    t.c = T(0);
-    assert(hullsrc[i].size() == 3);
-    pp.reserve(3);
-    for(int j = 0; j < hullsrc[i].size(); j ++) {
-#if defined(_WITHOUT_EIGEN_)
-      t.p.setCol(j, src[hullsrc[i][j]]);
-#else
-      t.p.col(j) = src[hullsrc[i][j]];
-#endif
-      pp.emplace_back(make_pair(t.p.col(j), j));
-    }
-    sort(pp.begin(), pp.end(), less0<pair<Vec3, int> >);
-    const auto midx(pp[1].first[1] < pp[2].first[1] ? 1 : 2);
-    const auto Midx(pp[1].first[1] < pp[2].first[1] ? 2 : 1);
-    const auto lgth0(pp[2].first[0] - pp[0].first[0]);
-    for(int j = 0; j <= lgth0; j ++) {
-      const auto lratio(abs((pp[1].first[0] - pp[0].first[0]) /
-                            (pp[2].first[0] - pp[0].first[0])));
-      const auto lgth(pp[Midx].first[1] - pp[midx].first[1]);
-      for(int k = 0; k <= lgth; k ++) {
-        const auto qq((pp[0].first * T(lgth0 - j) +
-                       ((pp[midx].first - pp[0].first) * T(lgth - k) / T(lgth) +
-                        (pp[Midx].first - pp[0].first) * T(k) / T(lgth)) *
-                        T(j)) / T(lgth0));
-        cnt ++;
-        std::cerr << qq[0] << ", " << qq[1] << " / " << srcimg.rows() << ", " << srcimg.cols() << std::endl;
-        t.c += srcimg(max(0, min(int(srcimg.rows() - 1), int(qq[0]))),
-                      max(0, min(int(srcimg.cols() - 1), int(qq[1]))));
-      }
-    }
-    t.c /= T(cnt);
-    triangles.push_back(t.solveN());
-  }
-  
-  cerr << "e(" << hulldst.size() << ")" << endl;
-  const auto rmatch(~ match);
-  vector<vector<int> > emphs;
-  emphs.resize(triangles.size() * 3);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
+  const auto tdst(takeShape(dst, src, match, hulldst, hullsrc, ratio));
+  assert(dst.size() == tdst.size());
+  vector<Triangles> tris;
   for(int i = 0; i < hulldst.size(); i ++) {
-    const auto& p0(dst[hulldst[i][0]]);
-    const auto& p1(dst[hulldst[i][1]]);
-    const auto& p2(dst[hulldst[i][2]]);
-    const auto  dp0(rmatch.transform(p0));
-    const auto  dp1(rmatch.transform(p1));
-    const auto  dp2(rmatch.transform(p2));
-    for(int l = 0; l < triangles.size(); l ++)
-      for(int ll = 0; ll < 3; ll ++) {
-        const auto dq(triangles[l].p.col(ll));
-        const auto q(match.transform(dq));
-        if((sameSide3(p0, p1, p2, q) &&
-            sameSide3(p1, p2, p0, q) &&
-            sameSide3(p2, p0, p1, q)) ||
-           (sameSide3(dp0, dp1, dp2, dq) &&
-            sameSide3(dp1, dp2, dp0, dq) &&
-            sameSide3(dp2, dp0, dp1, dq)) ) {
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-            {
-              emphs[l * 3 + ll].push_back(hulldst[i][ll]);
-            }
-        }
-      }
-  }
-  for(int i = 0; i < emphs.size(); i ++) if(emphs[i].size()) {
-    Vec3 diff(3);
-    diff[0] = diff[1] = diff[2] = T(0);
-    for(int j = 0; j < emphs[i].size(); j ++)
-      diff += rmatch.transform(dst[emphs[i][j]]) - triangles[i / 3].p.col(i % 3);
+    assert(hulldst[i].size() == 3);
+    Triangles work;
+    for(int j = 0; j < 3; j ++) {
 #if defined(_WITHOUT_EIGEN_)
-    triangles[i / 3].p.setCol(i % 3, triangles[i / 3].p.col(i % 3) + diff * ratio / emphs[i].size());
+      work.p.setCol(j, tdst[hulldst[i][j]]);
 #else
-    triangles[i / 3].p.col(i % 3) += diff * ratio / emphs[i].size();
+      work.p.col(j) = tdst[hulldst[i][j]];
 #endif
+    }
+    work.c = dstimg(max(0, min(int(dstimg.rows() - 1),
+                      int(dst[hulldst[i][0]][0]))),
+                    max(0, min(int(dstimg.cols() - 1),
+                      int(dst[hulldst[i][0]][1]))));
+    tris.push_back(work.solveN());
   }
-  return tilt(dstimg * T(0), triangles, match);
+  return tilt(dstimg * T(0), tris);
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim) {
