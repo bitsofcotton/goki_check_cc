@@ -386,6 +386,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
 
 template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vector<Vec3>& p, const vector<int>& pp) const {
   vector<pair<Vec3, int> > sp;
+  vector<pair<Vec3, int> > sp2;
   T m0(0);
   T m1(0);
   T M0(0);
@@ -417,6 +418,9 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
   sp[sp.size() - 4].first[0] -= T(1);
   sp[sp.size() - 3].first[0] += T(1);
   sort(sp.begin(), sp.end(), less0<pair<Vec3, int> >);
+  sp2.reserve(sp.size());
+  for(int i = 0; i < sp.size(); i ++)
+    sp2.emplace_back(sp[sp.size() - i - 1]);
   vector<Veci3> res0;
   for(int i = 2; i < sp.size(); i ++) {
     Veci3 lres(3);
@@ -438,6 +442,27 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
             abs(sp[lres[2]].first[1] - sp[i].first[1]) ) )
         lres[2] = j;
     res0.emplace_back(lres);
+    lres[0] = lres[1] = lres[2] = i;
+    for(int j = i - 1; 0 <= j; j --)
+      if(sp2[j].first[1] >= sp2[i].first[1] &&
+         (lres[1] == i ||
+          abs(sp2[j].first[1] - sp2[i].first[1]) >
+            abs(sp2[lres[1]].first[1] - sp2[i].first[1]) ) )
+        lres[1] = j;
+    for(int j = i - 1; 0 <= j; j --)
+      if(sp2[j].first[1] <= sp2[i].first[1] &&
+         ! (sp2[j].first[0] == sp2[lres[0]].first[0] &&
+            sp2[j].first[0] == sp2[lres[1]].first[0]) &&
+         ! (sp2[j].first[1] == sp2[lres[0]].first[1] &&
+            sp2[j].first[1] == sp2[lres[1]].first[1]) &&
+         (lres[2] == i ||
+          abs(sp2[j].first[1] - sp2[i].first[1]) >
+            abs(sp2[lres[2]].first[1] - sp2[i].first[1]) ) )
+        lres[2] = j;
+    for(int j = 0; j < lres.size(); j ++)
+      lres[j] = sp.size() - 1 - lres[j];
+    std::swap(lres[0], lres[2]);
+    res0.emplace_back(lres);
   }
   vector<Veci3> res;
   for(int i = 0; i < res0.size(); i ++)
@@ -446,8 +471,13 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
        sp[res0[i][2]].second < p.size()) {
       for(int j = 0; j < res0[i].size(); j ++)
         res0[i][j] = sp[res0[i][j]].second;
+      for(int j = 0; j < res.size(); j ++)
+        if(res[j] == res0[i])
+          goto nofix;
       res.emplace_back(res0[i]);
-  }
+     nofix:
+      ;
+    }
   return res;
 }
 
