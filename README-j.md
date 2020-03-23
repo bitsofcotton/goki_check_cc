@@ -1,11 +1,11 @@
 # Goki Check
-現行のツールセットで提供される画像処理を補うことが目的のライブラリ群です。    
+現行のツールセットで提供される画像処理を補うことが目的のライブラリ群です。
 
 # 使い方
-Makefile を stdc++ を使えるように変更してください。  
+Makefile を libc++ を使えるように変更してください。  
 このプログラムは ascii 形式の ppm ファイルを入出力に使用します。  
-変換の際は、例えばパワルフなツールである https://www.imagemagick.org/ の 'convert from.image -compress none to.ppm' が使用できます。  
 また、速度を担保するには http://eigen.tuxfamily.org/ ライブラリが必要です。
+通常の使用で imagemagick が、動画の作成に ffmpeg が必要です。
 
 # 調整可能なパラメタ
 * enlarge.hh
@@ -33,7 +33,7 @@ Makefile を stdc++ を使えるように変更してください。
 さらに検索中です。
 
 # 状態
-Freeze 前の細かな実装のチェックをしています。  
+Freeze 中です。
 
 # 使い方
     make gokicheck
@@ -47,6 +47,7 @@ Freeze 前の細かな実装のチェックをしています。
     gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck match0   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck col  input.png
@@ -65,6 +66,7 @@ Freeze 前の細かな実装のチェックをしています。
     python test.py ./gokicheck flicker input.png
     python test.py ./gokicheck jps input.png
     python test.py ./gokicheck match input0.png input1.(png|obj)
+    python test.py ./gokicheck match0 input0.png input1.(png|obj)
     python test.py ./gokicheck matcho input0.png input1.(png|obj) match
 
 # ライブラリとしての使い方
@@ -75,32 +77,30 @@ tools.cc を参照してください。また、必要であれば namespace ブ
 https://konbu.azurewebsites.net/ にサンプルの準備中です。  
 
 # Tips
-enlarge は DFT 時の半整数空間から擬似的にとってきています。  
+light は DFT 時の半整数空間から擬似的にとってきています。  
 collect は単純に DFT 微分の後、abs をとってきています。  
 bump は F=&infin; を仮定しています。また、疑似的に傾けた画像に対して擬似的に 2 つのカメラで撮影したと仮定しています。  
-match は z 軸方向まで含めて合致する部分を探します。reDig クラス内部で深度の比率を調節してください。  
-match は片方が稠密な頂点、もう片方が lowPoly された頂点で有る入力を仮定していますが、現在そうなってはいません。
+match は z 軸方向まで含めて合致する部分を探します。reDig クラス内部で深度の比率を調節してください。また、片方が稠密な頂点、もう片方が lowPoly された頂点になっている入力を仮定していますが、現状そうなってはいません。
 
 # 仕様
 filter2ex はもっともらしいバンプマップを返しますが、正しくない場合があります。
-これは、1 枚の画像のみを使用する事と仮定している構造である、もし焦点が合っていればより角が立ってみえる、という構造によるもので、
-ほとんどの場合では複数台のカメラあるいは複数のピントを使えば正しいバンプマップを返すことができます。
+これは、1 枚の画像のみを使用する事と仮定している構造である、もし焦点が合っていればより角が立ってみえる、という構造によるもので、これによると、ある基準の面に対しての z 軸の符号は一意には定まりません。  
+しかし、ほとんどの場合では複数台のカメラあるいは複数のピントを使えば正しいバンプマップを返すことができます。
 (それができない場合には画像や色の解像度が足りないか、鏡など角度によって異なる色を返すものや、散乱やフォグなどの光学的事象がある際です)
 
 また、blender など 3D 編集ソフトへの入力として使用する際には mask0 コマンドでマスクを作ったあともしくは、他でマスクを作り、
 mask コマンドで変換後、filename-mask.obj ファイルを入力に使用してください。
 うまくいくと、blender の場合には scale がとても大きい結果として入力され、G, R, S コマンドで調整したあとに、
-モディファイアで mirror -> solidify -> skin -> remesh などの経路できちんとした片面の結果が得られる可能性があります。
+モディファイアで mirror -> solidify -> skin -> lowpoly などの経路できちんとした片面の結果が得られる可能性があります。
 mirror を裏表にすることにより、もしかするときちんとした両面の結果が得られます。
 また、Rig などとともに使用する際には、z 軸方向に重なりのない入力を使用しないとおかしな結果になります。
 
 match コマンドは深度情報を含めて合致します。その際に、.obj データなどは若干おかしな結果が返ることがあります。
-その場合、objtilt コマンドで射影を生成してから使うとうまくいく場合がありますが、この場合角度がある程度見当がついている
-場合に限ります。より正確に合致するには深度情報の比率を適宜変えて合致してみてください。
+より正確に合致するには深度情報の比率を適宜変えて合致してみてください。
 また、デフォルトでは threshr の値がシビアなので、適宜調整してください。
 
 filter2ex による拡大は大きな画像に対しては比較的安定な画像を返しますが、現行使用されている拡大のアルゴリズムよりは劣ります。
-これは半整数空間の周波数成分を参照しながら、周波数空間をずらすことによって拡大を得ているためです。
+これは半整数空間の周波数成分を参照しながら、色深度を補正しつつ、DFT 拡大を再起的に行うことによって拡大を得ているためです。
 
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
