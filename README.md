@@ -1,11 +1,11 @@
 # Goki Check
-These program aims to get prepared model geometry in A still image in a deterministic way.  
+These program aims to implement one of a complement to ongoing other utilities.
 
 # How to use
 Please touch Makefile for libc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
-To convert image files to raw ppm, it is powerful tool that https://www.imagemagick.org/ with 'convert from.image -compress none to.ppm'.   
 For speed, we need http://eigen.tuxfamily.org/ library.
+We need imagemagick for normaluse, and ffmpeg for making .mp4.
 
 # Parameters
 * enlarge.hh
@@ -34,7 +34,7 @@ By searching with some word that is not common, there exists the article https:/
 Searching the Internet more...
 
 # Status
-Checking details of implementation before to freeze the library.  
+Freezed.
 
 # Usage
     make tools
@@ -48,6 +48,7 @@ Checking details of implementation before to freeze the library.
     gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck col  input.png
@@ -66,6 +67,7 @@ Checking details of implementation before to freeze the library.
     python test.py ./gokicheck flicker input.png
     python test.py ./gokicheck jps input.png
     python test.py ./gokicheck match input0.png input1.(png|obj)
+    python test.py ./gokicheck match0 input0.png input1.(png|obj)
     python test.py ./gokicheck matcho input0.png input1.(png|obj) match
 
 # How to use as library (sample code).
@@ -75,30 +77,28 @@ Please refer tools.cc, and please include with namespace directive (but include 
 https://konbu.azurewebsites.net/ preparing a sample interface working demos.
 
 # Tips
-These program's enlarge is based on pseudo DFT half space plausible one.  
+These program's light is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ graphics, and pseudo-tilt then pseudo-capture 2 of cameras.   
-These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer.  
-These program's match assumes one of vertices is full and another is lowPoly but now, it isn't.
+These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer. And, that assumes one of vertices is full and another is lowPoly but now, it isn't.
 
 # Specification
-filter2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
+filter2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct. And therefore, z-axis sign from some base plane has not to be determinated as unique one.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.  
 
 If we use this program for 3D model input like blender, please make mask with mask0 or another softwares, and convert them
 with mask command, then, please use input-mask.obj . If we are lucky, in the blender example, large scaled input will inputted,
-then G, R, S command adjust, please use modifier as mirror -> solidify -> skin -> remesh , single sided experimental result
+then G, R, S command adjust, please use modifier as mirror -> solidify -> skin -> lowpoly , single sided experimental result
 will shown. And if we use another input instead of mirror, double sided experimental result will shown.
 And if we're using with rig and so on, the existance of z-axis cover harms.
 
-Match matches including z-axis. So around this, if we match with .obj file, we don't have accurate z-axis ratio,
-bugly result returns. If we know angle with projected plane, please tilt with objtilt command and make one-sided result,
-match matches. If we should have correct matches, please configure z-axis ratio in tools.cc via redig.hh .
+Match matches including z-axis. So around this, if we match with .obj file, we don't have accurate z-axis ratio, bugly result returns.
+If we should have correct matches, please configure z-axis ratio in tools.cc via redig.hh .
 matchPartial default threshr is severe, so please configure before to match.
 
 filter2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
-This is because we generate the one with DFT half space plausible ones by shifting frequency space intensities.
+This is because we generate the complement light image with DFT half space plausible ones by shifting frequency space intensities, then, getting recursive enlarged image with DFT.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/

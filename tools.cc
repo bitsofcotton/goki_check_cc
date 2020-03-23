@@ -77,6 +77,7 @@ using std::endl;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck light   <n_recursive> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck bump    <delta_pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
