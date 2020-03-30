@@ -279,6 +279,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #else
       result = (seed(t0.rows(), true) * b1).real().template cast<T>() * sqrt(T(t0.rows()));
 #endif
+      result = compute(result, LOGSCALE);
     }
     break;
   case EXTEND_Y:
