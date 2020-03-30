@@ -258,9 +258,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         bool flg(true);
         for(int j = 0; j < t0.cols(); j ++)
           flg = flg &&
-            (t0(i, j) != T(0) && t0(t0.rows() - i - 1, j) != T(0) &&
-             abs(result(i, j)) < abs(result(0, j)) &&
-             abs(result(t0.rows() - i - 1, j)) < abs(result(t0.rows() - 1, j)));
+            t0(i, j) != T(0) && t0(t0.rows() - i - 1, j) != T(0);
         if(flg) {
           ii = i;
           break;
@@ -281,6 +279,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #else
       result = (seed(t0.rows(), true) * b1).real().template cast<T>() * sqrt(T(t0.rows()));
 #endif
+      result = compute(result, LOGSCALE);
     }
     break;
   case EXTEND_Y:
