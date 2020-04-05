@@ -19,6 +19,7 @@ using std::sort;
 using std::vector;
 using std::max;
 using std::min;
+using std::abs;
 template <typename T> class reDig;
 
 // This class is NOT thread safe.

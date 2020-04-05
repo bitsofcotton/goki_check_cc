@@ -17,6 +17,7 @@ template <typename T> class reDig;
 
 using std::min;
 using std::max;
+using std::abs;
 using std::cerr;
 using std::endl;
 using std::flush;
