@@ -1,3 +1,34 @@
+/*
+BSD 3-Clause License
+
+Copyright (c) 2019-2020, bitsofcotton
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 #if !defined(_INTEGER_FLOAT_)
 
 using std::move;
@@ -66,8 +97,6 @@ public:
 */
 
   T e[2];
-private:
-  inline int getMSB() const;
 };
 
 template <typename T, int bits> inline DUInt<T,bits>::DUInt() {
@@ -163,7 +192,7 @@ template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator * 
 template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator *= (const DUInt<T,bits>& src) {
   const auto cache(*this);
   *this ^= *this;
-  for(int i = 0; i < bits; i ++)
+  for(int i = 0; i < 2 * bits; i ++)
     if(int(src >> i) & 1)
       *this += cache << i;
   // N.B.
@@ -183,87 +212,22 @@ template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator / 
   return work /= src;
 }
 
-template <typename T, int bits> inline int DUInt<T,bits>::getMSB() const {
-  int shift(- 1);
-  if(! e[1]) {
-    if(! e[0])
-      return shift;
-    for(int i = bits - 1; 0 <= i; i --)
-      if(int(e[0] >> i) & 1) {
-        shift = i;
-        break;
-      }
-    return shift;
-  }
-  for(int i = bits - 1; 0 <= i; i --)
-    if(int(e[1] >> i) & 1) {
-      shift = i + bits;
-      break;
-    }
-  return shift;
-}
-
 template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator /= (const DUInt<T,bits>& src) {
-  const static auto hbits(bits >> 1);
-  const static auto lmask((T(1) << hbits) - T(1));
-  const auto shift(src.getMSB());
-  if(shift < 0)
+  const static DUInt<T,bits> one(1);
+  if(! src)
     throw "Zero division";
   if(! *this)
     return *this;
-  const auto dblocks(shift / hbits + 1);
-  const auto lshift(dblocks * hbits - shift - 1);
-  assert(0 <= lshift && lshift < hbits && !((shift + lshift + 1) % hbits));
-  const auto dd(src << lshift);
-  const auto dlast((dblocks - 1) & 1 ? dd.e[(dblocks - 1) >> 1] >> hbits
-                                     : dd.e[(dblocks - 1) >> 1] &  lmask);
-  assert(dlast);
-        auto ltshift(getMSB());
-  assert(0 <= ltshift);
-  ltshift = bits * 2 - 1 - ltshift;
-  *this <<= ltshift;
-  assert(*this);
-  // N.B.
-  //   block division with better condition.
-  //   de[0] ... de[n], de[n] = 0...1..., each de uses half of space.
-  //                                ^ hbits - 1
-  //   dlast := de[n].
-  //   res = *this / (src == dd >> lshift ~= (dlast << ...))
-  auto res(src ^ src);
-  auto div(res);
-  auto d(e[0] ^ e[0]);
-  for(int i = 2; - 1 <= i; i --) {
-    switch(i) {
-    case - 1:
-      d =  (e[0] << hbits) / dlast;
-      break;
-    case 0:
-      d =  (e[0]) / dlast;
-      break;
-    case 1:
-      d = ((e[0] >> hbits) | (e[1] << hbits)) / dlast;
-      break;
-    case 2:
-      d =  (e[1]) / dlast;
-      break;
-    default:
-      assert(0 && "Should not be reached.");
+  auto cache(*this);
+  *this ^= *this;
+  for(int i = 2 * bits - 1; 0 <= i; i --)
+    if((cache >> i) >= src) {
+      *this |= one << i;
+      cache -= src << i;
     }
-    // N.B.
-    //   d(0)  := original.
-    //   d(k+1) = (d << tshift) * src + r + d(k) == orig.
-    //   ( |r| < |src|, ((d << tshift) * src) <= orig - d(k) )
-    const auto tshift(hbits * i + lshift - (dblocks - 1) * hbits);
-    div = (DUInt<T,bits>(d) * src) << tshift;
-    for(int j = 0; j < 4 && ! (div <= *this); j ++) {
-      -- d;
-      div -= src << tshift;
-    }
-    assert(div <= *this);
-    *this -= div;
-    res   += DUInt<T,bits>(d) << tshift;
-  }
-  return *this = (res >>= ltshift);
+  assert(cache < src);
+  return *this;
+  // N.B. if we works with newton's method, better speed will be gained.
 }
 
 template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator %  (const DUInt<T,bits>& src) const {
