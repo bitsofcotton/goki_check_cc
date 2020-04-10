@@ -410,7 +410,6 @@ int main(int argc, const char* argv[]) {
       sl >> inout[inout.size() - 1];
     }
     simpleFile<num_t>::Mat buf(std::atoi(argv[2]), std::atoi(argv[2]));
-    num_t M(0);
     const auto dft(filter.seed(buf.rows(), false));
     const auto idft(filter.seed(buf.rows(), true));
     for(int i = 0; i <= inout.size() / buf.rows() / buf.rows(); i ++) {
@@ -450,13 +449,13 @@ int main(int argc, const char* argv[]) {
 #endif
       }
       for(int j = 0; j < buf2.rows(); j ++)
-        for(int k = 0; k < buf2.cols(); k ++) {
-          M = max(M, abs(buf2(j, k)));
+        for(int k = 0; k < buf2.cols(); k ++)
           inout[i * buf.rows() * buf.rows() + k * buf.rows() + j] = buf2(j, k);
-        }
     }
+    auto Minout(inout);
+    std::sort(Minout.begin(), Minout.end());
     for(int i = 0; i < inout.size(); i ++)
-      std::cout << inout[i] / M << "\r" << std::endl;
+      std::cout << inout[i] / Minout[Minout.size() - Minout.size() / buf.rows() / buf.rows()] << "\r" << std::endl;
   } else {
     usage();
     return - 1;
