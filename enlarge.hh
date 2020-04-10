@@ -303,7 +303,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #pragma omp for schedule(static, 1)
 #endif
       for(int j = 0; j < plen; j ++) {
-        P0<T> p(data.rows(), 2, j + 1);
+        P0<T> p(data.rows(), j + 1);
         for(int i = 0; i < data.cols(); i ++) {
           result(data.rows() + j + plen, i) = p.next(data.col(i));
           result(plen - j - 1, i) = p.next(rdata.col(i));
