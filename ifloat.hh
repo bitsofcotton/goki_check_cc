@@ -185,16 +185,11 @@ template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator -=
 }
 
 template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator *  (const DUInt<T,bits>& src) const {
-  auto result(*this);
-  return result *= src;
-}
-
-template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator *= (const DUInt<T,bits>& src) {
-  const auto cache(*this);
-  *this ^= *this;
+  DUInt<T,bits> result;
+  result ^= result;
   for(int i = 0; i < 2 * bits; i ++)
     if(int(src >> i) & 1)
-      *this += cache << i;
+      result += *this << i;
   // N.B.
   //   If we work with multiply with table and summing up with simple window,
   //   and the parallel condition, we can reduce better:
@@ -204,7 +199,11 @@ template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator *=
   //     we get [z1, ... zn] == [x1*y1, ..., sum_i+j=k(x_i*y_j), ..., xn*yn],
   //     then sum-up with certain bit adder and fixing one by one:
   //     r1 := x1*y1, s1 := ((x1*y1) >> 1) + z2, r2 := s2 & 1, ... and so on.
-  return *this;
+  return result;
+}
+
+template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator *= (const DUInt<T,bits>& src) {
+  return *this = *this * src;
 }
 
 template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator /  (const DUInt<T,bits>& src) const {
@@ -371,7 +370,7 @@ template <typename T, int bits> inline bool      DUInt<T,bits>::operator >= (con
 }
 
 template <typename T, int bits> inline bool      DUInt<T,bits>::operator == (const DUInt<T,bits>& src) const {
-  return ! (*this - src);
+  return ! (*this ^ src);
 }
 
 template <typename T, int bits> inline bool      DUInt<T,bits>::operator != (const DUInt<T,bits>& src) const {

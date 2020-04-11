@@ -155,10 +155,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       camera[1] = T(1);
       assert(T(0) < dratio);
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
+      const int  invdr(T(1) / dratio);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int zi = 0; T(zi) < T(1) / dratio; zi ++) {
+      for(int zi = 0; zi <= invdr; zi ++) {
         Mat A(data.rows(), data.cols());
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
@@ -178,9 +179,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             A.row(i) += data.row(getImgPt(i + int(y0), data.rows())) * Dop0[j];
         }
 #if defined(_OPENMP)
-#pragma omp atomic
+#pragma omp critical
 #endif
-        result += compute(A, ABS);
+        {
+          result += compute(A, ABS);
+        }
       }
       // N.B. log(|average(d_k C * exp(z_k))| / |dC|) == result.
       const auto dC(compute(data, COLLECT_Y));
@@ -213,10 +216,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       camera[0] = T(0);
       camera[1] = T(20);
       auto work(result);
+      const int invdr(T(1) / dratio);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int zi = 0; T(zi) < T(1) / dratio; zi ++) {
+      for(int zi = 0; zi <= invdr; zi ++) {
         Mat A(data0.rows(), data0.cols());
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
@@ -249,9 +253,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           for(int j = 0; j < C.cols(); j ++)
             lres(i, j) /= C(i, j);
 #if defined(_OPENMP)
-#pragma omp atomic
+#pragma omp critical
 #endif
-        result += lres;
+        {
+          result += lres;
+        }
       }
       result = compute(compute(result, BCLIP), LOGSCALE) * sqrt(dratio);
       int ii(0);

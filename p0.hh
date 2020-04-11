@@ -70,7 +70,7 @@ template <typename T> inline T P0<T>::next(const Vec& in) {
   auto herr(lhpf(in.size(), true) * in);
   while(T(1) / T(200) / T(200) < herr.dot(herr)) {
     for(int i = 0; i < herr.size(); i ++)
-      if(i % 2) herr[i] *= - T(1);
+      if(i % 2) herr[i] = - herr[i];
     if(herr.size() % 2)
       herr  = - herr;
     result += pred.dot(herr);
