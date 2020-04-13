@@ -45,7 +45,7 @@ private:
   Vec pred;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size, const bool& integrate);
-  const Mat&  lhpf(const int& size, const bool& hpf);
+  const Mat&  lpf(const int& size);
   const Vec&  nextTaylor(const int& size, const int& step);
   const T&    Pi() const;
   const complex<T>& J() const;
@@ -57,7 +57,7 @@ template <typename T> inline P0<T>::P0() {
 
 template <typename T> inline P0<T>::P0(const int& range, const int& look) {
   assert(1 < range && 0 < look);
-  pred = lhpf(range, false).transpose() * nextTaylor(range, look);
+  pred = lpf(range).transpose() * nextTaylor(range, look);
 }
 
 template <typename T> inline P0<T>::~P0() {
@@ -66,17 +66,7 @@ template <typename T> inline P0<T>::~P0() {
 
 template <typename T> inline T P0<T>::next(const Vec& in) {
   assert(pred.size() == in.size());
-  auto result(pred.dot(in));
-  auto herr(lhpf(in.size(), true) * in);
-  while(T(1) / T(200) / T(200) < herr.dot(herr)) {
-    for(int i = 0; i < herr.size(); i ++)
-      if(i % 2) herr[i] = - herr[i];
-    if(herr.size() % 2)
-      herr  = - herr;
-    result += pred.dot(herr);
-    herr    = lhpf(in.size(), true) * herr;
-  }
-  return result;
+  return pred.dot(in);
 }
 
 template <typename T> const T& P0<T>::Pi() const {
@@ -152,31 +142,18 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size, co
   return d;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::lhpf(const int& size, const bool& hpf) {
+template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size) {
   assert(0 < size);
   static vector<Mat> L;
-  static vector<Mat> H;
   if(L.size() <= size)
     L.resize(size + 1, Mat());
-  if(H.size() <= size)
-    H.resize(size + 1, Mat());
-  if((! hpf) && L[size].rows() == size && L[size].cols() == size)
+  if(L[size].rows() == size && L[size].cols() == size)
     return L[size];
-  if(   hpf  && H[size].rows() == size && H[size].cols() == size)
-    return H[size];
   auto& l(L[size]);
-  auto& h(H[size]);
   auto  ll(seed(size, false));
-  auto  hh(seed(size, false));
-  for(int i = 0; i < size / 2; i ++)
-    hh.row(i) *= complex<T>(T(0));
   for(int i = size / 2; i < size; i ++)
     ll.row(i) *= complex<T>(T(0));
-  l = (seed(size, true) * ll).template real<T>();
-  h = (seed(size, true) * hh).template real<T>();
-  if(hpf)
-    return h;
-  return l;
+  return l = (seed(size, true) * ll).template real<T>();
 }
 
 template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& size, const int& step) {
