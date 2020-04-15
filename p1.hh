@@ -66,7 +66,7 @@ public:
   inline P1();
   inline P1(const int& statlen, const int& varlen, const bool& addconst = false);
   inline ~P1();
-  const Vec& next(const Vec& in, const T& seterr = T(1), const int& step = 1, const bool& vanish = false);
+  const Vec& next(const Vec& in, const int& step = 1, const bool& vanish = false);
   T    lasterr;
 private:
   Vec  fvec;
@@ -127,152 +127,142 @@ template <typename T> inline P1<T>::~P1() {
   ;
 }
 
-template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in, const T& seterr, const int& step, const bool& vanish) {
+template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in, const int& step, const bool& vanish) {
   assert(in.size() == statlen + varlen * step);
   T MM(0);
   for(int i = 0; i < statlen; i ++) {
     for(int j = 0; j < varlen; j ++)
       MM = max(MM, abs(A(i, j) = in[i + (varlen - j - 1) * step + (vanish ? step : 0)]));
-    if(vanish)
-      b[i] = T(0);
-    else
-      MM = max(MM, abs(b[i] = in[i + varlen * step]));
+    MM = max(MM, abs(b[i] = vanish ? T(0) : in[i + varlen * step]));
   }
   for(int i = 0; i < statlen; i ++) {
     if(addconst) A(i, varlen) = MM;
     A.row(statlen + i) = - A.row(i);
     b[statlen + i]     = - b[i];
   }
-  A(statlen * 2, 0) = b[statlen * 2] = - T(1);
   A /= MM;
   b /= MM;
-  try {
-    for(int i = 0; i < fvec.size(); i ++)
-      fvec[i] = T(0);
-    for(int i = 0; i < statlen - varlen - 1; i ++) {
-       lasterr = T(statlen * 2 + 1);
-       int lastidx(- 1);
-       for(auto ratio0(lasterr / T(2));
-               threshold_inner <= ratio0;
-               ratio0 /= T(2)) {
-        const auto ratio(lasterr - ratio0);
-        int n_fixed;
-        T   ratiob;
-        T   normb0;
-        Vec rvec;
-        Vec on;
-        Vec deltab;
-        Vec mbb;
-        Vec bb;
-        for(int i = 0; i < Pt.rows(); i ++)
-          for(int j = 0; j < Pt.cols(); j ++)
-            Pt(i, j) = T(0);
-        for(int i = 0; i < A.cols(); i ++) {
-          const auto Atrowi(A.col(i));
-          const auto work(Atrowi - Pt.projectionPt(Atrowi));
-          Pt.row(i) = work / sqrt(work.dot(work));
-        }
-        const auto R(Pt * A);
-        if(A.cols() == A.rows()) {
-          rvec = Pt * b;
-          goto pnext;
-        }
+  A(statlen * 2, 0) = b[statlen * 2] = - T(1);
+  for(int i = 0; i < fvec.size(); i ++)
+    fvec[i] = T(0);
+  lasterr = A.rows() + A.cols();
+  for(int i = 0; i < Pt.rows(); i ++)
+    for(int j = 0; j < Pt.cols(); j ++)
+      Pt(i, j) = T(0);
+  for(int i = 0; i < A.cols(); i ++) {
+    const auto Atrowi(A.col(i));
+    const auto work(Atrowi - Pt.projectionPt(Atrowi));
+    Pt.row(i) = work / sqrt(work.dot(work));
+  }
+  const auto R(Pt * A);
+  for(auto ratio0(lasterr / T(2));
+           threshold_inner <= ratio0;
+           ratio0 /= T(2)) {
+    const auto ratio(lasterr - ratio0);
+    int n_fixed;
+    T   ratiob;
+    T   normb0;
+    Vec rvec;
+    Vec on;
+    Vec deltab;
+    Vec mbb;
+    Vec bb;
+    if(A.cols() == A.rows()) {
+      rvec = Pt * b;
+      goto pnext;
+    }
 #if defined(_OPENMP)
 #pragma omp simd
 #endif
-        for(int i = 0; i < one.size(); i ++)
-          fix[i]  = false;
-        bb = b - Pt.projectionPt(b);
-        if(sqrt(bb.dot(bb)) <= threshold_feas * sqrt(b.dot(b))) {
-          for(int i = 0; i < bb.size(); i ++)
-            bb[i] = sqrt(Pt.col(i).dot(Pt.col(i)));
-          const auto bbb(bb - Pt.projectionPt(bb));
-          if(sqrt(bbb.dot(bbb)) <= threshold_feas * sqrt(bb.dot(bb))) {
-            rvec  = Pt * (b - bb - bbb);
-            goto pnext;
-          }
-          bb = bbb;
-        }
-        mbb    = - bb;
-        normb0 = sqrt(mbb.dot(mbb));
-        Pverb  = Pt;
-        for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
+    for(int i = 0; i < one.size(); i ++)
+      fix[i]  = false;
+    bb = b - Pt.projectionPt(b);
+    if(sqrt(bb.dot(bb)) <= threshold_feas * sqrt(b.dot(b))) {
+      for(int i = 0; i < bb.size(); i ++)
+        bb[i] = sqrt(Pt.col(i).dot(Pt.col(i)));
+      const auto bbb(bb - Pt.projectionPt(bb));
+      if(sqrt(bbb.dot(bbb)) <= threshold_feas * sqrt(bb.dot(bb))) {
+        rvec  = Pt * (b - bb - bbb);
+        goto pnext;
+      }
+      bb = bbb;
+    }
+    mbb    = - bb;
+    normb0 = sqrt(mbb.dot(mbb));
+    Pverb  = Pt;
+    for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
 #if defined(_OPENMP)
 #pragma omp simd
 #endif
-          for(int j = 0; j < Pverb.cols(); j ++) {
-            norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
-            checked[j] = fix[j] || norm[j] <= threshold_p0;
-          }
-          auto mb(mbb + norm * normb0 * ratio);
-          mb -= (deltab = Pverb.projectionPt(mb));
-          mb /= (ratiob = sqrt(mb.dot(mb)));
-          on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
-          int fidx(0);
-          for( ; fidx < on.size(); fidx ++)
-            if(!checked[fidx])
-              break;
-          for(int j = fidx + 1; j < on.size(); j ++)
-            if(!checked[j] && on[fidx] / norm[fidx] < on[j] / norm[j])
-              fidx = j;
-          if(fidx >= one.size() || on[fidx] / norm[fidx] <= threshold_inner) {
-            if(fidx < one.size())
-              on /= sqrt(norm.dot(norm));
-            if(one.size() <= fidx || n_fixed < Pverb.rows() - 1) {
-              n_fixed --;
-              break;
-            }
-          }
-          orth = Pverb.col(fidx);
-          const auto norm2orth(orth.dot(orth));
-          const auto mbb0(mbb[fidx]);
+      for(int j = 0; j < Pverb.cols(); j ++) {
+        norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
+        checked[j] = fix[j] || norm[j] <= threshold_p0;
+      }
+      auto mb(mbb + norm * normb0 * ratio);
+      mb -= (deltab = Pverb.projectionPt(mb));
+      mb /= (ratiob = sqrt(mb.dot(mb)));
+      on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
+      int fidx(0);
+      for( ; fidx < on.size(); fidx ++)
+        if(!checked[fidx])
+          break;
+      for(int j = fidx + 1; j < on.size(); j ++)
+        if(!checked[j] && on[fidx] / norm[fidx] < on[j] / norm[j])
+          fidx = j;
+      if(fidx >= one.size() || on[fidx] / norm[fidx] <= threshold_inner) {
+        if(fidx < one.size())
+          on /= sqrt(norm.dot(norm));
+        if(one.size() <= fidx || n_fixed < Pverb.rows() - 1) {
+          n_fixed --;
+          break;
+        }
+      }
+      orth = Pverb.col(fidx);
+      const auto norm2orth(orth.dot(orth));
+      const auto mbb0(mbb[fidx]);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-          for(int j = 0; j < Pverb.cols(); j ++) {
-            const auto work(Pverb.col(j).dot(orth) / norm2orth);
-            Pverb.setCol(j, Pverb.col(j) - orth * work);
-            mbb[j] -= mbb0 * work;
-          }
-          mbb[fidx] = T(0);
-          fix[fidx] = true;
-        }
-        if(n_fixed == Pt.rows()) {
-          int j(0);
-          for(int i = 0; i < Pt.cols() && j < f.size(); i ++)
-            if(fix[i]) {
-              const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i)) + b[i] * b[i]));
-              F.row(j) = Pt.col(i) / lratio;
-              f[j]     = b[i]      / lratio + ratio;
-              j ++;
-            }
-          assert(j == f.size());
-          rvec = F.solve(f);
-        } else
-          rvec = Pt * (on * ratiob + deltab + b);
-       pnext:
-        SimpleVector<T> err0(Pt.cols());
-        for(int i = 0; i < err0.size(); i ++)
-          err0[i] = Pt.col(i).dot(rvec);
-        auto err(err0 - b - one * ratio);
-        int  lidx(- 1);
-        T    lerr(0);
-        for(int i = 0; i < b.size(); i ++)
-          if(err[i] <= T(0)) err[i] = T(0);
-          else if(lerr < err[i]) { lidx = i; lerr = err[i]; }
-        if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0))) {
-          lasterr -= ratio0;
-          fvec     = R.solve(rvec);
-          lastidx  = lidx;
-        }
+      for(int j = 0; j < Pverb.cols(); j ++) {
+        const auto work(Pverb.col(j).dot(orth) / norm2orth);
+        Pverb.setCol(j, Pverb.col(j) - orth * work);
+        mbb[j] -= mbb0 * work;
       }
-      if(lasterr < seterr || lastidx < 0 || statlen * 2 <= lastidx)
-        break;
-      A.row( lastidx % statlen) *= T(0);
-      A.row((lastidx % statlen) + statlen) *= T(0);
+      mbb[fidx] = T(0);
+      fix[fidx] = true;
     }
-  } catch (const char* e) {
-    fvec *= T(0);
+    if(n_fixed == Pt.rows()) {
+      int j(0);
+      for(int i = 0; i < Pt.cols() && j < f.size(); i ++)
+        if(fix[i]) {
+          const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i)) + b[i] * b[i]));
+          F.row(j) = Pt.col(i) / lratio;
+          f[j]     = b[i]      / lratio + ratio;
+          j ++;
+        }
+      assert(j == f.size());
+      try {
+        rvec = F.solve(f);
+      } catch (const char* e) {
+        continue;
+      }
+    } else
+      rvec = Pt * (on * ratiob + deltab + b);
+   pnext:
+    SimpleVector<T> err0(Pt.cols());
+    for(int i = 0; i < err0.size(); i ++)
+      err0[i] = Pt.col(i).dot(rvec);
+    auto err(err0 - b - one * ratio);
+    for(int i = 0; i < b.size(); i ++)
+      if(err[i] <= T(0)) err[i] = T(0);
+    if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0))) {
+      try {
+        fvec = R.solve(rvec);
+      } catch(const char* e) {
+        continue;
+      }
+      lasterr -= ratio0;
+    }
   }
   return fvec;
 }

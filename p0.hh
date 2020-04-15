@@ -38,7 +38,7 @@ public:
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
-  inline P0(const int& range, const int& look = 1);
+  inline P0(const int& range);
   inline ~P0();
   inline T next(const Vec& in);
   const Mat&  lpf(const int& size);
@@ -55,16 +55,15 @@ template <typename T> inline P0<T>::P0() {
   ;
 }
 
-template <typename T> inline P0<T>::P0(const int& range, const int& look) {
-  assert(1 < range && 0 < look);
+template <typename T> inline P0<T>::P0(const int& range) {
+  assert(1 < range);
+  const auto  look(1);
   // with convolution meaning, exchange diff and integrate.
   const auto& reverse(nextTaylor(range, - look));
   pred.resize(reverse.size());
   for(int i = 0; i < reverse.size(); i ++)
     pred[i] = reverse[reverse.size() - 1 - i];
-  pred += nextTaylor(range, look);
-  pred /= T(2);
-  pred  = lpf(range).transpose() * pred;
+  pred = lpf(range).transpose() * ((pred + nextTaylor(range, look)) / T(2));
 }
 
 template <typename T> inline P0<T>::~P0() {
@@ -151,42 +150,37 @@ template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size) {
 }
 
 template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& size, const int& step) {
-  assert(0 < size && step);
-  static vector<vector<Vec> > P;
-  static vector<vector<Vec> > M;
+  assert(0 < size && (step == 1 || step == - 1));
+  static vector<Vec> P;
+  static vector<Vec> M;
   if(P.size() <= size)
-    P.resize(size + 1, vector<Vec>());
+    P.resize(size + 1, Vec());
   if(M.size() <= size)
-    M.resize(size + 1, vector<Vec>());
-  const auto astep(abs(step));
-  if(P[size].size() <= astep)
-    P[size].resize(astep + 1, Vec());
-  if(M[size].size() <= astep)
-    M[size].resize(astep + 1, Vec());
-  if(0 < step && P[size][astep].size() == size)
-    return P[size][astep];
-  if(step < 0 && M[size][astep].size() == size)
-    return M[size][astep];
-        auto& p(P[size][astep]);
-        auto& m(M[size][astep]);
+    M.resize(size + 1, Vec());
+  if(0 < step && P[size].size() == size)
+    return P[size];
+  if(step < 0 && M[size].size() == size)
+    return M[size];
+        auto& p(P[size]);
+        auto& m(M[size]);
   const auto& D(diff(size));
-        auto  ddm(D * T(- astep));
-        auto  ddp(D * T(  astep));
+        auto  ddm(D);
+        auto  ddp(D);
   p.resize(size);
   for(int i = 0; i < p.size(); i ++)
     p[i] = T(0);
   m = p;
-  m[0] = T(1);
   p[p.size() - 1] = T(1);
+  m[0] = T(1);
   for(int i = 2; 0 <= i; i ++) {
-    const auto bm(m);
     const auto bp(p);
-    m += ddm.row(0);
+    const auto bm(m);
     p += ddp.row(ddp.rows() - 1);
+    m += ddm.row(0);
     if(bm == m && bp == p)
       break;
-    ddm = (D * ddm) * (- T(astep) / T(i));
-    ddp = (D * ddp) * (  T(astep) / T(i));
+    ddp = (D * ddp) * (  T(1) / T(i));
+    ddm = (D * ddm) * (- T(1) / T(i));
   }
   if(0 < step)
     return p;
