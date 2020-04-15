@@ -299,7 +299,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + plen) = data.row(i);
-      const auto cdata(compute(data, BCLIP));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -325,7 +324,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             ridata(i, k) = T(1) / ddata(i, k);
           }
         for(int i = 0; i < data.cols(); i ++) {
-          P0<T> p(data.rows() / (j + 1), 1);
           result(data.rows() + j + plen, i) = (p.next(fdata.col(i)) + T(1) / p.next(fidata.col(i))) / T(2);
           result(plen - j - 1, i) = (p.next(rdata.col(i)) + T(1) / p.next(ridata.col(i))) / T(2);
         }
