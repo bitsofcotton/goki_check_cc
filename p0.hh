@@ -41,11 +41,11 @@ public:
   inline P0(const int& range, const int& look = 1);
   inline ~P0();
   inline T next(const Vec& in);
+  const Mat&  lpf(const int& size);
 private:
   Vec pred;
   const MatU& seed(const int& size, const bool& idft);
-  const Mat&  diff(const int& size, const bool& integrate);
-  const Mat&  lpf(const int& size);
+  const Mat&  diff(const int& size);
   const Vec&  nextTaylor(const int& size, const int& step);
   const T&    Pi() const;
   const complex<T>& J() const;
@@ -57,7 +57,14 @@ template <typename T> inline P0<T>::P0() {
 
 template <typename T> inline P0<T>::P0(const int& range, const int& look) {
   assert(1 < range && 0 < look);
-  pred = lpf(range).transpose() * nextTaylor(range, look);
+  // with convolution meaning, exchange diff and integrate.
+  const auto& reverse(nextTaylor(range, - look));
+  pred.resize(reverse.size());
+  for(int i = 0; i < reverse.size(); i ++)
+    pred[i] = reverse[reverse.size() - 1 - i];
+  pred += nextTaylor(range, look);
+  pred /= T(2);
+  pred  = lpf(range).transpose() * pred;
 }
 
 template <typename T> inline P0<T>::~P0() {
@@ -106,40 +113,27 @@ template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size, c
   return edft;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size, const bool& integrate) {
+template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
   assert(0 < size);
   static vector<Mat> D;
-  static vector<Mat> I;
   if(D.size() <= size)
     D.resize(size + 1, Mat());
-  if(I.size() <= size)
-    I.resize(size + 1, Mat());
-  if((!integrate) && D[size].rows() == size && D[size].cols() == size)
+  if(D[size].rows() == size && D[size].cols() == size)
     return D[size];
-  if(  integrate  && I[size].rows() == size && I[size].cols() == size)
-    return I[size];
   auto& d(D[size]);
-  auto& i(I[size]);
   d.resize(size, size);
-  i.resize(size, size);
   auto  DD(seed(size, false));
   DD.row(0) *= complex<T>(T(0));
-  auto  II(DD);
   T nd(0);
   T ni(0);
   for(int i = 1; i < DD.rows(); i ++) {
     const auto phase(- J() * T(2) * Pi() * T(i) / T(DD.rows()));
     const auto phase2(complex<T>(T(1)) / phase);
     DD.row(i) *= phase;
-    II.row(i) /= phase;
     nd += abs(phase)  * abs(phase);
     ni += abs(phase2) * abs(phase2);
   }
-  d = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1) / (nd * ni)));
-  i = (seed(size, true) * II).template real<T>() * sqrt(sqrt(T(II.rows() - 1) / (nd * ni)));
-  if(integrate)
-    return i;
-  return d;
+  return d = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1) / (nd * ni)));
 }
 
 template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size) {
@@ -157,29 +151,46 @@ template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size) {
 }
 
 template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& size, const int& step) {
-  assert(0 < size);
-  static vector<vector<Vec> > ntayl;
-  if(ntayl.size() <= size)
-    ntayl.resize(size + 1, vector<Vec>());
-  if(ntayl[size].size() <= step)
-    ntayl[size].resize(step + 1, Vec());
-  if(ntayl[size][step].size() == size)
-    return ntayl[size][step];
-        auto& v(ntayl[size][step]);
-  const auto& D(diff(size, false));
-        auto  dd(D * T(step));
-  v.resize(size);
-  for(int i = 0; i < v.size() - 1; i ++)
-    v[i] = T(0);
-  v[v.size() - 1] = T(1);
+  assert(0 < size && step);
+  static vector<vector<Vec> > P;
+  static vector<vector<Vec> > M;
+  if(P.size() <= size)
+    P.resize(size + 1, vector<Vec>());
+  if(M.size() <= size)
+    M.resize(size + 1, vector<Vec>());
+  const auto astep(abs(step));
+  if(P[size].size() <= astep)
+    P[size].resize(astep + 1, Vec());
+  if(M[size].size() <= astep)
+    M[size].resize(astep + 1, Vec());
+  if(0 < step && P[size][astep].size() == size)
+    return P[size][astep];
+  if(step < 0 && M[size][astep].size() == size)
+    return M[size][astep];
+        auto& p(P[size][astep]);
+        auto& m(M[size][astep]);
+  const auto& D(diff(size));
+        auto  ddm(D * T(- astep));
+        auto  ddp(D * T(  astep));
+  p.resize(size);
+  for(int i = 0; i < p.size(); i ++)
+    p[i] = T(0);
+  m = p;
+  m[0] = T(1);
+  p[p.size() - 1] = T(1);
   for(int i = 2; 0 <= i; i ++) {
-    const auto bv(v);
-    v += dd.row(dd.rows() - 1);
-    if(bv == v)
+    const auto bm(m);
+    const auto bp(p);
+    m += ddm.row(0);
+    p += ddp.row(ddp.rows() - 1);
+    if(bm == m && bp == p)
       break;
-    dd = (D * dd) * (T(step) / T(i));
+    ddm = (D * ddm) * (- T(astep) / T(i));
+    ddp = (D * ddp) * (  T(astep) / T(i));
   }
-  return v;
+  if(0 < step)
+    return p;
+  return m;
 }
 
 #define _P0_

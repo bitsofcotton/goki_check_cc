@@ -299,20 +299,31 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + plen) = data.row(i);
+      const auto cdata(compute(data, BCLIP));
+      Mat idata(data.rows(), data.cols());
       Mat rdata(data.rows(), data.cols());
+      Mat irdata(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
-        rdata.row(data.rows() - 1 - i) = data.row(i);
+        for(int j = 0; j < data.cols(); j ++)
+          idata(i, j) = T(1) / cdata(i, j);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < data.rows(); i ++) {
+        rdata.row( data.rows() - 1 - i) = data.row(i);
+        irdata.row(data.rows() - 1 - i) = idata.row(i);
+      }
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int j = 0; j < plen; j ++) {
         P0<T> p(data.rows(), j + 1);
         for(int i = 0; i < data.cols(); i ++) {
-          result(data.rows() + j + plen, i) = p.next(data.col(i));
-          result(plen - j - 1, i) = p.next(rdata.col(i));
+          result(data.rows() + j + plen, i) = (p.next(data.col(i)) + T(1) / p.next(idata.col(i))) / T(2);
+          result(plen - j - 1, i) = (p.next(rdata.col(i)) + T(1) / p.next(irdata.col(i))) / T(2);
         }
       }
     }
