@@ -300,30 +300,38 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + plen) = data.row(i);
       const auto cdata(compute(data, BCLIP));
-      Mat idata(data.rows(), data.cols());
-      Mat rdata(data.rows(), data.cols());
-      Mat irdata(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < data.cols(); j ++)
-          idata(i, j) = T(1) / cdata(i, j);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.rows(); i ++) {
-        rdata.row( data.rows() - 1 - i) = data.row(i);
-        irdata.row(data.rows() - 1 - i) = idata.row(i);
-      }
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int j = 0; j < plen; j ++) {
-        P0<T> p(data.rows(), j + 1);
+        P0<T> p(data.rows() / (j + 1), 1);
+        Mat fdata(data.rows() / (j + 1), data.cols());
+        Mat fidata(data.rows() / (j + 1), data.cols());
+        Mat rdata(data.rows() / (j + 1), data.cols());
+        Mat ridata(data.rows() / (j + 1), data.cols());
+        for(int i = 0; i < fdata.rows(); i ++) {
+          for(int k = 0; k < fdata.cols(); k ++)
+            fdata(fdata.rows() - i - 1, k) = rdata(rdata.rows() - i - 1, k) = T(0);
+          for(int k = 0; k < j + 1; k ++) {
+            fdata.row(fdata.rows() - i - 1) += data.row(data.rows() - 1 - i * (j + 1) - k);
+            rdata.row(fdata.rows() - i - 1) += data.row(i * (j + 1) + k);
+          }
+        }
+        const auto cdata(compute(fdata, BCLIP));
+        const auto ddata(compute(rdata, BCLIP));
+        for(int i = 0; i < fdata.rows(); i ++)
+          for(int k = 0; k < fdata.cols(); k ++) {
+            fidata(i, k) = T(1) / cdata(i, k);
+            ridata(i, k) = T(1) / ddata(i, k);
+          }
         for(int i = 0; i < data.cols(); i ++) {
-          result(data.rows() + j + plen, i) = (p.next(data.col(i)) + T(1) / p.next(idata.col(i))) / T(2);
-          result(plen - j - 1, i) = (p.next(rdata.col(i)) + T(1) / p.next(irdata.col(i))) / T(2);
+          P0<T> p(data.rows() / (j + 1), 1);
+          result(data.rows() + j + plen, i) = (p.next(fdata.col(i)) + T(1) / p.next(fidata.col(i))) / T(2);
+          result(plen - j - 1, i) = (p.next(rdata.col(i)) + T(1) / p.next(ridata.col(i))) / T(2);
+        }
+        for(int i = 0; i < j; i ++) {
+          result.row(data.rows() + j + plen) -= result.row(data.rows() + i + plen);
+          result.row(plen - j - 1) -= result.row(plen - i - 1);
         }
       }
     }
