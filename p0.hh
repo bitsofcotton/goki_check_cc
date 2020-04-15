@@ -164,8 +164,8 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& si
         auto& p(P[size]);
         auto& m(M[size]);
   const auto& D(diff(size));
-        auto  ddm(D);
-        auto  ddp(D);
+        auto  ddp(  D);
+        auto  ddm(- D);
   p.resize(size);
   for(int i = 0; i < p.size(); i ++)
     p[i] = T(0);
