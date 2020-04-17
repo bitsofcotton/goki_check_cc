@@ -304,16 +304,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int j = 0; j < plen; j ++) {
         P0<T> p(data.rows() / (j + 1));
-        Mat fdata(data.rows() / (j + 1), data.cols());
+        Mat fdata( data.rows() / (j + 1), data.cols());
         Mat fidata(data.rows() / (j + 1), data.cols());
-        Mat rdata(data.rows() / (j + 1), data.cols());
+        Mat rdata( data.rows() / (j + 1), data.cols());
         Mat ridata(data.rows() / (j + 1), data.cols());
         for(int i = 0; i < fdata.rows(); i ++) {
           for(int k = 0; k < fdata.cols(); k ++)
             fdata(fdata.rows() - i - 1, k) = rdata(rdata.rows() - i - 1, k) = T(0);
           for(int k = 0; k < j + 1; k ++) {
             fdata.row(fdata.rows() - i - 1) += data.row(data.rows() - 1 - i * (j + 1) - k);
-            rdata.row(fdata.rows() - i - 1) += data.row(i * (j + 1) + k);
+            rdata.row(rdata.rows() - i - 1) += data.row(i * (j + 1) + k);
           }
         }
         const auto cdata(compute(fdata, BCLIP));

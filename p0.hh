@@ -179,8 +179,8 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& si
     m += ddm.row(0);
     if(bm == m && bp == p)
       break;
-    ddp = (D * ddp) * (  T(1) / T(i));
-    ddm = (D * ddm) * (- T(1) / T(i));
+    ddp =   (D * ddp) / T(i);
+    ddm = - (D * ddm) / T(i);
   }
   if(0 < step)
     return p;
