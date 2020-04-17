@@ -308,7 +308,7 @@ template <typename T> inline matchPartial<T>::matchPartial() {
   I  = sqrt(U(- T(1)));
   Pi = atan2(T(1), T(1)) * T(4);
   // rough match.
-  init(40, 2, T(1) / T(100), T(1) / T(10));
+  init(40, 2, T(1) / T(1000), T(1) / T(10));
 }
 
 template <typename T> inline matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {

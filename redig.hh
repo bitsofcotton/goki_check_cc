@@ -99,9 +99,9 @@ public:
   reDig();
   ~reDig();
   void initialize(const int& vbox, const T& rz = - T(1));
-  Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
+  Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
   Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim = false);
-  Mat  replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
+  Mat  replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
@@ -164,7 +164,7 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
   return;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
+template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   cerr << "m" << flush;
   assert(hulldst.size() == hullsrc.size());
   const auto tdst(takeShape(dst, src, match, hulldst, hullsrc, ratio));
@@ -211,54 +211,21 @@ template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const Mat& srcbump, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
-  const Mat repl(replace(dstimg, src, match, hullsrc, true));
-  return repl + emphasis(repl, srcimg, srcbump, dst, src, match,
+template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
+  const Mat repl(replace(dstimg, match.transform(src), hullsrc, true));
+  return repl + emphasis(repl, srcimg, dst, src, match,
                          hulldst, hullsrc, T(0));
 }
 
 template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
   assert(hulldst.size() == hullsrc.size());
   vector<Vec3> result(dst);
-  const auto rmatch(~ match);
-  vector<vector<int> > emphs;
-  emphs.resize(result.size() * 3);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < hullsrc.size(); i ++) {
-    const auto& p0(src[hullsrc[i][0]]);
-    const auto& p1(src[hullsrc[i][1]]);
-    const auto& p2(src[hullsrc[i][2]]);
-    const auto  dp0(match.transform(p0));
-    const auto  dp1(match.transform(p1));
-    const auto  dp2(match.transform(p2));
-    for(int j = 0; j < 3; j ++) {
-      const auto& dq(dst[hulldst[i][j]]);
-      const auto  q(rmatch.transform(dq));
-      if((sameSide3(p0, p1, p2, q) &&
-          sameSide3(p1, p2, p0, q) &&
-          sameSide3(p2, p0, p1, q)) ||
-         (sameSide3(dp0, dp1, dp2, dq) &&
-          sameSide3(dp1, dp2, dp0, dq) &&
-          sameSide3(dp2, dp0, dp1, dq)) ) {
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-          {
-            emphs[hulldst[i][j]].push_back(hullsrc[i][j]);
-          }
-        }
-    }
-  }
-  for(int i = 0; i < emphs.size(); i ++) if(emphs[i].size()) {
-    Vec3 diff(3);
-    diff[0] = diff[1] = diff[2] = T(0);
-    for(int j = 0; j < emphs[i].size(); j ++)
-      diff += match.transform(src[emphs[i][j]]) - dst[i];
-    result[i] += diff * ratio / emphs[i].size();
-  }
+  for(int i = 0; i < match.srcpoints.size(); i ++)
+    result[match.dstpoints[i]] += (match.transform(src[match.srcpoints[i]]) - dst[match.dstpoints[i]]) * ratio;
   return result;
 }
 
