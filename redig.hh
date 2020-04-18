@@ -99,10 +99,10 @@ public:
   reDig();
   ~reDig();
   void initialize(const int& vbox, const T& rz = - T(1));
-  Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
+  Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const T& ratio);
   Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim = false);
   Mat  replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
-  vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio);
+  vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
@@ -164,10 +164,9 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
   return;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
+template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const T& ratio) {
   cerr << "m" << flush;
-  assert(hulldst.size() == hullsrc.size());
-  const auto tdst(takeShape(dst, src, match, hulldst, hullsrc, ratio));
+  const auto tdst(takeShape(dst, src, match, ratio));
   assert(dst.size() == tdst.size());
   vector<Triangles> tris;
   for(int i = 0; i < hulldst.size(); i ++) {
@@ -213,12 +212,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg
 
 template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
   const Mat repl(replace(dstimg, match.transform(src), hullsrc, true));
-  return repl + emphasis(repl, srcimg, dst, src, match,
-                         hulldst, hullsrc, T(0));
+  return repl + emphasis(repl, srcimg, dst, src, match, hulldst, T(0));
 }
 
-template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc, const T& ratio) {
-  assert(hulldst.size() == hullsrc.size());
+template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
   vector<Vec3> result(dst);
 #if defined(_OPENMP)
 #pragma omp parallel
