@@ -386,7 +386,7 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
   T xx(0);
   T xy(0);
   for(int k = 0; k < m.dstpoints.size(); k ++) {
-    const auto  x(points[m.srcpoints[k]] - m.offset);
+    const auto  x(points[m.srcpoints[k]] + m.offset);
     const auto& y(shapebase[m.dstpoints[k]]);
     xx += x.dot(x);
     xy += x.dot(y);
