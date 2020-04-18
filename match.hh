@@ -376,40 +376,22 @@ template <typename T> bool matchPartial<T>::complementMatch(match_t<T>& m, const
   // assumes m.rot == I, but not in fact.
   m.ratio   = T(1);
   m.offset *= T(0);
-  auto offset(m.offset);
   for(int k = 0; k < m.dstpoints.size(); k ++)
-    offset += shapebase[m.dstpoints[k]] - points[m.srcpoints[k]];
-  offset /= m.dstpoints.size();
-  T xd(0);
-  T yd(0);
+    m.offset += shapebase[m.dstpoints[k]] - points[m.srcpoints[k]];
+  m.offset /= m.dstpoints.size();
+  // 2nd form is too long to read/write in verbatim even if only with
+  // eigen vectors. So we use 1st form, so offset is fixed.
+  // N.B. If we have Schur decomposition in the simplelin library, it's not.
+  // ||t * x - y|| -> 0. <=> xx * (t - xy / xx)^2 + ... -> 0
   T xx(0);
-  T yy(0);
   T xy(0);
-  T dd(0);
-  // ||s*Ix + t*d - y|| -> 0 in summation condition.
   for(int k = 0; k < m.dstpoints.size(); k ++) {
-    const auto& shapek(shapebase[m.dstpoints[k]]);
-    const auto& pointk(points[m.srcpoints[k]]);
-    xd += pointk.dot(offset);
-    yd += shapek.dot(offset);
-    xx += pointk.dot(pointk);
-    yy += shapek.dot(shapek);
-    xy += shapek.dot(pointk);
-    dd += offset.dot(offset);
+    const auto  x(points[m.srcpoints[k]] - m.offset);
+    const auto& y(shapebase[m.dstpoints[k]]);
+    xx += x.dot(x);
+    xy += x.dot(y);
   }
-  const auto D(xx * dd - xd * xd);
-  if(D != T(0)) {
-/*
-    m.ratio  =          T(2) * (  dd * xy - xd * yd) / D;
-    m.offset = offset * T(2) * (- xd * xy + xx * yd) / D;
-*/
-    m.ratio  =          (  dd * xy - xd * yd) / D;
-    m.offset = offset * (- xd * xy + xx * yd) / D;
-  } else {
-    // x // d.
-    m.ratio  = (xy - yd) / xx;
-    m.offset = offset;
-  }
+  m.ratio   = xy / xx;
   match_t<T> mwork(m);
   mwork.rot = match_t<T>().rot;
   if(retry) {
