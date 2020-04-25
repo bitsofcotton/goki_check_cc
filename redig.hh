@@ -169,6 +169,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
   const auto tdst(takeShape(dst, src, match, ratio));
   assert(dst.size() == tdst.size());
   vector<Triangles> tris;
+  tris.reserve(hulldst.size());
   for(int i = 0; i < hulldst.size(); i ++) {
     assert(hulldst[i].size() == 3);
     Triangles work;
