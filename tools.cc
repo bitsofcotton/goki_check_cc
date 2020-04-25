@@ -358,8 +358,10 @@ int main(int argc, const char* argv[]) {
       matchPartial<num_t> statmatch;
       auto matches(statmatch.match(shape0, shape1, strcmp(argv[1], "match0") == 0));
       matches.resize(min(int(matches.size()), nhid));
+/*
       if(fn[fn.size() - 1] == 'm')
         matches = statmatch.elim(matches, in0, in1, bump1, shape1);
+*/
       std::cerr << matches.size() << "pending" << std::endl;
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::ofstream output;
