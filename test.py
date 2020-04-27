@@ -100,6 +100,7 @@ else:
       subprocess.call(["xcrun", "scntool", "--convert", root + ".obj", "--format", "scn", "--output", root + ".scn"])
     elif(argv[2] == "objfig"):
       subprocess.call(["convert", root + "-collect-neg.ppm", root + "-bump-neg.ppm", "-compose", "hard-light", "-composite", "-compress", "none", root + "-bumpfig.ppm"])
+      subprocess.call([argv[1], "integ", root + "-bumpfig.ppm", root + "-bfi.ppm"])
       subprocess.call([argv[1], "obj", str(pixels), "1", ".001", "0", root + "-bumpfig.ppm", root + "-fig.obj"])
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", ".005", root + ".ppm", root + ".obj", root + "-L.ppm"])
