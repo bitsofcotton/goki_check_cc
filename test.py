@@ -72,19 +72,19 @@ else:
         subprocess.call([argv[1], "light", "1", root + "-penetrate.ppm", root + "-penetrate-light.ppm"])
       subprocess.call(["convert", root + "-penetrate-light.ppm", root + "-penetrate.png"])
     elif(argv[2] == "enlp"):
-      subprocess.call(["cp", root + ".ppm", root + "-enl-light.ppm"])
+      subprocess.call(["cp", root + ".ppm", root + "-enl.ppm"])
       for s in range(0, pixels):
-        subprocess.call(["convert", root + "-enl-light.ppm", "-resize", "200%", "-compress", "none", root + "-enl.ppm"])
-        subprocess.call([argv[1], "light", "2", root + "-enl.ppm", root + "-enl-light0.ppm"])
-        subprocess.call(["convert", root + "-enl-light0.ppm", "-unsharp", "1x1x.5", "-compress", "none", root + "-enl-light.ppm"])
-      subprocess.call([argv[1], "light", "1", root + "-enl-light.ppm", root + "-enl.ppm"])
+        subprocess.call([argv[1], "enlarge", root + "-enl.ppm", root + "-enl0.ppm"])
+        subprocess.call(["convert", root + "-enl0.ppm", "-resize", "75%", "-compress", "none", root + "-enl.ppm"])
       subprocess.call(["convert", root + "-enl.ppm", root + "-enl.png"])
     elif(argv[2] == "light"):
       subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
     elif(argv[2] == "bump"):
       subprocess.call([argv[1], "bump", ".2", root + ".ppm", root + "-bump0.ppm"])
       subprocess.call([argv[1], "reshape", str(pixels), root + "-bump0.ppm", root + ".ppm", root + "-bump.ppm"])
+      subprocess.call([argv[1], "integ", root + "-bump.ppm", root + "-bump-integ.ppm"])
       subprocess.call(["convert", root + "-bump.ppm", "-negate", "-compress", "none", root + "-bump-neg.ppm"])
+      subprocess.call([argv[1], "integ", root + "-bump-neg.ppm", root + "-bump-neg-integ.ppm"])
       subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])
       subprocess.call(["convert", line, root + "-bump.ppm", "-channel-fx", "| gray=>alpha", root + "-alpha.png"])
     elif(argv[2] == "pextend"):
