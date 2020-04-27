@@ -103,10 +103,14 @@ int main(int argc, const char* argv[]) {
   reDig<num_t>      redig;
   Filter<num_t>     filter;
   if(strcmp(argv[1], "collect") == 0 ||
+     strcmp(argv[1], "enlarge") == 0 ||
+     strcmp(argv[1], "integ") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "light")   == 0 ||
      strcmp(argv[1], "bump")    == 0) {
-    const auto f_col( ! strcmp(argv[1], "collect"));
+    const auto f_col( ! strcmp(argv[1], "collect") ||
+                      ! strcmp(argv[1], "enlarge") || 
+                      ! strcmp(argv[1], "integ") );
     if((f_col && argc < 4) || ((! f_col) && argc < 5)) {
       usage();
       return 0;
@@ -119,6 +123,12 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "collect") == 0) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.COLLECT_BOTH);
+    } else if(strcmp(argv[1], "enlarge") == 0) {
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter.compute(data[i], filter.ENLARGE_BOTH);
+    } else if(strcmp(argv[1], "integ") == 0) {
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter.compute(data[i], filter.INTEG_BOTH);
     } else if(strcmp(argv[1], "pextend") == 0) {
       filter.plen = ratio;
       typename simpleFile<num_t>::Mat xyz[3];
