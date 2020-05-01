@@ -300,6 +300,54 @@ public:
       output << "illum 1" << std::endl;
       output << "map_Ka " << pstr << std::endl;
       output << "map_Kd " << pstr << std::endl << std::endl;
+      output.close();
+    } else {
+      cerr << "Unable to open file for write: " << filename << endl;
+      return false;
+    }
+    return true;
+  }
+
+  bool loaddat(const char* filename, std::string& header, vector<vector<T> >& data) {
+    ifstream input;
+    input.open(filename);
+    if(input.is_open()) {
+      string work;
+      header = std::string("");
+      data   = vector<vector<T> >();
+      while(getline(input, work) && !input.eof() && !input.bad())
+        if(whiteline(work))
+          continue;
+        else if(work[0] == ';')
+          header += work + std::string("\n");
+        else {
+          std::stringstream ss(work);
+          for(int i = 0, j = 0; ss.tellg() <= work.size(); j ++) {
+            if(data.size() <= j)
+              data.resize(j + 1, vector<T>());
+            data[j].push_back(T(0));
+            ss >> data[j][data[j].size() - 1];
+          }
+        }
+        input.close();
+    } else {
+      cerr << "Unable to open file for read: " << filename << endl;
+      return false;
+    }
+    return true;
+  }
+  
+  bool savedat(const char* filename, std::string& header, vector<vector<T> >& data) {
+    ofstream output;
+    output.open(filename, std::ios::out);
+    if(output.is_open()) {
+      output << header;
+      for(int i = 0; i < data[0].size(); i ++) {
+        for(int j = 0; j < data.size(); j ++)
+          output << (i < data[j].size() ? data[j][i] : T(0)) << " ";
+        output << std::endl;
+      }
+      output.close();
     } else {
       cerr << "Unable to open file for write: " << filename << endl;
       return false;

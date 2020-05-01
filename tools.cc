@@ -415,60 +415,76 @@ int main(int argc, const char* argv[]) {
                    My, Mx, poldst, argv[4]);
     }
   } else if(strcmp(argv[1], "omake") == 0) {
-    std::vector<num_t> inout;
-    std::string line;
-    while (std::getline(std::cin, line)) {
-      std::stringstream sl(line);
-      inout.push_back(0);
-      sl >> inout[inout.size() - 1];
-    }
-    simpleFile<num_t>::Mat buf(std::atoi(argv[2]), std::atoi(argv[2]));
+    std::vector<std::vector<num_t> > data;
+    std::string header;
+    file.loaddat(argv[3], header, data);
+    simpleFile<num_t>::Mat buf(std::atoi(argv[4]), std::atoi(argv[4]));
     const auto dft(filter.seed(buf.rows(), false));
     const auto idft(filter.seed(buf.rows(), true));
-    for(int i = 0; i <= inout.size() / buf.rows() / buf.rows(); i ++) {
-      for(int j = 0; j < buf.rows(); j ++)
+    for(int i0 = 1; i0 < data.size(); i0 ++) {
+      for(int i = 0; i <= data[i0].size() / buf.rows() / buf.rows(); i ++) {
         for(int k = 0; k < buf.cols(); k ++)
-          buf(j, k) = inout[i * buf.rows() * buf.rows() + k * buf.rows() + j];
-      Filter<num_t>::Mat buf2;
-      if(strcmp(argv[3], "diff") == 0){
+          for(int j = 0; j < buf.rows(); j ++) {
+            const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
+            buf(j, k) = idx < data[i0].size() ? data[i0][idx] : num_t(0);
+          }
+        Filter<num_t>::Mat buf2;
+        if(strcmp(argv[2], "diff") == 0){
 #if defined(_WITHOUT_EIGEN_)
-        buf2 = (idft * (
-          filter.compute(dft.template real<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
-          filter.compute(dft.template imag<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+          buf2 = (idft * (
+            filter.compute(dft.template real<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
+            filter.compute(dft.template imag<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-        buf2 = (idft * (
-          filter.compute(dft.real() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
-          filter.compute(dft.imag() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
+          buf2 = (idft * (
+            filter.compute(dft.real() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
+            filter.compute(dft.imag() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
-      } else if(strcmp(argv[3], "light") == 0) {
+        } else if(strcmp(argv[2], "light") == 0) {
 #if defined(_WITHOUT_EIGEN_)
-        buf2 = (idft * (
-          filter.compute(dft.template real<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
-          filter.compute(dft.template imag<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+          buf2 = (idft * (
+            filter.compute(dft.template real<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
+            filter.compute(dft.template imag<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-        buf2 = (idft * (
-          filter.compute(dft.real() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
-          filter.compute(dft.imag() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
+          buf2 = (idft * (
+            filter.compute(dft.real() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
+            filter.compute(dft.imag() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
-      } else if(strcmp(argv[3], "bump") == 0) {
+        } else if(strcmp(argv[2], "bump") == 0) {
 #if defined(_WITHOUT_EIGEN_)
-        buf2 = (idft * (
-          filter.compute(dft.template real<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
-          filter.compute(dft.template imag<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+          buf2 = (idft * (
+            filter.compute(dft.template real<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
+            filter.compute(dft.template imag<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-        buf2 = (idft * (
-          filter.compute(dft.real() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
-          filter.compute(dft.imag() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
+          buf2 = (idft * (
+            filter.compute(dft.real() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
+            filter.compute(dft.imag() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
-      }
-      for(int j = 0; j < buf2.rows(); j ++)
+        }
         for(int k = 0; k < buf2.cols(); k ++)
-          inout[i * buf.rows() * buf.rows() + k * buf.rows() + j] = buf2(j, k);
+          for(int j = 0; j < buf2.rows(); j ++) {
+            const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
+            if(idx < data[i0].size())
+              data[i0][idx] = buf2(j, k);
+            else
+              break;
+          }
+      }
     }
-    auto Minout(inout);
-    std::sort(Minout.begin(), Minout.end());
-    for(int i = 0; i < inout.size(); i ++)
-      std::cout << inout[i] / Minout[Minout.size() - Minout.size() / buf.rows() / buf.rows()] << "\r" << std::endl;
+    num_t M(0);
+    for(int i = 1; i < data.size(); i ++) {
+      auto sdata(data[i]);
+      for(int i = 0; i < sdata.size(); i ++)
+        sdata[i] = abs(sdata[i]);
+      std::sort(sdata.begin(), sdata.end());
+      M = max(M, sdata[sdata.size() / 2]);
+    }
+    std::cout << header;
+    for(int i = 0; i < data[0].size(); i ++) {
+      std::cout << data[0][i] << " ";
+      for(int j = 1; j < data.size(); j ++)
+        std::cout << (i < data[j].size() ? data[j][i] / M : num_t(0)) << " ";
+      std::cout << std::endl;
+    }
   } else {
     usage();
     return - 1;
