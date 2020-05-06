@@ -81,6 +81,7 @@ void usage() {
   cout << "gokicheck bump    <delta_pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << "gokicheck div     <dummy> <input0.ppm> <input1.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
@@ -152,7 +153,8 @@ int main(int argc, const char* argv[]) {
     }
     if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
       return - 1;
-  } else if(strcmp(argv[1], "reshape") == 0) {
+  } else if(strcmp(argv[1], "reshape") == 0 ||
+            strcmp(argv[1], "div")   == 0) {
     if(argc < 6) {
       usage();
       return 0;
@@ -163,9 +165,22 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(!file.loadp2or3(datas, argv[4]))
       return - 1;
-    const auto datav(redig.rgb2l(datas));
-    for(int i = 0; i < 3; i ++)
-      datac[i] = redig.reShape(datac[i], datav, count);
+    if(strcmp(argv[1], "reshape") == 0) {
+      const auto datav(redig.rgb2l(datas));
+      for(int i = 0; i < 3; i ++)
+        datac[i] = redig.reShape(datac[i], datav, count);
+    } else if(strcmp(argv[1], "div") == 0) {
+      for(int i = 0; i < 3; i ++) {
+        assert(datas[i].rows() == datac[i].rows() &&
+               datas[i].cols() == datac[i].cols());
+        datas[i] = filter.compute(datas[i], filter.BCLIP);
+        datac[i] = filter.compute(datac[i], filter.BCLIP);
+      }
+      for(int i = 0; i < datas[0].rows(); i ++)
+        for(int j = 0; j < datas[0].cols(); j ++)
+          for(int k = 0; k < 3; k ++)
+            datac[k](i, j) *= datas[k](i, j) / datac[k](i, j);
+    }
     redig.normalize(datac, num_t(1));
     if(!file.savep2or3(argv[5], datac, ! true))
       return - 1;
@@ -476,7 +491,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < sdata.size(); i ++)
         sdata[i] = abs(sdata[i]);
       std::sort(sdata.begin(), sdata.end());
-      M = max(M, sdata[sdata.size() / 2]);
+      M = max(M, sdata[sdata.size() * 7 / 8] * num_t(4));
     }
     std::cout << header;
     for(int i = 0; i < data[0].size(); i ++) {

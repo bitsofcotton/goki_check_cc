@@ -101,6 +101,8 @@ else:
     elif(argv[2] == "objfig"):
       subprocess.call(["convert", root + "-collect-neg.ppm", root + "-bump-neg.ppm", "-compose", "hard-light", "-composite", "-compress", "none", root + "-bumpfig.ppm"])
       subprocess.call([argv[1], "integ", root + "-bumpfig.ppm", root + "-bfi.ppm"])
+      subprocess.call([argv[1], "div", "0", root + "-bump.ppm", root + "-bfi.ppm", root + "-ib.ppm"])
+      subprocess.call(["convert", root + "-ib.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-ib.png"])
       subprocess.call([argv[1], "obj", str(pixels), "1", ".001", "0", root + "-bfi.ppm", root + "-fig.obj"])
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", ".005", root + ".ppm", root + ".obj", root + "-L.ppm"])
