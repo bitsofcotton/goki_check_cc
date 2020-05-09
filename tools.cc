@@ -111,7 +111,8 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "bump")    == 0) {
     const auto f_col( ! strcmp(argv[1], "collect") ||
                       ! strcmp(argv[1], "enlarge") || 
-                      ! strcmp(argv[1], "integ") );
+                      ! strcmp(argv[1], "integ")   ||
+                      ! strcmp(argv[1], "bump") );
     if((f_col && argc < 4) || ((! f_col) && argc < 5)) {
       usage();
       return 0;
@@ -144,8 +145,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     } else if(strcmp(argv[1], "bump") == 0) {
-      filter.dbratio = ratio;
-      data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
+      data[0] = data[1] = data[2] = filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH);
     }
     if(strcmp(argv[1], "pextend") != 0) {
       redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
