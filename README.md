@@ -9,8 +9,8 @@ We need imagemagick for normaluse, and ffmpeg for making .mp4.
 
 # Parameters
 * enlarge.hh
-* * dratio  : z-axis step ratio relate to 1., must be &lt; 1. This hardly depends calculating accuracy and if it's too small, result will be vanished.
-* * dbratio : z-axis tilt psi for bump from two of images, relate to 1., must be &lt; 1. if it's too small, result will be vanished.
+* * dratio  : z-axis step number, larger combines sqrt(dratio) number of z-axis steps.
+* * dist    : z-axis scan max distance.
 * * offset  : color value ratio around convergences in making bump map.
 * * plen    : extend pixels.
 * * lrecur  : recursive number for sharpen.
