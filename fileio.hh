@@ -290,7 +290,7 @@ public:
       std::string pstr(photo);
       for(int i = 0; i < pstr.size(); i ++)
         if(pstr[pstr.size() - i - 1] == '.') {
-          pstr = pstr.substr(0, i) + std::string(".ppm");
+          pstr = pstr.substr(0, max(0, int(pstr.size()) - i - 1)) + std::string(".ppm");
           break;
         }
       output << "newmtl material0" << std::endl;
