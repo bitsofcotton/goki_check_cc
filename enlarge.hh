@@ -1,5 +1,5 @@
 /* BSD 3-Clause License:
- * Copyright (c) 2018, bitsofcotton.
+ * Copyright (c) 2018-2020, bitsofcotton.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -71,6 +71,7 @@ public:
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
   T    offset;
+  int  dist;
   int  dratio;
   int  plen;
   int  lrecur;
@@ -90,6 +91,7 @@ private:
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
   offset  = T(1)  / T(64);
+  dist    = 2000;
   dratio  = 2048;
   plen    = 1;
   lrecur  = 8;
@@ -207,7 +209,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
-          cpoint[1] = T(zi) / T(dratio) * T(200);
+          cpoint[1] = T(zi) / T(dratio) * T(dist);
           // x-z plane projection of point p with camera geometry c to z=0.
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0

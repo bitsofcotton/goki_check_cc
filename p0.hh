@@ -40,7 +40,7 @@ public:
   inline P0();
   inline P0(const int& range);
   inline ~P0();
-  inline T next(const Vec& in);
+  inline T next(const Vec& in, const bool& deep = true);
   const Mat&  lpf(const int& size);
 private:
   Vec pred;
@@ -70,9 +70,20 @@ template <typename T> inline P0<T>::~P0() {
   ;
 }
 
-template <typename T> inline T P0<T>::next(const Vec& in) {
+template <typename T> inline T P0<T>::next(const Vec& in, const bool& deep) {
   assert(pred.size() == in.size());
-  return pred.dot(in);
+  auto res(pred.dot(in));
+  if(! deep)
+    return res;
+  auto residue(in - lpf(in.size()) * in);
+  while(T(1) / T(1000) / T(1000) < residue.dot(residue)) {
+    for(int i = 0; i < residue.size(); i ++)
+      if(i % 2 == (residue.size() + 1) % 2)
+        residue[i] = - residue[i];
+    res     += pred.dot(residue);
+    residue -= lpf(residue.size()) * residue;
+  }
+  return res;
 }
 
 template <typename T> const T& P0<T>::Pi() const {
@@ -179,8 +190,8 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& si
     m += ddm.row(0);
     if(bm == m && bp == p)
       break;
-    ddp =   (D * ddp) / T(i);
-    ddm = - (D * ddm) / T(i);
+    ddp = (D * ddp) * (  T(1) / T(i));
+    ddm = (D * ddm) * (- T(1) / T(i));
   }
   if(0 < step)
     return p;
