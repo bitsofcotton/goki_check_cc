@@ -105,6 +105,3 @@ This is because we generate the complement light image with DFT half space plaus
 * https://www.sourceforge.net/projects/gokicheck/
 * https://sites.google.com/view/bitsofcotton
 
-# Being examined
-It is searching that can we convert 3d model into the forests that is the center lines of metaball and depth simply.
-
