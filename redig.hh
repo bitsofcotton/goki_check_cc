@@ -100,9 +100,11 @@ public:
   ~reDig();
   void initialize(const int& vbox, const T& rz = - T(1));
   Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const T& ratio);
+  Mat  emphasis(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio);
   Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim = false);
   Mat  replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
+  vector<Vec3> takeShape(const vector<Vec3>& shape, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
@@ -123,6 +125,7 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
+  void getBones1d(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1e8));
@@ -189,6 +192,31 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstim
   return tilt(dstimg * T(0), tris);
 }
 
+template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio) {
+  cerr << "m" << flush;
+  const auto tdst(takeShape(shape, center, outcenter, attend, ratio));
+  assert(shape.size() == tdst.size());
+  vector<Triangles> tris;
+  tris.reserve(hull.size());
+  for(int i = 0; i < hull.size(); i ++) {
+    assert(hull[i].size() == 3);
+    Triangles work;
+    for(int j = 0; j < 3; j ++) {
+#if defined(_WITHOUT_EIGEN_)
+      work.p.setCol(j, tdst[hull[i][j]]);
+#else
+      work.p.col(j) = tdst[hull[i][j]];
+#endif
+    }
+    work.c = img(max(0, min(int(img.rows() - 1),
+                   int(shape[hull[i][0]][0]))),
+                 max(0, min(int(img.cols() - 1),
+                   int(shape[hull[i][0]][1]))));
+    tris.push_back(work.solveN());
+  }
+  return tilt(img * T(0), tris);
+}
+
 template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim) {
   Mat result(dstimg);
   T   M(0);
@@ -224,6 +252,20 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
 #endif
   for(int i = 0; i < match.srcpoints.size(); i ++)
     result[match.dstpoints[i]] += (match.transform(src[match.srcpoints[i]]) - dst[match.dstpoints[i]]) * ratio;
+  return result;
+}
+
+template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& shape, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio) {
+  assert(center.size() == outcenter.size());
+  assert(center.size() == attend.size());
+  vector<Vec3> result(shape);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < center.size(); i ++)
+    for(int j = 0; j < attend[i].size(); j ++)
+      result[attend[i][j]] += (outcenter[i] - center[i]) * ratio;
   return result;
 }
 
@@ -874,6 +916,55 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
       delaunay.push_back(work);
       delaunay.push_back(work2);
     }
+  return;
+}
+
+template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh) {
+  int idx(0);
+  center = vector<Vec3>();
+  attend = vector<vector<int> >();
+  for(int i = 0; i < in.rows() / vbox + 1; i ++) {
+    vector<T> work;
+    for(int j = 0; j < in.cols() / vbox + 1; j ++) {
+      if(in.rows() < (i + 1) * vbox ||
+         in.cols() < (j + 1) * vbox) {
+        if(idx)
+          goto next;
+        continue;
+      }
+     next:
+      assert(0 <= idx && idx < geoms.size());
+      work.emplace_back(geoms[idx][2]);
+      // N.B. for any k, on the line (work[k] - x)^2 = r^2.
+      T x(0);
+      for(int k = 0; k < work.size(); k ++)
+        x += work[k];
+      x /= work.size();
+      T r(0);
+      for(int k = 0; k < work.size(); k ++)
+        r += (work[k] - x) * (work[k] - x);
+      r /= work.size();
+      r  = r <= T(0) ? T(0) : sqrt(r);
+      T err(0);
+      for(int k = 0; k < work.size(); k ++)
+        err += pow((work[k] - x) * (work[k] - x) - r * r, T(2));
+      if(err < thresh && center.size())
+        center[center.size() - 1][2] = x;
+      else {
+        auto gc(geoms[idx]);
+        gc[2] = x;
+        center.push_back(gc);
+        attend.push_back(vector<int>());
+        work = vector<T>();
+      }
+      attend[attend.size() - 1].emplace_back(idx);
+      idx ++;
+    }
+  }
+  if(attend.size() && !attend[attend.size() - 1].size()) {
+    center.resize(center.size() - 1);
+    attend.resize(attend.size() - 1);
+  }
   return;
 }
 

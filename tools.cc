@@ -88,6 +88,8 @@ void usage() {
   cout << "gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck pose    <vbox> <thresh> <pose.txt> <input.ppm> <input-bump.ppm>" << endl;
+  cout << "gokicheck poso    <vbox> <thresh> <pose.txt> <input.ppm> <input-bump.ppm> <num_of_res_shown> <output-base>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
 }
@@ -400,6 +402,72 @@ int main(int argc, const char* argv[]) {
           }
         }
         output.close();
+      }
+    }
+  } else if(strcmp(argv[1], "pose") == 0 ||
+            strcmp(argv[1], "poso") == 0) {
+    if(argc < (strcmp(argv[1], "poso") == 0 ? 8 : 7)) {
+      usage();
+      return - 1;
+    }
+    const auto vbox(std::atoi(argv[2]));
+    const auto thresh(std::atof(argv[3]));
+    std::vector<typename simpleFile<num_t>::Vec3> outcenter;
+    if(strcmp(argv[1], "poso") == 0) {
+      std::ifstream input;
+      input.open(argv[4]);
+      try {
+        std::string buf;
+        while(std::getline(input, buf)) {
+          std::stringstream sbuf(buf);
+          typename simpleFile<num_t>::Vec3 work(3);
+          sbuf >> work[0];
+          sbuf >> work[1];
+          sbuf >> work[2];
+          outcenter.push_back(work);
+        }
+        std::cerr << outcenter.size() << "bone points" << std::endl;
+      } catch(...) {
+        usage();
+        return - 2;
+      }
+      input.close();
+    }
+    typename simpleFile<num_t>::Mat in[3], bump[3];
+    std::vector<typename simpleFile<num_t>::Veci3> delau;
+    std::vector<typename simpleFile<num_t>::Vec3>  shape, center;
+    std::vector<std::vector<int> > attend;
+    if(!file.loadp2or3(in, argv[5]))
+      return - 2;
+    if(!file.loadp2or3(bump, argv[6]))
+      return - 2;
+    redig.initialize(vbox);
+    redig.getTileVec(redig.rgb2l(bump), shape, delau);
+    redig.maskVectors(shape, delau, in[0] * num_t(0));
+    redig.getBones1d(redig.rgb2l(bump), shape, center, attend, thresh);
+    std::ofstream output;
+    if(strcmp(argv[1], "pose") == 0) {
+      std::ofstream output;
+      output.open(argv[4]);
+      if(output.is_open()) {
+        try {
+          for(int i = 0; i < center.size(); i ++)
+            output << center[i][0] << " " << center[i][1] << " " << center[i][2] << std::endl;
+        } catch(...) {
+          ;
+        }
+      }
+      output.close();
+    } else {
+      for(int j = 0; j < std::atoi(argv[7]); j ++) {
+        typename simpleFile<num_t>::Mat out[3];
+        const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[7])));
+        const auto rin(redig.makeRefMatrix(in[0], 1));
+        const auto reref(redig.emphasis(rin, shape, delau, center, outcenter, attend, iemph));
+        for(int idx = 0; idx < 3; idx ++)
+          out[idx] = redig.pullRefMatrix(reref, 1, in[idx]);
+        if(!file.savep2or3((std::string(argv[8]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true))
+          return - 1;
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {

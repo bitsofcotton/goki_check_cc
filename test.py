@@ -29,6 +29,11 @@ elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho"):
     subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
     subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
+elif(argv[2] == "pose" or argv[2] == "poso"):
+  root, ext = os.path.splitext(argv[3])
+  if(ext != ".ppm"):
+    subprocess.call(["convert", argv[3], "-compress", "none", root + ".ppm"])
+  subprocess.call([argv[1], argv[2], "4", ".2", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", "4", root + "-pose.ppm"])
 else:
   for line in argv[3:]:
     try:
@@ -83,7 +88,8 @@ else:
       subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
     elif(argv[2] == "bump"):
       subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump0.ppm"])
-      subprocess.call([argv[1], "reshape", str(pixels), root + "-bump0.ppm", root + ".ppm", root + "-bump.ppm"])
+      subprocess.call([argv[1], "integ", root + "-bump0.ppm", root + "-bump.ppm"])
+      #subprocess.call([argv[1], "reshape", str(pixels), root + "-bump0.ppm", root + ".ppm", root + "-bump.ppm"])
       subprocess.call(["convert", root + "-bump.ppm", "-negate", "-compress", "none", root + "-bump-neg.ppm"])
       subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])
       subprocess.call(["convert", line, root + "-bump.ppm", "-channel-fx", "| gray=>alpha", root + "-alpha.png"])
@@ -94,9 +100,9 @@ else:
     elif(argv[2] == "mask"):
       subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
     elif(argv[2] == "obj"):
-      subprocess.call([argv[1], "obj", str(pixels), "1", ".005", "0", root + "-bump.ppm", root + ".obj"])
-      subprocess.call([argv[1], "obj", str(pixels), "1", ".005", "0", root + "-bump-neg.ppm", root + "-neg.obj"])
-      subprocess.call([argv[1], "obj", str(pixels), ".1", ".005", ".4", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
+      subprocess.call([argv[1], "obj", str(pixels), "1", ".0001", "0", root + "-bump.ppm", root + ".obj"])
+      subprocess.call([argv[1], "obj", str(pixels), "1", ".0001", "0", root + "-bump-neg.ppm", root + "-neg.obj"])
+      subprocess.call([argv[1], "obj", str(pixels), ".1", ".0001", ".4", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
       subprocess.call(["xcrun", "scntool", "--convert", root + ".obj", "--format", "scn", "--output", root + ".scn"])
     elif(argv[2] == "objfig"):
       subprocess.call(["convert", root + "-collect-neg.ppm", root + "-bump-neg.ppm", "-compose", "hard-light", "-composite", "-compress", "none", root + "-bumpfig.ppm"])
