@@ -365,9 +365,10 @@ int main(int argc, const char* argv[]) {
         const auto reref(redig.replace(rin1, rin0, shape1, shape0,
                                        ~ m, delau0, iemph) );
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = redig.pullRefMatrix(reref, 1, in0[idx]) +
+          outs[idx] = redig.pullRefMatrix(reref, 1, in0[idx]) *
+                        (num_t(1) - iemph) +
                       redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(),
-                                          in1[idx]);
+                                          in1[idx]) * iemph;
         file.savep2or3((outbase + std::string("-") +
                                   std::to_string(iemph) +
                                   std::string(".ppm")).c_str(), outs, false);

@@ -33,10 +33,11 @@ elif(argv[2] == "pose" or argv[2] == "poso"):
   root, ext = os.path.splitext(argv[3])
   if(ext != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root + ".ppm"])
-  subprocess.call([argv[1], argv[2], "1", "50.", root + "-posex.txt", root + "-posey.txt", root + ".ppm", root + "-bump.ppm", "16", root + "-pose"])
+  nout = 8
+  subprocess.call([argv[1], argv[2], "1", "50.", root + "-posex.txt", root + "-posey.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
   if(argv[2] == "poso"):
-    for s in range(0, 16):
-      subprocess.call(["cp", root + "-pose" + str(15 - s) + ".ppm", root + "-pose" + str(16 + s) + ".ppm"])
+    for s in range(0, nout):
+      subprocess.call(["cp", root + "-pose" + str(nout - 1 - s) + ".ppm", root + "-pose" + str(nout + s) + ".ppm"])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-pose.mp4"])
 else:
   for line in argv[3:]:
