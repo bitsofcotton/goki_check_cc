@@ -924,7 +924,8 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
   center = vector<Vec3>();
   attend = vector<vector<int> >();
   for(int i = 0; i < in.rows() / vbox + 1; i ++) {
-    vector<T> work;
+    vector<T> workx;
+    vector<T> workz;
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
          in.cols() < (j + 1) * vbox) {
@@ -934,24 +935,26 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
       }
      next:
       assert(0 <= idx && idx < geoms.size());
-      work.emplace_back(geoms[idx][2]);
-      // N.B. for any k, on the line (k - x)^2 + (work[k] - z)^2 = r^2.
-      auto x(geoms[idx][1] - T(work.size()));
-      x *= x + T(1);
-      x /= T(2);
+      workx.emplace_back(geoms[idx][1]);
+      workz.emplace_back(geoms[idx][2]);
+      // N.B. for any k, on the line (workx[k] - x)^2 + (workz[k] - z)^2 = r^2.
+      T x(0);
       T z(0);
-      for(int k = 0; k < work.size(); k ++)
-        z += work[k];
-      x /= work.size();
-      z /= work.size();
+      for(int k = 0; k < workx.size(); k ++) {
+        x += workx[k];
+        z += workz[k];
+      }
+      x /= workx.size();
+      z /= workz.size();
       T r(0);
-      for(int k = 0; k < work.size(); k ++)
-        r += (T(k) - x) * (T(k) - x) + (work[k] - z) * (work[k] - z);
-      r /= work.size();
+      for(int k = 0; k < workx.size(); k ++)
+        r += (workx[k] - x) * (workx[k] - x) + (workz[k] - z) * (workz[k] - z);
+      r /= workx.size();
       r  = r <= T(0) ? T(0) : sqrt(r);
       T err(0);
-      for(int k = 0; k < work.size(); k ++)
-        err += pow((T(k) - x) * (T(k) - x) + (work[k] - z) * (work[k] - z) -
+      for(int k = 0; k < workx.size(); k ++)
+        err += pow((workx[k] - x) * (workx[k] - x) +
+                   (workz[k] - z) * (workz[k] - z) -
                    r * r, T(2));
       if(err < thresh && center.size()) {
         center[center.size() - 1][1] = x;
@@ -962,7 +965,8 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
         gc[2] = z;
         center.push_back(gc);
         attend.push_back(vector<int>());
-        work = vector<T>();
+        workx = vector<T>();
+        workz = vector<T>();
       }
       attend[attend.size() - 1].emplace_back(idx);
       idx ++;

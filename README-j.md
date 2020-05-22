@@ -49,6 +49,8 @@ Freeze 中です。
     gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck match0   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <num_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck pose    <vbox> <thresh> <pose.txt> <input.ppm> <input-bump.ppm>
+    gokicheck poso    <vbox> <thresh> <pose.txt> <input.ppm> <input-bump.ppm> <num_of_res_shown> <output-base>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     python test.py ./gokicheck col  input.png
     python test.py ./gokicheck penetrate input.png
@@ -68,6 +70,8 @@ Freeze 中です。
     python test.py ./gokicheck match input0.png input1.(png|obj)
     python test.py ./gokicheck match0 input0.png input1.(png|obj)
     python test.py ./gokicheck matcho input0.png input1.(png|obj) match
+    python test.py ./gokicheck pose input.png
+    python test.py ./gokicheck poso input.png
 
 # ライブラリとしての使い方
 tools.cc を参照してください。また、必要であれば namespace ブロックでスコープしてください。
@@ -106,7 +110,4 @@ filter2ex による拡大は大きな画像に対しては比較的安定な画�
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
 * https://sites.google.com/view/bitsofcotton
-
-# 検討中のもの
-メタボールの中心となるような線分と重み付けの森を 3D 模型から計算することが簡単にできるか散策しています。
 
