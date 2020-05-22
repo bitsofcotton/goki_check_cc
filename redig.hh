@@ -99,10 +99,9 @@ public:
   reDig();
   ~reDig();
   void initialize(const int& vbox, const T& rz = - T(1));
-  Mat  emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const T& ratio);
-  Mat  emphasis(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio);
-  Mat  replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim = false);
-  Mat  replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc);
+  Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Vec3>& emph, const vector<Veci3>& hull);
+  Mat  replace(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const bool& elim = false);
+  Mat  replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const T& emph = T(0));
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
   vector<Vec3> takeShape(const vector<Vec3>& shape, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
@@ -167,45 +166,22 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
   return;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const T& ratio) {
-  cerr << "m" << flush;
-  const auto tdst(takeShape(dst, src, match, ratio));
-  assert(dst.size() == tdst.size());
-  vector<Triangles> tris;
-  tris.reserve(hulldst.size());
-  for(int i = 0; i < hulldst.size(); i ++) {
-    assert(hulldst[i].size() == 3);
-    Triangles work;
-    for(int j = 0; j < 3; j ++) {
-#if defined(_WITHOUT_EIGEN_)
-      work.p.setCol(j, tdst[hulldst[i][j]]);
-#else
-      work.p.col(j) = tdst[hulldst[i][j]];
-#endif
-    }
-    work.c = dstimg(max(0, min(int(dstimg.rows() - 1),
-                      int(dst[hulldst[i][0]][0]))),
-                    max(0, min(int(dstimg.cols() - 1),
-                      int(dst[hulldst[i][0]][1]))));
-    tris.push_back(work.solveN());
-  }
-  return tilt(dstimg * T(0), tris);
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio) {
-  cerr << "m" << flush;
-  const auto tdst(takeShape(shape, center, outcenter, attend, ratio));
-  assert(shape.size() == tdst.size());
+template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, const vector<Vec3>& shape, const vector<Vec3>& emph, const vector<Veci3>& hull) {
+  cerr << "d" << flush;
+  assert(shape.size() == emph.size());
   vector<Triangles> tris;
   tris.reserve(hull.size());
   for(int i = 0; i < hull.size(); i ++) {
     assert(hull[i].size() == 3);
+    assert(0 <= hull[i][0] && hull[i][0] < shape.size());
+    assert(0 <= hull[i][1] && hull[i][1] < shape.size());
+    assert(0 <= hull[i][2] && hull[i][2] < shape.size());
     Triangles work;
     for(int j = 0; j < 3; j ++) {
 #if defined(_WITHOUT_EIGEN_)
-      work.p.setCol(j, tdst[hull[i][j]]);
+      work.p.setCol(j, emph[hull[i][j]]);
 #else
-      work.p.col(j) = tdst[hull[i][j]];
+      work.p.col(j) = emph[hull[i][j]]);
 #endif
     }
     work.c = img(max(0, min(int(img.rows() - 1),
@@ -217,31 +193,32 @@ template <typename T> typename reDig<T>::Mat reDig<T>::emphasis(const Mat& img, 
   return tilt(img * T(0), tris);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const vector<Vec3>& src, const vector<Veci3>& hullsrc, const bool& elim) {
-  Mat result(dstimg);
+template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const bool& elim) {
+  Mat result(img);
   T   M(0);
   T   m(0);
-  for(int i = 0; i < src.size(); i ++) {
+  for(int i = 0; i < shape.size(); i ++) {
     if(i) {
-      M = max(M, src[i][2]);
-      m = min(m, src[i][2]);
+      M = max(M, shape[i][2]);
+      m = min(m, shape[i][2]);
     } else
-      M = m = src[i][2];
+      M = m = shape[i][2];
   }
-  auto tsrc(src);
+  auto tsrc(shape);
   if(M - m != T(0))
     for(int i = 0; i < tsrc.size(); i ++)
       tsrc[i][2] = elim ? T(0) : (tsrc[i][2] - m) / (M - m);
-  for(int ii = 0; ii < hullsrc.size(); ii ++)
-    drawMatchTriangle(result, tsrc[hullsrc[ii][0]],
-                              tsrc[hullsrc[ii][1]],
-                              tsrc[hullsrc[ii][2]]);
+  for(int ii = 0; ii < hull.size(); ii ++)
+    drawMatchTriangle(result, tsrc[hull[ii][0]],
+                              tsrc[hull[ii][1]],
+                              tsrc[hull[ii][2]]);
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hulldst, const vector<Veci3>& hullsrc) {
-  const Mat repl(replace(dstimg, match.transform(src), hullsrc, true));
-  return repl + emphasis(repl, srcimg, dst, src, match, hulldst, T(0));
+template <typename T> typename reDig<T>::Mat reDig<T>::replace(const Mat& dstimg, const Mat& srcimg, const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const vector<Veci3>& hullsrc, const T& emph) {
+  assert(dstimg.rows() == srcimg.rows() && dstimg.cols() == srcimg.cols());
+  return replace(dstimg, match.transform(src), hullsrc, true) +
+         draw(srcimg, src, takeShape(dst, src, match, emph), hullsrc);
 }
 
 template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
