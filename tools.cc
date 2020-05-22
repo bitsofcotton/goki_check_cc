@@ -518,7 +518,7 @@ int main(int argc, const char* argv[]) {
     } else {
       for(int j = 0; j < std::atoi(argv[7]); j ++) {
         typename simpleFile<num_t>::Mat out[3];
-        const auto iemph(num_t(j + 1) / std::sqrt(num_t(std::atoi(argv[7]))));
+        const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[7])));
         const auto rin(redig.makeRefMatrix(in[0], 1));
         const auto reref(redig.emphasis(rin, shape, delau, center, outcenter, attend, iemph));
         for(int idx = 0; idx < 3; idx ++)
