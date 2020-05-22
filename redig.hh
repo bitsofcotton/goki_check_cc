@@ -167,7 +167,6 @@ template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, const vector<Vec3>& shape, const vector<Vec3>& emph, const vector<Veci3>& hull) {
-  cerr << "d" << flush;
   assert(shape.size() == emph.size());
   vector<Triangles> tris;
   tris.reserve(hull.size());
