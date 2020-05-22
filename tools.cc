@@ -88,8 +88,8 @@ void usage() {
   cout << "gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck pose    <vbox> <thresh> <pose.txt> <input.ppm> <input-bump.ppm>" << endl;
-  cout << "gokicheck poso    <vbox> <thresh> <pose.txt> <input.ppm> <input-bump.ppm> <num_of_res_shown> <output-base>" << endl;
+  cout << "gokicheck pose    <vbox> <thresh> <posex.txt> <posey.txt> <input.ppm> <input-bump.ppm>" << endl;
+  cout << "gokicheck poso    <vbox> <thresh> <posex.txt> <posey.txt> <input.ppm> <input-bump.ppm> <num_of_res_shown> <output-base>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
 }
@@ -362,8 +362,8 @@ int main(int argc, const char* argv[]) {
       file.savep2or3((outbase + std::string(".ppm")).c_str(), outs, false);
       for(int i = 0; i < nemph; i ++) {
         const auto iemph(num_t(i) / num_t(nemph));
-        const auto reref(redig.emphasis(rin1, rin0, shape1, shape0,
-                                        ~ m, delau1, iemph) );
+        const auto reref(redig.replace(rin1, rin0, shape1, shape0,
+                                       ~ m, delau0, iemph) );
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(),
                                           in1[idx]);
@@ -435,25 +435,26 @@ int main(int argc, const char* argv[]) {
     // in0 << in1.
     int idx(0);
     int idx2(0);
+    const auto iidx(0);
     while(idx < in0.size()) {
       int nidx(in0.size());
       for(int i = idx; i < in0.size(); i ++)
-        if(in0[idx][0] != in0[i][0]) {
+        if(in0[idx][iidx] != in0[i][iidx]) {
           nidx = i;
           break;
         }
       for(int i = idx2; i < in1.size(); i ++)
-        if(in0[idx][0] == in1[i][0]) {
+        if(in0[idx][iidx] == in1[i][iidx]) {
           idx2 = i;
           break;
         }
-      if(in0[idx][0] != in1[idx2][0])
+      if(in0[idx][iidx] != in1[idx2][iidx])
         continue;
       for(int i = idx; i < nidx; i ++) {
         int idx3(idx2);
-        for(int j = idx2; j < in1.size() && in1[j][0] == in0[idx][0]; j ++)
-          if(abs(in0[i][1] - in1[j][1]) <
-               abs(in0[i][1] - in1[idx3][1]))
+        for(int j = idx2; j < in1.size() && in1[j][iidx] == in0[idx][iidx]; j ++)
+          if(abs(in0[i][1 - iidx] - in1[j][1 - iidx]) <
+               abs(in0[i][1 - iidx] - in1[idx3][1 - iidx]))
             idx3 = j;
         in0[i] = in1[idx3];
       }
@@ -463,67 +464,103 @@ int main(int argc, const char* argv[]) {
       std::cout << in0[i][0] << " " << in0[i][1] << " " << in0[i][2] << std::endl;
   } else if(strcmp(argv[1], "pose") == 0 ||
             strcmp(argv[1], "poso") == 0) {
-    if(argc < (strcmp(argv[1], "poso") == 0 ? 8 : 7)) {
+    if(argc < (strcmp(argv[1], "poso") == 0 ? 9 : 8)) {
       usage();
       return - 1;
     }
     const auto vbox(std::atoi(argv[2]));
     const auto thresh(std::atof(argv[3]));
-    std::vector<typename simpleFile<num_t>::Vec3> outcenter;
+    std::vector<typename simpleFile<num_t>::Vec3> outcenterx, outcentery;
     if(strcmp(argv[1], "poso") == 0) {
-      std::ifstream input;
-      input.open(argv[4]);
+      std::ifstream inputx, inputy;
+      inputx.open(argv[4]);
+      inputy.open(argv[5]);
       try {
         std::string buf;
-        while(std::getline(input, buf)) {
+        while(std::getline(inputx, buf)) {
           std::stringstream sbuf(buf);
           typename simpleFile<num_t>::Vec3 work(3);
           sbuf >> work[0];
           sbuf >> work[1];
           sbuf >> work[2];
-          outcenter.push_back(work);
+          outcenterx.push_back(work);
         }
-        std::cerr << outcenter.size() << "bone points" << std::endl;
+        while(std::getline(inputy, buf)) {
+          std::stringstream sbuf(buf);
+          typename simpleFile<num_t>::Vec3 work(3);
+          sbuf >> work[0];
+          sbuf >> work[1];
+          sbuf >> work[2];
+          outcentery.push_back(work);
+        }
+        std::cerr << outcenterx.size() << "x" << outcentery.size() << "bone points" << std::endl;
       } catch(...) {
         usage();
         return - 2;
       }
-      input.close();
+      inputx.close();
+      inputy.close();
     }
     typename simpleFile<num_t>::Mat in[3], bump[3];
-    std::vector<typename simpleFile<num_t>::Veci3> delau;
-    std::vector<typename simpleFile<num_t>::Vec3>  shape, center;
-    std::vector<std::vector<int> > attend;
-    if(!file.loadp2or3(in, argv[5]))
+    std::vector<typename simpleFile<num_t>::Veci3> delaux, delauy;
+    std::vector<typename simpleFile<num_t>::Vec3>  shapex, shapey;
+    std::vector<typename simpleFile<num_t>::Vec3>  centerx, centery;
+    std::vector<std::vector<int> > attendx, attendy;
+    if(!file.loadp2or3(in, argv[6]))
       return - 2;
-    if(!file.loadp2or3(bump, argv[6]))
+    if(!file.loadp2or3(bump, argv[7]))
       return - 2;
     redig.initialize(vbox);
-    redig.getTileVec(redig.rgb2l(bump), shape, delau);
-    redig.maskVectors(shape, delau, in[0] * num_t(0));
-    redig.getBones1d(redig.rgb2l(bump), shape, center, attend, thresh);
-    std::ofstream output;
+    auto bump0(redig.rgb2l(bump));
+    redig.getTileVec(bump0, shapex, delaux);
+    redig.maskVectors(shapex, delaux, bump0 * num_t(0));
+    redig.getBones1d(bump0, shapex, centerx, attendx, thresh);
+    bump0 = bump0.transpose();
+    redig.getTileVec(bump0, shapey, delauy);
+    redig.maskVectors(shapey, delauy, bump0 * num_t(0));
+    redig.getBones1d(bump0, shapey, centery, attendy, thresh);
     if(strcmp(argv[1], "pose") == 0) {
-      std::ofstream output;
-      output.open(argv[4]);
-      if(output.is_open()) {
+      std::ofstream outputx, outputy;
+      outputx.open(argv[4]);
+      outputy.open(argv[5]);
+      if(outputx.is_open() && outputy.is_open()) {
         try {
-          for(int i = 0; i < center.size(); i ++)
-            output << center[i][0] << " " << center[i][1] << " " << center[i][2] << std::endl;
+          for(int i = 0; i < centerx.size(); i ++)
+            outputx << centerx[i][0] << " " << centerx[i][1] << " " << centerx[i][2] << std::endl;
+          for(int i = 0; i < centery.size(); i ++)
+            outputy << centery[i][0] << " " << centery[i][1] << " " << centery[i][2] << std::endl;
         } catch(...) {
           ;
         }
       }
-      output.close();
+      outputx.close();
+      outputy.close();
     } else {
-      for(int j = 0; j < std::atoi(argv[7]); j ++) {
+      assert(centery.size() == outcentery.size());
+      for(int i = 0; i < shapey.size(); i ++) {
+        const auto buf(shapey[i]);
+        shapey[i][0] = buf[1];
+        shapey[i][1] = buf[0];
+      }
+      for(int i = 0; i < centery.size(); i ++) {
+        const auto buf(centery[i]);
+        const auto obuf(outcentery[i]);
+        centery[i][0] = buf[1];
+        centery[i][1] = buf[0];
+        outcentery[i][0] = obuf[1];
+        outcentery[i][1] = obuf[0];
+      }
+      for(int j = 0; j < std::atoi(argv[8]); j ++) {
         typename simpleFile<num_t>::Mat out[3];
-        const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[7])));
-        const auto rin(redig.makeRefMatrix(in[0], 1));
-        const auto reref(redig.emphasis(rin, shape, delau, center, outcenter, attend, iemph));
+        const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[8])));
+        const auto reref(redig.draw(redig.makeRefMatrix(in[0], 1), shapey,
+            redig.takeShape(
+              redig.takeShape(shapey, centery, outcentery, attendy, iemph),
+              centerx, outcenterx, attendx, iemph),
+            delauy));
         for(int idx = 0; idx < 3; idx ++)
           out[idx] = redig.pullRefMatrix(reref, 1, in[idx]);
-        if(!file.savep2or3((std::string(argv[8]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true))
+        if(!file.savep2or3((std::string(argv[9]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true))
           return - 1;
       }
     }
