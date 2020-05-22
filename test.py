@@ -33,10 +33,11 @@ elif(argv[2] == "pose" or argv[2] == "poso"):
   root, ext = os.path.splitext(argv[3])
   if(ext != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root + ".ppm"])
-  subprocess.call([argv[1], argv[2], "1", "5.", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", "16", root + "-pose"])
-  for s in range(0, 16):
-    subprocess.call(["cp", root + "-pose" + str(15 - s) + ".ppm", root + "-pose" + str(16 + s) + ".ppm"])
-  subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-pose.mp4"])
+  subprocess.call([argv[1], argv[2], "1", "50.", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", "16", root + "-pose"])
+  if(argv[2] == "poso"):
+    for s in range(0, 16):
+      subprocess.call(["cp", root + "-pose" + str(15 - s) + ".ppm", root + "-pose" + str(16 + s) + ".ppm"])
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-pose.mp4"])
 else:
   for line in argv[3:]:
     try:
