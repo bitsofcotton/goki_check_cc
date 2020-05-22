@@ -449,12 +449,14 @@ int main(int argc, const char* argv[]) {
         }
       if(in0[idx][0] != in1[idx2][0])
         continue;
-      for(int i = idx; i < nidx; i ++)
-        for(int j = idx2; j < in1.size() - 1 && in1[j][0] == in0[idx][0]; j ++)
-          if(abs(in0[i][1] - in1[idx2][1]) <
-               abs(in0[i][1] - in1[idx2 + 1][1]) &&
-             in1[idx2][0] == in1[idx2 + 1][0])
-            in0[i] = in1[idx2];
+      for(int i = idx; i < nidx; i ++) {
+        int idx3(idx2);
+        for(int j = idx2; j < in1.size() && in1[j][0] == in0[idx][0]; j ++)
+          if(abs(in0[i][1] - in1[j][1]) <
+               abs(in0[i][1] - in1[idx3][1]))
+            idx3 = j;
+        in0[i] = in1[idx3];
+      }
       idx = nidx;
     }
     for(int i = 0; i < in0.size(); i ++)
