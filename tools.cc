@@ -404,6 +404,61 @@ int main(int argc, const char* argv[]) {
         output.close();
       }
     }
+  } else if(strcmp(argv[1], "pmerge") == 0) {
+    std::vector<typename simpleFile<num_t>::Vec3> in0, in1;
+    std::ifstream in0h, in1h;
+    in0h.open(argv[2]);
+    in1h.open(argv[3]);
+    try {
+      std::string buf;
+      while(std::getline(in0h, buf)) {
+        std::stringstream sbuf(buf);
+        typename simpleFile<num_t>::Vec3 work(3);
+        sbuf >> work[0];
+        sbuf >> work[1];
+        sbuf >> work[2];
+        in0.push_back(work);
+      }
+      while(std::getline(in1h, buf)) {
+        std::stringstream sbuf(buf);
+        typename simpleFile<num_t>::Vec3 work(3);
+        sbuf >> work[0];
+        sbuf >> work[1];
+        sbuf >> work[2];
+        in1.push_back(work);
+      }
+    } catch(...) {
+      ;
+    }
+    in0h.close();
+    in1h.close();
+    // in0 << in1.
+    int idx(0);
+    int idx2(0);
+    while(idx < in0.size()) {
+      int nidx(in0.size());
+      for(int i = idx; i < in0.size(); i ++)
+        if(in0[idx][0] != in0[i][0]) {
+          nidx = i;
+          break;
+        }
+      for(int i = idx2; i < in1.size(); i ++)
+        if(in0[idx][0] == in1[i][0]) {
+          idx2 = i;
+          break;
+        }
+      if(in0[idx][0] != in1[idx2][0])
+        continue;
+      for(int i = idx; i < nidx; i ++)
+        for(int j = idx2; j < in1.size() - 1 && in1[j][0] == in0[idx][0]; j ++)
+          if(abs(in0[i][1] - in1[idx2][1]) <
+               abs(in0[i][1] - in1[idx2 + 1][1]) &&
+             in1[idx2][0] == in1[idx2 + 1][0])
+            in0[i] = in1[idx2];
+      idx = nidx;
+    }
+    for(int i = 0; i < in0.size(); i ++)
+      std::cout << in0[i][0] << " " << in0[i][1] << " " << in0[i][2] << std::endl;
   } else if(strcmp(argv[1], "pose") == 0 ||
             strcmp(argv[1], "poso") == 0) {
     if(argc < (strcmp(argv[1], "poso") == 0 ? 8 : 7)) {
