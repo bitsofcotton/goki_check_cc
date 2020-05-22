@@ -365,7 +365,8 @@ int main(int argc, const char* argv[]) {
         const auto reref(redig.replace(rin1, rin0, shape1, shape0,
                                        ~ m, delau0, iemph) );
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(),
+          outs[idx] = redig.pullRefMatrix(reref, 1, in0[idx]) +
+                      redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(),
                                           in1[idx]);
         file.savep2or3((outbase + std::string("-") +
                                   std::to_string(iemph) +
@@ -550,14 +551,19 @@ int main(int argc, const char* argv[]) {
         outcentery[i][0] = obuf[1];
         outcentery[i][1] = obuf[0];
       }
+      const auto Mx(bump0.cols() / vbox + 1);
+      const auto My(bump0.rows() / vbox + 1);
+      for(int i = 0; i < attendx.size(); i ++)
+        for(int j = 0; j < attendx[i].size(); j ++)
+          attendx[i][j] = (attendx[i][j] % Mx) * My + (attendx[i][j] / Mx);
+      const auto rin0(redig.makeRefMatrix(in[0], 1));
       for(int j = 0; j < std::atoi(argv[8]); j ++) {
         typename simpleFile<num_t>::Mat out[3];
         const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[8])));
-        const auto reref(redig.draw(redig.makeRefMatrix(in[0], 1), shapey,
+        const auto reref(redig.draw(rin0, shapey,
             redig.takeShape(
               redig.takeShape(shapey, centery, outcentery, attendy, iemph),
-              centerx, outcenterx, attendx, iemph),
-            delauy));
+              centerx, outcenterx, attendx, iemph), delauy));
         for(int idx = 0; idx < 3; idx ++)
           out[idx] = redig.pullRefMatrix(reref, 1, in[idx]);
         if(!file.savep2or3((std::string(argv[9]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true))
