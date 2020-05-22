@@ -935,24 +935,31 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
      next:
       assert(0 <= idx && idx < geoms.size());
       work.emplace_back(geoms[idx][2]);
-      // N.B. for any k, on the line (work[k] - x)^2 = r^2.
-      T x(0);
+      // N.B. for any k, on the line (k - x)^2 + (work[k] - z)^2 = r^2.
+      auto x(geoms[idx][1] - T(work.size()));
+      x *= x + T(1);
+      x /= T(2);
+      T z(0);
       for(int k = 0; k < work.size(); k ++)
-        x += work[k];
+        z += work[k];
       x /= work.size();
+      z /= work.size();
       T r(0);
       for(int k = 0; k < work.size(); k ++)
-        r += (work[k] - x) * (work[k] - x);
+        r += (T(k) - x) * (T(k) - x) + (work[k] - z) * (work[k] - z);
       r /= work.size();
       r  = r <= T(0) ? T(0) : sqrt(r);
       T err(0);
       for(int k = 0; k < work.size(); k ++)
-        err += pow((work[k] - x) * (work[k] - x) - r * r, T(2));
-      if(err < thresh && center.size())
-        center[center.size() - 1][2] = x;
-      else {
+        err += pow((T(k) - x) * (T(k) - x) + (work[k] - z) * (work[k] - z) -
+                   r * r, T(2));
+      if(err < thresh && center.size()) {
+        center[center.size() - 1][1] = x;
+        center[center.size() - 1][2] = z;
+      } else {
         auto gc(geoms[idx]);
-        gc[2] = x;
+        gc[1] = x;
+        gc[2] = z;
         center.push_back(gc);
         attend.push_back(vector<int>());
         work = vector<T>();
