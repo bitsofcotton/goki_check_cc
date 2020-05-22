@@ -33,7 +33,7 @@ elif(argv[2] == "pose" or argv[2] == "poso"):
   root, ext = os.path.splitext(argv[3])
   if(ext != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root + ".ppm"])
-  subprocess.call([argv[1], argv[2], "1", ".05", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", "4", root + "-pose"])
+  subprocess.call([argv[1], argv[2], "1", "5.", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", "16", root + "-pose"])
 else:
   for line in argv[3:]:
     try:

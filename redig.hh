@@ -263,9 +263,11 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < center.size(); i ++)
+  for(int i = 0; i < center.size(); i ++) {
+    const auto delta((outcenter[i] - center[i]) * ratio);
     for(int j = 0; j < attend[i].size(); j ++)
-      result[attend[i][j]] += (outcenter[i] - center[i]) * ratio;
+      result[attend[i][j]] += delta;
+  }
   return result;
 }
 
@@ -956,6 +958,8 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
         err += pow((workx[k] - x) * (workx[k] - x) +
                    (workz[k] - z) * (workz[k] - z) -
                    r * r, T(2));
+      err /= workx.size();
+      err  = sqrt(err);
       if(err < thresh && center.size()) {
         center[center.size() - 1][1] = x;
         center[center.size() - 1][2] = z;
