@@ -552,12 +552,12 @@ int main(int argc, const char* argv[]) {
         outcentery[i][0] = obuf[1];
         outcentery[i][1] = obuf[0];
       }
-      // N.B. bump0 is transposed.
+      // N.B. bump0 is transposed, attendx for shapey.
       const auto Mx(bump0.rows() / vbox + 1);
       const auto My(bump0.cols() / vbox + 1);
       for(int i = 0; i < attendy.size(); i ++)
-        for(int j = 0; j < attendy[i].size(); j ++)
-          attendy[i][j] = (attendy[i][j] % My) * Mx + (attendy[i][j] / My);
+        for(int j = 0; j < attendx[i].size(); j ++)
+          attendx[i][j] = (attendx[i][j] % Mx) * My + (attendx[i][j] / Mx);
       const auto rin0(redig.makeRefMatrix(in[0], 1));
       for(int j = 0; j < std::atoi(argv[8]); j ++) {
         typename simpleFile<num_t>::Mat out[3];
