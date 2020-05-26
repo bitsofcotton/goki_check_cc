@@ -407,63 +407,55 @@ int main(int argc, const char* argv[]) {
       }
     }
   } else if(strcmp(argv[1], "pmerge") == 0) {
-    std::vector<typename simpleFile<num_t>::Vec3> in0, in1;
-    std::ifstream in0h, in1h;
-    in0h.open(argv[2]);
-    in1h.open(argv[3]);
-    try {
-      std::string buf;
-      while(std::getline(in0h, buf)) {
-        std::stringstream sbuf(buf);
-        typename simpleFile<num_t>::Vec3 work(3);
-        sbuf >> work[0];
-        sbuf >> work[1];
-        sbuf >> work[2];
-        in0.push_back(work);
-      }
-      while(std::getline(in1h, buf)) {
-        std::stringstream sbuf(buf);
-        typename simpleFile<num_t>::Vec3 work(3);
-        sbuf >> work[0];
-        sbuf >> work[1];
-        sbuf >> work[2];
-        in1.push_back(work);
-      }
-    } catch(...) {
-      ;
+    if(argc < 8) {
+      usage();
+      return - 1;
     }
-    in0h.close();
-    in1h.close();
-    // in0 << in1.
-    int idx(0);
-    int idx2(0);
-    const auto iidx(0);
-    while(idx < in0.size()) {
-      int nidx(in0.size());
-      for(int i = idx; i < in0.size(); i ++)
-        if(in0[idx][iidx] != in0[i][iidx]) {
-          nidx = i;
-          break;
-        }
-      for(int i = idx2; i < in1.size(); i ++)
-        if(in0[idx][iidx] == in1[i][iidx]) {
-          idx2 = i;
-          break;
-        }
-      if(in0[idx][iidx] != in1[idx2][iidx])
-        continue;
-      for(int i = idx; i < nidx; i ++) {
-        int idx3(idx2);
-        for(int j = idx2; j < in1.size() && in1[j][iidx] == in0[idx][iidx]; j ++)
-          if(abs(in0[i][1 - iidx] - in1[j][1 - iidx]) <
-               abs(in0[i][1 - iidx] - in1[idx3][1 - iidx]))
-            idx3 = j;
-        in0[i] = in1[idx3];
+    const auto vbox(std::atoi(argv[2]));
+    const auto thresh(std::atof(argv[3]));
+    typename simpleFile<num_t>::Mat in0[3], in1[3];
+    if(!file.loadp2or3(in0, argv[4]))
+      return - 2;
+    if(!file.loadp2or3(in1, argv[5]))
+      return - 2;
+    redig.initialize(vbox);
+    std::vector<typename simpleFile<num_t>::Veci3> delaux0, delauy0;
+    std::vector<typename simpleFile<num_t>::Veci3> delaux1, delauy1;
+    std::vector<typename simpleFile<num_t>::Vec3>  shapex0, shapey0;
+    std::vector<typename simpleFile<num_t>::Vec3>  shapex1, shapey1;
+    std::vector<typename simpleFile<num_t>::Vec3>  centerx0, centery0;
+    std::vector<typename simpleFile<num_t>::Vec3>  centerx1, centery1;
+    std::vector<std::vector<int> > attendx0, attendy0;
+    std::vector<std::vector<int> > attendx1, attendy1;
+    const auto bump0(redig.rgb2l(in0));
+    const auto bump1(redig.rgb2l(in1));
+    redig.getTileVec(bump0, shapex0, delaux0);
+    redig.getBones1d(bump0, shapex0, centerx0, attendx0, thresh);
+    redig.getTileVec(bump1, shapex1, delaux1);
+    redig.getBones1d(bump1, shapex1, centerx1, attendx1, thresh);
+    const auto bump0t(bump0.transpose());
+    const auto bump1t(bump1.transpose());
+    redig.getTileVec(bump0t, shapey0, delauy0);
+    redig.getBones1d(bump0t, shapey0, centery0, attendy0, thresh);
+    redig.getTileVec(bump1t, shapey1, delauy1);
+    redig.getBones1d(bump1t, shapey1, centery1, attendy1, thresh);
+    const auto centerx(redig.copyBone(centerx0, attendx0, centerx1, attendx1));
+    const auto centery(redig.copyBone(centery0, attendy0, centery1, attendy1));
+    std::ofstream outputx, outputy;
+    outputx.open(argv[6]);
+    outputy.open(argv[7]);
+    if(outputx.is_open() && outputy.is_open()) {
+      try {
+        for(int i = 0; i < centerx.size(); i ++)
+          outputx << centerx[i][0] << " " << centerx[i][1] << " " << centerx[i][2] << std::endl;
+        for(int i = 0; i < centery.size(); i ++)
+          outputy << centery[i][0] << " " << centery[i][1] << " " << centery[i][2] << std::endl;
+      } catch(...) {
+        ;
       }
-      idx = nidx;
     }
-    for(int i = 0; i < in0.size(); i ++)
-      std::cout << in0[i][0] << " " << in0[i][1] << " " << in0[i][2] << std::endl;
+    outputx.close();
+    outputy.close();
   } else if(strcmp(argv[1], "pose") == 0 ||
             strcmp(argv[1], "poso") == 0) {
     if(argc < (strcmp(argv[1], "poso") == 0 ? 9 : 8)) {
@@ -515,11 +507,9 @@ int main(int argc, const char* argv[]) {
     redig.initialize(vbox);
     auto bump0(redig.rgb2l(bump));
     redig.getTileVec(bump0, shapex, delaux);
-    redig.maskVectors(shapex, delaux, bump0 * num_t(0));
     redig.getBones1d(bump0, shapex, centerx, attendx, thresh);
     bump0 = bump0.transpose();
     redig.getTileVec(bump0, shapey, delauy);
-    redig.maskVectors(shapey, delauy, bump0 * num_t(0));
     redig.getBones1d(bump0, shapey, centery, attendy, thresh);
     if(strcmp(argv[1], "pose") == 0) {
       std::ofstream outputx, outputy;

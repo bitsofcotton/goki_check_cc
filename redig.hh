@@ -125,6 +125,7 @@ public:
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   void getBones1d(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
+  vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc, const int& skip = 8);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1e8));
@@ -957,6 +958,49 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
     attend.resize(attend.size() - 1);
   }
   return;
+}
+
+template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc, const int& skip) {
+  vector<Vec3> result(centerdst);
+  for(int i = 0, srci = 0; i < centerdst.size() && srci < centersrc.size(); ) {
+    int nidx(centerdst.size());
+    for(int j = i; j < centerdst.size(); j ++)
+      if(centerdst[i][0] != centerdst[j][0]) {
+        nidx = j;
+        break;
+      }
+    int nidxsrc(centersrc.size());
+    for(int j = srci; j < centersrc.size(); j ++)
+      if(centerdst[i][0] != centersrc[j][0]) {
+        nidxsrc = j;
+        break;
+      }
+    if(centerdst[i][0] != centersrc[srci][0])
+      continue;
+    int kksrc(srci);
+    for(int kk = i; kk < nidx; kk ++) {
+      vector<pair<int, int> > cattend;
+      vector<pair<int, int> > cattendsrc;
+      cattendsrc.reserve(skip);
+      for(int j = kksrc; j < min(nidxsrc, kksrc + skip); j ++)
+        cattendsrc.emplace_back(make_pair(attendsrc[j].size(), j));
+      sort(cattendsrc.begin(), cattendsrc.end());
+      for(int k = 0; k < cattendsrc.size(); ) {
+        if(k < cattendsrc.size() - 1 &&
+           abs(int(attenddst[kk].size()) - cattendsrc[k].first) <
+           abs(int(attenddst[kk].size()) - cattendsrc[k + 1].first) ) {
+          k ++;
+          continue;
+        }
+        result[kk] = centersrc[cattendsrc[k].second];
+        kksrc += k + 1;
+        break;
+      }
+    }
+    i    = nidx;
+    srci = nidxsrc;
+  }
+  return result;
 }
 
 template <typename T> typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
