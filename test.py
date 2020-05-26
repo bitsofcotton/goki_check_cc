@@ -34,7 +34,8 @@ elif(argv[2] == "pose" or argv[2] == "poso"):
   if(ext != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root + ".ppm"])
   nout = 8
-  subprocess.call([argv[1], argv[2], "1", "50.", root + "-posex.txt", root + "-posey.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
+  #subprocess.call([argv[1], argv[2], "1", "2000.", root + "-posex.txt", root + "-posey.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
+  subprocess.call([argv[1], argv[2], "1", "200.", root + "-posex.txt", root + "-posey.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
   if(argv[2] == "poso"):
     for s in range(0, nout):
       subprocess.call(["cp", root + "-pose" + str(nout - 1 - s) + ".ppm", root + "-pose" + str(nout + s) + ".ppm"])
@@ -92,8 +93,8 @@ else:
     elif(argv[2] == "light"):
       subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
     elif(argv[2] == "bump"):
-      subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump0.ppm"])
-      subprocess.call([argv[1], "integ", root + "-bump0.ppm", root + "-bump.ppm"])
+      subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
+      #subprocess.call([argv[1], "integ", root + "-bump0.ppm", root + "-bump.ppm"])
       #subprocess.call([argv[1], "reshape", str(pixels), root + "-bump0.ppm", root + ".ppm", root + "-bump.ppm"])
       subprocess.call(["convert", root + "-bump.ppm", "-negate", "-compress", "none", root + "-bump-neg.ppm"])
       subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])
@@ -146,7 +147,7 @@ else:
         subprocess.call([argv[1], "sbox", str(- s * 16), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(3 - s) + ".ppm"])
     elif(argv[2] == "demosaic"):
       subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
-      subprocess.call(["python", argv[0], argv[1], "enlp", str(int(np.ceil(np.log(pixels) / np.log(1.5)))), root + "-demosaic0.ppm"])
+      subprocess.call(["python2", argv[0], argv[1], "enlp", str(int(np.ceil(np.log(pixels) / np.log(1.5)))), root + "-demosaic0.ppm"])
     elif(argv[2] == "habit"):
       if(len(bhabit) <= 0):
         bhabit = line

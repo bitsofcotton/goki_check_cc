@@ -552,8 +552,9 @@ int main(int argc, const char* argv[]) {
         outcentery[i][0] = obuf[1];
         outcentery[i][1] = obuf[0];
       }
-      const auto Mx(bump0.cols() / vbox + 1);
-      const auto My(bump0.rows() / vbox + 1);
+      // N.B. bump0 is transposed.
+      const auto Mx(bump0.rows() / vbox + 1);
+      const auto My(bump0.cols() / vbox + 1);
       for(int i = 0; i < attendx.size(); i ++)
         for(int j = 0; j < attendx[i].size(); j ++)
           attendx[i][j] = (attendx[i][j] % Mx) * My + (attendx[i][j] / Mx);
