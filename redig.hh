@@ -125,7 +125,7 @@ public:
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   void getBones1d(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
-  vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc, const int& skip = 8);
+  vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1e8));
@@ -937,7 +937,7 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
                    r * r, T(2));
       err /= workx.size();
       err  = sqrt(err);
-      if(err < thresh && center.size()) {
+      if(j && err < thresh && center.size()) {
         center[center.size() - 1][1] = x;
         center[center.size() - 1][2] = z;
       } else {
@@ -960,7 +960,7 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
   return;
 }
 
-template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc, const int& skip) {
+template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc) {
   vector<Vec3> result(centerdst);
   for(int i = 0, srci = 0; i < centerdst.size() && srci < centersrc.size(); ) {
     int nidx(centerdst.size());
@@ -977,25 +977,19 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const v
       }
     if(centerdst[i][0] != centersrc[srci][0])
       continue;
-    int kksrc(srci);
-    for(int kk = i; kk < nidx; kk ++) {
-      vector<pair<int, int> > cattend;
-      vector<pair<int, int> > cattendsrc;
-      cattendsrc.reserve(skip);
-      for(int j = kksrc; j < min(nidxsrc, kksrc + skip); j ++)
-        cattendsrc.emplace_back(make_pair(attendsrc[j].size(), j));
-      sort(cattendsrc.begin(), cattendsrc.end());
-      for(int k = 0; k < cattendsrc.size(); ) {
-        if(k < cattendsrc.size() - 1 &&
-           abs(int(attenddst[kk].size()) - cattendsrc[k].first) <
-           abs(int(attenddst[kk].size()) - cattendsrc[k + 1].first) ) {
-          k ++;
-          continue;
-        }
-        result[kk] = centersrc[cattendsrc[k].second];
-        kksrc += k + 1;
-        break;
+    for(int k = i; k < nidx; k ++) {
+      int l0(srci);
+      for(int l = srci + 1; l < nidxsrc; l ++) {
+        assert(centerdst[k][0] == centersrc[l][0]);
+        const auto diff0(centerdst[k] - centersrc[l0]);
+        const auto diff1(centerdst[k] - centersrc[l]);
+        if(diff1.dot(diff1) + abs(T(attenddst[k].size()) -
+                                  T(attendsrc[l].size())) <=
+           diff0.dot(diff0) + abs(T(attenddst[k].size()) -
+                                  T(attendsrc[l0].size())))
+          l0 = l;
       }
+      result[k] = centersrc[l0];
     }
     i    = nidx;
     srci = nidxsrc;
