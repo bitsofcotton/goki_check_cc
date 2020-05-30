@@ -107,13 +107,11 @@ int main(int argc, const char* argv[]) {
   Filter<num_t>     filter;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
-     strcmp(argv[1], "integ") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "light")   == 0 ||
      strcmp(argv[1], "bump")    == 0) {
     const auto f_col( ! strcmp(argv[1], "collect") ||
                       ! strcmp(argv[1], "enlarge") || 
-                      ! strcmp(argv[1], "integ")   ||
                       ! strcmp(argv[1], "bump") );
     if((f_col && argc < 4) || ((! f_col) && argc < 5)) {
       usage();
@@ -130,9 +128,6 @@ int main(int argc, const char* argv[]) {
     } else if(strcmp(argv[1], "enlarge") == 0) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.ENLARGE_BOTH);
-    } else if(strcmp(argv[1], "integ") == 0) {
-      for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.INTEG_BOTH);
     } else if(strcmp(argv[1], "pextend") == 0) {
       filter.plen = ratio;
       typename simpleFile<num_t>::Mat xyz[3];
@@ -146,9 +141,8 @@ int main(int argc, const char* argv[]) {
       filter.lrecur = ratio;
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
-    } else if(strcmp(argv[1], "bump") == 0) {
-      data[0] = data[1] = data[2] = filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH);
-    }
+    } else if(strcmp(argv[1], "bump") == 0)
+      data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
     if(strcmp(argv[1], "pextend") != 0) {
       redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
       redig.normalize(data, num_t(1));
