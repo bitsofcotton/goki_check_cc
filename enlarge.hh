@@ -36,7 +36,6 @@ public:
     INTEG_Y,
     RINTEG_X,
     RINTEG_Y,
-    INTEG_BOTH,
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
@@ -111,10 +110,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case ENLARGE_BOTH:
     result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
-    break;
-  case INTEG_BOTH:
-    result = gmean(gmean(compute(data, INTEG_X ), compute(data, INTEG_Y)),
-                   gmean(compute(data, RINTEG_X), compute(data, RINTEG_Y)));
     break;
   case DETECT_BOTH:
     result = gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
@@ -191,12 +186,14 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = T(0);
+      Mat zscore(result);
       initDop(bumpd);
       Vec camera(2);
       camera[0] = T(0);
       camera[1] = T(1);
       assert(T(0) < dratio);
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
+      const auto Dop0(Dop[idx].row(Dop[idx].rows() / 2));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -205,7 +202,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        const Vec Dop0(Dop[idx].row(Dop[idx].rows() / 2) * exp(T(zi - dratio / 2) / sqrt(T(dratio / 2))));
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
@@ -223,16 +219,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #pragma omp critical
 #endif
         {
-          result += compute(A, ABS);
+          for(int i = 0; i < A.rows(); i ++)
+            for(int j = 0; j < A.cols(); j ++)
+              if(zscore(i, j) <= abs(A(i, j))) {
+                result(i, j) = T(1) - T(zi) / T(dratio);
+                zscore(i, j) = abs(A(i, j));
+              }
         }
       }
-      // N.B. log(|average(d_k C * exp(z_k))| / |dC|) == result.
-      const auto dC(compute(data, COLLECT_Y));
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) /= dC(i, j);
-      result = - compute(compute(result, BCLIP), LOGSCALE) * sqrt(T(dratio));
     }
+    result = gmean(compute(result, INTEG_Y), compute(result, RINTEG_Y));
     break;
   case EXTEND_Y:
     {
@@ -249,10 +245,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
       for(int j = 0; j < plen; j ++) {
         P0<T> p(data.rows() / (j + 1));
-        Mat fdata( data.rows() / (j + 1), data.cols());
-        Mat fidata(data.rows() / (j + 1), data.cols());
-        Mat rdata( data.rows() / (j + 1), data.cols());
-        Mat ridata(data.rows() / (j + 1), data.cols());
+        Mat fdata(data.rows() / (j + 1), data.cols());
+        Mat rdata(data.rows() / (j + 1), data.cols());
         for(int i = 0; i < fdata.rows(); i ++) {
           for(int k = 0; k < fdata.cols(); k ++)
             fdata(fdata.rows() - i - 1, k) = rdata(rdata.rows() - i - 1, k) = T(0);
@@ -261,16 +255,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             rdata.row(rdata.rows() - i - 1) += data.row(i * (j + 1) + k);
           }
         }
-        const auto cdata(compute(fdata, BCLIP));
-        const auto ddata(compute(rdata, BCLIP));
-        for(int i = 0; i < fdata.rows(); i ++)
-          for(int k = 0; k < fdata.cols(); k ++) {
-            fidata(i, k) = T(1) / cdata(i, k);
-            ridata(i, k) = T(1) / ddata(i, k);
-          }
         for(int i = 0; i < data.cols(); i ++) {
-          result(data.rows() + j + plen, i) = (p.next(fdata.col(i)) + T(1) / p.next(fidata.col(i))) / T(2);
-          result(plen - j - 1, i) = (p.next(rdata.col(i)) + T(1) / p.next(ridata.col(i))) / T(2);
+          result(data.rows() + j + plen, i) = p.next(fdata.col(i), true);
+          result(plen - j - 1, i) = p.next(rdata.col(i), true);
         }
         for(int i = 0; i < j; i ++) {
           result.row(data.rows() + j + plen) -= result.row(data.rows() + i + plen);
@@ -463,14 +450,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   Sop[idx] /= sqrt(mnorm);
   for(int i = 0; i < lrecur; i ++)
     Sop[idx] = Sop[idx] * Sop[idx];
-  mnorm = T(0);
-  for(int i = 0; i < Sop[idx].rows(); i ++)
-    mnorm = max(mnorm, Sop[idx].row(i).dot(Sop[idx].row(i)));
-  Sop[idx] /= sqrt(mnorm);
-  mnorm = T(0);
-  for(int i = 0; i < Dop[idx].rows(); i ++)
-    mnorm = max(mnorm, Dop[idx].row(i).dot(Dop[idx].row(i)));
-  Dop[idx] /= sqrt(mnorm);
+  Sop[idx] *= sqrt(mnorm);
   return;
 }
 
