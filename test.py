@@ -97,8 +97,8 @@ else:
       subprocess.call(["convert", root + "-enl.ppm", root + "-enl.png"])
     elif(argv[2] == "light"):
       subprocess.call([argv[1], "light", str(pixels), root + ".ppm", root + "-light.ppm"])
-    elif(argv[2] == "bump"):
-      subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
+    elif(argv[2] == "bump" or argv[2] == "bumpi"):
+      subprocess.call([argv[1], argv[2], str(pixels), root + ".ppm", root + "-bump.ppm"])
       subprocess.call(["convert", root + "-bump.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emph" + ext])
       subprocess.call(["convert", line, root + "-bump.ppm", "-channel-fx", "| gray=>alpha", root + "-alpha.png"])
     elif(argv[2] == "pextend"):

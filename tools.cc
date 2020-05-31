@@ -78,7 +78,7 @@ void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck light   <n_recursive> <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck bump    <delta_pixels> <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck bump    <n_integrate> <delta_pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck div     <dummy> <input0.ppm> <input1.ppm> <output.ppm>" << endl;
@@ -109,10 +109,10 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "light")   == 0 ||
-     strcmp(argv[1], "bump")    == 0) {
+     strcmp(argv[1], "bump")    == 0 ||
+     strcmp(argv[1], "bumpi")   == 0) {
     const auto f_col( ! strcmp(argv[1], "collect") ||
-                      ! strcmp(argv[1], "enlarge") || 
-                      ! strcmp(argv[1], "bump") );
+                      ! strcmp(argv[1], "enlarge") );
     if((f_col && argc < 4) || ((! f_col) && argc < 5)) {
       usage();
       return 0;
@@ -141,10 +141,18 @@ int main(int argc, const char* argv[]) {
       filter.lrecur = ratio;
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
-    } else if(strcmp(argv[1], "bump") == 0)
+    } else if(strcmp(argv[1], "bump") == 0) {
+      filter.dist  = 1;
+      filter.bumpi = ratio;
       data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
+    } else if(strcmp(argv[1], "bumpi") == 0) {
+      filter.dist  = 60;
+      filter.bumpi = ratio;
+      data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
+    }
     if(strcmp(argv[1], "pextend") != 0) {
-      redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
+      if(strcmp(argv[1], "bump") != 0 && strcmp(argv[1], "bumpi") != 0)
+        redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
       redig.normalize(data, num_t(1));
     }
     if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))

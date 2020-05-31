@@ -45,6 +45,7 @@ public:
     BUMP_X,
     BUMP_Y,
     BUMP_BOTH,
+    BUMP_BOTH_INTEG,
     EXTEND_X,
     EXTEND_Y,
     EXTEND_BOTH,
@@ -75,6 +76,7 @@ public:
   int  plen;
   int  lrecur;
   int  bumpd;
+  int  bumpi;
 
 private:
   void initDop(const int& size);
@@ -90,11 +92,12 @@ private:
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
   offset  = T(1)  / T(64);
-  dist    = 2000;
-  dratio  = 2048;
+  dist    = 1;
+  dratio  = 128;
   plen    = 1;
   lrecur  = 8;
   bumpd   = 65;
+  bumpi   = 3;
   idx     = - 1;
 }
 
@@ -118,7 +121,15 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
     break;
   case BUMP_BOTH:
-    result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
+    {
+      auto bx(compute(data, BUMP_X));
+      auto by(compute(data, BUMP_Y));
+      for(int i = 0; i < bumpi; i ++) {
+        bx = gmean(compute(bx, INTEG_X), compute(bx, RINTEG_X));
+        by = gmean(compute(bx, INTEG_Y), compute(bx, RINTEG_Y));
+      }
+      result = gmean(bx, by);
+    }
     break;
   case EXTEND_BOTH:
     result = compute(compute(data, EXTEND_X), EXTEND_Y);
@@ -228,7 +239,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         }
       }
     }
-    result = gmean(compute(result, INTEG_Y), compute(result, RINTEG_Y));
     break;
   case EXTEND_Y:
     {
