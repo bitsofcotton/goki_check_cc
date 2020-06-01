@@ -123,7 +123,7 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
-  void getBones1d(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
+  void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
   vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
@@ -891,7 +891,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
   return;
 }
 
-template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh) {
+template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh) {
   int idx(0);
   center = vector<Vec3>();
   attend = vector<vector<int> >();
@@ -950,42 +950,62 @@ template <typename T> void reDig<T>::getBones1d(const Mat& in, const vector<Vec3
     center.resize(center.size() - 1);
     attend.resize(attend.size() - 1);
   }
+  vector<Vec3>         newcenter;
+  vector<vector<int> > newattend;
+  assert(attend.size() == center.size());
+  for(int i = 0; i < attend.size(); i ++) {
+    auto z(center[i]);
+    int lastj(i);
+    Vec3 nnz(3);
+    for(int j = i + 1; j < attend.size(); j ++) {
+      // N.B. for any k, on the line ||center[k] - z||^2 = r^2.
+      // <=> sum_k (ck_0 - z_0)^2 + (ck_1 - z_1)^2 + (ck_2 - z_2)^2 == r^2.
+      Vec3 newz(3);
+      newz[0] = newz[1] = newz[2] = T(0);
+      for(int k = i; k <= j; k ++)
+        newz += center[k];
+      newz /= T(j - i + 1);
+      T err(0);
+      for(int k = i; k <= j; k ++)
+        err  += (center[k] - newz).dot(center[k] - newz);
+      err /= T(j - i + 1);
+      err  = sqrt(err);
+      nnz  = newz;
+      if(err < thresh)
+        lastj = j;
+      else
+        break;
+    }
+    newcenter.emplace_back(nnz);
+    newattend.emplace_back(attend[i]);
+    for(int k = i + 1; k <= lastj; k ++)
+      newattend[newattend.size() - 1].insert(
+        newattend[newattend.size() - 1].end(),
+        attend[k].begin(), attend[k].end());
+    i = lastj;
+  }
+  center = newcenter;
+  attend = newattend;
   return;
 }
 
 template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc) {
   vector<Vec3> result(centerdst);
-  for(int i = 0, srci = 0; i < centerdst.size() && srci < centersrc.size(); ) {
-    int nidx(centerdst.size());
-    for(int j = i; j < centerdst.size(); j ++)
-      if(centerdst[i][0] != centerdst[j][0]) {
-        nidx = j;
-        break;
-      }
-    int nidxsrc(centersrc.size());
-    for(int j = srci; j < centersrc.size(); j ++)
-      if(centerdst[i][0] != centersrc[j][0]) {
-        nidxsrc = j;
-        break;
-      }
-    if(centerdst[i][0] != centersrc[srci][0])
-      continue;
-    for(int k = i; k < nidx; k ++) {
-      int l0(srci);
-      for(int l = srci + 1; l < nidxsrc; l ++) {
-        assert(centerdst[k][0] == centersrc[l][0]);
-        const auto diff0(centerdst[k] - centersrc[l0]);
-        const auto diff1(centerdst[k] - centersrc[l]);
-        if(diff1.dot(diff1) + abs(T(attenddst[k].size()) -
-                                  T(attendsrc[l].size())) <=
-           diff0.dot(diff0) + abs(T(attenddst[k].size()) -
-                                  T(attendsrc[l0].size())))
-          l0 = l;
-      }
-      result[k] = centersrc[l0];
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < centerdst.size(); i ++) {
+    int midx(i ? 0 : 1);
+    for(int j = 0; j < centersrc.size(); j ++) if(i != j) {
+      const auto diff0(centerdst[i] - centersrc[j]);
+      const auto diff1(centerdst[i] - centersrc[midx]);
+      if(diff1.dot(diff1) + abs(T(attenddst[i].size()) -
+                                T(attendsrc[j].size())) <=
+         diff0.dot(diff0) + abs(T(attenddst[i].size()) -
+                                T(attendsrc[midx].size())))
+        midx = j;
     }
-    i    = nidx;
-    srci = nidxsrc;
+    result[i] = centersrc[midx];
   }
   return result;
 }
