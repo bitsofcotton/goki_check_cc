@@ -494,17 +494,16 @@ int main(int argc, const char* argv[]) {
       }
       output.close();
     } else {
-      assert(center.size() == outcenter.size());
+      assert(center.size() == outcenter.size() && center.size() == attend.size());
       const auto rin0(redig.makeRefMatrix(in[0], 1));
       for(int j = 0; j < std::atoi(argv[7]); j ++) {
         typename simpleFile<num_t>::Mat out[3];
-        const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[8])));
-        const auto reref(redig.draw(rin0, shape,
-            redig.takeShape(shape, center, outcenter, attend, iemph), delau));
+        const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[7])));
+        const auto newshape(redig.takeShape(shape, center, outcenter, attend, iemph));
+        const auto reref(redig.draw(rin0, shape, newshape, delau));
         for(int idx = 0; idx < 3; idx ++)
           out[idx] = redig.pullRefMatrix(reref, 1, in[idx]);
-        if(!file.savep2or3((std::string(argv[8]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true))
-          return - 1;
+        file.savep2or3((std::string(argv[8]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true);
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {
