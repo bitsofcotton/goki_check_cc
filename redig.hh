@@ -998,10 +998,8 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const v
     for(int j = 0; j < centersrc.size(); j ++) if(i != j) {
       const auto diff0(centerdst[i] - centersrc[j]);
       const auto diff1(centerdst[i] - centersrc[midx]);
-      if(diff1.dot(diff1) + abs(T(attenddst[i].size()) -
-                                T(attendsrc[j].size())) <=
-         diff0.dot(diff0) + abs(T(attenddst[i].size()) -
-                                T(attendsrc[midx].size())))
+      if(diff0[0] * diff0[0] + diff0[1] * diff0[1] <=
+         diff1[0] * diff1[0] + diff1[1] * diff1[1])
         midx = j;
     }
     result[i] = centersrc[midx];
