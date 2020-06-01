@@ -345,11 +345,11 @@ int main(int argc, const char* argv[]) {
       const auto mhull1((~ m).hullConv(mhull0));
       const std::string outbase(argv[fnout]);
       for(int idx = 0; idx < 3; idx ++)
-        outs[idx] = redig.showMatch(redig.replace(in0[idx] * num_t(0),
+        outs[idx] = redig.showMatch(redig.draw(in0[idx] * num_t(0),
                                       shape0, delau0), shape0, mhull0);
       file.savep2or3((outbase + std::string("-repl0.ppm")).c_str(), outs, false);
       for(int idx = 0; idx < 3; idx ++)
-        outs[idx] = redig.showMatch(redig.replace(in1[idx] * num_t(0),
+        outs[idx] = redig.showMatch(redig.draw(in1[idx] * num_t(0),
                                       m.transform(shape1), delau1),
                                     m.transform(shape1), mhull1);
       file.savep2or3((outbase + std::string("-repl1.ppm")).c_str(), outs, false);
@@ -358,26 +358,29 @@ int main(int argc, const char* argv[]) {
       file.savep2or3((outbase + std::string(".ppm")).c_str(), outs, false);
       for(int i = 0; i < nemph; i ++) {
         const auto iemph(num_t(i) / num_t(nemph));
-        const auto reref(redig.replace(rin1, rin0, shape1, shape0,
-                                       ~ m, delau0, iemph) );
+        const auto shape(redig.takeShape(shape1, shape0, ~ m, iemph));
+        const auto reref(redig.draw(rin1, shape1, shape, delau1));
         for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = redig.pullRefMatrix(reref, 1, in0[idx]) *
-                        (num_t(1) - iemph) +
-                      redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(),
-                                          in1[idx]) * iemph;
+          outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
+          // outs[idx] = redig.draw(in1[idx] * num_t(0), shape, delau1);
         file.savep2or3((outbase + std::string("-") +
-                                  std::to_string(iemph) +
+                                  std::to_string(i) +
+                                  std::string("-") +
+                                  std::to_string(nemph) +
                                   std::string(".ppm")).c_str(), outs, false);
         file.saveobj(redig.takeShape(shape0, shape1, m,   iemph),
-                     outs[0].rows(), outs[0].cols(),
-                     delau0, (outbase + std::string("-emph0-") +
-                                        std::to_string(iemph) +
-                                        std::string(".obj")).c_str());
-        file.saveobj(redig.takeShape(shape1, shape0, ~ m, iemph),
-                     outs[0].rows(), outs[0].cols(),
-                     delau1, (outbase + std::string("-emph1-") +
-                                        std::to_string(iemph) +
-                                        std::string(".obj")).c_str());
+                     outs[0].rows(), outs[0].cols(), delau0,
+                     (outbase + std::string("-emph0-") +
+                                std::to_string(i) +
+                                std::string("-") +
+                                std::to_string(nemph) +
+                                std::string(".obj")).c_str());
+        file.saveobj(shape, outs[0].rows(), outs[0].cols(), delau1,
+                     (outbase + std::string("-emph1-") +
+                                std::to_string(i) +
+                                std::string("-") +
+                                std::to_string(nemph) +
+                                std::string(".obj")).c_str());
       }
     } else { 
       matchPartial<num_t> statmatch;
