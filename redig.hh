@@ -930,7 +930,7 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
                    r * r, T(2));
       err /= workx.size();
       err  = sqrt(err);
-      if(j && err < thresh && center.size()) {
+      if(j && err < thresh * T(in.rows() * in.cols()) && center.size()) {
         center[center.size() - 1][1] = x;
         center[center.size() - 1][2] = z;
       } else {
@@ -966,11 +966,11 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
       newz /= T(j - i + 1);
       T err(0);
       for(int k = i; k <= j; k ++)
-        err  += (center[k] - newz).dot(center[k] - newz);
+        err += (center[k] - newz).dot(center[k] - newz);
       err /= T(j - i + 1);
       err  = sqrt(err);
       z    = newz;
-      if(err < thresh * thresh)
+      if(err < thresh * thresh * T(in.rows() * in.cols()))
         lastj = j;
       else
         break;
