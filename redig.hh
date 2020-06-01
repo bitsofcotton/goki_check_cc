@@ -970,7 +970,7 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
       err /= T(j - i + 1);
       err  = sqrt(err);
       z    = newz;
-      if(err < thresh * thresh * T(in.rows() * in.cols()))
+      if(err < thresh * T(in.rows() * in.cols()))
         lastj = j;
       else
         break;
