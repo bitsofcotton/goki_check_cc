@@ -406,7 +406,7 @@ int main(int argc, const char* argv[]) {
       }
     }
   } else if(strcmp(argv[1], "pmerge") == 0) {
-    if(argc < 8) {
+    if(argc < 7) {
       usage();
       return - 1;
     }
