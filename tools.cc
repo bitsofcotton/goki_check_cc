@@ -109,8 +109,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "light")   == 0 ||
-     strcmp(argv[1], "bump")    == 0 ||
-     strcmp(argv[1], "bumpi")   == 0) {
+     strcmp(argv[1], "bump")    == 0) {
     const auto f_col( ! strcmp(argv[1], "collect") ||
                       ! strcmp(argv[1], "enlarge") );
     if((f_col && argc < 4) || ((! f_col) && argc < 5)) {
@@ -142,16 +141,11 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     } else if(strcmp(argv[1], "bump") == 0) {
-      filter.dist  = 1;
-      filter.bumpi = ratio;
-      data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
-    } else if(strcmp(argv[1], "bumpi") == 0) {
-      filter.dist  = 60;
-      filter.bumpi = ratio;
+      filter.dist = ratio * 2 + 1;
       data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
     }
     if(strcmp(argv[1], "pextend") != 0) {
-      if(strcmp(argv[1], "bump") != 0 && strcmp(argv[1], "bumpi") != 0)
+      if(strcmp(argv[1], "bump") != 0)
         redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
       redig.normalize(data, num_t(1));
     }

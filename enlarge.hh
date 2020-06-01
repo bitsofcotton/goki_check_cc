@@ -20,7 +20,6 @@ using std::vector;
 using std::max;
 using std::min;
 using std::abs;
-template <typename T> class reDig;
 
 // This class is NOT thread safe.
 template <typename T> class Filter {
@@ -45,7 +44,6 @@ public:
     BUMP_X,
     BUMP_Y,
     BUMP_BOTH,
-    BUMP_BOTH_INTEG,
     EXTEND_X,
     EXTEND_Y,
     EXTEND_BOTH,
@@ -76,7 +74,6 @@ public:
   int  plen;
   int  lrecur;
   int  bumpd;
-  int  bumpi;
 
 private:
   void initDop(const int& size);
@@ -84,6 +81,7 @@ private:
   T    Pi;
   vector<Mat> Dop;
   vector<Mat> Iop;
+  vector<Mat> RIop;
   vector<Mat> Eop;
   vector<Mat> Sop;
   int  idx;
@@ -97,7 +95,6 @@ template <typename T> Filter<T>::Filter() {
   plen    = 1;
   lrecur  = 8;
   bumpd   = 65;
-  bumpi   = 3;
   idx     = - 1;
 }
 
@@ -121,15 +118,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
     break;
   case BUMP_BOTH:
-    {
-      auto bx(compute(data, BUMP_X));
-      auto by(compute(data, BUMP_Y));
-      for(int i = 0; i < bumpi; i ++) {
-        bx = gmean(compute(bx, INTEG_X), compute(bx, RINTEG_X));
-        by = gmean(compute(bx, INTEG_Y), compute(bx, RINTEG_Y));
-      }
-      result = gmean(bx, by);
-    }
+    result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
     break;
   case EXTEND_BOTH:
     result = compute(compute(data, EXTEND_X), EXTEND_Y);
@@ -171,14 +160,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = Iop[idx] * data;
     break;
   case RINTEG_Y:
-    {
-      result = Mat(data.rows(), data.cols());
-      for(int i = 0; i < result.rows(); i ++)
-        result.row(i) = data.row(data.rows() - 1 - i);
-      const auto buf(compute(result, INTEG_Y));
-      for(int i = 0; i < result.rows(); i ++)
-        result.row(i) = buf.row(buf.rows() - 1 - i);
-    }
+    initDop(data.rows());
+    result = RIop[idx] * data;
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -204,7 +187,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       camera[1] = T(1);
       assert(T(0) < dratio);
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-      const auto Dop0(Dop[idx].row(Dop[idx].rows() / 2));
+      const auto Dop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -222,7 +205,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-          //  N.B. average_k(dC_k / dy * z_k).
+          //  N.B. d^2C_k/dy^2 on zi.
           for(int i = 0; i < A.rows(); i ++)
             A.row(i) += data.row(getImgPt(i + int(y0), data.rows())) * Dop0[j];
         }
@@ -232,13 +215,15 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         {
           for(int i = 0; i < A.rows(); i ++)
             for(int j = 0; j < A.cols(); j ++)
-              if(zscore(i, j) <= abs(A(i, j))) {
+              if(zi == 0 || abs(A(i, j)) <= zscore(i, j)) {
                 result(i, j) = T(1) - T(zi) / T(dratio);
                 zscore(i, j) = abs(A(i, j));
               }
         }
       }
     }
+    result = gmean(compute(result, INTEG_Y), compute(result, RINTEG_Y));
+    result = gmean(compute(result, INTEG_Y), compute(result, RINTEG_Y));
     break;
   case EXTEND_Y:
     {
@@ -344,6 +329,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     for(int j = 0; j < Dop[idx].cols(); j ++)
       Dop[idx](i, j) = T(0);
   Iop.push_back(Dop[idx]);
+  RIop.push_back(Dop[idx]);
   Eop.push_back(Mat(Dop[idx].rows() * 2, Dop[idx].cols()));
   Sop.push_back(Dop[idx]);
   int cnt(1);
@@ -454,6 +440,9 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     for(int j = 0; j < II.cols(); j ++)
       Iop[idx](II.rows() - i - 1, II.cols() - j - 1) += II(i, j);
   Iop[idx] /= T(2);
+  for(int i = 0; i < Iop[idx].rows(); i ++)
+    for(int j = 0; j < Iop[idx].cols(); j ++)
+      RIop[idx](i, j) = Iop[idx](Iop[idx].rows() - i - 1, Iop[idx].cols() - j - 1);
   T mnorm(0);
   for(int i = 0; i < Sop[idx].rows(); i ++)
     mnorm = max(mnorm, Sop[idx].row(i).dot(Sop[idx].row(i)));
