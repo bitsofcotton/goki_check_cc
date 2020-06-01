@@ -35,8 +35,8 @@ elif(argv[2] == "pose" or argv[2] == "poso"):
   if(ext != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root + ".ppm"])
   nout = 8
-  #subprocess.call([argv[1], argv[2], "1", "200.", root + "-posex.txt", root + "-posey.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
-  subprocess.call([argv[1], argv[2], "1", "800.", root + "-posex.txt", root + "-posey.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
+  #subprocess.call([argv[1], argv[2], "1", "200.", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
+  subprocess.call([argv[1], argv[2], "1", "800.", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
   if(argv[2] == "poso"):
     for s in range(0, nout):
       subprocess.call(["cp", root + "-pose" + str(nout - 1 - s) + ".ppm", root + "-pose" + str(nout + s) + ".ppm"])
@@ -44,8 +44,8 @@ elif(argv[2] == "pose" or argv[2] == "poso"):
 elif(argv[2] == "pmerge"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
-  #subprocess.call([argv[1], argv[2], "1", "200.", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-posex.txt", root0 + "-posey.txt"])
-  subprocess.call([argv[1], argv[2], "1", "800.", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-posex.txt", root0 + "-posey.txt"])
+  #subprocess.call([argv[1], argv[2], "1", "200.", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-pose.txt"])
+  subprocess.call([argv[1], argv[2], "1", "800.", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-pose.txt"])
 else:
   for line in argv[3:]:
     try:

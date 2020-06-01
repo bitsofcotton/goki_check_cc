@@ -418,143 +418,89 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(in1, argv[5]))
       return - 2;
     redig.initialize(vbox);
-    std::vector<typename simpleFile<num_t>::Veci3> delaux0, delauy0;
-    std::vector<typename simpleFile<num_t>::Veci3> delaux1, delauy1;
-    std::vector<typename simpleFile<num_t>::Vec3>  shapex0, shapey0;
-    std::vector<typename simpleFile<num_t>::Vec3>  shapex1, shapey1;
-    std::vector<typename simpleFile<num_t>::Vec3>  centerx0, centery0;
-    std::vector<typename simpleFile<num_t>::Vec3>  centerx1, centery1;
-    std::vector<std::vector<int> > attendx0, attendy0;
-    std::vector<std::vector<int> > attendx1, attendy1;
+    std::vector<typename simpleFile<num_t>::Veci3> delau0, delau1;
+    std::vector<typename simpleFile<num_t>::Vec3>  shape0, shape1;
+    std::vector<typename simpleFile<num_t>::Vec3>  center0, center1;
+    std::vector<std::vector<int> > attend0, attend1;
     const auto bump0(redig.rgb2l(in0));
     const auto bump1(redig.rgb2l(in1));
-    redig.getTileVec(bump0, shapex0, delaux0);
-    redig.getBones1d(bump0, shapex0, centerx0, attendx0, thresh);
-    redig.getTileVec(bump1, shapex1, delaux1);
-    redig.getBones1d(bump1, shapex1, centerx1, attendx1, thresh);
-    const auto bump0t(bump0.transpose());
-    const auto bump1t(bump1.transpose());
-    redig.getTileVec(bump0t, shapey0, delauy0);
-    redig.getBones1d(bump0t, shapey0, centery0, attendy0, thresh);
-    redig.getTileVec(bump1t, shapey1, delauy1);
-    redig.getBones1d(bump1t, shapey1, centery1, attendy1, thresh);
-    const auto centerx(redig.copyBone(centerx0, attendx0, centerx1, attendx1));
-    const auto centery(redig.copyBone(centery0, attendy0, centery1, attendy1));
-    std::ofstream outputx, outputy;
-    outputx.open(argv[6]);
-    outputy.open(argv[7]);
-    if(outputx.is_open() && outputy.is_open()) {
+    redig.getTileVec(bump0, shape0, delau0);
+    redig.getBone(bump0, shape0, center0, attend0, thresh);
+    redig.getTileVec(bump1, shape1, delau1);
+    redig.getBone(bump1, shape1, center1, attend1, thresh);
+    const auto center(redig.copyBone(center0, attend0, center1, attend1));
+    std::ofstream output;
+    output.open(argv[6]);
+    if(output.is_open()) {
       try {
-        for(int i = 0; i < centerx.size(); i ++)
-          outputx << centerx[i][0] << " " << centerx[i][1] << " " << centerx[i][2] << std::endl;
-        for(int i = 0; i < centery.size(); i ++)
-          outputy << centery[i][0] << " " << centery[i][1] << " " << centery[i][2] << std::endl;
+        for(int i = 0; i < center.size(); i ++)
+          output << center[i][0] << " " << center[i][1] << " " << center[i][2] << std::endl;
       } catch(...) {
         ;
       }
     }
-    outputx.close();
-    outputy.close();
+    output.close();
   } else if(strcmp(argv[1], "pose") == 0 ||
             strcmp(argv[1], "poso") == 0) {
-    if(argc < (strcmp(argv[1], "poso") == 0 ? 9 : 8)) {
+    if(argc < (strcmp(argv[1], "poso") == 0 ? 8 : 7)) {
       usage();
       return - 1;
     }
     const auto vbox(std::atoi(argv[2]));
     const auto thresh(std::atof(argv[3]));
-    std::vector<typename simpleFile<num_t>::Vec3> outcenterx, outcentery;
+    std::vector<typename simpleFile<num_t>::Vec3> outcenter;
     if(strcmp(argv[1], "poso") == 0) {
-      std::ifstream inputx, inputy;
-      inputx.open(argv[4]);
-      inputy.open(argv[5]);
+      std::ifstream input;
+      input.open(argv[4]);
       try {
         std::string buf;
-        while(std::getline(inputx, buf)) {
+        while(std::getline(input, buf)) {
           std::stringstream sbuf(buf);
           typename simpleFile<num_t>::Vec3 work(3);
           sbuf >> work[0];
           sbuf >> work[1];
           sbuf >> work[2];
-          outcenterx.push_back(work);
+          outcenter.push_back(work);
         }
-        while(std::getline(inputy, buf)) {
-          std::stringstream sbuf(buf);
-          typename simpleFile<num_t>::Vec3 work(3);
-          sbuf >> work[0];
-          sbuf >> work[1];
-          sbuf >> work[2];
-          outcentery.push_back(work);
-        }
-        std::cerr << outcenterx.size() << "x" << outcentery.size() << "bone points" << std::endl;
+        std::cerr << outcenter.size() << "bone points" << std::endl;
       } catch(...) {
         usage();
         return - 2;
       }
-      inputx.close();
-      inputy.close();
+      input.close();
     }
     typename simpleFile<num_t>::Mat in[3], bump[3];
-    std::vector<typename simpleFile<num_t>::Veci3> delaux, delauy;
-    std::vector<typename simpleFile<num_t>::Vec3>  shapex, shapey;
-    std::vector<typename simpleFile<num_t>::Vec3>  centerx, centery;
-    std::vector<std::vector<int> > attendx, attendy;
-    if(!file.loadp2or3(in, argv[6]))
+    std::vector<typename simpleFile<num_t>::Veci3> delau;
+    std::vector<typename simpleFile<num_t>::Vec3>  shape, center;
+    std::vector<std::vector<int> > attend;
+    if(!file.loadp2or3(in, argv[5]))
       return - 2;
-    if(!file.loadp2or3(bump, argv[7]))
+    if(!file.loadp2or3(bump, argv[6]))
       return - 2;
     redig.initialize(vbox);
     auto bump0(redig.rgb2l(bump));
-    redig.getTileVec(bump0, shapex, delaux);
-    redig.getBones1d(bump0, shapex, centerx, attendx, thresh);
-    bump0 = bump0.transpose();
-    redig.getTileVec(bump0, shapey, delauy);
-    redig.getBones1d(bump0, shapey, centery, attendy, thresh);
+    redig.getTileVec(bump0, shape, delau);
+    redig.getBone(bump0, shape, center, attend, thresh);
     if(strcmp(argv[1], "pose") == 0) {
-      std::ofstream outputx, outputy;
-      outputx.open(argv[4]);
-      outputy.open(argv[5]);
-      if(outputx.is_open() && outputy.is_open()) {
+      std::ofstream output;
+      output.open(argv[4]);
+      if(output.is_open()) {
         try {
-          for(int i = 0; i < centerx.size(); i ++)
-            outputx << centerx[i][0] << " " << centerx[i][1] << " " << centerx[i][2] << std::endl;
-          for(int i = 0; i < centery.size(); i ++)
-            outputy << centery[i][0] << " " << centery[i][1] << " " << centery[i][2] << std::endl;
+          for(int i = 0; i < center.size(); i ++)
+            output << center[i][0] << " " << center[i][1] << " " << center[i][2] << std::endl;
         } catch(...) {
           ;
         }
       }
-      outputx.close();
-      outputy.close();
+      output.close();
     } else {
-      assert(centery.size() == outcentery.size());
-      for(int i = 0; i < shapey.size(); i ++) {
-        const auto buf(shapey[i]);
-        shapey[i][0] = buf[1];
-        shapey[i][1] = buf[0];
-      }
-      for(int i = 0; i < centery.size(); i ++) {
-        const auto buf(centery[i]);
-        const auto obuf(outcentery[i]);
-        centery[i][0] = buf[1];
-        centery[i][1] = buf[0];
-        outcentery[i][0] = obuf[1];
-        outcentery[i][1] = obuf[0];
-      }
-      // N.B. bump0 is transposed, attendx for shapey.
-      const auto Mx(bump0.rows() / vbox + 1);
-      const auto My(bump0.cols() / vbox + 1);
-      for(int i = 0; i < attendx.size(); i ++)
-        for(int j = 0; j < attendx[i].size(); j ++)
-          attendx[i][j] = (attendx[i][j] % Mx) * My + (attendx[i][j] / Mx);
+      assert(center.size() == outcenter.size());
       const auto rin0(redig.makeRefMatrix(in[0], 1));
-      for(int j = 0; j < std::atoi(argv[8]); j ++) {
+      for(int j = 0; j < std::atoi(argv[7]); j ++) {
         typename simpleFile<num_t>::Mat out[3];
         const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[8])));
-        const auto reref(redig.draw(rin0, shapey,
-            redig.takeShape(
-              redig.takeShape(shapey, centery, outcentery, attendy, iemph),
-              centerx, outcenterx, attendx, iemph), delauy));
+        const auto reref(redig.draw(rin0, shape,
+            redig.takeShape(shape, center, outcenter, attend, iemph), delau));
         for(int idx = 0; idx < 3; idx ++)
           out[idx] = redig.pullRefMatrix(reref, 1, in[idx]);
         if(!file.savep2or3((std::string(argv[9]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true))
