@@ -503,7 +503,7 @@ int main(int argc, const char* argv[]) {
             redig.takeShape(shape, center, outcenter, attend, iemph), delau));
         for(int idx = 0; idx < 3; idx ++)
           out[idx] = redig.pullRefMatrix(reref, 1, in[idx]);
-        if(!file.savep2or3((std::string(argv[9]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true))
+        if(!file.savep2or3((std::string(argv[8]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true))
           return - 1;
       }
     }
