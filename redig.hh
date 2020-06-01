@@ -953,7 +953,8 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
   vector<Vec3>         newcenter;
   vector<vector<int> > newattend;
   assert(attend.size() == center.size());
-  for(int i = 0; i < attend.size(); i ++) {
+  int i;
+  for(i = 0; i < attend.size(); i ++) {
     auto z(center[i]);
     int lastj(i);
     for(int j = i + 1; j < attend.size(); j ++) {
