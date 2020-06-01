@@ -144,6 +144,21 @@ else:
       else:
         subprocess.call([argv[1], "habit", bhabit + "-out.obj", line, line + "-out.obj"])
         bhabit = line
+    elif(argv[2] == "extend"):
+      for tami in range(1, 12):
+        tam = tami / 360. * 4
+        for s in range(0, 4):
+          subprocess.call([argv[1], "tilt", str(s), "4", str(tam), root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
+          subprocess.call([argv[1], "bump", "4", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
+          subprocess.call([argv[1], "obj", "1", "1", ".001", "0", root + "-bumpext" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".obj"])
+        subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext0.obj", "0", "4", str(tam), root + "-bumpextA.obj"])
+        subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext1.obj", "1", "4", str(tam), root + "-bumpextB.obj"])
+        subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext2.obj", "2", "4", str(tam), root + "-bumpextC.obj"])
+        subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext3.obj", "3", "4", str(tam), root + "-bumpextD.obj"])
+        subprocess.call([argv[1], "habit", root + "-bumpextA.obj", root + "-bumpextC.obj", "0", "1", "0", root + "-bumpextAC.obj"])
+        subprocess.call([argv[1], "habit", root + "-bumpextB.obj", root + "-bumpextD.obj", "0", "1", "0", root + "-bumpextBD.obj"])
+        subprocess.call([argv[1], "habit", root + "-bumpextAC.obj", root + "-bumpextBD.obj", "0", "1", "0", root + "-bumpext.obj"])
+        subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
     elif(argv[2] == "prep"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])
 
