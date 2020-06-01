@@ -29,6 +29,7 @@ elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho"):
     subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
     subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", argv[5] + "-%d-" + str(nemph) + ".ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", argv[5] + ".mp4"])
 elif(argv[2] == "pose" or argv[2] == "poso"):
   root, ext = os.path.splitext(argv[3])
   if(ext != ".ppm"):
@@ -78,11 +79,6 @@ else:
       subprocess.call(["mogrify", "-format", "png", "*.ppm"])
     elif(argv[2] == "col"):
       subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
-      subprocess.call(["convert", root + "-collect.ppm", "-negate", "-compress", "none", root + "-collect-neg.ppm"])
-      subprocess.call(["convert", root + "-collect.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emphe" + ext])
-      subprocess.call(["convert", root + "-collect-neg.ppm", root + ".ppm", "-compose", "hard-light", "-composite", root + "-emphe-neg" + ext])
-      subprocess.call(["convert", root + "-emph" + ext, root + "-emphe" + ext, "-average", root + "-ee" + ext])
-      subprocess.call(["convert", root + "-emph" + ext, root + "-emphe-neg" + ext, "-average", root + "-een" + ext])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-light.ppm"])
       for s in range(0, pixels):
