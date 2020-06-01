@@ -956,7 +956,6 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
   for(int i = 0; i < attend.size(); i ++) {
     auto z(center[i]);
     int lastj(i);
-    Vec3 nnz(3);
     for(int j = i + 1; j < attend.size(); j ++) {
       // N.B. for any k, on the line ||center[k] - z||^2 = r^2.
       // <=> sum_k (ck_0 - z_0)^2 + (ck_1 - z_1)^2 + (ck_2 - z_2)^2 == r^2.
@@ -970,13 +969,13 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
         err  += (center[k] - newz).dot(center[k] - newz);
       err /= T(j - i + 1);
       err  = sqrt(err);
-      nnz  = newz;
-      if(err < thresh)
+      z    = newz;
+      if(err < thresh * thresh)
         lastj = j;
       else
         break;
     }
-    newcenter.emplace_back(nnz);
+    newcenter.emplace_back(z);
     newattend.emplace_back(attend[i]);
     for(int k = i + 1; k <= lastj; k ++)
       newattend[newattend.size() - 1].insert(

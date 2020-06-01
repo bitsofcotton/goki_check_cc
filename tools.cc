@@ -442,7 +442,7 @@ int main(int argc, const char* argv[]) {
     output.close();
   } else if(strcmp(argv[1], "pose") == 0 ||
             strcmp(argv[1], "poso") == 0) {
-    if(argc < (strcmp(argv[1], "poso") == 0 ? 9 : 8)) {
+    if(argc < (strcmp(argv[1], "poso") == 0 ? 8 : 7)) {
       usage();
       return - 1;
     }
@@ -473,9 +473,9 @@ int main(int argc, const char* argv[]) {
     std::vector<typename simpleFile<num_t>::Veci3> delau;
     std::vector<typename simpleFile<num_t>::Vec3>  shape, center;
     std::vector<std::vector<int> > attend;
-    if(!file.loadp2or3(in, argv[6]))
+    if(!file.loadp2or3(in, argv[5]))
       return - 2;
-    if(!file.loadp2or3(bump, argv[7]))
+    if(!file.loadp2or3(bump, argv[6]))
       return - 2;
     redig.initialize(vbox);
     auto bump0(redig.rgb2l(bump));
@@ -496,7 +496,7 @@ int main(int argc, const char* argv[]) {
     } else {
       assert(center.size() == outcenter.size());
       const auto rin0(redig.makeRefMatrix(in[0], 1));
-      for(int j = 0; j < std::atoi(argv[8]); j ++) {
+      for(int j = 0; j < std::atoi(argv[7]); j ++) {
         typename simpleFile<num_t>::Mat out[3];
         const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[8])));
         const auto reref(redig.draw(rin0, shape,
