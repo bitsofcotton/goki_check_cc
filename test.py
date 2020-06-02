@@ -52,7 +52,6 @@ elif(argv[2] == "pcomp0"):
   root0, ext0 = os.path.splitext(argv[3])
   if(ext0 != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
-  """
   subprocess.call([argv[1], "pose", "1", ".1", root0 + "-pose.txt", root0 + ".ppm", root0 + "-bump.ppm", str(pixels), root0 + "-pose"])
   for line in argv[4:]:
     root, ext = os.path.splitext(line)
