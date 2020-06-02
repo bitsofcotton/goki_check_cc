@@ -109,11 +109,17 @@ public:
         if(line[0] == 'P') {
           if(line[1] == '2') {
             data[0] = Mat(h, w);
+            for(int i = 0; i < h; i ++)
+              for(int j = 0; j < w; j ++)
+                data[0](i, j) = T(0);
             loadstub(input, nmax, 1, data);
             data[1] = data[2] = data[0];
           } else if(line[1] == '3') {
             for(int i = 0; i < 3; i ++)
               data[i] = Mat(h, w);
+            for(int i = 0; i < h; i ++)
+              for(int j = 0; j < w; j ++)
+                data[0](i, j) = data[1](i, j) = data[2](i, j) = T(0);
             loadstub(input, nmax, 3, data);
           } else {
             cerr << "unknown file type." << endl;
@@ -352,6 +358,8 @@ public:
   }
   
   bool loadcenterr(vector<Vec3>& center, vector<T>& r, const char* filename) {
+    center = vector<Vec3>();
+    r      = vector<T>();
     std::ifstream input;
     try {
       input.open(filename);
