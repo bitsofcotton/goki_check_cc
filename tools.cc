@@ -204,7 +204,6 @@ int main(int argc, const char* argv[]) {
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
                  facets, argv[sidx], edges, thin);
-    std::cout << std::string(argv[sidx]) + std::string(".mtl") << std::endl;
     file.saveMTL(argv[7], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
@@ -437,18 +436,24 @@ int main(int argc, const char* argv[]) {
       const auto size(bufv[bufv.size() - 1].size());
       msz = msz < 0 ? size : min(msz, int(size));
     }
-    std::cout << msz << "loops, " << bufv.size() << "samples.";
-    P0<num_t> p(bufv.size());
+    std::cerr << msz << "loops, " << bufv.size() << "samples.";
+    P0<num_t> p(bufv.size() * 2 - 1);
     for(int i = 0; i < msz; i ++) {
-      SimpleVector<num_t> work0(bufv.size());
+      SimpleVector<num_t> work0(bufv.size() * 2 - 1);
       auto work1(work0);
       auto work2(work0);
       auto work3(work0);
       for(int j = 0; j < bufv.size(); j ++) {
-        work0[j] = bufv[j][i][0];
-        work1[j] = bufv[j][i][1];
-        work2[j] = bufv[j][i][2];
-        work3[j] = bufr[j][i];
+        work0[2 * j] = bufv[j][i][0];
+        work1[2 * j] = bufv[j][i][1];
+        work2[2 * j] = bufv[j][i][2];
+        work3[2 * j] = bufr[j][i];
+        if(j < bufv.size() - 1) {
+          work0[2 * j + 1] = (bufv[j][i][0] + bufv[j + 1][i][0]) / num_t(2);
+          work1[2 * j + 1] = (bufv[j][i][1] + bufv[j + 1][i][1]) / num_t(2);
+          work2[2 * j + 1] = (bufv[j][i][2] + bufv[j + 1][i][2]) / num_t(2);
+          work3[2 * j + 1] = (bufr[j][i]    + bufr[j + 1][i]   ) / num_t(2);
+        }
       }
       std::cout << p.next(work0) << " " << p.next(work1) << " " << p.next(work2) << " " << p.next(work3) << std::endl;
     }
@@ -466,6 +471,7 @@ int main(int argc, const char* argv[]) {
       center[i][1] *= std::atoi(argv[5]);
       center[i][2] *= sqrt(num_t(std::atoi(argv[4]) * std::atoi(argv[5])));
       centerr[i]   *= sqrt(num_t(std::atoi(argv[4]) * std::atoi(argv[5])));
+      std::cout << center[i][0] << " " << center[i][1] << " " << center[i][2] << " " << centerr[i] << std::endl;
     }
     typename simpleFile<num_t>::Mat out[3];
     out[0] = out[1] = out[2] = redig.drawBone(center, centerr, std::atoi(argv[4]), std::atoi(argv[5]));
@@ -494,8 +500,8 @@ int main(int argc, const char* argv[]) {
     redig.getBone(bump0, shape0, center0, centerr0, attend0, thresh);
     redig.getTileVec(bump1, shape1, delau1);
     redig.getBone(bump1, shape1, center1, centerr1, attend1, thresh);
-    const auto center(redig.copyBone(center0, centerr0, center1, centerr1));
-    file.savecenterr(argv[6], center, centerr0);
+    file.savecenterr(argv[6],
+      redig.copyBone(center0, centerr0, center1, centerr1), centerr0);
   } else if(strcmp(argv[1], "pose") == 0 ||
             strcmp(argv[1], "poso") == 0) {
     if(argc < (strcmp(argv[1], "poso") == 0 ? 8 : 7)) {

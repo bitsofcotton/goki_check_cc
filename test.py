@@ -3,6 +3,7 @@
 import os
 import sys
 import subprocess
+import linecache
 import numpy as np
 
 argv   = sys.argv
@@ -47,6 +48,30 @@ elif(argv[2] == "pcomp"):
   caller[- 1] += " > complement-list.txt"
   subprocess.call(caller)
   subprocess.call([argv[1], "pdraw", "complement-list.txt", "complement-pdraw.ppm", "600", "600"])
+elif(argv[2] == "pcomp0"):
+  root0, ext0 = os.path.splitext(argv[3])
+  if(ext0 != ".ppm"):
+    subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
+  subprocess.call([argv[1], "pose", "1", ".1", root0 + "-pose.txt", root0 + ".ppm", root0 + "-bump.ppm", str(pixels), root0 + "-pose"])
+  for line in argv[4:]:
+    root, ext = os.path.splitext(line)
+    if(ext != ".ppm"):
+      subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
+    subprocess.call([argv[1], "pmerge", "1", ".1", root0 + "-bump.ppm", root + "-bump.ppm", root + "-pose-" + root0 + ".txt"])
+  cache = linecache.getline(root + ".ppm", 2).split(" ")
+  x     = int(cache[1])
+  y     = int(cache[0])
+  caller = ["sh", "-c", argv[1] + " pcomp " + root0 + "-pose.txt"]
+  for line in argv[4:]:
+    root, ext = os.path.splitext(line)
+    caller[- 1] += " " + root + "-pose-" + root0 + ".txt"
+  caller[- 1] += " > complement-list0.txt"
+  subprocess.call(caller)
+  subprocess.call([argv[1], "pdraw", "complement-list0.txt", "complement-pdraw.ppm", str(y), str(x)])
+  subprocess.call([argv[1], "poso", "1", ".1", "complement-pdraw.ppm", root + ".ppm", root + "-bump.ppm", str(pixels), root + "-pose"])
+  for s in range(0, pixels):
+    subprocess.call(["cp", root + "-pose" + str(pixels - 1 - s) + ".ppm", root + "-pose" + str(pixels + s) + ".ppm"])
+  subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-pose.mp4"])
 else:
   for line in argv[3:]:
     try:

@@ -1037,16 +1037,12 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const v
 #endif
   for(int i = 0; i < centerdst.size(); i ++) {
     int midx(i ? 0 : 1);
-    T   score(- 1);
     for(int j = 0; j < centersrc.size(); j ++) if(i != j) {
       const auto diff0(centerdst[i] - centersrc[j]);
       const auto diff1(centerdst[i] - centersrc[midx]);
-      const auto lscore(abs(diff0.dot(diff0) + rdst[i] * rdst[i] -
-                            diff1.dot(diff1) - rsrc[i] * rsrc[i]));
-      if(score < T(0) || lscore < score) {
-        midx  = j;
-        score = lscore;
-      }
+      if(diff0.dot(diff0) + (rdst[i] - rsrc[j]) * (rdst[i] - rsrc[j]) <=
+         diff1.dot(diff1) + (rdst[i] - rsrc[midx]) * (rdst[i] - rsrc[midx]))
+        midx = j;
     }
     result[i] = centersrc[midx];
   }
