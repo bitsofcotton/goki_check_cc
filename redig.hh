@@ -101,6 +101,7 @@ public:
   void initialize(const int& vbox, const T& rz = - T(1));
   Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Vec3>& emph, const vector<Veci3>& hull);
   Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const bool& elim = false);
+  Mat  drawBone(const vector<Vec3>& center, const vector<T>& r, const int& rows, const int& cols);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
   vector<Vec3> takeShape(const vector<Vec3>& shape, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
@@ -123,9 +124,8 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
-  void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
   void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
-  vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc);
+  vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1e8));
@@ -213,6 +213,32 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
                               tsrc[hull[ii][1]],
                               tsrc[hull[ii][2]]);
   return result;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::drawBone(const vector<Vec3>& center, const vector<T>& r, const int& rows, const int& cols) {
+  Mat result(rows, cols);
+  assert(center.size() == r.size());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = T(0);
+  Mat count(result);
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      for(int l = 0; l < center.size(); l ++) {
+        const auto score(pow(num_t(i) - center[l][0], num_t(2)) +
+                         pow(num_t(j) - center[l][1], num_t(2)) +
+                         pow(num_t(0) - center[l][2], num_t(2)) -
+                         pow(r[l], num_t(2)));
+        if(score <= num_t(0)) {
+          result(i, j) += sqrt(abs(score));
+          count(i, j)  += num_t(1);
+        }
+      }
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      if(count(i, j) != num_t(0))
+        result(i, j) /= count(i, j);
+  return normalize(result, 1.);
 }
 
 template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
@@ -892,11 +918,6 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
   return;
 }
 
-template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh) {
-  vector<T> r;
-  return getBone(in, geoms, center, r, attend, thresh);
-}
-
 template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh) {
   int idx(0);
   r      = vector<T>();
@@ -928,8 +949,7 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
       T r(0);
       for(int k = 0; k < workx.size(); k ++)
         r += (workx[k] - x) * (workx[k] - x) + (workz[k] - z) * (workz[k] - z);
-      r /= workx.size();
-      r  = T(0) < r ? sqrt(r) : T(0);
+      r  = sqrt(r / workx.size());
       T err(0);
       for(int k = 0; k < workx.size(); k ++)
         err += pow(sqrt((workx[k] - x) * (workx[k] - x) +
@@ -1008,19 +1028,25 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
   return;
 }
 
-template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc) {
+template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc) {
+  assert(centerdst.size() == rdst.size());
+  assert(centersrc.size() == rsrc.size());
   vector<Vec3> result(centerdst);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < centerdst.size(); i ++) {
     int midx(i ? 0 : 1);
+    T   score(- 1);
     for(int j = 0; j < centersrc.size(); j ++) if(i != j) {
       const auto diff0(centerdst[i] - centersrc[j]);
       const auto diff1(centerdst[i] - centersrc[midx]);
-      if(diff0[0] * diff0[0] + diff0[1] * diff0[1] <=
-         diff1[0] * diff1[0] + diff1[1] * diff1[1])
-        midx = j;
+      const auto lscore(abs(diff0.dot(diff0) + rdst[i] * rdst[i] -
+                            diff1.dot(diff1) - rsrc[i] * rsrc[i]));
+      if(score < T(0) || lscore < score) {
+        midx  = j;
+        score = lscore;
+      }
     }
     result[i] = centersrc[midx];
   }

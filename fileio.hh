@@ -125,9 +125,7 @@ public:
           input.close();
           return false;
         }
-      } catch (const ifstream::failure& e) {
-        cerr << "Exception while reading." << endl;
-      } catch (const istringstream::failure& e) {
+      } catch (...) {
         cerr << "Exception while reading." << endl;
       }
       input.close();
@@ -157,10 +155,8 @@ public:
               for(int k = 0; k < 3; k ++) {
                 output << int(data[k](i, j) * T(depth)) << "\n";
               }
-      } catch (const ofstream::failure& e) {
+      } catch (...) {
         cerr << "An error has occured while writing file." << endl;
-      } catch(const char* e) {
-        cerr << e << endl;
       }
       output.close();
     } else {
@@ -346,6 +342,47 @@ public:
         for(int j = 0; j < data.size(); j ++)
           output << (i < data[j].size() ? data[j][i] : T(0)) << " ";
         output << std::endl;
+      }
+      output.close();
+    } else {
+      cerr << "Unable to open file for write: " << filename << endl;
+      return false;
+    }
+    return true;
+  }
+  
+  bool loadcenterr(vector<Vec3>& center, vector<T>& r, const char* filename) {
+    std::ifstream input;
+    try {
+      input.open(filename);
+      std::string buf;
+      while(std::getline(input, buf)) {
+        std::stringstream sbuf(buf);
+        typename simpleFile<num_t>::Vec3 work(3);
+        sbuf >> work[0];
+        sbuf >> work[1];
+        sbuf >> work[2];
+        center.emplace_back(work);
+        num_t workr;
+        sbuf >> workr;
+        r.emplace_back(workr);
+      }
+      input.close();
+    } catch(...) {
+      std::cerr << "Something had occured when reading center - r txt." << std::endl;
+      return false;
+    }
+    return center.size() == r.size();
+  }
+  
+  bool savecenterr(const char* filename, const vector<Vec3>& center, const vector<T>& r) {
+    ofstream output;
+    output.open(filename, std::ios::out);
+    if(output.is_open()) {
+      assert(center.size() == r.size());
+      for(int i = 0; i < center.size(); i ++) {
+        assert(center[i].size() == 3);
+        output << center[i][0] << " " << center[i][1] << " " << center[i][2] << " " << r[i] << std::endl;
       }
       output.close();
     } else {

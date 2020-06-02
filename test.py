@@ -34,6 +34,19 @@ elif(argv[2] == "pmerge"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
   subprocess.call([argv[1], argv[2], "1", ".1", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-pose.txt"])
+elif(argv[2] == "pcomp"):
+  for line in argv[3:]:
+    root, ext = os.path.splitext(line)
+    if(ext != ".ppm"):
+      subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
+    subprocess.call(["sh", "-c", argv[1] + " plist 1 .1 " + root + ".ppm > " + root + "-plist.txt"])
+  caller = ["sh", "-c", argv[1] + " pcomp "]
+  for line in argv[3:]:
+    root, ext = os.path.splitext(line)
+    caller[- 1] += " " + root + "-plist.txt"
+  caller[- 1] += " > complement-list.txt"
+  subprocess.call(caller)
+  subprocess.call([argv[1], "pdraw", "complement-list.txt", "complement-pdraw.ppm", "600", "600"])
 else:
   for line in argv[3:]:
     try:
