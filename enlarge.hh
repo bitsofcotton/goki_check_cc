@@ -47,10 +47,8 @@ public:
     EXTEND_X,
     EXTEND_Y,
     EXTEND_BOTH,
-    BCLIP,
     CLIP,
-    ABS,
-    LOGSCALE } direction_t;
+    ABS } direction_t;
   typedef complex<T> U;
 #if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
@@ -68,7 +66,6 @@ public:
   Mat  compute(const Mat& data, const direction_t& dir);
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
-  T    offset;
   int  dist;
   int  dratio;
   int  plen;
@@ -89,13 +86,12 @@ private:
 
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
-  offset  = T(1)  / T(64);
-  dist    = 1;
-  dratio  = 128;
-  plen    = 1;
-  lrecur  = 8;
-  bumpd   = 65;
-  idx     = - 1;
+  dist   = 1;
+  dratio = 128;
+  plen   = 1;
+  lrecur = 8;
+  bumpd  = 65;
+  idx    = - 1;
 }
 
 template <typename T> Filter<T>::~Filter() {
@@ -261,18 +257,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       }
     }
     break;
-  case BCLIP:
-    {
-      result = Mat(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * max(abs(data(i, j)), offset);
-    }
-    break;
   case CLIP:
     {
       result = Mat(data.rows(), data.cols());
@@ -295,18 +279,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) = abs(data(i, j));
-    }
-    break;
-  case LOGSCALE:
-    {
-      result = Mat(data.rows(), data.cols());
-      // N.B. before to use, please BCLIP.
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = (data(i, j) < T(0) ? - T(1) : T(1)) * log(abs(data(i, j)) / offset) * offset;
     }
     break;
   default:

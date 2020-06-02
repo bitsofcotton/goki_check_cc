@@ -81,17 +81,20 @@ void usage() {
   cout << "gokicheck bump    <n_integrate> <delta_pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck div     <dummy> <input0.ppm> <input1.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck pose    <vbox> <thresh> <posex.txt> <posey.txt> <input.ppm> <input-bump.ppm>" << endl;
-  cout << "gokicheck poso    <vbox> <thresh> <posex.txt> <posey.txt> <input.ppm> <input-bump.ppm> <num_of_res_shown> <output-base>" << endl;
+  cout << "gokicheck pose    <vbox> <thresh> <pose.txt> <input.ppm> <input-bump.ppm>" << endl;
+  cout << "gokicheck poso    <vbox> <thresh> <pose.txt> <input.ppm> <input-bump.ppm> <num_of_res_shown> <output-base>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
+}
+
+template <typename T> bool lesstv3(const std::pair<T, typename simpleFile<T>::Vec3>& x, const std::pair<T, typename simpleFile<T>::Vec3>& y) {
+  return x.first < y.first;
 }
 
 int main(int argc, const char* argv[]) {
@@ -151,8 +154,7 @@ int main(int argc, const char* argv[]) {
     }
     if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
       return - 1;
-  } else if(strcmp(argv[1], "reshape") == 0 ||
-            strcmp(argv[1], "div")   == 0) {
+  } else if(strcmp(argv[1], "reshape") == 0) {
     if(argc < 6) {
       usage();
       return 0;
@@ -163,22 +165,9 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(!file.loadp2or3(datas, argv[4]))
       return - 1;
-    if(strcmp(argv[1], "reshape") == 0) {
-      const auto datav(redig.rgb2l(datas));
-      for(int i = 0; i < 3; i ++)
-        datac[i] = redig.reShape(datac[i], datav, count);
-    } else if(strcmp(argv[1], "div") == 0) {
-      for(int i = 0; i < 3; i ++) {
-        assert(datas[i].rows() == datac[i].rows() &&
-               datas[i].cols() == datac[i].cols());
-        datas[i] = filter.compute(datas[i], filter.BCLIP);
-        datac[i] = filter.compute(datac[i], filter.BCLIP);
-      }
-      for(int i = 0; i < datas[0].rows(); i ++)
-        for(int j = 0; j < datas[0].cols(); j ++)
-          for(int k = 0; k < 3; k ++)
-            datac[k](i, j) *= datas[k](i, j) / datac[k](i, j);
-    }
+    const auto datav(redig.rgb2l(datas));
+    for(int i = 0; i < 3; i ++)
+      datac[i] = redig.reShape(datac[i], datav, count);
     redig.normalize(datac, num_t(1));
     if(!file.savep2or3(argv[5], datac, ! true))
       return - 1;
@@ -405,6 +394,82 @@ int main(int argc, const char* argv[]) {
         output.close();
       }
     }
+  } else if(strcmp(argv[1], "plist") == 0) {
+    if(argc < 4) {
+      usage();
+      return - 1;
+    }
+    const auto vbox(std::atoi(argv[2]));
+    const auto thresh(std::atof(argv[3]));
+    typename simpleFile<num_t>::Mat in[3];
+    if(!file.loadp2or3(in, argv[4]))
+      return - 2;
+    redig.initialize(vbox);
+    std::vector<typename simpleFile<num_t>::Veci3> delau;
+    std::vector<typename simpleFile<num_t>::Vec3>  shape, center;
+    std::vector<num_t> centerr;
+    std::vector<std::vector<int> > attend;
+    const auto bump(redig.rgb2l(in));
+    redig.getTileVec(bump, shape, delau);
+    redig.getBone(bump, shape, center, centerr, attend, thresh);
+    assert(center.size() == centerr.size());
+    std::vector<std::pair<num_t, typename simpleFile<num_t>::Vec3> > sc;
+    sc.reserve(center.size());
+    const auto sz(sqrt(num_t(in[0].rows() * in[0].cols())));
+    for(int i = 0; i < center.size(); i ++)
+      sc.emplace_back(std::make_pair(centerr[i] / sz, center[i] / sz));
+    std::sort(sc.begin(), sc.end(), lesstv3<num_t>);
+    for(int i = 0; i < sc.size(); i ++) {
+      const auto& lsc(sc[sc.size() - i - 1]);
+      std::cout << lsc.second[0] << " " << lsc.second[1] << " " << lsc.second[2] << " " << lsc.first << std::endl;
+    }
+  } else if(strcmp(argv[1], "pcomp") == 0) {
+    std::vector<std::vector<typename simpleFile<num_t>::Vec3> > bufv;
+    std::vector<std::vector<num_t> > bufr;
+    int msz(- 1);
+    for(int i = 2; i < argc; i ++) {
+      bufv.emplace_back(std::vector<typename simpleFile<num_t>::Vec3>());
+      bufr.emplace_back(std::vector<num_t>());
+      if(! file.loadcenterr(bufv[bufv.size() - 1], bufr[bufr.size() - 1], argv[i])) {
+        usage();
+        return - 2;
+      }
+      const auto size(bufv[bufv.size() - 1].size());
+      msz = msz < 0 ? size : min(msz, int(size));
+    }
+    std::cout << msz << "loops, " << bufv.size() << "samples.";
+    P0<num_t> p(bufv.size());
+    for(int i = 0; i < msz; i ++) {
+      SimpleVector<num_t> work0(bufv.size());
+      auto work1(work0);
+      auto work2(work0);
+      auto work3(work0);
+      for(int j = 0; j < bufv.size(); j ++) {
+        work0[j] = bufv[j][i][0];
+        work1[j] = bufv[j][i][1];
+        work2[j] = bufv[j][i][2];
+        work3[j] = bufr[j][i];
+      }
+      std::cout << p.next(work0) << " " << p.next(work1) << " " << p.next(work2) << " " << p.next(work3) << std::endl;
+    }
+  } else if(strcmp(argv[1], "pdraw") == 0) {
+    if(argc < 5) {
+      usage();
+      return - 1;
+    }
+    std::vector<typename simpleFile<num_t>::Vec3> center;
+    std::vector<num_t> centerr;
+    file.loadcenterr(center, centerr, argv[2]);
+    assert(center.size() == centerr.size());
+    for(int i = 0; i < center.size(); i ++) {
+      center[i][0] *= std::atoi(argv[4]);
+      center[i][1] *= std::atoi(argv[5]);
+      center[i][2] *= sqrt(num_t(std::atoi(argv[4]) * std::atoi(argv[5])));
+      centerr[i]   *= sqrt(num_t(std::atoi(argv[4]) * std::atoi(argv[5])));
+    }
+    typename simpleFile<num_t>::Mat out[3];
+    out[0] = out[1] = out[2] = redig.drawBone(center, centerr, std::atoi(argv[4]), std::atoi(argv[5]));
+    file.savep2or3(argv[3], out, ! true);
   } else if(strcmp(argv[1], "pmerge") == 0) {
     if(argc < 7) {
       usage();
@@ -421,25 +486,16 @@ int main(int argc, const char* argv[]) {
     std::vector<typename simpleFile<num_t>::Veci3> delau0, delau1;
     std::vector<typename simpleFile<num_t>::Vec3>  shape0, shape1;
     std::vector<typename simpleFile<num_t>::Vec3>  center0, center1;
+    std::vector<num_t> centerr0, centerr1;
     std::vector<std::vector<int> > attend0, attend1;
     const auto bump0(redig.rgb2l(in0));
     const auto bump1(redig.rgb2l(in1));
     redig.getTileVec(bump0, shape0, delau0);
-    redig.getBone(bump0, shape0, center0, attend0, thresh);
+    redig.getBone(bump0, shape0, center0, centerr0, attend0, thresh);
     redig.getTileVec(bump1, shape1, delau1);
-    redig.getBone(bump1, shape1, center1, attend1, thresh);
-    const auto center(redig.copyBone(center0, attend0, center1, attend1));
-    std::ofstream output;
-    output.open(argv[6]);
-    if(output.is_open()) {
-      try {
-        for(int i = 0; i < center.size(); i ++)
-          output << center[i][0] << " " << center[i][1] << " " << center[i][2] << std::endl;
-      } catch(...) {
-        ;
-      }
-    }
-    output.close();
+    redig.getBone(bump1, shape1, center1, centerr1, attend1, thresh);
+    const auto center(redig.copyBone(center0, centerr0, center1, centerr1));
+    file.savecenterr(argv[6], center, centerr0);
   } else if(strcmp(argv[1], "pose") == 0 ||
             strcmp(argv[1], "poso") == 0) {
     if(argc < (strcmp(argv[1], "poso") == 0 ? 8 : 7)) {
@@ -449,25 +505,11 @@ int main(int argc, const char* argv[]) {
     const auto vbox(std::atoi(argv[2]));
     const auto thresh(std::atof(argv[3]));
     std::vector<typename simpleFile<num_t>::Vec3> outcenter;
-    if(strcmp(argv[1], "poso") == 0) {
-      std::ifstream input;
-      input.open(argv[4]);
-      try {
-        std::string buf;
-        while(std::getline(input, buf)) {
-          std::stringstream sbuf(buf);
-          typename simpleFile<num_t>::Vec3 work(3);
-          sbuf >> work[0];
-          sbuf >> work[1];
-          sbuf >> work[2];
-          outcenter.push_back(work);
-        }
-        std::cerr << outcenter.size() << "bone points" << std::endl;
-      } catch(...) {
-        usage();
-        return - 2;
-      }
-      input.close();
+    std::vector<num_t> outcenterr;
+    if(strcmp(argv[1], "poso") == 0 &&
+       !file.loadcenterr(outcenter, outcenterr, argv[4])) {
+      usage();
+      return - 2;
     }
     typename simpleFile<num_t>::Mat in[3], bump[3];
     std::vector<num_t> centerr;
@@ -484,40 +526,12 @@ int main(int argc, const char* argv[]) {
     redig.getBone(bump0, shape, center, centerr, attend, thresh);
     assert(center.size() == attend.size());
     assert(center.size() == centerr.size());
-    if(strcmp(argv[1], "pose") == 0) {
-      std::ofstream output;
-      output.open(argv[4]);
-      if(output.is_open()) {
-        try {
-          for(int i = 0; i < center.size(); i ++)
-            output << center[i][0] << " " << center[i][1] << " " << center[i][2] << std::endl;
-        } catch(...) {
-          ;
-        }
-      }
-      output.close();
-    } else {
+    if(strcmp(argv[1], "pose") == 0)
+      file.savecenterr(argv[4], center, centerr);
+    else {
       assert(center.size() == outcenter.size());
       typename simpleFile<num_t>::Mat out[3];
-      out[0] = out[1] = out[2] = in[0] * num_t(0);
-      for(int j = 0; j < out[0].rows(); j ++)
-        for(int k = 0; k < out[0].cols(); k ++)
-          for(int l = 0; l < center.size(); l ++) {
-            const auto score(pow(num_t(j) - center[l][0], num_t(2)) +
-                             pow(num_t(k) - center[l][1], num_t(2)) +
-                             pow(num_t(0) - center[l][2], num_t(2)) -
-                             pow(centerr[l], num_t(2)));
-            if(score <= num_t(0)) {
-              out[0](j, k) += sqrt(abs(score));
-              out[1](j, k) += num_t(1);
-            }
-          }
-      for(int j = 0; j < out[0].rows(); j ++)
-        for(int k = 0; k < out[0].cols(); k ++)
-          if(out[1](j, k) != num_t(0))
-            out[0](j, k) /= out[1](j, k);
-      out[1] = out[2] = out[0];
-      redig.normalize(out, 1.);
+      out[0] = out[1] = out[2] = redig.drawBone(center, centerr, in[0].rows(), in[0].cols());
       file.savep2or3((std::string(argv[8]) + std::string("-bone.ppm")).c_str(), out, ! true);
       const auto rin0(redig.makeRefMatrix(in[0], 1));
       for(int j = 0; j < std::atoi(argv[7]); j ++) {
