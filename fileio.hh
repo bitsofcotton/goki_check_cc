@@ -331,7 +331,7 @@ public:
             ss >> data[j][data[j].size() - 1];
           }
         }
-        input.close();
+      input.close();
     } else {
       cerr << "Unable to open file for read: " << filename << endl;
       return false;
@@ -364,7 +364,7 @@ public:
     try {
       input.open(filename);
       std::string buf;
-      while(std::getline(input, buf)) {
+      while(getline(input, buf) && !input.eof() && !input.bad()) {
         std::stringstream sbuf(buf);
         typename simpleFile<num_t>::Vec3 work(3);
         sbuf >> work[0];
