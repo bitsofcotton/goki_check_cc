@@ -52,6 +52,7 @@ elif(argv[2] == "pcomp0"):
   root0, ext0 = os.path.splitext(argv[3])
   if(ext0 != ".ppm"):
     subprocess.call(["convert", argv[3], "-compress", "none", root0 + ".ppm"])
+  """
   subprocess.call([argv[1], "pose", "1", ".1", root0 + "-pose.txt", root0 + ".ppm", root0 + "-bump.ppm", str(pixels), root0 + "-pose"])
   for line in argv[4:]:
     root, ext = os.path.splitext(line)
@@ -70,8 +71,8 @@ elif(argv[2] == "pcomp0"):
   subprocess.call([argv[1], "pdraw", "complement-list0.txt", "complement-pdraw.ppm", str(x), str(y), "0"])
   subprocess.call([argv[1], "poso", "1", ".1", "complement-list0.txt", root0 + ".ppm", root0 + "-bump.ppm", str(pixels), root0 + "-pose"])
   for s in range(0, pixels):
-    subprocess.call(["cp", root + "-pose" + str(pixels - 1 - s) + ".ppm", root + "-pose" + str(pixels + s) + ".ppm"])
-  subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-pose.mp4"])
+    subprocess.call(["cp", root0 + "-pose" + str(pixels - 1 - s) + ".ppm", root0 + "-pose" + str(pixels + s) + ".ppm"])
+  subprocess.call(["ffmpeg", "-loop", "1", "-i", root0 + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-pose.mp4"])
 else:
   for line in argv[3:]:
     try:
