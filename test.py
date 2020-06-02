@@ -58,7 +58,7 @@ elif(argv[2] == "pcomp0"):
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     subprocess.call([argv[1], "pmerge", "1", ".1", root0 + "-bump.ppm", root + "-bump.ppm", root + "-pose-" + root0 + ".txt"])
-  cache = linecache.getline(root + ".ppm", 2).split(" ")
+  cache = linecache.getline(root0 + ".ppm", 2).split(" ")
   x     = int(cache[1])
   y     = int(cache[0])
   caller = ["sh", "-c", argv[1] + " pcomp " + root0 + "-pose.txt"]
@@ -68,7 +68,7 @@ elif(argv[2] == "pcomp0"):
   caller[- 1] += " > complement-list0.txt"
   subprocess.call(caller)
   subprocess.call([argv[1], "pdraw", "complement-list0.txt", "complement-pdraw.ppm", str(x), str(y), "0"])
-  subprocess.call([argv[1], "poso", "1", ".1", "complement-list0.txt", root + ".ppm", root + "-bump.ppm", str(pixels), root + "-pose"])
+  subprocess.call([argv[1], "poso", "1", ".1", "complement-list0.txt", root0 + ".ppm", root0 + "-bump.ppm", str(pixels), root0 + "-pose"])
   for s in range(0, pixels):
     subprocess.call(["cp", root + "-pose" + str(pixels - 1 - s) + ".ppm", root + "-pose" + str(pixels + s) + ".ppm"])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-pose.mp4"])
