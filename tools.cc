@@ -458,7 +458,7 @@ int main(int argc, const char* argv[]) {
       std::cout << p.next(work0) << " " << p.next(work1) << " " << p.next(work2) << " " << p.next(work3) << std::endl;
     }
   } else if(strcmp(argv[1], "pdraw") == 0) {
-    if(argc < 5) {
+    if(argc < 6) {
       usage();
       return - 1;
     }
@@ -466,13 +466,15 @@ int main(int argc, const char* argv[]) {
     std::vector<num_t> centerr;
     file.loadcenterr(center, centerr, argv[2]);
     assert(center.size() == centerr.size());
-    for(int i = 0; i < center.size(); i ++) {
-      center[i][0] *= std::atoi(argv[4]);
-      center[i][1] *= std::atoi(argv[5]);
-      center[i][2] *= sqrt(num_t(std::atoi(argv[4]) * std::atoi(argv[5])));
-      centerr[i]   *= sqrt(num_t(std::atoi(argv[4]) * std::atoi(argv[5])));
+    if(std::atoi(argv[6]))
+      for(int i = 0; i < center.size(); i ++) {
+        center[i][0] *= std::atoi(argv[4]);
+        center[i][1] *= std::atoi(argv[5]);
+        center[i][2] *= sqrt(num_t(std::atoi(argv[4]) * std::atoi(argv[5])));
+        centerr[i]   *= sqrt(num_t(std::atoi(argv[4]) * std::atoi(argv[5])));
+      }
+    for(int i = 0; i < center.size(); i ++)
       std::cout << center[i][0] << " " << center[i][1] << " " << center[i][2] << " " << centerr[i] << std::endl;
-    }
     typename simpleFile<num_t>::Mat out[3];
     out[0] = out[1] = out[2] = redig.drawBone(center, centerr, std::atoi(argv[4]), std::atoi(argv[5]));
     file.savep2or3(argv[3], out, ! true);
