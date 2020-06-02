@@ -67,7 +67,7 @@ elif(argv[2] == "pcomp0"):
     caller[- 1] += " " + root + "-pose-" + root0 + ".txt"
   caller[- 1] += " > complement-list0.txt"
   subprocess.call(caller)
-  subprocess.call([argv[1], "pdraw", "complement-list0.txt", "complement-pdraw.ppm", str(y), str(x)])
+  subprocess.call([argv[1], "pdraw", "complement-list0.txt", "complement-pdraw.ppm", str(x), str(y)])
   subprocess.call([argv[1], "poso", "1", ".1", "complement-pdraw.ppm", root + ".ppm", root + "-bump.ppm", str(pixels), root + "-pose"])
   for s in range(0, pixels):
     subprocess.call(["cp", root + "-pose" + str(pixels - 1 - s) + ".ppm", root + "-pose" + str(pixels + s) + ".ppm"])
