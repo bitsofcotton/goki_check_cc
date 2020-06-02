@@ -124,6 +124,7 @@ public:
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
+  void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
   vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<vector<int> >& attenddst, const vector<Vec3>& centersrc, const vector<vector<int> >& attendsrc);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
@@ -892,7 +893,13 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
 }
 
 template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<vector<int> >& attend, const T& thresh) {
+  vector<T> r;
+  return getBone(in, geoms, center, r, attend, thresh);
+}
+
+template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh) {
   int idx(0);
+  r      = vector<T>();
   center = vector<Vec3>();
   attend = vector<vector<int> >();
   for(int i = 0; i < in.rows() / vbox + 1; i ++) {
@@ -922,15 +929,14 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
       for(int k = 0; k < workx.size(); k ++)
         r += (workx[k] - x) * (workx[k] - x) + (workz[k] - z) * (workz[k] - z);
       r /= workx.size();
-      r  = r <= T(0) ? T(0) : sqrt(r);
+      r  = T(0) < r ? sqrt(r) : T(0);
       T err(0);
       for(int k = 0; k < workx.size(); k ++)
-        err += pow((workx[k] - x) * (workx[k] - x) +
-                   (workz[k] - z) * (workz[k] - z) -
-                   r * r, T(2));
-      err /= workx.size();
-      err  = sqrt(err);
-      if(j && err < thresh * T(in.rows() * in.cols()) && center.size()) {
+        err += pow(sqrt((workx[k] - x) * (workx[k] - x) +
+                        (workz[k] - z) * (workz[k] - z)) -
+                   r, T(2));
+      err = sqrt(err / workx.size());
+      if(j && err < thresh * sqrt(sqrt(T(in.rows() * in.cols()))) && center.size()) {
         center[center.size() - 1][1] = x;
         center[center.size() - 1][2] = z;
       } else {
@@ -956,27 +962,40 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
   int i;
   for(i = 0; i < attend.size(); i ++) {
     auto z(center[i]);
-    int lastj(i);
+    int  zc(attend[i].size());
+    T    rr(0);
+    int  lastj(i);
     for(int j = i + 1; j < attend.size(); j ++) {
       // N.B. for any k, on the line ||center[k] - z||^2 = r^2.
       // <=> sum_k (ck_0 - z_0)^2 + (ck_1 - z_1)^2 + (ck_2 - z_2)^2 == r^2.
-      Vec3 newz(3);
-      newz[0] = newz[1] = newz[2] = T(0);
-      for(int k = i; k <= j; k ++)
-        newz += center[k];
-      newz /= T(j - i + 1);
+      const auto newz(z + center[j] * attend[j].size());
+      const auto newz0(newz / T(zc + attend[j].size()));
+      T   newr(0);
+      int cnt(0);
+      for(int jj = i; jj <= j; jj ++)
+        for(int k = 0; k < attend[jj].size(); k ++) {
+          const auto diff(geoms[attend[jj][k]] - newz0);
+          newr += diff.dot(diff);
+          cnt ++;
+        }
+      newr = sqrt(newr / cnt);
       T err(0);
-      for(int k = i; k <= j; k ++)
-        err += (center[k] - newz).dot(center[k] - newz);
-      err /= T(j - i + 1);
-      err  = sqrt(err);
-      z    = newz;
-      if(err < thresh * T(in.rows() * in.cols()))
+      for(int jj = i; jj <= j; jj ++)
+        for(int k = 0; k < attend[jj].size(); k ++) {
+          const auto diff(geoms[attend[jj][k]] - newz0);
+          err += pow(sqrt(diff.dot(diff)) - newr, T(2));
+        }
+      err = sqrt(err / cnt);
+      if(err < thresh * sqrt(T(in.rows() * in.cols()))) {
+        z   = newz;
+        zc += attend[j].size();
+        rr  = newr;
         lastj = j;
-      else
+      } else
         break;
     }
-    newcenter.emplace_back(z);
+    r.emplace_back(rr);
+    newcenter.emplace_back(z / zc);
     newattend.emplace_back(attend[i]);
     for(int k = i + 1; k <= lastj; k ++)
       newattend[newattend.size() - 1].insert(

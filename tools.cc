@@ -470,6 +470,7 @@ int main(int argc, const char* argv[]) {
       input.close();
     }
     typename simpleFile<num_t>::Mat in[3], bump[3];
+    std::vector<num_t> centerr;
     std::vector<typename simpleFile<num_t>::Veci3> delau;
     std::vector<typename simpleFile<num_t>::Vec3>  shape, center;
     std::vector<std::vector<int> > attend;
@@ -480,7 +481,9 @@ int main(int argc, const char* argv[]) {
     redig.initialize(vbox);
     auto bump0(redig.rgb2l(bump));
     redig.getTileVec(bump0, shape, delau);
-    redig.getBone(bump0, shape, center, attend, thresh);
+    redig.getBone(bump0, shape, center, centerr, attend, thresh);
+    assert(center.size() == attend.size());
+    assert(center.size() == centerr.size());
     if(strcmp(argv[1], "pose") == 0) {
       std::ofstream output;
       output.open(argv[4]);
@@ -494,10 +497,30 @@ int main(int argc, const char* argv[]) {
       }
       output.close();
     } else {
-      assert(center.size() == outcenter.size() && center.size() == attend.size());
+      assert(center.size() == outcenter.size());
+      typename simpleFile<num_t>::Mat out[3];
+      out[0] = out[1] = out[2] = in[0] * num_t(0);
+      for(int j = 0; j < out[0].rows(); j ++)
+        for(int k = 0; k < out[0].cols(); k ++)
+          for(int l = 0; l < center.size(); l ++) {
+            const auto score(pow(num_t(j) - center[l][0], num_t(2)) +
+                             pow(num_t(k) - center[l][1], num_t(2)) +
+                             pow(num_t(0) - center[l][2], num_t(2)) -
+                             pow(centerr[l], num_t(2)));
+            if(score <= num_t(0)) {
+              out[0](j, k) += sqrt(abs(score));
+              out[1](j, k) += num_t(1);
+            }
+          }
+      for(int j = 0; j < out[0].rows(); j ++)
+        for(int k = 0; k < out[0].cols(); k ++)
+          if(out[1](j, k) != num_t(0))
+            out[0](j, k) /= out[1](j, k);
+      out[1] = out[2] = out[0];
+      redig.normalize(out, 1.);
+      file.savep2or3((std::string(argv[8]) + std::string("-bone.ppm")).c_str(), out, ! true);
       const auto rin0(redig.makeRefMatrix(in[0], 1));
       for(int j = 0; j < std::atoi(argv[7]); j ++) {
-        typename simpleFile<num_t>::Mat out[3];
         const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[7])));
         const auto newshape(redig.takeShape(shape, center, outcenter, attend, iemph));
         const auto reref(redig.draw(rin0, shape, newshape, delau));

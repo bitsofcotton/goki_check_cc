@@ -30,20 +30,10 @@ elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho"):
   else:
     subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
     subprocess.call(["ffmpeg", "-loop", "1", "-i", argv[5] + "-%d-" + str(nemph) + ".ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", argv[5] + ".mp4"])
-elif(argv[2] == "pose" or argv[2] == "poso"):
-  root, ext = os.path.splitext(argv[3])
-  if(ext != ".ppm"):
-    subprocess.call(["convert", argv[3], "-compress", "none", root + ".ppm"])
-  nout = 8
-  subprocess.call([argv[1], argv[2], "1", ".001", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", str(nout), root + "-pose"])
-  if(argv[2] == "poso"):
-    for s in range(0, nout):
-      subprocess.call(["cp", root + "-pose" + str(nout - 1 - s) + ".ppm", root + "-pose" + str(nout + s) + ".ppm"])
-    subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-pose.mp4"])
 elif(argv[2] == "pmerge"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
-  subprocess.call([argv[1], argv[2], "1", ".001", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-pose.txt"])
+  subprocess.call([argv[1], argv[2], "1", ".1", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-pose.txt"])
 else:
   for line in argv[3:]:
     try:
@@ -145,8 +135,8 @@ else:
         subprocess.call([argv[1], "habit", bhabit + "-out.obj", line, line + "-out.obj"])
         bhabit = line
     elif(argv[2] == "extend"):
-      for tami in range(1, 12):
-        tam = tami / 360. * 4
+      for tami in range(1, 5):
+        tam = tami / 360. * 15
         for s in range(0, 4):
           subprocess.call([argv[1], "tilt", str(s), "4", str(tam), root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
           subprocess.call([argv[1], "bump", "4", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
@@ -159,6 +149,13 @@ else:
         subprocess.call([argv[1], "habit", root + "-bumpextB.obj", root + "-bumpextD.obj", "0", "1", "0", root + "-bumpextBD.obj"])
         subprocess.call([argv[1], "habit", root + "-bumpextAC.obj", root + "-bumpextBD.obj", "0", "1", "0", root + "-bumpext.obj"])
         subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
+    elif(argv[2] == "pose"):
+      subprocess.call([argv[1], "pose", "1", ".1", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", str(pixels), root + "-pose"])
+    elif(argv[2] == "poso"):
+      subprocess.call([argv[1], "poso", "1", ".1", root + "-pose.txt", root + ".ppm", root + "-bump.ppm", str(pixels), root + "-pose"])
+      for s in range(0, pixels):
+        subprocess.call(["cp", root + "-pose" + str(pixels - 1 - s) + ".ppm", root + "-pose" + str(pixels + s) + ".ppm"])
+      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-pose.mp4"])
     elif(argv[2] == "prep"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])
 
