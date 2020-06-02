@@ -11,7 +11,6 @@ We need imagemagick for normaluse, and ffmpeg for making .mp4.
 * enlarge.hh
 * * dratio  : z-axis step number, larger combines sqrt(dratio) number of z-axis steps.
 * * dist    : z-axis scan max distance.
-* * offset  : color value ratio around convergences in making bump map.
 * * plen    : extend pixels.
 * * lrecur  : recursive number for sharpen.
 * * bumpd   : z-axis differential pixel number.
@@ -73,21 +72,23 @@ Freezed.
     python test.py ./gokicheck matcho input0.png input1.(png|obj) match
     python test.py ./gokicheck pose input.png
     python test.py ./gokicheck poso input.png
+    python test.py ./gokicheck pcomp input0.png input1.png ...
+    python test.py ./gokicheck pcomp0 input0.png input1.png ...
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive (but include guard definition should harms).
 
 # Demos
-https://konbu.azurewebsites.net/ preparing a sample interface working demos.
+https://konbu.azurewebsites.net/ have a sample interface working demos.
 
 # Tips
 These program's light is based on pseudo DFT half space plausible one.  
 These program's collect is based on DFT differential.  
-These program's bump assumes F=∞ graphics, and pseudo-tilt then pseudo-capture 2 of cameras.   
+These program's bump assumes F=∞ graphics.
 These program's match matches with calculated pseudo z-depth, please configure in reDig class initializer. And, that assumes one of vertices is full and another is lowPoly but now, it isn't.
 
 # Specification
-filter2ex generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct. And therefore, z-axis sign from some base plane has not to be determinated as unique one.  
+filter generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct. And therefore, z-axis sign from some base plane has not to be determinated as unique one.  
 Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
 if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.  
 
@@ -101,7 +102,7 @@ Match matches including z-axis. So around this, if we match with .obj file, we d
 If we should have correct matches, please configure z-axis ratio in tools.cc via redig.hh .
 matchPartial default threshr is severe, so please configure before to match.
 
-filter2ex 's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
+filter's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
 This is because we generate the complement light image with DFT half space plausible ones by shifting frequency space intensities, then, getting recursive enlarged image with DFT.
 
 # Another downloads
