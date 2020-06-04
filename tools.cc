@@ -128,6 +128,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.COLLECT_BOTH);
     } else if(strcmp(argv[1], "enlarge") == 0) {
+      P0<num_t> p;
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.ENLARGE_BOTH);
     } else if(strcmp(argv[1], "pextend") == 0) {
@@ -437,7 +438,7 @@ int main(int argc, const char* argv[]) {
       msz = msz < 0 ? size : min(msz, int(size));
     }
     std::cerr << msz << "loops, " << bufv.size() << "samples.";
-    P0<num_t> p(bufv.size() * 2 - 1);
+    P0<num_t> p;
     for(int i = 0; i < msz; i ++) {
       SimpleVector<num_t> work0(bufv.size() * 2 - 1);
       auto work1(work0);

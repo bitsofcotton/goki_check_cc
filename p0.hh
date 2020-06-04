@@ -38,15 +38,13 @@ public:
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
-  inline P0(const int& range);
   inline ~P0();
-  inline T next(const Vec& in, const bool& deep = true);
-  const Mat&  lpf(const int& size);
+  inline T next(const Vec& in);
 private:
-  Vec pred;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size);
-  const Vec&  nextTaylor(const int& size, const int& step);
+  inline Vec  taylor(const int& size, const T& step);
+  const Vec&  nextP(const int& site);
   const T&    Pi() const;
   const complex<T>& J() const;
 };
@@ -55,35 +53,12 @@ template <typename T> inline P0<T>::P0() {
   ;
 }
 
-template <typename T> inline P0<T>::P0(const int& range) {
-  assert(1 < range);
-  const auto  look(1);
-  // with convolution meaning, exchange diff and integrate.
-  const auto& reverse(nextTaylor(range, - look));
-  pred.resize(reverse.size());
-  for(int i = 0; i < reverse.size(); i ++)
-    pred[i] = reverse[reverse.size() - 1 - i];
-  pred = lpf(range).transpose() * ((pred + nextTaylor(range, look)) / T(2));
-}
-
 template <typename T> inline P0<T>::~P0() {
   ;
 }
 
-template <typename T> inline T P0<T>::next(const Vec& in, const bool& deep) {
-  assert(pred.size() == in.size());
-  auto res(pred.dot(in));
-  if(! deep)
-    return res;
-  auto residue(in - lpf(in.size()) * in);
-  while(T(1) / T(1000) / T(1000) < residue.dot(residue)) {
-    for(int i = 0; i < residue.size(); i ++)
-      if(i % 2 == (residue.size() + 1) % 2)
-        residue[i] = - residue[i];
-    res     += pred.dot(residue);
-    residue -= lpf(residue.size()) * residue;
-  }
-  return res;
+template <typename T> inline T P0<T>::next(const Vec& in) {
+  return nextP(in.size()).dot(in);
 }
 
 template <typename T> const T& P0<T>::Pi() const {
@@ -146,56 +121,126 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
   return d = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1) / (nd * ni)));
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size) {
-  assert(0 < size);
-  static vector<Mat> L;
-  if(L.size() <= size)
-    L.resize(size + 1, Mat());
-  if(L[size].rows() == size && L[size].cols() == size)
-    return L[size];
-  auto& l(L[size]);
-  auto  ll(seed(size, false));
-  for(int i = size / 2; i < size; i ++)
-    ll.row(i) *= complex<T>(T(0));
-  return l = (seed(size, true) * ll).template real<T>();
+template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
+  const auto  spt(min(size - 1, std::max(0, int(std::ceil(step)))));
+  const auto  residue(step - T(spt));
+        Vec   tayl(size);
+  const auto& D(diff(size));
+        auto  dt(D * residue);
+  for(int i = 0; i < tayl.size(); i ++)
+    tayl[i] = T(0);
+  tayl[spt] = T(1);
+  for(int i = 2; 0 <= i; i ++) {
+    const auto bt(tayl);
+    tayl += dt.row(spt);
+    if(bt == tayl)
+      break;
+    dt = (D * dt) * (residue / T(i));
+  }
+  return tayl;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextTaylor(const int& size, const int& step) {
-  assert(0 < size && (step == 1 || step == - 1));
+template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
+  assert(1 < size);
   static vector<Vec> P;
-  static vector<Vec> M;
   if(P.size() <= size)
     P.resize(size + 1, Vec());
-  if(M.size() <= size)
-    M.resize(size + 1, Vec());
-  if(0 < step && P[size].size() == size)
+  if(P[size].size() == size)
     return P[size];
-  if(step < 0 && M[size].size() == size)
-    return M[size];
-        auto& p(P[size]);
-        auto& m(M[size]);
-  const auto& D(diff(size));
-        auto  ddp(  D);
-        auto  ddm(- D);
+  auto& p(P[size]);
   p.resize(size);
-  for(int i = 0; i < p.size(); i ++)
+  Mat   extends(p.size() * 2 - 1, p.size());
+  Mat   revextends(extends.rows(), extends.cols());
+  for(int i = 0; i < extends.rows(); i ++)
+    for(int j = 0; j < extends.cols(); j ++)
+      extends(i, j) = i / 2 == j && i % 2 == 0 ? T(1) : T(0);
+  for(int i = 0; i < p.size() - 1; i ++)
+    extends.row(i * 2 + 1) = taylor(p.size(), T(i) + T(1) / T(2));
+  for(int i = 0; i < extends.rows(); i ++)
+    for(int j = 0; j < extends.cols(); j ++)
+      revextends(i, j) = extends(extends.rows() - 1 - i,
+                                 extends.cols() - 1 - j);
+  const auto reverse(revextends.transpose() * taylor(p.size() * 2 - 1, - T(1)));
+  p = extends.transpose() * taylor(p.size() * 2 - 1, T(p.size() * 2 - 1));
+  for(int i = 0; i < reverse.size(); i ++)
+    p[i] += reverse[reverse.size() - i - 1];
+  return p /= T(2);
+}
+
+
+template <typename T> class P0EL {
+public:
+  typedef SimpleVector<T> Vec;
+  inline P0EL();
+  inline P0EL(const int& size);
+  inline ~P0EL();
+  inline const T& next(const T& in);
+  T   d;
+  T   M;
+private:
+  inline Vec& shift(Vec& a, const T& in);
+  inline const T& sgn(const T& x);
+  inline T expscale(const T& x);
+  inline T logscale(const T& x);
+  P0<T> p0;
+  Vec p;
+  Vec pe;
+  Vec pl;
+};
+
+template <typename T> P0EL<T>::P0EL() {
+  d = M = T(0);
+}
+
+template <typename T> P0EL<T>::P0EL(const int& size) {
+  assert(1 < size);
+  p.resize(size);
+  for(int i = 0; i < size; i ++)
     p[i] = T(0);
-  m = p;
-  p[p.size() - 1] = T(1);
-  m[0] = T(1);
-  for(int i = 2; 0 <= i; i ++) {
-    const auto bp(p);
-    const auto bm(m);
-    p += ddp.row(ddp.rows() - 1);
-    m += ddm.row(0);
-    if(bm == m && bp == p)
-      break;
-    ddp = (D * ddp) * (  T(1) / T(i));
-    ddm = (D * ddm) * (- T(1) / T(i));
-  }
-  if(0 < step)
-    return p;
-  return m;
+  pe = pl = p;
+  d  = M = T(0);
+}
+
+template <typename T> P0EL<T>::~P0EL() {
+  ;
+}
+
+template <typename T> inline const T& P0EL<T>::next(const T& in) {
+  if(in == d)
+    return M;
+  M = (         p0.next(shift(p,  d = in)) +
+       logscale(p0.next(shift(pe, expscale(d)))) +
+       expscale(p0.next(shift(pl, logscale(d)))) ) / T(3);
+  if(! isfinite(M) || isnan(M) || p[0] == T(0))
+    M = in;
+  return M;
+}
+
+template <typename T> inline typename P0EL<T>::Vec& P0EL<T>::shift(Vec& a, const T& in) {
+  assert(a.size());
+  for(int i = 0; i < a.size() - 1; i ++)
+    a[i] = a[i + 1];
+  a[a.size() - 1] = in;
+  return a;
+}
+
+template <typename T> inline const T& P0EL<T>::sgn(const T& x) {
+  static const T one(1);
+  static const T mone(- 1);
+  static const T zero(0);
+  if(zero < x)
+    return one;
+  if(x < zero)
+    return mone;
+  return zero;
+}
+
+template <typename T> inline T P0EL<T>::expscale(const T& x) {
+  return sgn(x) * (exp(abs(x)) - T(1));
+}
+
+template <typename T> inline T P0EL<T>::logscale(const T& x) {
+  return sgn(x) * log(abs(x) + T(1));
 }
 
 #define _P0_
