@@ -39,12 +39,13 @@ public:
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
   inline ~P0();
-  inline T next(const Vec& in);
+  inline T next(const Vec& in, const T& err = T(1) / T(100000));
 private:
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size);
   inline Vec  taylor(const int& size, const T& step);
-  const Vec&  nextP(const int& site);
+  const Vec&  nextP(const int& size);
+  const Vec&  minSq(const int& size);
   const T&    Pi() const;
   const complex<T>& J() const;
 };
@@ -57,8 +58,26 @@ template <typename T> inline P0<T>::~P0() {
   ;
 }
 
-template <typename T> inline T P0<T>::next(const Vec& in) {
-  return nextP(in.size()).dot(in);
+template <typename T> inline T P0<T>::next(const Vec& in, const T& err) {
+  assert(in.size());
+  if(in[0] == T(0))
+    return in[in.size() - 1];
+  Vec   work(in.size() + 1);
+  for(int i = 0; i < in.size(); i ++)
+    work[i] = in[i];
+  auto& res(work[work.size() - 1]);
+  res = nextP(in.size()).dot(in);
+  const auto normin(sqrt(in.dot(in)));
+  auto  tilt(normin);
+  while(err * normin < abs(tilt)) {
+    tilt  = minSq(work.size()).dot(work);
+    Vec buf(in.size());
+    for(int i = 0; i < buf.size(); i ++)
+      buf[i] = in[i] - tilt * T(i);
+    res   = nextP(buf.size()).dot(buf) + tilt;
+    tilt -= minSq(work.size()).dot(work);
+  }
+  return res;
 }
 
 template <typename T> const T& P0<T>::Pi() const {
@@ -160,11 +179,27 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
     for(int j = 0; j < extends.cols(); j ++)
       revextends(i, j) = extends(extends.rows() - 1 - i,
                                  extends.cols() - 1 - j);
-  const auto reverse(revextends.transpose() * taylor(p.size() * 2 - 1, - T(1)));
-  p = extends.transpose() * taylor(p.size() * 2 - 1, T(p.size() * 2 - 1));
+  const auto reverse(revextends.transpose() * taylor(p.size() * 2 - 1, - T(2)));
+  p = extends.transpose() * taylor(p.size() * 2 - 1, T(p.size() * 2));
   for(int i = 0; i < reverse.size(); i ++)
     p[i] += reverse[reverse.size() - i - 1];
   return p /= T(2);
+}
+
+template <typename T> const typename P0<T>::Vec& P0<T>::minSq(const int& size) {
+  assert(1 < size);
+  static vector<Vec> ms;
+  if(ms.size() <= size)
+    ms.resize(size + 1, Vec());
+  if(ms[size].size() == size)
+    return ms[size];
+  auto& t(ms[size]);
+  t.resize(size);
+  const auto xsum(T(t.size()) * T(t.size() - 1) / T(2));
+  const auto xdot(T(t.size()) * T(t.size() - 1) * T(2 * t.size() - 1) / T(6));
+  for(int i = 0; i < t.size(); i ++)
+    t[i] = T(i) * T(t.size()) - xsum;
+  return t /= xdot * T(t.size()) - xsum * xsum;
 }
 
 
