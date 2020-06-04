@@ -235,7 +235,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #pragma omp for schedule(static, 1)
 #endif
       for(int j = 0; j < plen; j ++) {
-        P0<T> p(data.rows() / (j + 1));
+        P0<T> p;
         Mat fdata(data.rows() / (j + 1), data.cols());
         Mat rdata(data.rows() / (j + 1), data.cols());
         for(int i = 0; i < fdata.rows(); i ++) {
@@ -247,8 +247,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           }
         }
         for(int i = 0; i < data.cols(); i ++) {
-          result(data.rows() + j + plen, i) = p.next(fdata.col(i), true);
-          result(plen - j - 1, i) = p.next(rdata.col(i), true);
+          result(data.rows() + j + plen, i) = p.next(fdata.col(i));
+          result(plen - j - 1, i) = p.next(rdata.col(i));
         }
         for(int i = 0; i < j; i ++) {
           result.row(data.rows() + j + plen) -= result.row(data.rows() + i + plen);
