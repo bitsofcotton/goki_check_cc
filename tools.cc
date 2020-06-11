@@ -456,7 +456,7 @@ int main(int argc, const char* argv[]) {
           work3[2 * j + 1] = (bufr[j][i]    + bufr[j + 1][i]   ) / num_t(2);
         }
       }
-      std::cout << p.next(work0) << " " << p.next(work1) << " " << p.next(work2) << " " << p.next(work3) << std::endl;
+      std::cout << p.nextP(work0.size()).dot(work0) << " " << p.nextP(work1.size()).dot(work1) << " " << p.nextP(work2.size()).dot(work2) << " " << p.nextP(work3.size()).dot(work3) << std::endl;
     }
   } else if(strcmp(argv[1], "pdraw") == 0) {
     if(argc < 6) {

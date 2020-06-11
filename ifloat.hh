@@ -104,13 +104,19 @@ template <typename T, int bits> inline DUInt<T,bits>::DUInt() {
 }
 
 template <typename T, int bits> inline DUInt<T,bits>::DUInt(const int& src) {
-  e[0]   = src;
+  const auto abssrc(src < 0 ? - src : src);
+  e[0]   = abssrc;
   e[1]  ^= e[1];
+  if(abssrc != src)
+    *this = - *this;
 }
 
 template <typename T, int bits> inline DUInt<T,bits>::DUInt(const T& src) {
-  e[0]   = src;
+  const auto abssrc(src < T(0) ? - src : src);
+  e[0]   = abssrc;
   e[1]  ^= e[1];
+  if(abssrc != src)
+    *this = - *this;
 }
 
 template <typename T, int bits> inline DUInt<T,bits>::DUInt(const DUInt<T,bits>& src) {
@@ -445,6 +451,69 @@ template <typename T, int bits> std::istream&  operator >> (std::istream& is, DU
 }
 
 
+// add sign.
+template <typename T, int bits> class Signed : public T {
+public:
+  inline Signed();
+  inline Signed(const int& src);
+  inline Signed(const T& src);
+  inline Signed(const Signed<T,bits>& src);
+  inline bool operator <  (const Signed<T,bits>& src) const;
+  inline bool operator <= (const Signed<T,bits>& src) const;
+  inline bool operator >  (const Signed<T,bits>& src) const;
+  inline bool operator >= (const Signed<T,bits>& src) const;
+  // friend std::ostream&  operator << (std::ostream& os, Signed<T,bits> v);
+};
+
+template <typename T, int bits> inline Signed<T,bits>::Signed() {
+  ;
+}
+
+template <typename T, int bits> inline Signed<T,bits>::Signed(const int& src) {
+  T tsrc(src);
+  *this = reinterpret_cast<const Signed<T,bits>&>(tsrc);
+}
+
+template <typename T, int bits> inline Signed<T,bits>::Signed(const T& src) {
+  *this = reinterpret_cast<const Signed<T,bits>&>(src);
+}
+
+template <typename T, int bits> inline Signed<T,bits>::Signed(const Signed<T,bits>& src) {
+  *this = src;
+}
+
+template <typename T, int bits> inline bool Signed<T,bits>::operator <  (const Signed<T,bits>& src) const {
+  const auto mthis(int(*this >> (bits - 1)));
+  const auto msrc( int(src   >> (bits - 1)));
+  if(mthis ^ msrc)
+    return mthis;
+  if(mthis)
+    return - dynamic_cast<const T&>(src) < - dynamic_cast<const T&>(*this);
+  return dynamic_cast<const T&>(*this) < dynamic_cast<const T&>(src);
+}
+
+template <typename T, int bits> inline bool Signed<T,bits>::operator <=  (const Signed<T,bits>& src) const {
+  return ! (*this > src);
+}
+
+template <typename T, int bits> inline bool Signed<T,bits>::operator >  (const Signed<T,bits>& src) const {
+  return ! (*this < src) && *this != src;
+}
+
+template <typename T, int bits> inline bool Signed<T,bits>::operator >= (const Signed<T,bits>& src) const {
+  return ! (*this < src);
+}
+
+template <typename T, int bits> std::ostream& operator << (std::ostream& os, Signed<T,bits> v) {
+  const static Signed<T,bits> zero(0);
+  if(v < zero) {
+    os << '-';
+    v = - v;
+  }
+  return os << dynamic_cast<const T&>(v);
+}
+
+
 // integer to integer float part.
 template <typename T, typename W, int bits, typename U> class SimpleFloat {
 public:
@@ -506,6 +575,7 @@ public:
   } state_t;
   T m;
   U e;
+  const U& uzero() const;
   const SimpleFloat<T,W,bits,U>& zero()   const;
   const SimpleFloat<T,W,bits,U>& one()    const;
   const SimpleFloat<T,W,bits,U>& two()    const;
@@ -515,7 +585,7 @@ public:
   const SimpleFloat<T,W,bits,U>& twopi()  const;
   const SimpleFloat<T,W,bits,U>& sqrt2()  const;
 private:
-  template <typename V> inline int normalize(V& src) const;
+  template <typename V> inline U normalize(V& src) const;
   inline SimpleFloat<T,W,bits,U>& ensureFlag();
   inline unsigned char safeAdd(U& dst, const U& src);
   inline char residue2() const;
@@ -581,15 +651,15 @@ template <typename T, typename W, int bits, typename U>        SimpleFloat<T,W,b
       m >>= 1;
       s |= safeAdd(e, 1);
       U se(e);
-      if(! safeAdd(se, - src.e) && se < bits)
-        m += src.m >> se;
+      if(! safeAdd(se, - src.e) && se < U(bits))
+        m += src.m >> int(se);
     } else
       return *this = src + *this;
   } else {
     if(e > src.e) {
       U se(e);
-      if(! safeAdd(se, - src.e) && se < bits)
-        m -= src.m >> se;
+      if(! safeAdd(se, - src.e) && se < U(bits))
+        m -= src.m >> int(se);
     } else if(e == src.e) {
       if(m >= src.m)
         m -= src.m;
@@ -629,17 +699,17 @@ template <typename T, typename W, int bits, typename U>        SimpleFloat<T,W,b
   auto mm(W(m) * W(src.m));
   s |= safeAdd(e, src.e);
   s |= safeAdd(e, normalize(mm));
-  s |= safeAdd(e, bits);
-  m  = T(mm >> U(bits));
+  s |= safeAdd(e, U(bits));
+  m  = T(mm >> bits);
   return ensureFlag();
 }
 
 template <typename T, typename W, int bits, typename U> inline char SimpleFloat<T,W,bits,U>::residue2() const {
-  if(0 < e || bits <= - e)
+  if(uzero() < e || U(bits) <= - e)
     return 0;
   if(! e)
     return char(int(m) & 1);
-  return char(int(m >> - e) & 1);
+  return char(int(m >> - int(e)) & 1);
 }
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::operator /  (const SimpleFloat<T,W,bits,U>& src) const {
@@ -670,7 +740,7 @@ template <typename T, typename W, int bits, typename U>        SimpleFloat<T,W,b
   auto mm((W(m) << bits) / W(src.m));
   s |= safeAdd(e, - src.e);
   s |= safeAdd(e, normalize(mm));
-  m  = T(mm >> U(bits));
+  m  = T(mm >> bits);
   return ensureFlag();
 }
 
@@ -784,14 +854,14 @@ template <typename T, typename W, int bits, typename U> inline                  
     throw "NaN to convert int";
   if(! deci.m)
     return T(0);
-  if(bits <= deci.e || (U(0) < deci.e && (deci.m << deci.e) >> deci.e != deci.m))
+  if(U(bits) <= deci.e || (uzero() < deci.e && (deci.m << int(deci.e)) >> int(deci.e) != deci.m))
     throw "Overflow to convert int.";
-  if(deci.e <= - bits)
+  if(deci.e <= - U(bits))
     return T(0);
-  if(deci.e <  U(0))
-    deci.m >>= - deci.e;
-  else if(U(0) < deci.e)
-    deci.m <<=   deci.e;
+  if(deci.e <  uzero())
+    deci.m >>= - int(deci.e);
+  else if(uzero() < deci.e)
+    deci.m <<=   int(deci.e);
   return deci.m;
 }
 
@@ -799,7 +869,7 @@ template <typename T, typename W, int bits, typename U> inline                  
   return *this;
 }
 
-template <typename T, typename W, int bits, typename U> template <typename V> inline int SimpleFloat<T,W,bits,U>::normalize(V& src) const {
+template <typename T, typename W, int bits, typename U> template <typename V> inline U SimpleFloat<T,W,bits,U>::normalize(V& src) const {
   V   bt(1);
   int b(0);
   int tb;
@@ -811,7 +881,7 @@ template <typename T, typename W, int bits, typename U> template <typename V> in
   const auto shift(tb - b - 1);
   assert(0 <= shift);
   src <<= shift;
-  return - shift;
+  return - U(shift);
 }
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>& SimpleFloat<T,W,bits,U>::ensureFlag() {
@@ -826,27 +896,27 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
 template <typename T, typename W, int bits, typename U> inline unsigned char SimpleFloat<T,W,bits,U>::safeAdd(U& dst, const U& src) {
   const auto dst0(dst);
   dst += src;
-  if((dst0 > 0 && src > 0 && dst < 0) ||
-     (dst0 < 0 && src < 0 && dst > 0))
-    return 1 << (dst < 0 ? INF : DWRK);
+  if((dst0 > uzero() && src > uzero() && dst < uzero()) ||
+     (dst0 < uzero() && src < uzero() && dst > uzero()))
+    return 1 << (dst < uzero() ? INF : DWRK);
   return 0;
 }
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::floor() const {
-  if(0 <= e)
+  if(uzero() <= e)
     return *this;
-  if(e <= - bits)
+  if(e <= - U(bits))
     return zero();
   auto deci(*this);
-  deci.m >>= - deci.e;
+  deci.m >>= - int(deci.e);
   if(! deci.m)
     return zero();
-  deci.m <<= - deci.e;
+  deci.m <<= - int(deci.e);
   return deci;
 }
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U> SimpleFloat<T,W,bits,U>::ceil() const {
-  const auto fl(this->floor);
+  const auto fl(this->floor());
   if(*this - fl) {
     auto pmone(one());
     pmone.s |= s & (1 << SIGN);
@@ -1100,6 +1170,11 @@ template <typename T, typename W, int bits, typename U> const vector<SimpleFloat
   return iebuf;
 }
 
+template <typename T, typename W, int bits, typename U> const U& SimpleFloat<T,W,bits,U>::uzero() const {
+  const static U vuzero(0);
+  return vuzero;
+}
+
 template <typename T, typename W, int bits, typename U> const SimpleFloat<T,W,bits,U>& SimpleFloat<T,W,bits,U>::zero() const {
   const static SimpleFloat<T,W,bits,U> vzero(0);
   return vzero;
@@ -1160,7 +1235,7 @@ template <typename T, typename W, int bits, typename U> std::ostream& operator <
     return os << "NaN";
   if(isinf(v))
     return os << (const char*)(v.s & (1 << v.SIGN) ? "-" : "") << "Inf";
-  return os << (const char*)(v.s & (1 << v.SIGN) ? "-" : "") << T(v.m) << "*2^" << int(v.e);
+  return os << (const char*)(v.s & (1 << v.SIGN) ? "-" : "") << T(v.m) << "*2^" << v.e;
 }
 
 template <typename T, typename W, int bits, typename U> std::istream& operator >> (std::istream& is, SimpleFloat<T,W,bits,U>& v) {
