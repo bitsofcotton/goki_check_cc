@@ -239,20 +239,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         Mat fdata(data.rows() / (j + 1), data.cols());
         Mat rdata(data.rows() / (j + 1), data.cols());
         for(int i = 0; i < fdata.rows(); i ++) {
-          for(int k = 0; k < fdata.cols(); k ++)
-            fdata(fdata.rows() - i - 1, k) = rdata(rdata.rows() - i - 1, k) = T(0);
-          for(int k = 0; k < j + 1; k ++) {
-            fdata.row(fdata.rows() - i - 1) += data.row(data.rows() - 1 - i * (j + 1) - k);
-            rdata.row(rdata.rows() - i - 1) += data.row(i * (j + 1) + k);
-          }
+          fdata.row(fdata.rows() - i - 1) = data.row(data.rows() - 1 - i * (j + 1));
+          rdata.row(rdata.rows() - i - 1) = data.row(i * (j + 1));
         }
         for(int i = 0; i < data.cols(); i ++) {
-          result(data.rows() + j + plen, i) = p.next(fdata.col(i));
-          result(plen - j - 1, i) = p.next(rdata.col(i));
-        }
-        for(int i = 0; i < j; i ++) {
-          result.row(data.rows() + j + plen) -= result.row(data.rows() + i + plen);
-          result.row(plen - j - 1) -= result.row(plen - i - 1);
+          result(data.rows() + j + plen, i) = p.nextP(fdata.rows()).dot(fdata.col(i));
+          result(plen - j - 1, i) = p.nextP(rdata.rows()).dot(rdata.col(i));
         }
       }
     }

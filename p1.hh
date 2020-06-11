@@ -267,6 +267,48 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in, cons
   return fvec;
 }
 
+
+template <typename T> class P1B {
+public:
+  typedef SimpleVector<T> Vec;
+  inline P1B();
+  inline P1B(const int& stat, const int& var);
+  inline ~P1B();
+  inline T next(const T& in);
+private:
+  P1<T> p;
+  Vec   buf;
+};
+
+template <typename T> inline P1B<T>::P1B() {
+  ;
+}
+
+template <typename T> inline P1B<T>::P1B(const int& stat, const int& var) {
+  buf.resize(stat + var);
+  for(int i = 0; i < buf.size(); i ++)
+    buf[i] = T(0);
+  p = P1<T>(stat, var);
+}
+
+template <typename T> inline P1B<T>::~P1B() {
+  ;
+}
+
+template <typename T> inline T P1B<T>::next(const T& in) {
+  for(int i = 0; i < buf.size() - 1; i ++)
+    buf[i] = buf[i + 1];
+  buf[buf.size() - 1] = in;
+  const auto& fvec(p.next(buf));
+  T res(0);
+  for(int i = 0; i < fvec.size(); i ++)
+    res += fvec[i] * buf[buf.size() - 1 - i];
+  if(! isfinite(res) || isnan(res))
+    res  = in;
+  return res;
+}
+
+
 #define _P1_
 #endif
 
