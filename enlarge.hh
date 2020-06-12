@@ -66,6 +66,7 @@ public:
   Mat  compute(const Mat& data, const direction_t& dir);
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
+  int  getImgPt(const int& y, const int& h);
   int  dist;
   int  dratio;
   int  plen;
@@ -74,7 +75,6 @@ public:
 
 private:
   void initDop(const int& size);
-  int  getImgPt(const int& y, const int& h);
   T    Pi;
   vector<Mat> Dop;
   vector<Mat> Iop;
