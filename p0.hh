@@ -125,13 +125,14 @@ template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, 
   for(int i = 0; i < tayl.size(); i ++)
     tayl[i] = T(0);
   tayl[spt] = T(1);
-  for(int i = 2; 0 <= i; i ++) {
-    const auto bt(tayl);
-    tayl += dt.row(spt);
-    if(bt == tayl)
-      break;
-    dt = (D * dt) * (residue / T(i));
-  }
+  if(residue != T(0))
+    for(int i = 2; 0 <= i; i ++) {
+      const auto bt(tayl);
+      tayl += dt.row(spt);
+      if(bt == tayl)
+        break;
+      dt = (D * dt) * (residue / T(i));
+    }
   return tayl;
 }
 
@@ -144,19 +145,17 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
     return P[size];
   auto& p(P[size]);
   p.resize(size);
-  Mat   extends(p.size() * 2 - 1, p.size());
+  const auto& ratio(8);
+  Mat   extends(p.size() * ratio - ratio + 1, p.size());
   Mat   revextends(extends.rows(), extends.cols());
   for(int i = 0; i < extends.rows(); i ++)
-    for(int j = 0; j < extends.cols(); j ++)
-      extends(i, j) = i / 2 == j && i % 2 == 0 ? T(1) : T(0);
-  for(int i = 0; i < p.size() - 1; i ++)
-    extends.row(i * 2 + 1) = taylor(p.size(), T(i) + T(1) / T(2));
+    extends.row(i) = taylor(p.size(), T(i) / T(ratio));
   for(int i = 0; i < extends.rows(); i ++)
     for(int j = 0; j < extends.cols(); j ++)
       revextends(i, j) = extends(extends.rows() - 1 - i,
                                  extends.cols() - 1 - j);
-  const auto reverse(revextends.transpose() * taylor(p.size() * 2 - 1, - T(1)));
-  p = extends.transpose() * taylor(p.size() * 2 - 1, T(p.size() * 2 - 1));
+  const auto reverse(revextends.transpose() * taylor(extends.rows(), - T(1)));
+  p = extends.transpose() * taylor(extends.rows(), T(extends.rows()));
   for(int i = 0; i < reverse.size(); i ++)
     p[i] += reverse[reverse.size() - i - 1];
   return p /= T(2);
@@ -170,7 +169,6 @@ public:
   inline P0B(const int& size);
   inline ~P0B();
   inline T next(const T& in);
-  T bd;
 private:
   P0<T> p;
   Vec   buf;
