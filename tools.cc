@@ -529,8 +529,7 @@ int main(int argc, const char* argv[]) {
       const auto newshape(redig.takeShape(shape[idx], center[idx], outcenter, attend[idx], iemph));
       const auto reref(redig.draw(rin0, shape[idx], newshape, delau[idx]));
       for(int ii = 0; ii < 3; ii ++)
-        out[ii] = redig.pullRefMatrix(reref, 1, (in[idx][ii] * (num_t(1) - iemph) + pin[ii] * iemph));
-      redig.normalize(out, num_t(1));
+        out[ii] = filter.compute(redig.pullRefMatrix(reref, 1, (in[idx][ii] * (num_t(1) - iemph) + pin[ii] * iemph)), filter.CLIP);
       file.savep2or3((std::string(argv[6]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true);
       file.saveobj(newshape, out[0].rows(), out[0].cols(), delau[0],
                    (std::string(argv[6]) + std::to_string(j) + std::string(".obj")).c_str());
