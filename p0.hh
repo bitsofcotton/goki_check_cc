@@ -145,7 +145,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
     return P[size];
   auto& p(P[size]);
   p.resize(size);
-  const auto& ratio(8);
+  const auto ratio(8);
   Mat   extends(p.size() * ratio - ratio + 1, p.size());
   Mat   revextends(extends.rows(), extends.cols());
   for(int i = 0; i < extends.rows(); i ++)

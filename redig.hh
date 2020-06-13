@@ -876,24 +876,22 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
          in.cols() < (j + 1) * vbox) {
-        if(geoms.size() >= 1) {
-          Vec3 gbuf(3);
-          gbuf[0] = i * vbox;
-          gbuf[1] = j * vbox;
-          gbuf[2] = geoms[geoms.size() - 1][2];
-          geoms.push_back(gbuf);
-        }
-        continue;
+        Vec3 gbuf(3);
+        gbuf[0] = i * vbox;
+        gbuf[1] = j * vbox;
+        gbuf[2] = geoms[geoms.size() - 1][2];
+        geoms.push_back(gbuf);
+      } else {
+        T avg(0);
+        for(int ii = i * vbox; ii < (i + 1) * vbox; ii ++)
+          for(int jj = j * vbox; jj < (j + 1) * vbox; jj ++)
+            avg += in(ii, jj);
+        Vec3 work(3);
+        work[0] = i * vbox;
+        work[1] = j * vbox;
+        work[2] = sqrt(T(in.rows() * in.cols())) * rz * (avg / T(vbox) / T(vbox) - aavg);
+        geoms.push_back(work);
       }
-      T avg(0);
-      for(int ii = i * vbox; ii < (i + 1) * vbox; ii ++)
-        for(int jj = j * vbox; jj < (j + 1) * vbox; jj ++)
-          avg += in(ii, jj);
-      Vec3 work(3);
-      work[0] = i * vbox;
-      work[1] = j * vbox;
-      work[2] = sqrt(T(in.rows() * in.cols())) * rz * (avg / T(vbox) / T(vbox) - aavg);
-      geoms.push_back(work);
     }
   Vec3 avg(3);
   avg[0] = avg[1] = avg[2] = T(0);
@@ -927,13 +925,6 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
     vector<T> workx;
     vector<T> workz;
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
-      if(in.rows() < (i + 1) * vbox ||
-         in.cols() < (j + 1) * vbox) {
-        if(idx)
-          goto next;
-        continue;
-      }
-     next:
       assert(0 <= idx && idx < geoms.size());
       workx.emplace_back(geoms[idx][1]);
       workz.emplace_back(geoms[idx][2]);

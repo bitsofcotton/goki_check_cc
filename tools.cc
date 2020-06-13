@@ -87,8 +87,8 @@ void usage() {
   cout << "gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck pcopy   <vbox> <thresh> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>" << endl;
-  cout << "gokicheck ppred   <vbox> <thresh> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <input0.ppm> <input0-bump.ppm> ..." << endl;
+  cout << "gokicheck pcopy   <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>" << endl;
+  cout << "gokicheck ppred   <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
 }
@@ -394,83 +394,40 @@ int main(int argc, const char* argv[]) {
         output.close();
       }
     }
-  } else if(strcmp(argv[1], "pcopy") == 0) {
-    if(argc < 10) {
+  } else if(strcmp(argv[1], "ppred") == 0 ||
+            strcmp(argv[1], "pcopy") == 0) {
+    if(argc < 11 || ! (argc & 1)) {
       usage();
       return - 1;
     }
     const auto vbox(std::atoi(argv[2]));
     const auto thresh(std::atof(argv[3]));
-    typename simpleFile<num_t>::Mat in[3], inb[3], in2[3], in2b[3];
-    if(!file.loadp2or3(in, argv[6]))
-      return - 2;
-    if(!file.loadp2or3(inb, argv[7]))
-      return - 2;
-    if(!file.loadp2or3(in2, argv[8]))
-      return - 2;
-    if(!file.loadp2or3(in2b, argv[9]))
-      return - 2;
-    redig.initialize(vbox);
-    std::vector<typename simpleFile<num_t>::Veci3> delau, delau2;
-    std::vector<typename simpleFile<num_t>::Vec3>  shape, shape2;
-    std::vector<typename simpleFile<num_t>::Vec3>  center, center2;
-    std::vector<std::vector<int> > attend, attend2;
-    std::vector<num_t> centerr, centerr2;
-    const auto bump(redig.rgb2l(inb));
-    const auto bump2(redig.rgb2l(in2b));
-    redig.getTileVec(bump, shape, delau);
-    redig.getBone(bump, shape, center, centerr, attend, thresh);
-    redig.getTileVec(bump2, shape2, delau2);
-    redig.getBone(bump2, shape2, center2, centerr2, attend2, thresh);
-    center2 = redig.copyBone(center, centerr, center2, centerr2);
-    assert(center.size() == centerr.size());
-    assert(center.size() == center2.size());
-    typename simpleFile<num_t>::Mat out[3];
-    const auto rin0(redig.makeRefMatrix(in[0], 1));
-    for(int j = 0; j < std::atoi(argv[4]); j ++) {
-      const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[4])));
-      const auto newshape(redig.takeShape(shape, center, center2, attend, iemph));
-      const auto reref(redig.draw(rin0, shape, newshape, delau));
-      for(int idx = 0; idx < 3; idx ++)
-        out[idx] = redig.pullRefMatrix(reref, 1, in[idx]);
-      file.savep2or3((std::string(argv[5]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true);
-      file.saveobj(newshape, out[0].rows(), out[0].cols(), delau,
-                   (std::string(argv[5]) + std::to_string(j) + std::string(".obj")).c_str());
-    }
-  } else if(strcmp(argv[1], "ppred") == 0) {
-    if(argc < 10 || argc & 1) {
-      usage();
-      return - 1;
-    }
-    const auto vbox(std::atoi(argv[2]));
-    const auto thresh(std::atof(argv[3]));
-    std::vector<std::vector<typename simpleFile<num_t>::Mat> > in, inb;
-    in.resize((argc - 6) / 2);
-    inb.resize((argc - 6) / 2);
+    const auto rz(std::atof(argv[4]));
+    std::vector<std::vector<typename simpleFile<num_t>::Mat> > in;
+    std::vector<typename simpleFile<num_t>::Mat> inb;
+    in.resize((argc - 7) / 2);
+    inb.resize((argc - 7) / 2);
     int i;
-    for(i = 6; i < argc; ) {
+    for(i = 7; i < argc; ) {
       typename simpleFile<num_t>::Mat ibuf[3];
       if(!file.loadp2or3(ibuf, argv[i]))
         return - 2;
-      const auto ii((i - 6) / 2);
+      const auto ii((i - 7) / 2);
       in[ii].resize(3);
-      in[ii][0] = ibuf[0];
-      in[ii][1] = ibuf[1];
-      in[ii][2] = ibuf[2];
+      in[ii][0] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[0]);
+      in[ii][1] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[1]);
+      in[ii][2] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[2]);
       i ++;
       if(!file.loadp2or3(ibuf, argv[i]))
         return - 2;
-      inb[ii].resize(3);
-      inb[ii][0] = ibuf[0];
-      inb[ii][1] = ibuf[1];
-      inb[ii][2] = ibuf[2];
+      inb[ii] = redig.rgb2l(ibuf);
       i ++;
-      assert(in[ii][0].rows() == inb[ii][0].rows());
-      assert(in[ii][0].cols() == inb[ii][0].cols());
+      assert(in[ii][0].rows() == inb[ii].rows());
+      assert(in[ii][0].cols() == inb[ii].cols());
       assert(in[ii][0].rows() == in[0][0].rows());
       assert(in[ii][0].cols() == in[0][0].cols());
     }
-    std::cerr << " init" << std::flush;
+    std::cerr << "i" << std::flush;
     redig.initialize(vbox);
     std::vector<std::vector<typename simpleFile<num_t>::Veci3> > delau;
     std::vector<std::vector<typename simpleFile<num_t>::Vec3> >  shape;
@@ -483,22 +440,24 @@ int main(int argc, const char* argv[]) {
     attend.resize(in.size());
     centerr.resize(in.size());
     for(int i = 0; i < in.size(); i ++) {
-      typename simpleFile<num_t>::Mat ibuf[3];
-      ibuf[0] = inb[i][0];
-      ibuf[1] = inb[i][1];
-      ibuf[2] = inb[i][2];
-      const auto bump(redig.rgb2l(ibuf));
-      redig.getTileVec(bump, shape[i], delau[i]);
-      redig.getBone(bump, shape[i], center[i], centerr[i], attend[i], thresh);
+      redig.getTileVec(inb[i], shape[i], delau[i]);
+      for(int j = 0; j < shape[i].size(); j ++)
+        shape[i][j][2] *= rz;
+      redig.getBone(inb[i], shape[i], center[i], centerr[i], attend[i], thresh);
+      assert(center[i].size() == centerr[i].size());
+      assert(center[i].size() == attend[i].size());
+      std::cerr << center[i].size() << ":" << std::flush;
     }
-    std::cerr << " copy" << std::flush;
-    for(int i = 1; i < in.size(); i ++)
+    for(int i = 1; i < in.size(); i ++) {
       center[i] = redig.copyBone(center[0], centerr[0], center[i], centerr[i]);
+      assert(center[i].size() == center[0].size());
+      std::cerr << "." << std::flush;
+    }
     std::vector<std::vector<std::pair<int, int> > > a2xy;
     a2xy.resize(attend[0].size());
     for(int i = 0; i < attend[0].size(); i ++) {
-      const auto& h(in[0][0].rows() / vbox + 1);
-      const auto& w(in[0][0].cols() / vbox + 1);
+      const auto h(in[0][0].rows() / vbox + 1);
+      const auto w(in[0][0].cols() / vbox + 1);
       a2xy[i].reserve(attend[0][i].size());
       for(int j = 0; j < attend[0][i].size(); j ++) {
         const auto& a0ij(attend[0][i][j]);
@@ -507,60 +466,64 @@ int main(int argc, const char* argv[]) {
         a2xyij.second = (a0ij % w) * vbox;
       }
     }
-    std::cerr << " pred(shape)" << std::flush;
     std::vector<typename simpleFile<num_t>::Vec3> outcenter;
-    outcenter.resize(center[0].size());
-    P0<num_t> p;
-    for(int i = 0; i < center[0].size(); i ++) {
-      SimpleVector<num_t> buf0(center.size());
-      auto buf1(buf0);
-      auto buf2(buf0);
-      for(int j = 0; j < center.size(); j ++) {
-        buf0[j] = center[j][i][0];
-        buf1[j] = center[j][i][1];
-        buf2[j] = center[j][i][2];
-      }
-      outcenter[i]    = typename simpleFile<num_t>::Vec3(3);
-      outcenter[i][0] = p.nextP(buf0.size()).dot(buf0);
-      outcenter[i][1] = p.nextP(buf1.size()).dot(buf1);
-      outcenter[i][2] = p.nextP(buf2.size()).dot(buf2);
-    }
-    std::cerr << " pred(img)" << std::flush;
     typename simpleFile<num_t>::Mat pin[3];
-    for(int i = 0; i < 3; i ++)
-      pin[i].resize(in[0][0].rows(), in[0][0].cols());
-    for(int i = 0; i < attend[0].size(); i ++)
-      for(int j = 0; j < attend[0][i].size(); j ++) {
+    if(strcmp(argv[1], "ppred") == 0) {
+      std::cerr << "p" << std::flush;
+      outcenter.resize(center[0].size());
+      P0<num_t> p;
+      for(int i = 0; i < center[0].size(); i ++) {
         SimpleVector<num_t> buf0(center.size());
         auto buf1(buf0);
         auto buf2(buf0);
-        for(int k = 0; k < center.size(); k ++) {
-          const auto y(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[0][i][0]), in[0][0].rows()));
-          const auto x(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[0][i][1]), in[0][0].cols()));
-          buf0[k] = in[k][0](y, x);
-          buf1[k] = in[k][1](y, x);
-          buf2[k] = in[k][2](y, x);
+        for(int j = 0; j < center.size(); j ++) {
+          buf0[j] = center[j][i][0];
+          buf1[j] = center[j][i][1];
+          buf2[j] = center[j][i][2];
         }
-        std::cout << a2xy[i][j].first << " / " << in[0][0].rows() << std::endl;
-        std::cout << a2xy[i][j].second << " / " << in[0][0].cols() << std::endl;
-        const auto yy(filter.getImgPt(a2xy[i][j].first,  in[0][0].rows()));
-        const auto xx(filter.getImgPt(a2xy[i][j].second, in[0][0].cols()));
-        pin[0](yy, xx) = p.nextP(buf0.size()).dot(buf0);
-        pin[1](yy, xx) = p.nextP(buf1.size()).dot(buf1);
-        pin[2](yy, xx) = p.nextP(buf2.size()).dot(buf2);
+        outcenter[i]    = typename simpleFile<num_t>::Vec3(3);
+        outcenter[i][0] = p.nextP(buf0.size()).dot(buf0);
+        outcenter[i][1] = p.nextP(buf1.size()).dot(buf1);
+        outcenter[i][2] = p.nextP(buf2.size()).dot(buf2);
       }
+      for(int i = 0; i < 3; i ++)
+        pin[i].resize(in[0][0].rows(), in[0][0].cols());
+      for(int i = 0; i < attend[0].size(); i ++)
+        for(int j = 0; j < attend[0][i].size(); j ++) {
+          SimpleVector<num_t> buf0(center.size());
+          auto buf1(buf0);
+          auto buf2(buf0);
+          for(int k = 0; k < center.size(); k ++) {
+            const auto y(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[0][i][0]), in[0][0].rows()));
+            const auto x(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[0][i][1]), in[0][0].cols()));
+            buf0[k] = in[k][0](y, x);
+            buf1[k] = in[k][1](y, x);
+            buf2[k] = in[k][2](y, x);
+          }
+          const auto yy(filter.getImgPt(a2xy[i][j].first,  in[0][0].rows()));
+          const auto xx(filter.getImgPt(a2xy[i][j].second, in[0][0].cols()));
+          pin[0](yy, xx) = p.nextP(buf0.size()).dot(buf0);
+          pin[1](yy, xx) = p.nextP(buf1.size()).dot(buf1);
+          pin[2](yy, xx) = p.nextP(buf2.size()).dot(buf2);
+        }
+    } else {
+      outcenter = center[1];
+      pin[0]    = in[0][0];
+      pin[1]    = in[0][1];
+      pin[2]    = in[0][2];
+    }
     typename simpleFile<num_t>::Mat out[3];
     const auto rin0(redig.makeRefMatrix(in[0][0], 1));
-    for(int j = 0; j < std::atoi(argv[4]); j ++) {
-      const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[4])));
+    for(int j = 0; j < std::atoi(argv[5]); j ++) {
+      const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[5])));
       const auto newshape(redig.takeShape(shape[0], center[0], outcenter, attend[0], iemph));
       const auto reref(redig.draw(rin0, shape[0], newshape, delau[0]));
       for(int idx = 0; idx < 3; idx ++)
-        out[idx] = redig.pullRefMatrix(reref, 1, pin[idx]);
+        out[idx] = redig.pullRefMatrix(reref, 1, (in[0][idx] * (num_t(1) - iemph) + pin[idx] * iemph));
       redig.normalize(out, num_t(1));
-      file.savep2or3((std::string(argv[5]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true);
+      file.savep2or3((std::string(argv[6]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true);
       file.saveobj(newshape, out[0].rows(), out[0].cols(), delau[0],
-                   (std::string(argv[5]) + std::to_string(j) + std::string(".obj")).c_str());
+                   (std::string(argv[6]) + std::to_string(j) + std::string(".obj")).c_str());
     }
   } else if(strcmp(argv[1], "habit") == 0) {
     std::vector<typename simpleFile<num_t>::Vec3>  pdst,   psrc;
