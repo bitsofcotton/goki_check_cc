@@ -78,7 +78,7 @@ void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck light   <n_recursive> <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck bump    <n_integrate> <delta_pixels> <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck bump    <distance> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -91,10 +91,6 @@ void usage() {
   cout << "gokicheck ppred   <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   return;
-}
-
-template <typename T> bool lesstv3(const std::pair<T, typename simpleFile<T>::Vec3>& x, const std::pair<T, typename simpleFile<T>::Vec3>& y) {
-  return x.first < y.first;
 }
 
 int main(int argc, const char* argv[]) {
@@ -124,22 +120,16 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[inidx]))
       return - 1;
-    if(strcmp(argv[1], "collect") == 0) {
+    if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.COLLECT_BOTH);
-    } else if(strcmp(argv[1], "enlarge") == 0) {
-      P0<num_t> p;
+    else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.ENLARGE_BOTH);
-    } else if(strcmp(argv[1], "pextend") == 0) {
+    else if(strcmp(argv[1], "pextend") == 0) {
       filter.plen = ratio;
-      typename simpleFile<num_t>::Mat xyz[3];
-      redig.rgb2xyz(xyz, data);
       for(int i = 0; i < 3; i ++)
-        xyz[i] = filter.compute(xyz[i], filter.EXTEND_BOTH);
-      redig.xyz2rgb(data, xyz);
-      for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.CLIP);
+        data[i] = filter.compute(data[i], filter.EXTEND_BOTH);
     } else if(strcmp(argv[1], "light") == 0) {
       filter.lrecur = ratio;
       for(int i = 0; i < 3; i ++)
@@ -148,11 +138,7 @@ int main(int argc, const char* argv[]) {
       filter.dist = ratio * 2 + 1;
       data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
     }
-    if(strcmp(argv[1], "pextend") != 0) {
-      if(strcmp(argv[1], "bump") != 0)
-        redig.autoLevel(data, 3 * 2 * (data[0].rows() + data[0].cols()));
-      redig.normalize(data, num_t(1));
-    }
+    redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0) {
