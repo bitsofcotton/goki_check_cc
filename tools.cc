@@ -200,7 +200,7 @@ int main(int argc, const char* argv[]) {
       redig.maskVectors(points, facets, mask[0]);
     for(int i = 0; i < points.size(); i ++) {
       points[i]    *= ratio;
-      points[i][2] *= zratio * sqrt(data[0].rows() * data[0].cols());
+      points[i][2] *= ratio * zratio * sqrt(data[0].rows() * data[0].cols());
     }
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
@@ -442,7 +442,7 @@ int main(int argc, const char* argv[]) {
     for(int i = 0; i < in.size(); i ++) {
       redig.getTileVec(inb[i], shape[i], delau[i]);
       for(int j = 0; j < shape[i].size(); j ++)
-        shape[i][j][2] *= rz;
+        shape[i][j][2] *= rz * num_t(in[0][0].rows() * in[0][0].cols());
       redig.getBone(inb[i], shape[i], center[i], centerr[i], attend[i], thresh);
       assert(center[i].size() == centerr[i].size());
       assert(center[i].size() == attend[i].size());
