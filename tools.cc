@@ -84,9 +84,9 @@ void usage() {
   cout << "gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck pcopy   <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>" << endl;
   cout << "gokicheck ppred   <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
@@ -179,15 +179,13 @@ int main(int argc, const char* argv[]) {
       mask[0] = mask[1] = mask[2] = data[0] * num_t(0);
     std::vector<typename simpleFile<num_t>::Vec3>  points;
     std::vector<typename simpleFile<num_t>::Veci3> facets;
-    redig.initialize(vbox);
+    redig.initialize(vbox, zratio);
     redig.getTileVec(data[0], points, facets);
     const auto edges(redig.getEdges(mask[0], points));
     if(edges.size())
       redig.maskVectors(points, facets, mask[0]);
-    for(int i = 0; i < points.size(); i ++) {
-      points[i]    *= ratio;
-      points[i][2] *= ratio * zratio * sqrt(data[0].rows() * data[0].cols());
-    }
+    for(int i = 0; i < points.size(); i ++)
+      points[i] *= ratio;
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
                  facets, argv[sidx], edges, thin);
@@ -240,7 +238,7 @@ int main(int argc, const char* argv[]) {
   } else if(strcmp(argv[1], "matcho") == 0 ||
             strcmp(argv[1], "match") == 0 ||
             strcmp(argv[1], "match0") == 0) {
-    if(argc < 10) {
+    if(argc < 11) {
       usage();
       return - 1;
     }
@@ -267,33 +265,34 @@ int main(int argc, const char* argv[]) {
       input.close();
       nemph = std::atoi(argv[3]);
     }
-    const auto vboxdst(std::atoi(argv[4]));
-    const auto vboxsrc(std::atoi(argv[5]));
+    const auto  vboxdst(std::atoi(argv[4]));
+    const auto  vboxsrc(std::atoi(argv[5]));
+    const num_t zratio(std::atof(argv[6]));
     typename simpleFile<num_t>::Mat in0[3], in1[3], bump0orig[3], bump1orig[3], mask0orig[3], mask1orig[3];
     std::vector<typename simpleFile<num_t>::Veci3> delau0, delau1;
     std::vector<typename simpleFile<num_t>::Vec3>  shape0, shape1;
-    if(!file.loadp2or3(in0, argv[6]))
+    if(!file.loadp2or3(in0, argv[7]))
       return - 2;
-    if(!file.loadp2or3(in1, argv[7]))
+    if(!file.loadp2or3(in1, argv[8]))
       return - 2;
-    if(!file.loadp2or3(bump0orig, argv[8]))
+    if(!file.loadp2or3(bump0orig, argv[9]))
       return - 2;
-    const std::string fn(argv[9]);
+    const std::string fn(argv[10]);
     if(fn[fn.size() - 1] == 'j') {
-      if(!file.loadobj(shape1, delau1, argv[9]))
+      if(!file.loadobj(shape1, delau1, argv[10]))
         return - 2;
       bump1orig[0] = bump1orig[1] = bump1orig[2] = in1[0] * num_t(0);
     } else if(fn[fn.size() - 1] == 'm') {
-      if(!file.loadp2or3(bump1orig, argv[9]))
+      if(!file.loadp2or3(bump1orig, argv[10]))
         return - 2;
     } else {
       usage();
       return - 1;
     }
     if(11 < argc) {
-      if(!file.loadp2or3(mask0orig, argv[10]))
+      if(!file.loadp2or3(mask0orig, argv[11]))
         return - 2;
-      if(!file.loadp2or3(mask1orig, argv[11]))
+      if(!file.loadp2or3(mask1orig, argv[12]))
         return - 2;
       fnout = 12;
     } else {
@@ -304,11 +303,11 @@ int main(int argc, const char* argv[]) {
     const auto& bump1(bump1orig[0]);
     const auto& mask0(mask0orig[0]);
     const auto& mask1(mask1orig[0]);
-    redig.initialize(vboxdst);
+    redig.initialize(vboxdst, zratio);
     redig.getTileVec(bump0, shape0, delau0);
     redig.maskVectors(shape0, delau0, mask0);
     if(fn[fn.size() - 1] == 'm') {
-      redig.initialize(vboxsrc);
+      redig.initialize(vboxsrc, zratio);
       redig.getTileVec(bump1, shape1, delau1);
       redig.maskVectors(shape1, delau1, mask1);
     }
@@ -386,9 +385,9 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    const auto vbox(std::atoi(argv[2]));
-    const auto thresh(std::atof(argv[3]));
-    const auto rz(std::atof(argv[4]));
+    const auto  vbox(std::atoi(argv[2]));
+    const auto  thresh(std::atof(argv[3]));
+    const num_t zratio(std::atof(argv[4]));
     std::vector<std::vector<typename simpleFile<num_t>::Mat> > in;
     std::vector<typename simpleFile<num_t>::Mat> inb;
     in.resize((argc - 7) / 2);
@@ -414,7 +413,7 @@ int main(int argc, const char* argv[]) {
       assert(in[ii][0].cols() == in[0][0].cols());
     }
     std::cerr << "i" << std::flush;
-    redig.initialize(vbox);
+    redig.initialize(vbox, zratio);
     std::vector<std::vector<typename simpleFile<num_t>::Veci3> > delau;
     std::vector<std::vector<typename simpleFile<num_t>::Vec3> >  shape;
     std::vector<std::vector<typename simpleFile<num_t>::Vec3> >  center;
@@ -427,8 +426,6 @@ int main(int argc, const char* argv[]) {
     centerr.resize(in.size());
     for(int i = 0; i < in.size(); i ++) {
       redig.getTileVec(inb[i], shape[i], delau[i]);
-      for(int j = 0; j < shape[i].size(); j ++)
-        shape[i][j][2] *= rz * sqrt(num_t(in[0][0].rows() * in[0][0].cols()));
       redig.getBone(inb[i], shape[i], center[i], centerr[i], attend[i], thresh);
       assert(center[i].size() == centerr[i].size());
       assert(center[i].size() == attend[i].size());
