@@ -448,19 +448,23 @@ int main(int argc, const char* argv[]) {
       assert(center[i].size() == attend[i].size());
       std::cerr << center[i].size() << ":" << std::flush;
     }
-    for(int i = 1; i < in.size(); i ++) {
-      center[i] = redig.copyBone(center[0], centerr[0], center[i], centerr[i]);
-      assert(center[i].size() == center[0].size());
-      std::cerr << "." << std::flush;
-    }
+    const auto idx(strcmp(argv[1], "ppred") == 0 ? center.size() - 1 : 0);
+    if(strcmp(argv[1], "ppred") == 0)
+      for(int i = 0; i < in.size() - 1; i ++) {
+        center[i] = redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]);
+        assert(center[i].size() == center[idx].size());
+        std::cerr << "." << std::flush;
+      }
+    else
+      center[1] = redig.copyBone(center[idx], centerr[idx], center[1], centerr[1]);
     std::vector<std::vector<std::pair<int, int> > > a2xy;
-    a2xy.resize(attend[0].size());
-    for(int i = 0; i < attend[0].size(); i ++) {
-      const auto h(in[0][0].rows() / vbox + 1);
-      const auto w(in[0][0].cols() / vbox + 1);
-      a2xy[i].reserve(attend[0][i].size());
-      for(int j = 0; j < attend[0][i].size(); j ++) {
-        const auto& a0ij(attend[0][i][j]);
+    a2xy.resize(attend[idx].size());
+    for(int i = 0; i < attend[idx].size(); i ++) {
+      const auto h(in[idx][0].rows() / vbox + 1);
+      const auto w(in[idx][0].cols() / vbox + 1);
+      a2xy[i].reserve(attend[idx][i].size());
+      for(int j = 0; j < attend[idx][i].size(); j ++) {
+        const auto& a0ij(attend[idx][i][j]);
               auto& a2xyij(a2xy[i][j]);
         a2xyij.first  = (a0ij / w) * vbox;
         a2xyij.second = (a0ij % w) * vbox;
@@ -470,9 +474,9 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat pin[3];
     if(strcmp(argv[1], "ppred") == 0) {
       std::cerr << "p" << std::flush;
-      outcenter.resize(center[0].size());
+      outcenter.resize(center[idx].size());
       P0<num_t> p;
-      for(int i = 0; i < center[0].size(); i ++) {
+      for(int i = 0; i < center[idx].size(); i ++) {
         SimpleVector<num_t> buf0(center.size());
         auto buf1(buf0);
         auto buf2(buf0);
@@ -487,39 +491,45 @@ int main(int argc, const char* argv[]) {
         outcenter[i][2] = p.nextP(buf2.size()).dot(buf2);
       }
       for(int i = 0; i < 3; i ++)
-        pin[i].resize(in[0][0].rows(), in[0][0].cols());
-      for(int i = 0; i < attend[0].size(); i ++)
-        for(int j = 0; j < attend[0][i].size(); j ++) {
+        pin[i].resize(in[idx][0].rows(), in[idx][0].cols());
+      for(int i = 0; i < attend[idx].size(); i ++)
+        for(int j = 0; j < attend[idx][i].size(); j ++) {
           SimpleVector<num_t> buf0(center.size());
           auto buf1(buf0);
           auto buf2(buf0);
           for(int k = 0; k < center.size(); k ++) {
-            const auto y(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[0][i][0]), in[0][0].rows()));
-            const auto x(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[0][i][1]), in[0][0].cols()));
+            const auto y(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[idx][i][0]), in[idx][0].rows()));
+            const auto x(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[idx][i][1]), in[idx][0].cols()));
             buf0[k] = in[k][0](y, x);
             buf1[k] = in[k][1](y, x);
             buf2[k] = in[k][2](y, x);
           }
-          const auto yy(filter.getImgPt(a2xy[i][j].first,  in[0][0].rows()));
-          const auto xx(filter.getImgPt(a2xy[i][j].second, in[0][0].cols()));
-          pin[0](yy, xx) = p.nextP(buf0.size()).dot(buf0);
-          pin[1](yy, xx) = p.nextP(buf1.size()).dot(buf1);
-          pin[2](yy, xx) = p.nextP(buf2.size()).dot(buf2);
+          const auto yy(filter.getImgPt(a2xy[i][j].first,  in[idx][0].rows()));
+          const auto xx(filter.getImgPt(a2xy[i][j].second, in[idx][0].cols()));
+          const auto n0(p.nextP(buf0.size()).dot(buf0));
+          const auto n1(p.nextP(buf1.size()).dot(buf1));
+          const auto n2(p.nextP(buf2.size()).dot(buf2));
+          for(int y0 = yy; y0 < min(yy + vbox, int(in[idx][0].rows()) - 1); y0 ++)
+            for(int x0 = xx; x0 < min(xx + vbox, int(in[idx][0].cols()) - 1); x0 ++) {
+              pin[0](y0, x0) = n0;
+              pin[1](y0, x0) = n1;
+              pin[2](y0, x0) = n2;
+            }
         }
     } else {
       outcenter = center[1];
-      pin[0]    = in[0][0];
-      pin[1]    = in[0][1];
-      pin[2]    = in[0][2];
+      pin[0]    = in[idx][0];
+      pin[1]    = in[idx][1];
+      pin[2]    = in[idx][2];
     }
     typename simpleFile<num_t>::Mat out[3];
-    const auto rin0(redig.makeRefMatrix(in[0][0], 1));
+    const auto rin0(redig.makeRefMatrix(in[idx][0], 1));
     for(int j = 0; j < std::atoi(argv[5]); j ++) {
       const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[5])));
-      const auto newshape(redig.takeShape(shape[0], center[0], outcenter, attend[0], iemph));
-      const auto reref(redig.draw(rin0, shape[0], newshape, delau[0]));
-      for(int idx = 0; idx < 3; idx ++)
-        out[idx] = redig.pullRefMatrix(reref, 1, (in[0][idx] * (num_t(1) - iemph) + pin[idx] * iemph));
+      const auto newshape(redig.takeShape(shape[idx], center[idx], outcenter, attend[idx], iemph));
+      const auto reref(redig.draw(rin0, shape[idx], newshape, delau[idx]));
+      for(int ii = 0; ii < 3; ii ++)
+        out[ii] = redig.pullRefMatrix(reref, 1, (in[idx][ii] * (num_t(1) - iemph) + pin[ii] * iemph));
       redig.normalize(out, num_t(1));
       file.savep2or3((std::string(argv[6]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true);
       file.saveobj(newshape, out[0].rows(), out[0].cols(), delau[0],
