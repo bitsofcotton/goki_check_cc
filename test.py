@@ -35,13 +35,17 @@ elif(argv[2] == "pcopy" or argv[2] == "ppred"):
   roots = []
   exts  = []
   for s in argv[3:]:
-    r, e = os.path.splitext(s)
-    roots.append(r)
-    exts.append(e)
+    try:
+      pixels = int(s)
+      continue
+    except:
+      r, e = os.path.splitext(s)
+      roots.append(r)
+      exts.append(e)
   if(argv[2] == "pcopy"):
-    subprocess.call([argv[1], argv[2], "1", ".1", str(pixels), "pose", roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
+    subprocess.call([argv[1], argv[2], "1", ".1", ".001", str(pixels), "pose", roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
   else:
-    cmd = [argv[1], argv[2], "1", ".1", str(pixels), "pose"]
+    cmd = [argv[1], argv[2], "1", ".1", ".001", str(pixels), "pose"]
     for s in roots:
       cmd.append(s + ".ppm")
       cmd.append(s + "-bump.ppm")
@@ -166,4 +170,6 @@ else:
         subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
     elif(argv[2] == "prep"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])
+    elif(argv[2] == "prepsq"):
+      subprocess.call(["convert", line, "-resize", str(pixels) + "x" + str(pixels) + "!", root + "-prepsq.png"])
 
