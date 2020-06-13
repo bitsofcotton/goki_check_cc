@@ -111,10 +111,10 @@ else:
       subprocess.call([argv[1], "tilt", "3", "4", ".0125", root + ".ppm", root + ".obj", root + "-btilt2-base-1.ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt2-base-%d.ppm", "-r", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b2.mp4"])
     elif(argv[2] == "flicker"):
-      for s in range(0, 16):
-        subprocess.call([argv[1], "obj", "0", str(pixels), str(.15 / 16. * s), root + "-bump.ppm", root + "-flicker.obj"])
-        subprocess.call([argv[1], "tilt", "1", "4", "0.25", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
-        subprocess.call([argv[1], "tilt", "3", "4", "0.25", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
+      for s in range(0, pixels):
+        subprocess.call([argv[1], "obj", "1", "1", str(s / float(pixels) / 100.), "0", root + "-bump.ppm", root + "-flicker.obj"])
+        subprocess.call([argv[1], "tilt", "1", "4", "0.05", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-L.ppm"])
+        subprocess.call([argv[1], "tilt", "3", "4", "0.05", root + ".ppm", root + "-flicker.obj", root + "-flicker-base-" + str(s) + "-R.ppm"])
         subprocess.call(["montage", root + "-flicker-base-" + str(s) + "-R.ppm", root + "-flicker-base-" + str(s) + "-L.ppm", "-geometry", "100%x100%", root + "-flicker-base-" + str(s) + ".png"])
         subprocess.call(["cp", root + "-flicker-base-" + str(s) + ".png", root + "-flicker-base-" + str(16 * 2 - s - 1) + ".png"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-flicker-base-%d.png", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-ficker.mp4"])
@@ -124,13 +124,6 @@ else:
     elif(argv[2] == "demosaic"):
       subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
       subprocess.call(["python2", argv[0], argv[1], "enlp", str(int(pow(1.5, pixels))), root + "-demosaic0.ppm"])
-    elif(argv[2] == "habit"):
-      if(len(bhabit) <= 0):
-        bhabit = line
-        subprocess.call(["cp", bhabit, bhabit + "-out.obj"])
-      else:
-        subprocess.call([argv[1], "habit", bhabit + "-out.obj", line, line + "-out.obj"])
-        bhabit = line
     elif(argv[2] == "extend"):
       for tami in range(1, pixels + 1):
         tam = tami / 360. * 60 / pixels
