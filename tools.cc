@@ -242,7 +242,7 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    int fnout(10);
+    int fnout(11);
     int nshow(0);
     int nhid(0);
     int nemph(0);
@@ -294,7 +294,7 @@ int main(int argc, const char* argv[]) {
         return - 2;
       if(!file.loadp2or3(mask1orig, argv[12]))
         return - 2;
-      fnout = 12;
+      fnout = 13;
     } else {
       mask0orig[0] = mask0orig[1] = mask0orig[2] = in0[0] * num_t(0);
       mask1orig[0] = mask1orig[1] = mask1orig[2] = in1[0] * num_t(0);
