@@ -3,8 +3,6 @@
 import os
 import sys
 import subprocess
-import linecache
-import numpy as np
 
 argv   = sys.argv
 pixels = 4
@@ -24,12 +22,13 @@ elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho"):
       nemph = int(argv[7])
   if(ext1 == ".obj" and (argv[2] == "match" or argv[2] == "match0")):
     subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
-  elif(ext1 == ".obj" and argv[2] != "match"):
+  elif(ext1 == ".obj"):
     subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], argv[5]])
   elif(argv[2] == "match" or argv[2] == "match0"):
     subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   else:
     subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
+  if(argv[2] == "matcho"):
     subprocess.call(["ffmpeg", "-loop", "1", "-i", argv[5] + "-%d-" + str(nemph) + ".ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", argv[5] + ".mp4"])
 elif(argv[2] == "pcopy" or argv[2] == "ppred"):
   roots = []
@@ -42,10 +41,11 @@ elif(argv[2] == "pcopy" or argv[2] == "ppred"):
       r, e = os.path.splitext(s)
       roots.append(r)
       exts.append(e)
+  cmd = [argv[1], argv[2], "1", ".1", ".001", str(pixels), "pose"]
   if(argv[2] == "pcopy"):
-    subprocess.call([argv[1], argv[2], "1", ".1", ".001", str(pixels), "pose", roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
+    cmd.extend([roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
+    subprocess.call(cmd)
   else:
-    cmd = [argv[1], argv[2], "1", ".1", ".001", str(pixels), "pose"]
     for s in roots:
       cmd.append(s + ".ppm")
       cmd.append(s + "-bump.ppm")
@@ -62,29 +62,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "sample"):
-      cmd = ["python2", argv[0], argv[1], "col", line]
-      subprocess.call(cmd)
-      cmd[3] = "bump"
-      subprocess.call(cmd)
-      cmd[3] = "obj"
-      subprocess.call(cmd)
-      cmd[3] = "mtl"
-      subprocess.call(cmd)
-      cmd[3] = "jps"
-      subprocess.call(cmd)
-      cmd[3] = "tilt"
-      subprocess.call(cmd)
-      cmd[3] = "btilt"
-      subprocess.call(cmd)
-      cmd[3] = "btilt2"
-      subprocess.call(cmd)
-      cmd[3] = "flicker"
-      subprocess.call(cmd)
-      cmd[3] = "light"
-      subprocess.call(cmd)
-      subprocess.call(["mogrify", "-format", "png", "*.ppm"])
-    elif(argv[2] == "col"):
+    if(argv[2] == "col"):
       subprocess.call([argv[1], "collect", root + ".ppm", root + "-collect.ppm"])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-light.ppm"])
@@ -120,13 +98,13 @@ else:
       subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
     elif(argv[2] == "tilt"):
-      for s in range(0, 16):
-        subprocess.call([argv[1], "tilt", str(s), "16", ".05", root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
+      for s in range(0, pixels):
+        subprocess.call([argv[1], "tilt", str(s), str(pixels), ".05", root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
     elif(argv[2] == "btilt"):
-      for s in range(0, 32):
-        subprocess.call([argv[1], "tilt", "1", "4", str((s - 16) / 16. * .1), root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
-        subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(32 * 2 - s - 1) + ".ppm"])
+      for s in range(0, pixels * 2):
+        subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * .1), root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
+        subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
     elif(argv[2] == "btilt2"):
       subprocess.call([argv[1], "tilt", "1", "4", ".0125", root + ".ppm", root + ".obj", root + "-btilt2-base-0.ppm"])
@@ -141,11 +119,11 @@ else:
         subprocess.call(["cp", root + "-flicker-base-" + str(s) + ".png", root + "-flicker-base-" + str(16 * 2 - s - 1) + ".png"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-flicker-base-%d.png", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-ficker.mp4"])
     elif(argv[2] == "sbox"):
-      for s in range(0, 4):
-        subprocess.call([argv[1], "sbox", str(- s * 16), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(3 - s) + ".ppm"])
+      for s in range(0, pixels):
+        subprocess.call([argv[1], "sbox", str(- s * 4 / float(pixels)), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(pixels - 1 - s) + ".ppm"])
     elif(argv[2] == "demosaic"):
       subprocess.call(["convert", line, "-resize", str(int(10000 / float(pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
-      subprocess.call(["python2", argv[0], argv[1], "enlp", str(int(np.ceil(np.log(pixels) / np.log(1.5)))), root + "-demosaic0.ppm"])
+      subprocess.call(["python2", argv[0], argv[1], "enlp", str(int(pow(1.5, pixels))), root + "-demosaic0.ppm"])
     elif(argv[2] == "habit"):
       if(len(bhabit) <= 0):
         bhabit = line
@@ -154,8 +132,8 @@ else:
         subprocess.call([argv[1], "habit", bhabit + "-out.obj", line, line + "-out.obj"])
         bhabit = line
     elif(argv[2] == "extend"):
-      for tami in range(1, 5):
-        tam = tami / 360. * 15
+      for tami in range(1, pixels + 1):
+        tam = tami / 360. * 60 / pixels
         for s in range(0, 4):
           subprocess.call([argv[1], "tilt", str(s), "4", str(tam), root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
           subprocess.call([argv[1], "bump", "4", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
