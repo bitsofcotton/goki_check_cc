@@ -1022,6 +1022,7 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
 template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc) {
   assert(centerdst.size() == rdst.size());
   assert(centersrc.size() == rsrc.size());
+  assert(centerdst.size());
   vector<Vec3> result(centerdst);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
