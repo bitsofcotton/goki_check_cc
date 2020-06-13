@@ -289,7 +289,7 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    if(11 < argc) {
+    if(13 < argc) {
       if(!file.loadp2or3(mask0orig, argv[11]))
         return - 2;
       if(!file.loadp2or3(mask1orig, argv[12]))
