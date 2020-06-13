@@ -43,9 +43,9 @@ elif(argv[2] == "pcopy" or argv[2] == "ppred"):
       roots.append(r)
       exts.append(e)
   if(argv[2] == "pcopy"):
-    subprocess.call([argv[1], argv[2], "1", "7.", ".001", str(pixels), "pose", roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
+    subprocess.call([argv[1], argv[2], "1", ".1", ".001", str(pixels), "pose", roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
   else:
-    cmd = [argv[1], argv[2], "1", "7.", ".001", str(pixels), "pose"]
+    cmd = [argv[1], argv[2], "1", ".1", ".001", str(pixels), "pose"]
     for s in roots:
       cmd.append(s + ".ppm")
       cmd.append(s + "-bump.ppm")
