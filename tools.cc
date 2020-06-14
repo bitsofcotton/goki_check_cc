@@ -379,6 +379,46 @@ int main(int argc, const char* argv[]) {
         output.close();
       }
     }
+  } else if(strcmp(argv[1], "pred") == 0) {
+    if(argc < 5) {
+      usage();
+      return - 1;
+    }
+    std::vector<std::vector<typename simpleFile<num_t>::Mat> > in;
+    in.resize(argc - 3);
+    for(int i = 3; i < argc; i ++) {
+      typename simpleFile<num_t>::Mat ibuf[3];
+      if(!file.loadp2or3(ibuf, argv[i]))
+        return - 2;
+      const auto ii(i - 3);
+      in[ii].resize(3);
+      in[ii][0] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[0]);
+      in[ii][1] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[1]);
+      in[ii][2] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[2]);
+      assert(in[ii][0].rows() == in[0][0].rows());
+      assert(in[ii][0].cols() == in[0][0].cols());
+    }
+    const auto idx(in.size() - 1);
+    typename simpleFile<num_t>::Mat out[3];
+    for(int i = 0; i < 3; i ++)
+      out[i].resize(in[idx][0].rows(), in[idx][0].cols());
+    P0<num_t> p;
+    for(int y = 0; y < out[0].rows(); y ++)
+      for(int x = 0; x < out[0].cols(); x ++) {
+        SimpleVector<num_t> buf0(in.size());
+        auto buf1(buf0);
+        auto buf2(buf0);
+        for(int k = 0; k < in.size(); k ++) {
+          buf0[k] = in[k][0](y, x);
+          buf1[k] = in[k][1](y, x);
+          buf2[k] = in[k][2](y, x);
+        }
+        out[0](y, x) = p.nextP(buf0.size()).dot(buf0);
+        out[1](y, x) = p.nextP(buf1.size()).dot(buf1);
+        out[2](y, x) = p.nextP(buf2.size()).dot(buf2);
+      }
+    redig.normalize(out, 1.);
+    file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
   } else if(strcmp(argv[1], "ppred") == 0 ||
             strcmp(argv[1], "pcopy") == 0) {
     if(argc < 11 || ! (argc & 1)) {
