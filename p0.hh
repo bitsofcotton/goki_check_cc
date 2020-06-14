@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P0_)
 
-template <typename T> class P0 {
+template <typename T, int ratio = 2> class P0 {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleVector<complex<T> > VecU;
@@ -48,25 +48,25 @@ private:
   const complex<T>& J() const;
 };
 
-template <typename T> inline P0<T>::P0() {
+template <typename T, int ratio> inline P0<T,ratio>::P0() {
   ;
 }
 
-template <typename T> inline P0<T>::~P0() {
+template <typename T, int ratio> inline P0<T,ratio>::~P0() {
   ;
 }
 
-template <typename T> const T& P0<T>::Pi() const {
+template <typename T, int ratio> const T& P0<T,ratio>::Pi() const {
   const static auto pi(atan2(T(1), T(1)) * T(4));
   return pi;
 }
 
-template <typename T> const complex<T>& P0<T>::J() const {
+template <typename T, int ratio> const complex<T>& P0<T,ratio>::J() const {
   const static auto i(complex<T>(T(0), T(1)));
   return i;
 }
 
-template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size, const bool& f_idft) {
+template <typename T, int ratio> const typename P0<T,ratio>::MatU& P0<T,ratio>::seed(const int& size, const bool& f_idft) {
   assert(0 < size);
   static vector<MatU> dft;
   static vector<MatU> idft;
@@ -93,7 +93,7 @@ template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size, c
   return edft;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
+template <typename T, int ratio> const typename P0<T,ratio>::Mat& P0<T,ratio>::diff(const int& size) {
   assert(0 < size);
   static vector<Mat> D;
   if(D.size() <= size)
@@ -116,7 +116,7 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
   return d = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1) / (nd * ni)));
 }
 
-template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
+template <typename T, int ratio> inline typename P0<T,ratio>::Vec P0<T,ratio>::taylor(const int& size, const T& step) {
   const auto  spt(min(size - 1, max(0, int(ceil(step)))));
   const auto  residue(step - T(spt));
         Vec   tayl(size);
@@ -136,7 +136,7 @@ template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, 
   return tayl;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
+template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::nextP(const int& size) {
   assert(1 < size);
   static vector<Vec> P;
   if(P.size() <= size)
@@ -145,7 +145,6 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
     return P[size];
   auto& p(P[size]);
   p.resize(size);
-  const auto ratio(8);
   Mat   extends(p.size() * ratio - ratio + 1, p.size());
   Mat   revextends(extends.rows(), extends.cols());
   for(int i = 0; i < extends.rows(); i ++)
@@ -158,11 +157,28 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
   p = extends.transpose() * taylor(extends.rows(), T(extends.rows()));
   for(int i = 0; i < reverse.size(); i ++)
     p[i] += reverse[reverse.size() - i - 1];
+  p /= T(2);
+  std::vector<Vec> pa;
+  pa.reserve(ratio);
+  pa.emplace_back(p);
+  for(int i = 0; i < ratio - 1; i ++) {
+    for(int j = 0; j < i + 1; j ++)
+      p[j]  = T(0);
+    for(int j = i + 1; j < pa[0].size(); j ++)
+      p[j]  = pa[0][j - i - 1];
+    for(int j = 0; j <= i; j ++)
+      p    += pa[j] * pa[0][j - i + p.size() - 1];
+    pa.emplace_back(p);
+  }
+  for(int i = 0; i < p.size(); i ++)
+    p[i] = T(0);
+  for(int i = 0; i < pa.size(); i ++)
+    p   += pa[i];
   return p /= T(2);
 }
 
 
-template <typename T> class P0B {
+template <typename T, int ratio = 2> class P0B {
 public:
   typedef SimpleVector<T> Vec;
   inline P0B();
@@ -170,25 +186,25 @@ public:
   inline ~P0B();
   inline T next(const T& in);
 private:
-  P0<T> p;
-  Vec   buf;
+  P0<T,ratio> p;
+  Vec buf;
 };
 
-template <typename T> inline P0B<T>::P0B() {
+template <typename T, int ratio> inline P0B<T,ratio>::P0B() {
   ;
 }
 
-template <typename T> inline P0B<T>::P0B(const int& size) {
+template <typename T, int ratio> inline P0B<T,ratio>::P0B(const int& size) {
   buf.resize(size);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
 }
 
-template <typename T> inline P0B<T>::~P0B() {
+template <typename T, int ratio> inline P0B<T,ratio>::~P0B() {
   ;
 }
 
-template <typename T> inline T P0B<T>::next(const T& in) {
+template <typename T, int ratio> inline T P0B<T,ratio>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
