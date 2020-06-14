@@ -170,11 +170,7 @@ template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::n
       p    += pa[j] * pa[0][j - i + p.size() - 1];
     pa.emplace_back(p);
   }
-  for(int i = 0; i < p.size(); i ++)
-    p[i] = T(0);
-  for(int i = 0; i < pa.size(); i ++)
-    p   += pa[i];
-  return p /= T(2);
+  return p;
 }
 
 
