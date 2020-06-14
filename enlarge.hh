@@ -21,8 +21,6 @@ using std::max;
 using std::min;
 using std::abs;
 
-template <typename T> class reDig;
-
 // This class is NOT thread safe.
 template <typename T> class Filter {
 public:
@@ -71,7 +69,6 @@ public:
   int  getImgPt(const int& y, const int& h);
   int  dist;
   int  dratio;
-  T    dbratio;
   int  plen;
   int  lrecur;
   int  bumpd;
@@ -89,13 +86,12 @@ private:
 
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
-  dist    = 1;
-  dratio  = 128;
-  dbratio = T(1) / T(10);
-  plen    = 1;
-  lrecur  = 8;
-  bumpd   = 65;
-  idx     = - 1;
+  dist   = 1;
+  dratio = 128;
+  plen   = 1;
+  lrecur = 8;
+  bumpd  = 65;
+  idx    = - 1;
 }
 
 template <typename T> Filter<T>::~Filter() {
