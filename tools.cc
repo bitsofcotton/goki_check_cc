@@ -135,7 +135,8 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     } else if(strcmp(argv[1], "bump") == 0) {
-      filter.dist = ratio * 2 + 1;
+      assert(0 < ratio);
+      filter.dist = ratio;
       data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), 8 * (data[0].rows() + data[0].cols()));
     }
     redig.normalize(data, num_t(1));
