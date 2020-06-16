@@ -136,7 +136,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     } else if(strcmp(argv[1], "bump") == 0) {
       filter.dist = ratio * 2 + 1;
-      data[0] = data[1] = data[2] = filter.compute(redig.rgb2l(data), filter.BUMP_BOTH);
+      data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), 8 * (data[0].rows() + data[0].cols()));
     }
     redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
@@ -402,20 +402,16 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     for(int i = 0; i < 3; i ++)
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-    P0<num_t> p;
     for(int y = 0; y < out[0].rows(); y ++)
       for(int x = 0; x < out[0].cols(); x ++) {
-        SimpleVector<num_t> buf0(in.size());
-        auto buf1(buf0);
-        auto buf2(buf0);
+        P0C<num_t, P0B<num_t> > p0(in.size() - 1, 8);
+        auto p1(p0);
+        auto p2(p0);
         for(int k = 0; k < in.size(); k ++) {
-          buf0[k] = in[k][0](y, x);
-          buf1[k] = in[k][1](y, x);
-          buf2[k] = in[k][2](y, x);
+          out[0](y, x) = p0.next(in[k][0](y, x) / num_t(4)) * num_t(4);
+          out[1](y, x) = p1.next(in[k][1](y, x) / num_t(4)) * num_t(4);
+          out[2](y, x) = p2.next(in[k][2](y, x) / num_t(4)) * num_t(4);
         }
-        out[0](y, x) = p.nextP(buf0.size()).dot(buf0);
-        out[1](y, x) = p.nextP(buf1.size()).dot(buf1);
-        out[2](y, x) = p.nextP(buf2.size()).dot(buf2);
       }
     redig.normalize(out, 1.);
     file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
@@ -499,39 +495,37 @@ int main(int argc, const char* argv[]) {
       std::cerr << "p" << std::flush;
       outcenter.resize(center[idx].size());
       P0<num_t> p;
+      const auto Msize(num_t(max(in[0][0].rows(), in[0][0].cols()) * 4));
       for(int i = 0; i < center[idx].size(); i ++) {
-        SimpleVector<num_t> buf0(center.size());
-        auto buf1(buf0);
-        auto buf2(buf0);
+        P0C<num_t, P0B<num_t> > p0(center.size() - 1, 8);
+        auto p1(p0);
+        auto p2(p0);
+        outcenter[i] = typename simpleFile<num_t>::Vec3(3);
         for(int j = 0; j < center.size(); j ++) {
-          buf0[j] = center[j][i][0];
-          buf1[j] = center[j][i][1];
-          buf2[j] = center[j][i][2];
+          outcenter[i][0] = p0.next(center[j][i][0] / Msize) * Msize;
+          outcenter[i][1] = p1.next(center[j][i][1] / Msize) * Msize;
+          outcenter[i][2] = p2.next(center[j][i][2] / Msize) * Msize;
         }
-        outcenter[i]    = typename simpleFile<num_t>::Vec3(3);
-        outcenter[i][0] = p.nextP(buf0.size()).dot(buf0);
-        outcenter[i][1] = p.nextP(buf1.size()).dot(buf1);
-        outcenter[i][2] = p.nextP(buf2.size()).dot(buf2);
       }
       for(int i = 0; i < 3; i ++)
         pin[i].resize(in[idx][0].rows(), in[idx][0].cols());
       for(int i = 0; i < attend[idx].size(); i ++)
         for(int j = 0; j < attend[idx][i].size(); j ++) {
-          SimpleVector<num_t> buf0(center.size());
-          auto buf1(buf0);
-          auto buf2(buf0);
+          P0C<num_t, P0B<num_t> > p0(center.size() - 1, 8);
+          auto p1(p0);
+          auto p2(p0);
+          const auto yy(filter.getImgPt(a2xy[i][j].first,  in[idx][0].rows()));
+          const auto xx(filter.getImgPt(a2xy[i][j].second, in[idx][0].cols()));
           for(int k = 0; k < center.size(); k ++) {
             const auto y(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[idx][i][0]), in[idx][0].rows()));
             const auto x(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[idx][i][1]), in[idx][0].cols()));
-            buf0[k] = in[k][0](y, x);
-            buf1[k] = in[k][1](y, x);
-            buf2[k] = in[k][2](y, x);
+            pin[0](yy, xx) = p0.next(in[k][0](y, x) / num_t(4)) * num_t(4);
+            pin[1](yy, xx) = p1.next(in[k][1](y, x) / num_t(4)) * num_t(4);
+            pin[2](yy, xx) = p2.next(in[k][2](y, x) / num_t(4)) * num_t(4);
           }
-          const auto yy(filter.getImgPt(a2xy[i][j].first,  in[idx][0].rows()));
-          const auto xx(filter.getImgPt(a2xy[i][j].second, in[idx][0].cols()));
-          const auto n0(p.nextP(buf0.size()).dot(buf0));
-          const auto n1(p.nextP(buf1.size()).dot(buf1));
-          const auto n2(p.nextP(buf2.size()).dot(buf2));
+          const auto n0(pin[0](yy, xx));
+          const auto n1(pin[1](yy, xx));
+          const auto n2(pin[2](yy, xx));
           for(int y0 = yy; y0 < min(yy + vbox, int(in[idx][0].rows()) - 1); y0 ++)
             for(int x0 = xx; x0 < min(xx + vbox, int(in[idx][0].cols()) - 1); x0 ++) {
               pin[0](y0, x0) = n0;

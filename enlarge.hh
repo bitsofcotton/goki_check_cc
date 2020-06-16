@@ -236,16 +236,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #pragma omp for schedule(static, 1)
 #endif
       for(int j = 0; j < plen; j ++) {
-        P0<T> p;
-        Mat fdata(data.rows() / (j + 1), data.cols());
-        Mat rdata(data.rows() / (j + 1), data.cols());
-        for(int i = 0; i < fdata.rows(); i ++) {
-          fdata.row(fdata.rows() - i - 1) = data.row(data.rows() - 1 - i * (j + 1));
-          rdata.row(rdata.rows() - i - 1) = data.row(i * (j + 1));
-        }
         for(int i = 0; i < data.cols(); i ++) {
-          result(data.rows() + j + plen, i) = p.nextP(fdata.rows()).dot(fdata.col(i));
-          result(plen - j - 1, i) = p.nextP(rdata.rows()).dot(rdata.col(i));
+          const auto size(min(40, int(data.rows()) / (j + 1) - 1));
+          P0C<T, P0B<T> > pf(size, 8);
+          P0C<T, P0B<T> > pb(size, 8);
+          for(int k = 0; k < size; k ++) {
+            result(data.rows() + j + plen, i) =
+              pf.next(result(data.rows() + j - 1 + plen + (k - size + 1) * (j + 1), i) / T(4)) * T(4);
+            result(plen - j - 1, i) =
+              pb.next(result(plen - j + (size - k - 1) * (j + 1), i) / T(4)) * T(4);
+          }
         }
       }
     }
