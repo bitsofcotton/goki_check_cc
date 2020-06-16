@@ -195,7 +195,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int j = 0; j < Dop0.size(); j ++) {
           Vec cpoint(2);
           cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
-          cpoint[1] = T(zi) / T(dratio) * T(dist);
+          cpoint[1] = T(zi) / T(dratio) / T(dist);
           // x-z plane projection of point p with camera geometry c to z=0.
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
