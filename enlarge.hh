@@ -460,7 +460,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::gmean(const Mat& a, con
   for(int i = 0; i < a.rows(); i ++)
     for(int j = 0; j < a.cols(); j ++) {
       const auto lval(a(i, j) * b(i, j));
-      res(i, j) = (lval < T(0) ? - T(1) : T(1)) * sqrt(abs(lval));
+      res(i, j) = (abs(a(i, j)) < abs(b(i, j)) ? (b(i, j) < T(0) ? - T(1) : T(1)) : (a(i, j) < T(0) ? - T(1) : T(1))) * sqrt(abs(lval));
     }
   return res;
 }
