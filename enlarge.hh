@@ -191,7 +191,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
         // N.B. projection scale is linear.
-        cpoint[1] = T(zi) / T(dratio) / T(2) + T(1) / T(4);
+        cpoint[1] = T(zi) / T(dratio);
         // x-z plane projection of point p with camera geometry c to z=0.
         // c := camera, p := cpoint.
         // <c + (p - c) * t, [0, 1]> = 0
