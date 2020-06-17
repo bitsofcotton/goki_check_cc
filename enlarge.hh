@@ -169,7 +169,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             Vec  cpoint(2);
       camera[0] = T(0);
       camera[1] = T(1);
-      cpoint[0] = (T(1) - T(1) / T(dratio)) / T(4);
+      cpoint[0] = T(1) / T(2 * dratio);
       for(int zi = 0; zi < dratio; zi ++) {
         Mat A(data.rows(), data.cols());
         for(int i = 0; i < A.rows(); i ++)
@@ -182,8 +182,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         // <c + (p - c) * t, [0, 1]> = 0
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(abs(int(y0 * T(2))) < 3)
+        if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
           continue;
+        assert(int(y0 * 2) <= data.rows());
         initDop(abs(int(y0 * T(2))));
         const auto Dop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2));
         //  N.B. d^2C_k/dy^2 on zi.
