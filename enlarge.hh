@@ -174,12 +174,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           zscore(i, j) = - T(1);
         }
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-      const int  dratio(rxy);
+      const int  dratio(sqrt(rxy));
             Vec  camera(2);
             Vec  cpoint(2);
       camera[0] = T(0);
       camera[1] = T(1);
-      cpoint[0] = min(T(dratio) / T(dratio - 1) / T(2), T(1) / T(2));
+      cpoint[0] = T(1) / T(2);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
