@@ -183,7 +183,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int zi = 0; zi < dratio / 2; zi ++) {
+      for(int zi = 0; zi < dratio; zi ++) {
         Mat A(data.rows(), data.cols());
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
