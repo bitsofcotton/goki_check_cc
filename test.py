@@ -6,7 +6,6 @@ import subprocess
 
 argv    = sys.argv
 pixels  = 4
-bpixels = 8
 zratio  = .25
 psi     = .0125
 bhabit  = ""
@@ -50,7 +49,7 @@ elif(argv[2] == "pcopy" or argv[2] == "ppred"):
       r, e = os.path.splitext(s)
       roots.append(r)
       exts.append(e)
-  cmd = [argv[1], argv[2], "1", ".1", str(zratio), str(pixels), "pose"]
+  cmd = [argv[1], argv[2], "1", ".175", str(zratio), str(pixels), "pose"]
   #cmd = [argv[1], argv[2], "1", "80.", str(zratio), str(pixels), "pose"]
   if(argv[2] == "pcopy"):
     cmd.extend([roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
@@ -71,12 +70,10 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "collect"):
+    if(argv[2] == "collect" or argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "pextend" or argv[2] == "light"):
       subprocess.call([argv[1], argv[2], str(pixels), root + ".ppm", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], str(bpixels), root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-light.ppm"])
       for s in range(0, pixels):
@@ -130,7 +127,7 @@ else:
         tam = tami / 360. * 60 / pixels
         for s in range(0, 4):
           subprocess.call([argv[1], "tilt", str(s), "4", str(tam), root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
-          subprocess.call([argv[1], "bump", str(bpixels), root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
+          subprocess.call([argv[1], "bump", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
           subprocess.call([argv[1], "obj", "1", "1", str(zratio), "0", root + "-bumpext" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".obj"])
         subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext0.obj", "0", "4", str(tam), root + "-bumpextA.obj"])
         subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext1.obj", "1", "4", str(tam), root + "-bumpextB.obj"])

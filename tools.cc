@@ -78,7 +78,7 @@ void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck light   <n_recursive> <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck bump    <distance> <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -110,7 +110,8 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "light")   == 0 ||
      strcmp(argv[1], "bump")    == 0) {
     const auto f_col( ! strcmp(argv[1], "collect") ||
-                      ! strcmp(argv[1], "enlarge") );
+                      ! strcmp(argv[1], "enlarge") ||
+                      ! strcmp(argv[1], "bump") );
     if((f_col && argc < 4) || ((! f_col) && argc < 5)) {
       usage();
       return 0;
@@ -134,11 +135,8 @@ int main(int argc, const char* argv[]) {
       filter.lrecur = ratio;
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
-    } else if(strcmp(argv[1], "bump") == 0) {
-      assert(0 < ratio);
-      filter.dist = ratio;
-      data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), 8 * (data[0].rows() + data[0].cols()));
-    }
+    } else if(strcmp(argv[1], "bump") == 0)
+      data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), 4 * (data[0].rows() + data[0].cols()));
     redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
       return - 1;

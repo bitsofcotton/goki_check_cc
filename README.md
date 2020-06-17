@@ -9,11 +9,9 @@ We need imagemagick for normaluse, and ffmpeg for making .mp4.
 
 # Parameters
 * enlarge.hh
-* * dratio  : z-axis step number, larger combines sqrt(dratio) number of z-axis steps.
-* * dist    : z-axis scan max distance.
+* * dratio  : z-axis step number.
 * * plen    : extend pixels.
 * * lrecur  : recursive number for sharpen.
-* * bumpd   : z-axis differential pixel number.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
@@ -38,7 +36,7 @@ Freezed.
 # Usage
     make tools
     
-    gokicheck bump    <psi> <input.ppm> <output.ppm>
+    gokicheck bump    <input.ppm> <output.ppm>
     gokicheck pextend <pixels> <input.ppm> <output.ppm>
     gokicheck collect <input.ppm> <output.ppm>
     gokicheck light   <n_recur> <input.ppm> <output.ppm>
