@@ -70,10 +70,12 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "collect" or argv[2] == "bump"):
+    if(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "light"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "pextend" or argv[2] == "light"):
-      subprocess.call([argv[1], argv[2], str(pixels), root + ".ppm", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "pextend"):
+      subprocess.call(["cp", root + ".ppm", root + "-pextend.ppm"])
+      for s in range(0, int(pixels)):
+        subprocess.call([argv[1], argv[2], root + "-pextend.ppm", root + "-pextend.ppm"])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-light.ppm"])
       for s in range(0, pixels):

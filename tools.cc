@@ -109,17 +109,12 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "light")   == 0 ||
      strcmp(argv[1], "bump")    == 0) {
-    const auto f_col( ! strcmp(argv[1], "collect") ||
-                      ! strcmp(argv[1], "enlarge") ||
-                      ! strcmp(argv[1], "bump") );
-    if((f_col && argc < 4) || ((! f_col) && argc < 5)) {
+    if(argc < 4) {
       usage();
       return 0;
     }
-    const auto ratio(f_col ? 0. : std::atof(argv[2]));
-    const auto inidx(f_col ? 2  : 3);
     typename simpleFile<num_t>::Mat data[3];
-    if(!file.loadp2or3(data, argv[inidx]))
+    if(!file.loadp2or3(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < 3; i ++)
@@ -127,18 +122,17 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.ENLARGE_BOTH);
-    else if(strcmp(argv[1], "pextend") == 0) {
-      filter.plen = ratio;
+    else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.EXTEND_BOTH);
-    } else if(strcmp(argv[1], "light") == 0) {
-      filter.lrecur = ratio;
+        data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH), filter.CLIP);
+    else if(strcmp(argv[1], "light") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
-    } else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), 4 * (data[0].rows() + data[0].cols()));
-    redig.normalize(data, num_t(1));
-    if(!file.savep2or3(argv[inidx + 1], data, ! true, 65535))
+    else if(strcmp(argv[1], "bump") == 0)
+      data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH), 4 * (data[0].rows() + data[0].cols()));
+    if(strcmp(argv[1], "pextend") != 0)
+      redig.normalize(data, num_t(1));
+    if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0) {
     if(argc < 6) {
@@ -401,7 +395,13 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     for(int i = 0; i < 3; i ++)
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-    for(int y = 0; y < out[0].rows(); y ++)
+    P0C<num_t, P0B<num_t> > pinit(in.size() - 1, 8);
+    for(int i = 0; i < in.size(); i ++)
+      pinit.next(num_t(i) / num_t(in.size()));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+    for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
         P0C<num_t, P0B<num_t> > p0(in.size() - 1, 8);
         auto p1(p0);
@@ -412,6 +412,7 @@ int main(int argc, const char* argv[]) {
           out[2](y, x) = p2.next(in[k][2](y, x) / num_t(4)) * num_t(4);
         }
       }
+    }
     redig.normalize(out, 1.);
     file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
   } else if(strcmp(argv[1], "ppred") == 0 ||
@@ -431,7 +432,7 @@ int main(int argc, const char* argv[]) {
     for(i = 7; i < argc; ) {
       typename simpleFile<num_t>::Mat ibuf[3];
       if(!file.loadp2or3(ibuf, argv[i]))
-        return - 2;
+        exit(- 2);
       const auto ii((i - 7) / 2);
       in[ii].resize(3);
       in[ii][0] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[0]);
@@ -439,7 +440,7 @@ int main(int argc, const char* argv[]) {
       in[ii][2] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[2]);
       i ++;
       if(!file.loadp2or3(ibuf, argv[i]))
-        return - 2;
+        exit(- 2);
       inb[ii] = redig.rgb2l(ibuf);
       i ++;
       assert(in[ii][0].rows() == inb[ii].rows());
@@ -459,21 +460,32 @@ int main(int argc, const char* argv[]) {
     center.resize(in.size());
     attend.resize(in.size());
     centerr.resize(in.size());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
     for(int i = 0; i < in.size(); i ++) {
       redig.getTileVec(inb[i], shape[i], delau[i]);
       redig.getBone(inb[i], shape[i], center[i], centerr[i], attend[i], thresh);
+#if !defined(_OPENMP)
       assert(center[i].size() == centerr[i].size());
       assert(center[i].size() == attend[i].size());
+#endif
       std::cerr << center[i].size() << ":" << std::flush;
     }
     const auto idx(strcmp(argv[1], "ppred") == 0 ? center.size() - 1 : 0);
-    if(strcmp(argv[1], "ppred") == 0)
+    if(strcmp(argv[1], "ppred") == 0) {
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
       for(int i = 0; i < in.size() - 1; i ++) {
         center[i] = redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]);
+#if !defined(_OPENMP)
         assert(center[i].size() == center[idx].size());
+#endif
         std::cerr << "." << std::flush;
       }
-    else
+    } else
       center[1] = redig.copyBone(center[idx], centerr[idx], center[1], centerr[1]);
     std::vector<std::vector<std::pair<int, int> > > a2xy;
     a2xy.resize(attend[idx].size());
@@ -493,8 +505,13 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "ppred") == 0) {
       std::cerr << "p" << std::flush;
       outcenter.resize(center[idx].size());
-      P0<num_t> p;
+      P0C<num_t, P0B<num_t> > pinit(center.size() - 1, 8);
+      for(int i = 0; i < center.size(); i ++)
+        pinit.next(num_t(i) / num_t(center.size()));
       const auto Msize(num_t(max(in[0][0].rows(), in[0][0].cols()) * 4));
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
       for(int i = 0; i < center[idx].size(); i ++) {
         P0C<num_t, P0B<num_t> > p0(center.size() - 1, 8);
         auto p1(p0);
@@ -508,7 +525,10 @@ int main(int argc, const char* argv[]) {
       }
       for(int i = 0; i < 3; i ++)
         pin[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      for(int i = 0; i < attend[idx].size(); i ++)
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < attend[idx].size(); i ++) {
         for(int j = 0; j < attend[idx][i].size(); j ++) {
           P0C<num_t, P0B<num_t> > p0(center.size() - 1, 8);
           auto p1(p0);
@@ -532,6 +552,7 @@ int main(int argc, const char* argv[]) {
               pin[2](y0, x0) = n2;
             }
         }
+      }
     } else {
       outcenter = center[1];
       pin[0]    = in[idx][0];

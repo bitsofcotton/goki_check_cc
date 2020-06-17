@@ -33,8 +33,7 @@ public:
     ENLARGE_BOTH,
     INTEG_X,
     INTEG_Y,
-    RINTEG_X,
-    RINTEG_Y,
+    INTEG_BOTH,
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
@@ -67,25 +66,20 @@ public:
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
   int  getImgPt(const int& y, const int& h);
-  int  plen;
-  int  lrecur;
 
 private:
   void initDop(const int& size);
   T    Pi;
   vector<Mat> Dop;
   vector<Mat> Iop;
-  vector<Mat> RIop;
   vector<Mat> Eop;
   vector<Mat> Sop;
   int  idx;
 };
 
 template <typename T> Filter<T>::Filter() {
-  Pi = atan2(T(1), T(1)) * T(4);
-  plen   = 1;
-  lrecur = 8;
-  idx    = - 1;
+  Pi  = atan2(T(1), T(1)) * T(4);
+  idx = - 1;
 }
 
 template <typename T> Filter<T>::~Filter() {
@@ -110,6 +104,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case BUMP_BOTH:
     result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
     break;
+  case INTEG_BOTH:
+    result = gmean(compute(data, INTEG_X), compute(data, INTEG_Y));
+    break;
   case EXTEND_BOTH:
     result = compute(compute(data, EXTEND_X), EXTEND_Y);
     break;
@@ -121,9 +118,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case INTEG_X:
     result = compute(data.transpose(), INTEG_Y).transpose();
-    break;
-  case RINTEG_X:
-    result = compute(data.transpose(), RINTEG_Y).transpose();
     break;
   case DETECT_X:
     result = compute(data.transpose(), DETECT_Y).transpose();
@@ -149,10 +143,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     initDop(data.rows());
     result = Iop[idx] * data;
     break;
-  case RINTEG_Y:
-    initDop(data.rows());
-    result = RIop[idx] * data;
-    break;
   case DETECT_Y:
     initDop(data.rows());
     result = Dop[idx] * data;
@@ -174,17 +164,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           zscore(i, j) = - T(1);
         }
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-      // XXX: rough bump:
-      // const int  dratio(sqrt(rxy));
-      const int  dratio(sqrt(sqrt(rxy)));
+      const int  dratio(sqrt(rxy));
             Vec  camera(2);
             Vec  cpoint(2);
       camera[0] = T(0);
       camera[1] = T(1);
-      cpoint[0] = T(1) / T(2);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
+      cpoint[0] = (T(1) - T(1) / T(dratio)) / T(4);
       for(int zi = 0; zi < dratio; zi ++) {
         Mat A(data.rows(), data.cols());
         for(int i = 0; i < A.rows(); i ++)
@@ -197,55 +182,56 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         // <c + (p - c) * t, [0, 1]> = 0
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(int(y0 * T(2)) < 3)
+        if(abs(int(y0 * T(2))) < 3)
           continue;
         initDop(abs(int(y0 * T(2))));
         const auto Dop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2));
         //  N.B. d^2C_k/dy^2 on zi.
-        for(int i = 0; i < A.rows(); i ++)
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+        for(int i = 0; i < A.rows(); i ++) {
           for(int j = 0; j < Dop0.size(); j ++)
             A.row(i) += data.row(getImgPt(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
+        }
 #if defined(_OPENMP)
-#pragma omp critical
+#pragma omp for schedule(static, 1)
 #endif
-        {
-          for(int i = 0; i < A.rows(); i ++)
-            for(int j = 0; j < A.cols(); j ++)
-              if(zscore(i, j) < T(0) || abs(A(i, j)) <= zscore(i, j)) {
-                result(i, j) = T(1) - T(zi) / T(dratio);
-                zscore(i, j) = abs(A(i, j));
-              }
+        for(int i = 0; i < A.rows(); i ++) {
+          for(int j = 0; j < A.cols(); j ++)
+            if(zscore(i, j) < T(0) || abs(A(i, j)) <= zscore(i, j)) {
+              result(i, j) = T(1) - T(zi) / T(dratio);
+              zscore(i, j) = abs(A(i, j));
+            }
         }
       }
-      // the result we get is local focus. make it to global.
-      result = gmean(gmean(compute(result, INTEG_Y), compute(result, RINTEG_Y)),
-                     gmean(compute(result, INTEG_X), compute(result, RINTEG_X)));
     }
     break;
   case EXTEND_Y:
     {
-      assert(0 < plen);
-      result = Mat(data.rows() + plen * 2, data.cols());
+      result = Mat(data.rows() + 2, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
-        result.row(i + plen) = data.row(i);
+        result.row(i + 1) = data.row(i);
+      const auto size(min(40, int(data.rows()) - 1));
+      P0C<T, P0B<T> > pinit(size, 8);
+      for(int i = 0; i < size + 1; i ++)
+        pinit.next(T(i) / T(size + 1));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int j = 0; j < plen; j ++) {
-        for(int i = 0; i < data.cols(); i ++) {
-          const auto size(min(40, int(data.rows()) / (j + 1) - 1));
-          P0C<T, P0B<T> > pf(size, 8);
-          P0C<T, P0B<T> > pb(size, 8);
-          for(int k = 0; k < size; k ++) {
-            result(data.rows() + j + plen, i) =
-              pf.next(result(data.rows() + j - 1 + plen + (k - size + 1) * (j + 1), i) / T(4)) * T(4);
-            result(plen - j - 1, i) =
-              pb.next(result(plen - j + (size - k - 1) * (j + 1), i) / T(4)) * T(4);
-          }
+      for(int i = 0; i < data.cols(); i ++) {
+        P0C<T, P0B<T> > pf(size, 8);
+        P0C<T, P0B<T> > pb(size, 8);
+        for(int k = 0; k < size; k ++) {
+          result(data.rows() + 1, i) =
+            pf.next(result(data.rows() + 1 + k - size, i) / T(4)) * T(4);
+          result(0, i) =
+            pb.next(result(size - k, i) / T(4)) * T(4);
         }
       }
     }
@@ -294,7 +280,6 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     for(int j = 0; j < Dop[idx].cols(); j ++)
       Dop[idx](i, j) = T(0);
   Iop.push_back(Dop[idx]);
-  RIop.push_back(Dop[idx]);
   Eop.push_back(Mat(Dop[idx].rows() * 2, Dop[idx].cols()));
   Sop.push_back(Dop[idx]);
   int cnt(1);
@@ -391,6 +376,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   }
   Dop[idx] /= T(cnt);
   Iop[idx] /= T(cnt);
+  Sop[idx] /= T(cnt);
   for(int i = 0; i < Sop[idx].rows(); i ++) {
     Eop[idx].row(i * 2 + 0) = Sop[idx].row(i);
     for(int j = 0; j < Sop[idx].cols(); j ++)
@@ -400,21 +386,12 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   for(int i = 0; i < SS.rows(); i ++)
     for(int j = 0; j < SS.cols(); j ++)
      Sop[idx](SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
+  Sop[idx] /= T(2);
   const Mat II(Iop[idx]);
   for(int i = 0; i < II.rows(); i ++)
     for(int j = 0; j < II.cols(); j ++)
       Iop[idx](II.rows() - i - 1, II.cols() - j - 1) += II(i, j);
   Iop[idx] /= T(2);
-  for(int i = 0; i < Iop[idx].rows(); i ++)
-    for(int j = 0; j < Iop[idx].cols(); j ++)
-      RIop[idx](i, j) = Iop[idx](Iop[idx].rows() - i - 1, Iop[idx].cols() - j - 1);
-  T mnorm(0);
-  for(int i = 0; i < Sop[idx].rows(); i ++)
-    mnorm = max(mnorm, Sop[idx].row(i).dot(Sop[idx].row(i)));
-  Sop[idx] /= sqrt(mnorm);
-  for(int i = 0; i < lrecur; i ++)
-    Sop[idx] = Sop[idx] * Sop[idx];
-  Sop[idx] *= sqrt(mnorm);
   return;
 }
 
