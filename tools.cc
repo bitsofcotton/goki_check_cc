@@ -76,20 +76,16 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck collect <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck light   <n_recursive> <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck bump    <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck pextend <pixels> <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck obj     <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
-  cout << "gokicheck tilt    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "gokicheck sbox    <index> <max_index> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "gokicheck match0  <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck match   <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck (collect|light|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck pcopy <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>" << endl;
+  cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
+  cout << "gokicheck pred  <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
+  cout << "gokicheck (tilt|sbox)    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
+  cout << "gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck pcopy   <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>" << endl;
-  cout << "gokicheck ppred   <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
+  cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   return;
 }
 
@@ -475,14 +471,9 @@ int main(int argc, const char* argv[]) {
     }
     const auto idx(strcmp(argv[1], "ppred") == 0 ? center.size() - 1 : 0);
     if(strcmp(argv[1], "ppred") == 0) {
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
       for(int i = 0; i < in.size() - 1; i ++) {
         center[i] = redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]);
-#if !defined(_OPENMP)
         assert(center[i].size() == center[idx].size());
-#endif
         std::cerr << "." << std::flush;
       }
     } else

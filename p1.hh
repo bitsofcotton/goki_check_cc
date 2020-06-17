@@ -142,6 +142,8 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in, cons
   }
   A /= MM;
   b /= MM;
+  for(int i = 1; i < A.cols(); i ++)
+    A(statlen * 2, i) = T(0);
   A(statlen * 2, 0) = b[statlen * 2] = - T(1);
   for(int i = 0; i < fvec.size(); i ++)
     fvec[i] = T(0);
