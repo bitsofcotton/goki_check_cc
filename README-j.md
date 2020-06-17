@@ -9,11 +9,9 @@ Makefile を libc++ を使えるように変更してください。
 
 # 調整可能なパラメタ
 * enlarge.hh
-* * dratio  : z 軸を走査する際のステップ数です。sqrt(dratio) ステップがジッタ除去のために使われます。
-* * dist    : z 軸方向をスキャンする際の最大の距離です。
+* * dratio  : z 軸を走査する際のステップ数です。
 * * plen    : EXTEND の際に補完するピクセル数です。
 * * lrecur  : SHARPEN の際に再帰的に繰り返す回数です。
-* * bumpd   : z 軸を計算する際に傾きを取得するピクセルの幅数です。
 * redig.hh
 * * vbox : ベクタ生成の際にまとめるピクセルの数です。
 * * rz   : 奥行きの乗数です。
@@ -37,7 +35,7 @@ Freeze 中です。
 # 使い方
     make gokicheck
     
-    gokicheck bump    <psi> <input.ppm> <output.ppm>
+    gokicheck bump    <input.ppm> <output.ppm>
     gokicheck pextend <pixels> <input.ppm> <output.ppm>
     gokicheck collect <input.ppm> <output.ppm>
     gokicheck light   <n_recur> <input.ppm> <output.ppm>

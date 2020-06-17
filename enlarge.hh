@@ -67,11 +67,9 @@ public:
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
   int  getImgPt(const int& y, const int& h);
-  int  dist;
   int  dratio;
   int  plen;
   int  lrecur;
-  int  bumpd;
 
 private:
   void initDop(const int& size);
@@ -86,11 +84,9 @@ private:
 
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
-  dist   = 1;
-  dratio = 128;
+  dratio = 512;
   plen   = 1;
   lrecur = 8;
-  bumpd  = 65;
   idx    = - 1;
 }
 
@@ -169,49 +165,66 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case BUMP_Y:
     {
       result = Mat(data.rows(), data.cols());
+      Mat zscore(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
+        for(int j = 0; j < result.cols(); j ++) {
           result(i, j) = T(0);
-      Mat zscore(result);
-      initDop(bumpd);
+          zscore(i, j) = - T(1);
+        }
       Vec camera(2);
       camera[0] = T(0);
       camera[1] = T(1);
       assert(T(0) < dratio);
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-      const auto Dop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2));
+            Vec  cpoint(2);
+      {
+        // get largest step for cpoint[0]
+        cpoint[0] = T(1);
+        cpoint[1] = T(1) / T(dratio);
+        // x-z plane projection of point p with camera geometry c to z=0.
+        // c := camera, p := cpoint.
+        // <c + (p - c) * t, [0, 1]> = 0
+        const auto t0(- camera[1] / (cpoint[1] - camera[1]));
+        cpoint[1] = T(1) - T(1) / T(dratio);
+        const auto t1(- camera[1] / (cpoint[1] - camera[1]));
+        // camera + (cpoint[0] - camera) * t = .5
+        // cpoint[0] = .5 / t
+        cpoint[0] = T(1) / T(2) / max(abs(t0), abs(t1));
+      }
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int zi = 0; zi <= dratio; zi ++) {
+      for(int zi = 0; zi < dratio; zi ++) {
         Mat A(data.rows(), data.cols());
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
-        for(int j = 0; j < Dop0.size(); j ++) {
-          Vec cpoint(2);
-          cpoint[0] = (T(j) - T(Dop0.size() - 1) / T(2)) / rxy;
-          cpoint[1] = T(zi) / T(dratio) / T(dist);
-          // x-z plane projection of point p with camera geometry c to z=0.
-          // c := camera, p := cpoint.
-          // <c + (p - c) * t, [0, 1]> = 0
-          const auto t(- camera[1] / (cpoint[1] - camera[1]));
-          const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-          //  N.B. d^2C_k/dy^2 on zi.
-          for(int i = 0; i < A.rows(); i ++)
-            A.row(i) += data.row(getImgPt(i + int(y0), data.rows())) * Dop0[j];
-        }
+        // N.B. projection scale is linear.
+        cpoint[1] = T(zi) / T(dratio);
+        // x-z plane projection of point p with camera geometry c to z=0.
+        // c := camera, p := cpoint.
+        // <c + (p - c) * t, [0, 1]> = 0
+        const auto t(- camera[1] / (cpoint[1] - camera[1]));
+        const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
+        if(int(y0 * T(2)) < 3)
+          continue;
+        initDop(abs(int(y0 * T(2))));
+        const auto Dop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2));
+        //  N.B. d^2C_k/dy^2 on zi.
+        for(int i = 0; i < A.rows(); i ++)
+          for(int j = 0; j < Dop0.size(); j ++)
+            A.row(i) += data.row(getImgPt(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
         {
           for(int i = 0; i < A.rows(); i ++)
             for(int j = 0; j < A.cols(); j ++)
-              if(zi == 0 || abs(A(i, j)) <= zscore(i, j)) {
+              if(zscore(i, j) < T(0) || abs(A(i, j)) <= zscore(i, j)) {
                 result(i, j) = T(1) - T(zi) / T(dratio);
                 zscore(i, j) = abs(A(i, j));
               }
