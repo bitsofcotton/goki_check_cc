@@ -67,7 +67,6 @@ public:
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
   int  getImgPt(const int& y, const int& h);
-  int  dratio;
   int  plen;
   int  lrecur;
 
@@ -84,7 +83,6 @@ private:
 
 template <typename T> Filter<T>::Filter() {
   Pi = atan2(T(1), T(1)) * T(4);
-  dratio = 512;
   plen   = 1;
   lrecur = 8;
   idx    = - 1;
@@ -175,36 +173,23 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           result(i, j) = T(0);
           zscore(i, j) = - T(1);
         }
-      Vec camera(2);
+      const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
+      const int  dratio(rxy);
+            Vec  camera(2);
+            Vec  cpoint(2);
       camera[0] = T(0);
       camera[1] = T(1);
-      assert(T(0) < dratio);
-      const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-            Vec  cpoint(2);
-      {
-        // get largest step for cpoint[0]
-        cpoint[0] = T(1);
-        cpoint[1] = T(1) / T(dratio);
-        // x-z plane projection of point p with camera geometry c to z=0.
-        // c := camera, p := cpoint.
-        // <c + (p - c) * t, [0, 1]> = 0
-        const auto t0(- camera[1] / (cpoint[1] - camera[1]));
-        cpoint[1] = T(1) - T(1) / T(dratio);
-        const auto t1(- camera[1] / (cpoint[1] - camera[1]));
-        // camera + (cpoint[0] - camera) * t = .5
-        // cpoint[0] = .5 / t
-        cpoint[0] = T(1) / T(2) / max(abs(t0), abs(t1));
-      }
+      cpoint[0] = min(T(dratio) / T(dratio - 1) / T(2), T(1) / T(2));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int zi = 0; zi < dratio; zi ++) {
+      for(int zi = 0; zi < dratio / 2; zi ++) {
         Mat A(data.rows(), data.cols());
         for(int i = 0; i < A.rows(); i ++)
           for(int j = 0; j < A.cols(); j ++)
             A(i, j) = T(0);
         // N.B. projection scale is linear.
-        cpoint[1] = T(zi) / T(dratio);
+        cpoint[1] = T(zi) / T(dratio) / T(2) + T(1) / T(4);
         // x-z plane projection of point p with camera geometry c to z=0.
         // c := camera, p := cpoint.
         // <c + (p - c) * t, [0, 1]> = 0
