@@ -461,8 +461,9 @@ int main(int argc, const char* argv[]) {
 #pragma omp for schedule(static, 1)
 #endif
     for(int i = 0; i < in.size(); i ++) {
-      redig.getTileVec(inb[i], shape[i], delau[i]);
-      redig.getBone(inb[i], shape[i], center[i], centerr[i], attend[i], thresh);
+      auto lredig(redig);
+      lredig.getTileVec(inb[i], shape[i], delau[i]);
+      lredig.getBone(inb[i], shape[i], center[i], centerr[i], attend[i], thresh);
 #if !defined(_OPENMP)
       assert(center[i].size() == centerr[i].size());
       assert(center[i].size() == attend[i].size());
