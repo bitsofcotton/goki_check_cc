@@ -7,7 +7,7 @@ import subprocess
 argv    = sys.argv
 pixels  = 4
 zratio  = .25
-psi     = .0125
+psi     = .05
 bhabit  = ""
 
 if(len(argv) < 4):
