@@ -394,9 +394,6 @@ int main(int argc, const char* argv[]) {
     P0C<num_t, P0B<num_t> > pinit(in.size() - 1, 8);
     for(int i = 0; i < in.size(); i ++)
       pinit.next(num_t(i) / num_t(in.size()));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
         P0C<num_t, P0B<num_t> > p0(in.size() - 1, 8);
@@ -457,8 +454,7 @@ int main(int argc, const char* argv[]) {
     attend.resize(in.size());
     centerr.resize(in.size());
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 0; i < in.size(); i ++) {
       auto lredig(redig);
@@ -502,6 +498,7 @@ int main(int argc, const char* argv[]) {
         pinit.next(num_t(i) / num_t(center.size()));
       const auto Msize(num_t(max(in[0][0].rows(), in[0][0].cols()) * 4));
 #if defined(_OPENMP)
+#pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < center[idx].size(); i ++) {
