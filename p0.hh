@@ -38,12 +38,15 @@ public:
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
+  inline P0(const int& size);
   inline ~P0();
   inline T    next(const Vec& in, const T& err = T(1) / T(80));
   const Vec&  nextDeepP(const int& size);
   const Vec&  nextP(const int& size);
   const Vec&  minSq(const int& size);
 private:
+  Vec ms;
+  Vec pd;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size);
   inline Vec  taylor(const int& size, const T& step);
@@ -53,6 +56,11 @@ private:
 
 template <typename T, int ratio> inline P0<T,ratio>::P0() {
   ;
+}
+
+template <typename T, int ratio> inline P0<T,ratio>::P0(const int& size) {
+  pd = nextDeepP(size);
+  ms = minSq(size + 1);
 }
 
 template <typename T, int ratio> inline P0<T,ratio>::~P0() {
@@ -65,16 +73,16 @@ template <typename T, int ratio> inline T P0<T,ratio>::next(const Vec& in, const
   for(int i = 0; i < in.size(); i ++)
     work[i] = in[i];
   auto& res(work[work.size() - 1]);
-  res = nextDeepP(in.size()).dot(in);
+  res = pd.dot(in);
   const auto normin(sqrt(in.dot(in)));
   auto  tilt(normin);
   while(err * normin < abs(tilt)) {
-    tilt  = minSq(work.size()).dot(work);
+    tilt  = ms.dot(work);
     Vec buf(in.size());
     for(int i = 0; i < buf.size(); i ++)
       buf[i] = in[i] - tilt * T(i);
-    res   = nextDeepP(buf.size()).dot(buf) + tilt * T(buf.size());
-    tilt -= minSq(work.size()).dot(work);
+    res   = pd.dot(buf) + tilt * T(buf.size());
+    tilt -= ms.dot(work);
   }
   return res;
 }
@@ -256,6 +264,7 @@ template <typename T> inline P0B<T>::P0B(const int& size) {
   buf.resize(size);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
+  p = P0<T, 4>(buf.size());
 }
 
 template <typename T> inline P0B<T>::~P0B() {
