@@ -5,7 +5,8 @@
 Makefile を libc++ を使えるように変更してください。  
 このプログラムは ascii 形式の ppm ファイルを入出力に使用します。  
 また、速度を担保するには http://eigen.tuxfamily.org/ ライブラリが必要です。
-通常の使用で imagemagick が、動画の作成に ffmpeg が必要です。
+通常の使用で imagemagick が、動画の作成に ffmpeg が必要です。  
+また、このプログラムは入力にある程度連続な画像を仮定します。つまり、細かい成分がたくさんある画像に関してはあまり良い結果を返しません。また、pextend, enlarge コマンドを繰り返し使用することも同様の理由で良い結果を返しません。
 
 # 調整可能なパラメタ
 * redig.hh
@@ -32,7 +33,7 @@ Archive 準備中です。
 # 使い方
     make gokicheck
     
-    gokicheck (collect|light|bump|enlarge|pextend) <input.ppm> <output.ppm>
+    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>
     gokicheck pcopy <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>
     gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
     gokicheck pred  <output.ppm> <input0.ppm> ...
@@ -74,7 +75,7 @@ tools.cc を参照してください。また、必要であれば namespace ブ
 https://konbu.azurewebsites.net/ にサンプルがあります。
 
 # Tips
-light は DFT 時の半整数空間から擬似的にとってきています。  
+sharpen は DFT 時の半整数空間から擬似的にとってきていますが、理想的にはこのコマンドの不動点が sharpen された返り値になります。  
 collect は単純に DFT 微分の後、abs をとってきています。  
 bump は F=&infin; を仮定しています。
 match は z 軸方向まで含めて合致する部分を探します。reDig クラス内部で深度の比率を調節してください。また、片方が稠密な頂点、もう片方が lowPoly された頂点になっている入力を仮定していますが、現状そうなってはいません。
@@ -94,9 +95,6 @@ mirror を裏表にすることにより、もしかするときちんとした�
 
 match コマンドは深度情報を含めて合致します。test.py 内部に隠しパラメータがあります。
 また、デフォルトでは threshr の値がシビアなので、適宜調整してください。
-
-filter による拡大は大きな画像に対しては比較的安定な画像を返しますが、現行使用されている拡大のアルゴリズムよりは劣ります。
-これは半整数空間の周波数成分を参照しながら、色深度を補正しつつ、DFT 拡大を再起的に行うことによって拡大を得ているためです。
 
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
