@@ -71,7 +71,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "collect" or argv[2] == "bump"):
+    if(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-sharpen.ppm"])
@@ -80,10 +80,6 @@ else:
         # this isn't enough, limit of this is enough but it has glitches.
         subprocess.call([argv[1], "sharpen", root + "-penetrate.ppm", root + "-penetrate-sharpen.ppm"])
       subprocess.call(["convert", root + "-penetrate-sharpen.ppm", root + "-penetrate.png"])
-    elif(argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
-      subprocess.call(["cp", root + ".ppm", root + "-" + argv[2] + ".ppm"])
-      for s in range(0, pixels):
-        subprocess.call([argv[1], argv[2], root + "-" + argv[2] + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels), "1",  str(zratio), "0", root + "-bump.ppm", root + ".obj"])
       subprocess.call([argv[1], "obj", str(pixels), ".1", str(zratio), ".4", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])

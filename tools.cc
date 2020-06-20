@@ -123,10 +123,10 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH), filter.CLIP);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
+        data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH), filter.CLIP);
     else if(strcmp(argv[1], "bump") == 0)
       data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH), 4 * (data[0].rows() + data[0].cols()));
-    if(strcmp(argv[1], "pextend") != 0)
+    if(strcmp(argv[1], "pextend") != 0 && strcmp(argv[1], "sharpen") != 0)
       redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;

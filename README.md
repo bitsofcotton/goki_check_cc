@@ -4,7 +4,7 @@ These program aims to implement one of a complement to ongoing other utilities.
 # How to use
 Please touch Makefile for libc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
-For speed, we need http://eigen.tuxfamily.org/ library.
+For speed, we need http://eigen.tuxfamily.org/ library.  
 We need imagemagick for normal use, and ffmpeg for making .mp4.  
 And, this command needs CONTINUOUS input. So without them, this program returns bugly result, the same reason causes pextend or enlarge recursive returns bugly.
 
@@ -29,7 +29,7 @@ From some news, there exists the machine learning method that is making 3D model
 Searching the Internet more...
 
 # Status
-Archived.
+Archived. Waiting more bug information.
 
 # Usage
     make gokicheck
@@ -50,8 +50,9 @@ Archived.
     python2 test.py ./gokicheck pred      input0.png input1.png ...
     python2 test.py ./gokicheck pcopy     input0.png input1.png
     python2 test.py ./gokicheck ppred     input0.png input1.png ...
-    python2 test.py ./gokicheck pextend   input0.png
-    python2 test.py ./gokicheck penetrate input0.png
+    python2 test.py ./gokicheck pextend   input.png
+    python2 test.py ./gokicheck penetrate input.png
+    python2 test.py ./gokicheck sharpen   input.png
     python2 test.py ./gokicheck enlarge   input.png
     python2 test.py ./gokicheck obj       input.png
     python2 test.py ./gokicheck jps       input.png
@@ -65,7 +66,7 @@ Archived.
     python2 test.py ./gokicheck prep      input.png
     python2 test.py ./gokicheck prepsq    input.png
     python2 test.py ./gokicheck mask      input.png
-    python2 test.py ./gokicheck mask0
+    python2 test.py ./gokicheck mask0     input.png
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive (but include guard definition should harms). They are NOT thread-safe.
@@ -74,23 +75,9 @@ Please refer tools.cc, and please include with namespace directive (but include 
 https://konbu.azurewebsites.net/ have a sample interface working demos.
 
 # Tips
-These program's sharpen is based on pseudo DFT half space plausible one, and, in the ideal case, fixed image from recursive sharpen command returns the ideal result.  
-These program's collect is based on DFT differential.  
-These program's bump assumes F=∞ graphics.
-These program's match matches with calculated pseudo z-depth. There's a hidden parameters.
-
-# Specification
-filter generates the bumpmap that is pseudo plausible one because of one image condition and hypothesis, but this is correct if the hypothesis, if it's in the focal point, edge is better clear than other places, is correct.  
-Pseudo condition is avoidable on very wide cases with multiple camera conditions or multiple pint conditions,
-if it fails, the image resolution or color depth resolution lacks, or, something like different colours with each angle like mirrors, or, because of scattering or fog things.  
-
-If we use this program for 3D model input like blender, please make mask with mask0 or another softwares, and convert them
-with mask command, then, please use input-mask.obj . If we are lucky, in the blender example, large scaled input will inputted,
-then G, R, S command adjust, please use modifier as mirror -> solidify -> skin -> lowpoly , single sided experimental result
-will shown. And if we use another input instead of mirror, double sided experimental result will shown.
-And if we're using with rig and so on, the existance of z-axis cover harms.
-
-matchPartial default threshr is severe, so please configure before to match.
+These program's bump needs large image calculation then shrink method.  
+match command matches with z-axis information, test.py have a hidden parameters to configure this.  
+matchPartial class default threshr is severe, so please configure before to match.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
