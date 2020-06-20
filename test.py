@@ -71,24 +71,19 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "light"):
+    if(argv[2] == "collect" or argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "pextend"):
-      subprocess.call(["cp", root + ".ppm", root + "-pextend.ppm"])
-      for s in range(0, int(pixels)):
-        subprocess.call([argv[1], argv[2], root + "-pextend.ppm", root + "-pextend.ppm"])
     elif(argv[2] == "penetrate"):
-      subprocess.call(["cp", root + ".ppm", root + "-penetrate-light.ppm"])
+      subprocess.call(["cp", root + ".ppm", root + "-penetrate-sharpen.ppm"])
       for s in range(0, pixels):
-        subprocess.call(["convert", root + "-penetrate-light.ppm", "-blur", "2x2", "-compress", "none", root + "-penetrate.ppm"])
-        subprocess.call([argv[1], "light", "1", root + "-penetrate.ppm", root + "-penetrate-light.ppm"])
-      subprocess.call(["convert", root + "-penetrate-light.ppm", root + "-penetrate.png"])
-    elif(argv[2] == "enlarge"):
-      subprocess.call(["cp", root + ".ppm", root + "-enl.ppm"])
+        subprocess.call(["convert", root + "-penetrate-sharpen.ppm", "-blur", "2x2", "-compress", "none", root + "-penetrate.ppm"])
+        # this isn't enough, limit of this is enough but it has glitches.
+        subprocess.call([argv[1], "sharpen", root + "-penetrate.ppm", root + "-penetrate-sharpen.ppm"])
+      subprocess.call(["convert", root + "-penetrate-sharpen.ppm", root + "-penetrate.png"])
+    elif(argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
+      subprocess.call(["cp", root + ".ppm", root + "-" + argv[2] + ".ppm"])
       for s in range(0, pixels):
-        subprocess.call([argv[1], argv[2], root + "-enl.ppm", root + "-enl0.ppm"])
-        subprocess.call(["convert", root + "-enl0.ppm", "-resize", "75%", "-compress", "none", root + "-enl.ppm"])
-      subprocess.call(["convert", root + "-enl.ppm", root + "-enl.png"])
+        subprocess.call([argv[1], argv[2], root + "-" + argv[2] + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels), "1",  str(zratio), "0", root + "-bump.ppm", root + ".obj"])
       subprocess.call([argv[1], "obj", str(pixels), ".1", str(zratio), ".4", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
@@ -123,7 +118,7 @@ else:
       for s in range(0, pixels):
         subprocess.call([argv[1], argv[2], str(- s * 4 / float(pixels)), "1", root + ".ppm", root + ".obj", root + "-sbox-" + str(pixels - 1 - s) + ".ppm"])
     elif(argv[2] == "demosaic"):
-      subprocess.call(["convert", line, "-resize", str(int(10000. * pow(1.5, - float(pixels))) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
+      subprocess.call(["convert", line, "-resize", str(int(10000. * pow(2., - float(pixels))) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
       subprocess.call(["python2", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic0.ppm"])
     elif(argv[2] == "extend"):
       for tami in range(1, pixels + 1):

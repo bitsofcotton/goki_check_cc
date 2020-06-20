@@ -76,7 +76,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|light|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck pcopy <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck pred  <output.ppm> <input0.ppm> ..." << endl;
@@ -103,7 +103,7 @@ int main(int argc, const char* argv[]) {
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
-     strcmp(argv[1], "light")   == 0 ||
+     strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0) {
     if(argc < 4) {
       usage();
@@ -121,7 +121,7 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH), filter.CLIP);
-    else if(strcmp(argv[1], "light") == 0)
+    else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.SHARPEN_BOTH);
     else if(strcmp(argv[1], "bump") == 0)
@@ -612,7 +612,7 @@ int main(int argc, const char* argv[]) {
             filter.compute(dft.real() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
             filter.compute(dft.imag() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
-        } else if(strcmp(argv[2], "light") == 0) {
+        } else if(strcmp(argv[2], "sharpen") == 0) {
 #if defined(_WITHOUT_EIGEN_)
           buf2 = (idft * (
             filter.compute(dft.template real<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
