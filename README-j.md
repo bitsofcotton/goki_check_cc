@@ -4,7 +4,7 @@
 # 使い方
 Makefile を libc++ を使えるように変更してください。  
 このプログラムは ascii 形式の ppm ファイルを入出力に使用します。  
-また、速度を担保するには http://eigen.tuxfamily.org/ ライブラリが必要です。
+また、速度を担保するには http://eigen.tuxfamily.org/ ライブラリが必要です。  
 通常の使用で imagemagick が、動画の作成に ffmpeg が必要です。  
 また、このプログラムは入力にある程度連続な画像を仮定します。つまり、細かい成分がたくさんある画像に関してはあまり良い結果を返しません。また、pextend, enlarge コマンドを繰り返し使用することも同様の理由で良い結果を返しません。
 
@@ -28,7 +28,7 @@ Makefile を libc++ を使えるように変更してください。
 さらに検索中です。
 
 # 状態
-Archive 準備中です。
+Archive しています。バグ情報を受け付けています。
 
 # 使い方
     make gokicheck
@@ -49,8 +49,9 @@ Archive 準備中です。
     python2 test.py ./gokicheck pred      input0.png input1.png ...
     python2 test.py ./gokicheck pcopy     input0.png input1.png
     python2 test.py ./gokicheck ppred     input0.png input1.png ...
-    python2 test.py ./gokicheck pextend   input0.png
-    python2 test.py ./gokicheck penetrate input0.png
+    python2 test.py ./gokicheck pextend   input.png
+    python2 test.py ./gokicheck penetrate input.png
+    python2 test.py ./gokicheck sharpen   input.png
     python2 test.py ./gokicheck enlarge   input.png
     python2 test.py ./gokicheck obj       input.png
     python2 test.py ./gokicheck jps       input.png
@@ -64,7 +65,7 @@ Archive 準備中です。
     python2 test.py ./gokicheck prep      input.png
     python2 test.py ./gokicheck prepsq    input.png
     python2 test.py ./gokicheck mask      input.png
-    python2 test.py ./gokicheck mask0
+    python2 test.py ./gokicheck mask0     input.png
 
 # ライブラリとしての使い方
 tools.cc を参照してください。また、必要であれば namespace ブロックでスコープしてください。
@@ -75,24 +76,8 @@ tools.cc を参照してください。また、必要であれば namespace ブ
 https://konbu.azurewebsites.net/ にサンプルがあります。
 
 # Tips
-sharpen は DFT 時の半整数空間から擬似的にとってきていますが、理想的にはこのコマンドの不動点が sharpen された返り値になります。  
-collect は単純に DFT 微分の後、abs をとってきています。  
-bump は F=&infin; を仮定しています。
-match は z 軸方向まで含めて合致する部分を探します。reDig クラス内部で深度の比率を調節してください。また、片方が稠密な頂点、もう片方が lowPoly された頂点になっている入力を仮定していますが、現状そうなってはいません。
-
-# 仕様
-filter はもっともらしいバンプマップを返しますが、正しくない場合があります。
-ただし、1 枚の画像のみを使用する事と仮定している構造である、もし焦点が合っていればより角が立ってみえるという仮定が偽りにならなければ、概ね良好な値を返します。
-また、ほとんどの場合では複数台のカメラあるいは複数のピントを使えば正しいバンプマップを返すことができます。
-(それができない場合には画像や色の解像度が足りないか、鏡など角度によって異なる色を返すものや、散乱やフォグなどの光学的事象がある際です)
-
-また、blender など 3D 編集ソフトへの入力として使用する際には mask0 コマンドでマスクを作ったあともしくは、他でマスクを作り、
-mask コマンドで変換後、filename-mask.obj ファイルを入力に使用してください。
-うまくいくと、blender の場合には scale がとても大きい結果として入力され、G, R, S コマンドで調整したあとに、
-モディファイアで mirror -> solidify -> skin -> lowpoly などの経路できちんとした片面の結果が得られる可能性があります。
-mirror を裏表にすることにより、もしかするときちんとした両面の結果が得られます。
-また、Rig などとともに使用する際には、z 軸方向に重なりのない入力を使用しないとおかしな結果になります。
-
+bump はより大きなピクセル数を集めるとより良い結果を得ます。  
+それぞれのコマンドは一回のみの適用を意図して作られています。複数回の適用にはプログラム内部での変更が必要です。  
 match コマンドは深度情報を含めて合致します。test.py 内部に隠しパラメータがあります。
 また、デフォルトでは threshr の値がシビアなので、適宜調整してください。
 
