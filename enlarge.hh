@@ -368,13 +368,17 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   Dop[idx] /= T(cnt);
   Iop[idx] /= T(cnt);
   Sop[idx] /= T(cnt);
+  const Mat II(Iop[idx]);
+  const Mat SS(Sop[idx]);
+  for(int i = 0; i < II.rows(); i ++)
+    for(int j = 0; j < II.cols(); j ++) {
+      Iop[idx](II.rows() - i - 1, II.cols() - j - 1) += II(i, j);
+      Sop[idx](SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
+    }
+  Iop[idx] /= T(2);
+  Sop[idx] /= T(2);
   for(int i = 0; i < Sop[idx].rows(); i ++)
     Sop[idx](i, i) += T(1);
-  const Mat II(Iop[idx]);
-  for(int i = 0; i < II.rows(); i ++)
-    for(int j = 0; j < II.cols(); j ++)
-      Iop[idx](II.rows() - i - 1, II.cols() - j - 1) += II(i, j);
-  Iop[idx] /= T(2);
   return;
 }
 
