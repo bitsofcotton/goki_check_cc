@@ -5,7 +5,8 @@ These program aims to implement one of a complement to ongoing other utilities.
 Please touch Makefile for libc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
 For speed, we need http://eigen.tuxfamily.org/ library.
-We need imagemagick for normaluse, and ffmpeg for making .mp4.
+We need imagemagick for normal use, and ffmpeg for making .mp4.  
+And, this command needs CONTINUOUS input. So without them, this program returns bugly result, the same reason causes pextend or enlarge recursive returns bugly.
 
 # Parameters
 * redig.hh
@@ -33,7 +34,7 @@ Archived.
 # Usage
     make gokicheck
     
-    gokicheck (collect|light|bump|enlarge|pextend) <input.ppm> <output.ppm>
+    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>
     gokicheck pcopy <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>
     gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
     gokicheck pred  <output.ppm> <input0.ppm> ...
@@ -73,7 +74,7 @@ Please refer tools.cc, and please include with namespace directive (but include 
 https://konbu.azurewebsites.net/ have a sample interface working demos.
 
 # Tips
-These program's light is based on pseudo DFT half space plausible one.  
+These program's sharpen is based on pseudo DFT half space plausible one, and, in the ideal case, fixed image from recursive sharpen command returns the ideal result.  
 These program's collect is based on DFT differential.  
 These program's bump assumes F=∞ graphics.
 These program's match matches with calculated pseudo z-depth. There's a hidden parameters.
@@ -90,9 +91,6 @@ will shown. And if we use another input instead of mirror, double sided experime
 And if we're using with rig and so on, the existance of z-axis cover harms.
 
 matchPartial default threshr is severe, so please configure before to match.
-
-filter's enlarge generates a little blurred result in many cases (and this is reduced in larger images).
-This is because we generate the complement light image with DFT half space plausible ones by shifting frequency space intensities, then, getting recursive enlarged image with DFT.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/
