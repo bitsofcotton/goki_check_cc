@@ -44,12 +44,12 @@ public:
   const Vec&  nextDeepP(const int& size);
   const Vec&  nextP(const int& size);
   const Vec&  minSq(const int& size);
+  inline Vec  taylor(const int& size, const T& step);
 private:
   Vec ms;
   Vec pd;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size);
-  inline Vec  taylor(const int& size, const T& step);
   const T&    Pi() const;
   const complex<T>& J() const;
 };

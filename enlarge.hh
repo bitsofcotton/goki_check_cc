@@ -69,6 +69,7 @@ public:
 
 private:
   void initDop(const int& size);
+  void initEop(const int& size);
   T    Pi;
   vector<Mat> Dop;
   vector<Mat> Iop;
@@ -136,7 +137,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = Sop[idx] * data;
     break;
   case ENLARGE_Y:
-    initDop(data.rows());
+    initEop(data.rows());
     result = Eop[idx] * data;
     break;
   case INTEG_Y:
@@ -281,16 +282,14 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     for(int j = 0; j < Dop[idx].cols(); j ++)
       Dop[idx](i, j) = T(0);
   Iop.push_back(Dop[idx]);
-  Eop.push_back(Mat(Dop[idx].rows() * 2, Dop[idx].cols()));
   Sop.push_back(Dop[idx]);
   int cnt(1);
   for(int ss = 2; ss <= size; ss *= 2, cnt ++) {
           auto DFTD(seed(ss, false));
-          auto DFTL(seed(ss * 2, false));
     const auto IDFT(seed(ss, true));
           auto DFTI(DFTD);
     DFTD.row(0) *= U(T(0));
-          auto DFTE(DFTD);
+          auto DFTS(DFTD);
     T ni(0);
     T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
@@ -311,7 +310,10 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-      DFTE.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTE.rows())) - U(T(1));
+      //   -> This is sharpen operation at all because this is same as original
+      //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
+      //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
+      DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
     }
     // N.B. similar to det(Dop * Iop) == det(Dop) * det(Iop) == 1,
     //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
@@ -337,28 +339,16 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     //          exists r in R, Dop * x == r * x results gains.
     DFTD *= nd * ni == T(0) ? T(0) : sqrt(sqrt(T(DFTD.rows() - 1) / (nd * ni)));
     DFTI *= nd * ni == T(0) ? T(0) : sqrt(sqrt(T(DFTD.rows() - 1) / (nd * ni)));
-    DFTE /= T(DFTE.rows()  - 1);
+    DFTS /= T(DFTS.rows()  - 1);
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
     const Mat lIop((IDFT * DFTI).template real<T>());
-    const Mat EE((IDFT * DFTE).template real<T>());
-    const Mat LL((seed(ss * 2, true) * DFTL).template real<T>());
+    const Mat lSop((IDFT * DFTS).template real<T>());
 #else
     const Mat lDop((IDFT * DFTD).real().template cast<T>());
     const Mat lIop((IDFT * DFTI).real().template cast<T>());
-    const Mat EE((IDFT * DFTE).real().template cast<T>());
-    const Mat LL((seed(ss * 2, true) * DFTL).real().template cast<T>());
+    const Mat lSop((IDFT * DFTS).real().template cast<T>());
 #endif
-    Mat Eop(ss * 2, ss);
-    Mat Lop(ss, ss * 2);
-    for(int i = 0; i < EE.rows(); i ++) {
-      Eop.row(i * 2 + 0) = - EE.row(i);
-      Eop.row(i * 2 + 1) =   EE.row(i);
-      Eop(i * 2 + 0, i) += T(1);
-      Eop(i * 2 + 1, i) += T(1);
-      Lop.row(i)         = LL.row(i * 2);
-    }
-    const Mat lLop(Lop * Eop);
     for(int i = 0; i < Dop[idx].rows(); i ++)
       for(int j = 0; j < lDop.rows(); j ++) {
         int ij(i - lDop.rows() / 2 + j);
@@ -372,27 +362,35 @@ template <typename T> void Filter<T>::initDop(const int& size) {
         }
         Dop[idx](i, ij) += lDop(jj, j);
         Iop[idx](i, ij) += lIop(jj, j);
-        Sop[idx](i, ij) += lLop(jj, j);
+        Sop[idx](i, ij) += lSop(jj, j);
       }
   }
   Dop[idx] /= T(cnt);
   Iop[idx] /= T(cnt);
   Sop[idx] /= T(cnt);
-  for(int i = 0; i < Sop[idx].rows(); i ++) {
-    Eop[idx].row(i * 2 + 0) = Sop[idx].row(i);
-    for(int j = 0; j < Sop[idx].cols(); j ++)
-      Eop[idx](i * 2 + 1, j) = Sop[idx](Sop[idx].rows() - i - 1, Sop[idx].cols() - j - 1);
-  }
-  const Mat SS(Sop[idx]);
-  for(int i = 0; i < SS.rows(); i ++)
-    for(int j = 0; j < SS.cols(); j ++)
-     Sop[idx](SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
-  Sop[idx] /= T(2);
+  for(int i = 0; i < Sop[idx].rows(); i ++)
+    Sop[idx](i, i) += T(1);
   const Mat II(Iop[idx]);
   for(int i = 0; i < II.rows(); i ++)
     for(int j = 0; j < II.cols(); j ++)
       Iop[idx](II.rows() - i - 1, II.cols() - j - 1) += II(i, j);
   Iop[idx] /= T(2);
+  return;
+}
+
+template <typename T> void Filter<T>::initEop(const int& size) {
+  assert(2 <= size);
+  for(int i = 0; i < Eop.size(); i ++)
+    if(Eop[i].cols() == size) {
+      idx = i;
+      return;
+    }
+  cerr << "n" << flush;
+  idx = Eop.size();
+  Eop.push_back(Mat(size * 2, size));
+  P0<T> p;
+  for(int i = 0; i < Eop[idx].rows(); i ++)
+    Eop[idx].row(i) = p.taylor(Eop[idx].cols(), T(i) / T(2));
   return;
 }
 
