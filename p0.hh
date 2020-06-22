@@ -38,29 +38,23 @@ public:
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
-  inline P0(const int& size);
   inline ~P0();
   inline T    next(const Vec& in, const T& err = T(1) / T(80));
-  const Vec&  nextDeepP(const int& size);
-  const Vec&  nextP(const int& size);
-  const Vec&  minSq(const int& size);
+  const Vec&  nextBothP(const int& size);
   inline Vec  taylor(const int& size, const T& step);
 private:
-  Vec ms;
-  Vec pd;
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size);
+  const Vec&  nextDeepP(const int& size);
+  const Vec&  nextReverseDeepP(const int& size);
+  const Vec&  nextP(const int& size);
+  const Vec&  minSq(const int& size);
   const T&    Pi() const;
   const complex<T>& J() const;
 };
 
 template <typename T, int ratio> inline P0<T,ratio>::P0() {
   ;
-}
-
-template <typename T, int ratio> inline P0<T,ratio>::P0(const int& size) {
-  pd = nextDeepP(size);
-  ms = minSq(size + 1);
 }
 
 template <typename T, int ratio> inline P0<T,ratio>::~P0() {
@@ -73,16 +67,16 @@ template <typename T, int ratio> inline T P0<T,ratio>::next(const Vec& in, const
   for(int i = 0; i < in.size(); i ++)
     work[i] = in[i];
   auto& res(work[work.size() - 1]);
-  res = pd.dot(in);
+  res = nextBothP(in.size()).dot(in);
   const auto normin(sqrt(in.dot(in)));
   auto  tilt(normin);
   while(err * normin < abs(tilt)) {
-    tilt  = ms.dot(work);
+    tilt  = minSq(work.size()).dot(work);
     Vec buf(in.size());
     for(int i = 0; i < buf.size(); i ++)
       buf[i] = in[i] - tilt * T(i);
-    res   = pd.dot(buf) + tilt * T(buf.size());
-    tilt -= ms.dot(work);
+    res   = nextBothP(buf.size()).dot(buf) + tilt * T(buf.size());
+    tilt -= minSq(work.size()).dot(work);
   }
   return res;
 }
@@ -218,12 +212,52 @@ template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::n
   if(size == 3)
     p = nextP(size);
   else {
-    const auto pp(nextDeepP(size - 1) * T(size - 2));
+    const auto pp(nextDeepP(size - 1) * T(size - 3));
     p = nextP(size);
     for(int i = 1; i < p.size(); i ++)
       p[i] += pp[i - 1];
   }
-  return p /= T(size - 1);
+  return p /= T(size - 2);
+}
+
+template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::nextReverseDeepP(const int& size) {
+  assert(1 < size);
+  static vector<Vec> P;
+  if(P.size() <= size)
+    P.resize(size + 1, Vec());
+  if(P[size].size() == size)
+    return P[size];
+  auto& p(P[size]);
+  p.resize(size);
+  if(size <= 2)
+    return p;
+  if(size == 3) {
+    const auto pq(nextP(size));
+    p[0] = T(1);
+    for(int i = 1; i < pq.size(); i ++)
+      p[i] = - pq[pq.size() - i];
+    p /= pq[0];
+  } else {
+    const auto pp(nextDeepP(size - 1) * T(size - 3));
+    const auto pq(nextP(size));
+    p[0] = T(1);
+    for(int i = 1; i < pq.size(); i ++)
+      p[i] = - pq[pq.size() - i];
+    p /= pq[0];
+    for(int i = 1; i < p.size(); i ++)
+      p[i] += pp[i - 1];
+  }
+  return p /= T(size - 2);
+}
+
+template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::nextBothP(const int& size) {
+  assert(1 < size);
+  static vector<Vec> P;
+  if(P.size() <= size)
+    P.resize(size + 1, Vec());
+  if(P[size].size() == size)
+    return P[size];
+  return P[size] = (nextDeepP(size) + nextReverseDeepP(size)) / T(2);
 }
 
 template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::minSq(const int& size) {
@@ -264,7 +298,6 @@ template <typename T> inline P0B<T>::P0B(const int& size) {
   buf.resize(size);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
-  p = P0<T, 4>(buf.size());
 }
 
 template <typename T> inline P0B<T>::~P0B() {
