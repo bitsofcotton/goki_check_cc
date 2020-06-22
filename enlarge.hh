@@ -60,7 +60,7 @@ public:
   typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
   typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
 #endif
-  Filter();
+  Filter(const int& recur = 2);
   ~Filter();
   Mat  compute(const Mat& data, const direction_t& dir);
   MatU seed(const int& size, const bool& idft);
@@ -76,11 +76,13 @@ private:
   vector<Mat> Eop;
   vector<Mat> Sop;
   int  idx;
+  int  recur;
 };
 
-template <typename T> Filter<T>::Filter() {
+template <typename T> Filter<T>::Filter(const int& recur) {
   Pi  = atan2(T(1), T(1)) * T(4);
   idx = - 1;
+  this->recur = recur;
 }
 
 template <typename T> Filter<T>::~Filter() {
@@ -212,28 +214,24 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case EXTEND_Y:
     {
-      result = Mat(data.rows() + 2, data.cols());
+      result = Mat(data.rows() + 2 * recur, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
-        result.row(i + 1) = data.row(i);
-      const auto size(min(40, int(data.rows()) - 1));
-      P0C<T, P0B<T> > pinit(size, 8);
-      for(int i = 0; i < size + 1; i ++)
-        pinit.next(T(i) / T(size + 1));
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.cols(); i ++) {
-        P0C<T, P0B<T> > pf(size, 8);
-        P0C<T, P0B<T> > pb(size, 8);
-        for(int k = 0; k < size; k ++) {
-          result(data.rows() + 1, i) =
-            pf.next(result(data.rows() + 1 + k - size, i) / T(4)) * T(4);
-          result(0, i) =
-            pb.next(result(size - k, i) / T(4)) * T(4);
+        result.row(i + recur) = data.row(i);
+      for(int i = 0; i < recur; i ++) {
+        const auto size(min(40, int(data.rows()) / (i + 1) - 1));
+        for(int j = 0; j < data.cols(); j ++) {
+          P0C<T, P0B<T> > pf(size, 8);
+          P0C<T, P0B<T> > pb(size, 8);
+          for(int k = 0; k < size; k ++) {
+            result(data.rows() + recur + i, i) =
+              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i) / T(4)) * T(4);
+            result(recur - i - 1, i) =
+              pb.next(result(recur + (size - k - 1) * (i + 1), i) / T(4)) * T(4);
+          }
         }
       }
     }
@@ -379,6 +377,8 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   Sop[idx] /= T(2);
   for(int i = 0; i < Sop[idx].rows(); i ++)
     Sop[idx](i, i) += T(1);
+  for(int i = 0; i < recur - 1; i ++)
+    Sop[idx] = Sop[idx] * Sop[idx];
   return;
 }
 
@@ -391,10 +391,10 @@ template <typename T> void Filter<T>::initEop(const int& size) {
     }
   cerr << "n" << flush;
   idx = Eop.size();
-  Eop.push_back(Mat(size * 2, size));
+  Eop.push_back(Mat(size * recur, size));
   P0<T> p;
   for(int i = 0; i < Eop[idx].rows(); i ++)
-    Eop[idx].row(i) = p.taylor(Eop[idx].cols(), T(i) / T(2));
+    Eop[idx].row(i) = p.taylor(Eop[idx].cols(), T(i) / T(recur));
   return;
 }
 

@@ -109,6 +109,8 @@ int main(int argc, const char* argv[]) {
       usage();
       return 0;
     }
+    if(4 < argc)
+      filter = Filter<num_t>(std::atoi(argv[4]));
     typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[2]))
       return - 1;
@@ -497,10 +499,6 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < center.size(); i ++)
         pinit.next(num_t(i) / num_t(center.size()));
       const auto Msize(num_t(max(in[0][0].rows(), in[0][0].cols()) * 4));
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
       for(int i = 0; i < center[idx].size(); i ++) {
         P0C<num_t, P0B<num_t> > p0(center.size() - 1, 8);
         auto p1(p0);
@@ -514,9 +512,6 @@ int main(int argc, const char* argv[]) {
       }
       for(int i = 0; i < 3; i ++)
         pin[i].resize(in[idx][0].rows(), in[idx][0].cols());
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
       for(int i = 0; i < attend[idx].size(); i ++) {
         for(int j = 0; j < attend[idx][i].size(); j ++) {
           P0C<num_t, P0B<num_t> > p0(center.size() - 1, 8);
