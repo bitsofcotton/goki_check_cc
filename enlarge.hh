@@ -341,12 +341,14 @@ template <typename T> void Filter<T>::initDop(const int& size) {
 #if defined(_WITHOUT_EIGEN_)
     const Mat lDop((IDFT * DFTD).template real<T>());
     const Mat lIop((IDFT * DFTI).template real<T>());
-    const Mat lSop((IDFT * DFTS).template real<T>());
+          Mat lSop(- (IDFT * DFTS).template real<T>());
 #else
     const Mat lDop((IDFT * DFTD).real().template cast<T>());
     const Mat lIop((IDFT * DFTI).real().template cast<T>());
-    const Mat lSop((IDFT * DFTS).real().template cast<T>());
+          Mat lSop(- (IDFT * DFTS).template real<T>());
 #endif
+    for(int i = 0; i < lSop.rows(); i ++)
+      lSop(i, i) += T(1);
     for(int i = 0; i < Dop[idx].rows(); i ++)
       for(int j = 0; j < lDop.rows(); j ++) {
         int ij(i - lDop.rows() / 2 + j);
@@ -375,8 +377,6 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     }
   Iop[idx] /= T(2);
   Sop[idx] /= T(2);
-  for(int i = 0; i < Sop[idx].rows(); i ++)
-    Sop[idx](i, i) += T(1);
   for(int i = 0; i < recur - 1; i ++)
     Sop[idx] = Sop[idx] * Sop[idx];
   return;
