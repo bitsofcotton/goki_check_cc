@@ -50,8 +50,8 @@ elif(argv[2] == "pcopy" or argv[2] == "ppred"):
       roots.append(r)
       exts.append(e)
   #cmd = [argv[1], argv[2], "1", ".175", str(zratio), str(pixels), "pose"]
-  cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], argv[2], "1", "80.", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), "pose"]
+  cmd = [argv[1], argv[2], "20", ".05", str(zratio), str(pixels), "pose"]
   if(argv[2] == "pcopy"):
     cmd.extend([roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
   else:
