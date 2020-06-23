@@ -42,13 +42,13 @@ public:
   inline T    next(const Vec& in, const T& err = T(1) / T(80));
   const Vec&  nextBothP(const int& size);
   inline Vec  taylor(const int& size, const T& step);
+  const Vec&  minSq(const int& size);
 private:
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size);
+  const Vec&  nextP(const int& size);
   const Vec&  nextDeepP(const int& size);
   const Vec&  nextReverseDeepP(const int& size);
-  const Vec&  nextP(const int& size);
-  const Vec&  minSq(const int& size);
   const T&    Pi() const;
   const complex<T>& J() const;
 };
@@ -174,12 +174,8 @@ template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::n
   Mat   revextends(extends.rows(), extends.cols());
   for(int i = 0; i < extends.rows(); i ++)
     extends.row(i) = taylor(p.size(), T(i) / T(ratio));
-  for(int i = 0; i < extends.rows(); i ++)
-    for(int j = 0; j < extends.cols(); j ++)
-      revextends(i, j) = extends(extends.rows() - 1 - i,
-                                 extends.cols() - 1 - j);
-  const auto reverse(revextends.transpose() * taylor(extends.rows(), - T(1)));
-  p = extends.transpose() * taylor(extends.rows(), T(extends.rows()));
+  const auto reverse(taylor(extends.rows(), - T(1)));
+  p = taylor(extends.rows(), T(extends.rows()));
   for(int i = 0; i < reverse.size(); i ++)
     p[i] += reverse[reverse.size() - i - 1];
   p /= T(2);
@@ -195,7 +191,7 @@ template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::n
       p    += pa[j] * pa[0][j - i + p.size() - 1];
     pa.emplace_back(p);
   }
-  return p;
+  return p = extends.transpose() * p;
 }
 
 template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::nextDeepP(const int& size) {
@@ -207,11 +203,9 @@ template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::n
     return P[size];
   auto& p(P[size]);
   p.resize(size);
-  if(size <= 2)
-    return p;
-  if(size == 3)
-    p = nextP(size);
-  else {
+  if(size <= 3) {
+    p = nextP(size) * T(size - 2);
+  } else {
     const auto pp(nextDeepP(size - 1) * T(size - 3));
     p = nextP(size);
     for(int i = 1; i < p.size(); i ++)
@@ -229,14 +223,13 @@ template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::n
     return P[size];
   auto& p(P[size]);
   p.resize(size);
-  if(size <= 2)
-    return p;
-  if(size == 3) {
+  if(size <= 3) {
     const auto pq(nextP(size));
     p[0] = T(1);
     for(int i = 1; i < pq.size(); i ++)
       p[i] = - pq[pq.size() - i];
     p /= pq[0];
+    p *= T(size - 2);
   } else {
     const auto pp(nextDeepP(size - 1) * T(size - 3));
     const auto pq(nextP(size));
@@ -286,7 +279,7 @@ public:
   inline ~P0B();
   inline T next(const T& in);
 private:
-  P0<T, 4> p;
+  P0<T> p;
   Vec   buf;
 };
 
