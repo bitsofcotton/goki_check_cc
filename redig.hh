@@ -330,6 +330,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::makeRefMatrix(const Mat& 
 template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const {
   assert(orig.rows() == ref.rows() && orig.cols() == ref.cols());
   Mat result(ref.rows(), ref.cols());
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = T(0);
   for(int i = 0; i < ref.rows() * ref.cols(); i ++) {
     const int ly(i % ref.rows());
     const int lx(i / ref.rows());
@@ -338,54 +341,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
       result(ly, lx) = orig(v % orig.rows(), v / orig.rows());
     else
       result(ly, lx) = T(0);
-  }
-  for(int i = 0; i < result.rows(); i ++) {
-    T c(0);
-    for(int j = 0; j < result.cols(); j ++)
-      if(result(i, j) != T(0)) {
-        c = result(i, j);
-        break;
-      }
-    for(int j = 0; j < result.cols(); j ++)
-      if(result(i, j) == T(0))
-        result(i, j) = c;
-      else
-        break;
-    c = T(0);
-    for(int j = 0; j < result.cols(); j ++)
-      if(result(i, result.cols() - 1 - j) != T(0)) {
-        c = result(i, result.cols() - 1 - j);
-        break;
-      }
-    for(int j = 0; j < result.cols(); j ++)
-      if(result(i, result.cols() - 1 - j) == T(0))
-        result(i, result.cols() - 1 - j) = c;
-      else
-        break;
-  }
-  for(int i = 0; i < result.cols(); i ++) {
-    T c(0);
-    for(int j = 0; j < result.rows(); j ++)
-      if(result(j, i) != T(0)) {
-        c = result(j, i);
-        break;
-      }
-    for(int j = 0; j < result.rows(); j ++)
-      if(result(j, i) == T(0)) {
-        result(j, i) = c;
-      } else
-        break;
-    c = T(0);
-    for(int j = 0; j < result.rows(); j ++)
-      if(result(result.rows() - 1 - j, i) != T(0)) {
-        c = result(result.rows() - 1 - j, i);
-        break;
-      }
-    for(int j = 0; j < result.rows(); j ++)
-      if(result(result.rows() - 1 - j, i) == T(0))
-        result(result.rows() - 1 - j, i) = c;
-      else
-        break;
   }
   return result;
 }
