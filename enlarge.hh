@@ -173,6 +173,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       camera[0] = T(0);
       camera[1] = T(1);
       cpoint[0] = T(1) / T(2 * dratio);
+      cerr << dratio << "depth ";
       for(int zi = 0; zi < dratio; zi ++) {
         Mat A(data.rows(), data.cols());
         for(int i = 0; i < A.rows(); i ++)
@@ -222,15 +223,15 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + recur) = data.row(i);
       for(int i = 0; i < recur; i ++) {
-        const auto size(min(40, int(data.rows()) / (i + 1) - 1));
+        const auto size(min(40, int(data.rows()) / (i + 1) - 2));
         for(int j = 0; j < data.cols(); j ++) {
-          P0C<T, P0B<T> > pf(size, 8);
-          P0C<T, P0B<T> > pb(size, 8);
+          P0B<T> pf(size);
+          P0B<T> pb(size);
           for(int k = 0; k < size; k ++) {
             result(data.rows() + recur + i, i) =
-              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i) / T(4)) * T(4);
+              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i) + result(data.rows() + recur - 1 + (k - size) * (i + 1), i)) - result(data.rows() - 1, i);
             result(recur - i - 1, i) =
-              pb.next(result(recur + (size - k - 1) * (i + 1), i) / T(4)) * T(4);
+              pb.next(result(recur + (size - k - 1) * (i + 1), i) + result(recur + (size - k) * (i + 1), i)) - result(recur, i);
           }
         }
       }

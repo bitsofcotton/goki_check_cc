@@ -81,7 +81,7 @@ void usage() {
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck pred  <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
-  cout << "gokicheck (tilt|sbox)    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
+  cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
@@ -183,31 +183,30 @@ int main(int argc, const char* argv[]) {
     file.saveMTL(argv[7], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
-    if((strcmp(argv[1], "tilt") == 0 && argc < 8) ||
-       (strcmp(argv[1], "sbox") == 0 && argc < 7)) {
+    if(argc < 8) {
       usage();
       return - 1;
     }
     const auto index(std::atoi(argv[2]));
     const auto Mindex(std::atoi(argv[3]));
     num_t psi(0);
-    int   ipidx(5);
+    num_t zratio(1);
     if(strcmp(argv[1], "tilt") == 0)
       psi = std::atof(argv[4]);
     else
-      ipidx --;
+      zratio = std::atof(argv[4]);
     typename simpleFile<num_t>::Mat data[3], bump[3];
     std::vector<typename simpleFile<num_t>::Vec3>  points;
     std::vector<typename simpleFile<num_t>::Veci3> polys;
-    if(!file.loadp2or3(data, argv[ipidx]))
+    if(!file.loadp2or3(data, argv[5]))
       return - 2;
-    const std::string fn(argv[ipidx + 1]);
+    const std::string fn(argv[6]);
     bool is_obj(false);
     if(fn[fn.size() - 1] == 'm') {
-      if(!file.loadp2or3(bump, argv[ipidx + 1]))
+      if(!file.loadp2or3(bump, argv[6]))
         return - 2;
     } else if(fn[fn.size() - 1] == 'j') {
-      if(!file.loadobj(points, polys, argv[ipidx + 1]))
+      if(!file.loadobj(points, polys, argv[6]))
         return - 2;
       is_obj = true;
     } else
@@ -216,7 +215,8 @@ int main(int argc, const char* argv[]) {
     const auto mtilt(strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
                      redig.tiltprep(data[0], index, Mindex, psi));
     const auto depth(strcmp(argv[1], "sbox") == 0 ?
-                     num_t(index) / num_t(Mindex) :
+                     num_t(index) / num_t(Mindex) * zratio *
+                       sqrt(num_t(data[0].rows() * data[0].cols())) :
                      - num_t(1e8));
     if(is_obj)
       tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt), depth);
@@ -224,7 +224,7 @@ int main(int argc, const char* argv[]) {
       tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, depth);
     for(int j = 0; j < 3; j ++)
       data[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
-    if(!file.savep2or3(argv[ipidx + 2], data, ! true))
+    if(!file.savep2or3(argv[7], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "matcho") == 0 ||
             strcmp(argv[1], "match") == 0 ||
@@ -393,18 +393,15 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     for(int i = 0; i < 3; i ++)
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-    P0C<num_t, P0B<num_t> > pinit(in.size() - 1, 8);
-    for(int i = 0; i < in.size(); i ++)
-      pinit.next(num_t(i) / num_t(in.size()));
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
-        P0C<num_t, P0B<num_t> > p0(in.size() - 1, 8);
+        P0B<num_t> p0(in.size() - 1);
         auto p1(p0);
         auto p2(p0);
-        for(int k = 0; k < in.size(); k ++) {
-          out[0](y, x) = p0.next(in[k][0](y, x) / num_t(4)) * num_t(4);
-          out[1](y, x) = p1.next(in[k][1](y, x) / num_t(4)) * num_t(4);
-          out[2](y, x) = p2.next(in[k][2](y, x) / num_t(4)) * num_t(4);
+        for(int k = 1; k < in.size(); k ++) {
+          out[0](y, x) = p0.next(in[k][0](y, x) + in[k - 1][0](y, x)) - in[in.size() - 1][0](y, x);
+          out[1](y, x) = p1.next(in[k][1](y, x) + in[k - 1][1](y, x)) - in[in.size() - 1][1](y, x);
+          out[2](y, x) = p2.next(in[k][2](y, x) + in[k - 1][2](y, x)) - in[in.size() - 1][2](y, x);
         }
       }
     }
@@ -495,36 +492,34 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "ppred") == 0) {
       std::cerr << "p" << std::flush;
       outcenter.resize(center[idx].size());
-      P0C<num_t, P0B<num_t> > pinit(center.size() - 1, 8);
-      for(int i = 0; i < center.size(); i ++)
-        pinit.next(num_t(i) / num_t(center.size()));
-      const auto Msize(num_t(max(in[0][0].rows(), in[0][0].cols()) * 4));
       for(int i = 0; i < center[idx].size(); i ++) {
-        P0C<num_t, P0B<num_t> > p0(center.size() - 1, 8);
+        P0B<num_t> p0(center.size() - 1);
         auto p1(p0);
         auto p2(p0);
         outcenter[i] = typename simpleFile<num_t>::Vec3(3);
-        for(int j = 0; j < center.size(); j ++) {
-          outcenter[i][0] = p0.next(center[j][i][0] / Msize) * Msize;
-          outcenter[i][1] = p1.next(center[j][i][1] / Msize) * Msize;
-          outcenter[i][2] = p2.next(center[j][i][2] / Msize) * Msize;
+        for(int j = 1; j < center.size(); j ++) {
+          outcenter[i][0] = p0.next(center[j][i][0] + center[j - 1][i][0]) - center[center.size() - 1][i][0];
+          outcenter[i][1] = p1.next(center[j][i][1] + center[j - 1][i][1]) - center[center.size() - 1][i][1];
+          outcenter[i][2] = p2.next(center[j][i][2] + center[j - 1][i][2]) - center[center.size() - 1][i][2];
         }
       }
       for(int i = 0; i < 3; i ++)
         pin[i].resize(in[idx][0].rows(), in[idx][0].cols());
       for(int i = 0; i < attend[idx].size(); i ++) {
         for(int j = 0; j < attend[idx][i].size(); j ++) {
-          P0C<num_t, P0B<num_t> > p0(center.size() - 1, 8);
+          P0B<num_t> p0(center.size() - 1);
           auto p1(p0);
           auto p2(p0);
           const auto yy(filter.getImgPt(a2xy[i][j].first,  in[idx][0].rows()));
           const auto xx(filter.getImgPt(a2xy[i][j].second, in[idx][0].cols()));
-          for(int k = 0; k < center.size(); k ++) {
-            const auto y(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[idx][i][0]), in[idx][0].rows()));
-            const auto x(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[idx][i][1]), in[idx][0].cols()));
-            pin[0](yy, xx) = p0.next(in[k][0](y, x) / num_t(4)) * num_t(4);
-            pin[1](yy, xx) = p1.next(in[k][1](y, x) / num_t(4)) * num_t(4);
-            pin[2](yy, xx) = p2.next(in[k][2](y, x) / num_t(4)) * num_t(4);
+          for(int k = 1; k < center.size(); k ++) {
+            const auto yb(filter.getImgPt(a2xy[i][j].first  + int(center[k - 1][i][0] - center[idx][i][0]), in[idx][0].rows()));
+            const auto xb(filter.getImgPt(a2xy[i][j].second + int(center[k - 1][i][1] - center[idx][i][1]), in[idx][0].cols()));
+            const auto yf(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[idx][i][0]), in[idx][0].rows()));
+            const auto xf(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[idx][i][1]), in[idx][0].cols()));
+            pin[0](yy, xx) = p0.next(in[k][0](yf, xf) + in[k - 1][0](yb, xb)) - in[in.size() - 1][0](yf, xf);
+            pin[1](yy, xx) = p1.next(in[k][1](yf, xf) + in[k - 1][1](yb, xb)) - in[in.size() - 1][1](yf, xf);
+            pin[2](yy, xx) = p2.next(in[k][2](yf, xf) + in[k - 1][2](yb, xb)) - in[in.size() - 1][2](yf, xf);
           }
           const auto n0(pin[0](yy, xx));
           const auto n1(pin[1](yy, xx));
