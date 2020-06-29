@@ -42,13 +42,13 @@ public:
   inline T    next(const Vec& in, const T& err = T(1) / T(80));
   inline Vec  taylor(const int& size, const T& step);
   const Mat&  diff(const int& size);
+  const Vec&  minSq(const int& size);
 private:
   const MatU& seed(const int& size, const bool& idft);
   const Vec&  nextP(const int& size);
   const Vec&  nextDeepP(const int& size);
   const Vec&  nextReverseDeepP(const int& size);
   const Vec&  nextBothP(const int& size);
-  const Vec&  minSq(const int& size);
   const T&    Pi() const;
   const complex<T>& J() const;
 };
@@ -133,7 +133,7 @@ template <typename T, int ratio> const typename P0<T,ratio>::Mat& P0<T,ratio>::d
   T nd(0);
   T ni(0);
   for(int i = 1; i < DD.rows(); i ++) {
-    const auto phase(- J() * T(2) * Pi() * T(i) / T(DD.rows()));
+    const auto phase(J() * T(2) * Pi() * T(i) / T(DD.rows()));
     const auto phase2(complex<T>(T(1)) / phase);
     DD.row(i) *= phase;
     nd += abs(phase)  * abs(phase);
@@ -274,7 +274,10 @@ public:
   inline ~P0B();
   inline T next(const T& in);
 private:
-  Vec   buf;
+  Vec buf;
+  Vec buf2;
+  T   M;
+  T   Mb;
 };
 
 template <typename T> inline P0B<T>::P0B() {
@@ -285,6 +288,8 @@ template <typename T> inline P0B<T>::P0B(const int& size) {
   buf.resize(size);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
+  buf2 = buf;
+  M = Mb = T(0);
 }
 
 template <typename T> inline P0B<T>::~P0B() {
@@ -293,10 +298,16 @@ template <typename T> inline P0B<T>::~P0B() {
 
 template <typename T> inline T P0B<T>::next(const T& in) {
   static P0<T> p;
-  for(int i = 0; i < buf.size() - 1; i ++)
-    buf[i]  = buf[i + 1];
+  for(int i = 0; i < buf.size() - 1; i ++) {
+    buf[ i] = buf[i + 1];
+    buf2[i] = buf2[i + 1];
+  }
   buf[buf.size() - 1] = in;
-  return p.next(buf);
+  buf2[buf2.size() - 1] += (Mb < num_t(0) ? M - in : in - M);
+  const auto ms(p.minSq(buf2.size()).dot(buf2));
+  Mb = in - M;
+  M  = p.next(buf);
+  return (Mb < num_t(0) ? - (M - in + ms) : M - in + ms) + in;
 }
 
 #define _P0_

@@ -292,7 +292,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     T ni(0);
     T nd(0);
     for(int i = 1; i < DFTD.rows(); i ++) {
-      const auto phase(- U(T(2)) * Pi * U(T(0), T(1)) * T(i) / T(DFTD.rows()));
+      const auto phase(U(T(2)) * Pi * U(T(0), T(1)) * T(i) / T(DFTD.rows()));
       const auto phase2(U(T(1)) / phase);
       // N.B. d/dy with sampling theorem.
       if(i < DFTD.rows() / 2) {
