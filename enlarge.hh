@@ -227,15 +227,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int j = 0; j < data.cols(); j ++) {
           P0B<T> pf(size);
           auto pb(pf);
-          auto mpf(pf);
-          auto mpb(pf);
           for(int k = 0; k < size; k ++) {
             result(data.rows() + recur + i, i) =
-              (pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i) + result(data.rows() + recur - 1 + (k - size) * (i + 1), i)) -
-               mpf.next(- (result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i) + result(data.rows() + recur - 1 + (k - size) * (i + 1), i)))) / T(4);
+              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i));
             result(recur - i - 1, i) =
-              (pb.next(result(recur + (size - k - 1) * (i + 1), i) + result(recur + (size - k) * (i + 1), i)) -
-               mpb.next(- (result(recur + (size - k - 1) * (i + 1), i) + result(recur + (size - k) * (i + 1), i)))) / T(4);
+              pb.next(result(recur + (size - k - 1) * (i + 1), i));
           }
         }
       }

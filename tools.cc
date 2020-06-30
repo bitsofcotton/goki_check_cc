@@ -398,16 +398,10 @@ int main(int argc, const char* argv[]) {
         P0B<num_t> p0(in.size() - 1);
         auto p1(p0);
         auto p2(p0);
-        auto mp0(p0);
-        auto mp1(p0);
-        auto mp2(p0);
         for(int k = 1; k < in.size(); k ++) {
-          out[0](y, x) = (p0.next(in[k][0](y, x) + in[k - 1][0](y, x)) -
-                          mp0.next(- (in[k][0](y, x) + in[k - 1][0](y, x)))) / num_t(4);
-          out[1](y, x) = (p1.next(in[k][1](y, x) + in[k - 1][1](y, x)) -
-                          mp1.next(- (in[k][1](y, x) + in[k - 1][1](y, x)))) / num_t(4);
-          out[2](y, x) = (p2.next(in[k][2](y, x) + in[k - 1][2](y, x)) -
-                          mp2.next(- (in[k][2](y, x) + in[k - 1][2](y, x)))) / num_t(4);
+          out[0](y, x) = p0.next(in[k][0](y, x));
+          out[1](y, x) = p1.next(in[k][1](y, x));
+          out[2](y, x) = p2.next(in[k][2](y, x));
         }
       }
     }
@@ -502,17 +496,11 @@ int main(int argc, const char* argv[]) {
         P0B<num_t> p0(center.size() - 1);
         auto p1(p0);
         auto p2(p0);
-        auto mp0(p0);
-        auto mp1(p0);
-        auto mp2(p0);
         outcenter[i] = typename simpleFile<num_t>::Vec3(3);
         for(int j = 1; j < center.size(); j ++) {
-          outcenter[i][0] = (p0.next(center[j][i][0] + center[j - 1][i][0]) -
-                             mp0.next(- (center[j][i][0] + center[j - 1][i][0]))) / num_t(4);
-          outcenter[i][1] = (p1.next(center[j][i][1] + center[j - 1][i][1]) -
-                             mp1.next(- (center[j][i][1] + center[j - 1][i][1]))) / num_t(4);
-          outcenter[i][2] = (p2.next(center[j][i][2] + center[j - 1][i][2]) -
-                             mp2.next(- (center[j][i][2] + center[j - 1][i][2]))) / num_t(4);
+          outcenter[i][0] = p0.next(center[j][i][0] + center[j - 1][i][0]);
+          outcenter[i][1] = p1.next(center[j][i][1] + center[j - 1][i][1]);
+          outcenter[i][2] = p2.next(center[j][i][2] + center[j - 1][i][2]);
         }
       }
       for(int i = 0; i < 3; i ++)
@@ -522,22 +510,14 @@ int main(int argc, const char* argv[]) {
           P0B<num_t> p0(center.size() - 1);
           auto p1(p0);
           auto p2(p0);
-          auto mp0(p0);
-          auto mp1(p0);
-          auto mp2(p0);
           const auto yy(filter.getImgPt(a2xy[i][j].first,  in[idx][0].rows()));
           const auto xx(filter.getImgPt(a2xy[i][j].second, in[idx][0].cols()));
           for(int k = 1; k < center.size(); k ++) {
-            const auto yb(filter.getImgPt(a2xy[i][j].first  + int(center[k - 1][i][0] - center[idx][i][0]), in[idx][0].rows()));
-            const auto xb(filter.getImgPt(a2xy[i][j].second + int(center[k - 1][i][1] - center[idx][i][1]), in[idx][0].cols()));
             const auto yf(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[idx][i][0]), in[idx][0].rows()));
             const auto xf(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[idx][i][1]), in[idx][0].cols()));
-            pin[0](yy, xx) = (p0.next(in[k][0](yf, xf) + in[k - 1][0](yb, xb)) -
-                              mp0.next(- (in[k][0](yf, xf) + in[k - 1][0](yb, xb)))) / num_t(4);
-            pin[1](yy, xx) = (p1.next(in[k][1](yf, xf) + in[k - 1][1](yb, xb)) -
-                              mp1.next(- (in[k][1](yf, xf) + in[k - 1][1](yb, xb)))) / num_t(4);
-            pin[2](yy, xx) = (p2.next(in[k][2](yf, xf) + in[k - 1][2](yb, xb)) -
-                              mp2.next(- (in[k][2](yf, xf) + in[k - 1][2](yb, xb)))) / num_t(4);
+            pin[0](yy, xx) = p0.next(in[k][0](yf, xf));
+            pin[1](yy, xx) = p1.next(in[k][1](yf, xf));
+            pin[2](yy, xx) = p2.next(in[k][2](yf, xf));
           }
           const auto n0(pin[0](yy, xx));
           const auto n1(pin[1](yy, xx));
