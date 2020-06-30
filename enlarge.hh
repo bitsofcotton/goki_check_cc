@@ -229,9 +229,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           P0B<T> pb(size);
           for(int k = 0; k < size; k ++) {
             result(data.rows() + recur + i, i) =
-              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i) + result(data.rows() + recur - 1 + (k - size) * (i + 1), i)) - result(data.rows() + recur - 1, i);
+              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i) + result(data.rows() + recur - 1 + (k - size) * (i + 1), i)) / T(2);
             result(recur - i - 1, i) =
-              pb.next(result(recur + (size - k - 1) * (i + 1), i) + result(recur + (size - k) * (i + 1), i)) - result(recur, i);
+              pb.next(result(recur + (size - k - 1) * (i + 1), i) + result(recur + (size - k) * (i + 1), i)) / T(2);
           }
         }
       }
