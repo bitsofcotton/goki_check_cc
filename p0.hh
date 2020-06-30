@@ -34,7 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 template <typename T, int ratio = 2> class P0 {
 public:
   typedef SimpleVector<T> Vec;
-  typedef SimpleVector<complex<T> > VecU;
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
@@ -201,7 +200,6 @@ template <typename T, int ratio> const typename P0<T,ratio>::Vec& P0<T,ratio>::n
   if(P[size].size() == size)
     return P[size];
   auto& p(P[size]);
-  p.resize(size);
   if(size <= 3)
     return p = nextP(size);
   const auto pp(nextDeepP(size - 1) * T(size - 3));

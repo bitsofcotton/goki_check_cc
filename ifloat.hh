@@ -795,8 +795,9 @@ template <typename T, typename W, int bits, typename U> inline bool             
 }
 
 template <typename T, typename W, int bits, typename U> inline bool             SimpleFloat<T,W,bits,U>::operator != (const SimpleFloat<T,W,bits,U>& src) const {
-  return ((s | src.s) & ((1 << INF) | (1 << NaN))) ||
-           (s != src.s || e != src.e || m != src.m);
+  return (((s | src.s) & ((1 << INF) | (1 << NaN))) ||
+           (s != src.s || e != src.e || m != src.m)) &&
+         ! (! m && ! src.m);
 }
 
 template <typename T, typename W, int bits, typename U> inline bool             SimpleFloat<T,W,bits,U>::operator <  (const SimpleFloat<T,W,bits,U>& src) const {
@@ -843,7 +844,7 @@ template <typename T, typename W, int bits, typename U> inline                  
 }
 
 template <typename T, typename W, int bits, typename U> inline                  SimpleFloat<T,W,bits,U>::operator int  () const {
-  return int(T(*this));
+  return int(this->operator T());
 }
 
 template <typename T, typename W, int bits, typename U> inline                  SimpleFloat<T,W,bits,U>::operator T    () const {
@@ -871,17 +872,17 @@ template <typename T, typename W, int bits, typename U> inline                  
 
 template <typename T, typename W, int bits, typename U> template <typename V> inline U SimpleFloat<T,W,bits,U>::normalize(V& src) const {
   V   bt(1);
-  int b(0);
-  int tb;
-  for(tb = 0; bt; tb ++) {
+  U   b(0);
+  U   tb(0);
+  for( ; bt; tb ++) {
     if(src & bt)
       b = tb;
     bt <<= 1;
   }
-  const auto shift(tb - b - 1);
-  assert(0 <= shift);
+  const auto shift(tb - b - U(1));
+  assert(U(0) <= shift);
   src <<= shift;
-  return - U(shift);
+  return - shift;
 }
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>& SimpleFloat<T,W,bits,U>::ensureFlag() {
