@@ -306,7 +306,7 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       }
       // N.B. integrate.
       // DFTI.row(i) /= phase;
-      // N.B. (d^(log(h))/dy^(log(h)) f, lim h -> 1. : nop.
+      // N.B. (d^(')/dy^(')) f, differential-integral space tilt on f.
       // DFTH.row(i) *= log(phase);
       // N.B. please refer enlarge.wxm, half freq space refer and uses each.
       //   -> This is sharpen operation at all because this is same as original
