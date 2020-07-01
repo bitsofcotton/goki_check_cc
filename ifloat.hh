@@ -863,7 +863,7 @@ template <typename T, typename W, int bits, typename U> inline                  
     deci.m >>= - int(deci.e);
   else if(uzero() < deci.e)
     deci.m <<=   int(deci.e);
-  return deci.m;
+  return (1 << SIGN) ? - deci.m : deci.m;
 }
 
 template <typename T, typename W, int bits, typename U> inline                  SimpleFloat<T,W,bits,U>::operator SimpleFloat<T,W,bits,U> () const {
@@ -872,17 +872,17 @@ template <typename T, typename W, int bits, typename U> inline                  
 
 template <typename T, typename W, int bits, typename U> template <typename V> inline U SimpleFloat<T,W,bits,U>::normalize(V& src) const {
   V   bt(1);
-  U   b(0);
-  U   tb(0);
+  int b(0);
+  int tb(0);
   for( ; bt; tb ++) {
     if(src & bt)
       b = tb;
     bt <<= 1;
   }
-  const auto shift(tb - b - U(1));
-  assert(U(0) <= shift);
+  const auto shift(tb - b - 1);
+  assert(0 <= shift);
   src <<= shift;
-  return - shift;
+  return - U(shift);
 }
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>& SimpleFloat<T,W,bits,U>::ensureFlag() {
@@ -897,9 +897,9 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
 template <typename T, typename W, int bits, typename U> inline unsigned char SimpleFloat<T,W,bits,U>::safeAdd(U& dst, const U& src) {
   const auto dst0(dst);
   dst += src;
-  if((dst0 > uzero() && src > uzero() && dst < uzero()) ||
-     (dst0 < uzero() && src < uzero() && dst > uzero()))
-    return 1 << (dst < uzero() ? INF : DWRK);
+  if((dst0 > uzero() && src > uzero() && dst <= uzero()) ||
+     (dst0 < uzero() && src < uzero() && dst >= uzero()))
+    return 1 << (dst0 < uzero() ? DWRK : INF);
   return 0;
 }
 
