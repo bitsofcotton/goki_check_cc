@@ -498,9 +498,9 @@ int main(int argc, const char* argv[]) {
         auto p2(p0);
         outcenter[i] = typename simpleFile<num_t>::Vec3(3);
         for(int j = 1; j < center.size(); j ++) {
-          outcenter[i][0] = p0.next(center[j][i][0] + center[j - 1][i][0]);
-          outcenter[i][1] = p1.next(center[j][i][1] + center[j - 1][i][1]);
-          outcenter[i][2] = p2.next(center[j][i][2] + center[j - 1][i][2]);
+          outcenter[i][0] = p0.next(center[j][i][0]);
+          outcenter[i][1] = p1.next(center[j][i][1]);
+          outcenter[i][2] = p2.next(center[j][i][2]);
         }
       }
       for(int i = 0; i < 3; i ++)
