@@ -1357,6 +1357,8 @@ template <typename T, typename W, int bits, typename U> static inline SimpleFloa
   else if(isfinite(x)) {
     if(! isfinite(y) )
       goto ensure;
+    if(! x)
+      goto ensure;
     const auto yoverx((y / x).abs());
     if(! isfinite(yoverx) )
       goto ensure;
