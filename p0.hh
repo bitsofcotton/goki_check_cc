@@ -40,9 +40,9 @@ public:
   inline ~P0();
   inline T    next(const Vec& in, const T& err = T(1) / T(8000));
   inline Vec  taylor(const int& size, const T& step);
-  inline Vec& integ(const int& size);
-  const Mat&  diff(const int& size);
   const MatU& seed(const int& size, const bool& idft);
+  const Mat&  diff(const int& size);
+  const Vec&  integ(const int& size);
 private:
   const Vec&  nextP(const int& size);
   const Vec&  minSq(const int& size);
@@ -119,7 +119,28 @@ template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size, c
   return edft;
 }
 
-template <typename T> inline typename P0<T>::Vec& P0<T>::integ(const int& size) {
+template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
+  assert(0 < size);
+  static vector<Mat> D;
+  if(D.size() <= size)
+    D.resize(size + 1, Mat());
+  if(D[size].rows() == size && D[size].cols() == size)
+    return D[size];
+  auto DD(seed(size, false));
+  DD.row(0) *= complex<T>(T(0));
+  T nd(0);
+  T ni(0);
+  for(int i = 1; i < DD.rows(); i ++) {
+    const auto phase(J() * T(2) * Pi() * T(i) / T(DD.rows()));
+    const auto phase2(complex<T>(T(1)) / phase);
+    DD.row(i) *= phase;
+    nd += abs(phase)  * abs(phase);
+    ni += abs(phase2) * abs(phase2);
+  }
+  return D[size] = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1) / (nd * ni)));
+}
+
+template <typename T> const typename P0<T>::Vec& P0<T>::integ(const int& size) {
   assert(1 < size);
   static vector<Vec> I;
   if(I.size() <= size)
@@ -137,29 +158,6 @@ template <typename T> inline typename P0<T>::Vec& P0<T>::integ(const int& size) 
     ni += abs(phase2) * abs(phase2);
   }
   return I[size] = (seed(size, true) * II).template real<T>().row(size - 1) * sqrt(sqrt(T(II.rows() - 1) / (nd * ni)));
-}
-
-template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
-  assert(0 < size);
-  static vector<Mat> D;
-  if(D.size() <= size)
-    D.resize(size + 1, Mat());
-  if(D[size].rows() == size && D[size].cols() == size)
-    return D[size];
-  auto& d(D[size]);
-  d.resize(size, size);
-  auto  DD(seed(size, false));
-  DD.row(0) *= complex<T>(T(0));
-  T nd(0);
-  T ni(0);
-  for(int i = 1; i < DD.rows(); i ++) {
-    const auto phase(J() * T(2) * Pi() * T(i) / T(DD.rows()));
-    const auto phase2(complex<T>(T(1)) / phase);
-    DD.row(i) *= phase;
-    nd += abs(phase)  * abs(phase);
-    ni += abs(phase2) * abs(phase2);
-  }
-  return d = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1) / (nd * ni)));
 }
 
 template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
