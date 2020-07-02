@@ -228,10 +228,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           P0B<T> pf(size);
           auto pb(pf);
           for(int k = 0; k < size; k ++) {
-            result(data.rows() + recur + i, i) =
-              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), i));
-            result(recur - i - 1, i) =
-              pb.next(result(recur + (size - k - 1) * (i + 1), i));
+            result(data.rows() + recur + i, j) =
+              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), j));
+            result(recur - i - 1, j) =
+              pb.next(result(recur + (size - k - 1) * (i + 1), j));
           }
         }
       }
