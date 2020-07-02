@@ -213,7 +213,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::minSq(const int& size) {
 }
 
 
-template <typename T, bool hard = false> class P0B {
+template <typename T> class P0B {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleVector<complex<T> > VecU;
@@ -227,29 +227,26 @@ private:
   Vec bufi;
 };
 
-template <typename T, bool hard> inline P0B<T,hard>::P0B() {
+template <typename T> inline P0B<T>::P0B() {
   ;
 }
 
-template <typename T, bool hard> inline P0B<T,hard>::P0B(const int& size) {
+template <typename T> inline P0B<T>::P0B(const int& size) {
   buf.resize(size);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
-  if(hard)
-    bufd = bufi = buf;
+  bufd = bufi = buf;
 }
 
-template <typename T, bool hard> inline P0B<T,hard>::~P0B() {
+template <typename T> inline P0B<T>::~P0B() {
   ;
 }
 
-template <typename T, bool hard> inline T P0B<T,hard>::next(const T& in) {
+template <typename T> inline T P0B<T>::next(const T& in) {
   static P0<T> p;
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
-  if(! hard)
-    return p.next(buf);
   for(int i = 0; i < bufd.size() - 1; i ++) {
     bufd[i] = bufd[i + 1];
     bufi[i] = bufi[i + 1];
@@ -273,7 +270,7 @@ template <typename T, bool hard> inline T P0B<T,hard>::next(const T& in) {
         VecU freq(freqd.size());
   for(int i = 0; i < freq.size(); i ++)
     freq[i] = sqrt(freqd[i] * freqi[i]);
-  return p.seed(freq.size(), true).row(freq.size() - 1).dot(freq).real();
+  return (p.seed(freq.size(), true).row(freq.size() - 1).dot(freq).real() + p.next(buf)) / T(2);
 }
 
 #define _P0_
