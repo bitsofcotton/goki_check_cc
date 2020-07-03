@@ -395,7 +395,7 @@ int main(int argc, const char* argv[]) {
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
-        P0B<num_t> p0(in.size() - 1);
+        P0B<num_t> p0(in.size() / 2);
         auto p1(p0);
         auto p2(p0);
         for(int k = 1; k < in.size(); k ++) {
@@ -493,7 +493,7 @@ int main(int argc, const char* argv[]) {
       std::cerr << "p" << std::flush;
       outcenter.resize(center[idx].size());
       for(int i = 0; i < center[idx].size(); i ++) {
-        P0B<num_t> p0(center.size() - 1);
+        P0B<num_t> p0(center.size() / 2);
         auto p1(p0);
         auto p2(p0);
         outcenter[i] = typename simpleFile<num_t>::Vec3(3);
@@ -507,7 +507,7 @@ int main(int argc, const char* argv[]) {
         pin[i].resize(in[idx][0].rows(), in[idx][0].cols());
       for(int i = 0; i < attend[idx].size(); i ++) {
         for(int j = 0; j < attend[idx][i].size(); j ++) {
-          P0B<num_t> p0(center.size() - 1);
+          P0B<num_t> p0(center.size() / 2);
           auto p1(p0);
           auto p2(p0);
           const auto yy(filter.getImgPt(a2xy[i][j].first,  in[idx][0].rows()));
