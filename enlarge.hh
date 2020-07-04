@@ -188,7 +188,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
         if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
           continue;
-        assert(int(y0 * 2) <= data.rows());
+        assert(int(y0) * 2 <= data.rows());
         initDop(abs(int(y0 * T(2))));
         const auto Dop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2));
         //  N.B. d^2C_k/dy^2 on zi.
