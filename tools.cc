@@ -10,7 +10,7 @@
 #include <cctype>
 #include <assert.h>
 
-#if defined(_WITH_NO_FLOAT)
+#if defined(_WITH_NO_FLOAT_)
 
 #include "ifloat.hh"
 template <typename T> using complex = Complex<T>;
@@ -217,7 +217,7 @@ int main(int argc, const char* argv[]) {
     const auto depth(strcmp(argv[1], "sbox") == 0 ?
                      num_t(index) / num_t(Mindex) * zratio *
                        sqrt(num_t(data[0].rows() * data[0].cols())) :
-                     - num_t(1e8));
+                     - num_t(10000000));
     if(is_obj)
       tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt), depth);
     else

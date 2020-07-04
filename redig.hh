@@ -895,13 +895,13 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
       T r(0);
       for(int k = 0; k < workx.size(); k ++)
         r += (workx[k] - x) * (workx[k] - x) + (workz[k] - z) * (workz[k] - z);
-      r  = sqrt(r / workx.size());
+      r  = sqrt(r / T(workx.size()));
       T err(0);
       for(int k = 0; k < workx.size(); k ++)
         err += pow(sqrt((workx[k] - x) * (workx[k] - x) +
                         (workz[k] - z) * (workz[k] - z)) -
                    r, T(2));
-      err = sqrt(err / workx.size());
+      err = sqrt(err / T(workx.size()));
       if(j && err < thresh * sqrt(sqrt(T(in.rows() * in.cols()))) && center.size()) {
         center[center.size() - 1][1] = x;
         center[center.size() - 1][2] = z;
@@ -944,14 +944,14 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
           newr += diff.dot(diff);
           cnt ++;
         }
-      newr = sqrt(newr / cnt);
+      newr = sqrt(newr / T(cnt));
       T err(0);
       for(int jj = i; jj <= j; jj ++)
         for(int k = 0; k < attend[jj].size(); k ++) {
           const auto diff(geoms[attend[jj][k]] - newz0);
           err += pow(sqrt(diff.dot(diff)) - newr, T(2));
         }
-      err = sqrt(err / cnt);
+      err = sqrt(err / T(cnt));
       if(err < thresh * sqrt(T(in.rows() * in.cols()))) {
         z   = newz;
         zc += attend[j].size();
