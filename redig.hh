@@ -181,7 +181,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
 #if defined(_WITHOUT_EIGEN_)
       work.p.setCol(j, emph[hull[i][j]]);
 #else
-      work.p.col(j) = emph[hull[i][j]]);
+      work.p.col(j) = emph[hull[i][j]];
 #endif
     }
     work.c = img(max(0, min(int(img.rows() - 1),
