@@ -113,6 +113,10 @@ else:
     elif(argv[2] == "sbox"):
       for s in range(0, pixels):
         subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels), str(zratio), root + ".ppm", root + ".obj", root + "-sbox-" + str(pixels - s) + ".ppm"])
+    elif(argv[2] == "sboxb2w"):
+      subprocess.call([argv[1], "b2w", root + "-sbox-1.ppm", root + "-sbox-bw-1.ppm", "1"])
+      for s in range(1, pixels):
+        subprocess.call([argv[1], "b2wd", root + "-sbox-" + str(s + 1) + ".ppm", root + "-sbox-bw-" + str(s + 1) + ".ppm", root + "-sbox-" + str(s) + ".ppm"])
     elif(argv[2] == "demosaic"):
       subprocess.call(["convert", line, "-resize", str(int(10000. * pow(1.5, - pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
       for s in range(0, pixels):
