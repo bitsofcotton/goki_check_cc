@@ -104,7 +104,9 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
-     strcmp(argv[1], "bump")    == 0) {
+     strcmp(argv[1], "bump")    == 0 ||
+     strcmp(argv[1], "b2w")     == 0 ||
+     strcmp(argv[1], "b2wd")    == 0) {
     if(argc < 4) {
       usage();
       return 0;
@@ -128,7 +130,29 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH), filter.CLIP);
     else if(strcmp(argv[1], "bump") == 0)
       data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH), 4 * (data[0].rows() + data[0].cols()));
-    if(strcmp(argv[1], "sharpen") != 0)
+    else if(strcmp(argv[1], "b2w") == 0) {
+      for(int i = 0; i < data[0].rows(); i ++)
+        for(int j = 0; j < data[0].cols(); j ++)
+          if(data[0](i, j) == num_t(0) &&
+             data[1](i, j) == num_t(0) &&
+             data[1](i, j) == num_t(0))
+            data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
+    } else if(strcmp(argv[1], "b2wd") == 0) {
+      simpleFile<num_t>::Mat ddata[3];
+      if(!file.loadp2or3(ddata, argv[4]))
+        return - 1;
+      for(int i = 0; i < data[0].rows(); i ++)
+        for(int j = 0; j < data[0].cols(); j ++)
+          if((data[0](i, j) == num_t(0) &&
+              data[1](i, j) == num_t(0) &&
+              data[1](i, j) == num_t(0)) ||
+             (data[0](i, j) == ddata[0](i, j) &&
+              data[1](i, j) == ddata[1](i, j) &&
+              data[2](i, j) == ddata[2](i, j)) )
+            data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
+    }
+    if(strcmp(argv[1], "sharpen") != 0 && strcmp(argv[1], "b2w") != 0 &&
+       strcmp(argv[1], "b2wd") != 0)
       redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;
@@ -217,7 +241,7 @@ int main(int argc, const char* argv[]) {
     const auto depth(strcmp(argv[1], "sbox") == 0 ?
                      num_t(index) / num_t(Mindex) * zratio *
                        sqrt(num_t(data[0].rows() * data[0].cols())) :
-                     - num_t(10000000));
+                     - num_t(100000000));
     if(is_obj)
       tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt), depth);
     else
