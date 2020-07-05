@@ -734,7 +734,7 @@ template <typename T, typename W, int bits, typename U>        SimpleFloat<T,W,b
     return *this;
   }
   if(! src.m) {
-    throw "Zero division";
+    // throw "Zero division";
     s |= 1 << NaN;
     return *this;
   }
