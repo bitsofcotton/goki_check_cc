@@ -33,8 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // data depend prediction:
 //   in taylor series meaning,
-//     f(x)=sum a_k*x_k^k, if such with relation, f(x)=sum a_k*x_k*(x_k\pm b_k).
-//                    so with better conversion it'll be f(x)=sum a_k*x_k^k.
+//     f(x)=sum a_k*x^k, if such with relation, f(x)=sum a_k*(x\pm b_k)^k.
+//                    so with better conversion it'll be f(x)=sum a'_k*x^k.
 //   <a,x>==x+ series, if we suppose Diffmat and Integrate mat,
 //                     we get for all k in Z, x^k.
 //                     and with some start point x_0, we get <a,x>==x+ + const.
@@ -64,9 +64,9 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline P1();
-  inline P1(const int& statlen, const int& varlen, const bool& addconst = false);
+  inline P1(const int& statlen, const int& varlen);
   inline ~P1();
-  const Vec& next(const Vec& in, const int& step = 1, const bool& vanish = false);
+  const Vec& next(const Vec& in);
   T    lasterr;
 private:
   Vec  fvec;
@@ -74,7 +74,6 @@ private:
   Vec  b;
   int  statlen;
   int  varlen;
-  bool addconst;
   T    threshold_feas;
   T    threshold_p0;
   T    threshold_inner;
@@ -91,17 +90,15 @@ private:
 
 template <typename T> inline P1<T>::P1() {
   statlen  = varlen = 0;
-  addconst = false;
   threshold_feas = threshold_p0 = threshold_inner = lasterr = T(0);
 }
 
-template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen, const bool& addconst) {
+template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen) {
   assert(1 < varlen && varlen < statlen);
   this->statlen  = statlen;
   this->varlen   = varlen;
-  this->addconst = addconst;
   b.resize(statlen * 2 + 1);
-  A.resize(b.size(), varlen + (addconst ? 1 : 0));
+  A.resize(b.size(), varlen);
   lasterr = T(0);
   const auto epsilon(std::numeric_limits<T>::epsilon());
   // const auto epsilon(T(1) >> short(62));
@@ -127,24 +124,23 @@ template <typename T> inline P1<T>::~P1() {
   ;
 }
 
-template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in, const int& step, const bool& vanish) {
-  assert(in.size() == statlen + varlen * step);
+template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
+  assert(in.size() == statlen + varlen);
   T MM(0);
   for(int i = 0; i < statlen; i ++) {
     for(int j = 0; j < varlen; j ++)
-      MM = max(MM, abs(A(i, j) = in[i + (varlen - j - 1) * step + (vanish ? step : 0)]));
-    MM = max(MM, abs(b[i] = vanish ? T(0) : in[i + varlen * step]));
+      MM = max(MM, abs(A(i, j) = in[i + j]));
+    MM = max(MM, abs(b[i] = in[i + varlen]));
   }
   for(int i = 0; i < statlen; i ++) {
-    if(addconst) A(i, varlen) = MM;
     A.row(statlen + i) = - A.row(i);
     b[statlen + i]     = - b[i];
   }
   A /= MM;
   b /= MM;
-  for(int i = 1; i < A.cols(); i ++)
+  for(int i = 0; i < A.cols() - 1; i ++)
     A(statlen * 2, i) = T(0);
-  A(statlen * 2, 0) = b[statlen * 2] = - T(1);
+  A(statlen * 2, A.cols() - 1) = b[statlen * 2] = - T(1);
   for(int i = 0; i < fvec.size(); i ++)
     fvec[i] = T(0);
   lasterr = A.rows() + A.cols();
@@ -304,12 +300,11 @@ template <typename T> inline T P1B<T>::next(const T& in) {
   const auto& fvec(p.next(buf));
   T res(0);
   for(int i = 0; i < fvec.size(); i ++)
-    res += fvec[i] * buf[buf.size() - 1 - i];
+    res += buf[i - fvec.size() + buf.size()] * fvec[i];
   if(! isfinite(res) || isnan(res))
     res  = in;
   return res;
 }
-
 
 #define _P1_
 #endif
