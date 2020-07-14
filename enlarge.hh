@@ -66,6 +66,7 @@ public:
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
   int  getImgPt(const int& y, const int& h);
+  int  dratio;
 
 private:
   void initDop(const int& size);
@@ -167,7 +168,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           zscore(i, j) = - T(1);
         }
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-      const int  dratio(sqrt(rxy));
+      dratio    = sqrt(rxy);
             Vec  camera(2);
             Vec  cpoint(2);
       camera[0] = T(0);
