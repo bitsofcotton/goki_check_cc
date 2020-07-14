@@ -130,12 +130,12 @@ public:
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1e8));
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0 = - T(1e8));
+  void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
 
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
   void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
   inline bool isClockwise(const Vec3 p[3]) const;
-  void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
   bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
