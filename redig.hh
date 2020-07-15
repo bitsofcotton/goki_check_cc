@@ -684,7 +684,6 @@ template <typename T> void reDig<T>::rgb2xyz(Mat xyz[3], const Mat rgb[3]) {
 
 template <typename T> void reDig<T>::xyz2rgb(Mat rgb[3], const Mat xyz[3]) {
   // CIE 1931 XYZ from wikipedia.org
-/*
   Mat3x3 mRGB2XYZ(3, 3);
   mRGB2XYZ(0, 0) = T(49000);
   mRGB2XYZ(0, 1) = T(31000);
@@ -697,19 +696,8 @@ template <typename T> void reDig<T>::xyz2rgb(Mat rgb[3], const Mat xyz[3]) {
   mRGB2XYZ(2, 2) = T(99000);
   mRGB2XYZ /= T(17697);
   Mat3x3 mXYZ2RGB(3, 3);
+  // XXX: very slow with simplelin.hh
   mXYZ2RGB = mRGB2XYZ.inverse();
-*/
-  Mat3x3 mXYZ2RGB(3, 3);
-  mXYZ2RGB(0, 0) =   T(418466000);
-  mXYZ2RGB(0, 1) = - T(158664000);
-  mXYZ2RGB(0, 2) = - T( 82834900);
-  mXYZ2RGB(1, 0) = - T( 91169000);
-  mXYZ2RGB(1, 1) =   T(252431000);
-  mXYZ2RGB(1, 2) =   T( 15707500);
-  mXYZ2RGB(2, 0) =   T(   920899);
-  mXYZ2RGB(2, 1) = - T(  2549810);
-  mXYZ2RGB(2, 2) =   T(178599000);
-  mXYZ2RGB /= T(1000000000);
   rgb[0] = xyz[0] * mXYZ2RGB(0, 0) + xyz[1] * mXYZ2RGB(0, 1) + xyz[2] * mXYZ2RGB(0, 2);
   rgb[1] = xyz[0] * mXYZ2RGB(1, 0) + xyz[1] * mXYZ2RGB(1, 1) + xyz[2] * mXYZ2RGB(1, 2);
   rgb[2] = xyz[0] * mXYZ2RGB(2, 0) + xyz[1] * mXYZ2RGB(2, 1) + xyz[2] * mXYZ2RGB(2, 2);

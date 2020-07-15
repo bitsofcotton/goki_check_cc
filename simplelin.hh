@@ -15,6 +15,8 @@
 #if !defined(_SIMPLELIN_)
 
 using std::move;
+using std::isfinite;
+using std::isnan;
 
 template <typename T> class SimpleVector {
 public:
@@ -288,6 +290,7 @@ public:
   // N.B. transpose : exhaust of the resource, so Eigen library handles better.
   inline       SimpleMatrix<T>  transpose() const;
   inline       T                determinant() const;
+  inline       SimpleMatrix<T>  inverse() const;
   inline       SimpleVector<T>  solve(SimpleVector<T> other) const;
   inline       SimpleVector<T>  projectionPt(const SimpleVector<T>& other) const;
   template <typename U> inline SimpleMatrix<U> real() const;
@@ -575,6 +578,17 @@ template <typename T> inline T SimpleMatrix<T>::determinant() const {
     det *= ei[i];
   }
   return isfinite(det) ? det : T(0);
+}
+
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::inverse() const {
+  // XXX: extremely slow implementation.
+  SimpleMatrix<T> result(erows, ecols);
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      result(i, j) = i == j ? T(1) : T(0);
+  for(int i = 0; i < result.cols(); i ++)
+    result.setCol(i, solve(result.col(i)));
+  return result;
 }
 
 template <typename T> inline SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector<T> other) const {
