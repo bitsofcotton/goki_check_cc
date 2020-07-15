@@ -132,86 +132,12 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "bump") == 0)
       data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH), 4 * (data[0].rows() + data[0].cols()));
     else if(strcmp(argv[1], "illust") == 0) {
-      const auto datav(redig.rgb2l(data));
-      const auto bump(redig.autoLevel(filter.compute(filter.compute(datav, filter.BUMP_BOTH), filter.INTEG_BOTH), 4 * (data[0].rows() + data[0].cols())));
-      const auto region(redig.reShape(bump, datav, 256));
-      typename simpleFile<num_t>::Mat checked(datav.rows(), datav.cols());
-      for(int i = 0; i < checked.rows(); i ++)
-        for(int j = 0; j < checked.cols(); j ++)
-          checked(i, j) = false;
-      for(int loop = 0; ; loop ++) {
-        std::cerr << "l" << std::flush;
-        num_t test(- 1);
-        auto  mask(region);
-        for(int i = 0; i < mask.rows(); i ++)
-          for(int j = 0; j < mask.cols(); j ++)
-            if(! checked(i, j)) {
-              test = mask(i, j);
-              break;
-            }
-        if(test < num_t(0))
-          break;
-        for(int i = 0; i < mask.rows(); i ++)
-          for(int j = 0; j < mask.cols(); j ++)
-            mask(i, j) = num_t(mask(i, j) == test && ! checked(i, j) ? 0 : 1);
-        for(int i = 0; i < datav.rows(); i ++)
-          for(int j = 0; j < datav.cols(); j ++) 
-            if(! checked(i, j) && mask(i, j) < num_t(1) / num_t(2)) {
-              std::vector<std::pair<int, int> > store;
-              auto wchk(checked);
-              redig.floodfill(wchk, store, mask, i, j);
-              std::sort(store.begin(), store.end());
-              num_t avgr(0);
-              num_t avgg(0);
-              num_t avgb(0);
-              int   cnt(0);
-              for(int ii = 0; ii < store.size(); ii ++) {
-                if(store[ii].first < 0 || datav.rows() <= store[ii].first)
-                  continue;
-                for(int jj = store[ii].second;
-                        jj < (ii + 1 < store.size() &&
-                          store[ii].first == store[ii + 1].first ?
-                          store[ii + 1].second : store[ii].second + 1);
-                        jj ++) {
-                  if(jj < 0 || datav.cols() <= jj)
-                    continue;
-                  avgr += data[0](store[ii].first, jj); 
-                  avgg += data[1](store[ii].first, jj); 
-                  avgb += data[2](store[ii].first, jj); 
-                  cnt ++;
-                }
-                if(ii + 1 < store.size() &&
-                   store[ii].first == store[ii + 1].first) ii ++;
-              }
-              if(! cnt) {
-                checked(i, j) = true;
-                continue;
-              }
-              avgr /= num_t(cnt);
-              avgg /= num_t(cnt);
-              avgb /= num_t(cnt);
-              for(int ii = 0; ii < store.size(); ii ++) {
-                if(store[ii].first < 0 || datav.rows() <= store[ii].first)
-                  continue;
-                for(int jj = store[ii].second;
-                        jj < (ii + 1 < store.size() &&
-                          store[ii].first == store[ii + 1].first ?
-                          store[ii + 1].second : store[ii].second + 1);
-                        jj ++) {
-                  if(jj < 0 || datav.cols() <= jj)
-                    continue;
-                  data[0](store[ii].first, jj) = avgr;
-                  data[1](store[ii].first, jj) = avgg;
-                  data[2](store[ii].first, jj) = avgb;
-                  checked(store[ii].first, jj) = true;
-                }
-                if(ii + 1 < store.size() &&
-                   store[ii].first == store[ii + 1].first) ii ++;
-              }
-            }
+      const auto bump(redig.autoLevel(filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH), 4 * (data[0].rows() + data[0].cols())));
+      for(int i = 0; i < 3; i ++) {
+        const auto work(redig.reShape(bump, data[i], std::atoi(argv[4])));
+        data[i] = redig.reShape(data[i], work, std::atoi(argv[4]));
       }
-    }
-    else if(strcmp(argv[1], "b2w") == 0) {
+    } else if(strcmp(argv[1], "b2w") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
           if(data[0](i, j) == num_t(0) &&
