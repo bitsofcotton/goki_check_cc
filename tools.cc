@@ -133,10 +133,19 @@ int main(int argc, const char* argv[]) {
       data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH), 4 * (data[0].rows() + data[0].cols()));
     else if(strcmp(argv[1], "illust") == 0) {
       const auto bump(redig.autoLevel(filter.compute(filter.compute(redig.rgb2l(data), filter.BUMP_BOTH), filter.INTEG_BOTH), 4 * (data[0].rows() + data[0].cols())));
-      for(int i = 0; i < 3; i ++) {
-        const auto work(redig.reShape(bump, data[i], std::atoi(argv[4])));
-        data[i] = redig.reShape(data[i], work, std::atoi(argv[4]));
-      }
+      typename simpleFile<num_t>::Mat res[3];
+      res[0].resize(data[0].rows(), data[0].cols());
+      for(int i = 0; i < res[0].rows(); i ++)
+        for(int j = 0; j < res[0].cols(); j ++)
+          res[0](i, j) = num_t(0);
+      res[1] = res[2] = res[0];
+      for(int j = 2; j < std::atoi(argv[4]); j ++)
+        for(int i = 0; i < 3; i ++) {
+          const auto work(redig.reShape(bump, data[i], j));
+          res[i] += redig.reShape(data[i], work, j);
+        }
+      for(int i = 0; i < 3; i ++)
+        data[i] = res[i];
     } else if(strcmp(argv[1], "b2w") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
