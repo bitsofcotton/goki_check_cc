@@ -814,14 +814,14 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
       aavg += in(i, j);
-  aavg /= in.rows() * in.cols();
+  aavg /= T(in.rows() * in.cols());
   for(int i = 0; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
          in.cols() < (j + 1) * vbox) {
         Vec3 gbuf(3);
-        gbuf[0] = i * vbox;
-        gbuf[1] = j * vbox;
+        gbuf[0] = T(i * vbox);
+        gbuf[1] = T(j * vbox);
         gbuf[2] = geoms[geoms.size() - 1][2];
         geoms.push_back(gbuf);
       } else {
@@ -830,8 +830,8 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
           for(int jj = j * vbox; jj < (j + 1) * vbox; jj ++)
             avg += in(ii, jj);
         Vec3 work(3);
-        work[0] = i * vbox;
-        work[1] = j * vbox;
+        work[0] = T(i * vbox);
+        work[1] = T(j * vbox);
         work[2] = sqrt(T(in.rows() * in.cols())) * rz * (avg / T(vbox) / T(vbox) - aavg);
         geoms.push_back(work);
       }
@@ -847,12 +847,12 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
   for(int i = 1; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox; j ++) {
       Veci3 work(3), work2(3);
-      work[0]  = (i - 1) * (in.cols() / vbox + 1) + j;
-      work[1]  =  i      * (in.cols() / vbox + 1) + j;
-      work[2]  =  i      * (in.cols() / vbox + 1) + j + 1;
-      work2[0] = (i - 1) * (in.cols() / vbox + 1) + j;
-      work2[2] = (i - 1) * (in.cols() / vbox + 1) + j + 1;
-      work2[1] =  i      * (in.cols() / vbox + 1) + j + 1;
+      work[0]  = T((i - 1) * (in.cols() / vbox + 1) + j);
+      work[1]  = T( i      * (in.cols() / vbox + 1) + j);
+      work[2]  = T( i      * (in.cols() / vbox + 1) + j + 1);
+      work2[0] = T((i - 1) * (in.cols() / vbox + 1) + j);
+      work2[2] = T((i - 1) * (in.cols() / vbox + 1) + j + 1);
+      work2[1] = T( i      * (in.cols() / vbox + 1) + j + 1);
       delaunay.push_back(work);
       delaunay.push_back(work2);
     }
@@ -878,17 +878,16 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
         x += workx[k];
         z += workz[k];
       }
-      x /= workx.size();
-      z /= workz.size();
+      x /= T(workx.size());
+      z /= T(workz.size());
       T r(0);
       for(int k = 0; k < workx.size(); k ++)
         r += (workx[k] - x) * (workx[k] - x) + (workz[k] - z) * (workz[k] - z);
       r  = sqrt(r / T(workx.size()));
       T err(0);
       for(int k = 0; k < workx.size(); k ++)
-        err += pow(sqrt((workx[k] - x) * (workx[k] - x) +
-                        (workz[k] - z) * (workz[k] - z)) -
-                   r, T(2));
+        err += pow(abs(sqrt((workx[k] - x) * (workx[k] - x) +
+                            (workz[k] - z) * (workz[k] - z)) - r), T(2));
       err = sqrt(err / T(workx.size()));
       if(j && err < thresh * sqrt(sqrt(T(in.rows() * in.cols()))) && center.size()) {
         center[center.size() - 1][1] = x;
@@ -922,7 +921,7 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
     for(int j = i + 1; j < attend.size(); j ++) {
       // N.B. for any k, on the line ||center[k] - z||^2 = r^2.
       // <=> sum_k (ck_0 - z_0)^2 + (ck_1 - z_1)^2 + (ck_2 - z_2)^2 == r^2.
-      const auto newz(z + center[j] * attend[j].size());
+      const auto newz(z + center[j] * T(attend[j].size()));
       const auto newz0(newz / T(zc + attend[j].size()));
       T   newr(0);
       int cnt(0);
@@ -937,7 +936,7 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
       for(int jj = i; jj <= j; jj ++)
         for(int k = 0; k < attend[jj].size(); k ++) {
           const auto diff(geoms[attend[jj][k]] - newz0);
-          err += pow(sqrt(diff.dot(diff)) - newr, T(2));
+          err += pow(abs(sqrt(diff.dot(diff)) - newr), T(2));
         }
       err = sqrt(err / T(cnt));
       if(err < thresh * sqrt(T(in.rows() * in.cols()))) {
@@ -949,7 +948,7 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
         break;
     }
     r.emplace_back(rr);
-    newcenter.emplace_back(z / zc);
+    newcenter.emplace_back(z / T(zc));
     newattend.emplace_back(attend[i]);
     for(int k = i + 1; k <= lastj; k ++)
       newattend[newattend.size() - 1].insert(
