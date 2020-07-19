@@ -139,8 +139,6 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < res[0].cols(); j ++)
           res[0](i, j) = num_t(0);
       res[1] = res[2] = res[0];
-      if(5 < argc && ! file.loadp2or3(data, argv[5]))
-        return - 1;
       for(int j = 2; j < std::atoi(argv[4]); j ++)
         for(int i = 0; i < 3; i ++) {
           const auto work(redig.reShape(bump, data[i], j));
