@@ -93,7 +93,7 @@ template <typename T> Filter<T>::~Filter() {
 template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& data, const direction_t& dir, const int& n) {
   auto res(compute(data, dir));
   for(int i = 1; i < n; i ++) {
-    const auto theta(T(i) * Pi / T(n));
+    const auto theta(T(i) * Pi / T(2 * n));
     const auto c(cos(theta));
     const auto s(sin(theta));
     Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
@@ -125,15 +125,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
               k <   (work.rows() + work.cols()) * 2; k ++) {
         const int yy(c * T(j) - s * T(k) + T(1) / T(2));
         const int xx(s * T(j) + c * T(k) + T(1) / T(2));
-        const int jj(((j % res.rows()) + res.rows()) % res.rows());
-        const int kk(((k % res.cols()) + res.cols()) % res.cols());
+        const int jj(((j % lres.rows()) + lres.rows()) % lres.rows());
+        const int kk(((k % lres.cols()) + lres.cols()) % lres.cols());
         if(0 <= yy && yy < work.rows() &&
            0 <= xx && xx < work.cols())
-          lres(jj, kk) = lres(min(jj + 1, int(lres.rows() - 1)), kk) =
-            lres(jj, min(kk + 1, int(lres.cols() - 1))) =
-            lres(min(jj + 1, int(lres.rows() - 1)),
-                 min(kk + 1, int(lres.cols() - 1))) =
-              work(yy, xx);
+          lres(((j % lres.rows()) + lres.rows()) % lres.rows(),
+               ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
       }
     res += lres;
   }
