@@ -8,7 +8,7 @@ argv    = sys.argv
 pixels  = 4
 zratio  = .25
 psi     = .05
-rot     = 6
+rot     = 7
 bhabit  = ""
 
 if(len(argv) < 4):
@@ -67,7 +67,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    elif(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "illust" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
+    if(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "illust" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-sharpen.ppm"])
@@ -114,7 +114,7 @@ else:
       for s in range(1, pixels):
         subprocess.call([argv[1], "b2wd", root + "-sbox-" + str(s + 1) + ".ppm", root + "-sbox-bw-" + str(s + 1) + ".ppm", root + "-sbox-" + str(s) + ".ppm"])
     elif(argv[2] == "demosaic"):
-      subprocess.call(["convert", line, "-resize", str(int(10000. * pow(1.5, - pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic.ppm"])
+      subprocess.call(["convert", line, "-resize", str(int(100. / pixels)) + "%", "-compress", "none", root + "-demosaic.ppm"])
       subprocess.call(["python2", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic.ppm"])
     elif(argv[2] == "extend"):
       for tami in range(1, pixels + 1):
