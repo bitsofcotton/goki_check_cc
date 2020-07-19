@@ -62,6 +62,7 @@ public:
 #endif
   Filter(const int& recur = 2);
   ~Filter();
+  Mat  rotcompute(const Mat& data, const direction_t& dir, const int& n);
   Mat  compute(const Mat& data, const direction_t& dir);
   MatU seed(const int& size, const bool& idft);
   Mat  gmean(const Mat& a, const Mat& b);
@@ -87,6 +88,48 @@ template <typename T> Filter<T>::Filter(const int& recur) {
 
 template <typename T> Filter<T>::~Filter() {
   ;
+}
+
+template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& data, const direction_t& dir, const int& n) {
+  auto res(compute(data, dir));
+  for(int i = 1; i < n; i ++) {
+    const auto theta(T(i) * Pi / T(n));
+    const auto c(cos(theta));
+    const auto s(sin(theta));
+    Mat work(int(c * T(data.rows()) + s * T(data.cols())),
+             int(s * T(data.rows()) + c * T(data.cols())));
+    for(int j = 0; j < work.rows(); j ++)
+      for(int k = 0; k < work.cols(); k ++)
+        work(j, k) = T(0);
+    for(int j = - (work.rows() + work.cols());
+            j <   (work.rows() + work.cols()) * 2; j ++)
+      for(int k = - (work.rows() + work.cols());
+              k <   (work.rows() + work.cols()) * 2; k ++) {
+        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
+        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
+        if(0 <= yy && yy < work.rows() &&
+           0 <= xx && xx < work.cols())
+          work(yy, xx) = work(min(yy + 1, int(work.rows()) - 1), xx) =
+            work(yy, min(xx + 1, int(work.cols()) - 1)) =
+            work(min(yy + 1, int(work.rows()) - 1),
+                 min(xx + 1, int(work.cols()) - 1)) =
+              data(((j % data.rows()) + data.rows()) % data.rows(),
+                   ((k % data.cols()) + data.cols()) % data.cols());
+      }
+    work = compute(work, dir);
+    for(int j = 0; j < res.rows(); j ++)
+      for(int k = 0; k < res.cols(); k ++) {
+        int yy(c * T(j) - s * T(k) + T(1) / T(2));
+        int xx(s * T(j) + c * T(k) + T(1) / T(2));
+        for(int ii = 1; yy < 0; i ++) {
+          yy = int(c * T(j + ii * res.rows()) - s * T(k) + T(1) / T(2));
+          xx = int(s * T(j + ii * res.rows()) + c * T(k) + T(1) / T(2));
+        }
+        res(j, k) += work(yy, xx % work.cols());
+      }
+    return res;
+  }
+  return res /= T(n);
 }
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir) {

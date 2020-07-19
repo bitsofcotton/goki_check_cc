@@ -8,6 +8,7 @@ argv    = sys.argv
 pixels  = 4
 zratio  = .25
 psi     = .05
+rot     = 12
 bhabit  = ""
 
 if(len(argv) < 4):
@@ -48,12 +49,13 @@ elif(argv[2] == "ppred"):
       r, e = os.path.splitext(s)
       roots.append(r)
   #cmd = [argv[1], argv[2], "1", ".175", str(zratio), str(pixels), "pose"]
-  cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), "pose"]
   #cmd = [argv[1], argv[2], "8", ".05", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], argv[2], "20", ".05", str(zratio), str(pixels), "pose"]
+  cmd = [argv[1], argv[2], "20", ".05", str(zratio), str(pixels), "pose"]
   for s in roots:
     cmd.append(s + ".ppm")
     cmd.append(s + "-bump.ppm")
+  print " ".join(cmd)
   subprocess.call(cmd)
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", "pose.mp4"])
 else:
@@ -65,8 +67,14 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "illust" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels)])
+    if(argv[2] == "enlarge"):
+      subprocess.call(["cp", root + ".ppm", root + "-enlarge0.ppm"])
+      for s in range(0, pixels):
+        subprocess.call([argv[1], "enlarge", root + "-enlarge0.ppm", root + "-enlarge.ppm", "3", str(rot)])
+        subprocess.call(["convert", root + "-enlarge.ppm", "-resize", str(150 / 3.) + "%", "-compress", "none", root + "-enlarge0.ppm"])
+      subprocess.call(["convert", root + "-enlarge0.ppm", root + "-enlarge.png"])
+    elif(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "illust" or argv[2] == "sharpen" or argv[2] == "pextend"):
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-sharpen.ppm"])
       for s in range(0, pixels):
