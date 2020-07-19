@@ -161,7 +161,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::integ(const int& size) {
 }
 
 template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
-  const auto  spt(min(size - 1, max(0, int(ceil(step)))));
+  const auto  spt(min(size - 1, max(0, int(floor(step)))));
   const auto  residue(step - T(spt));
         Vec   tayl(size);
   const auto& D(diff(size));

@@ -38,9 +38,8 @@ elif(argv[2] == "pred"):
     r, e = os.path.splitext(s)
     cmd.append(r + ".ppm")
   subprocess.call(cmd)
-elif(argv[2] == "pcopy" or argv[2] == "ppred"):
+elif(argv[2] == "ppred"):
   roots = []
-  exts  = []
   for s in argv[3:]:
     try:
       pixels = int(s)
@@ -48,20 +47,14 @@ elif(argv[2] == "pcopy" or argv[2] == "ppred"):
     except:
       r, e = os.path.splitext(s)
       roots.append(r)
-      exts.append(e)
   #cmd = [argv[1], argv[2], "1", ".175", str(zratio), str(pixels), "pose"]
   cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), "pose"]
   #cmd = [argv[1], argv[2], "8", ".05", str(zratio), str(pixels), "pose"]
   #cmd = [argv[1], argv[2], "20", ".05", str(zratio), str(pixels), "pose"]
-  if(argv[2] == "pcopy"):
-    cmd.extend([roots[0] + ".ppm", roots[0] + "-bump.ppm", roots[1] + ".ppm", roots[1] + "-bump.ppm"])
-  else:
-    for s in roots:
-      cmd.append(s + ".ppm")
-      cmd.append(s + "-bump.ppm")
+  for s in roots:
+    cmd.append(s + ".ppm")
+    cmd.append(s + "-bump.ppm")
   subprocess.call(cmd)
-  for s in range(0, pixels):
-    subprocess.call(["cp", "pose" + str(pixels - 1 - s) + ".ppm", "pose" + str(pixels + s) + ".ppm"])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", "pose.mp4"])
 else:
   for line in argv[3:]:
