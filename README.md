@@ -9,6 +9,8 @@ We need imagemagick for normal use, and ffmpeg for making .mp4.
 And, this command needs CONTINUOUS input. So without them, this program returns bugly result, the same reason causes pextend or enlarge recursive returns bugly.
 
 # Parameters
+* enlarge.hh
+* * recur : operator recursive num.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
@@ -29,13 +31,12 @@ From some news, there exists the machine learning method that is making 3D model
 Searching the Internet more...
 
 # Status
-Archived. Waiting more bug information.
+Waiting more bug information.
 
 # Usage
     make gokicheck
     
-    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>
-    gokicheck pcopy <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>
+    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
     gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
     gokicheck pred  <output.ppm> <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
@@ -48,7 +49,6 @@ Archived. Waiting more bug information.
     python2 test.py ./gokicheck match0    input0.png input1.(png|obj)
     python2 test.py ./gokicheck matcho    input0.png input1.(png|obj) match.txt
     python2 test.py ./gokicheck pred      input0.png input1.png ...
-    python2 test.py ./gokicheck pcopy     input0.png input1.png
     python2 test.py ./gokicheck ppred     input0.png input1.png ...
     python2 test.py ./gokicheck pextend   input.png
     python2 test.py ./gokicheck penetrate input.png
@@ -75,9 +75,7 @@ Please refer tools.cc, and please include with namespace directive (but include 
 https://konbu.azurewebsites.net/ have a sample interface working demos.
 
 # Tips
-These program's bump needs large image calculation then shrink method.  
-match command matches with z-axis information, test.py have a hidden parameters to configure this.  
-matchPartial class default threshr is severe, so please configure before to match.
+matchPartial class default threshr is severe.
 
 # Another downloads
 * https://ja.osdn.net/projects/goki-check/

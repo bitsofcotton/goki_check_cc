@@ -9,6 +9,8 @@ Makefile を libc++ を使えるように変更してください。
 また、このプログラムは入力にある程度連続な画像を仮定します。つまり、細かい成分がたくさんある画像に関してはあまり良い結果を返しません。また、pextend, enlarge コマンドを繰り返し使用することも同様の理由で良い結果を返しません。
 
 # 調整可能なパラメタ
+* enlarge.hh
+* * recur : filter 適用の擬似繰り返し回数です。
 * redig.hh
 * * vbox : ベクタ生成の際にまとめるピクセルの数です。
 * * rz   : 奥行きの乗数です。
@@ -28,13 +30,12 @@ Makefile を libc++ を使えるように変更してください。
 さらに検索中です。
 
 # 状態
-Archive しています。バグ情報を受け付けています。
+バグ情報を受け付けています。
 
 # 使い方
     make gokicheck
     
-    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>
-    gokicheck pcopy <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>
+    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
     gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
     gokicheck pred  <output.ppm> <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
@@ -47,7 +48,6 @@ Archive しています。バグ情報を受け付けています。
     python2 test.py ./gokicheck match0    input0.png input1.(png|obj)
     python2 test.py ./gokicheck matcho    input0.png input1.(png|obj) match.txt
     python2 test.py ./gokicheck pred      input0.png input1.png ...
-    python2 test.py ./gokicheck pcopy     input0.png input1.png
     python2 test.py ./gokicheck ppred     input0.png input1.png ...
     python2 test.py ./gokicheck pextend   input.png
     python2 test.py ./gokicheck penetrate input.png
@@ -76,10 +76,7 @@ tools.cc を参照してください。また、必要であれば namespace ブ
 https://konbu.azurewebsites.net/ にサンプルがあります。
 
 # Tips
-bump はより大きなピクセル数を集めるとより良い結果を得ます。  
-それぞれのコマンドは一回のみの適用を意図して作られています。複数回の適用にはプログラム内部での変更が必要です。  
-match コマンドは深度情報を含めて合致します。test.py 内部に隠しパラメータがあります。
-また、デフォルトでは threshr の値がシビアなので、適宜調整してください。
+デフォルトでは threshr の値がシビアです。
 
 # その他のダウンロードサイト
 * https://ja.osdn.net/projects/goki-check/
