@@ -93,7 +93,7 @@ template <typename T> Filter<T>::~Filter() {
 template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& data, const direction_t& dir, const int& n) {
   auto res(compute(data, dir));
   for(int i = 1; i < n; i ++) {
-    const auto theta(T(i) * Pi / T(n));
+    const auto theta(T(i) * Pi / T(2 * n));
     const auto c(cos(theta));
     const auto s(sin(theta));
     Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
