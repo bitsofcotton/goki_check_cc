@@ -8,7 +8,7 @@ argv    = sys.argv
 pixels  = 4
 zratio  = .25
 psi     = .05
-rot     = 12
+rot     = 6
 bhabit  = ""
 
 if(len(argv) < 4):
