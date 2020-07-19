@@ -96,8 +96,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
     const auto theta(T(i) * Pi / T(n));
     const auto c(cos(theta));
     const auto s(sin(theta));
-    Mat work(int(c * T(data.rows()) + s * T(data.cols())),
-             int(s * T(data.rows()) + c * T(data.cols())));
+    //Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
+    //         abs(int(s * T(data.rows()) + c * T(data.cols()))));
+    Mat work(abs(int(s * T(data.rows()) + c * T(data.cols()))),
+             abs(int(c * T(data.rows()) + s * T(data.cols()))));
     for(int j = 0; j < work.rows(); j ++)
       for(int k = 0; k < work.cols(); k ++)
         work(j, k) = T(0);
@@ -117,17 +119,25 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
                    ((k % data.cols()) + data.cols()) % data.cols());
       }
     work = compute(work, dir);
-    for(int j = 0; j < res.rows(); j ++)
-      for(int k = 0; k < res.cols(); k ++) {
-        int yy(c * T(j) - s * T(k) + T(1) / T(2));
-        int xx(s * T(j) + c * T(k) + T(1) / T(2));
-        for(int ii = 1; yy < 0; i ++) {
-          yy = int(c * T(j + ii * res.rows()) - s * T(k) + T(1) / T(2));
-          xx = int(s * T(j + ii * res.rows()) + c * T(k) + T(1) / T(2));
-        }
-        res(j, k) += work(yy, xx % work.cols());
+    auto lres(res * T(0));
+    // XXX inefficient:
+    for(int j = - (work.rows() + work.cols());
+            j <   (work.rows() + work.cols()) * 2; j ++)
+      for(int k = - (work.rows() + work.cols());
+              k <   (work.rows() + work.cols()) * 2; k ++) {
+        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
+        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
+        const int jj(((j % res.rows()) + res.rows()) % res.rows());
+        const int kk(((k % res.cols()) + res.cols()) % res.cols());
+        if(0 <= yy && yy < work.rows() &&
+           0 <= xx && xx < work.cols())
+          lres(jj, kk) = lres(min(jj + 1, int(lres.rows() - 1)), kk) =
+            lres(jj, min(kk + 1, int(lres.cols() - 1))) =
+            lres(min(jj + 1, int(lres.rows() - 1)),
+                 min(kk + 1, int(lres.cols() - 1))) =
+              work(yy, xx);
       }
-    return res;
+    res += lres;
   }
   return res /= T(n);
 }

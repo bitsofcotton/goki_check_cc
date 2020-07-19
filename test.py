@@ -120,10 +120,8 @@ else:
       for s in range(1, pixels):
         subprocess.call([argv[1], "b2wd", root + "-sbox-" + str(s + 1) + ".ppm", root + "-sbox-bw-" + str(s + 1) + ".ppm", root + "-sbox-" + str(s) + ".ppm"])
     elif(argv[2] == "demosaic"):
-      subprocess.call(["convert", line, "-resize", str(int(10000. * pow(1.5, - pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
-      for s in range(0, pixels):
-        subprocess.call([argv[1], "enlarge", root + "-demosaic0.ppm", root + "-demosaic-enl.ppm", "3"])
-        subprocess.call(["convert", root + "-demosaic-enl.ppm", "-resize", str(150 / 3.) + "%", "-compress", "none", root + "-demosaic0.ppm"])
+      subprocess.call(["convert", line, "-resize", str(int(10000. * pow(1.5, - pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic.ppm"])
+      subprocess.call(["python2", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic.ppm"])
     elif(argv[2] == "extend"):
       for tami in range(1, pixels + 1):
         tam = tami / 360. * 60 / pixels
