@@ -77,7 +77,6 @@ using std::endl;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|sharpen|bump|illust|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
-  cout << "gokicheck pcopy <vbox> <thresh> <zratio> <num_of_emph> <outbase> <inputdst.ppm> <inputdst-bump.ppm> <inputsrc.ppm> <inputsrc-bump.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck pred  <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -449,15 +448,18 @@ int main(int argc, const char* argv[]) {
     }
     redig.normalize(out, 1.);
     file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
-  } else if(strcmp(argv[1], "ppred") == 0 ||
-            strcmp(argv[1], "pcopy") == 0) {
+  } else if(strcmp(argv[1], "ppred") == 0) {
     if(argc < 11 || ! (argc & 1)) {
       usage();
       return - 1;
     }
     const auto  vbox(std::atoi(argv[2]));
+/*
     const auto  thresh(std::atof(argv[3]));
     const num_t zratio(std::atof(argv[4]));
+*/
+    const auto  thresh(num_t(05) / num_t(100));
+    const auto  zratio(num_t(25) / num_t(100));
     std::vector<std::vector<typename simpleFile<num_t>::Mat> > in;
     std::vector<typename simpleFile<num_t>::Mat> inb;
     in.resize((argc - 7) / 2);
@@ -507,88 +509,45 @@ int main(int argc, const char* argv[]) {
 #endif
       std::cerr << center[i].size() << ":" << std::flush;
     }
-    const auto idx(strcmp(argv[1], "ppred") == 0 ? center.size() - 1 : 0);
-    if(strcmp(argv[1], "ppred") == 0) {
-      for(int i = 0; i < in.size() - 1; i ++) {
-        center[i] = redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]);
-        assert(center[i].size() == center[idx].size());
+    std::vector<typename simpleFile<num_t>::Vec3> outcenter;
+    std::vector<typename simpleFile<num_t>::Mat>  pout;
+    typename simpleFile<num_t>::Mat out[3];
+    const auto rin0(redig.makeRefMatrix(in[0][0], 1));
+    {
+            auto center1(center);
+      const auto idx(center.size() - 1);
+      for(int i = 0; i < in.size(); i ++) {
+        center1[i] = i == idx ? center[i] : redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]);
+        assert(center1[i].size() == center[idx].size());
         std::cerr << "." << std::flush;
       }
-    } else
-      center[1] = redig.copyBone(center[idx], centerr[idx], center[1], centerr[1]);
-    std::vector<std::vector<std::pair<int, int> > > a2xy;
-    a2xy.resize(attend[idx].size());
-    for(int i = 0; i < attend[idx].size(); i ++) {
-      const auto h(in[idx][0].rows() / vbox + 1);
-      const auto w(in[idx][0].cols() / vbox + 1);
-      a2xy[i].reserve(attend[idx][i].size());
-      for(int j = 0; j < attend[idx][i].size(); j ++) {
-        const auto& a0ij(attend[idx][i][j]);
-              auto& a2xyij(a2xy[i][j]);
-        a2xyij.first  = (a0ij / w) * vbox;
-        a2xyij.second = (a0ij % w) * vbox;
-      }
+      redig.complement(pout, outcenter, in, center1, attend[attend.size() - 1],
+                       redig.getReverseLookup(attend[attend.size() - 1],
+                         in[in.size() - 1][0]),
+                       num_t(center.size()));
+      in.emplace_back(pout);
+      center.emplace_back(outcenter);
+      centerr.emplace_back(centerr[centerr.size() - 1]);
     }
-    std::vector<typename simpleFile<num_t>::Vec3> outcenter;
-    typename simpleFile<num_t>::Mat pin[3];
-    if(strcmp(argv[1], "ppred") == 0) {
-      std::cerr << "p" << std::flush;
-      outcenter.resize(center[idx].size());
-      for(int i = 0; i < center[idx].size(); i ++) {
-        P0B<num_t> p0(center.size() / 2);
-        auto p1(p0);
-        auto p2(p0);
-        outcenter[i] = typename simpleFile<num_t>::Vec3(3);
-        for(int j = 1; j < center.size(); j ++) {
-          outcenter[i][0] = p0.next(center[j][i][0]);
-          outcenter[i][1] = p1.next(center[j][i][1]);
-          outcenter[i][2] = p2.next(center[j][i][2]);
-        }
+    const auto center0(center);
+    for(int idx = 0; idx < center.size() - 1; idx ++) {
+      for(int i = 0; i < in.size(); i ++) {
+        center[i] = i == idx ? center0[i] : redig.copyBone(center0[idx], centerr[idx], center0[i], centerr[i]);
+        assert(center[i].size() == center0[idx].size());
+        std::cerr << "." << std::flush;
       }
-      for(int i = 0; i < 3; i ++)
-        pin[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      for(int i = 0; i < attend[idx].size(); i ++) {
-        for(int j = 0; j < attend[idx][i].size(); j ++) {
-          P0B<num_t> p0(center.size() / 2);
-          auto p1(p0);
-          auto p2(p0);
-          const auto yy(filter.getImgPt(a2xy[i][j].first,  in[idx][0].rows()));
-          const auto xx(filter.getImgPt(a2xy[i][j].second, in[idx][0].cols()));
-          for(int k = 1; k < center.size(); k ++) {
-            const auto yf(filter.getImgPt(a2xy[i][j].first  + int(center[k][i][0] - center[idx][i][0]), in[idx][0].rows()));
-            const auto xf(filter.getImgPt(a2xy[i][j].second + int(center[k][i][1] - center[idx][i][1]), in[idx][0].cols()));
-            pin[0](yy, xx) = p0.next(in[k][0](yf, xf));
-            pin[1](yy, xx) = p1.next(in[k][1](yf, xf));
-            pin[2](yy, xx) = p2.next(in[k][2](yf, xf));
-          }
-          const auto n0(pin[0](yy, xx));
-          const auto n1(pin[1](yy, xx));
-          const auto n2(pin[2](yy, xx));
-          for(int y0 = yy; y0 < min(yy + vbox, int(in[idx][0].rows()) - 1); y0 ++)
-            for(int x0 = xx; x0 < min(xx + vbox, int(in[idx][0].cols()) - 1); x0 ++) {
-              pin[0](y0, x0) = n0;
-              pin[1](y0, x0) = n1;
-              pin[2](y0, x0) = n2;
-            }
-        }
+      const auto a2xy(redig.getReverseLookup(attend[idx], in[idx][0]));
+      for(int i = 0; i < std::atoi(argv[5]); i ++) {
+        redig.complement(pout, outcenter, in, center, attend[idx], a2xy,
+          num_t(idx) + num_t(i) / num_t(std::atoi(argv[5])));
+        const auto newshape(redig.takeShape(shape[idx], center[idx], outcenter, attend[idx], num_t(1)));
+        const auto reref(redig.draw(rin0, shape[idx], newshape, delau[idx]));
+        for(int ii = 0; ii < 3; ii ++)
+          out[ii] = filter.compute(redig.pullRefMatrix(reref, 1, pout[ii]), filter.CLIP);
+        file.savep2or3((std::string(argv[6]) + std::to_string(idx * std::atoi(argv[5]) + i) + std::string(".ppm")).c_str(), out, ! true);
+        file.saveobj(newshape, out[0].rows(), out[0].cols(), delau[0],
+                     (std::string(argv[6]) + std::to_string(idx * std::atoi(argv[5]) + i) + std::string(".obj")).c_str());
       }
-    } else {
-      outcenter = center[1];
-      pin[0]    = in[idx][0];
-      pin[1]    = in[idx][1];
-      pin[2]    = in[idx][2];
-    }
-    typename simpleFile<num_t>::Mat out[3];
-    const auto rin0(redig.makeRefMatrix(in[idx][0], 1));
-    for(int j = 0; j < std::atoi(argv[5]); j ++) {
-      const auto iemph(num_t(j + 1) / num_t(std::atoi(argv[5])));
-      const auto newshape(redig.takeShape(shape[idx], center[idx], outcenter, attend[idx], iemph));
-      const auto reref(redig.draw(rin0, shape[idx], newshape, delau[idx]));
-      for(int ii = 0; ii < 3; ii ++)
-        out[ii] = filter.compute(redig.pullRefMatrix(reref, 1, (in[idx][ii] * (num_t(1) - iemph) + pin[ii] * iemph)), filter.CLIP);
-      file.savep2or3((std::string(argv[6]) + std::to_string(j) + std::string(".ppm")).c_str(), out, ! true);
-      file.saveobj(newshape, out[0].rows(), out[0].cols(), delau[0],
-                   (std::string(argv[6]) + std::to_string(j) + std::string(".obj")).c_str());
     }
   } else if(strcmp(argv[1], "habit") == 0) {
     std::vector<typename simpleFile<num_t>::Vec3>  pdst,   psrc;

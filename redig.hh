@@ -14,6 +14,7 @@
 #if !defined(_REDIG_)
 
 template <typename T> class match_t;
+template <typename T> class Filter;
 
 using std::abs;
 using std::min;
@@ -104,6 +105,7 @@ public:
   Mat  drawBone(const vector<Vec3>& center, const vector<T>& r, const int& rows, const int& cols);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
   vector<Vec3> takeShape(const vector<Vec3>& shape, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio);
+  void complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
@@ -125,6 +127,7 @@ public:
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
+  vector<vector<std::pair<int, int> > > getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg);
   vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
@@ -266,6 +269,70 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
       result[attend[i][j]] += delta;
   }
   return result;
+}
+
+template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph) {
+  std::cerr << "p" << std::flush;
+  assert(srcimg.size() == srccenter.size());
+  assert(srccenter[0].size() == attend.size());
+  assert(3 < srcimg.size());
+  dstcenter = vector<Vec3>();
+  dstcenter.resize(srccenter[0].size(), Vec3(3));
+  const int idx0(floor(iemph));
+  const int idx(idx0 == srccenter.size() ? srccenter.size() - 1 : idx0);
+  assert(0 <= idx && idx < srccenter.size());
+  P0<T>  p;
+  P0B<T> p0(srccenter.size() / 2);
+  auto   p1(p0);
+  auto   p2(p0);
+  const auto comp(p.taylor(srccenter.size(), iemph));
+  for(int i = 0; i < srccenter[idx].size(); i ++) {
+    dstcenter[i][0] = dstcenter[i][1] = dstcenter[i][2] = T(0);
+    for(int j = 0; j < srccenter.size(); j ++) {
+      if(T(srccenter.size()) == iemph) {
+        dstcenter[i][0] = p0.next(srccenter[j][i][0]);
+        dstcenter[i][1] = p1.next(srccenter[j][i][1]);
+        dstcenter[i][2] = p2.next(srccenter[j][i][2]);
+      } else
+        for(int k = 0; k < 3; k ++)
+          dstcenter[i][k] += srccenter[j][i][k] * comp[j];
+    }
+  }
+  dstimg = vector<Mat>();
+  dstimg.reserve(3);
+  for(int i = 0; i < 3; i ++)
+    dstimg.emplace_back(Mat(srcimg[0][i].rows(), srcimg[0][i].cols()));
+  Filter<T> filter;
+  for(int i = 0; i < attend.size(); i ++)
+    for(int j = 0; j < attend[i].size(); j ++) {
+      const auto yy(filter.getImgPt(a2xy[i][j].first,  srcimg[idx][0].rows()));
+      const auto xx(filter.getImgPt(a2xy[i][j].second, srcimg[idx][0].cols()));
+      dstimg[0](yy, xx) = dstimg[1](yy, xx) = dstimg[2](yy, xx) = T(0);
+      P0B<T> p0(attend.size() / 2);
+      auto   p1(p0);
+      auto   p2(p0);
+      for(int k = 0; k < srccenter.size(); k ++) {
+        const auto yf(filter.getImgPt(a2xy[i][j].first  + int(srccenter[k][i][0] - srccenter[idx][i][0]), srcimg[idx][0].rows()));
+        const auto xf(filter.getImgPt(a2xy[i][j].second + int(srccenter[k][i][1] - srccenter[idx][i][1]), srcimg[idx][0].cols()));
+        if(T(attend.size()) == iemph) {
+          dstimg[0](yy, xx) = p0.next(srcimg[k][0](yf, xf));
+          dstimg[1](yy, xx) = p1.next(srcimg[k][1](yf, xf));
+          dstimg[2](yy, xx) = p2.next(srcimg[k][2](yf, xf));
+        } else
+          for(int kk = 0; kk < 3; kk ++)
+            dstimg[kk](yy, xx) += srcimg[k][kk](yf, xf) * comp[k];
+      }
+      const auto n0(dstimg[0](yy, xx));
+      const auto n1(dstimg[1](yy, xx));
+      const auto n2(dstimg[2](yy, xx));
+      for(int y0 = yy; y0 < min(yy + vbox, int(srcimg[idx][0].rows()) - 1); y0 ++)
+        for(int x0 = xx; x0 < min(xx + vbox, int(srcimg[idx][0].cols()) - 1); x0 ++) {
+          dstimg[0](y0, x0) = n0;
+          dstimg[1](y0, x0) = n1;
+          dstimg[2](y0, x0) = n2;
+        }
+    }
+  return;
 }
 
 template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph) {
@@ -959,6 +1026,23 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
   center = newcenter;
   attend = newattend;
   return;
+}
+
+template <typename T> vector<vector<std::pair<int, int> > > reDig<T>::getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg) {
+  vector<vector<std::pair<int, int> > > res;
+  res.resize(attend.size());
+  for(int i = 0; i < attend.size(); i ++) {
+    const auto h(refimg.rows() / vbox + 1);
+    const auto w(refimg.cols() / vbox + 1);
+    res[i].resize(attend[i].size());
+    for(int j = 0; j < attend[i].size(); j ++) {
+      const auto& a0ij(attend[i][j]);
+            auto& a2xyij(res[i][j]);
+      a2xyij.first  = (a0ij / w) * vbox;
+      a2xyij.second = (a0ij % w) * vbox;
+    }
+  }
+  return res;
 }
 
 template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc) {
