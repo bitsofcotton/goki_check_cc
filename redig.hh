@@ -120,7 +120,6 @@ public:
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   void xyz2rgb(Mat rgb[3], const Mat xyz[3]);
   Mat  contrast(const Mat& in, const T& intensity, const T& thresh = T(1) / T(2));
-  Mat  applytilt(const Mat& in, const int& dx, const int& dy);
   Mat  normalize(const Mat& data, const T& upper);
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
@@ -780,15 +779,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::contrast(const Mat& in, c
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = min(abs(thresh) + T(.5), max(- abs(thresh) + T(.5), intensity * (result(i, j) - T(.5)) + T(.5)));
   return result;
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::applytilt(const Mat& in, const int& dx, const int& dy) {
-  Mat res(in.rows(), in.cols());
-  for(int i = 0; i < in.rows(); i ++)
-    for(int j = 0; j < in.cols(); j ++)
-      res(i, j) = in(getImgPtRecursive(in.rows(), i + (dx ? j / dx : 0)),
-                     getImgPtRecursive(in.cols(), (dy ? i / dy : 0) + j));
-  return res;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data, const T& upper) {

@@ -96,10 +96,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
     const auto theta(T(i) * Pi / T(n));
     const auto c(cos(theta));
     const auto s(sin(theta));
-    //Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
-    //         abs(int(s * T(data.rows()) + c * T(data.cols()))));
-    Mat work(abs(int(s * T(data.rows()) + c * T(data.cols()))),
-             abs(int(c * T(data.rows()) + s * T(data.cols()))));
+    Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
+             abs(int(s * T(data.rows()) + c * T(data.cols()))));
     for(int j = 0; j < work.rows(); j ++)
       for(int k = 0; k < work.cols(); k ++)
         work(j, k) = T(0);
