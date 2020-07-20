@@ -5,8 +5,7 @@
 Makefile を libc++ を使えるように変更してください。  
 このプログラムは ascii 形式の ppm ファイルを入出力に使用します。  
 また、速度を担保するには http://eigen.tuxfamily.org/ ライブラリが必要です。  
-通常の使用で imagemagick が、動画の作成に ffmpeg が必要です。  
-また、このプログラムは入力にある程度連続な画像を仮定します。つまり、細かい成分がたくさんある画像に関してはあまり良い結果を返しません。また、pextend, enlarge コマンドを繰り返し使用することも同様の理由で良い結果を返しません。
+通常の使用で imagemagick が、動画の作成に ffmpeg が必要です。
 
 # 調整可能なパラメタ
 * enlarge.hh
@@ -35,7 +34,7 @@ Makefile を libc++ を使えるように変更してください。
 # 使い方
     make gokicheck
     
-    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
+    gokicheck (collect|sharpen|bump|enlarge|pextend|illust) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
     gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
     gokicheck pred  <output.ppm> <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
@@ -43,7 +42,6 @@ Makefile を libc++ を使えるように変更してください。
     gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
-    gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>
     python2 test.py ./gokicheck match     input0.png input1.(png|obj)
     python2 test.py ./gokicheck match0    input0.png input1.(png|obj)
     python2 test.py ./gokicheck matcho    input0.png input1.(png|obj) match.txt
@@ -68,18 +66,15 @@ Makefile を libc++ を使えるように変更してください。
     python2 test.py ./gokicheck mask0     input.png
 
 # ライブラリとしての使い方
-tools.cc を参照してください。また、必要であれば namespace ブロックでスコープしてください。
+tools.cc を参照してください。
+また、必要であれば namespace ブロックでスコープしてください。
 ただし、高確率でインクルードガードの定義が有害です。  
-また、これらのライブラリはスレッドセーフではありません。
-
-# デモ
-https://konbu.azurewebsites.net/ にサンプルがあります。
-
-# Tips
-デフォルトでは threshr の値がシビアです。
+また、これらのライブラリはスレッドセーフではありません。  
+また、デフォルトでは threshr の値がシビアです。
 
 # その他のダウンロードサイト
+* https://konbu.azurewebsites.net/ (サンプルサイト)
+* https://sites.google.com/view/bitsofcotton/
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://sites.google.com/view/bitsofcotton
 

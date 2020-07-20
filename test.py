@@ -114,7 +114,7 @@ else:
       for s in range(1, pixels):
         subprocess.call([argv[1], "b2wd", root + "-sbox-" + str(s + 1) + ".ppm", root + "-sbox-bw-" + str(s + 1) + ".ppm", root + "-sbox-" + str(s) + ".ppm"])
     elif(argv[2] == "demosaic"):
-      subprocess.call(["convert", line, "-resize", str(int(100. / pixels)) + "%", "-compress", "none", root + "-demosaic.ppm"])
+      subprocess.call(["convert", line, "-resize", str(int(10000. / pixels) / 100.) + "%", "-compress", "none", root + "-demosaic.ppm"])
       subprocess.call(["python2", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic.ppm"])
     elif(argv[2] == "extend"):
       for tami in range(1, pixels + 1):
