@@ -151,7 +151,7 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < data[0].cols(); j ++)
           if(data[0](i, j) == num_t(0) &&
              data[1](i, j) == num_t(0) &&
-             data[1](i, j) == num_t(0))
+             data[2](i, j) == num_t(0))
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
     } else if(strcmp(argv[1], "b2wd") == 0) {
       simpleFile<num_t>::Mat ddata[3];
@@ -161,7 +161,7 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < data[0].cols(); j ++)
           if((data[0](i, j) == num_t(0) &&
               data[1](i, j) == num_t(0) &&
-              data[1](i, j) == num_t(0)) ||
+              data[2](i, j) == num_t(0)) ||
              (data[0](i, j) == ddata[0](i, j) &&
               data[1](i, j) == ddata[1](i, j) &&
               data[2](i, j) == ddata[2](i, j)) )
@@ -220,7 +220,7 @@ int main(int argc, const char* argv[]) {
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
                  facets, argv[sidx], edges, thin);
-    file.saveMTL(argv[7], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
+    file.saveMTL(argv[6], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
