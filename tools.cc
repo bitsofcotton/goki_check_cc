@@ -220,7 +220,7 @@ int main(int argc, const char* argv[]) {
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
                  facets, argv[sidx], edges, thin);
-    file.saveMTL(argv[6], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
+    file.saveMTL(argv[sidx], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
