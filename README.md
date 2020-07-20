@@ -6,7 +6,6 @@ Please touch Makefile for libc++ enabled.
 This program needs ascii raw ppm files to input/output.  
 For speed, we need http://eigen.tuxfamily.org/ library.  
 We need imagemagick for normal use, and ffmpeg for making .mp4.  
-And, this command needs CONTINUOUS input. So without them, this program returns bugly result, the same reason causes pextend or enlarge recursive returns bugly.
 
 # Parameters
 * enlarge.hh
@@ -36,7 +35,7 @@ Waiting more bug information.
 # Usage
     make gokicheck
     
-    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
+    gokicheck (collect|sharpen|bump|enlarge|pextend|illust) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
     gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
     gokicheck pred  <output.ppm> <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
@@ -44,7 +43,6 @@ Waiting more bug information.
     gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
-    gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>
     python2 test.py ./gokicheck match     input0.png input1.(png|obj)
     python2 test.py ./gokicheck match0    input0.png input1.(png|obj)
     python2 test.py ./gokicheck matcho    input0.png input1.(png|obj) match.txt
@@ -69,16 +67,14 @@ Waiting more bug information.
     python2 test.py ./gokicheck mask0     input.png
 
 # How to use as library (sample code).
-Please refer tools.cc, and please include with namespace directive (but include guard definition should harms). They are NOT thread-safe.
-
-# Demos
-https://konbu.azurewebsites.net/ have a sample interface working demos.
-
-# Tips
+Please refer tools.cc, and please include with namespace directive
+(but include guard definition should harms).  
+They are NOT thread-safe.  
 matchPartial class default threshr is severe.
 
 # Another downloads
+* https://konbu.azurewebsites.net/ (Sample Site)
+* https://sites.google.com/view/bitsofcotton/
 * https://ja.osdn.net/projects/goki-check/
 * https://www.sourceforge.net/projects/gokicheck/
-* https://sites.google.com/view/bitsofcotton
 
