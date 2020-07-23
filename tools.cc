@@ -105,6 +105,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "illust")  == 0 ||
+     strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
      strcmp(argv[1], "b2wd")    == 0) {
     if(argc < 4) {
@@ -146,6 +147,13 @@ int main(int argc, const char* argv[]) {
         }
       for(int i = 0; i < 3; i ++)
         data[i] = res[i];
+    } else if(strcmp(argv[1], "w2b") == 0) {
+      for(int i = 0; i < data[0].rows(); i ++)
+        for(int j = 0; j < data[0].cols(); j ++)
+          if(data[0](i, j) == num_t(1) &&
+             data[1](i, j) == num_t(1) &&
+             data[2](i, j) == num_t(1))
+            data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(0);
     } else if(strcmp(argv[1], "b2w") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)

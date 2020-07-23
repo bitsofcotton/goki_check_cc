@@ -448,7 +448,7 @@ template <typename T> void Filter<T>::initEop(const int& size) {
   for(int i = 0; i < Eop[idx].rows(); i ++)
     for(int j = 0; j < Eop[idx].cols(); j ++)
       Eop[idx](i, j) += EEop(EEop.rows() - i - 1,
-                             EEop.cols() - i - 1);
+                             EEop.cols() - j - 1);
   Eop[idx] /= T(2);
   return;
 }
