@@ -139,4 +139,15 @@ else:
       subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
     elif(argv[2] == "mask0"):
       subprocess.call(["convert", root + ".ppm", "-fill", "black", "-colorize", "100", root + "-mask.png"])
+    elif(argv[2] == "nurie"):
+      subprocess.call(["python2", argv[0], argv[1], "bump", root + ".ppm"])
+      subprocess.call(["convert", root + "-bump.ppm", "-negate", "-threshold", "23000", "-negate", root + "-bump.ppm", "-compose", "minus", "-composite", root + "-nurie-base.png"])
+      subprocess.call(["convert", root + ".ppm", root + "-nurie-base.png", "-compose", "soft-light", "-composite", "-blur", "4x4", "-compress", "none", root + "-nurie-blur.ppm"])
+      subprocess.call([argv[1], "sharpen", root + "-nurie-blur.ppm", root + "-nurie.ppm", str(pixels), str(rot)])
+      subprocess.call(["convert", root + "-nurie.ppm", "-auto-level", root + "-nurie.png"])
+    elif(argv[2] == "illustrize"):
+      subprocess.call(["convert", root + ".ppm", "-blur", "4x4", root + "-blur.png"])
+      subprocess.call(["python2", argv[0], argv[1], "illust", str(pixels), root + "-blur.png"])
+      subprocess.call(["convert", root + ".ppm", root + "-blur-illust.ppm", "-average", "-compress", "none", root + "-ir-base.ppm"])
+      subprocess.call([argv[1], "reshape", str(pixels), root + "-blur.ppm", root + "-ir-base.ppm", root + "-ir.ppm"])
 
