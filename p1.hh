@@ -100,8 +100,11 @@ template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen) {
   b.resize(statlen * 2 + 1);
   A.resize(b.size(), varlen);
   lasterr = T(0);
+#if defined(_FLOAT_BITS_)
+  const auto epsilon(T(1) >> int64_t(mybits - 2));
+#else
   const auto epsilon(std::numeric_limits<T>::epsilon());
-  // const auto epsilon(T(1) >> short(62));
+#endif
   threshold_feas    = pow(epsilon, T(5) / T(6));
   threshold_p0      = pow(epsilon, T(4) / T(6));
   threshold_inner   = pow(epsilon, T(2) / T(6));
@@ -126,24 +129,27 @@ template <typename T> inline P1<T>::~P1() {
 
 template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
   assert(in.size() == statlen + varlen);
-  T MM(0);
   for(int i = 0; i < statlen; i ++) {
     for(int j = 0; j < varlen; j ++)
-      MM = max(MM, abs(A(i, j) = in[i + j]));
-    MM = max(MM, abs(b[i] = in[i + varlen]));
+      A(i, j) = in[i + j];
+    b[i] = in[i + varlen];
+    const auto norm(A.row(i).dot(A.row(i)) + b[i] * b[i]);
+    if(norm != T(0)) {
+      A.row(i) /= norm;
+      b[i]     /= norm;
+    }
   }
   for(int i = 0; i < statlen; i ++) {
     A.row(statlen + i) = - A.row(i);
     b[statlen + i]     = - b[i];
   }
-  A /= MM;
-  b /= MM;
   for(int i = 0; i < A.cols() - 1; i ++)
     A(statlen * 2, i) = T(0);
-  A(statlen * 2, A.cols() - 1) = b[statlen * 2] = - T(1);
+  A(statlen * 2, A.cols() - 1) = T(1);
+  b[statlen * 2] = - T(1) / T(200);
   for(int i = 0; i < fvec.size(); i ++)
     fvec[i] = T(0);
-  lasterr = A.rows() + A.cols();
+  lasterr = T(A.rows() + A.cols());
   for(int i = 0; i < Pt.rows(); i ++)
     for(int j = 0; j < Pt.cols(); j ++)
       Pt(i, j) = T(0);
@@ -242,6 +248,7 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
       try {
         rvec = F.solve(f);
       } catch (const char* e) {
+        std::cerr << e << std::endl;
         continue;
       }
     } else
@@ -253,14 +260,21 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
     auto err(err0 - b - one * ratio);
     for(int i = 0; i < b.size(); i ++)
       if(err[i] <= T(0)) err[i] = T(0);
-    if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0))) {
+    if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0)) && T(0) < rvec.dot(rvec)) {
       try {
-        fvec = R.solve(rvec);
+        const auto ffvec(R.solve(rvec));
+        for(int i = 0; i < ffvec.size(); i ++)
+          if(isnan(ffvec[i]) || ! isfinite(ffvec[i]))
+            goto next;
+        fvec = ffvec;
       } catch(const char* e) {
+        std::cerr << e << std::endl;
         continue;
       }
       lasterr -= ratio0;
     }
+   next:
+    ;
   }
   return fvec;
 }
@@ -301,8 +315,6 @@ template <typename T> inline T P1B<T>::next(const T& in) {
   T res(0);
   for(int i = 0; i < fvec.size(); i ++)
     res += buf[i - fvec.size() + buf.size()] * fvec[i];
-  if(! isfinite(res) || isnan(res))
-    res  = in;
   return res;
 }
 

@@ -1,6 +1,5 @@
 # Goki Check
-These program aims to implement one of a complement to ongoing other utilities.  
-And this program is written in the deterministic way. So machine learning method is not used in this library.
+These program aims to implement one of a complement to ongoing other utilities.
 
 # How to use
 Please touch Makefile for libc++ enabled.  

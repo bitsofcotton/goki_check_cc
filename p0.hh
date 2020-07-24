@@ -38,11 +38,11 @@ public:
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
   inline ~P0();
-  inline T    next(const Vec& in, const T& err = T(1) / T(8000));
+  inline T    next(const Vec& in, const T& err = T(1) / T(80));
   inline Vec  taylor(const int& size, const T& step);
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size);
-  const Vec&  integ(const int& size);
+  const Mat&  integ(const int& size);
 private:
   const Vec&  nextP(const int& size);
   const Vec&  minSq(const int& size);
@@ -140,12 +140,12 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
   return D[size] = (seed(size, true) * DD).template real<T>() * sqrt(sqrt(T(DD.rows() - 1) / (nd * ni)));
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::integ(const int& size) {
+template <typename T> const typename P0<T>::Mat& P0<T>::integ(const int& size) {
   assert(1 < size);
-  static vector<Vec> I;
+  static vector<Mat> I;
   if(I.size() <= size)
-    I.resize(size + 1, Vec());
-  if(I[size].size() == size)
+    I.resize(size + 1, Mat());
+  if(I[size].rows() == size && I[size].cols() == size)
     return I[size];
   auto II(seed(size, false));
   T nd(0);
@@ -157,11 +157,11 @@ template <typename T> const typename P0<T>::Vec& P0<T>::integ(const int& size) {
     nd += abs(phase)  * abs(phase);
     ni += abs(phase2) * abs(phase2);
   }
-  return I[size] = (seed(size, true) * II).template real<T>().row(size - 1) * sqrt(sqrt(T(II.rows() - 1) / (nd * ni)));
+  return I[size] = (seed(size, true) * II).template real<T>() * sqrt(sqrt(T(II.rows() - 1) / (nd * ni)));
 }
 
 template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
-  const auto  spt(min(size - 1, max(0, int(floor(step)))));
+  const auto  spt(min(size - 1, max(0, int(ceil(step)))));
   const auto  residue(step - T(spt));
         Vec   tayl(size);
   const auto& D(diff(size));
@@ -256,17 +256,17 @@ template <typename T> inline T P0B<T>::next(const T& in) {
     avg += buf[i];
   avg /= T(int(buf.size()));
   bufd[bufd.size() - 1] = p.diff(buf.size()).row(buf.size() - 1).dot(buf) + avg;
-  bufi[bufi.size() - 1] = p.integ(buf.size()).dot(buf);
+  bufi[bufi.size() - 1] = p.integ(buf.size()).row(buf.size() - 1).dot(buf);
   VecU bufdd(bufd.size());
   VecU bufii(bufi.size()); 
-  for(int i = 0; i < bufdd.size() - 1; i ++) {
+  for(int i = 0; i < bufd.size() - 1; i ++) {
     bufdd[i] = complex<T>(bufd[i + 1]);
     bufii[i] = complex<T>(bufi[i + 1]);
   }
   bufdd[bufdd.size() - 1] = complex<T>(p.next(bufd));
   bufii[bufii.size() - 1] = complex<T>(p.next(bufi));
   const auto freqd(p.seed(bufdd.size(), false) * bufdd);
-  const auto freqi(p.seed(bufii.size(), false) * bufdd);
+  const auto freqi(p.seed(bufii.size(), false) * bufii);
         VecU freq(freqd.size());
   for(int i = 0; i < freq.size(); i ++)
     freq[i] = sqrt(freqd[i] * freqi[i]);

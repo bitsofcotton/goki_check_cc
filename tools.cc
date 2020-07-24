@@ -14,8 +14,7 @@
 
 #include "ifloat.hh"
 template <typename T> using complex = Complex<T>;
-//typedef SimpleFloat<uint16_t, uint32_t, 16, char> num_t;
-typedef SimpleFloat<uint32_t, uint64_t, 32, short> num_t;
+typedef SimpleFloat<uint32_t, uint64_t, 32, int16_t> num_t;
 
 #else
 
