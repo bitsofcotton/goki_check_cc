@@ -518,7 +518,7 @@ template <typename T, int bits> std::ostream& operator << (std::ostream& os, Sig
 template <typename T, typename W, int bits, typename U> class SimpleFloat {
 public:
   inline SimpleFloat();
-  inline SimpleFloat(const T& src);
+  template <typename V> inline SimpleFloat(const V& src);
   inline SimpleFloat(const SimpleFloat<T,W,bits,U>& src);
   inline SimpleFloat(SimpleFloat<T,W,bits,U>&& src);
   inline ~SimpleFloat();
@@ -598,13 +598,13 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
   assert(0 < bits && ! (bits & 1));
 }
 
-template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>::SimpleFloat(const T& src) {
-  const static T tzero(0);
+template <typename T, typename W, int bits, typename U> template <typename V> inline SimpleFloat<T,W,bits,U>::SimpleFloat(const V& src) {
+  const static V vzero(0);
   s ^= s;
-  m  = src < tzero ? - src : src;
+  m  = T(src < vzero ? - src : src);
   e ^= e;
   s |= safeAdd(e, normalize(m));
-  if(src < tzero)
+  if(src < vzero)
     s |= 1 << SIGN;
   ensureFlag();
 }
