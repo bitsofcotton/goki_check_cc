@@ -105,12 +105,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
             j <   (work.rows() + work.cols()) * 2; j ++)
       for(int k = - (work.rows() + work.cols());
               k <   (work.rows() + work.cols()) * 2; k ++) {
-        const auto yy0(c * T(j) - s * T(k) + T(1) / T(2));
-        const auto xx0(s * T(j) + c * T(k) + T(1) / T(2));
-        if(T(0) <= yy0 && yy0 < T(work.rows()) &&
-           T(0) <= xx0 && xx0 < T(work.cols())) {
-          const int yy(yy0);
-          const int xx(xx0);
+        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
+        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
+        if(0 <= yy && yy < work.rows() &&
+           0 <= xx && xx < work.cols()) {
           work(yy, xx) = work(min(yy + 1, int(work.rows()) - 1), xx) =
             work(yy, min(xx + 1, int(work.cols()) - 1)) =
             work(min(yy + 1, int(work.rows()) - 1),
@@ -126,14 +124,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
             j <   (work.rows() + work.cols()) * 2; j ++)
       for(int k = - (work.rows() + work.cols());
               k <   (work.rows() + work.cols()) * 2; k ++) {
-        const auto yy0(c * T(j) - s * T(k) + T(1) / T(2));
-        const auto xx0(s * T(j) + c * T(k) + T(1) / T(2));
+        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
+        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
         const int jj(((j % lres.rows()) + lres.rows()) % lres.rows());
         const int kk(((k % lres.cols()) + lres.cols()) % lres.cols());
-        if(T(0) <= yy0 && yy0 < T(work.rows()) &&
-           T(0) <= xx0 && xx0 < T(work.cols())) {
-          const int yy(yy0);
-          const int xx(xx0);
+        if(0 <= yy && yy < work.rows() &&
+           0 <= xx && xx < work.cols()) {
           lres(((j % lres.rows()) + lres.rows()) % lres.rows(),
                ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
         }
@@ -240,8 +236,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         // <c + (p - c) * t, [0, 1]> = 0
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(y0 < - T(A.rows()) || T(A.rows() * 2) < y0 ||
-           abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
+        if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
           continue;
         assert(int(y0) * 2 <= data.rows());
         initDop(abs(int(y0 * T(2))));
