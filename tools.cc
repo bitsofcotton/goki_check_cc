@@ -14,8 +14,7 @@
 
 #include "ifloat.hh"
 template <typename T> using complex = Complex<T>;
-//typedef SimpleFloat<uint32_t, uint64_t, 32, int16_t> num_t;
-typedef SimpleFloat<uint64_t, DUInt<uint64_t, 64>, 64, int16_t> num_t;
+typedef SimpleFloat<uint32_t, uint64_t, 32, int16_t> num_t;
 
 #else
 
@@ -265,7 +264,7 @@ int main(int argc, const char* argv[]) {
     const auto depth(strcmp(argv[1], "sbox") == 0 ?
                      num_t(index) / num_t(Mindex) * zratio *
                        sqrt(num_t(data[0].rows() * data[0].cols())) :
-                     - num_t(100000000));
+                     - num_t(1000000));
     if(is_obj)
       tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt), depth);
     else

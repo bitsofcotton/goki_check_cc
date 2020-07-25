@@ -57,7 +57,7 @@ elif(argv[2] == "ppred"):
     cmd.append(s + "-bump.ppm")
   print " ".join(cmd)
   subprocess.call(cmd)
-  subprocess.call(["ffmpeg", "-loop", "1", "-i", "pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", "pose.mp4"])
+  subprocess.call(["ffmpeg", "-i", "pose%d.ppm", "-r", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "pose.mp4"])
 else:
   for line in argv[3:]:
     try:
