@@ -130,8 +130,8 @@ public:
   vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1e8));
-  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0 = - T(1e8));
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1000000));
+  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0 = - T(1000000));
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
 
 private:
@@ -142,7 +142,7 @@ private:
   Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
   bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
   bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(1e8));
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(100000));
   int  getImgPtRecursive(const int& h, const int& y) const;
   
   T   Pi;
@@ -889,7 +889,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
         Vec3 work(3);
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
-        work[2] = sqrt(T(in.rows() * in.cols())) * rz * (avg / T(vbox) / T(vbox) - aavg);
+        work[2] = sqrt(T(in.rows() * in.cols())) * rz * abs(avg / T(vbox) / T(vbox) - aavg);
         geoms.push_back(work);
       }
     }
@@ -1021,9 +1021,9 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
 template <typename T> vector<vector<std::pair<int, int> > > reDig<T>::getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg) {
   vector<vector<std::pair<int, int> > > res;
   res.resize(attend.size());
+  const auto h(refimg.rows() / vbox + 1);
+  const auto w(refimg.cols() / vbox + 1);
   for(int i = 0; i < attend.size(); i ++) {
-    const auto h(refimg.rows() / vbox + 1);
-    const auto w(refimg.cols() / vbox + 1);
     res[i].resize(attend[i].size());
     for(int j = 0; j < attend[i].size(); j ++) {
       const auto& a0ij(attend[i][j]);
@@ -1082,8 +1082,9 @@ template <typename T> typename reDig<T>::Triangles reDig<T>::makeTriangle(const 
 
 template <typename T> bool reDig<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q, const bool& extend, const T& err) const {
   const Vec2 dlt(p1 - p0);
-  Vec2 dp(p2 - p0);
-  dp -= dlt * dlt.dot(dp) / dlt.dot(dlt);
+        Vec2 dp(p2 - p0);
+  if(T(0) < dlt.dot(dlt))
+    dp -= dlt * dlt.dot(dp) / dlt.dot(dlt);
   // N.B. dp.dot(p1 - p0) >> 0.
   return dp.dot(q - p0) >= (extend ? - T(1) : T(1)) * (abs(dp[0]) + abs(dp[1])) * err;
 }

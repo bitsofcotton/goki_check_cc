@@ -942,6 +942,7 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
     return *this;
   if(! m) {
     auto work(*this);
+    work.m  = T(1);
     work.s |= (1 << INF) | (1 << SIGN);
     return work;
   }
