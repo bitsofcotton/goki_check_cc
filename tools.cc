@@ -543,7 +543,7 @@ int main(int argc, const char* argv[]) {
         std::cerr << "." << std::flush;
       }
       const auto a2xy(redig.getReverseLookup(attend[idx], in[idx][0]));
-      for(int i = 1; i < std::atoi(argv[5]); i ++) {
+      for(int i = 0; i < std::atoi(argv[5]); i ++) {
         redig.complement(pout, outcenter, in, center, attend[idx], a2xy,
           num_t(idx) + num_t(i) / num_t(std::atoi(argv[5])));
         const auto newshape(redig.takeShape(shape[idx], center[idx], outcenter, attend[idx], num_t(1)));
