@@ -519,7 +519,7 @@ int main(int argc, const char* argv[]) {
     std::vector<typename simpleFile<num_t>::Mat>  pout;
     typename simpleFile<num_t>::Mat out[3];
     const auto rin0(redig.makeRefMatrix(in[0][0], 1));
-    if(0){
+    {
             auto center1(center);
       const auto idx(center.size() - 1);
       for(int i = 0; i < in.size(); i ++) {
