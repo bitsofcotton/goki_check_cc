@@ -38,7 +38,7 @@ public:
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
   inline ~P0();
-  inline T    next(const Vec& in, const T& err = T(1) / T(80));
+  inline T    next(const Vec& in, const T& err = T(1) / T(80000));
   inline Vec  taylor(const int& size, const T& step);
   const MatU& seed(const int& size, const bool& idft);
   const Mat&  diff(const int& size);
@@ -161,7 +161,7 @@ template <typename T> const typename P0<T>::Mat& P0<T>::integ(const int& size) {
 }
 
 template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
-  const auto  spt(min(size - 1, max(0, int(floor(step)))));
+  const auto  spt(min(size - 1, max(0, int(ceil(step)))));
   const auto  residue(step - T(spt));
         Vec   tayl(size);
   const auto& D(diff(size));
@@ -251,11 +251,7 @@ template <typename T> inline T P0B<T>::next(const T& in) {
     bufd[i] = bufd[i + 1];
     bufi[i] = bufi[i + 1];
   }
-  T avg(0);
-  for(int i = 0; i < buf.size(); i ++)
-    avg += buf[i];
-  avg /= T(int(buf.size()));
-  bufd[bufd.size() - 1] = p.diff(buf.size()).row(buf.size() - 1).dot(buf) + avg;
+  bufd[bufd.size() - 1] = p.diff(buf.size()).row(buf.size() - 1).dot(buf);
   bufi[bufi.size() - 1] = p.integ(buf.size()).row(buf.size() - 1).dot(buf);
   VecU bufdd(bufd.size());
   VecU bufii(bufi.size()); 
@@ -268,9 +264,10 @@ template <typename T> inline T P0B<T>::next(const T& in) {
   const auto freqd(p.seed(bufdd.size(), false) * bufdd);
   const auto freqi(p.seed(bufii.size(), false) * bufii);
         VecU freq(freqd.size());
-  for(int i = 0; i < freq.size(); i ++)
+  freq[0] = complex<T>(T(0));
+  for(int i = 1; i < freq.size(); i ++)
     freq[i] = sqrt(freqd[i] * freqi[i]);
-  return (p.seed(freq.size(), true).row(freq.size() - 1).dot(freq).real() + p.next(buf)) / T(2);
+  return (in + p.seed(freq.size(), true).row(freq.size() - 1).dot(freq).real() + p.next(buf)) / T(2);
 }
 
 #define _P0_
