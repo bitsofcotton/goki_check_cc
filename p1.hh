@@ -89,15 +89,15 @@ private:
 };
 
 template <typename T> inline P1<T>::P1() {
-  statlen  = varlen = 0;
+  statlen = varlen = 0;
   threshold_feas = threshold_p0 = threshold_inner = lasterr = T(0);
 }
 
 template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen) {
   assert(1 < varlen && varlen < statlen);
-  this->statlen  = statlen;
-  this->varlen   = varlen;
-  b.resize(statlen * 2 + 1);
+  this->statlen = statlen;
+  this->varlen  = varlen;
+  b.resize(statlen * 2);
   A.resize(b.size(), varlen);
   lasterr = T(0);
 #if defined(_FLOAT_BITS_)
@@ -133,7 +133,7 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
     for(int j = 0; j < varlen; j ++)
       A(i, j) = in[i + j];
     b[i] = in[i + varlen];
-    const auto norm(A.row(i).dot(A.row(i)) + b[i] * b[i]);
+    const auto norm(sqrt(A.row(i).dot(A.row(i)) + b[i] * b[i]));
     if(norm != T(0)) {
       A.row(i) /= norm;
       b[i]     /= norm;
@@ -143,10 +143,6 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
     A.row(statlen + i) = - A.row(i);
     b[statlen + i]     = - b[i];
   }
-  for(int i = 0; i < A.cols() - 1; i ++)
-    A(statlen * 2, i) = T(0);
-  A(statlen * 2, A.cols() - 1) = T(1);
-  b[statlen * 2] = - T(1) / T(200);
   for(int i = 0; i < fvec.size(); i ++)
     fvec[i] = T(0);
   lasterr = T(A.rows() + A.cols());
@@ -311,7 +307,9 @@ template <typename T> inline T P1B<T>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
-  const auto& fvec(p.next(buf));
+  auto fvec(p.next(buf));
+  if(fvec.dot(fvec) != num_t(0))
+    fvec /= sqrt(fvec.dot(fvec)) / T(fvec.size());
   T res(0);
   for(int i = 0; i < fvec.size(); i ++)
     res += buf[i - fvec.size() + buf.size()] * fvec[i];
