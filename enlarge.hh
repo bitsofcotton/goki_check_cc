@@ -31,9 +31,6 @@ public:
     ENLARGE_X,
     ENLARGE_Y,
     ENLARGE_BOTH,
-    INTEG_X,
-    INTEG_Y,
-    INTEG_BOTH,
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
@@ -73,7 +70,6 @@ private:
   void initEop(const int& size);
   T    Pi;
   vector<Mat> Dop;
-  vector<Mat> Iop;
   vector<Mat> Eop;
   vector<Mat> Sop;
   int  idx;
@@ -157,9 +153,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case BUMP_BOTH:
     result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
     break;
-  case INTEG_BOTH:
-    result = gmean(compute(data, INTEG_X), compute(data, INTEG_Y));
-    break;
   case EXTEND_BOTH:
     result = compute(compute(data, EXTEND_X), EXTEND_Y);
     break;
@@ -168,9 +161,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case ENLARGE_X:
     result = compute(data.transpose(), ENLARGE_Y).transpose();
-    break;
-  case INTEG_X:
-    result = compute(data.transpose(), INTEG_Y).transpose();
     break;
   case DETECT_X:
     result = compute(data.transpose(), DETECT_Y).transpose();
@@ -191,10 +181,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case ENLARGE_Y:
     initEop(data.rows());
     result = Eop[idx] * data;
-    break;
-  case INTEG_Y:
-    initDop(data.rows());
-    result = Iop[idx] * data;
     break;
   case DETECT_Y:
     initDop(data.rows());
@@ -326,20 +312,18 @@ template <typename T> void Filter<T>::initDop(const int& size) {
     }
   cerr << "n" << flush;
   idx = Dop.size();
-  Dop.push_back(Mat(size, size));
-  for(int i = 0; i < Dop[idx].rows(); i ++)
-    for(int j = 0; j < Dop[idx].cols(); j ++)
-      Dop[idx](i, j) = T(0);
-  Iop.push_back(Dop[idx]);
-  Sop.push_back(Dop[idx]);
+  P0<T> p;
+  Dop.push_back(p.diff(size));
+  Sop.push_back(Mat(size, size));
+  for(int i = 0; i < Sop[idx].rows(); i ++)
+    for(int j = 0; j < Sop[idx].cols(); j ++)
+      Sop[idx](i, j) = T(0);
   int cnt(1);
   for(int ss = 2; ss <= size; ss *= 2, cnt ++) {
           auto DFTS(seed(ss, false));
     const auto IDFT(seed(ss, true));
-          auto DFTI(DFTS);
     DFTS.row(0) *= U(T(0));
     for(int i = 1; i < DFTS.rows(); i ++) {
-      DFTI.row(i) /= U(T(2)) * Pi * U(T(0), T(1)) * T(i) / T(DFTS.rows());
       // N.B. integrate.
       // DFTI.row(i) /= phase;
       // N.B. (d^(')/dy^(')) f, differential-integral space tilt on f.
@@ -351,45 +335,32 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
     }
     DFTS /= T(DFTS.rows() - 1);
-    P0<T> p;
 #if defined(_WITHOUT_EIGEN_)
-    const Mat lDop(p.diff(ss));
-    const Mat lIop((IDFT * DFTI).template real<T>());
-          Mat lSop(- (IDFT * DFTS).template real<T>());
+    Mat lSop(- (IDFT * DFTS).template real<T>());
 #else
-    const Mat lDop(p.diff(ss));
-    const Mat lIop((IDFT * DFTI).real().template cast<T>());
-          Mat lSop(- (IDFT * DFTS).template real<T>());
+    Mat lSop(- (IDFT * DFTS).template real<T>());
 #endif
     for(int i = 0; i < lSop.rows(); i ++)
       lSop(i, i) += T(1);
-    for(int i = 0; i < Dop[idx].rows(); i ++)
-      for(int j = 0; j < lDop.rows(); j ++) {
-        int ij(i - lDop.rows() / 2 + j);
-        int jj(lDop.rows() / 2);
-        if(i < lDop.rows() / 2) {
+    for(int i = 0; i < Sop[idx].rows(); i ++)
+      for(int j = 0; j < lSop.rows(); j ++) {
+        int ij(i - lSop.rows() / 2 + j);
+        int jj(lSop.rows() / 2);
+        if(i < lSop.rows() / 2) {
           ij = j;
           jj = i;
-        } else if(Dop[idx].rows() - i < (lDop.rows() + 1) / 2) {
-          ij = j - lDop.rows() + Dop[idx].rows();
-          jj = i - Dop[idx].rows() + lDop.rows();
+        } else if(Sop[idx].rows() - i < (lSop.rows() + 1) / 2) {
+          ij = j - lSop.rows() + Sop[idx].rows();
+          jj = i - Sop[idx].rows() + lSop.rows();
         }
-        Dop[idx](i, ij) += lDop(jj, j);
-        Iop[idx](i, ij) += lIop(jj, j);
         Sop[idx](i, ij) += lSop(jj, j);
       }
   }
-  Dop[idx] /= T(cnt);
-  Iop[idx] /= T(cnt);
   Sop[idx] /= T(cnt);
-  const Mat II(Iop[idx]);
   const Mat SS(Sop[idx]);
-  for(int i = 0; i < II.rows(); i ++)
-    for(int j = 0; j < II.cols(); j ++) {
-      Iop[idx](II.rows() - i - 1, II.cols() - j - 1) += II(i, j);
+  for(int i = 0; i < SS.rows(); i ++)
+    for(int j = 0; j < SS.cols(); j ++)
       Sop[idx](SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
-    }
-  Iop[idx] /= T(2);
   Sop[idx] /= T(2);
   for(int i = 0; i < recur - 1; i ++)
     Sop[idx] = Sop[idx] * Sop[idx];

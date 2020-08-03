@@ -130,9 +130,9 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.rotcompute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = redig.autoLevel(filter.rotcompute(filter.rotcompute(redig.rgb2l(data), filter.BUMP_BOTH, rot), filter.INTEG_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
+      data[0] = data[1] = data[2] = redig.autoLevel(filter.rotcompute(redig.rgb2l(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
     else if(strcmp(argv[1], "illust") == 0) {
-      const auto bump(redig.autoLevel(filter.rotcompute(filter.rotcompute(redig.rgb2l(data), filter.BUMP_BOTH, rot), filter.INTEG_BOTH, rot), 4 * (data[0].rows() + data[0].cols())));
+      const auto bump(redig.autoLevel(filter.rotcompute(redig.rgb2l(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols())));
       typename simpleFile<num_t>::Mat res[3];
       res[0].resize(data[0].rows(), data[0].cols());
       for(int i = 0; i < res[0].rows(); i ++)
