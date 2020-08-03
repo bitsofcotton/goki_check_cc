@@ -334,26 +334,12 @@ template <typename T> void Filter<T>::initDop(const int& size) {
   Sop.push_back(Dop[idx]);
   int cnt(1);
   for(int ss = 2; ss <= size; ss *= 2, cnt ++) {
-          auto DFTD(seed(ss, false));
+          auto DFTS(seed(ss, false));
     const auto IDFT(seed(ss, true));
-          auto DFTI(DFTD);
-    DFTD.row(0) *= U(T(0));
-          auto DFTS(DFTD);
-    T ni(0);
-    T nd(0);
-    for(int i = 1; i < DFTD.rows(); i ++) {
-      const auto phase(U(T(2)) * Pi * U(T(0), T(1)) * T(i) / T(DFTD.rows()));
-      const auto phase2(U(T(1)) / phase);
-      // N.B. d/dy with sampling theorem.
-      if(i < DFTD.rows() / 2) {
-        DFTD.row(i) *= phase;
-        DFTI.row(i) /= phase;
-        nd += abs(phase)  * abs(phase);
-        ni += abs(phase2) * abs(phase2);
-      } else {
-        DFTD.row(i) *= U(T(0));
-        DFTI.row(i) *= U(T(0));
-      }
+          auto DFTI(DFTS);
+    DFTS.row(0) *= U(T(0));
+    for(int i = 1; i < DFTS.rows(); i ++) {
+      DFTI.row(i) /= U(T(2)) * Pi * U(T(0), T(1)) * T(i) / T(DFTS.rows());
       // N.B. integrate.
       // DFTI.row(i) /= phase;
       // N.B. (d^(')/dy^(')) f, differential-integral space tilt on f.
@@ -364,37 +350,14 @@ template <typename T> void Filter<T>::initDop(const int& size) {
       //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
       DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
     }
-    // N.B. similar to det(Dop * Iop) == det(Dop) * det(Iop) == 1,
-    //      but Dop * Iop == I in ideal (Iop.row(0) == NaN) case.
-    //      with omitting IDFT and DFT on both side, ||.||_2^2,
-    //      in matrix-matrix operation:
-    //      ||Dop * Iop * x|| / ||x|| == sum(sum(d_k*i_l*x_m)^2)/sum(x_k^2)
-    //                                == sum(d_k^2)*sum(i_l^2)*cos theta cos psi
-    //                                == (n - 1) * cos psi
-    //      in matrix-vector operation:
-    //      ||Dop * Iop * x|| / ||x|| == sum(sum(d_k*i_l*x_m)^2)/sum(x_k^2)
-    //                                == sum(d_k^2)*cos theta'*sum(i_l^2)cos phi
-    //                                == ||Dop|| ||Iop|| cos theta' cos phi
-    //      so we choose matrix-vector operation with matrix-matrix style,
-    //      because of cosine range, with normal ||.||_2, we choose:
-    //        Dop' := Dop sqrt(sqrt(n - 1)) / sqrt(||Dop|| ||Iop||).
-    //        Iop' := Iop sqrt(sqrt(n - 1)) / sqrt(||Dop|| ||Iop||).
-    //      then we get:
-    //        Iop' * Dop' == Iop * Dop * sqrt(n - 1) / (||Dop|| * ||Iop||)
-    //      And, if we change coefficients ratio on differential operator,
-    //        and its inverse of integrate operator, it causes invalid
-    //        on the meaning of DFT core, but in experiment,
-    //          if ||Dop|| ||Iop|| == 1 in that meaning,
-    //          exists r in R, Dop * x == r * x results gains.
-    DFTD *= nd * ni == T(0) ? T(0) : sqrt(sqrt(T(DFTD.rows() - 1) / (nd * ni)));
-    DFTI *= nd * ni == T(0) ? T(0) : sqrt(sqrt(T(DFTD.rows() - 1) / (nd * ni)));
-    DFTS /= T(DFTS.rows()  - 1);
+    DFTS /= T(DFTS.rows() - 1);
+    P0<T> p;
 #if defined(_WITHOUT_EIGEN_)
-    const Mat lDop((IDFT * DFTD).template real<T>());
+    const Mat lDop(p.diff(ss));
     const Mat lIop((IDFT * DFTI).template real<T>());
           Mat lSop(- (IDFT * DFTS).template real<T>());
 #else
-    const Mat lDop((IDFT * DFTD).real().template cast<T>());
+    const Mat lDop(p.diff(ss));
     const Mat lIop((IDFT * DFTI).real().template cast<T>());
           Mat lSop(- (IDFT * DFTS).template real<T>());
 #endif
