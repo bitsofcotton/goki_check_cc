@@ -97,9 +97,9 @@ public:
 #endif
   typedef triangles_t<T>           Triangles;
   
-  reDig();
-  ~reDig();
-  void initialize(const int& vbox, const T& rz = - T(1));
+  inline reDig();
+  inline ~reDig();
+  inline void initialize(const int& vbox, const T& rz = - T(1));
   Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Vec3>& emph, const vector<Veci3>& hull);
   Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const bool& elim = false);
   Mat  drawBone(const vector<Vec3>& center, const vector<T>& r, const int& rows, const int& cols);
@@ -138,27 +138,27 @@ private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
   void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
   inline bool isClockwise(const Vec3 p[3]) const;
-  bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
-  Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
-  bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
-  bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
+  inline bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
+  inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
+  inline bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
+  inline bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(100000));
-  int  getImgPtRecursive(const int& h, const int& y) const;
+  inline int  getImgPtRecursive(const int& h, const int& y) const;
   
   T   Pi;
   int vbox;
   T   rz;
 };
 
-template <typename T> reDig<T>::reDig() {
+template <typename T> inline reDig<T>::reDig() {
   initialize(3, T(15) / T(100));
 }
 
-template <typename T> reDig<T>::~reDig() {
+template <typename T> inline reDig<T>::~reDig() {
   ;
 }
 
-template <typename T> void reDig<T>::initialize(const int& vbox, const T& rz) {
+template <typename T> inline void reDig<T>::initialize(const int& vbox, const T& rz) {
   assert(0 < vbox);
   Pi         = T(4) * atan2(T(1), T(1));
   this->vbox = vbox;
@@ -1057,7 +1057,7 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const v
   return result;
 }
 
-template <typename T> typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
+template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
   Triangles work;
   if(flg) {
     work.p(0, 0) = u;
@@ -1080,7 +1080,7 @@ template <typename T> typename reDig<T>::Triangles reDig<T>::makeTriangle(const 
   return work.solveN();
 }
 
-template <typename T> bool reDig<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q, const bool& extend, const T& err) const {
+template <typename T> inline bool reDig<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q, const bool& extend, const T& err) const {
   const Vec2 dlt(p1 - p0);
         Vec2 dp(p2 - p0);
   if(T(0) < dlt.dot(dlt))
@@ -1089,7 +1089,7 @@ template <typename T> bool reDig<T>::sameSide2(const Vec2& p0, const Vec2& p1, c
   return dp.dot(q - p0) >= (extend ? - T(1) : T(1)) * (abs(dp[0]) + abs(dp[1])) * err;
 }
 
-template <typename T> bool reDig<T>::sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const bool& extend, const T& err) const {
+template <typename T> inline bool reDig<T>::sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const bool& extend, const T& err) const {
   Vec2 q0(2), q1(2), q2(2), qq(2);
   q0[0] = p0[0]; q0[1] = p0[1]; q1[0] = p1[0]; q1[1] = p1[1];
   q2[0] = p2[0]; q2[1] = p2[1]; qq[0] = q[0];  qq[1] = q[1];
@@ -1097,7 +1097,7 @@ template <typename T> bool reDig<T>::sameSide3(const Vec3& p0, const Vec3& p1, c
 }
 
 // <[x, y, t], triangle.n> == triangle.z
-template <typename T> bool reDig<T>::onTriangle(T& z, const Triangles& tri, const Vec2& geom) {
+template <typename T> inline bool reDig<T>::onTriangle(T& z, const Triangles& tri, const Vec2& geom) {
   Vec3 v0(3);
   Vec3 camera(3);
   v0[0] = 0;
@@ -1245,7 +1245,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   return result;
 }
 
-template <typename T> int reDig<T>::getImgPtRecursive(const int& h, const int& y) const {
+template <typename T> inline int reDig<T>::getImgPtRecursive(const int& h, const int& y) const {
   return ((y % h) + h) % h;
 }
 

@@ -1,11 +1,12 @@
 # Goki Check
-These program aims to implement one of a complement to ongoing other utilities.
+These program aims to implement one of a complement to ongoing other utilities.  
+And this library is written in deterministic way. So this don't use machine learning methods.
 
 # How to use
 Please touch Makefile for libc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
 For speed, we need http://eigen.tuxfamily.org/ library.  
-We need imagemagick for normal use, and ffmpeg for making .mp4.  
+We need imagemagick for normal use, and ffmpeg to make .mp4.  
 
 # Parameters
 * enlarge.hh
@@ -28,9 +29,6 @@ There's preceders to match 3D to 2D with many approaches. (s.t. detecting topolo
 By searching with some word that is not common, there exists the article https://ryo620.org/2018/02/to-gltf-from-fbx-by-blender/ that I firstly know the gltf format by this. There's a https://github.com/jessey-git/fx-gltf/ library, but compatibility for this is abandoned.  
 From some news, there exists the machine learning method that is making 3D model from single picture condition.
 Searching the Internet more...
-
-# Status
-Waiting more bug information.
 
 # Usage
     make gokicheck
