@@ -461,12 +461,8 @@ int main(int argc, const char* argv[]) {
       return - 1;
     }
     const auto  vbox(std::atoi(argv[2]));
-/*
     const auto  thresh(std::atof(argv[3]));
     const num_t zratio(std::atof(argv[4]));
-*/
-    const auto  thresh(num_t(05) / num_t(100));
-    const auto  zratio(num_t(25) / num_t(100));
     std::vector<std::vector<typename simpleFile<num_t>::Mat> > in;
     std::vector<typename simpleFile<num_t>::Mat> inb;
     in.resize((argc - 7) / 2);
