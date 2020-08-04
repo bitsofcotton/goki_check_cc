@@ -59,27 +59,20 @@ public:
 #endif
   Filter(const int& recur = 2);
   ~Filter();
-  Mat  rotcompute(const Mat& data, const direction_t& dir, const int& n);
-  Mat  compute(const Mat& data, const direction_t& dir);
-  MatU seed(const int& size, const bool& idft);
-  Mat  gmean(const Mat& a, const Mat& b);
-  int  getImgPt(const int& y, const int& h);
+  Mat rotcompute(const Mat& data, const direction_t& dir, const int& n);
+  Mat compute(const Mat& data, const direction_t& dir);
+  inline int getImgPt(const int& y, const int& h);
+  inline Mat gmean(const Mat& a, const Mat& b);
 
 private:
-  void initDop(const int& size);
-  void initEop(const int& size);
-  T    Pi;
-  vector<Mat> Dop;
-  vector<Mat> Eop;
-  vector<Mat> Sop;
-  int  idx;
-  int  recur;
+  T   Pi;
+  int recur;
 };
 
 template <typename T> Filter<T>::Filter(const int& recur) {
   Pi  = atan2(T(1), T(1)) * T(4);
-  idx = - 1;
   this->recur = recur;
+  assert(0 < recur);
 }
 
 template <typename T> Filter<T>::~Filter() {
@@ -136,6 +129,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
 }
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir) {
+  static P0<T> p;
   Mat result;
   switch(dir) {
   case SHARPEN_BOTH:
@@ -175,16 +169,110 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     result = compute(data.transpose(), EXTEND_Y).transpose();
     break;
   case SHARPEN_Y:
-    initDop(data.rows());
-    result = Sop[idx] * data;
+    {
+      assert(2 <= data.rows());
+      static vector<vector<Mat> > Sop;
+      int idx(0);
+      for(int i = 0; i < Sop.size(); i ++)
+        if(Sop[i][0].rows() == data.rows()) {
+          idx = i;
+          goto sopi;
+        }
+      cerr << "s" << flush;
+      idx = Sop.size();
+      Sop.push_back(vector<Mat>());
+      Sop[idx].push_back(Mat(data.rows(), data.rows()));
+      {
+        auto& sop(Sop[idx][0]);
+        for(int i = 0; i < sop.rows(); i ++)
+          for(int j = 0; j < sop.cols(); j ++)
+            sop(i, j) = T(0);
+        int cnt(1);
+        for(int ss = 2; ss <= data.rows(); ss *= 2, cnt ++) {
+          auto DFTS(p.seed(ss));
+          DFTS.row(0) *= U(T(0));
+          for(int i = 1; i < DFTS.rows(); i ++) {
+            // N.B. d/dt((d^(t)/dy^(t)) f), differential-integral space tilt on f.
+            // DFTH.row(i) *= log(phase);
+            // N.B. please refer enlarge.wxm, half freq space refer and uses each.
+            //   -> This is sharpen operation at all because this is same as original
+            //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
+            //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
+            DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
+          }
+          DFTS /= T(DFTS.rows() - 1);
+#if defined(_WITHOUT_EIGEN_)
+          Mat lSop(- (p.seed(- ss) * DFTS).template real<T>());
+#else
+          Mat lSop(- (p.seed(- ss) * DFTS).template real<T>());
+#endif
+          for(int i = 0; i < lSop.rows(); i ++)
+            lSop(i, i) += T(1);
+          for(int i = 0; i < sop.rows(); i ++)
+            for(int j = 0; j < lSop.rows(); j ++) {
+              int ij(i - lSop.rows() / 2 + j);
+              int jj(lSop.rows() / 2);
+              if(i < lSop.rows() / 2) {
+                ij = j;
+                jj = i;
+              } else if(sop.rows() - i < (lSop.rows() + 1) / 2) {
+                ij = j - lSop.rows() + sop.rows();
+                jj = i - sop.rows() + lSop.rows();
+              }
+              sop(i, ij) += lSop(jj, j);
+            }
+        }
+        sop /= T(cnt);
+        const Mat SS(sop);
+        for(int i = 0; i < SS.rows(); i ++)
+          for(int j = 0; j < SS.cols(); j ++)
+            sop(SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
+        sop /= T(2);
+      }
+     sopi:
+      // N.B. insufficient:
+      for( ; Sop[idx].size() <= recur; )
+        Sop[idx].push_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][0]);
+      result = Sop[idx][recur] * data;
+    }
     break;
   case ENLARGE_Y:
-    initEop(data.rows());
-    result = Eop[idx] * data;
+    {
+      assert(2 <= data.rows());
+      static vector<pair<vector<Mat>, int> > Eop;
+      int idx(- 1);
+      for(int i = 0; i < Eop.size(); i ++)
+        if(Eop[i].second == data.rows()) {
+          idx = i;
+          break;
+        }
+      if(idx < 0) {
+        idx = Eop.size();
+        Eop.push_back(make_pair(vector<Mat>(), data.rows()));
+      }
+      cerr << "e" << flush;
+      if(Eop[idx].first.size() <= recur)
+        Eop[idx].first.resize(recur + 1, Mat());
+      auto& eop(Eop[idx].first[recur]);
+      if(eop.cols() == data.rows())
+        goto eopi;
+      eop.resize(data.rows() * recur, data.rows());
+      for(int i = 0; i < eop.rows(); i ++)
+        eop.row(i) = p.taylor(eop.cols(), T(i) / T(recur));
+      {
+        const Mat EEop(eop);
+        for(int i = 0; i < EEop.rows(); i ++)
+          for(int j = 0; j < EEop.cols(); j ++)
+            eop(i, j) += EEop(EEop.rows() - i - 1,
+                              EEop.cols() - j - 1);
+        eop /= T(2);
+      }
+     eopi:
+      result = Eop[idx].first[recur] * data;
+    }
     break;
   case DETECT_Y:
-    initDop(data.rows());
-    result = Dop[idx] * data;
+    result = p.diff(data.rows()) * data;
     break;
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
@@ -225,8 +313,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
           continue;
         assert(int(y0) * 2 <= data.rows());
-        initDop(abs(int(y0 * T(2))));
-        const auto Dop0((Dop[idx] * Dop[idx]).row(Dop[idx].rows() / 2));
+        const auto Dop(p.diff(abs(int(y0 * T(2)))));
+        const auto Dop0((Dop * Dop).row(Dop.rows() / 2));
         //  N.B. d^2C_k/dy^2 on zi.
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -303,93 +391,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   return result;
 }
 
-template <typename T> void Filter<T>::initDop(const int& size) {
-  assert(2 <= size);
-  for(int i = 0; i < Dop.size(); i ++)
-    if(Dop[i].rows() == size) {
-      idx = i;
-      return;
-    }
-  cerr << "n" << flush;
-  idx = Dop.size();
-  P0<T> p;
-  Dop.push_back(p.diff(size));
-  Sop.push_back(Mat(size, size));
-  for(int i = 0; i < Sop[idx].rows(); i ++)
-    for(int j = 0; j < Sop[idx].cols(); j ++)
-      Sop[idx](i, j) = T(0);
-  int cnt(1);
-  for(int ss = 2; ss <= size; ss *= 2, cnt ++) {
-          auto DFTS(seed(ss, false));
-    const auto IDFT(seed(ss, true));
-    DFTS.row(0) *= U(T(0));
-    for(int i = 1; i < DFTS.rows(); i ++) {
-      // N.B. integrate.
-      // DFTI.row(i) /= phase;
-      // N.B. (d^(')/dy^(')) f, differential-integral space tilt on f.
-      // DFTH.row(i) *= log(phase);
-      // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-      //   -> This is sharpen operation at all because this is same as original
-      //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
-      //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
-      DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
-    }
-    DFTS /= T(DFTS.rows() - 1);
-#if defined(_WITHOUT_EIGEN_)
-    Mat lSop(- (IDFT * DFTS).template real<T>());
-#else
-    Mat lSop(- (IDFT * DFTS).template real<T>());
-#endif
-    for(int i = 0; i < lSop.rows(); i ++)
-      lSop(i, i) += T(1);
-    for(int i = 0; i < Sop[idx].rows(); i ++)
-      for(int j = 0; j < lSop.rows(); j ++) {
-        int ij(i - lSop.rows() / 2 + j);
-        int jj(lSop.rows() / 2);
-        if(i < lSop.rows() / 2) {
-          ij = j;
-          jj = i;
-        } else if(Sop[idx].rows() - i < (lSop.rows() + 1) / 2) {
-          ij = j - lSop.rows() + Sop[idx].rows();
-          jj = i - Sop[idx].rows() + lSop.rows();
-        }
-        Sop[idx](i, ij) += lSop(jj, j);
-      }
-  }
-  Sop[idx] /= T(cnt);
-  const Mat SS(Sop[idx]);
-  for(int i = 0; i < SS.rows(); i ++)
-    for(int j = 0; j < SS.cols(); j ++)
-      Sop[idx](SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
-  Sop[idx] /= T(2);
-  for(int i = 0; i < recur - 1; i ++)
-    Sop[idx] = Sop[idx] * Sop[idx];
-  return;
-}
-
-template <typename T> void Filter<T>::initEop(const int& size) {
-  assert(2 <= size);
-  for(int i = 0; i < Eop.size(); i ++)
-    if(Eop[i].cols() == size) {
-      idx = i;
-      return;
-    }
-  cerr << "n" << flush;
-  idx = Eop.size();
-  Eop.push_back(Mat(size * recur, size));
-  P0<T> p;
-  for(int i = 0; i < Eop[idx].rows(); i ++)
-    Eop[idx].row(i) = p.taylor(Eop[idx].cols(), T(i) / T(recur));
-  const auto EEop(Eop[idx]);
-  for(int i = 0; i < Eop[idx].rows(); i ++)
-    for(int j = 0; j < Eop[idx].cols(); j ++)
-      Eop[idx](i, j) += EEop(EEop.rows() - i - 1,
-                             EEop.cols() - j - 1);
-  Eop[idx] /= T(2);
-  return;
-}
-
-template <typename T> int Filter<T>::getImgPt(const int& y, const int& h) {
+template <typename T> inline int Filter<T>::getImgPt(const int& y, const int& h) {
   int yy(y % (2 * h));
   if(yy < 0)
     yy = - yy;
@@ -398,21 +400,7 @@ template <typename T> int Filter<T>::getImgPt(const int& y, const int& h) {
   return yy % h;
 }
 
-template <typename T> typename Filter<T>::MatU Filter<T>::seed(const int& size, const bool& idft) {
-  MatU result(size, size);
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++) {
-      const auto phase(- T(2) * Pi * T(idft ? - 1 : 1) * T(i) * T(j) / T(size));
-      result(i, j) = U(cos(phase), sin(phase)) / T(idft ? size : 1);
-    }
-  return result;
-}
-
-template <typename T> typename Filter<T>::Mat Filter<T>::gmean(const Mat& a, const Mat& b) {
+template <typename T> inline typename Filter<T>::Mat Filter<T>::gmean(const Mat& a, const Mat& b) {
   assert(a.rows() == b.rows() && a.cols() == b.cols());
   Mat res(a.rows(), a.cols());
   for(int i = 0; i < a.rows(); i ++)

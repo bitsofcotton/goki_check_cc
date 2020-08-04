@@ -98,6 +98,7 @@ int main(int argc, const char* argv[]) {
   simpleFile<num_t> file;
   reDig<num_t>      redig;
   Filter<num_t>     filter;
+  P0<num_t>         p;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
@@ -587,8 +588,8 @@ int main(int argc, const char* argv[]) {
     std::string header;
     file.loaddat(argv[3], header, data);
     simpleFile<num_t>::Mat buf(std::atoi(argv[4]), std::atoi(argv[4]));
-    const auto dft(filter.seed(buf.rows(), false));
-    const auto idft(filter.seed(buf.rows(), true));
+    const auto& dft(p.seed(buf.rows()));
+    const auto& idft(p.seed(- buf.rows()));
     for(int i0 = 1; i0 < data.size(); i0 ++) {
       for(int i = 0; i <= data[i0].size() / buf.rows() / buf.rows(); i ++) {
         for(int k = 0; k < buf.cols(); k ++)

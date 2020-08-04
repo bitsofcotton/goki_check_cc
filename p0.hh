@@ -147,7 +147,7 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
     Vec calibrate(dd.rows());
     for(int i = 0; i < calibrate.size(); i ++)
       calibrate[i] = sin(T(i) / T(calibrate.size()) * T(2) * Pi());
-    dd /= - dd.row(dd.rows() / 2).dot(calibrate);
+    dd *= - T(2) * Pi() / T(dd.rows()) / dd.row(dd.rows() / 2).dot(calibrate);
   }
   return dd;
 }
