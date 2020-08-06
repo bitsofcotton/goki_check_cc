@@ -281,7 +281,7 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
   const int idx(idx0 == srccenter.size() ? srccenter.size() - 1 : idx0);
   assert(0 <= idx && idx < srccenter.size());
   P0<T>  p;
-  P0B<T> p0(srccenter.size() / 2);
+  P0B<T> p0(srccenter.size());
   auto   p1(p0);
   auto   p2(p0);
   const auto comp(p.taylor(srccenter.size(), iemph));
@@ -307,7 +307,7 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
       const auto yy(filter.getImgPt(a2xy[i][j].first,  srcimg[idx][0].rows()));
       const auto xx(filter.getImgPt(a2xy[i][j].second, srcimg[idx][0].cols()));
       dstimg[0](yy, xx) = dstimg[1](yy, xx) = dstimg[2](yy, xx) = T(0);
-      P0B<T> p0(attend.size() / 2);
+      P0B<T> p0(attend.size());
       auto   p1(p0);
       auto   p2(p0);
       for(int k = 0; k < srccenter.size(); k ++) {

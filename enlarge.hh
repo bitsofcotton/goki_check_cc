@@ -349,7 +349,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < recur; i ++) {
         const auto size(min(80, int(data.rows()) / (i + 1) - 2));
         for(int j = 0; j < data.cols(); j ++) {
-          P0B<T> pf(size / 2);
+          P0B<T> pf(size);
           auto pb(pf);
           for(int k = 0; k < size; k ++) {
             result(data.rows() + recur + i, j) =
