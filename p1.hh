@@ -209,14 +209,11 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
       for(int j = fidx + 1; j < on.size(); j ++)
         if(!checked[j] && on[fidx] / norm[fidx] < on[j] / norm[j])
           fidx = j;
-      if(fidx >= one.size() || on[fidx] / norm[fidx] <= threshold_inner) {
-        if(fidx < one.size())
-          on /= sqrt(norm.dot(norm));
-        if(one.size() <= fidx || n_fixed < Pverb.rows() - 1) {
-          n_fixed --;
-          break;
-        }
-      }
+      if(fidx >= one.size())
+        break;
+      on /= abs(mb.dot(on));
+      if(on[fidx] * sqrt(norm.dot(norm)) / norm[fidx] <= threshold_inner)
+        break;
       orth = Pverb.col(fidx);
       const auto norm2orth(orth.dot(orth));
       const auto mbb0(mbb[fidx]);
@@ -307,9 +304,7 @@ template <typename T> inline T P1B<T>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
-  auto fvec(p.next(buf));
-  if(fvec.dot(fvec) != num_t(0))
-    fvec /= sqrt(fvec.dot(fvec)) / T(fvec.size());
+  const auto& fvec(p.next(buf));
   T res(0);
   for(int i = 0; i < fvec.size(); i ++)
     res += buf[i - fvec.size() + buf.size()] * fvec[i];
