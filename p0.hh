@@ -38,12 +38,11 @@ public:
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
   inline ~P0();
-  inline T    next(const Vec& in, const T& err = T(1) / T(8000));
-  inline T    next0(const Vec& in, const T& err = T(1) / T(8000));
+  inline T    next(const Vec& in, const T& err = T(1) / T(80000));
+  inline T    next0(const Vec& in, const T& err = T(1) / T(80000));
   inline Vec  taylor(const int& size, const T& step);
   const MatU& seed(const int& size0);
-  const Mat&  diff(const int& size);
-  inline Mat  diffinv(const int& size, const int& k);
+  const Mat&  diff(const int& size0);
 private:
   const Mat&  lpf(const int& size0);
   const Vec&  nextP(const int& size);
@@ -65,11 +64,12 @@ template <typename T> inline T P0<T>::next(const Vec& in, const T& err) {
   auto res(next0(in, err));
   auto hpf(lpf(- in.size()) * in);
   while(in.dot(in) * err < hpf.dot(hpf)) {
-    auto work(hpf);
-    for(int i = 0; i < work.size(); i ++)
-      work[i] *= (work.size() + i) & 1 ? - T(1) : T(1);
-    res += next0(work, err);
-    hpf  = lpf(- work.size()) * work;
+    const auto nhpf(hpf.dot(hpf));
+    for(int i = 0; i < hpf.size(); i ++)
+      hpf[i] *= (hpf.size() + i) & 1 ? - T(1) : T(1);
+    res += next0(hpf, err);
+    hpf  = lpf(- hpf.size()) * hpf;
+    if(nhpf <= hpf.dot(hpf)) break;
   }
   return res;
 }
@@ -79,18 +79,19 @@ template <typename T> inline T P0<T>::next0(const Vec& in, const T& err) {
   Vec   work(in.size() + 1);
   for(int i = 0; i < in.size(); i ++)
     work[i] = in[i];
-  auto& res(work[work.size() - 1]);
+        auto& res(work[work.size() - 1]);
   res = nextP(in.size()).dot(in);
-  const auto normin(sqrt(in.dot(in)) / T(in.size()));
-  auto  tilt(normin);
-  while(in.dot(in) != T(0) && err * normin < abs(tilt)) {
-    tilt  = minSq(work.size()).dot(work);
-    Vec buf(in.size());
-    for(int i = 0; i < buf.size(); i ++)
-      buf[i] = in[i] - tilt * T(i);
-    res   = nextP(buf.size()).dot(buf) + tilt * T(buf.size());
-    tilt -= minSq(work.size()).dot(work);
-  }
+  const auto  normin(sqrt(in.dot(in)) / T(in.size()));
+        auto  tilt(normin);
+  if(in.dot(in) != T(0))
+    while(err * normin < abs(tilt)) {
+      tilt  = minSq(work.size()).dot(work);
+      Vec buf(in.size());
+      for(int i = 0; i < buf.size(); i ++)
+        buf[i] = in[i] - tilt * T(i);
+      res   = nextP(buf.size()).dot(buf) + tilt * T(buf.size());
+      tilt -= minSq(work.size()).dot(work);
+    }
   return res;
 }
 
@@ -132,32 +133,33 @@ template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size0) 
   return size0 < 0 ? eidft : edft;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
-  assert(0 < size);
+template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size0) {
+  const auto size(abs(size0));
   static vector<Mat> D;
+  static vector<Mat> I;
   if(D.size() <= size)
     D.resize(size + 1, Mat());
+  if(I.size() <= size)
+    I.resize(size + 1, Mat());
   auto& dd(D[size]);
+  auto& ii(I[size]);
   if(dd.rows() != size || dd.cols() != size) {
     auto DD(seed(size));
+    auto II(DD);
     DD.row(0) *= complex<T>(T(0));
-    for(int i = 1; i < DD.rows(); i ++)
+    for(int i = 1; i < DD.rows(); i ++) {
       DD.row(i) *= J() * T(2) * Pi() * T(i) / T(DD.rows());
+      II.row(i) /= J() * T(2) * Pi() * T(i) / T(DD.rows());
+    }
     dd = (seed(- size) * DD).template real<T>();
+    ii = (seed(- size) * II).template real<T>();
     Vec calibrate(dd.rows());
     for(int i = 0; i < calibrate.size(); i ++)
       calibrate[i] = sin(T(i) / T(calibrate.size()) * T(2) * Pi());
     dd *= - T(2) * Pi() / T(dd.rows()) / dd.row(dd.rows() / 2).dot(calibrate);
+    ii /=   T(2) * Pi() / T(ii.rows()) * ii.row(ii.rows() / 2).dot(calibrate);
   }
-  return dd;
-}
-
-template <typename T> inline typename P0<T>::Mat P0<T>::diffinv(const int& size, const int& k) {
-  auto DD(seed(size));
-  DD.row(0) *= complex<T>(T(0));
-  for(int i = 1; i < DD.rows(); i ++)
-    DD.row(i) *= pow(J() * T(2) * Pi() * T(i) / T(DD.rows()), T(1) / T(k));
-  return (seed(- size) * DD).template real<T>();
+  return size0 < 0 ? ii : dd;
 }
 
 template <typename T> const typename P0<T>::Mat& P0<T>::lpf(const int& size0) {
