@@ -443,7 +443,7 @@ int main(int argc, const char* argv[]) {
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
-        P0B<num_t> p0(in.size() / 2);
+        P0B<num_t> p0(in.size());
         auto p1(p0);
         auto p2(p0);
         for(int k = 1; k < in.size(); k ++) {
