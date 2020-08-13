@@ -126,7 +126,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.rotcompute(data[i], filter.ENLARGE_BOTH, rot);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.rotcompute(data[i], filter.EXTEND_BOTH, rot);
+        data[i] = filter.compute(filter.rotcompute(data[i], filter.EXTEND_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.rotcompute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
