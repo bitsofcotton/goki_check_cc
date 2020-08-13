@@ -280,56 +280,53 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
   const int idx0(floor(iemph));
   const int idx(idx0 == srccenter.size() ? srccenter.size() - 1 : idx0);
   assert(0 <= idx && idx < srccenter.size());
-  P0<T>  p;
-  P0B<T> p0(srccenter.size());
-  auto   p1(p0);
-  auto   p2(p0);
-  const auto comp(p.taylor(srccenter.size(), iemph));
+  static P0<T> p;
+  const auto comp(T(srccenter.size()) == iemph
+                  ? p.next(srccenter.size())
+                  : p.taylor(srccenter.size(), iemph));
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < srccenter[idx].size(); i ++) {
     dstcenter[i][0] = dstcenter[i][1] = dstcenter[i][2] = T(0);
-    for(int j = 0; j < srccenter.size(); j ++) {
-      if(T(srccenter.size()) == iemph) {
-        dstcenter[i][0] = p0.next(srccenter[j][i][0]);
-        dstcenter[i][1] = p1.next(srccenter[j][i][1]);
-        dstcenter[i][2] = p2.next(srccenter[j][i][2]);
-      } else
-        for(int k = 0; k < 3; k ++)
-          dstcenter[i][k] += srccenter[j][i][k] * comp[j];
-    }
+    for(int j = 0; j < srccenter.size(); j ++)
+      for(int k = 0; k < 3; k ++)
+        dstcenter[i][k] += srccenter[j][i][k] * comp[j];
   }
   dstimg = vector<Mat>();
   dstimg.reserve(3);
   for(int i = 0; i < 3; i ++)
     dstimg.emplace_back(Mat(srcimg[0][i].rows(), srcimg[0][i].cols()));
   Filter<T> filter;
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < attend.size(); i ++)
     for(int j = 0; j < attend[i].size(); j ++) {
       const auto yy(filter.getImgPt(a2xy[i][j].first,  srcimg[idx][0].rows()));
       const auto xx(filter.getImgPt(a2xy[i][j].second, srcimg[idx][0].cols()));
       dstimg[0](yy, xx) = dstimg[1](yy, xx) = dstimg[2](yy, xx) = T(0);
-      P0B<T> p0(attend.size());
-      auto   p1(p0);
-      auto   p2(p0);
       for(int k = 0; k < srccenter.size(); k ++) {
         const auto yf(filter.getImgPt(a2xy[i][j].first  + int(srccenter[k][i][0] - srccenter[idx][i][0]), srcimg[idx][0].rows()));
         const auto xf(filter.getImgPt(a2xy[i][j].second + int(srccenter[k][i][1] - srccenter[idx][i][1]), srcimg[idx][0].cols()));
-        if(T(attend.size()) == iemph) {
-          dstimg[0](yy, xx) = p0.next(srcimg[k][0](yf, xf));
-          dstimg[1](yy, xx) = p1.next(srcimg[k][1](yf, xf));
-          dstimg[2](yy, xx) = p2.next(srcimg[k][2](yf, xf));
-        } else
-          for(int kk = 0; kk < 3; kk ++)
-            dstimg[kk](yy, xx) += srcimg[k][kk](yf, xf) * comp[k];
+        for(int kk = 0; kk < 3; kk ++)
+          dstimg[kk](yy, xx) += srcimg[k][kk](yf, xf) * comp[k];
       }
       const auto n0(dstimg[0](yy, xx));
       const auto n1(dstimg[1](yy, xx));
       const auto n2(dstimg[2](yy, xx));
-      for(int y0 = yy; y0 < min(yy + vbox, int(srcimg[idx][0].rows()) - 1); y0 ++)
-        for(int x0 = xx; x0 < min(xx + vbox, int(srcimg[idx][0].cols()) - 1); x0 ++) {
-          dstimg[0](y0, x0) = n0;
-          dstimg[1](y0, x0) = n1;
-          dstimg[2](y0, x0) = n2;
-        }
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+      {
+        for(int y0 = yy; y0 < min(yy + vbox, int(srcimg[idx][0].rows()) - 1); y0 ++)
+          for(int x0 = xx; x0 < min(xx + vbox, int(srcimg[idx][0].cols()) - 1); x0 ++) {
+            dstimg[0](y0, x0) = n0;
+            dstimg[1](y0, x0) = n1;
+            dstimg[2](y0, x0) = n2;
+          }
+      }
     }
   return;
 }
