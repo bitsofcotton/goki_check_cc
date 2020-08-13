@@ -278,31 +278,26 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextT(const int& size) {
   return p;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextU(const int& size0) {
-  assert(1 < size0);
+template <typename T> const typename P0<T>::Vec& P0<T>::nextU(const int& size) {
+  assert(1 < size);
   static vector<Vec> P;
-  if(P.size() <= size0)
-    P.resize(size0 + 1, Vec());
-  auto& p(P[size0]);
-  if(p.size() != size0) {
-    const auto size(size0 * 2);
-    Mat half(size + 2, size + 2);
+  if(P.size() <= size)
+    P.resize(size + 1, Vec());
+  auto& p(P[size]);
+  if(p.size() != size) {
+    Mat half(size + 2, size);
     for(int i = 0; i < half.rows(); i ++)
       for(int j = 0; j < half.cols(); j ++)
-        half(i, j) = (i == j && i < size ? T(1) : T(0));
+        half(i, j) = (i == j ? T(1) : T(0));
     const auto& pp(nextT(size));
     for(int i = 0; i < pp.size(); i ++) {
       half(half.rows() - 2, i) = pp[i];
       half(half.rows() - 1, i) = pp[i] * pp[pp.size() - 1];
       if(0 < i) half(half.rows() - 1, i) += pp[i - 1];
     }
-    const auto qq(taylor((size + 2) / 2, T((size + 2) / 2) - T(1) / T(2)));
-          Vec  q(half.cols());
-    for(int i = 0; i < q.size(); i ++)
-      q[i] = qq[i / 2];
-    p.resize(size0);
-    for(int i = 0; i < p.size(); i ++)
-      p[i] = (half.row(i * 2) + half.row(i * 2 + 1)).dot(q);
+    p = half.transpose() *
+      (taylor(half.rows(), T(half.rows()) - T(3) / T(2)) +
+       taylor(half.rows(), T(half.rows()) - T(5) / T(2))) / T(2);
   }
   return p;
 }

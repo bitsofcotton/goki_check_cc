@@ -357,9 +357,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           for(int k = 0; k < size; k ++) {
             result(data.rows() + recur + i, j) +=
               result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), j) *
-                comp[comp.size() - 1 - k];
+                comp[k];
             result(recur - i - 1, j) +=
-              result(recur + (size - k - 1) * (i + 1), j) * comp[comp.size() - 1 - k];
+              result(recur + (size - k - 1) * (i + 1), j) * comp[k];
           }
         }
       }
