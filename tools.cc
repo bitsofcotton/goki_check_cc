@@ -441,16 +441,13 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     for(int i = 0; i < 3; i ++)
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
+    const auto& comp(p.next(in.size()));
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
-        P0B<num_t> p0(in.size());
-        auto p1(p0);
-        auto p2(p0);
-        for(int k = 1; k < in.size(); k ++) {
-          out[0](y, x) = p0.next(in[k][0](y, x));
-          out[1](y, x) = p1.next(in[k][1](y, x));
-          out[2](y, x) = p2.next(in[k][2](y, x));
-        }
+        out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
+        for(int k = 0; k < in.size(); k ++)
+          for(int kk = 0; kk < 3; kk ++)
+            out[kk](y, x) += in[k][kk](y, x) * comp[k];
       }
     }
     redig.normalize(out, 1.);

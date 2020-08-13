@@ -347,15 +347,17 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + recur) = data.row(i);
       for(int i = 0; i < recur; i ++) {
-        const auto size(min(80, int(data.rows()) / (i + 1) - 2));
+        const auto  size(int(data.rows()) / (i + 1));
+        const auto& comp(p.next(size));
         for(int j = 0; j < data.cols(); j ++) {
-          P0B<T> pf(size);
-          auto pb(pf);
+          result(data.rows() + recur + i, j) =
+            result(recur - i - 1, j) = T(0);
           for(int k = 0; k < size; k ++) {
-            result(data.rows() + recur + i, j) =
-              pf.next(result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), j));
-            result(recur - i - 1, j) =
-              pb.next(result(recur + (size - k - 1) * (i + 1), j));
+            result(data.rows() + recur + i, j) +=
+              result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), j) *
+                comp[k];
+            result(recur - i - 1, j) +=
+              result(recur + (size - k - 1) * (i + 1), j) * comp[k];
           }
         }
       }

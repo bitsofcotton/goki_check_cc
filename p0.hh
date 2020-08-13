@@ -47,6 +47,7 @@ public:
   const Vec&  nextS(const int& size);
   const Vec&  nextT(const int& size);
   const Vec&  nextU(const int& size);
+  const Vec&  next(const int& size);
   const Mat&  lpf(const int& size0);
   const Vec&  minSq(const int& size);
   const T&    Pi() const;
@@ -301,7 +302,23 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextU(const int& size0) 
       q[i] = qq[i / 2];
     p.resize(size0);
     for(int i = 0; i < p.size(); i ++)
-      p[i] = half.row(i * 2).dot(q);
+      p[i] = (half.row(i * 2) + half.row(i * 2 + 1)).dot(q);
+  }
+  return p;
+}
+
+template <typename T> const typename P0<T>::Vec& P0<T>::next(const int& size) {
+  assert(1 < size);
+  static vector<Vec> P;
+  if(P.size() <= size)
+    P.resize(size + 1, Vec());
+  auto& p(P[size]);
+  if(p.size() != size) {
+    p = nextU(size);
+    auto sum(p[0]);
+    for(int i = 1; i < p.size(); i ++)
+      sum += p[i];
+    p /= sum;
   }
   return p;
 }
@@ -355,7 +372,7 @@ template <typename T> inline T P0B<T>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
-  return p.nextU(buf.size()).dot(buf);
+  return p.next(buf.size()).dot(buf);
 }
 
 #define _P0_
