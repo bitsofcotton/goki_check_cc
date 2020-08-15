@@ -47,10 +47,11 @@ public:
   const Vec&  nextS(const int& size);
   const Vec&  nextT(const int& size);
   const Vec&  nextU(const int& size);
-  const Vec&  next(const int& size);
+  inline Vec& next(const int& size);
   const Mat&  lpf(const int& size0);
   const Vec&  minSq(const int& size);
   const T&    Pi() const;
+  inline T    dot1(const Vec& x);
   const complex<T>& J() const;
 };
 
@@ -183,7 +184,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
     p = taylor(size, T(size));
     for(int i = 0; i < reverse.size(); i ++)
       p[i] += reverse[reverse.size() - i - 1];
-    p /= T(2);
+    p /= dot1(p);
   }
   return p;
 }
@@ -202,7 +203,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextQ(const int& size) {
       p[p.size() - i] = - pp[i];
     p /= pp[0];
     p += pp;
-    p /= T(2);
+    p /= dot1(p);
   }
   return p;
 }
@@ -218,7 +219,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextR(const int& size) {
     for(int i = 3; i < size; i ++)
       for(int j = 0; j < i; j ++)
         p[j - i + p.size()] += nextQ(i)[j];
-    p /= T(size - 3 + 1);
+    p /= dot1(p);
   }
   return p;
 }
@@ -242,6 +243,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextS(const int& size) {
       if(q == p) break;
       hpf = hpf * hpf0;
     }
+    p /= dot1(p);
   }
   return p;
 }
@@ -274,6 +276,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextT(const int& size) {
     p.resize(size);
     for(int i = 0; i < p.size(); i ++)
       p[i] = retry(retry.rows() - 1, i) - (retry(1, i) - (i == 1 ? T(1) : T(0))) * T(p.size());
+    p /= dot1(p);
   }
   return p;
 }
@@ -297,25 +300,21 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextU(const int& size) {
     }
     p = half.transpose() *
       (taylor(half.rows(), T(half.rows()) - T(3) / T(2)) +
-       taylor(half.rows(), T(half.rows()) - T(5) / T(2))) / T(2);
+       taylor(half.rows(), T(half.rows()) - T(5) / T(2)));
+    p /= dot1(p);
   }
   return p;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::next(const int& size) {
-  assert(1 < size);
-  static vector<Vec> P;
-  if(P.size() <= size)
-    P.resize(size + 1, Vec());
-  auto& p(P[size]);
-  if(p.size() != size) {
-    p = nextU(size);
-    auto sum(p[0]);
-    for(int i = 1; i < p.size(); i ++)
-      sum += p[i];
-    p /= sum;
-  }
-  return p;
+template <typename T> inline typename P0<T>::Vec& P0<T>::next(const int& size) {
+  return nextU(size);
+}
+
+template <typename T> inline T P0<T>::dot1(const Vec& x) {
+  auto sum(x[0]);
+  for(int i = 1; i < x.size(); i ++)
+    sum += x[i];
+  return sum;
 }
 
 template <typename T> const typename P0<T>::Vec& P0<T>::minSq(const int& size) {
@@ -367,7 +366,7 @@ template <typename T> inline T P0B<T>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
-  return p.next(buf.size()).dot(buf);
+  return p.nextU(buf.size()).dot(buf);
 }
 
 #define _P0_
