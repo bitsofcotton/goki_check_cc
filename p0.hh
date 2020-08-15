@@ -47,7 +47,7 @@ public:
   const Vec&  nextS(const int& size);
   const Vec&  nextT(const int& size);
   const Vec&  nextU(const int& size);
-  inline Vec& next(const int& size);
+  inline const Vec& next(const int& size);
   const Mat&  lpf(const int& size0);
   const Vec&  minSq(const int& size);
   const T&    Pi() const;
@@ -306,7 +306,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextU(const int& size) {
   return p;
 }
 
-template <typename T> inline typename P0<T>::Vec& P0<T>::next(const int& size) {
+template <typename T> inline const typename P0<T>::Vec& P0<T>::next(const int& size) {
   return nextU(size);
 }
 
@@ -366,7 +366,7 @@ template <typename T> inline T P0B<T>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
-  return p.nextU(buf.size()).dot(buf);
+  return p.next(buf.size()).dot(buf);
 }
 
 #define _P0_
