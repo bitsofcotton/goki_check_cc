@@ -3,7 +3,7 @@ LD=	${CXX}
 
 # compiler flags.
 CXXFLAGS+=	-I/usr/local/include/eigen3
-#CXXFLAGS+=	-fopenmp -lgomp
+#CXXFLAGS+=	-fopenmp -lomp -pthread
 CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-Ofast -mtune=native -gfull
 # Do not use these because of the slowness,

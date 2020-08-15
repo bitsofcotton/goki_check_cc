@@ -37,6 +37,8 @@ elif(argv[2] == "pred"):
   cmd = [argv[1], argv[2], "pred.ppm"]
   for s in argv[3:]:
     r, e = os.path.splitext(s)
+    if(e != ".ppm"):
+      subprocess.call(["convert", s, "-compress", "none", r + ".ppm"])
     cmd.append(r + ".ppm")
   subprocess.call(cmd)
 elif(argv[2] == "ppred"):
