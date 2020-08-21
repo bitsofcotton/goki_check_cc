@@ -169,6 +169,18 @@ template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, 
       if(last == res) break;
       dt   = D * dt * residue / T(i);
     }
+    if(T(0) <= step && step < T(size - 1)) {
+      res[step0 + 1] += T(1);
+      const auto residue(step - T(step0 + 1));
+            auto dt(- D * residue);
+      for(int i = 2; ; i ++) {
+        const auto last(res);
+        res += dt.col(step0 + 1);
+        if(last == res) break;
+        dt   = - D * dt * residue / T(i);
+      }
+      res /= T(2);
+    }
   }
   return res;
 }

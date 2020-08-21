@@ -445,9 +445,9 @@ int main(int argc, const char* argv[]) {
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
         out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
-        for(int k = 0; k < in.size(); k ++)
+        for(int k = 1; k < in.size(); k ++)
           for(int kk = 0; kk < 3; kk ++)
-            out[kk](y, x) += in[k][kk](y, x) * comp[k];
+            out[kk](y, x) += (in[k][kk](y, x) + in[k - 1][kk](y, x)) * comp[k] / num_t(2);
       }
     }
     redig.normalize(out, 1.);
