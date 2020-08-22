@@ -347,7 +347,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         result.row(i + recur) = data.row(i);
       for(int i = 0; i < recur; i ++) {
         const auto  size(int(data.rows()) / (i + 1) - 1);
-        const auto& comp(p.next(size));
+        const auto& comp(p.next(size - 1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -358,10 +358,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             result(data.rows() + recur + i, j) +=
               (result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), j) +
                result(data.rows() + recur - 1 + (k - size) * (i + 1), j)) *
-                comp[k];
+                comp[k - 1];
             result(recur - i - 1, j) +=
               (result(recur + (size - k - 1) * (i + 1), j) +
-               result(recur + (size - k) * (i + 1), j)) * comp[k];
+               result(recur + (size - k) * (i + 1), j)) * comp[k - 1];
           }
           result(data.rows() + recur + i, j) /= T(2);
           result(recur - i - 1, j) /= T(2);
