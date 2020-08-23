@@ -31,6 +31,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P0_)
 
+#define _P0_LOOP_MAX_ 20
+#define _P0_SKIP_MIN_ 80
+
 template <typename T> class P0 {
 public:
   typedef SimpleVector<T> Vec;
@@ -228,12 +231,12 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextQ(const int& size) {
     p /= pp[0];
     p += pp;
     p /= dot1(p);
+    std::cerr << "q" << std::flush;
   }
   return p;
 }
 
 template <typename T> const typename P0<T>::Vec& P0<T>::nextR(const int& size) {
-  static int Mrecur(80);
   assert(1 < size);
   static vector<Vec> P;
   if(P.size() <= size)
@@ -241,10 +244,11 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextR(const int& size) {
   auto& p(P[size]);
   if(p.size() != size) {
     p = nextQ(size);
-    for(int i = 3; i < size; size < Mrecur ? i ++ : i += i)
+    for(int i = 3; i < size; size < _P0_SKIP_MIN_ ? i ++ : i += i)
       for(int j = 0; j < i; j ++)
         p[j - i + p.size()] += nextQ(i)[j];
     p /= dot1(p);
+    std::cerr << "r" << std::flush;
   }
   return p;
 }
@@ -260,7 +264,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextS(const int& size) {
     p = lpf0 * nextR(size);
     const auto hpf0(lpf(- size).transpose());
           auto hpf(hpf0);
-    while(true) {
+    for(int i = 0; i < _P0_LOOP_MAX_; i ++) {
       const auto q(p);
       for(int i = 0; i < hpf.cols() / 2; i ++)
         hpf.setCol(hpf.cols() - 1 - i * 2, - hpf.col(hpf.cols() - 1 - i * 2));
@@ -269,6 +273,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextS(const int& size) {
       hpf = hpf * hpf0;
     }
     p /= dot1(p);
+    std::cerr << "s" << std::flush;
   }
   return p;
 }
@@ -292,7 +297,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextT(const int& size) {
     for(int i = 0; i < pp.size(); i ++)
       predict(predict.rows() - 1, i) = pp[i];
     auto retry(minusMinSq * predict);
-    while(true) {
+    for(int i = 0; i < _P0_LOOP_MAX_; i ++) {
       const auto  btry(retry.row(retry.rows() - 1));
       retry = retry * retry;
       const auto& rtry(retry.row(retry.rows() - 1));
@@ -302,6 +307,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextT(const int& size) {
     for(int i = 0; i < p.size(); i ++)
       p[i] = retry(retry.rows() - 1, i) - (retry(1, i) - (i == 1 ? T(1) : T(0))) * T(p.size());
     p /= dot1(p);
+    std::cerr << "t" << std::flush;
   }
   return p;
 }
@@ -327,11 +333,13 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextU(const int& size) {
       (taylor(half.rows(), T(half.rows()) - T(3) / T(2)) +
        taylor(half.rows(), T(half.rows()) - T(5) / T(2)));
     p /= dot1(p);
+    std::cerr << "u" << std::flush;
   }
   return p;
 }
 
 template <typename T> inline const typename P0<T>::Vec& P0<T>::next(const int& size) {
+  std::cerr << "n" << std::flush;
   return nextU(size);
 }
 
@@ -394,6 +402,8 @@ template <typename T> inline T P0B<T>::next(const T& in) {
   return p.next(buf.size()).dot(buf);
 }
 
+#undef _P0_LOOP_MAX_
+#undef _P0_SKIP_MIN_
 #define _P0_
 #endif
 
