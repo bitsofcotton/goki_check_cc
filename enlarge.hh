@@ -348,6 +348,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < recur; i ++) {
         const auto  size(int(data.rows()) / (i + 1) - 1);
         const auto& comp(p.next(size - 1));
+        std::cerr << "a" << std::flush;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
