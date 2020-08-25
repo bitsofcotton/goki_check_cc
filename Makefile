@@ -3,6 +3,7 @@ LD=	${CXX}
 
 # compiler flags.
 CXXFLAGS+=	-I/usr/local/include/eigen3
+CXXFLAGS+=	-I/usr/local/include
 #CXXFLAGS+=	-fopenmp -lomp -pthread
 CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-Ofast -mtune=native -gfull

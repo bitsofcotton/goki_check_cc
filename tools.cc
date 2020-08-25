@@ -61,6 +61,7 @@ using std::pair;
 using std::make_pair;
 using std::vector;
 
+#include <omp.h>
 namespace goki {
 #include "p0.hh"
 #include "p1.hh"

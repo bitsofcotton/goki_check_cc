@@ -393,6 +393,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::showMatch(const Mat& dsti
 
 template <typename T> typename reDig<T>::Mat reDig<T>::makeRefMatrix(const Mat& orig, const int& start) const {
   Mat result(orig.rows(), orig.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < orig.rows() * orig.cols(); i ++)
     result(i % orig.rows(), i / orig.rows()) = i + start;
   return result;
@@ -404,6 +407,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
       result(i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < ref.rows() * ref.cols(); i ++) {
     const int ly(i % ref.rows());
     const int lx(i / ref.rows());
@@ -1218,9 +1224,13 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   for(int j = 0; j < zb.rows(); j ++)
     for(int k = 0; k < zb.cols(); k ++)
       zb(j, k) = z0;
+  SimpleMatrix<omp_lock_t> lock(result.rows(), result.cols());
+  for(int i = 0; i < lock.rows(); i ++)
+    for(int j = 0; j < lock.cols(); j ++)
+      omp_init_lock(&lock(i, j));
   // able to boost with divide and conquer.
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int j = 0; j < triangles.size(); j ++) {
     const Triangles& tri(triangles[j]);
@@ -1235,18 +1245,20 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
         midgeom[0] = y;
         midgeom[1] = x;
         if(onTriangle(z, tri, midgeom) && isfinite(z)) {
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
           {
+            omp_set_lock(&lock(y, x));
             if(zb(y, x) < z) {
               result(y, x) = tri.c;
               zb(y, x)     = z;
             }
+            omp_unset_lock(&lock(y, x));
           }
         }
       }
   }
+  for(int i = 0; i < lock.rows(); i ++)
+    for(int j = 0; j < lock.cols(); j ++)
+      omp_destroy_lock(&lock(i, j));
   return result;
 }
 
