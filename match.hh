@@ -370,7 +370,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
   // for each rotation, we can now handle t <= 0:
   // We need large memory for this.
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int nd = 0; nd < ndiv; nd ++) {
     vector<T> ddiv;
