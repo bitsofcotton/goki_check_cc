@@ -190,7 +190,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
                    int(shape[hull[i][0]][0]))),
                  max(0, min(int(img.cols() - 1),
                    int(shape[hull[i][0]][1]))));
-    tris.push_back(work.solveN());
+    tris.emplace_back(work.solveN());
   }
   return tilt(img * T(0), tris);
 }
@@ -541,9 +541,9 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
     const int x(std::max(std::min(int(points[i][1]), int(mask.cols() - 1)), 0));
     if(mask(y, x) > T(1) / T(2)) {
       elim.emplace_back(i);
-      after.push_back(- 1);
+      after.emplace_back(- 1);
     } else
-      after.push_back(ii ++);
+      after.emplace_back(ii ++);
   }
   for(int i = 0; i < polys.size(); i ++)
     if(std::binary_search(elim.begin(), elim.end(), polys[i][0]) ||
@@ -567,7 +567,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase,
   vpoints.reserve(vbase.rows() * vbase.cols());
   for(int i = 0; i < vbase.rows(); i ++)
     for(int j = 0; j < vbase.cols(); j ++)
-      vpoints.push_back(make_pair(vbase(i, j), make_pair(i, j)));
+      vpoints.emplace_back(make_pair(vbase(i, j), make_pair(i, j)));
   sort(vpoints.begin(), vpoints.end());
   Mat res(vbase.rows(), vbase.cols());
   T   avg(0);
@@ -683,7 +683,7 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
     }
     // N.B. almost bruteforce...
     if(1 < e.size()) {
-      result.push_back(vector<int>());
+      result.emplace_back(vector<int>());
       // apply to points index.
       vector<int> pj;
       for(int i = 0; i < e.size(); i ++) {
@@ -844,7 +844,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::autoLevel(const Mat& data
   res.reserve(data.rows() * data.cols());
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++)
-      res.push_back(data(i, j));
+      res.emplace_back(data(i, j));
   sort(res.begin(), res.end());
   Mat result(data.rows(), data.cols());
 #if defined(_OPENMP)
@@ -862,7 +862,7 @@ template <typename T> void reDig<T>::autoLevel(Mat data[3], const int& count) {
   for(int k = 0; k < 3; k ++)
     for(int i = 0; i < data[k].rows(); i ++)
       for(int j = 0; j < data[k].cols(); j ++)
-        res.push_back(data[k](i, j));
+        res.emplace_back(data[k](i, j));
   sort(res.begin(), res.end());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -891,7 +891,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
         gbuf[0] = T(i * vbox);
         gbuf[1] = T(j * vbox);
         gbuf[2] = geoms[geoms.size() - 1][2];
-        geoms.push_back(gbuf);
+        geoms.emplace_back(gbuf);
       } else {
         T avg(0);
         for(int ii = i * vbox; ii < (i + 1) * vbox; ii ++)
@@ -901,7 +901,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
         work[2] = sqrt(T(in.rows() * in.cols())) * rz * abs(avg / T(vbox) / T(vbox) - aavg);
-        geoms.push_back(work);
+        geoms.emplace_back(work);
       }
     }
   Vec3 avg(3);
@@ -921,8 +921,8 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
       work2[0] = T((i - 1) * (in.cols() / vbox + 1) + j);
       work2[2] = T((i - 1) * (in.cols() / vbox + 1) + j + 1);
       work2[1] = T( i      * (in.cols() / vbox + 1) + j + 1);
-      delaunay.push_back(work);
-      delaunay.push_back(work2);
+      delaunay.emplace_back(work);
+      delaunay.emplace_back(work2);
     }
   return;
 }
@@ -964,8 +964,8 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
         auto gc(geoms[idx]);
         gc[1] = x;
         gc[2] = z;
-        center.push_back(gc);
-        attend.push_back(vector<int>());
+        center.emplace_back(gc);
+        attend.emplace_back(vector<int>());
         workx = vector<T>();
         workz = vector<T>();
       }
@@ -1183,7 +1183,7 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
                   int(points[polys[i][0]][1]));
     else
       work.c = T(0);
-    result.push_back(work.solveN());
+    result.emplace_back(work.solveN());
   }
   return result;
 }
@@ -1194,8 +1194,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
   for(int i = 0; i < in.rows() - 1; i ++)
     for(int j = 0; j < in.cols() - 1; j ++) {
-      triangles.push_back(makeTriangle(i, j, in, bump, false));
-      triangles.push_back(makeTriangle(i, j, in, bump, true));
+      triangles.emplace_back(makeTriangle(i, j, in, bump, false));
+      triangles.emplace_back(makeTriangle(i, j, in, bump, true));
     }
   return tilt(in, triangles, m, z0);
 }
@@ -1230,7 +1230,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
       omp_init_lock(&lock(i, j));
   // able to boost with divide and conquer.
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(dynamic, 1)
+#pragma omp parallel for schedule(dynamic)
 #endif
   for(int j = 0; j < triangles.size(); j ++) {
     const Triangles& tri(triangles[j]);

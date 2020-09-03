@@ -370,7 +370,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
   // for each rotation, we can now handle t <= 0:
   // We need large memory for this.
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(dynamic, 1)
+#pragma omp parallel for schedule(dynamic)
 #endif
   for(int nd = 0; nd < ndiv; nd ++) {
     vector<T> ddiv;
@@ -513,13 +513,13 @@ template <typename T> T matchPartial<T>::isElim(const match_t<T>& m, const Mat d
       T diff(0);
       for(int j = 0; j < 3; j ++)
         diff += pow(tsrc[j](y, x) - dst[j](y, x), T(2));
-      diffs.push_back(sqrt(diff));
+      diffs.emplace_back(sqrt(diff));
     }
   }
   sort(diffs.begin(), diffs.end());
   vector<T> ddiffs;
   for(int i = 1; i < diffs.size(); i ++)
-    ddiffs.push_back(diffs[i] - diffs[i - 1]);
+    ddiffs.emplace_back(diffs[i] - diffs[i - 1]);
   sort(ddiffs.begin(), ddiffs.end());
   return ddiffs.size() ? T(1) - T(distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh))) / T(ddiffs.size()) : T(0);
 }
@@ -575,7 +575,7 @@ template <typename T> vector<vector<match_t<T> > > matchWhole<T>::match(const ve
   matchPartial<T> pmatch(ndiv, threshp, threshs);
   for(int i = 0; i < points.size(); i ++) {
     cerr << "matching partials : " << i << "/" << shapebase.size() << endl;
-    pmatches.push_back(pmatch.match(shapebase, points[i]));
+    pmatches.emplace_back(pmatch.match(shapebase, points[i]));
   }
   int i0idx(0);
   for(int i = 1; i < pmatches.size(); i ++)
@@ -600,7 +600,7 @@ template <typename T> vector<vector<match_t<T> > > matchWhole<T>::match(const ve
             const auto& work(bones[i][pmatches[i][0].srcpoints[j]]);
             for(int k = 0; k < work.size(); k ++)
               if(0 <= work[k])
-                boneidxs.push_back(work[k]);
+                boneidxs.emplace_back(work[k]);
           }
           sort(boneidxs.begin(), boneidxs.end());
           boneidxs.erase(unique(boneidxs.begin(), boneidxs.end()), boneidxs.end());
@@ -618,7 +618,7 @@ template <typename T> vector<vector<match_t<T> > > matchWhole<T>::match(const ve
         mcount ++;
       }
     if(threshp <= mcount / T(pmatches.size()))
-      result.push_back(lmatch);
+      result.emplace_back(lmatch);
   }
   return result;
 }

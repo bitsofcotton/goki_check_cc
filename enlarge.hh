@@ -180,8 +180,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         }
       cerr << "s" << flush;
       idx = Sop.size();
-      Sop.push_back(vector<Mat>());
-      Sop[idx].push_back(Mat(data.rows(), data.rows()));
+      Sop.emplace_back(vector<Mat>());
+      Sop[idx].emplace_back(Mat(data.rows(), data.rows()));
       {
         auto& sop(Sop[idx][0]);
         for(int i = 0; i < sop.rows(); i ++)
@@ -232,7 +232,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
      sopi:
       // N.B. insufficient:
       for( ; Sop[idx].size() <= recur; )
-        Sop[idx].push_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][0]);
+        Sop[idx].emplace_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][0]);
       result = Sop[idx][recur] * data;
     }
     break;
@@ -248,7 +248,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         }
       if(idx < 0) {
         idx = Eop.size();
-        Eop.push_back(make_pair(vector<Mat>(), data.rows()));
+        Eop.emplace_back(make_pair(vector<Mat>(), data.rows()));
       }
       cerr << "e" << flush;
       if(Eop[idx].first.size() <= recur)
@@ -346,7 +346,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + recur) = data.row(i);
       for(int i = 0; i < recur; i ++) {
-        const auto  size(int(data.rows()) / (i + 1) - 1);
+        const auto  size(min(120, int(data.rows()) / (i + 1) - 1));
         const auto& comp(p.next(size - 1));
         std::cerr << "a" << std::flush;
 #if defined(_OPENMP)

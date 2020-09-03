@@ -250,7 +250,7 @@ public:
           sub >> buf[0];
           sub >> buf[2];
           buf[0] = - buf[0];
-          data.push_back(buf);
+          data.emplace_back(buf);
         } else if(i + 1 < work.size() && work[i] == 'f' && work[i + 1] == ' ') {
           stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
           Veci3 wbuf(3);
@@ -264,7 +264,7 @@ public:
             if(widx > 2)
               flag = true;
             if(flag)
-              polys.push_back(wbuf);
+              polys.emplace_back(wbuf);
             widx %= 3;
             if(sub.eof() || sub.bad())
               break;
@@ -327,7 +327,7 @@ public:
           for(int i = 0, j = 0; ss.tellg() <= work.size(); j ++) {
             if(data.size() <= j)
               data.resize(j + 1, vector<T>());
-            data[j].push_back(T(0));
+            data[j].emplace_back(T(0));
             ss >> data[j][data[j].size() - 1];
           }
         }
