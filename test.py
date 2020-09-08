@@ -75,9 +75,7 @@ else:
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "illust" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
-      subprocess.call(["convert", root + ".ppm", "-resize", "800%", "-compress", "none", root + "-temp.ppm"])
-      subprocess.call([argv[1], argv[2], root + "-temp.ppm", root + "-" + argv[2] + "-temp.ppm", str(pixels), str(1)])
-      subprocess.call(["convert", root + "-" + argv[2] + "-temp.ppm", "-resize", "12.5%", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-sharpen.ppm"])
       for s in range(0, pixels):

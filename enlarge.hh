@@ -80,52 +80,116 @@ template <typename T> Filter<T>::~Filter() {
 }
 
 template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& data, const direction_t& dir, const int& n) {
-  auto res(compute(data, dir));
+  if(dir == EXTEND_X)
+    return rotcompute(data.transpose(), EXTEND_Y, n).transpose();
+  if(dir == EXTEND_BOTH)
+    return rotcompute(rotcompute(data, EXTEND_Y, n), EXTEND_X, n);
+  vector<Mat> res;
+  res.emplace_back(compute(data, dir));
   for(int i = 1; i < n; i ++) {
     const auto theta(T(i) * Pi / T(2 * n));
     const auto c(cos(theta));
     const auto s(sin(theta));
-    Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
-             abs(int(s * T(data.rows()) + c * T(data.cols()))));
-    for(int j = 0; j < work.rows(); j ++)
-      for(int k = 0; k < work.cols(); k ++)
-        work(j, k) = T(0);
-    for(int j = - (work.rows() + work.cols());
-            j <   (work.rows() + work.cols()) * 2; j ++)
-      for(int k = - (work.rows() + work.cols());
-              k <   (work.rows() + work.cols()) * 2; k ++) {
-        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
-        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
-        if(0 <= yy && yy < work.rows() &&
-           0 <= xx && xx < work.cols()) {
-          work(yy, xx) = work(min(yy + 1, int(work.rows()) - 1), xx) =
-            work(yy, min(xx + 1, int(work.cols()) - 1)) =
-            work(min(yy + 1, int(work.rows()) - 1),
-                 min(xx + 1, int(work.cols()) - 1)) =
-              data(((j % data.rows()) + data.rows()) % data.rows(),
-                   ((k % data.cols()) + data.cols()) % data.cols());
+    auto lres(res[0]);
+    if(dir == EXTEND_Y) {
+      Mat workt(abs(int(c * T(data.rows()) + s * T(data.cols()))),
+                abs(int(s * T(data.rows()) + c * T(data.cols()))));
+      Mat workb(abs(int(c * T(data.rows()) + s * T(data.cols()))),
+                abs(int(s * T(data.rows()) + c * T(data.cols()))));
+      for(int j = - (workt.rows() + workt.cols());
+              j <   (workt.rows() + workt.cols()) * 2; j ++)
+        for(int k = - (workt.rows() + workt.cols());
+                k <   (workt.rows() + workt.cols()) * 2; k ++) {
+          const int yy(c * T(j));
+          const int xx(s * T(j) + c * T(k) + T(1) / T(2));
+          if(0 <= yy && yy < workt.rows() &&
+             0 <= xx && xx < workt.cols()) {
+            const auto dyy(((j % data.rows()) + data.rows()) % data.rows());
+            const auto dxx(((k % data.cols()) + data.cols()) % data.cols());
+            workt(yy, xx) =
+              workt(min(yy + 1, int(workt.rows()) - 1), xx) =
+              workt(yy, min(xx + 1, int(workt.cols()) - 1)) =
+              workt(min(yy + 1, int(workt.rows()) - 1),
+                     min(xx + 1, int(workt.cols()) - 1)) =
+                data(dyy, dxx);
+            workb(yy, xx) =
+              workb(min(yy + 1, int(workb.rows()) - 1), xx) =
+              workb(yy, min(xx + 1, int(workb.cols()) - 1)) =
+              workb(min(yy + 1, int(workb.rows()) - 1),
+                     min(xx + 1, int(workb.cols()) - 1)) =
+                data(data.rows() - dyy - 1, data.cols() - dxx - 1);
+          }
         }
-      }
-    work = compute(work, dir);
-    auto lres(res * T(0));
-    // XXX inefficient:
-    for(int j = - (work.rows() + work.cols());
-            j <   (work.rows() + work.cols()) * 2; j ++)
-      for(int k = - (work.rows() + work.cols());
-              k <   (work.rows() + work.cols()) * 2; k ++) {
-        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
-        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
-        const int jj(((j % lres.rows()) + lres.rows()) % lres.rows());
-        const int kk(((k % lres.cols()) + lres.cols()) % lres.cols());
-        if(0 <= yy && yy < work.rows() &&
-           0 <= xx && xx < work.cols()) {
-          lres(((j % lres.rows()) + lres.rows()) % lres.rows(),
-               ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
+      workt = compute(workt, dir);
+      workb = compute(workb, dir);
+      for(int i = 0; i < data.rows(); i ++)
+        for(int j = 0; j < lres.cols(); j ++)
+          for(int k = 1; k <= recur; k ++) {
+            const int ydx(s * T(k));
+            if(0 <= j - ydx && j - ydx < workt.cols()) {
+              lres(recur - k, j) =
+                workt(recur - k, j - ydx);
+              lres(k - recur - 1 + lres.rows(), j) =
+                workb(recur - k, j - ydx);
+            }
+          }
+    } else {
+      Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
+               abs(int(s * T(data.rows()) + c * T(data.cols()))));
+      for(int j = 0; j < work.rows(); j ++)
+        for(int k = 0; k < work.cols(); k ++)
+          work(j, k) = T(0);
+      for(int j = - (work.rows() + work.cols());
+              j <   (work.rows() + work.cols()) * 2; j ++)
+        for(int k = - (work.rows() + work.cols());
+                k <   (work.rows() + work.cols()) * 2; k ++) {
+          const int yy(c * T(j) - s * T(k) + T(1) / T(2));
+          const int xx(s * T(j) + c * T(k) + T(1) / T(2));
+          if(0 <= yy && yy < work.rows() &&
+             0 <= xx && xx < work.cols()) {
+            const auto dyy(((j % data.rows()) + data.rows()) % data.rows());
+            const auto dxx(((k % data.cols()) + data.cols()) % data.cols());
+            work(yy, xx) = work(min(yy + 1, int(work.rows()) - 1), xx) =
+              work(yy, min(xx + 1, int(work.cols()) - 1)) =
+              work(min(yy + 1, int(work.rows()) - 1),
+                   min(xx + 1, int(work.cols()) - 1)) =
+                data(dyy, dxx);
+          }
         }
-      }
-    res += lres;
+      work = compute(work, dir);
+      // XXX inefficient:
+      for(int j = - (work.rows() + work.cols());
+              j <   (work.rows() + work.cols()) * 2; j ++)
+        for(int k = - (work.rows() + work.cols());
+                k <   (work.rows() + work.cols()) * 2; k ++) {
+          const int yy(c * T(j) - s * T(k) + T(1) / T(2));
+          const int xx(s * T(j) + c * T(k) + T(1) / T(2));
+          const int jj(((j % lres.rows()) + lres.rows()) % lres.rows());
+          const int kk(((k % lres.cols()) + lres.cols()) % lres.cols());
+          if(0 <= yy && yy < work.rows() &&
+             0 <= xx && xx < work.cols()) {
+            lres(((j % lres.rows()) + lres.rows()) % lres.rows(),
+                 ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
+          }
+        }
+    }
+    res.emplace_back(lres);
   }
-  return res /= T(n);
+  Mat rres(res[0].rows(), res[0].cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < rres.rows(); i ++) {
+    for(int j = 0; j < rres.cols(); j ++) {
+      vector<T> sr;
+      sr.reserve(res.size());
+      for(int k = 0; k < res.size(); k ++)
+        sr.emplace_back(res[k](i, j));
+      sort(sr.begin(), sr.end());
+      rres(i, j) = sr[sr.size() / 2];
+    }
+  }
+  return rres;
 }
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir) {
