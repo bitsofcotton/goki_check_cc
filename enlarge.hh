@@ -84,18 +84,21 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
     return rotcompute(data.transpose(), EXTEND_Y, n).transpose();
   if(dir == EXTEND_BOTH)
     return rotcompute(rotcompute(data, EXTEND_Y, n), EXTEND_X, n);
+  auto rres(compute(data, dir));
+  auto score(rres * T(0));
   vector<Mat> res;
-  res.emplace_back(compute(data, dir));
+  res.emplace_back(rres);
   for(int i = 1; i < n; i ++) {
+    cerr << "r" << flush;
     const auto theta(T(i) * Pi / T(2 * n));
-    const auto c(cos(theta));
-    const auto s(sin(theta));
-    auto lres(res[0]);
     if(dir == EXTEND_Y) {
-      Mat workt(abs(int(c * T(data.rows()) + s * T(data.cols()))),
-                abs(int(s * T(data.rows()) + c * T(data.cols()))));
-      Mat workb(abs(int(c * T(data.rows()) + s * T(data.cols()))),
-                abs(int(s * T(data.rows()) + c * T(data.cols()))));
+      const auto c(cos(theta * T(2)));
+      const auto s(sin(theta * T(2)));
+      const auto rows(abs(int(c * T(data.rows()) + s * T(data.cols()))));
+      const auto cols(abs(int(s * T(data.rows()) + c * T(data.cols()))));
+      if(rows / (recur + 1) - 1 < 8 || cols < 8) continue;
+      Mat workt(rows, cols);
+      Mat workb(rows, cols);
       for(int j = - (workt.rows() + workt.cols());
               j <   (workt.rows() + workt.cols()) * 2; j ++)
         for(int k = - (workt.rows() + workt.cols());
@@ -123,17 +126,29 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
       workt = compute(workt, dir);
       workb = compute(workb, dir);
       for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < lres.cols(); j ++)
+        for(int j = 0; j < rres.cols(); j ++)
           for(int k = 1; k <= recur; k ++) {
-            const int ydx(s * T(k));
-            if(0 <= j - ydx && j - ydx < workt.cols()) {
-              lres(recur - k, j) =
-                workt(recur - k, j - ydx);
-              lres(k - recur - 1 + lres.rows(), j) =
-                workb(recur - k, j - ydx);
+            const int bx(j - s * T(k - 1));
+            const int xx(j - s * T(k));
+            if(0 <= xx && xx < workt.cols()) {
+              const auto yy(recur - k);
+              const auto yyy(k - recur - 1 + rres.rows());
+              const auto lst(abs(workt(yy, xx) - workt(yy + 1, bx)));
+              const auto lsb(abs(workb(yy, xx) - workb(yy + 1, bx)));
+              if(score(yy, j) == T(0) || (lst != T(0) && lst <= score(yy, j))) {
+                rres(yy,  j) = workt(yy, xx);
+                score(yy, j) = lst;
+              }
+              if(score(yyy, j) == T(0) || (lsb != T(0) && lsb <= score(yyy, j))) {
+                rres(yyy,  j) = workb(yy, xx);
+                score(yyy, j) = lsb;
+              }
             }
           }
     } else {
+            auto lres(res[0]);
+      const auto c(cos(theta));
+      const auto s(sin(theta));
       Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
                abs(int(s * T(data.rows()) + c * T(data.cols()))));
       for(int j = 0; j < work.rows(); j ++)
@@ -172,10 +187,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
                  ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
           }
         }
+      res.emplace_back(lres);
     }
-    res.emplace_back(lres);
   }
-  Mat rres(res[0].rows(), res[0].cols());
+  if(res.size() <= 1) return rres;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -412,7 +427,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < recur; i ++) {
         const auto  size(min(120, int(data.rows()) / (i + 1) - 1));
         const auto& comp(p.next(size - 1));
-        std::cerr << "a" << std::flush;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -421,15 +435,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             result(recur - i - 1, j) = T(0);
           for(int k = 1; k < size; k ++) {
             result(data.rows() + recur + i, j) +=
-              (result(data.rows() + recur - 1 + (k - size + 1) * (i + 1), j) +
-               result(data.rows() + recur - 1 + (k - size) * (i + 1), j)) *
+              result(data.rows() + recur - 1 + (k - size) * (i + 1), j) *
                 comp[k - 1];
             result(recur - i - 1, j) +=
-              (result(recur + (size - k - 1) * (i + 1), j) +
-               result(recur + (size - k) * (i + 1), j)) * comp[k - 1];
+              result(recur + (size - k) * (i + 1), j) * comp[k - 1];
           }
-          result(data.rows() + recur + i, j) /= T(2);
-          result(recur - i - 1, j) /= T(2);
         }
       }
     }
