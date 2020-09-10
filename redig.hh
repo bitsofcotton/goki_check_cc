@@ -282,7 +282,7 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
   assert(0 <= idx && idx < srccenter.size());
   static P0<T> p;
   const auto comp(T(srccenter.size()) == iemph
-                  ? p.next(srccenter.size() - 1)
+                  ? p.next(srccenter.size())
                   : p.taylor(srccenter.size(), iemph));
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -290,13 +290,9 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
 #endif
   for(int i = 0; i < srccenter[idx].size(); i ++) {
     dstcenter[i][0] = dstcenter[i][1] = dstcenter[i][2] = T(0);
-    for(int j = 0;
-            j < srccenter.size() - (T(srccenter.size()) == iemph ? 1 : 0);
-            j ++)
+    for(int j = 0; j < srccenter.size(); j ++)
       for(int k = 0; k < 3; k ++)
-        dstcenter[i][k] += T(srccenter.size()) == iemph ?
-          (srccenter[j][i][k] + srccenter[j + 1][i][k]) * comp[j] / T(2) :
-           srccenter[j][i][k] * comp[j];
+        dstcenter[i][k] += srccenter[j][i][k] * comp[j];
   }
   dstimg = vector<Mat>();
   dstimg.reserve(3);
@@ -311,15 +307,11 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
       const auto yy(filter.getImgPt(a2xy[i][j].first,  srcimg[idx][0].rows()));
       const auto xx(filter.getImgPt(a2xy[i][j].second, srcimg[idx][0].cols()));
       dstimg[0](yy, xx) = dstimg[1](yy, xx) = dstimg[2](yy, xx) = T(0);
-      for(int k = 0;
-              k < srccenter.size() - (T(srccenter.size()) == iemph ? 1 : 0);
-              k ++) {
+      for(int k = 0; k < srccenter.size(); k ++) {
         const auto yf(filter.getImgPt(a2xy[i][j].first  + int(srccenter[k][i][0] - srccenter[idx][i][0]), srcimg[idx][0].rows()));
         const auto xf(filter.getImgPt(a2xy[i][j].second + int(srccenter[k][i][1] - srccenter[idx][i][1]), srcimg[idx][0].cols()));
         for(int kk = 0; kk < 3; kk ++)
-          dstimg[kk](yy, xx) += T(srccenter.size()) == iemph ?
-            (srcimg[k][kk](yf, xf) + srcimg[k + 1][kk](yf, xf)) * comp[k] / T(2) :
-             srcimg[k][kk](yf, xf) * comp[k];
+          dstimg[kk](yy, xx) += srcimg[k][kk](yf, xf) * comp[k];
       }
       const auto n0(dstimg[0](yy, xx));
       const auto n1(dstimg[1](yy, xx));

@@ -56,9 +56,9 @@ elif(argv[2] == "ppred"):
       roots.append(r)
   #cmd = [argv[1], argv[2], "1", ".175", str(zratio), str(pixels), "pose"]
   #cmd = [argv[1], argv[2], "2", ".05", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), "pose"]
+  cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), "pose"]
   #cmd = [argv[1], argv[2], "20", ".05", str(zratio), str(pixels), "pose"]
-  cmd = [argv[1], argv[2], "20", ".015", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], argv[2], "20", ".015", str(zratio), str(pixels), "pose"]
   for s in roots:
     cmd.append(s + ".ppm")
     cmd.append(s + "-bump.ppm")
