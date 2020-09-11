@@ -45,7 +45,7 @@ elif(argv[2] == "pred"):
       subprocess.call(["convert", s, "-compress", "none", r + ".ppm"])
     cmd.append(r + ".ppm")
   subprocess.call(cmd)
-elif(argv[2] == "ppred"):
+elif(argv[2] == "ppred" or argv[2] == "ppredr"):
   roots = []
   for s in argv[3:]:
     try:
@@ -54,14 +54,17 @@ elif(argv[2] == "ppred"):
     except:
       r, e = os.path.splitext(s)
       roots.append(r)
-  #cmd = [argv[1], argv[2], "1", ".175", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], argv[2], "2", ".05", str(zratio), str(pixels), "pose"]
-  cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], argv[2], "20", ".05", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], argv[2], "20", ".015", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], "ppred", "1", ".175", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], "ppred", "2", ".05", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], "ppred", "4", ".05", str(zratio), str(pixels), "pose"]
+  cmd = [argv[1], "ppred", "20", ".05", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], "ppred", "20", ".015", str(zratio), str(pixels), "pose"]
   for s in roots:
     cmd.append(s + ".ppm")
-    cmd.append(s + "-bump.ppm")
+    if(argv[2] == "ppred"):
+      cmd.append(s + "-bump.ppm")
+    else:
+      cmd.append(s + ".ppm")
   print " ".join(cmd)
   subprocess.call(cmd)
   subprocess.call(["ffmpeg", "-i", "pose%d.ppm", "-frame_drop_threshold", "0.0", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "pose.mp4"])

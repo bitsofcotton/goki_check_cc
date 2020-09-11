@@ -654,23 +654,23 @@ int main(int argc, const char* argv[]) {
       centerr.emplace_back(centerr[centerr.size() - 1]);
     }
     const auto center0(center);
-    for(int idx = 0; idx < center.size() - 1; idx ++) {
+    for(int idx = 0; idx < center.size(); idx ++) {
       for(int i = 0; i < in.size(); i ++) {
         center[i] = i == idx ? center0[i] : redig.copyBone(center0[idx], centerr[idx], center0[i], centerr[i]);
         assert(center[i].size() == center0[idx].size());
         std::cerr << "." << std::flush;
       }
       const auto a2xy(redig.getReverseLookup(attend[idx], in[idx][0]));
-      for(int i = 0; i < std::atoi(argv[5]); i ++) {
+      for(int i = - std::atoi(argv[5]); i < std::atoi(argv[5]); i ++) {
         redig.complement(pout, outcenter, in, center, attend[idx], a2xy,
           num_t(idx) + num_t(i) / num_t(std::atoi(argv[5])));
         const auto newshape(redig.takeShape(shape[idx], center[idx], outcenter, attend[idx], num_t(1)));
         const auto reref(redig.draw(rin0, shape[idx], newshape, delau[idx]));
         for(int ii = 0; ii < 3; ii ++)
           out[ii] = filter.compute(redig.pullRefMatrix(reref, 1, pout[ii]), filter.CLIP);
-        file.savep2or3((std::string(argv[6]) + std::to_string(idx * std::atoi(argv[5]) + i) + std::string(".ppm")).c_str(), out, ! true);
+        file.savep2or3((std::string(argv[6]) + std::to_string((2 * idx + 1) * std::atoi(argv[5]) + i) + std::string(".ppm")).c_str(), out, ! true);
         file.saveobj(newshape, out[0].rows(), out[0].cols(), delau[0],
-                     (std::string(argv[6]) + std::to_string(idx * std::atoi(argv[5]) + i) + std::string(".obj")).c_str());
+                     (std::string(argv[6]) + std::to_string((2 * idx + 1) * std::atoi(argv[5]) + i) + std::string(".obj")).c_str());
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {

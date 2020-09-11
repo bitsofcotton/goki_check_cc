@@ -189,7 +189,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextQ(const int& size) {
     p /= pp[0];
     p += pp;
     p /= dot1(p);
-    cerr << "q" << flush;
+    std::cerr << "q" << std::flush;
   }
   return p;
 }
