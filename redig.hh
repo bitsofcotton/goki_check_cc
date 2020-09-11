@@ -277,7 +277,7 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
   assert(3 < srcimg.size());
   dstcenter = vector<Vec3>();
   dstcenter.resize(srccenter[0].size(), Vec3(3));
-  const int idx0(floor(iemph));
+  const int idx0(max(0, int(floor(iemph))));
   const int idx(idx0 == srccenter.size() ? srccenter.size() - 1 : idx0);
   assert(0 <= idx && idx < srccenter.size());
   static P0<T> p;
