@@ -56,8 +56,8 @@ elif(argv[2] == "ppred" or argv[2] == "ppredr"):
       roots.append(r)
   #cmd = [argv[1], "ppred", "1", ".175", str(zratio), str(pixels), "pose"]
   #cmd = [argv[1], "ppred", "2", ".05", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], "ppred", "4", ".05", str(zratio), str(pixels), "pose"]
-  cmd = [argv[1], "ppred", "20", ".05", str(zratio), str(pixels), "pose"]
+  cmd = [argv[1], "ppred", "4", ".05", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], "ppred", "20", ".05", str(zratio), str(pixels), "pose"]
   #cmd = [argv[1], "ppred", "20", ".015", str(zratio), str(pixels), "pose"]
   for s in roots:
     cmd.append(s + ".ppm")

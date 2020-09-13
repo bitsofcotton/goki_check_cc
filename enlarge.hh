@@ -84,12 +84,11 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
     return rotcompute(data.transpose(), EXTEND_Y, n).transpose();
   if(dir == EXTEND_BOTH)
     return rotcompute(rotcompute(data, EXTEND_Y, n), EXTEND_X, n);
-  auto rres(compute(data, dir));
-  auto score(rres * T(0));
   vector<Mat> res;
-  res.emplace_back(rres);
+  res.emplace_back(compute(data, dir));
   for(int i = 1; i < n; i ++) {
     cerr << "r" << flush;
+          auto lres(res[0]);
     const auto theta(T(i) * Pi / T(2 * n));
     if(dir == EXTEND_Y) {
       const auto c(cos(theta * T(2)));
@@ -126,27 +125,20 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
       workt = compute(workt, dir);
       workb = compute(workb, dir);
       for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < rres.cols(); j ++)
+        for(int j = 0; j < res[0].cols(); j ++)
           for(int k = 1; k <= recur; k ++) {
             const int bx(j - s * T(k - 1));
             const int xx(j - s * T(k));
             if(0 <= xx && xx < workt.cols()) {
               const auto yy(recur - k);
-              const auto yyy(k - recur - 1 + rres.rows());
+              const auto yyy(k - recur - 1 + res[0].rows());
               const auto lst(abs(workt(yy, xx) - workt(yy + 1, bx)));
               const auto lsb(abs(workb(yy, xx) - workb(yy + 1, bx)));
-              if(score(yy, j) == T(0) || (lst != T(0) && lst <= score(yy, j))) {
-                rres(yy,  j) = workt(yy, xx);
-                score(yy, j) = lst;
-              }
-              if(score(yyy, j) == T(0) || (lsb != T(0) && lsb <= score(yyy, j))) {
-                rres(yyy,  j) = workb(yy, xx);
-                score(yyy, j) = lsb;
-              }
+              lres(yy,  j) = workt(yy, xx);
+              lres(yyy, j) = workb(yy, xx);
             }
           }
     } else {
-            auto lres(res[0]);
       const auto c(cos(theta));
       const auto s(sin(theta));
       Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
@@ -187,10 +179,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
                  ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
           }
         }
-      res.emplace_back(lres);
     }
+    res.emplace_back(lres);
   }
-  if(res.size() <= 1) return rres;
+  Mat rres(res[0].rows(), res[0].cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
