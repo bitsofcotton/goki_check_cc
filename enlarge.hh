@@ -129,13 +129,17 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
           for(int k = 1; k <= recur; k ++) {
             const int bx(j - s * T(k - 1));
             const int xx(j - s * T(k));
-            if(0 <= xx && xx < workt.cols()) {
+            if(0 <= xx && bx < workt.cols()) {
               const auto yy(recur - k);
               const auto yyy(k - recur - 1 + res[0].rows());
-              const auto lst(abs(workt(yy, xx) - workt(yy + 1, bx)));
-              const auto lsb(abs(workb(yy, xx) - workb(yy + 1, bx)));
-              lres(yy,  j) = workt(yy, xx);
-              lres(yyy, j) = workb(yy, xx);
+              if(0 <= yy && yy + 1 <= workt.rows()) {
+                const auto lst(abs(workt(yy, xx) - workt(yy + 1, bx)));
+                const auto lsb(abs(workb(yy, xx) - workb(yy + 1, bx)));
+                if(0 <= yy  && yy  < lres.rows())
+                  lres(yy,  j) = workt(yy, xx);
+                if(0 <= yyy && yyy < lres.rows())
+                  lres(yyy, j) = workb(yy, xx);
+              }
             }
           }
     } else {
