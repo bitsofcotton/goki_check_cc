@@ -91,8 +91,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
           auto lres(res[0]);
     const auto theta(T(i) * Pi / T(2 * n));
     if(dir == EXTEND_Y) {
-      const auto c(cos(theta * T(2)));
-      const auto s(sin(theta * T(2)));
+      const auto c(cos(theta - Pi / T(4) + T(1) / T(8 * n)));
+      const auto s(sin(theta - Pi / T(4) + T(1) / T(8 * n)));
       const auto rows(abs(int(c * T(data.rows()) + s * T(data.cols()))));
       const auto cols(abs(int(s * T(data.rows()) + c * T(data.cols()))));
       if(rows / (recur + 1) - 1 < 8 || cols < 8) continue;
@@ -129,7 +129,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
           for(int k = 1; k <= recur; k ++) {
             const int bx(j - s * T(k - 1));
             const int xx(j - s * T(k));
-            if(0 <= xx && bx < workt.cols()) {
+            if(0 <= min(xx, bx) && max(xx, bx) < workt.cols()) {
               const auto yy(recur - k);
               const auto yyy(k - recur - 1 + res[0].rows());
               if(0 <= yy && yy + 1 <= workt.rows()) {
