@@ -576,8 +576,9 @@ int main(int argc, const char* argv[]) {
     }
     redig.normalize(out, 1.);
     file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
-  } else if(strcmp(argv[1], "ppred") == 0) {
-    if(argc < 11 || ! (argc & 1)) {
+  } else if(strcmp(argv[1], "ppred") == 0 ||
+            strcmp(argv[1], "ppredr") == 0) {
+    if(argc < 11 || (argc & 1)) {
       usage();
       return - 1;
     }
@@ -586,14 +587,14 @@ int main(int argc, const char* argv[]) {
     const num_t zratio(std::atof(argv[4]));
     std::vector<std::vector<typename simpleFile<num_t>::Mat> > in;
     std::vector<typename simpleFile<num_t>::Mat> inb;
-    in.resize((argc - 7) / 2);
-    inb.resize((argc - 7) / 2);
+    in.resize((argc - 8) / 2);
+    inb.resize((argc - 8) / 2);
     int i;
-    for(i = 7; i < argc; ) {
+    for(i = 8; i < argc; ) {
       typename simpleFile<num_t>::Mat ibuf[3];
       if(!file.loadp2or3(ibuf, argv[i]))
         exit(- 2);
-      const auto ii((i - 7) / 2);
+      const auto ii((i - 8) / 2);
       in[ii].resize(3);
       in[ii][0] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[0]);
       in[ii][1] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[1]);
@@ -640,37 +641,51 @@ int main(int argc, const char* argv[]) {
     {
             auto center1(center);
       const auto idx(center.size() - 1);
-      for(int i = 0; i < in.size(); i ++) {
-        center1[i] = i == idx ? center[i] : redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]);
-        assert(center1[i].size() == center[idx].size());
+      std::vector<std::vector<typename simpleFile<num_t>::Vec3> > lcenter;
+      std::vector<std::vector<typename simpleFile<num_t>::Mat> > lin;
+      lcenter.reserve(std::atoi(argv[6]) * 2);
+      lin.reserve(std::atoi(argv[6]) * 2);
+      for(int i = max(int(in.size()) - std::atoi(argv[6]), 0), ii = 0;
+              i < in.size(); i ++, ii ++) {
+        lcenter.emplace_back(i == idx ? center[i] : redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]));
+        lin.emplace_back(in[i]);
+        assert(lcenter[ii].size() == center[idx].size());
         std::cerr << "." << std::flush;
       }
-      redig.complement(pout, outcenter, in, center1, attend[attend.size() - 1],
+      redig.complement(pout, outcenter, lin, lcenter, attend[attend.size() - 1],
                        redig.getReverseLookup(attend[attend.size() - 1],
                          in[in.size() - 1][0]),
-                       num_t(center.size()));
+                       num_t(lcenter.size()));
       in.emplace_back(pout);
       center.emplace_back(outcenter);
       centerr.emplace_back(centerr[centerr.size() - 1]);
     }
     const auto center0(center);
     for(int idx = 0; idx < center.size() - 1; idx ++) {
-      for(int i = 0; i < in.size(); i ++) {
-        center[i] = i == idx ? center0[i] : redig.copyBone(center0[idx], centerr[idx], center0[i], centerr[i]);
-        assert(center[i].size() == center0[idx].size());
+      std::vector<std::vector<typename simpleFile<num_t>::Vec3> > lcenter;
+      std::vector<std::vector<typename simpleFile<num_t>::Mat> > lin;
+      lcenter.reserve(std::atoi(argv[6]) * 2);
+      lin.reserve(std::atoi(argv[6]) * 2);
+      for(int i = max(idx - std::atoi(argv[6]), 0), ii = 0;
+              i < min(idx + std::atoi(argv[6]) + 1, int(in.size()));
+              i ++, ii ++) {
+        lcenter.emplace_back(i == idx ? center0[i] : redig.copyBone(center0[idx], centerr[idx], center0[i], centerr[i]));
+        lin.emplace_back(in[i]);
+        assert(lcenter[ii].size() == center0[idx].size());
         std::cerr << "." << std::flush;
       }
       const auto a2xy(redig.getReverseLookup(attend[idx], in[idx][0]));
       for(int i = - std::atoi(argv[5]); i < std::atoi(argv[5]); i ++) {
-        redig.complement(pout, outcenter, in, center, attend[idx], a2xy,
-          num_t(idx) + num_t(i) / (num_t(std::atoi(argv[5])) + num_t(1) / num_t(2)));
+        redig.complement(pout, outcenter, lin, lcenter, attend[idx], a2xy,
+          num_t(idx - max(0, idx - std::atoi(argv[6]))) +
+            num_t(i) / (num_t(std::atoi(argv[5])) + num_t(1) / num_t(2)));
         const auto newshape(redig.takeShape(shape[idx], center[idx], outcenter, attend[idx], num_t(1)));
         const auto reref(redig.draw(rin0, shape[idx], newshape, delau[idx]));
         for(int ii = 0; ii < 3; ii ++)
           out[ii] = filter.compute(redig.pullRefMatrix(reref, 1, pout[ii]), filter.CLIP);
-        file.savep2or3((std::string(argv[6]) + std::to_string((2 * idx + 1) * std::atoi(argv[5]) + i) + std::string(".ppm")).c_str(), out, ! true);
+        file.savep2or3((std::string(argv[7]) + std::to_string((2 * idx + 1) * std::atoi(argv[5]) + i) + std::string(".ppm")).c_str(), out, ! true);
         file.saveobj(newshape, out[0].rows(), out[0].cols(), delau[0],
-                     (std::string(argv[6]) + std::to_string((2 * idx + 1) * std::atoi(argv[5]) + i) + std::string(".obj")).c_str());
+                     (std::string(argv[7]) + std::to_string((2 * idx + 1) * std::atoi(argv[5]) + i) + std::string(".obj")).c_str());
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {

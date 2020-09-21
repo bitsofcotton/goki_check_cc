@@ -9,6 +9,7 @@ pixels  = 4
 zratio  = .25
 psi     = .075
 rot     = 7
+comp    = 4
 bhabit  = ""
 
 if(len(argv) < 4):
@@ -54,11 +55,11 @@ elif(argv[2] == "ppred" or argv[2] == "ppredr"):
     except:
       r, e = os.path.splitext(s)
       roots.append(r)
-  #cmd = [argv[1], "ppred", "1", ".175", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], "ppred", "2", ".05", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], "ppred", "4", ".05", str(zratio), str(pixels), "pose"]
-  cmd = [argv[1], "ppred", "20", ".05", str(zratio), str(pixels), "pose"]
-  #cmd = [argv[1], "ppred", "20", ".015", str(zratio), str(pixels), "pose"]
+  #cmd = [argv[1], argv[2], "1", ".175", str(zratio), str(pixels), str(comp), "pose"]
+  #cmd = [argv[1], argv[2], "2", ".05", str(zratio), str(pixels), str(comp), "pose"]
+  cmd = [argv[1], argv[2], "4", ".05", str(zratio), str(pixels), str(comp), "pose"]
+  #cmd = [argv[1], argv[2], "20", ".05", str(zratio), str(pixels), str(comp), "pose"]
+  #cmd = [argv[1], argv[2], "20", ".015", str(zratio), str(pixels), str(comp), "pose"]
   for s in roots:
     cmd.append(s + ".ppm")
     if(argv[2] == "ppred"):
