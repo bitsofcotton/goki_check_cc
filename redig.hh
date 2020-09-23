@@ -113,6 +113,7 @@ public:
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
+  Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count0 = 20);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2d(const Mat rgb[3]);
@@ -577,6 +578,43 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase,
       avg  = T(0);
       ii   = i;
     }
+  }
+  return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase, const Mat& vbase, const int& count0) {
+  assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
+  assert(cbase.rows() == vbase.rows() && cbase.cols() == vbase.cols());
+  const auto count(cbase.rows() * cbase.cols() / count0);
+  vector<pair<T, pair<int, int> > > vpoints;
+  vector<pair<T, pair<int, int> > > cpoints;
+  vpoints.reserve(vbase.rows() * vbase.cols());
+  cpoints.reserve(cbase.rows() * cbase.cols());
+  for(int i = 0; i < vbase.rows(); i ++)
+    for(int j = 0; j < vbase.cols(); j ++) {
+      vpoints.emplace_back(make_pair(vbase(i, j), make_pair(i, j)));
+      cpoints.emplace_back(make_pair(cbase(i, j), make_pair(i, j)));
+    }
+  sort(vpoints.begin(), vpoints.end());
+  sort(cpoints.begin(), cpoints.end());
+  Decompose<T> decom(count0);
+  Mat res(cbase.rows(), cbase.cols());
+  for(int i = 0; i < count; i ++) {
+    if(! (i % (count / count0))) cerr << "." << flush;
+    const auto ibegin(i * count0);
+    const auto iend(min((i + 1) * count0, int(cpoints.size())));
+    Vec vv(iend - ibegin);
+    Vec cc(vv.size());
+    if(vv.size() != count0) decom = Decompose<T>(vv.size());
+    for(int j = ibegin; j < iend; j ++) {
+      vv[j - ibegin] = vpoints[j].first;
+      cc[j - ibegin] = cpoints[j].first;
+    }
+    const auto ccc(decom.complementMat(decom.next(cc)) *
+                     decom.complementMat(decom.next(vv)).solve(vv));
+    for(int j = ibegin; j < iend; j ++)
+      res(cpoints[j].second.first, cpoints[j].second.second) =
+        ccc[j - ibegin];
   }
   return res;
 }
