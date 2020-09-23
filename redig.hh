@@ -611,7 +611,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
       cc[j - ibegin] = cpoints[j].first;
     }
     const auto ccc(decom.complementMat(decom.next(cc)) *
-                     decom.complementMat(decom.next(vv)).solve(vv));
+                     decom.complementMat(decom.next(vv)).solve(vv) *
+                       sqrt(cc.dot(cc)));
     for(int j = ibegin; j < iend; j ++)
       res(cpoints[j].second.first, cpoints[j].second.second) =
         isfinite(ccc[j - ibegin]) && ! isinf(ccc[j - ibegin]) ?
