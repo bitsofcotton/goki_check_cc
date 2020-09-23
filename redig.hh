@@ -614,7 +614,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
                      decom.complementMat(decom.next(vv)).solve(vv));
     for(int j = ibegin; j < iend; j ++)
       res(cpoints[j].second.first, cpoints[j].second.second) =
-        ccc[j - ibegin];
+        isfinite(ccc[j - ibegin]) && ! isinf(ccc[j - ibegin]) ?
+          ccc[j - ibegin] : cbase(cpoints[j].second.first, cpoints[j].second.second);
   }
   return res;
 }
