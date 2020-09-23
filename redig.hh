@@ -598,25 +598,34 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
   sort(vpoints.begin(), vpoints.end());
   sort(cpoints.begin(), cpoints.end());
   Decompose<T> decom(count0);
+  Vec vv(count0);
+  Vec cc(vv.size());
   Mat res(cbase.rows(), cbase.cols());
   for(int i = 0; i < count; i ++) {
     if(! (i % (count / count0))) cerr << "." << flush;
     const auto ibegin(i * count0);
     const auto iend(min((i + 1) * count0, int(cpoints.size())));
-    Vec vv(iend - ibegin);
-    Vec cc(vv.size());
-    if(vv.size() != count0) decom = Decompose<T>(vv.size());
+    if(iend - ibegin != count0) {
+      vv    = Vec(iend - ibegin);
+      cc    = Vec(vv.size());
+      decom = Decompose<T>(vv.size());
+    }
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
     for(int j = ibegin; j < iend; j ++) {
       vv[j - ibegin] = vpoints[j].first;
       cc[j - ibegin] = cpoints[j].first;
     }
-    const auto ccc(decom.complementMat(decom.next(cc)) *
-                     decom.complementMat(decom.next(vv)).solve(vv) *
-                       sqrt(cc.dot(cc)));
-    for(int j = ibegin; j < iend; j ++)
-      res(cpoints[j].second.first, cpoints[j].second.second) =
-        isfinite(ccc[j - ibegin]) && ! isinf(ccc[j - ibegin]) ?
-          ccc[j - ibegin] : cbase(cpoints[j].second.first, cpoints[j].second.second);
+    const auto ccc(decom.complementMat(decom.next(vv)) *
+                     decom.complementMat(decom.next(cc)).solve(cc));
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+    for(int j = ibegin; j < iend; j ++) {
+      res(cpoints[j].second.first, cpoints[j].second.second) = ccc[j - ibegin];
+    }
   }
   return res;
 }
