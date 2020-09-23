@@ -624,7 +624,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
 #pragma omp for schedule(static, 1)
 #endif
     for(int j = ibegin; j < iend; j ++) {
-      res(cpoints[j].second.first, cpoints[j].second.second) = ccc[j - ibegin];
+      const auto& v(ccc[j - ibegin]);
+      res(cpoints[j].second.first, cpoints[j].second.second) =
+        isfinite(v) && ! isnan(v) ? v : T(0);
     }
   }
   return res;
