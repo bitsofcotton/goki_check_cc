@@ -42,7 +42,7 @@ using mpfr::isfinite;
 
 #  else
 
-typedef double num_t;
+typedef long double num_t;
 
 #  endif
 #endif
@@ -65,6 +65,7 @@ using std::vector;
 namespace goki {
 #include "p0.hh"
 #include "p1.hh"
+#include "decompose.hh"
 #include "fileio.hh"
 #include "enlarge.hh"
 #include "match.hh"
@@ -86,6 +87,7 @@ void usage() {
   cout << "gokicheck (rmatch0|rmatch) <num_of_res_shown> <num_of_sub_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   return;
 }
 
@@ -182,7 +184,8 @@ int main(int argc, const char* argv[]) {
       redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;
-  } else if(strcmp(argv[1], "reshape") == 0) {
+  } else if(strcmp(argv[1], "reshape") == 0 ||
+            strcmp(argv[1], "recolor") == 0) {
     if(argc < 6) {
       usage();
       return 0;
@@ -193,9 +196,13 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(!file.loadp2or3(datas, argv[4]))
       return - 1;
-    const auto datav(redig.rgb2l(datas));
-    for(int i = 0; i < 3; i ++)
-      datac[i] = redig.reShape(datac[i], datav, count);
+    if(strcmp(argv[1], "reshape") == 0) {
+      const auto datav(redig.rgb2l(datas));
+      for(int i = 0; i < 3; i ++)
+        datac[i] = redig.reShape(datac[i], datav, count);
+    } else
+      for(int i = 0; i < 3; i ++)
+        datac[i] = redig.reColor(datac[i], datas[i], count);
     redig.normalize(datac, num_t(1));
     if(!file.savep2or3(argv[5], datac, ! true))
       return - 1;

@@ -127,8 +127,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
       for(int i = 0; i < data.rows(); i ++)
         for(int j = 0; j < res[0].cols(); j ++)
           for(int k = 1; k <= recur; k ++) {
-            const int bx(j - s * T(k - 1));
-            const int xx(j - s * T(k));
+            const int bx(T(j) - s * T(k - 1));
+            const int xx(T(j) - s * T(k));
             if(0 <= min(xx, bx) && max(xx, bx) < workt.cols()) {
               const auto yy(recur - k);
               const auto yyy(k - recur - 1 + res[0].rows());
