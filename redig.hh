@@ -743,6 +743,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
 #endif
   for(int i = min(tsy.size(), ttsy.size()); i < ttsy.size(); i ++)
     ttsy[i] = ttsx[i] = T(0);
+  ttsy = ddec.complementMat(ddec.next(dy)) * ttsy;
+  ttsx = ddec.complementMat(ddec.next(dx)) * ttsx;
   pair<int, int> MM(make_pair(int(ttsy[0]), int(ttsx[0])));
   auto mm(MM);
   for(int i = 1; i < ttsy.size(); i ++) {
@@ -764,9 +766,21 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < ttsy.size(); i ++)
-    res(int((ttsy[i] - mm.first) / T(yyy) * T(yy)),
-        int((ttsx[i] - mm.second) / T(xxx) * T(xx))) = T(1);
+  for(int i = 0; i < ttsy.size(); i ++) {
+    Vec3 v0(3);
+    Vec3 v1(3);
+    v0[2] = v1[2] = T(0);
+    v0[0] = (ttsy[i] - mm.first)  / T(yyy) * T(yy);
+    v0[1] = (ttsx[i] - mm.second) / T(xxx) * T(xx);
+    if(i == ttsy.size() - 1) {
+      v1[0] = (ttsy[0] - mm.first)  / T(yyy) * T(yy);
+      v1[1] = (ttsx[0] - mm.second) / T(xxx) * T(xx);
+    } else {
+      v1[0] = (ttsy[i + 1] - mm.first)  / T(yyy) * T(yy);
+      v1[1] = (ttsx[i + 1] - mm.second) / T(xxx) * T(xx);
+    }
+    drawMatchLine(res, v0, v1, T(1));
+  }
   return res;
 }
 

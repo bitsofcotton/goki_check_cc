@@ -88,7 +88,7 @@ void usage() {
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck trace <inputdst.ppm> <inputsrc.ppm> <output.ppm> <start_y_dst> <start_x_dst> <start_y_src> <start_x_src>" << endl;
+  cout << "gokicheck trace <inputdst.ppm> <inputsrc.ppm> <output.ppm> <start_y_dst> <start_x_dst> <start_y_src> <start_x_src> <outcount>" << endl;
   return;
 }
 
@@ -724,7 +724,7 @@ int main(int argc, const char* argv[]) {
                    My, Mx, poldst, argv[4]);
     }
   } else if(strcmp(argv[1], "trace") == 0) {
-    if(argc < 8) {
+    if(argc < 9) {
       usage();
       return - 1;
     }
@@ -733,15 +733,17 @@ int main(int argc, const char* argv[]) {
       exit(- 2);
     if(!file.loadp2or3(src, argv[3]))
       exit(- 2);
-    out[0] = out[1] = out[2] = 
-      redig.reTrace(redig.normalize(redig.rgb2l(dst), num_t(1)),
-        redig.normalize(redig.rgb2l(src), num_t(1)),
-        std::make_pair(std::atoi(argv[5]), std::atoi(argv[6])),
-        std::make_pair(std::atoi(argv[7]), std::atoi(argv[8])),
-        num_t(1));
-    redig.normalize(out, 1.);
-    if(!file.savep2or3(argv[4], out, ! true, 255))
-      return - 3;
+    for(int i = 0; i < std::atoi(argv[9]); i ++) {
+      out[0] = out[1] = out[2] = 
+        redig.reTrace(redig.normalize(redig.rgb2l(dst), num_t(1)),
+          redig.normalize(redig.rgb2l(src), num_t(1)),
+          std::make_pair(std::atoi(argv[5]), std::atoi(argv[6])),
+          std::make_pair(std::atoi(argv[7]), std::atoi(argv[8])),
+          num_t(i + 1) / num_t(std::atoi(argv[9])));
+      redig.normalize(out, 1.);
+      if(!file.savep2or3((std::string(argv[4]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true, 255))
+        return - 3;
+    }
   } else if(strcmp(argv[1], "omake") == 0) {
     std::vector<std::vector<num_t> > data;
     std::string header;
