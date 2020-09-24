@@ -35,10 +35,12 @@ public:
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<T> Mat3x3;
   typedef SimpleVector<T> Vec3;
+  typedef SimpleVector<T> Vec;
   typedef SimpleVector<int> Veci3;
   typedef SimpleVector<int> Veci4;
 #else
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
+  typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
   typedef Eigen::Matrix<T,   3, 3> Mat3x3;
   typedef Eigen::Matrix<T,   3, 1> Vec3;
   typedef Eigen::Matrix<int, 3, 1> Veci3;
