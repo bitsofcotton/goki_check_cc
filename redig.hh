@@ -114,6 +114,7 @@ public:
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count0 = 20);
+  Mat  reTrace(const Mat& dst, const Mat& src, const pair<int, int>& dstp, const pair<int, int>& srcp, const T& intensity);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2d(const Mat rgb[3]);
@@ -631,6 +632,141 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
         isfinite(v) && ! isinf(v) && ! isnan(v) ? v : vvv[j - ibegin];
     }
   }
+  return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, const Mat& src, const pair<int, int>& dstp, const pair<int, int>& srcp, const T& intensity) {
+  Mat cdst(dst.rows(), dst.cols());
+  Mat csrc(src.rows(), src.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < cdst.rows(); i ++)
+    for(int j = 0; j < cdst.cols(); j ++)
+      cdst(i, j) = false;
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < csrc.rows(); i ++)
+    for(int j = 0; j < csrc.cols(); j ++)
+      csrc(i, j) = false;
+  vector<pair<int, int> > pdst0;
+  vector<pair<int, int> > psrc0;
+  floodfill(cdst, pdst0, dst, dstp.first, dstp.second);
+  floodfill(csrc, psrc0, src, srcp.first, srcp.second);
+  vector<pair<int, int> > pdst;
+  vector<pair<int, int> > psrc;
+  for(int i = 0; i < pdst0.size(); i ++) {
+    const auto& y(pdst0[i].first);
+    const auto& x(pdst0[i].second);
+    if(y <= 0 || x < 0 || y >= cdst.rows() - 1 || x >= cdst.cols())
+      pdst.emplace_back(pdst0[i]);
+    else if(cdst(y - 1, x) || cdst(y + 1, x))
+      ;
+    else
+      pdst.emplace_back(pdst0[i]);
+  }
+  for(int i = 0; i < psrc0.size(); i ++) {
+    const auto& y(psrc0[i].first);
+    const auto& x(psrc0[i].second);
+    if(y <= 0 || x < 0 || y >= csrc.rows() - 1 || x >= csrc.cols())
+      psrc.emplace_back(psrc0[i]);
+    else if(csrc(y - 1, x) || csrc(y + 1, x))
+      ;
+    else
+      psrc.emplace_back(psrc0[i]);
+  }
+  cerr << pdst.size() << ":" << psrc.size() << flush;
+  assert(pdst.size() && psrc.size());
+  int yy(0);
+  int xx(0);
+  {
+    int yMd(pdst[0].first);
+    int ymd(yMd);
+    int xMd(pdst[0].second);
+    int xmd(xMd);
+    int yMs(psrc[0].first);
+    int yms(yMs);
+    int xMs(psrc[0].second);
+    int xms(xMs);
+    for(int i = 1; i < pdst.size(); i ++) {
+      yMd = max(yMd, pdst[i].first);
+      ymd = min(ymd, pdst[i].first);
+      xMd = max(xMd, pdst[i].second);
+      xmd = min(xMd, pdst[i].second);
+    }
+    for(int i = 1; i < psrc.size(); i ++) {
+      yMs = max(yMs, psrc[i].first);
+      yms = min(yms, psrc[i].first);
+      xMs = max(xMs, psrc[i].second);
+      xms = min(xms, psrc[i].second);
+    }
+    yy = max(yMd - ymd + 1, yMs - yms + 1);
+    xx = max(xMd - xmd + 1, xMs - xms + 1);
+  }
+  Decompose<T> ddec(pdst.size());
+  Decompose<T> sdec(psrc.size());
+  Vec dy(pdst.size());
+  Vec dx(pdst.size());
+  Vec ttsy(pdst.size());
+  Vec ttsx(pdst.size());
+  Vec sy(psrc.size());
+  Vec sx(psrc.size());
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < pdst.size(); i ++) {
+    dy[i] = pdst[i].first;
+    dx[i] = pdst[i].second;
+  }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < psrc.size(); i ++) {
+    sy[i] = psrc[i].first;
+    sx[i] = psrc[i].second;
+  }
+  const auto tsy(sdec.complementMat(sdec.next(sy)).solve(sy));
+  const auto tsx(sdec.complementMat(sdec.next(sx)).solve(sx));
+  const auto tdy(ddec.complementMat(ddec.next(dy)).solve(dy));
+  const auto tdx(ddec.complementMat(ddec.next(dx)).solve(dx));
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < min(tsy.size(), ttsy.size()); i ++) {
+    ttsy[i] = tsy[i] * intensity + tdy[i] * (T(1) - intensity);
+    ttsx[i] = tsx[i] * intensity + tdx[i] * (T(1) - intensity);
+  }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = min(tsy.size(), ttsy.size()); i < ttsy.size(); i ++)
+    ttsy[i] = ttsx[i] = T(0);
+  pair<int, int> MM(make_pair(int(ttsy[0]), int(ttsx[0])));
+  auto mm(MM);
+  for(int i = 1; i < ttsy.size(); i ++) {
+    MM.first  = max(MM.first,  int(ttsy[i]));
+    MM.second = max(MM.second, int(ttsx[i]));
+    mm.first  = min(mm.first,  int(ttsy[i]));
+    mm.second = min(mm.second, int(ttsx[i]));
+  }
+  const auto yyy(MM.first - mm.first + 1);
+  const auto xxx(MM.second - mm.second + 1);
+  cerr << ":" << yy << ":" << xx << ":" << yyy << ":" << xxx << flush;
+  Mat res(yy, xx);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < res.rows(); i ++)
+    for(int j = 0; j < res.cols(); j ++)
+      res(i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < ttsy.size(); i ++)
+    res(int((ttsy[i] - mm.first) / T(yyy) * T(yy)),
+        int((ttsx[i] - mm.second) / T(xxx) * T(xx))) = T(1);
   return res;
 }
 
