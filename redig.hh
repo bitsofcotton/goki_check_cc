@@ -272,7 +272,7 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
 }
 
 template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph) {
-  std::cerr << "p" << std::flush;
+  cerr << "p" << flush;
   assert(srcimg.size() == srccenter.size());
   assert(srccenter[0].size() == attend.size());
   assert(3 < srcimg.size());
@@ -597,9 +597,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
     }
   sort(vpoints.begin(), vpoints.end());
   sort(cpoints.begin(), cpoints.end());
-  Decompose<T> decom(count0);
   Vec vv(count0);
   Vec cc(vv.size());
+  Decompose<T> decom(vv.size());
   Mat res(cbase.rows(), cbase.cols());
   for(int i = 0; i < count; i ++) {
     if(! (i % (count / count0))) cerr << "." << flush;
@@ -620,13 +620,15 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
     }
     const auto ccc(decom.complementMat(decom.next(vv)) *
                      decom.complementMat(decom.next(cc)).solve(cc));
+    const auto vvv(decom.complementMat(decom.next(cc)) *
+                     decom.complementMat(decom.next(vv)).solve(vv) * sqrt(cc.dot(cc) / vv.dot(vv)));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
     for(int j = ibegin; j < iend; j ++) {
       const auto& v(ccc[j - ibegin]);
       res(cpoints[j].second.first, cpoints[j].second.second) =
-        isfinite(v) && ! isnan(v) ? v : T(0);
+        isfinite(v) && ! isinf(v) && ! isnan(v) ? v : vvv[j - ibegin];
     }
   }
   return res;
@@ -836,19 +838,25 @@ template <typename T> typename reDig<T>::Mat reDig<T>::contrast(const Mat& in, c
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data, const T& upper) {
-  T MM(data(0, 0)), mm(data(0, 0));
+  T MM(0), mm(0);
+  bool fixed(false);
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++)
-      if(isfinite(data(i, j))) {
-        MM = max(MM, data(i, j));
-        mm = min(mm, data(i, j));
+      if(! fixed || (isfinite(data(i, j)) && ! isinf(data(i, j)) && ! isnan(data(i, j)))) {
+        if(! fixed)
+          MM = mm = data(i, j);
+        else {
+          MM = max(MM, data(i, j));
+          mm = min(mm, data(i, j));
+        }
+        fixed = true;
       }
-  if(MM == mm)
+  if(MM == mm || ! fixed)
     return data;
   Mat result(data);
   for(int i = 0; i < data.rows(); i ++)
     for(int j = 0; j < data.cols(); j ++) {
-      if(isfinite(result(i, j)))
+      if(isfinite(result(i, j)) && ! isinf(data(i, j)) && ! isnan(result(i, j)))
         result(i, j) -= mm;
       else
         result(i, j)  = T(0);
@@ -858,20 +866,26 @@ template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data
 }
 
 template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) {
-  T MM(data[0](0, 0)), mm(data[0](0, 0));
+  T MM(0), mm(0);
+  bool fixed(false);
   for(int k = 0; k < 3; k ++)
     for(int i = 0; i < data[k].rows(); i ++)
       for(int j = 0; j < data[k].cols(); j ++)
-        if(isfinite(data[k](i, j))) {
-          MM = max(MM, data[k](i, j));
-          mm = min(mm, data[k](i, j));
+        if(! fixed || (isfinite(data[k](i, j)) && ! isinf(data[k](i, j)) && ! isnan(data[k](i, j)))) {
+          if(! fixed)
+            MM = mm = data[k](i, j);
+          else {
+            MM = max(MM, data[k](i, j));
+            mm = min(mm, data[k](i, j));
+          }
+          fixed = true;
         }
-  if(MM == mm)
+  if(MM == mm || ! fixed)
     return;
   for(int k = 0; k < 3; k ++) {
     for(int i = 0; i < data[k].rows(); i ++)
       for(int j = 0; j < data[k].cols(); j ++) {
-        if(isfinite(data[k](i, j)))
+        if(isfinite(data[k](i, j)) && ! isinf(data[k](i, j)) && ! isnan(data[k](i, j)))
           data[k](i, j) -= mm;
         else
           data[k](i, j)  = T(0);
