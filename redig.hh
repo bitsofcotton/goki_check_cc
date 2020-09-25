@@ -626,20 +626,16 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
     cc[i] /= T(iend - ibegin);
   }
   const auto ccc(decom.complementMat(decom.next(cc)) *
-                   decom.complementMat(decom.next(vv)).solve(vv));
-  const auto vvv(decom.complementMat(decom.next(vv)) *
-                   decom.complementMat(decom.next(cc)).solve(cc));
+                   decom.complementMat(decom.next(vv)).solve(cc));
   Mat res(cbase);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < count; i ++) {
-    const auto v(ccc[i] / vvv[i]);
-    std::cerr << v << std::endl;
     for(int j = i * ccount;
             j < min((i + 1) * ccount, int(cpoints.size()));
             j ++)
-      res(cpoints[j].second.first, cpoints[j].second.second) *= v;
+      res(cpoints[j].second.first, cpoints[j].second.second) *= ccc[i] / cc[i];
   }
   return res;
 }
