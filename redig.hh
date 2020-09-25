@@ -635,7 +635,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
     for(int j = i * ccount;
             j < min((i + 1) * ccount, int(cpoints.size()));
             j ++)
-      res(cpoints[j].second.first, cpoints[j].second.second) *= cc[i] / ccc[i];
+      res(cpoints[j].second.first, cpoints[j].second.second) *= ccc[i] / cc[i];
   }
   return res;
 }
