@@ -122,7 +122,10 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size0) {
     for(int i = 0; i < calibrate.size(); i ++)
       calibrate[i] = sin(T(i) / T(calibrate.size()) * T(2) * Pi());
     dd *= - T(2) * Pi() / T(dd.rows()) / dd.row(dd.rows() / 2).dot(calibrate);
-    ii /=   T(2) * Pi() / T(ii.rows()) * ii.row(ii.rows() / 2).dot(calibrate);
+    const auto cII(T(2) * Pi() / T(ii.rows()) * ii.row(ii.rows() / 2).dot(calibrate));
+    for(int i = 1; i < II.rows(); i ++)
+      II.row(i) /= cII;
+    ii = (seed(- size) * II).template real<T>();
   }
   return size0 < 0 ? ii : dd;
 }

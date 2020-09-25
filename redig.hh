@@ -113,7 +113,7 @@ public:
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
-  Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count0 = 20);
+  Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reTrace(const Mat& dst, const Mat& src, const pair<int, int>& dstp, const pair<int, int>& srcp, const T& intensity);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2l(const Mat rgb[3]);
@@ -583,54 +583,63 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase,
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase, const Mat& vbase, const int& count0) {
+template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase, const Mat& vbase, const int& count) {
   assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
-  assert(cbase.rows() == vbase.rows() && cbase.cols() == vbase.cols());
-  const auto count(cbase.rows() * cbase.cols() / count0);
   vector<pair<T, pair<int, int> > > vpoints;
   vector<pair<T, pair<int, int> > > cpoints;
   vpoints.reserve(vbase.rows() * vbase.cols());
   cpoints.reserve(cbase.rows() * cbase.cols());
   for(int i = 0; i < vbase.rows(); i ++)
-    for(int j = 0; j < vbase.cols(); j ++) {
+    for(int j = 0; j < vbase.cols(); j ++)
       vpoints.emplace_back(make_pair(vbase(i, j), make_pair(i, j)));
+  for(int i = 0; i < cbase.rows(); i ++)
+    for(int j = 0; j < cbase.cols(); j ++)
       cpoints.emplace_back(make_pair(cbase(i, j), make_pair(i, j)));
-    }
   sort(vpoints.begin(), vpoints.end());
   sort(cpoints.begin(), cpoints.end());
-  Vec vv(count0);
+  Vec vv(count);
   Vec cc(vv.size());
   Decompose<T> decom(vv.size());
-  Mat res(cbase.rows(), cbase.cols());
-  for(int i = 0; i < count; i ++) {
-    if(! (i % (count / count0))) cerr << "." << flush;
-    const auto ibegin(i * count0);
-    const auto iend(min((i + 1) * count0, int(cpoints.size())));
-    if(iend - ibegin != count0) {
-      vv    = Vec(iend - ibegin);
-      cc    = Vec(vv.size());
-      decom = Decompose<T>(vv.size());
-    }
+  const auto ccount(int(cpoints.size()) / count);
+  const auto vcount(int(vpoints.size()) / count);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-    for(int j = ibegin; j < iend; j ++) {
-      vv[j - ibegin] = vpoints[j].first;
-      cc[j - ibegin] = cpoints[j].first;
-    }
-    const auto ccc(decom.complementMat(decom.next(vv)) *
-                     decom.complementMat(decom.next(cc)).solve(cc));
-    const auto vvv(decom.complementMat(decom.next(cc)) *
-                     decom.complementMat(decom.next(vv)).solve(vv) * sqrt(cc.dot(cc) / vv.dot(vv)));
+  for(int i = 0; i < count; i ++) {
+    vv[i] = T(0);
+    const auto ibegin(i * vcount);
+    const auto iend(min((i + 1) * vcount, int(vpoints.size())));
+    for(int j = ibegin; j < iend; j ++)
+      vv[i] += vpoints[j].first;
+    vv[i] /= T(iend - ibegin);
+  }
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-    for(int j = ibegin; j < iend; j ++) {
-      const auto& v(ccc[j - ibegin]);
-      res(cpoints[j].second.first, cpoints[j].second.second) =
-        isfinite(v) && ! isinf(v) && ! isnan(v) ? v : vvv[j - ibegin];
-    }
+  for(int i = 0; i < count; i ++) {
+    cc[i] = T(0);
+    const auto ibegin(i * ccount);
+    const auto iend(min((i + 1) * ccount, int(cpoints.size())));
+    for(int j = ibegin; j < iend; j ++)
+      cc[i] += cpoints[j].first;
+    cc[i] /= T(iend - ibegin);
+  }
+  const auto ccc(decom.complementMat(decom.next(cc)) *
+                   decom.complementMat(decom.next(vv)).solve(vv));
+  const auto vvv(decom.complementMat(decom.next(vv)) *
+                   decom.complementMat(decom.next(cc)).solve(cc));
+  Mat res(cbase);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < count; i ++) {
+    const auto v(ccc[i] / vvv[i]);
+    std::cerr << v << std::endl;
+    for(int j = i * ccount;
+            j < min((i + 1) * ccount, int(cpoints.size()));
+            j ++)
+      res(cpoints[j].second.first, cpoints[j].second.second) *= v;
   }
   return res;
 }

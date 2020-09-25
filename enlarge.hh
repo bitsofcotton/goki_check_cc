@@ -37,6 +37,9 @@ public:
     COLLECT_X,
     COLLECT_Y,
     COLLECT_BOTH,
+    INTEG_X,
+    INTEG_Y,
+    INTEG_BOTH,
     BUMP_X,
     BUMP_Y,
     BUMP_BOTH,
@@ -219,6 +222,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case COLLECT_BOTH:
     result = gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
     break;
+  case INTEG_BOTH:
+    result = gmean(compute(data, INTEG_X), compute(data, INTEG_Y));
+    break;
   case BUMP_BOTH:
     result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
     break;
@@ -236,6 +242,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case COLLECT_X:
     result = compute(data.transpose(), COLLECT_Y).transpose();
+    break;
+  case INTEG_X:
+    result = compute(data.transpose(), INTEG_Y).transpose();
     break;
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
@@ -351,6 +360,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case COLLECT_Y:
     result = compute(compute(data, DETECT_Y), ABS);
+    break;
+  case INTEG_Y:
+    result = p.diff(- data.rows()) * data;
     break;
   case BUMP_Y:
     {
