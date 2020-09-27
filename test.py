@@ -119,7 +119,7 @@ else:
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-flicker-base-%d.png", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-ficker.mp4"])
     elif(argv[2] == "sbox"):
       for s in range(0, pixels):
-        subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels), str(zratio), root + ".ppm", root + ".obj", root + "-sbox-" + str(pixels - s) + ".ppm"])
+        subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), str(zratio), root + ".ppm", root + ".obj", root + "-sbox-" + str(pixels - s) + ".ppm"])
     elif(argv[2] == "sboxb2w"):
       subprocess.call([argv[1], "b2w", root + "-sbox-1.ppm", root + "-sbox-bw-1.ppm", "1"])
       for s in range(1, pixels):

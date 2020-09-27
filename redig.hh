@@ -625,8 +625,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
       cc[i] += cpoints[j].first;
     cc[i] /= T(iend - ibegin);
   }
-  const auto ccc(decom.complementMat(decom.next(cc)) *
-                   decom.complementMat(decom.next(vv)).solve(cc));
+  const auto vvv(decom.complementMat(decom.next(vv)) *
+                   decom.complementMat(decom.next(cc)).solve(vv));
   Mat res(cbase);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -635,7 +635,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
     for(int j = i * ccount;
             j < min((i + 1) * ccount, int(cpoints.size()));
             j ++)
-      res(cpoints[j].second.first, cpoints[j].second.second) *= ccc[i] / cc[i];
+      res(cpoints[j].second.first, cpoints[j].second.second) *= vvv[i] / cc[i];
   }
   return res;
 }
@@ -710,14 +710,12 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
     yy = max(yMd - ymd + 1, yMs - yms + 1);
     xx = max(xMd - xmd + 1, xMs - xms + 1);
   }
-  Decompose<T> ddec(pdst.size());
-  Decompose<T> sdec(psrc.size());
-  Vec dy(pdst.size());
-  Vec dx(pdst.size());
-  Vec ttsy(pdst.size());
-  Vec ttsx(pdst.size());
+  P0<T> p;
+  Decompose<T> decom(min(psrc.size(), pdst.size()));
   Vec sy(psrc.size());
   Vec sx(psrc.size());
+  Vec dy(pdst.size());
+  Vec dx(pdst.size());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -732,31 +730,27 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
     sy[i] = psrc[i].first;
     sx[i] = psrc[i].second;
   }
-  const auto tsy(sdec.complementMat(sdec.next(sy)).solve(sy));
-  const auto tsx(sdec.complementMat(sdec.next(sx)).solve(sx));
-  const auto tdy(ddec.complementMat(ddec.next(dy)).solve(dy));
-  const auto tdx(ddec.complementMat(ddec.next(dx)).solve(dx));
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < min(tsy.size(), ttsy.size()); i ++) {
-    ttsy[i] = tsy[i] * intensity + tdy[i] * (T(1) - intensity);
-    ttsx[i] = tsx[i] * intensity + tdx[i] * (T(1) - intensity);
+  Vec vdy(min(pdst.size(), psrc.size()));
+  Vec vdx(vdy.size());
+  Vec vsy(vdy.size());
+  Vec vsx(vdy.size());
+  for(int i = 0; i < vdy.size(); i ++) {
+    vdy[i] = p.taylor(dy.size(), T(i) / T(vdy.size() - 1) * T(dy.size() - 1)).dot(dy);
+    vdx[i] = p.taylor(dx.size(), T(i) / T(vdx.size() - 1) * T(dx.size() - 1)).dot(dx);
+    vsy[i] = p.taylor(sy.size(), T(i) / T(vsy.size() - 1) * T(sy.size() - 1)).dot(sy);
+    vsx[i] = p.taylor(sx.size(), T(i) / T(vsx.size() - 1) * T(sx.size() - 1)).dot(sx);
   }
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = min(tsy.size(), ttsy.size()); i < ttsy.size(); i ++)
-    ttsy[i] = ttsx[i] = T(0);
-  ttsy = ddec.complementMat(ddec.next(dy)) * ttsy;
-  ttsx = ddec.complementMat(ddec.next(dx)) * ttsx;
-  pair<int, int> MM(make_pair(int(ttsy[0]), int(ttsx[0])));
+  const auto vy(decom.complementMat(decom.next(vdy)) *
+                   decom.complementMat(decom.next(vsy)).solve(vdy) * intensity + vsy * (T(1) - intensity));
+  const auto vx(decom.complementMat(decom.next(vdx)) *
+                   decom.complementMat(decom.next(vsx)).solve(vdx) * intensity + vsx * (T(1) - intensity));
+  pair<int, int> MM(make_pair(int(vy[0]), int(vx[0])));
   auto mm(MM);
-  for(int i = 1; i < ttsy.size(); i ++) {
-    MM.first  = max(MM.first,  int(ttsy[i]));
-    MM.second = max(MM.second, int(ttsx[i]));
-    mm.first  = min(mm.first,  int(ttsy[i]));
-    mm.second = min(mm.second, int(ttsx[i]));
+  for(int i = 1; i < vy.size(); i ++) {
+    MM.first  = max(MM.first,  int(vy[i]));
+    MM.second = max(MM.second, int(vx[i]));
+    mm.first  = min(mm.first,  int(vy[i]));
+    mm.second = min(mm.second, int(vx[i]));
   }
   const auto yyy(MM.first - mm.first + 1);
   const auto xxx(MM.second - mm.second + 1);
@@ -771,18 +765,18 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < ttsy.size(); i ++) {
+  for(int i = 0; i < vy.size(); i ++) {
     Vec3 v0(3);
     Vec3 v1(3);
     v0[2] = v1[2] = T(0);
-    v0[0] = (ttsy[i] - mm.first)  / T(yyy) * T(yy);
-    v0[1] = (ttsx[i] - mm.second) / T(xxx) * T(xx);
-    if(i == ttsy.size() - 1) {
-      v1[0] = (ttsy[0] - mm.first)  / T(yyy) * T(yy);
-      v1[1] = (ttsx[0] - mm.second) / T(xxx) * T(xx);
+    v0[0] = (vy[i] - mm.first)  / T(yyy) * T(yy);
+    v0[1] = (vx[i] - mm.second) / T(xxx) * T(xx);
+    if(i == vy.size() - 1) {
+      v1[0] = (vy[0] - mm.first)  / T(yyy) * T(yy);
+      v1[1] = (vx[0] - mm.second) / T(xxx) * T(xx);
     } else {
-      v1[0] = (ttsy[i + 1] - mm.first)  / T(yyy) * T(yy);
-      v1[1] = (ttsx[i + 1] - mm.second) / T(xxx) * T(xx);
+      v1[0] = (vy[i + 1] - mm.first)  / T(yyy) * T(yy);
+      v1[1] = (vx[i + 1] - mm.second) / T(xxx) * T(xx);
     }
     drawMatchLine(res, v0, v1, T(1));
   }
@@ -1436,10 +1430,12 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   for(int j = 0; j < zb.rows(); j ++)
     for(int k = 0; k < zb.cols(); k ++)
       zb(j, k) = z0;
+#if defined(_OPENMP)
   SimpleMatrix<omp_lock_t> lock(result.rows(), result.cols());
   for(int i = 0; i < lock.rows(); i ++)
     for(int j = 0; j < lock.cols(); j ++)
       omp_init_lock(&lock(i, j));
+#endif
   // able to boost with divide and conquer.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(dynamic)
@@ -1458,19 +1454,25 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
         midgeom[1] = x;
         if(onTriangle(z, tri, midgeom) && isfinite(z)) {
           {
+#if defined(_OPENMP)
             omp_set_lock(&lock(y, x));
+#endif
             if(zb(y, x) < z) {
               result(y, x) = tri.c;
               zb(y, x)     = z;
             }
+#if defined(_OPENMP)
             omp_unset_lock(&lock(y, x));
+#endif
           }
         }
       }
   }
+#if defined(_OPENMP)
   for(int i = 0; i < lock.rows(); i ++)
     for(int j = 0; j < lock.cols(); j ++)
       omp_destroy_lock(&lock(i, j));
+#endif
   return result;
 }
 
