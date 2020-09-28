@@ -136,9 +136,9 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.rotcompute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = redig.autoLevel(filter.rotcompute(redig.rgb2l(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
+      data[0] = data[1] = data[2] = redig.autoLevel(filter.rotcompute(redig.rgb2d(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
     else if(strcmp(argv[1], "illust") == 0) {
-      const auto bump(redig.autoLevel(filter.rotcompute(redig.rgb2l(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols())));
+      const auto bump(redig.autoLevel(filter.rotcompute(redig.rgb2d(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols())));
       typename simpleFile<num_t>::Mat res[3];
       res[0].resize(data[0].rows(), data[0].cols());
       for(int i = 0; i < res[0].rows(); i ++)
@@ -186,7 +186,8 @@ int main(int argc, const char* argv[]) {
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
-            strcmp(argv[1], "recolor") == 0) {
+            strcmp(argv[1], "recolor") == 0 ||
+            strcmp(argv[1], "recolor2") == 0) {
     if(argc < 6) {
       usage();
       return 0;
@@ -198,12 +199,20 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(datas, argv[4]))
       return - 1;
     if(strcmp(argv[1], "reshape") == 0) {
-      const auto datav(redig.rgb2l(datas));
+      const auto datav(redig.rgb2d(datas));
       for(int i = 0; i < 3; i ++)
         datac[i] = redig.reShape(datac[i], datav, count);
-    } else
+    } else if(strcmp(argv[1], "recolor") == 0)
       for(int i = 0; i < 3; i ++)
         datac[i] = redig.reColor(datac[i], datas[i], count);
+    else {
+      typename simpleFile<num_t>::Mat xyzc[3], xyzs[3];
+      redig.rgb2xyz(xyzc, datac);
+      redig.rgb2xyz(xyzs, datas);
+      for(int i = 0; i < 3; i ++)
+        xyzc[i] = redig.reColor(xyzc[i], xyzs[i], count);
+      redig.xyz2rgb(datac, xyzc);
+    }
     redig.normalize(datac, num_t(1));
     if(!file.savep2or3(argv[5], datac, ! true))
       return - 1;
@@ -610,7 +619,7 @@ int main(int argc, const char* argv[]) {
       i ++;
       if(!file.loadp2or3(ibuf, argv[i]))
         exit(- 2);
-      inb[ii] = redig.rgb2l(ibuf);
+      inb[ii] = redig.rgb2d(ibuf);
       i ++;
       assert(in[ii][0].rows() == inb[ii].rows());
       assert(in[ii][0].cols() == inb[ii].cols());
@@ -735,8 +744,8 @@ int main(int argc, const char* argv[]) {
       exit(- 2);
     for(int i = 0; i < std::atoi(argv[5]); i ++) {
       out[0] = out[1] = out[2] = 
-        redig.reTrace(redig.normalize(redig.rgb2l(dst), num_t(1)),
-          redig.normalize(redig.rgb2l(src), num_t(1)),
+        redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
+          redig.normalize(redig.rgb2d(src), num_t(1)),
           num_t(i + 1) / num_t(std::atoi(argv[5])));
       redig.normalize(out, 1.);
       if(!file.savep2or3((std::string(argv[4]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true, 255))

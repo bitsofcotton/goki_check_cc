@@ -116,9 +116,7 @@ public:
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reTrace(const Mat& dst, const Mat& src, const T& intensity);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
-  Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2d(const Mat rgb[3]);
-  Mat  rgb2xz(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   void xyz2rgb(Mat rgb[3], const Mat xyz[3]);
   Mat  contrast(const Mat& in, const T& intensity, const T& thresh = T(1) / T(2));
@@ -871,12 +869,6 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::rgb2l(const Mat rgb[3]) {
-  Mat work[3];
-  rgb2xyz(work, rgb);
-  return work[0];
-}
-
 template <typename T> typename reDig<T>::Mat reDig<T>::rgb2d(const Mat rgb[3]) {
   Mat xyz[3];
   rgb2xyz(xyz, rgb);
@@ -887,19 +879,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::rgb2d(const Mat rgb[3]) {
   for(int j = 0; j < rgb[0].rows(); j ++)
     for(int k = 0; k < rgb[0].cols(); k ++)
       result(j, k) = sqrt(xyz[0](j, k) * xyz[0](j, k) + xyz[1](j, k) * xyz[1](j, k) + xyz[2](j, k) * xyz[2](j, k));
-  return result;
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::rgb2xz(const Mat rgb[3]) {
-  Mat xyz[3];
-  rgb2xyz(xyz, rgb);
-  Mat result(rgb[0].rows(), rgb[0].cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int j = 0; j < rgb[0].rows(); j ++)
-    for(int k = 0; k < rgb[0].cols(); k ++)
-      result(j, k) = sqrt(xyz[1](j, k) * xyz[1](j, k) + xyz[2](j, k) * xyz[2](j, k));
   return result;
 }
 
