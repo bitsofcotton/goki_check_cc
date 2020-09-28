@@ -600,30 +600,24 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
   Vec vv(count);
   Vec cc(vv.size());
   Decompose<T> decom(vv.size());
-  const auto ccount(int(cpoints.size()) / count);
-  const auto vcount(int(vpoints.size()) / count);
+  const auto ccount(int(cpoints.size() + count - 1) / count);
+  const auto vcount(int(vpoints.size() + count - 1) / count);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < count; i ++) {
-    vv[i] = T(0);
-    const auto ibegin(i * vcount);
-    const auto iend(min((i + 1) * vcount, int(vpoints.size())));
-    for(int j = ibegin; j < iend; j ++)
+  for(int i = 0; i < vv.size(); i ++) {
+    vv[i] = cc[i] = T(0);
+    const auto ivbegin(i * vcount);
+    const auto ivend(min((i + 1) * vcount, int(vpoints.size())));
+    const auto icbegin(i * ccount);
+    const auto icend(min((i + 1) * ccount, int(cpoints.size())));
+    for(int j = ivbegin; j < ivend; j ++)
       vv[i] += vpoints[j].first;
-    vv[i] /= T(iend - ibegin);
-  }
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < count; i ++) {
-    cc[i] = T(0);
-    const auto ibegin(i * ccount);
-    const auto iend(min((i + 1) * ccount, int(cpoints.size())));
-    for(int j = ibegin; j < iend; j ++)
+    for(int j = icbegin; j < icend; j ++)
       cc[i] += cpoints[j].first;
-    cc[i] /= T(iend - ibegin);
+    vv[i] /= T(ivend - ivbegin);
+    cc[i] /= T(icend - icbegin);
   }
   const auto vvv(decom.complementMat(decom.next(vv)) *
                    decom.complementMat(decom.next(cc)).solve(vv));
