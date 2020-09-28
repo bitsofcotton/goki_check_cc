@@ -116,7 +116,6 @@ public:
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reTrace(const Mat& dst, const Mat& src, const T& intensity);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
-  Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2d(const Mat rgb[3]);
   Mat  rgb2xz(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -869,12 +868,6 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
     cerr << "." << flush;
   }
   return result;
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::rgb2l(const Mat rgb[3]) {
-  Mat work[3];
-  rgb2xyz(work, rgb);
-  return work[0];
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::rgb2d(const Mat rgb[3]) {
