@@ -114,7 +114,7 @@ public:
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20);
-  Mat  reTrace(const Mat& dst, const Mat& src, const pair<int, int>& dstp, const pair<int, int>& srcp, const T& intensity);
+  Mat  reTrace(const Mat& dst, const Mat& src, const T& intensity);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2l(const Mat rgb[3]);
   Mat  rgb2d(const Mat rgb[3]);
@@ -634,100 +634,75 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, const Mat& src, const pair<int, int>& dstp, const pair<int, int>& srcp, const T& intensity) {
-  Mat cdst(dst.rows(), dst.cols());
-  Mat csrc(src.rows(), src.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < cdst.rows(); i ++)
-    for(int j = 0; j < cdst.cols(); j ++)
-      cdst(i, j) = false;
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < csrc.rows(); i ++)
-    for(int j = 0; j < csrc.cols(); j ++)
-      csrc(i, j) = false;
-  vector<pair<int, int> > pdst0;
-  vector<pair<int, int> > psrc0;
-  floodfill(cdst, pdst0, dst, dstp.first, dstp.second);
-  floodfill(csrc, psrc0, src, srcp.first, srcp.second);
-  vector<pair<int, int> > pdst;
-  vector<pair<int, int> > psrc;
-  for(int i = 0; i < pdst0.size(); i ++) {
-    const auto& y(pdst0[i].first);
-    const auto& x(pdst0[i].second);
-    if(y <= 0 || x < 0 || y >= cdst.rows() - 1 || x >= cdst.cols())
-      pdst.emplace_back(pdst0[i]);
-    else if(cdst(y - 1, x) || cdst(y + 1, x))
-      ;
-    else
-      pdst.emplace_back(pdst0[i]);
-  }
-  for(int i = 0; i < psrc0.size(); i ++) {
-    const auto& y(psrc0[i].first);
-    const auto& x(psrc0[i].second);
-    if(y <= 0 || x < 0 || y >= csrc.rows() - 1 || x >= csrc.cols())
-      psrc.emplace_back(psrc0[i]);
-    else if(csrc(y - 1, x) || csrc(y + 1, x))
-      ;
-    else
-      psrc.emplace_back(psrc0[i]);
-  }
-  cerr << pdst.size() << ":" << psrc.size() << flush;
-  assert(pdst.size() && psrc.size());
+template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, const Mat& src, const T& intensity) {
+  vector<Vec3> pdst;
+  vector<Vec3> psrc;
+  vector<Veci3> facets;
+  getTileVec(dst, pdst, facets);
+  getTileVec(src, psrc, facets);
+  const auto idsts(getEdges(dst, pdst));
+  const auto isrcs(getEdges(src, psrc));
+  assert(idsts.size() && isrcs.size());
+  int iidst(0);
+  int iisrc(0);
+  for(int i = 1; i < idsts.size(); i ++)
+    if(idsts[iidst].size() < idsts[i].size()) iidst = i;
+  for(int i = 1; i < isrcs.size(); i ++)
+    if(isrcs[iisrc].size() < isrcs[i].size()) iisrc = i;
+  const auto& idst(idsts[iidst]);
+  const auto& isrc(isrcs[iisrc]);
+  cerr << iidst << "/" << idsts.size() << ":" << idst.size() << ", " << iisrc << "/" << isrcs.size() << ":" << isrc.size() << flush;
   int yy(0);
   int xx(0);
   {
-    int yMd(pdst[0].first);
+    int yMd(pdst[idst[0]][0]);
     int ymd(yMd);
-    int xMd(pdst[0].second);
+    int xMd(pdst[idst[0]][1]);
     int xmd(xMd);
-    int yMs(psrc[0].first);
+    int yMs(psrc[isrc[0]][0]);
     int yms(yMs);
-    int xMs(psrc[0].second);
+    int xMs(psrc[isrc[0]][1]);
     int xms(xMs);
-    for(int i = 1; i < pdst.size(); i ++) {
-      yMd = max(yMd, pdst[i].first);
-      ymd = min(ymd, pdst[i].first);
-      xMd = max(xMd, pdst[i].second);
-      xmd = min(xMd, pdst[i].second);
+    for(int i = 1; i < idst.size(); i ++) {
+      yMd = max(yMd, int(pdst[idst[i]][0]));
+      ymd = min(ymd, int(pdst[idst[i]][0]));
+      xMd = max(xMd, int(pdst[idst[i]][1]));
+      xmd = min(xMd, int(pdst[idst[i]][1]));
     }
-    for(int i = 1; i < psrc.size(); i ++) {
-      yMs = max(yMs, psrc[i].first);
-      yms = min(yms, psrc[i].first);
-      xMs = max(xMs, psrc[i].second);
-      xms = min(xms, psrc[i].second);
+    for(int i = 1; i < isrc.size(); i ++) {
+      yMs = max(yMs, int(psrc[isrc[i]][0]));
+      yms = min(yms, int(psrc[isrc[i]][0]));
+      xMs = max(xMs, int(psrc[isrc[i]][1]));
+      xms = min(xms, int(psrc[isrc[i]][1]));
     }
     yy = max(yMd - ymd + 1, yMs - yms + 1);
     xx = max(xMd - xmd + 1, xMs - xms + 1);
   }
   P0<T> p;
-  Decompose<T> decom(min(psrc.size(), pdst.size()));
-  Vec sy(psrc.size());
-  Vec sx(psrc.size());
-  Vec dy(pdst.size());
-  Vec dx(pdst.size());
+  Vec sy(isrc.size());
+  Vec sx(isrc.size());
+  Vec dy(idst.size());
+  Vec dx(idst.size());
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < pdst.size(); i ++) {
-    dy[i] = pdst[i].first;
-    dx[i] = pdst[i].second;
+  for(int i = 0; i < idst.size(); i ++) {
+    dy[i] = pdst[idst[i]][0];
+    dx[i] = pdst[idst[i]][1];
   }
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < psrc.size(); i ++) {
-    sy[i] = psrc[i].first;
-    sx[i] = psrc[i].second;
+  for(int i = 0; i < isrc.size(); i ++) {
+    sy[i] = psrc[isrc[i]][0];
+    sx[i] = psrc[isrc[i]][1];
   }
-  Vec vdy(min(pdst.size(), psrc.size()));
+  Vec vdy(min(idst.size(), isrc.size()));
   Vec vdx(vdy.size());
   Vec vsy(vdy.size());
   Vec vsx(vdy.size());
+  cerr << ", " << vdy.size() << flush;
+  Decompose<T> decom(vdy.size());
   for(int i = 0; i < vdy.size(); i ++) {
     vdy[i] = p.taylor(dy.size(), T(i) / T(vdy.size() - 1) * T(dy.size() - 1)).dot(dy);
     vdx[i] = p.taylor(dx.size(), T(i) / T(vdx.size() - 1) * T(dx.size() - 1)).dot(dx);
