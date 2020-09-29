@@ -115,6 +115,7 @@ public:
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reTrace(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
+  Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -662,11 +663,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
     yy = max(yMd - ymd + 1, yMs - yms + 1);
     xx = max(xMd - xmd + 1, xMs - xms + 1);
   }
-  P0<T> p;
-  Vec sy(isrc.size());
-  Vec sx(isrc.size());
   Vec dy(idst.size());
   Vec dx(idst.size());
+  Vec sy(isrc.size());
+  Vec sx(isrc.size());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -685,6 +685,85 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
   Decompose<T> decom(count);
   const auto vy(decom.mimic(dy, sy, intensity));
   const auto vx(decom.mimic(dx, sx, intensity));
+  pair<int, int> MM(make_pair(int(vy[0]), int(vx[0])));
+  auto mm(MM);
+  for(int i = 1; i < vy.size(); i ++) {
+    MM.first  = max(MM.first,  int(vy[i]));
+    MM.second = max(MM.second, int(vx[i]));
+    mm.first  = min(mm.first,  int(vy[i]));
+    mm.second = min(mm.second, int(vx[i]));
+  }
+  const auto yyy(MM.first - mm.first + 1);
+  const auto xxx(MM.second - mm.second + 1);
+  cerr << ":" << yy << ":" << xx << ":" << yyy << ":" << xxx << flush;
+  Mat res(yy, xx);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < res.rows(); i ++)
+    for(int j = 0; j < res.cols(); j ++)
+      res(i, j) = T(0);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < dy.size(); i ++) {
+    Vec3 v0(3);
+    Vec3 v1(3);
+    v0[2] = v1[2] = T(0);
+    v0[0] = (vy[i] - mm.first)  / T(yyy) * T(yy);
+    v0[1] = (vx[i] - mm.second) / T(xxx) * T(xx);
+    if(i == vy.size() - 1) {
+      v1[0] = (vy[0] - mm.first)  / T(yyy) * T(yy);
+      v1[1] = (vx[0] - mm.second) / T(xxx) * T(xx);
+    } else {
+      v1[0] = (vy[i + 1] - mm.first)  / T(yyy) * T(yy);
+      v1[1] = (vx[i + 1] - mm.second) / T(xxx) * T(xx);
+    }
+    drawMatchLine(res, v0, v1, T(1));
+  }
+  return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, const T& intensity, const int& count) {
+  vector<Vec3> pdst;
+  vector<Veci3> facets;
+  getTileVec(dst, pdst, facets);
+  const auto idsts(getEdges(dst, pdst));
+  assert(idsts.size());
+  int iidst(0);
+  for(int i = 1; i < idsts.size(); i ++)
+    if(idsts[iidst].size() < idsts[i].size()) iidst = i;
+  const auto& idst(idsts[iidst]);
+  cerr << iidst << "/" << idsts.size() << ":" << idst.size() << flush;
+  int yy(0);
+  int xx(0);
+  {
+    int yMd(pdst[idst[0]][0]);
+    int ymd(yMd);
+    int xMd(pdst[idst[0]][1]);
+    int xmd(xMd);
+    for(int i = 1; i < idst.size(); i ++) {
+      yMd = max(yMd, int(pdst[idst[i]][0]));
+      ymd = min(ymd, int(pdst[idst[i]][0]));
+      xMd = max(xMd, int(pdst[idst[i]][1]));
+      xmd = min(xMd, int(pdst[idst[i]][1]));
+    }
+    yy = yMd - ymd + 1;
+    xx = xMd - xmd + 1;
+  }
+  Vec dy(idst.size());
+  Vec dx(idst.size());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < idst.size(); i ++) {
+    dy[i] = pdst[idst[i]][0];
+    dx[i] = pdst[idst[i]][1];
+  }
+  Decompose<T> decom(count);
+  const auto vy(decom.lpf(dy, intensity));
+  const auto vx(decom.lpf(dx, intensity));
   pair<int, int> MM(make_pair(int(vy[0]), int(vx[0])));
   auto mm(MM);
   for(int i = 1; i < vy.size(); i ++) {
