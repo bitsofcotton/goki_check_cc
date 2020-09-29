@@ -39,12 +39,16 @@ public:
   inline Decompose(const int& size);
   inline ~Decompose();
          Vec mimic(const Vec& dst, const Vec& src, const T& intensity = T(1));
+         Vec lpf(const Vec& dst, const T& intensity = T(1));
   inline Vec mimic0(const Vec& dst, const Vec& src);
          Vec next(const Vec& in0);
   Mat complementMat(const Vec& in);
   T   lasterr;
   std::vector<Mat> bA;
   Mat A;
+private:
+         Vec prepare(const Vec& in);
+         Vec apply(const Vec& v, const Vec& dst, const Vec& src);
 };
 
 template <typename T> inline Decompose<T>::Decompose() {
@@ -52,17 +56,16 @@ template <typename T> inline Decompose<T>::Decompose() {
 }
 
 template <typename T> inline Decompose<T>::Decompose(const int& size) {
-  P0<T> p0;
+  static P0<T> p0;
   A.resize(size, size);
   for(int i = 0; i < A.rows(); i ++)
     for(int j = 0; j < A.cols(); j ++)
-      A(i, j) = T(i == j ? 1 : 0);
-  bA.emplace_back(A);
-  for(int i = 1; i < size; i ++) {
+      A(i, j) = T(0);
+  for(int i = 0; i < size; i ++) {
     SimpleMatrix<T> AA(size, size);
     for(int j = 0; j < A.rows(); j ++) {
-      const auto jj(T(j) * T(i + 1) / T(size - 1));
-      AA.row(j) = p0.taylor(A.cols(), (jj - floor(jj)) * T(size - 1));
+      const auto jj(T(j) * T(i + 1) / T(size));
+      AA.row(j) = p0.taylor(A.cols(), (jj - floor(jj)) * T(A.cols()));
     }
     bA.emplace_back(AA);
     A += AA;
@@ -75,37 +78,55 @@ template <typename T> inline Decompose<T>::~Decompose() {
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::mimic(const Vec& dst, const Vec& src, const T& intensity) {
   const int  size(bA.size());
-  const auto dcnt(int(dst.size() + size - 1) / size - 1);
-  const auto scnt(int(src.size() + size - 1) / size - 1);
-  assert(0 < dcnt && 0 < scnt);
-  Vec dd(size);
-  Vec ss(size);
+  const auto dd(prepare(dst));
+  return apply(dst,
+    mimic0(dd, prepare(src)) * intensity + dd * (T(1) - intensity), dd);
+}
+
+template <typename T> typename Decompose<T>::Vec Decompose<T>::lpf(const Vec& dst, const T& intensity) {
+  const int  size(bA.size());
+  const auto dd(prepare(dst));
+  const auto ndd(next(dd));
+        auto freq(complementMat(ndd).solve(dd));
+  const auto normfreq(sqrt(freq.dot(freq)));
+  for(int i = 0; i < freq.size() - 1; i ++)
+    freq[i] += intensity * T(i + 1) / T(freq.size() - 1) * normfreq;
+  return apply(dst, complementMat(ndd) * freq, dd);
+}
+
+template <typename T> typename Decompose<T>::Vec Decompose<T>::prepare(const Vec& in) {
+  const int  size(bA.size());
+  const auto cnt(int(in.size() + size - 1) / size - 1);
+  assert(0 < cnt);
+  Vec res(size);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < size; i ++) {
-    dd[i] = ss[i] = T(0);
-    const auto dbegin(i * dcnt);
-    const auto dend(i < size - 1 ? min((i + 1) * dcnt, int(dst.size())) : int(dst.size()));
-    const auto sbegin(i * scnt);
-    const auto send(i < size - 1 ? min((i + 1) * scnt, int(src.size())) : int(src.size()));
-    for(int j = dbegin; j < dend; j ++)
-      dd[i] += dst[j];
-    for(int j = sbegin; j < send; j ++)
-      ss[i] += src[j];
-    dd[i] /= T(dend - dbegin);
-    ss[i] /= T(send - sbegin);
+    res[i] = T(0);
+    const auto ibegin(i * cnt);
+    const auto iend(i < size - 1 ? min((i + 1) * cnt, int(in.size())) : int(in.size()));
+    for(int j = ibegin; j < iend; j ++)
+      res[i] += in[j];
+    res[i] /= T(iend - ibegin);
   }
-  const auto ddd(mimic0(dd, ss) * intensity + dd * (T(1) - intensity));
-  auto res(dst);
+  return res;
+}
+
+template <typename T> typename Decompose<T>::Vec Decompose<T>::apply(const Vec& v, const Vec& dst, const Vec& src) {
+  const int  size(bA.size());
+  assert(dst.size() == size && src.size() == size);
+  const auto cnt(int(v.size() + size - 1) / size - 1);
+  assert(0 < cnt);
+  auto res(v);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < ddd.size(); i ++) {
-    const auto ratio(ddd[i] / dd[i]);
-    for(int j = i * dcnt;
-            j < (i < ddd.size() - 1 ? min((i + 1) * dcnt, int(dst.size())) : int(dst.size()));
+  for(int i = 0; i < size; i ++) {
+    const auto ratio(dst[i] / src[i]);
+    for(int j = i * cnt;
+            j < (i < res.size() - 1 ? min((i + 1) * cnt, int(res.size())) : int(res.size()));
             j ++)
       res[j] *= ratio;
   }

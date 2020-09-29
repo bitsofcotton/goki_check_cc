@@ -89,6 +89,7 @@ void usage() {
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck retrace <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <outcount>" << endl;
+  cout << "gokicheck lpf     <num_shape_per_point> <inputdst.ppm> <output.ppm> <outcount>" << endl;
   return;
 }
 
@@ -746,6 +747,23 @@ int main(int argc, const char* argv[]) {
           num_t(i) / num_t(std::atoi(argv[6])), std::atoi(argv[2]));
       redig.normalize(out, 1.);
       if(!file.savep2or3((std::string(argv[5]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true, 255))
+        return - 3;
+    }
+  } else if(strcmp(argv[1], "lpf") == 0) {
+    if(argc < 6) {
+      usage();
+      return - 1;
+    }
+    redig.initialize(1);
+    typename simpleFile<num_t>::Mat dst[3], out[3];
+    if(!file.loadp2or3(dst, argv[3]))
+      exit(- 2);
+    for(int i = 0; i < std::atoi(argv[5]); i ++) {
+      out[0] = out[1] = out[2] = 
+        redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
+          num_t(i) / num_t(std::atoi(argv[5])), std::atoi(argv[2]));
+      redig.normalize(out, 1.);
+      if(!file.savep2or3((std::string(argv[4]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true, 255))
         return - 3;
     }
   } else if(strcmp(argv[1], "omake") == 0) {
