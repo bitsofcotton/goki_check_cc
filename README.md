@@ -41,6 +41,8 @@ Searching the Internet more...
     gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
+    gokicheck recolor <dimension> <input.ppm> <input-copy.ppm> <output.ppm>
+    gokicheck retrace <dimension> <input-mask.ppm> <input-mask-copy.ppm> <outbase> <outcount>
     python2 test.py ./gokicheck match     input0.png input1.(png|obj)
     python2 test.py ./gokicheck match0    input0.png input1.(png|obj)
     python2 test.py ./gokicheck matcho    input0.png input1.(png|obj) match.txt
