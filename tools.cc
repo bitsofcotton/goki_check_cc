@@ -186,8 +186,7 @@ int main(int argc, const char* argv[]) {
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
-            strcmp(argv[1], "recolor") == 0 ||
-            strcmp(argv[1], "recolor2") == 0) {
+            strcmp(argv[1], "recolor") == 0) {
     if(argc < 6) {
       usage();
       return 0;
@@ -202,10 +201,7 @@ int main(int argc, const char* argv[]) {
       const auto datav(redig.rgb2d(datas));
       for(int i = 0; i < 3; i ++)
         datac[i] = redig.reShape(datac[i], datav, count);
-    } else if(strcmp(argv[1], "recolor") == 0)
-      for(int i = 0; i < 3; i ++)
-        datac[i] = redig.reColor(datac[i], datas[i], count);
-    else {
+    } else {
       typename simpleFile<num_t>::Mat xyzc[3], xyzs[3];
       redig.rgb2xyz(xyzc, datac);
       redig.rgb2xyz(xyzs, datas);
