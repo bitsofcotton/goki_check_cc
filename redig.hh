@@ -595,45 +595,26 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
       cpoints.emplace_back(make_pair(cbase(i, j), make_pair(i, j)));
   sort(vpoints.begin(), vpoints.end());
   sort(cpoints.begin(), cpoints.end());
-  Vec vv(count);
-  Vec cc(vv.size());
-  Decompose<T> decom(vv.size());
-  const auto ccount(int(cpoints.size() + count - 1) / count - 1);
-  const auto vcount(int(vpoints.size() + count - 1) / count - 1);
-  assert(0 < ccount && 0 < vcount);
+  Vec vv(vpoints.size());
+  Vec cc(cpoints.size());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < vv.size(); i ++) {
-    vv[i] = cc[i] = T(0);
-    const auto ivbegin(i * vcount);
-    const auto ivend(i < vv.size() - 1
-                     ? min((i + 1) * vcount, int(vpoints.size()))
-                     : int(vpoints.size()));
-    const auto icbegin(i * ccount);
-    const auto icend(i < vv.size() - 1
-                     ? min((i + 1) * ccount, int(cpoints.size()))
-                     : int(cpoints.size()));
-    for(int j = ivbegin; j < ivend; j ++)
-      vv[i] += vpoints[j].first;
-    for(int j = icbegin; j < icend; j ++)
-      cc[i] += cpoints[j].first;
-    vv[i] /= T(ivend - ivbegin);
-    cc[i] /= T(icend - icbegin);
-  }
-  const auto ccc(decom.complementMat(decom.next(cc)) *
-                   decom.complementMat(decom.next(vv)).solve(cc));
+  for(int i = 0; i < vpoints.size(); i ++)
+    vv[i] = vpoints[i].first;
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < cpoints.size(); i ++)
+    cc[i] = cpoints[i].first;
+  const auto ccc(Decompose<T>(count).mimic(cc, vv));
   Mat res(cbase);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < count; i ++) {
-    for(int j = i * ccount;
-            j < min((i + 1) * ccount, int(cpoints.size()));
-            j ++)
-      res(cpoints[j].second.first, cpoints[j].second.second) *= ccc[i] / cc[i];
-  }
+  for(int i = 0; i < cpoints.size(); i ++)
+    res(cpoints[i].second.first, cpoints[i].second.second) = ccc[i];
   return res;
 }
 
@@ -701,63 +682,16 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
     sy[i] = psrc[isrc[i]][0];
     sx[i] = psrc[isrc[i]][1];
   }
-  assert(count <= dy.size() && count <= sy.size());
-  Vec vdy(count);
-  Vec vdx(vdy.size());
-  Vec vsy(vdy.size());
-  Vec vsx(vdy.size());
-  const auto dcount(int(dy.size() + count - 1) / count - 1);
-  const auto scount(int(sy.size() + count - 1) / count - 1);
-  assert(0 < dcount && 0 < scount);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < vdy.size(); i ++) {
-    vdy[i] = vdx[i] = vsy[i] = vsx[i] = T(0);
-    const auto idbegin(i * dcount);
-    const auto idend(i < vdy.size() - 1
-                     ? min((i + 1) * dcount, int(dy.size()))
-                     : int(dy.size()));
-    const auto isbegin(i * scount);
-    const auto isend(i < vdy.size() - 1
-                     ? min((i + 1) * scount, int(sy.size()))
-                     : int(sy.size()));
-    for(int j = idbegin; j < idend; j ++) {
-      vdy[i] += dy[j];
-      vdx[i] += dx[j];
-    }
-    for(int j = isbegin; j < isend; j ++) {
-      vsy[i] += sy[j];
-      vsx[i] += sx[j];
-    }
-    vdy[i] /= T(idend - idbegin);
-    vdx[i] /= T(idend - idbegin);
-    vsy[i] /= T(isend - isbegin);
-    vsx[i] /= T(isend - isbegin);
-  }
-  Decompose<T> decom(vdy.size());
-  const auto vy(decom.complementMat(decom.next(vdy)) *
-                   decom.complementMat(decom.next(vsy)).solve(vdy) * intensity + vdy * (T(1) - intensity));
-  const auto vx(decom.complementMat(decom.next(vdx)) *
-                   decom.complementMat(decom.next(vsx)).solve(vdx) * intensity + vdx * (T(1) - intensity));
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < vdy.size(); i ++) {
-    const auto idbegin(i * dcount);
-    const auto idend(min((i + 1) * dcount, int(dy.size())));
-    for(int j = idbegin; j < idend; j ++) {
-      dy[j] *= vy[i] / vdy[i];
-      dx[j] *= vx[i] / vdx[i];
-    }
-  }
+  Decompose<T> decom(count);
+  const auto vy(decom.mimic(dy, sy, intensity));
+  const auto vx(decom.mimic(dx, sx, intensity));
   pair<int, int> MM(make_pair(int(vy[0]), int(vx[0])));
   auto mm(MM);
-  for(int i = 1; i < dy.size(); i ++) {
-    MM.first  = max(MM.first,  int(dy[i]));
-    MM.second = max(MM.second, int(dx[i]));
-    mm.first  = min(mm.first,  int(dy[i]));
-    mm.second = min(mm.second, int(dx[i]));
+  for(int i = 1; i < vy.size(); i ++) {
+    MM.first  = max(MM.first,  int(vy[i]));
+    MM.second = max(MM.second, int(vx[i]));
+    mm.first  = min(mm.first,  int(vy[i]));
+    mm.second = min(mm.second, int(vx[i]));
   }
   const auto yyy(MM.first - mm.first + 1);
   const auto xxx(MM.second - mm.second + 1);
@@ -776,14 +710,14 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
     Vec3 v0(3);
     Vec3 v1(3);
     v0[2] = v1[2] = T(0);
-    v0[0] = (dy[i] - mm.first)  / T(yyy) * T(yy);
-    v0[1] = (dx[i] - mm.second) / T(xxx) * T(xx);
-    if(i == dy.size() - 1) {
-      v1[0] = (dy[0] - mm.first)  / T(yyy) * T(yy);
-      v1[1] = (dx[0] - mm.second) / T(xxx) * T(xx);
+    v0[0] = (vy[i] - mm.first)  / T(yyy) * T(yy);
+    v0[1] = (vx[i] - mm.second) / T(xxx) * T(xx);
+    if(i == vy.size() - 1) {
+      v1[0] = (vy[0] - mm.first)  / T(yyy) * T(yy);
+      v1[1] = (vx[0] - mm.second) / T(xxx) * T(xx);
     } else {
-      v1[0] = (dy[i + 1] - mm.first)  / T(yyy) * T(yy);
-      v1[1] = (dx[i + 1] - mm.second) / T(xxx) * T(xx);
+      v1[0] = (vy[i + 1] - mm.first)  / T(yyy) * T(yy);
+      v1[1] = (vx[i + 1] - mm.second) / T(xxx) * T(xx);
     }
     drawMatchLine(res, v0, v1, T(1));
   }
