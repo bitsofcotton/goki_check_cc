@@ -88,8 +88,9 @@ void usage() {
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck retrace <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <outcount>" << endl;
-  cout << "gokicheck lpf     <num_shape_per_point> <inputdst.ppm> <output.ppm> <outcount>" << endl;
+  cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <intensity> <output.ppm>" << endl;
+  cout << "gokicheck retrace <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokicheck retrace2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
   return;
 }
 
@@ -187,7 +188,8 @@ int main(int argc, const char* argv[]) {
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
-            strcmp(argv[1], "recolor") == 0) {
+            strcmp(argv[1], "recolor") == 0 ||
+            strcmp(argv[1], "recolor2") == 0) {
     if(argc < 6) {
       usage();
       return 0;
@@ -196,7 +198,9 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat datac[3], datas[3];
     if(!file.loadp2or3(datac, argv[3]))
       return - 1;
-    if(!file.loadp2or3(datas, argv[4]))
+    if((strcmp(argv[1], "recolor") == 0 ||
+        strcmp(argv[1], "reshape") == 0) &&
+       ! file.loadp2or3(datas, argv[4]))
       return - 1;
     if(strcmp(argv[1], "reshape") == 0) {
       const auto datav(redig.rgb2d(datas));
@@ -207,7 +211,9 @@ int main(int argc, const char* argv[]) {
       redig.rgb2xyz(xyzc, datac);
       redig.rgb2xyz(xyzs, datas);
       for(int i = 0; i < 3; i ++)
-        xyzc[i] = redig.reColor(xyzc[i], xyzs[i], count);
+        xyzc[i] = strcmp(argv[1], "recolor") == 0 ?
+          redig.reColor(xyzc[i], xyzs[i], count) :
+          redig.reColor(xyzc[i], count, num_t(std::atof(argv[4])));
       redig.xyz2rgb(datac, xyzc);
     }
     redig.normalize(datac, num_t(1));
@@ -740,16 +746,14 @@ int main(int argc, const char* argv[]) {
       exit(- 2);
     if(!file.loadp2or3(src, argv[4]))
       exit(- 2);
-    for(int i = 0; i < abs(std::atoi(argv[6])); i ++) {
-      out[0] = out[1] = out[2] = 
-        redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
-          redig.normalize(redig.rgb2d(src), num_t(1)),
-          num_t(i) / num_t(std::atoi(argv[6])), std::atoi(argv[2]));
-      redig.normalize(out, 1.);
-      if(!file.savep2or3((std::string(argv[5]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true, 255))
-        return - 3;
-    }
-  } else if(strcmp(argv[1], "lpf") == 0) {
+    out[0] = out[1] = out[2] = 
+      redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
+        redig.normalize(redig.rgb2d(src), num_t(1)),
+        num_t(std::atof(argv[6])), std::atoi(argv[2]));
+    redig.normalize(out, 1.);
+    if(!file.savep2or3((std::string(argv[5]) + std::string("-") + std::string(argv[6]) + std::string(".ppm")).c_str(), out, ! true, 255))
+      return - 3;
+  } else if(strcmp(argv[1], "retrace2") == 0) {
     if(argc < 6) {
       usage();
       return - 1;
@@ -758,15 +762,12 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat dst[3], out[3];
     if(!file.loadp2or3(dst, argv[3]))
       exit(- 2);
-    for(int i = 0; i < abs(std::atoi(argv[5])); i ++) {
-      out[0] = out[1] = out[2] = 
-        redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
-          num_t(i) / num_t(std::atoi(argv[5])),
-          std::atoi(argv[2]));
-      redig.normalize(out, 1.);
-      if(!file.savep2or3((std::string(argv[4]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true, 255))
-        return - 3;
-    }
+    out[0] = out[1] = out[2] = 
+      redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
+        num_t(std::atof(argv[5])), std::atoi(argv[2]));
+    redig.normalize(out, 1.);
+    if(!file.savep2or3((std::string(argv[4]) + std::string("-") + std::string(argv[5]) + std::string(".ppm")).c_str(), out, ! true, 255))
+      return - 3;
   } else if(strcmp(argv[1], "omake") == 0) {
     std::vector<std::vector<num_t> > data;
     std::string header;

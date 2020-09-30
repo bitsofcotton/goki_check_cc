@@ -114,6 +114,7 @@ public:
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20);
+  Mat  reColor(const Mat& cbase, const int& count = 20, const T& intensity = T(1));
   Mat  reTrace(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
@@ -621,6 +622,31 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
   return res;
 }
 
+template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase, const int& count, const T& intensity) {
+  assert(cbase.rows() && cbase.cols());
+  vector<pair<T, pair<int, int> > > cpoints;
+  cpoints.reserve(cbase.rows() * cbase.cols());
+  for(int i = 0; i < cbase.rows(); i ++)
+    for(int j = 0; j < cbase.cols(); j ++)
+      cpoints.emplace_back(make_pair(cbase(i, j), make_pair(i, j)));
+  sort(cpoints.begin(), cpoints.end());
+  Vec cc(cpoints.size());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < cpoints.size(); i ++)
+    cc[i] = cpoints[i].first;
+  const auto ccc(Decompose<T>(count).emphasis(cc, intensity));
+  Mat res(cbase);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < cpoints.size(); i ++)
+    res(cpoints[i].second.first, cpoints[i].second.second) = ccc[i];
+  return res;
+}
+
 template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, const Mat& src, const T& intensity, const int& count) {
   pair<Vec, Vec> pdst, psrc;
   pair<pair<int, int>, pair<int, int> > dsthw, srchw;
@@ -667,10 +693,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
     spdst.second[i - pdst.first.size() / 2] = pdst.second[i % pdst.second.size()];
   }
   Decompose<T> decom(count);
-        auto vy(decom.lpf(pdst.first,  intensity));
-        auto vx(decom.lpf(pdst.second, intensity));
-  const auto vy1(decom.lpf(spdst.first,  intensity));
-  const auto vx1(decom.lpf(spdst.second, intensity));
+        auto vy(decom.emphasis(pdst.first,  intensity));
+        auto vx(decom.emphasis(pdst.second, intensity));
+  const auto vy1(decom.emphasis(spdst.first,  intensity));
+  const auto vx1(decom.emphasis(spdst.second, intensity));
   for(int i = 0; i < vy.size() / 4; i ++) {
     vy[i] = vy1[(i + vy1.size() / 2) % vy1.size()];
     vx[i] = vx1[(i + vx1.size() / 2) % vx1.size()];
