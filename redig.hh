@@ -645,12 +645,12 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
   const auto vy1(decom.mimic(spdst.first,  spsrc.first,  intensity));
   const auto vx1(decom.mimic(spdst.second, spsrc.second, intensity));
   for(int i = 0; i < vy.size() / 4; i ++) {
-    vy[i] = vy1[i];
-    vx[i] = vx1[i];
+    vy[i] = vy1[(i + vy1.size() / 2) % vy1.size()];
+    vx[i] = vx1[(i + vx1.size() / 2) % vx1.size()];
   }
   for(int i = vy.size() * 3 / 4; i < vy.size(); i ++) {
-    vy[i] = vy1[i];
-    vx[i] = vx1[i];
+    vy[i] = vy1[(i + vy.size() / 2) % vy.size()];
+    vx[i] = vx1[(i + vx.size() / 2) % vx.size()];
   }
   return applyTrace(make_pair(vy, vx), make_pair(dsthw, srchw));
 }
@@ -672,12 +672,12 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
   const auto vy1(decom.lpf(spdst.first,  intensity));
   const auto vx1(decom.lpf(spdst.second, intensity));
   for(int i = 0; i < vy.size() / 4; i ++) {
-    vy[i] = vy1[i];
-    vx[i] = vx1[i];
+    vy[i] = vy1[(i + vy1.size() / 2) % vy1.size()];
+    vx[i] = vx1[(i + vx1.size() / 2) % vx1.size()];
   }
   for(int i = vy.size() * 3 / 4; i < vy.size(); i ++) {
-    vy[i] = vy1[i];
-    vx[i] = vx1[i];
+    vy[i] = vy1[(i + vy.size() / 2) % vy.size()];
+    vx[i] = vx1[(i + vx.size() / 2) % vx.size()];
   }
   return applyTrace(make_pair(vy, vx), make_pair(hw, hw));
 }
