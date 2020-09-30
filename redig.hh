@@ -145,6 +145,8 @@ private:
   inline bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(100000));
   inline int  getImgPtRecursive(const int& h, const int& y) const;
+  void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
+  Mat  applyTrace(const pair<Vec, Vec>& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw);
   
   T   Pi;
   int vbox;
@@ -620,150 +622,104 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, const Mat& src, const T& intensity, const int& count) {
-  vector<Vec3> pdst;
-  vector<Vec3> psrc;
-  vector<Veci3> facets;
-  getTileVec(dst, pdst, facets);
-  getTileVec(src, psrc, facets);
-  const auto idsts(getEdges(dst, pdst));
-  const auto isrcs(getEdges(src, psrc));
-  assert(idsts.size() && isrcs.size());
-  int iidst(0);
-  int iisrc(0);
-  for(int i = 1; i < idsts.size(); i ++)
-    if(idsts[iidst].size() < idsts[i].size()) iidst = i;
-  for(int i = 1; i < isrcs.size(); i ++)
-    if(isrcs[iisrc].size() < isrcs[i].size()) iisrc = i;
-  const auto& idst(idsts[iidst]);
-  const auto& isrc(isrcs[iisrc]);
-  cerr << iidst << "/" << idsts.size() << ":" << idst.size() << ", " << iisrc << "/" << isrcs.size() << ":" << isrc.size() << flush;
-  int yy(0);
-  int xx(0);
-  {
-    int yMd(pdst[idst[0]][0]);
-    int ymd(yMd);
-    int xMd(pdst[idst[0]][1]);
-    int xmd(xMd);
-    int yMs(psrc[isrc[0]][0]);
-    int yms(yMs);
-    int xMs(psrc[isrc[0]][1]);
-    int xms(xMs);
-    for(int i = 1; i < idst.size(); i ++) {
-      yMd = max(yMd, int(pdst[idst[i]][0]));
-      ymd = min(ymd, int(pdst[idst[i]][0]));
-      xMd = max(xMd, int(pdst[idst[i]][1]));
-      xmd = min(xMd, int(pdst[idst[i]][1]));
-    }
-    for(int i = 1; i < isrc.size(); i ++) {
-      yMs = max(yMs, int(psrc[isrc[i]][0]));
-      yms = min(yms, int(psrc[isrc[i]][0]));
-      xMs = max(xMs, int(psrc[isrc[i]][1]));
-      xms = min(xms, int(psrc[isrc[i]][1]));
-    }
-    yy = max(yMd - ymd + 1, yMs - yms + 1);
-    xx = max(xMd - xmd + 1, xMs - xms + 1);
+  pair<Vec, Vec> pdst, psrc;
+  pair<pair<int, int>, pair<int, int> > dsthw, srchw;
+  prepTrace(pdst, dsthw, dst);
+  prepTrace(psrc, srchw, src);
+  pair<Vec, Vec> spdst, spsrc;
+  spdst.first.resize(pdst.first.size());
+  spdst.second.resize(pdst.second.size());
+  spsrc.first.resize(psrc.first.size());
+  spsrc.second.resize(psrc.second.size());
+  for(int i = pdst.first.size() / 2; i < pdst.first.size() + pdst.first.size() / 2; i ++) {
+    spdst.first[i - pdst.first.size() / 2]  = pdst.first[i % pdst.first.size()];
+    spdst.second[i - pdst.first.size() / 2] = pdst.second[i % pdst.second.size()];
   }
-  Vec dy(idst.size());
-  Vec dx(idst.size());
-  Vec sy(isrc.size());
-  Vec sx(isrc.size());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < idst.size(); i ++) {
-    dy[i] = pdst[idst[i]][0];
-    dx[i] = pdst[idst[i]][1];
-  }
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < isrc.size(); i ++) {
-    sy[i] = psrc[isrc[i]][0];
-    sx[i] = psrc[isrc[i]][1];
+  for(int i = psrc.first.size() / 2; i < psrc.first.size() + psrc.first.size() / 2; i ++) {
+    spsrc.first[i - psrc.first.size() / 2]  = psrc.first[i % psrc.first.size()];
+    spsrc.second[i - psrc.first.size() / 2] = psrc.second[i % psrc.second.size()];
   }
   Decompose<T> decom(count);
-  const auto vy(decom.mimic(dy, sy, intensity));
-  const auto vx(decom.mimic(dx, sx, intensity));
-  pair<int, int> MM(make_pair(int(vy[0]), int(vx[0])));
-  auto mm(MM);
-  for(int i = 1; i < vy.size(); i ++) {
-    MM.first  = max(MM.first,  int(vy[i]));
-    MM.second = max(MM.second, int(vx[i]));
-    mm.first  = min(mm.first,  int(vy[i]));
-    mm.second = min(mm.second, int(vx[i]));
+        auto vy(decom.mimic( pdst.first,   psrc.first,  intensity));
+        auto vx(decom.mimic( pdst.second,  psrc.second, intensity));
+  const auto vy1(decom.mimic(spdst.first,  spsrc.first,  intensity));
+  const auto vx1(decom.mimic(spdst.second, spsrc.second, intensity));
+  for(int i = 0; i < vy.size() / 4; i ++) {
+    vy[i] = vy1[i];
+    vx[i] = vx1[i];
   }
-  const auto yyy(MM.first - mm.first + 1);
-  const auto xxx(MM.second - mm.second + 1);
-  cerr << ":" << yy << ":" << xx << ":" << yyy << ":" << xxx << flush;
-  Mat res(yy, xx);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < res.rows(); i ++)
-    for(int j = 0; j < res.cols(); j ++)
-      res(i, j) = T(0);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < dy.size(); i ++) {
-    Vec3 v0(3);
-    Vec3 v1(3);
-    v0[2] = v1[2] = T(0);
-    v0[0] = (vy[i] - mm.first)  / T(yyy) * T(yy);
-    v0[1] = (vx[i] - mm.second) / T(xxx) * T(xx);
-    if(i == vy.size() - 1) {
-      v1[0] = (vy[0] - mm.first)  / T(yyy) * T(yy);
-      v1[1] = (vx[0] - mm.second) / T(xxx) * T(xx);
-    } else {
-      v1[0] = (vy[i + 1] - mm.first)  / T(yyy) * T(yy);
-      v1[1] = (vx[i + 1] - mm.second) / T(xxx) * T(xx);
-    }
-    drawMatchLine(res, v0, v1, T(1));
+  for(int i = vy.size() * 3 / 4; i < vy.size(); i ++) {
+    vy[i] = vy1[i];
+    vx[i] = vx1[i];
   }
-  return res;
+  return applyTrace(make_pair(vy, vx), make_pair(dsthw, srchw));
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, const T& intensity, const int& count) {
-  vector<Vec3> pdst;
+  pair<Vec, Vec> pdst;
+  pair<pair<int, int>, pair<int, int> > hw;
+  prepTrace(pdst, hw, dst);
+  pair<Vec, Vec> spdst;
+  spdst.first.resize(pdst.first.size());
+  spdst.second.resize(pdst.second.size());
+  for(int i = pdst.first.size() / 2; i < pdst.first.size() + pdst.first.size() / 2; i ++) {
+    spdst.first[i - pdst.first.size() / 2] = pdst.first[i % pdst.first.size()];
+    spdst.second[i - pdst.first.size() / 2] = pdst.second[i % pdst.second.size()];
+  }
+  Decompose<T> decom(count);
+        auto vy(decom.lpf(pdst.first,  intensity));
+        auto vx(decom.lpf(pdst.second, intensity));
+  const auto vy1(decom.lpf(spdst.first,  intensity));
+  const auto vx1(decom.lpf(spdst.second, intensity));
+  for(int i = 0; i < vy.size() / 4; i ++) {
+    vy[i] = vy1[i];
+    vx[i] = vx1[i];
+  }
+  for(int i = vy.size() * 3 / 4; i < vy.size(); i ++) {
+    vy[i] = vy1[i];
+    vx[i] = vx1[i];
+  }
+  return applyTrace(make_pair(vy, vx), make_pair(hw, hw));
+}
+
+template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask) {
+  vector<Vec3>  pdst;
   vector<Veci3> facets;
-  getTileVec(dst, pdst, facets);
-  const auto idsts(getEdges(dst, pdst));
+  getTileVec(mask, pdst, facets);
+  const auto idsts(getEdges(mask, pdst));
   assert(idsts.size());
   int iidst(0);
   for(int i = 1; i < idsts.size(); i ++)
     if(idsts[iidst].size() < idsts[i].size()) iidst = i;
   const auto& idst(idsts[iidst]);
   cerr << iidst << "/" << idsts.size() << ":" << idst.size() << flush;
-  int yy(0);
-  int xx(0);
-  {
-    int yMd(pdst[idst[0]][0]);
-    int ymd(yMd);
-    int xMd(pdst[idst[0]][1]);
-    int xmd(xMd);
-    for(int i = 1; i < idst.size(); i ++) {
-      yMd = max(yMd, int(pdst[idst[i]][0]));
-      ymd = min(ymd, int(pdst[idst[i]][0]));
-      xMd = max(xMd, int(pdst[idst[i]][1]));
-      xmd = min(xMd, int(pdst[idst[i]][1]));
-    }
-    yy = yMd - ymd + 1;
-    xx = xMd - xmd + 1;
+  assert(idst.size());
+  auto& yMd(hw.first.first   = pdst[idst[0]][0]);
+  auto& ymd(hw.second.first  = pdst[idst[0]][0]);
+  auto& xMd(hw.first.second  = pdst[idst[0]][1]);
+  auto& xmd(hw.second.second = pdst[idst[0]][1]);
+  for(int i = 1; i < idst.size(); i ++) {
+    yMd = max(yMd, int(pdst[idst[i]][0]));
+    ymd = min(ymd, int(pdst[idst[i]][0]));
+    xMd = max(xMd, int(pdst[idst[i]][1]));
+    xmd = min(xMd, int(pdst[idst[i]][1]));
   }
-  Vec dy(idst.size());
-  Vec dx(idst.size());
+  v.first.resize(idst.size());
+  v.second.resize(idst.size());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < idst.size(); i ++) {
-    dy[i] = pdst[idst[i]][0];
-    dx[i] = pdst[idst[i]][1];
+    v.first[i]  = pdst[idst[i]][0];
+    v.second[i] = pdst[idst[i]][1];
   }
-  Decompose<T> decom(count);
-  const auto vy(decom.lpf(dy, intensity));
-  const auto vx(decom.lpf(dx, intensity));
+  return;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::applyTrace(const pair<Vec, Vec>& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw) {
+  const auto& vy(v.first);
+  const auto& vx(v.second);
   pair<int, int> MM(make_pair(int(vy[0]), int(vx[0])));
   auto mm(MM);
   for(int i = 1; i < vy.size(); i ++) {
@@ -772,6 +728,12 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
     mm.first  = min(mm.first,  int(vy[i]));
     mm.second = min(mm.second, int(vx[i]));
   }
+  const auto& dsthw(hw.first);
+  const auto& srchw(hw.second);
+  const auto yy(max(dsthw.first.first - dsthw.second.first,
+                    srchw.first.first - srchw.second.first) + 1);
+  const auto xx(max(dsthw.first.second - dsthw.second.second,
+                    srchw.first.second - srchw.second.second) + 1);
   const auto yyy(MM.first - mm.first + 1);
   const auto xxx(MM.second - mm.second + 1);
   cerr << ":" << yy << ":" << xx << ":" << yyy << ":" << xxx << flush;
@@ -785,7 +747,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < dy.size(); i ++) {
+  for(int i = 0; i < vy.size(); i ++) {
     Vec3 v0(3);
     Vec3 v1(3);
     v0[2] = v1[2] = T(0);

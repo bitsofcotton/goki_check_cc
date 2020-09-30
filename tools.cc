@@ -740,7 +740,7 @@ int main(int argc, const char* argv[]) {
       exit(- 2);
     if(!file.loadp2or3(src, argv[4]))
       exit(- 2);
-    for(int i = 0; i < std::atoi(argv[6]); i ++) {
+    for(int i = 0; i < abs(std::atoi(argv[6])); i ++) {
       out[0] = out[1] = out[2] = 
         redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
           redig.normalize(redig.rgb2d(src), num_t(1)),
@@ -758,10 +758,11 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat dst[3], out[3];
     if(!file.loadp2or3(dst, argv[3]))
       exit(- 2);
-    for(int i = 0; i < std::atoi(argv[5]); i ++) {
+    for(int i = 0; i < abs(std::atoi(argv[5])); i ++) {
       out[0] = out[1] = out[2] = 
         redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
-          num_t(i) / num_t(std::atoi(argv[5])), std::atoi(argv[2]));
+          num_t(i) / num_t(std::atoi(argv[5])),
+          std::atoi(argv[2]));
       redig.normalize(out, 1.);
       if(!file.savep2or3((std::string(argv[4]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true, 255))
         return - 3;
