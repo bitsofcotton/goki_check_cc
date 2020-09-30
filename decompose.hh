@@ -39,7 +39,7 @@ public:
   inline Decompose(const int& size);
   inline ~Decompose();
          Vec mimic(const Vec& dst, const Vec& src, const T& intensity = T(1));
-         Vec lpf(const Vec& dst, const T& intensity = T(1));
+         Vec emphasis(const Vec& dst, const T& intensity = T(1));
   inline Vec mimic0(const Vec& dst, const Vec& src);
          Vec next(const Vec& in0);
   Mat complementMat(const Vec& in);
@@ -83,7 +83,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::mimic(const Vec& 
     mimic0(dd, prepare(src)) * intensity + dd * (T(1) - intensity), dd);
 }
 
-template <typename T> typename Decompose<T>::Vec Decompose<T>::lpf(const Vec& dst, const T& intensity) {
+template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Vec& dst, const T& intensity) {
   const int  size(bA.size());
   const auto dd(prepare(dst));
   const auto ndd(next(dd));

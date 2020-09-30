@@ -78,7 +78,10 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "illust" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
+    if(argv[2] == "bump"):
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "-0.ppm", str(pixels), str(rot)])
+      subprocess.call(["convert", root + "-" + argv[2] + "-0.ppm", "-blur", "12x12+4", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "illust" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-sharpen.ppm"])
@@ -151,8 +154,5 @@ else:
     elif(argv[2] == "mask0"):
       subprocess.call(["convert", root + ".ppm", "-fill", "black", "-colorize", "100", root + "-mask.png"])
     elif(argv[2] == "nurie"):
-      subprocess.call(["convert", root + "-bump.ppm", "-threshold", "100000", "-negate", "-threshold", "15500", "-negate", root + "-bump.ppm", "-compose", "minus", "-composite", root + "-nurie-base.png"])
-      subprocess.call(["convert", root + ".ppm", root + "-nurie-base.png", "-compose", "soft-light", "-composite", "-blur", "4x4", "-compress", "none", root + "-nurie-blur.ppm"])
-      subprocess.call([argv[1], "sharpen", root + "-nurie-blur.ppm", root + "-nurie.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-nurie.ppm", "-auto-level", root + "-nurie.png"])
+      subprocess.call(["convert", root + ".ppm", root + "-bump.ppm", "-compose", "soft-light", "-composite", root + "-nurie.png"])
 
