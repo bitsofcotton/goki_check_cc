@@ -734,7 +734,7 @@ template <typename T, typename W, int bits, typename U>        SimpleFloat<T,W,b
     return *this;
   }
   if(! src.m) {
-    // throw "Zero division";
+    throw "Zero division";
     s |= 1 << NaN;
     return *this;
   }
@@ -942,7 +942,6 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
     return *this;
   if(! m) {
     auto work(*this);
-    work.m  = T(1);
     work.s |= (1 << INF) | (1 << SIGN);
     return work;
   }
@@ -959,8 +958,8 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
     }
     return res;
   }
-  const auto& ea(exparray());
-  const auto& iea(invexparray());
+  static const auto& ea(exparray());
+  static const auto& iea(invexparray());
         auto  result(zero());
         auto  work(*this);
   if(one_einv < work) {
@@ -1007,8 +1006,8 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
     }
     return res;
   }
-  const auto& en(exparray());
-  const auto& ien(invexparray());
+  static const auto& en(exparray());
+  static const auto& ien(invexparray());
         auto  work(this->abs());
         auto  result(one());
   for(int i = 1; 0 <= i && i < min(en.size(), ien.size()) && work.floor(); i ++, work >>= U(1))

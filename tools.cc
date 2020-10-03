@@ -91,6 +91,8 @@ void usage() {
   cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <intensity> <output.ppm>" << endl;
   cout << "gokicheck retrace <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck retrace2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokicheck reimage <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokicheck reimage2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
   return;
 }
 
@@ -695,11 +697,19 @@ int main(int argc, const char* argv[]) {
         std::cerr << "." << std::flush;
       }
       const auto a2xy(redig.getReverseLookup(attend[idx], in[idx][0]));
+      std::vector<typename simpleFile<num_t>::Vec3> leftc;
+      std::vector<typename simpleFile<num_t>::Vec3> rightc;
+      redig.complement(pout, leftc, lin, lcenter, attend[idx], a2xy,
+        num_t(idx - max(0, idx - std::atoi(argv[6]))) +
+          num_t(1) / num_t(2 * std::atoi(argv[5])) );
+      redig.complement(pout, rightc, lin, lcenter, attend[idx], a2xy,
+        num_t(idx - max(0, idx - std::atoi(argv[6]))) +
+          num_t(std::atoi(argv[5]) * 2 - 1) / num_t(2 * std::atoi(argv[5])) );
       for(int i = - std::atoi(argv[5]); i < std::atoi(argv[5]); i ++) {
         redig.complement(pout, outcenter, lin, lcenter, attend[idx], a2xy,
           num_t(idx - max(0, idx - std::atoi(argv[6]))) +
-            num_t(i) / (num_t(std::atoi(argv[5])) + num_t(1) / num_t(2)));
-        const auto newshape(redig.takeShape(shape[idx], center[idx], outcenter, attend[idx], num_t(1)));
+            (num_t(i) + num_t(1) / num_t(2)) / num_t(std::atoi(argv[5])) );
+        const auto newshape(redig.takeShape(shape[idx], leftc, rightc, attend[idx], num_t(i) / num_t(2 * std::atoi(argv[5]))));
         const auto reref(redig.draw(rin0, shape[idx], newshape, delau[idx]));
         for(int ii = 0; ii < 3; ii ++)
           out[ii] = filter.compute(redig.pullRefMatrix(reref, 1, pout[ii]), filter.CLIP);
@@ -735,7 +745,8 @@ int main(int argc, const char* argv[]) {
       file.saveobj(redig.takeShape(pdst, psrc, m, num_t(1) / num_t(2)),
                    My, Mx, poldst, argv[4]);
     }
-  } else if(strcmp(argv[1], "retrace") == 0) {
+  } else if(strcmp(argv[1], "retrace") == 0 ||
+            strcmp(argv[1], "reimage") == 0) {
     if(argc < 7) {
       usage();
       return - 1;
@@ -746,14 +757,20 @@ int main(int argc, const char* argv[]) {
       exit(- 2);
     if(!file.loadp2or3(src, argv[4]))
       exit(- 2);
-    out[0] = out[1] = out[2] = 
-      redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
-        redig.normalize(redig.rgb2d(src), num_t(1)),
-        num_t(std::atof(argv[6])), std::atoi(argv[2]));
+    if(strcmp(argv[1], "retrace") == 0)
+      out[0] = out[1] = out[2] =
+        redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
+          redig.normalize(redig.rgb2d(src), num_t(1)),
+          num_t(std::atof(argv[6])), std::atoi(argv[2]));
+    else
+      for(int i = 0; i < 3; i ++)
+        out[i] = redig.reImage(dst[i], src[i],
+          num_t(std::atof(argv[6])), std::atoi(argv[2]));
     redig.normalize(out, 1.);
-    if(!file.savep2or3((std::string(argv[5]) + std::string("-") + std::string(argv[6]) + std::string(".ppm")).c_str(), out, ! true, 255))
+    if(!file.savep2or3(argv[5], out, ! true, 255))
       return - 3;
-  } else if(strcmp(argv[1], "retrace2") == 0) {
+  } else if(strcmp(argv[1], "retrace2") == 0 ||
+            strcmp(argv[1], "reimage2") == 0) {
     if(argc < 6) {
       usage();
       return - 1;
@@ -762,11 +779,18 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat dst[3], out[3];
     if(!file.loadp2or3(dst, argv[3]))
       exit(- 2);
-    out[0] = out[1] = out[2] = 
-      redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
-        num_t(std::atof(argv[5])), std::atoi(argv[2]));
+    if(strcmp(argv[1], "retrace2") == 0)
+      out[0] = out[1] = out[2] =
+        redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
+          num_t(std::atof(argv[5])), std::atoi(argv[2]));
+    else {
+      for(int i = 0; i < 3; i ++)
+        out[i] = redig.reImage(dst[i],
+          num_t(std::atof(argv[5])), std::atoi(argv[2]));
+      redig.autoLevel(out, 4 * (out[0].rows() + out[0].cols()));
+    }
     redig.normalize(out, 1.);
-    if(!file.savep2or3((std::string(argv[4]) + std::string("-") + std::string(argv[5]) + std::string(".ppm")).c_str(), out, ! true, 255))
+    if(!file.savep2or3(argv[4], out, ! true, 255))
       return - 3;
   } else if(strcmp(argv[1], "omake") == 0) {
     std::vector<std::vector<num_t> > data;
