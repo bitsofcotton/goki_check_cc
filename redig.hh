@@ -117,6 +117,8 @@ public:
   Mat  reColor(const Mat& cbase, const int& count = 20, const T& intensity = T(1));
   Mat  reTrace(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
+  Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
+  Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -702,8 +704,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
     vx[i] = vx1[(i + vx1.size() / 2) % vx1.size()];
   }
   for(int i = vy.size() * 3 / 4; i < vy.size(); i ++) {
-    vy[i] = vy1[(i + vy.size() / 2) % vy.size()];
-    vx[i] = vx1[(i + vx.size() / 2) % vx.size()];
+    vy[i] = vy1[(i + vy.size() / 2) % vy1.size()];
+    vx[i] = vx1[(i + vx.size() / 2) % vx1.size()];
   }
   return applyTrace(make_pair(vy, vx), make_pair(hw, hw));
 }
@@ -777,17 +779,34 @@ template <typename T> typename reDig<T>::Mat reDig<T>::applyTrace(const pair<Vec
     Vec3 v0(3);
     Vec3 v1(3);
     v0[2] = v1[2] = T(0);
-    v0[0] = (vy[i] - mm.first)  / T(yyy) * T(yy);
-    v0[1] = (vx[i] - mm.second) / T(xxx) * T(xx);
+    v0[0] = (vy[i] - T(mm.first))  / T(yyy) * T(yy);
+    v0[1] = (vx[i] - T(mm.second)) / T(xxx) * T(xx);
     if(i == vy.size() - 1) {
-      v1[0] = (vy[0] - mm.first)  / T(yyy) * T(yy);
-      v1[1] = (vx[0] - mm.second) / T(xxx) * T(xx);
+      v1[0] = (vy[0] - T(mm.first))  / T(yyy) * T(yy);
+      v1[1] = (vx[0] - T(mm.second)) / T(xxx) * T(xx);
     } else {
-      v1[0] = (vy[i + 1] - mm.first)  / T(yyy) * T(yy);
-      v1[1] = (vx[i + 1] - mm.second) / T(xxx) * T(xx);
+      v1[0] = (vy[i + 1] - T(mm.first))  / T(yyy) * T(yy);
+      v1[1] = (vx[i + 1] - T(mm.second)) / T(xxx) * T(xx);
     }
     drawMatchLine(res, v0, v1, T(1));
   }
+  return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count) {
+  Decompose<T> decom(count);
+  assert(dst.rows() == src.rows() && dst.cols() == src.cols());
+  Mat res(dst.rows(), dst.cols());
+  for(int i = 0; i < res.rows(); i ++)
+    res.row(i) = decom.mimic(dst.row(i), src.row(i), intensity);
+  return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, const T& intensity, const int& count) {
+  Decompose<T> decom(count);
+  Mat res(dst.rows(), dst.cols());
+  for(int i = 0; i < res.rows(); i ++)
+    res.row(i) = decom.emphasis(dst.row(i), intensity);
   return res;
 }
 
@@ -917,9 +936,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::rgb2d(const Mat rgb[3]) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int j = 0; j < rgb[0].rows(); j ++)
+  for(int j = 0; j < rgb[0].rows(); j ++) {
     for(int k = 0; k < rgb[0].cols(); k ++)
       result(j, k) = sqrt(xyz[0](j, k) * xyz[0](j, k) + xyz[1](j, k) * xyz[1](j, k) + xyz[2](j, k) * xyz[2](j, k));
+  }
   return result;
 }
 
