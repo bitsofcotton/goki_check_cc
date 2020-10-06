@@ -78,19 +78,39 @@ template <typename T> inline Decompose<T>::~Decompose() {
 template <typename T> typename Decompose<T>::Vec Decompose<T>::mimic(const Vec& dst, const Vec& src, const T& intensity) const {
   const int  size(bA.size());
   const auto dd(prepare(dst));
-  return apply(dst,
-    mimic0(dd, prepare(src)) * intensity + dd * (T(1) - intensity), dd);
+        auto res(dd);
+  for(int i = 0; i < size; i ++) {
+    auto d2(dd);
+    for(int j = 0; j < dd.size(); j ++)
+      d2[j] = dd[(j + i) % dd.size()];
+    const auto m0(apply(dst, mimic0(dd, prepare(src)) * intensity +
+                                        dd * (T(1) - intensity), dd));
+    for(int j = 0; j <= dd.size() / size; j ++)
+      res[(j * size + i + size / 2) % res.size()] =
+        m0[(j * size + size / 2) % m0.size()];
+  }
+  return res;
 }
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Vec& dst, const T& intensity) const {
   const int  size(bA.size());
   const auto dd(prepare(dst));
-  const auto ndd(next(dd));
-        auto freq(complementMat(ndd).solve(dd));
-  const auto normfreq(sqrt(freq.dot(freq)));
-  for(int i = 0; i < freq.size() - 1; i ++)
-    freq[i] += intensity * T(i + 1) / T(freq.size() - 1) * normfreq;
-  return apply(dst, complementMat(ndd) * freq, dd);
+        auto res(dd);
+  for(int i = 0; i < size; i ++) {
+    auto d2(dd);
+    for(int j = 0; j < dd.size(); j ++)
+      d2[j] = dd[(j + i) % dd.size()];
+    const auto ndd(next(d2));
+          auto freq(complementMat(ndd).solve(d2));
+    const auto normfreq(sqrt(freq.dot(freq)));
+    for(int j = 0; j < freq.size() - 1; j ++)
+      freq[j] += intensity * T(j + 1) / T(freq.size() - 1) * normfreq;
+    const auto m0(apply(dst, complementMat(ndd) * freq, dd));
+    for(int j = 0; j <= dd.size() / size; j ++)
+      res[(j * size + i + size / 2) % res.size()] =
+        m0[(j * size + size / 2) % m0.size()];
+  }
+  return res;
 }
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::prepare(const Vec& in) const {
