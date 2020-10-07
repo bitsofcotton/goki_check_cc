@@ -725,7 +725,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::applyTrace(const pair<Vec
   const auto yyy(MM.first - mm.first + 1);
   const auto xxx(MM.second - mm.second + 1);
   cerr << ":" << yy << ":" << xx << ":" << yyy << ":" << xxx << flush;
-  Mat res(yyy, xxx);
+  Mat res(yy, xx);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
