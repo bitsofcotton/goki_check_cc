@@ -654,60 +654,20 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
   pair<pair<int, int>, pair<int, int> > dsthw, srchw;
   prepTrace(pdst, dsthw, dst);
   prepTrace(psrc, srchw, src);
-  pair<Vec, Vec> spdst, spsrc;
-  spdst.first.resize(pdst.first.size());
-  spdst.second.resize(pdst.second.size());
-  spsrc.first.resize(psrc.first.size());
-  spsrc.second.resize(psrc.second.size());
-  for(int i = pdst.first.size() / 2; i < pdst.first.size() + pdst.first.size() / 2; i ++) {
-    spdst.first[i - pdst.first.size() / 2]  = pdst.first[i % pdst.first.size()];
-    spdst.second[i - pdst.first.size() / 2] = pdst.second[i % pdst.second.size()];
-  }
-  for(int i = psrc.first.size() / 2; i < psrc.first.size() + psrc.first.size() / 2; i ++) {
-    spsrc.first[i - psrc.first.size() / 2]  = psrc.first[i % psrc.first.size()];
-    spsrc.second[i - psrc.first.size() / 2] = psrc.second[i % psrc.second.size()];
-  }
   Decompose<T> decom(count);
-        auto vy(decom.mimic( pdst.first,   psrc.first,  intensity));
-        auto vx(decom.mimic( pdst.second,  psrc.second, intensity));
-  const auto vy1(decom.mimic(spdst.first,  spsrc.first,  intensity));
-  const auto vx1(decom.mimic(spdst.second, spsrc.second, intensity));
-  for(int i = 0; i < vy.size() / 4; i ++) {
-    vy[i] = vy1[(i + vy1.size() / 2) % vy1.size()];
-    vx[i] = vx1[(i + vx1.size() / 2) % vx1.size()];
-  }
-  for(int i = vy.size() * 3 / 4; i < vy.size(); i ++) {
-    vy[i] = vy1[(i + vy.size() / 2) % vy.size()];
-    vx[i] = vx1[(i + vx.size() / 2) % vx.size()];
-  }
-  return applyTrace(make_pair(vy, vx), make_pair(dsthw, srchw));
+  return applyTrace(make_pair(
+    decom.mimic(pdst.first,  psrc.first,  intensity),
+    decom.mimic(pdst.second, psrc.second, intensity)), make_pair(dsthw, srchw));
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, const T& intensity, const int& count) {
   pair<Vec, Vec> pdst;
   pair<pair<int, int>, pair<int, int> > hw;
   prepTrace(pdst, hw, dst);
-  pair<Vec, Vec> spdst;
-  spdst.first.resize(pdst.first.size());
-  spdst.second.resize(pdst.second.size());
-  for(int i = pdst.first.size() / 2; i < pdst.first.size() + pdst.first.size() / 2; i ++) {
-    spdst.first[i - pdst.first.size() / 2] = pdst.first[i % pdst.first.size()];
-    spdst.second[i - pdst.first.size() / 2] = pdst.second[i % pdst.second.size()];
-  }
   Decompose<T> decom(count);
-        auto vy(decom.emphasis(pdst.first,  intensity));
-        auto vx(decom.emphasis(pdst.second, intensity));
-  const auto vy1(decom.emphasis(spdst.first,  intensity));
-  const auto vx1(decom.emphasis(spdst.second, intensity));
-  for(int i = 0; i < vy.size() / 4; i ++) {
-    vy[i] = vy1[(i + vy1.size() / 2) % vy1.size()];
-    vx[i] = vx1[(i + vx1.size() / 2) % vx1.size()];
-  }
-  for(int i = vy.size() * 3 / 4; i < vy.size(); i ++) {
-    vy[i] = vy1[(i + vy.size() / 2) % vy1.size()];
-    vx[i] = vx1[(i + vx.size() / 2) % vx1.size()];
-  }
-  return applyTrace(make_pair(vy, vx), make_pair(hw, hw));
+  return applyTrace(make_pair(
+    decom.emphasis(pdst.first,  intensity),
+    decom.emphasis(pdst.second, intensity)), make_pair(hw, hw));
 }
 
 template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask) {
