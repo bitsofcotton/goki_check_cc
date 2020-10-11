@@ -156,7 +156,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::apply(const Vec& 
     for(int j = i * cnt;
             j < (i < res.size() - 1 ? min((i + 1) * cnt, int(res.size())) : int(res.size()));
             j ++)
-      res[(j + res.size() - idx) % res.size()] *= ratio;
+      res[(j + idx) % res.size()] *= ratio;
   }
   return res;
 }

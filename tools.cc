@@ -14,7 +14,8 @@
 
 #include "ifloat.hh"
 template <typename T> using complex = Complex<T>;
-typedef SimpleFloat<uint32_t, uint64_t, 32, int16_t> num_t;
+//typedef SimpleFloat<uint32_t, uint64_t, 32, int16_t> num_t;
+typedef SimpleFloat<uint32_t, uint64_t, 32, Signed<DUInt<uint64_t, 64>, 128> > num_t;
 
 #else
 
@@ -77,7 +78,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|sharpen|bump|illust|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck pred  <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -113,7 +114,6 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
-     strcmp(argv[1], "illust")  == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
      strcmp(argv[1], "b2wd")    == 0) {
@@ -141,22 +141,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(filter.rotcompute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "bump") == 0)
       data[0] = data[1] = data[2] = redig.autoLevel(filter.rotcompute(redig.rgb2d(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
-    else if(strcmp(argv[1], "illust") == 0) {
-      const auto bump(redig.autoLevel(filter.rotcompute(redig.rgb2d(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols())));
-      typename simpleFile<num_t>::Mat res[3];
-      res[0].resize(data[0].rows(), data[0].cols());
-      for(int i = 0; i < res[0].rows(); i ++)
-        for(int j = 0; j < res[0].cols(); j ++)
-          res[0](i, j) = num_t(0);
-      res[1] = res[2] = res[0];
-      for(int j = 2; j < std::atoi(argv[4]); j ++)
-        for(int i = 0; i < 3; i ++) {
-          const auto work(redig.reShape(bump, data[i], j));
-          res[i] += redig.reShape(data[i], work, j);
-        }
-      for(int i = 0; i < 3; i ++)
-        data[i] = res[i];
-    } else if(strcmp(argv[1], "w2b") == 0) {
+    else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
           if(data[0](i, j) == num_t(1) &&
