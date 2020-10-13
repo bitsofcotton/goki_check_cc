@@ -96,15 +96,19 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Ve
   const int  size(bA.size());
   const auto size2(dst.size() / size);
         auto res(dst);
+  std::vector<T> nnd;
   std::vector<SimpleVector<T> > dd;
   std::vector<SimpleVector<T> > ndd;
   std::vector<SimpleVector<T> > freq;
+  nnd.reserve(size2);
   dd.reserve(size2);
   ndd.reserve(size2);
   freq.reserve(size2);
   T normfreq(0);
   for(int i = 0; i < size2; i ++) {
     dd.emplace_back(prepare(dst, i));
+    nnd.emplace_back(sqrt(dd[i].dot(dd[i])));
+    dd[i] /= nnd[i];
     ndd.emplace_back(next(dd[i]));
     freq.emplace_back(complementMat(ndd[i]).solve(dd[i]));
     normfreq += freq[i].dot(freq[i]);
@@ -114,7 +118,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Ve
   for(int i = 0; i < size2; i ++) {
     for(int j = 0; j < freq[i].size() - 1; j ++)
       freq[i][j] += intensity * T(j + 1) / T(freq[i].size() - 1) * normfreq;
-    const auto m0(apply(dst, complementMat(ndd[i]) * freq[i], dd[i], i));
+    const auto m0(apply(dst, complementMat(ndd[i]) * freq[i] * nnd[i], dd[i], i));
     for(int j = 0; j < size; j ++)
       res[(j * size2 + i + size2 / 2) % res.size()] =
         m0[(j * size2 + i + size2 / 2) % m0.size()];

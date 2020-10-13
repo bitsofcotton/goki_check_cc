@@ -131,32 +131,22 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size0) {
 }
 
 template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
-  const int  step0(max(0, min(size - 1, int(floor(step)))));
+  const int  step00(max(0, min(size - 1, int(floor(step)))));
+  const auto residue0(step - T(step00));
+  const auto step0(step00 == size - 1 || abs(residue0) <= T(1) / T(2) ? step00 : step00 + 1);
   const auto residue(step - T(step0));
         Vec  res(size);
   for(int i = 0; i < size; i ++)
     res[i] = i == step0 ? T(1) : T(0);
-  if(residue != T(0)) {
-    const auto& D(diff(size));
-          auto  dt(D * residue);
-    for(int i = 2; ; i ++) {
-      const auto last(res);
-      res += dt.col(step0);
-      if(last == res) break;
-      dt   = D * dt * residue / T(i);
-    }
-    if(T(0) <= step && step < T(size - 1)) {
-      res[step0 + 1] += T(1);
-      const auto residue(step - T(step0 + 1));
-            auto dt(D * residue);
-      for(int i = 2; ; i ++) {
-        const auto last(res);
-        res += dt.col(step0 + 1);
-        if(last == res) break;
-        dt   = D * dt * residue / T(i);
-      }
-      res /= T(2);
-    }
+  if(residue == T(0))
+    return res;
+  const auto& D(diff(size));
+        auto  dt(D * residue);
+  for(int i = 2; ; i ++) {
+    const auto last(res);
+    res += dt.col(step0);
+    if(last == res) break;
+    dt   = D * dt * residue / T(i);
   }
   return res;
 }
