@@ -324,35 +324,28 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     {
       assert(2 <= data.rows());
       static vector<pair<vector<Mat>, int> > Eop;
+      const auto& size(data.rows());
       int idx(- 1);
       for(int i = 0; i < Eop.size(); i ++)
-        if(Eop[i].second == data.rows()) {
+        if(Eop[i].second == size) {
           idx = i;
           break;
         }
       if(idx < 0) {
         idx = Eop.size();
-        Eop.emplace_back(make_pair(vector<Mat>(), data.rows()));
+        Eop.emplace_back(make_pair(vector<Mat>(), size));
       }
       cerr << "e" << flush;
       if(Eop[idx].first.size() <= recur)
         Eop[idx].first.resize(recur + 1, Mat());
       auto& eop(Eop[idx].first[recur]);
-      if(eop.cols() == data.rows())
+      if(eop.cols() == size)
         goto eopi;
-      eop.resize((data.rows() - 1) * recur + 1, data.rows());
+      eop.resize((size - 1) * recur + 1, size);
       for(int i = 0; i < eop.rows(); i ++)
         eop.row(i) = p.taylor(eop.cols(), T(i) / T(recur));
-      {
-        const Mat EEop(eop);
-        for(int i = 0; i < EEop.rows(); i ++)
-          for(int j = 0; j < EEop.cols(); j ++)
-            eop(i, j) += EEop(EEop.rows() - i - 1,
-                              EEop.cols() - j - 1);
-        eop /= T(2);
-      }
      eopi:
-      result = Eop[idx].first[recur] * data;
+      result = eop * data;
     }
     break;
   case DETECT_Y:
@@ -400,7 +393,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
           continue;
         assert(int(y0) * 2 <= data.rows());
-        const auto& Dop(p.diff(abs(int(y0 * T(2)))));
+        const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
         const auto  Dop0((Dop * Dop).row(Dop.rows() / 2));
         //  N.B. d^2C_k/dy^2 on zi.
 #if defined(_OPENMP)
