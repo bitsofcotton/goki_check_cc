@@ -83,8 +83,8 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::mimic(const Vec& 
   for(int i = 0; i < size2; i ++) {
     const auto dd(prepare(dst, i));
     const auto m0(apply(dst, mimic0(dd,
-                    prepare(src, i * size3 / size2) * intensity +
-                    dd * (T(1) - intensity)), dd, i));
+                    prepare(src, i * size3 / size2)) * intensity +
+                    dd * (T(1) - intensity), dd, i));
     for(int j = 0; j < size; j ++)
       res[(j * size2 + i + size2 / 2) % res.size()] =
         m0[(j * size2 + i + size2 / 2) % m0.size()];
@@ -100,9 +100,9 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Ve
     const auto dd(prepare(dst, i));
     const auto ndd(next(dd));
           auto freq(complementMat(ndd).solve(dd));
-    const auto nfreq(sqrt(freq.dot(freq)));
+    freq[freq.size() - 1] = T(0);
     for(int j = 0; j < freq.size() - 1; j ++)
-      freq[j] = T(j + 1) / T(freq.size() - 1) * nfreq;
+      freq[j] = T(j + 1) / T(freq.size() - 1);
     const auto m0(apply(dst,
       complementMat(ndd) * freq * intensity + dd * (T(1) - intensity), dd, i));
     for(int j = 0; j < size; j ++)
