@@ -138,6 +138,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::apply(const Vec& 
   const auto cnt(int(v.size() + size - 1) / size - 1);
   assert(0 < cnt);
   auto res(v);
+  if(! isfinite(dst.dot(dst)) || ! isfinite(src.dot(src))) return res;
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
