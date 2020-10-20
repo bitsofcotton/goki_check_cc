@@ -410,7 +410,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++) {
           for(int j = 0; j < A.cols(); j ++)
             if(zscore(i, j) < T(0) || abs(A(i, j)) < zscore(i, j)) {
-              result(i, j) = T(zi + 1) / T(dratio);
+              result(i, j) = T(zi + 1);
               zscore(i, j) = abs(A(i, j));
             }
         }
