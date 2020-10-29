@@ -78,10 +78,18 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "-0.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "-0.ppm", "-blur", "12x12+4", "-negate", "-compress", "none", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "pextend"):
+    if(argv[2] == "collect" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "pextend"):
+      for s in range(0, rot):
+        subprocess.call(["convert", root + ".ppm", "-blur", str(s + 1) + "x" + str(s + 1) + "+" + str(s / 2 + 1), "-compress", "none", root + "-blur.ppm"])
+        if(argv[2] == "enlarge"):
+          subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + "-" + str(s) + ".ppm", str(pixels), str(rot)])
+        else:
+          subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + "-" + str(s) + ".ppm", str(pixels), str(1)])
+      if(argv[2] == "bump"):
+        subprocess.call(["convert", root + "-" + argv[2] + "-*.ppm", "-average", "-negate", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      else:
+        subprocess.call(["convert", root + "-" + argv[2] + "-*.ppm", "-average", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "sharpen"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "penetrate"):
       subprocess.call(["cp", root + ".ppm", root + "-penetrate-sharpen.ppm"])
@@ -154,7 +162,7 @@ else:
     elif(argv[2] == "mask0"):
       subprocess.call(["convert", root + ".ppm", "-fill", "black", "-colorize", "100", root + "-mask.png"])
     elif(argv[2] == "nurie"):
-      subprocess.call(["convert", root + ".ppm", root + "-bump.ppm", "-compose", "soft-light", "-composite", root + "-nurie.png"])
+      subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-modulate", "200", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm"])
 

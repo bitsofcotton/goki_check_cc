@@ -19,6 +19,7 @@ template <typename T> class Filter;
 using std::abs;
 using std::min;
 using std::max;
+using std::isinf;
 using std::cerr;
 using std::endl;
 using std::flush;
@@ -114,6 +115,7 @@ public:
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20);
+  Mat  reColor3(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reColor(const Mat& cbase, const int& count = 20, const T& intensity = T(1));
   Mat  reTrace(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
@@ -621,6 +623,41 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
 #endif
   for(int i = 0; i < cpoints.size(); i ++)
     res(cpoints[i].second.first, cpoints[i].second.second) = ccc[i];
+  return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::reColor3(const Mat& cbase, const Mat& vbase, const int& count) {
+  assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
+  vector<pair<T, pair<int, int> > > vpoints;
+  vector<pair<T, pair<int, int> > > cpoints;
+  vpoints.reserve(vbase.rows() * vbase.cols());
+  cpoints.reserve(cbase.rows() * cbase.cols());
+  for(int i = 0; i < vbase.rows(); i ++)
+    for(int j = 0; j < vbase.cols(); j ++)
+      vpoints.emplace_back(make_pair(vbase(i, j), make_pair(i, j)));
+  for(int i = 0; i < cbase.rows(); i ++)
+    for(int j = 0; j < cbase.cols(); j ++)
+      cpoints.emplace_back(make_pair(cbase(i, j), make_pair(i, j)));
+  sort(vpoints.begin(), vpoints.end());
+  sort(cpoints.begin(), cpoints.end());
+  Mat res(cbase.rows(), cbase.cols());
+  for(int i = 0; i < count; i ++) {
+    T scorev(0);
+    T scorec(0);
+    const auto vstart(i * int(vpoints.size() / count));
+    const auto vend(min((i + 1) * int(vpoints.size() / count), int(vpoints.size())));
+    const auto cstart(i * int(cpoints.size() / count));
+    const auto cend(min((i + 1) * int(cpoints.size() / count), int(cpoints.size())));
+    for(int j = vstart; j < vend; j ++)
+      scorev += vpoints[j].first;
+    for(int j = cstart; j < cend; j ++)
+      scorec += cpoints[j].first;
+    scorev /= T(vend - vstart);
+    scorec /= T(cend - cstart);
+    for(int j = cstart; j < cend; j ++)
+      res(cpoints[j].second.first, cpoints[j].second.second) =
+        cpoints[j].first * scorev / scorec;
+  }
   return res;
 }
 

@@ -90,6 +90,7 @@ void usage() {
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <intensity> <output.ppm>" << endl;
+  cout << "gokicheck recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck retrace <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck retrace2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck reimage <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
@@ -176,7 +177,8 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
-            strcmp(argv[1], "recolor2") == 0) {
+            strcmp(argv[1], "recolor2") == 0 ||
+            strcmp(argv[1], "recolor3") == 0) {
     if(argc < 6) {
       usage();
       return 0;
@@ -186,6 +188,7 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(datac, argv[3]))
       return - 1;
     if((strcmp(argv[1], "recolor") == 0 ||
+        strcmp(argv[1], "recolor3") == 0 ||
         strcmp(argv[1], "reshape") == 0) &&
        ! file.loadp2or3(datas, argv[4]))
       return - 1;
@@ -193,7 +196,10 @@ int main(int argc, const char* argv[]) {
       const auto datav(redig.rgb2d(datas));
       for(int i = 0; i < 3; i ++)
         datac[i] = redig.reShape(datac[i], datav, count);
-    } else {
+    } else if(strcmp(argv[1], "recolor3") == 0)
+      for(int i = 0; i < 3; i ++)
+        datac[i] = redig.reColor3(datac[i], datas[i], count);
+    else {
       typename simpleFile<num_t>::Mat xyzc[3], xyzs[3];
       redig.rgb2xyz(xyzc, datac);
       redig.rgb2xyz(xyzs, datas);

@@ -393,8 +393,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
           continue;
         assert(int(y0) * 2 <= data.rows());
+        //const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
+        //const auto  Dop0((Dop * Dop).row(Dop.rows() / 2));
         const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
-        const auto  Dop0((Dop * Dop).row(Dop.rows() / 2));
+        const auto& Dop0(Dop.row(Dop.rows() / 2));
         //  N.B. d^2C_k/dy^2 on zi.
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -426,7 +428,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + recur) = data.row(i);
       for(int i = 0; i < recur; i ++) {
-        const auto  size(min(120, int(data.rows()) / (i + 1) - 1));
+        const auto  size(min(80, int(data.rows()) / (i + 1) - 1));
         const auto& comp(p.next(size - 1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
