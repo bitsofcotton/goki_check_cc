@@ -1,10 +1,12 @@
 CXX=	clang++
+CXX=	/usr/local/bin/clang++
 LD=	${CXX}
 
 # compiler flags.
 CXXFLAGS+=	-I/usr/local/include/eigen3
 CXXFLAGS+=	-I/usr/local/include
 #CXXFLAGS+=	-fopenmp -lomp -pthread
+CXXFLAGS+=	-pg
 CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-Ofast -mtune=native -gfull
 # Do not use these because of the slowness,
@@ -13,7 +15,7 @@ CXXFLAGS+=	-Ofast -mtune=native -gfull
 # Accuracy reason, not needed.
 #CXXFLAGS+=	-D_WITH_NO_FLOAT_
 #CXXFLAGS+=	-D_WITH_MPFR_=512
-LDFLAGS+=	-lc++
+LDFLAGS+=	-lc -lc++
 
 CLEANFILES= *.o gokicheck
 
