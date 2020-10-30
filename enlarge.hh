@@ -189,21 +189,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
     }
     res.emplace_back(lres);
   }
-  Mat rres(res[0].rows(), res[0].cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < rres.rows(); i ++) {
-    for(int j = 0; j < rres.cols(); j ++) {
-      vector<T> sr;
-      sr.reserve(res.size());
-      for(int k = 0; k < res.size(); k ++)
-        sr.emplace_back(res[k](i, j));
-      sort(sr.begin(), sr.end());
-      rres(i, j) = sr[sr.size() / 2];
-    }
-  }
-  return rres;
+  Mat rres(res[0]);
+  for(int i = 1; i < res.size(); i ++)
+    rres += res[i];
+  return rres /= T(res.size());
 }
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir) {
@@ -413,7 +402,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < A.rows(); i ++) {
           for(int j = 0; j < A.cols(); j ++)
             if(zscore(i, j) < T(0) || abs(A(i, j)) < zscore(i, j)) {
-              result(i, j) = T(zi + 1);
+              result(i, j) = - T(zi + 1);
               zscore(i, j) = abs(A(i, j));
             }
         }
