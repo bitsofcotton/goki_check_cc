@@ -371,7 +371,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           zscore(i, j) = - T(1);
         }
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-      const int  dratio(sqrt(rxy));
+      //const int  dratio(sqrt(rxy));
+      const int  dratio(sqrt(sqrt(rxy)));
             Vec  camera(2);
             Vec  cpoint(2);
       camera[0] = T(0);
