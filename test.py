@@ -78,26 +78,8 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "collect" or argv[2] == "enlarge" or argv[2] == "pextend"):
-      for s in range(0, rot):
-        subprocess.call(["convert", root + ".ppm", "-blur", str(s + 1) + "x" + str(s + 1) + "+" + str(s / 2 + 1), "-compress", "none", root + "-blur.ppm"])
-        if(argv[2] == "enlarge"):
-          subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + "-" + str(s) + ".ppm", str(pixels), str(rot)])
-        else:
-          subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + "-" + str(s) + ".ppm", str(pixels), str(1)])
-      subprocess.call(["convert", root + "-" + argv[2] + "-*.ppm", "-average", "-compress", "none", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(1)])
-      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-negate", "-compress", "none", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "sharpen"):
+    if(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "penetrate"):
-      subprocess.call(["cp", root + ".ppm", root + "-penetrate-sharpen.ppm"])
-      for s in range(0, pixels):
-        subprocess.call(["convert", root + "-penetrate-sharpen.ppm", "-blur", "2x2", "-compress", "none", root + "-penetrate.ppm"])
-        # this isn't enough, limit of this is enough but it has glitches.
-        subprocess.call([argv[1], "sharpen", root + "-penetrate.ppm", root + "-penetrate-sharpen.ppm"])
-      subprocess.call(["convert", root + "-penetrate-sharpen.ppm", root + "-penetrate.png"])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels), "1",  str(zratio), "0", root + "-bump.ppm", root + ".obj"])
       #subprocess.call([argv[1], "obj", str(pixels), ".1", str(zratio), ".4", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
@@ -107,6 +89,7 @@ else:
       subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + ".obj", root + "-R.ppm"])
       subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
+      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-L.ppm", "-i", root + "-R.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-LR.mp4"])
     elif(argv[2] == "tilt"):
       for s in range(0, pixels):
         subprocess.call([argv[1], "tilt", str(s), str(pixels), str(psi), root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
@@ -116,10 +99,6 @@ else:
         subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
-    elif(argv[2] == "btilt2"):
-      subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + ".obj", root + "-btilt2-base-0.ppm"])
-      subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + ".obj", root + "-btilt2-base-1.ppm"])
-      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt2-base-%d.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b2.mp4"])
     elif(argv[2] == "flicker"):
       for s in range(0, pixels):
         subprocess.call([argv[1], "obj", "4", "1", str(s / float(pixels) * zratio), "0", root + "-bump.ppm", root + "-flicker.obj"])
