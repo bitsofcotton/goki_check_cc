@@ -383,8 +383,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
           continue;
         assert(int(y0) * 2 <= data.rows());
-        //const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
-        //const auto  Dop0((Dop * Dop).row(Dop.rows() / 2));
         const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
         const auto& Dop0(Dop.row(Dop.rows() / 2));
         //  N.B. d^2C_k/dy^2 on zi.
@@ -401,7 +399,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
         for(int i = 0; i < A.rows(); i ++) {
           for(int j = 0; j < A.cols(); j ++)
-            if(zscore(i, j) < T(0) || abs(A(i, j)) < zscore(i, j)) {
+            if(zscore(i, j) < abs(A(i, j))) {
               result(i, j) = - T(zi + 1);
               zscore(i, j) = abs(A(i, j));
             }
