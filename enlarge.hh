@@ -312,29 +312,47 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case ENLARGE_Y:
     {
       assert(2 <= data.rows());
-      static vector<pair<vector<Mat>, int> > Eop;
+      static vector<vector<Mat> > Eop;
       const auto& size(data.rows());
-      int idx(- 1);
-      for(int i = 0; i < Eop.size(); i ++)
-        if(Eop[i].second == size) {
-          idx = i;
-          break;
-        }
-      if(idx < 0) {
-        idx = Eop.size();
-        Eop.emplace_back(make_pair(vector<Mat>(), size));
-      }
-      cerr << "e" << flush;
-      if(Eop[idx].first.size() <= recur)
-        Eop[idx].first.resize(recur + 1, Mat());
-      auto& eop(Eop[idx].first[recur]);
-      if(eop.cols() == size)
+      if(Eop.size() <= size)
+        Eop.resize(size + 1, vector<Mat>());
+      else if(recur < Eop[size].size())
         goto eopi;
-      eop.resize((size - 1) * recur + 1, size);
-      for(int i = 0; i < eop.rows(); i ++)
-        eop.row(i) = p.taylor(eop.cols(), T(i) / T(recur));
+      for(int i = 3; i <= size; i ++) {
+        if(Eop[i].size() <= recur)
+          Eop[i].resize(recur + 1, Mat());
+        auto& eop(Eop[i][recur]);
+        if(eop.cols() == i)
+          continue;
+        cerr << "e" << flush;
+        eop.resize((i - 1) * recur + 1, i);
+        if(i == 3)
+          for(int j = 0; j < eop.rows(); j ++)
+            eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
+        else {
+          for(int j = 0; j < eop.rows(); j ++)
+            eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
+          const auto& bop(Eop[i - 1][recur]);
+          for(int j = 0; j < recur / 2; j ++)
+            for(int k = 0; k < bop.cols(); k ++) {
+              eop(j, k) += bop(j, k);
+              eop(eop.rows() - j - 1, eop.cols() - k - 1) +=
+                bop(bop.rows() - j - 1, bop.cols() - k - 1);
+            }
+          for(int j = recur / 2; j < eop.rows() - recur / 2; j ++)
+            for(int k = 0; k < bop.cols(); k ++)
+              if(bop.rows() <= j)
+                eop(j, k + 1) += bop(j - recur, k);
+              else if(j < recur)
+                eop(j, k)     += bop(j, k);
+              else {
+                eop(j, k)     += bop(j, k) / T(2);
+                eop(j, k + 1) += bop(j - recur, k) / T(2);
+              }
+        }
+      }
      eopi:
-      result = eop * data;
+      result = Eop[size][recur] * data / T(size - 2);
     }
     break;
   case DETECT_Y:
