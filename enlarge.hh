@@ -21,6 +21,8 @@ using std::max;
 using std::min;
 using std::abs;
 
+template <typename T> class reDig;
+
 // This class is NOT thread safe.
 template <typename T> class Filter {
 public:
@@ -41,6 +43,7 @@ public:
     INTEG_Y,
     INTEG_BOTH,
     BUMP_X,
+    BUMP_Y_SHALLOW,
     BUMP_Y,
     BUMP_BOTH,
     EXTEND_X,
@@ -67,6 +70,7 @@ public:
   inline int getImgPt(const int& y, const int& h);
   inline Mat gmean(const Mat& a, const Mat& b);
 
+  T   dbratio;
 private:
   T   Pi;
   int recur;
@@ -75,6 +79,7 @@ private:
 template <typename T> Filter<T>::Filter(const int& recur) {
   Pi  = atan2(T(1), T(1)) * T(4);
   this->recur = recur;
+  dbratio = T(5) / T(100);
   assert(0 < recur);
 }
 
@@ -364,7 +369,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case INTEG_Y:
     result = p.diff(- data.rows()) * data;
     break;
-  case BUMP_Y:
+  case BUMP_Y_SHALLOW:
     {
       result = Mat(data.rows(), data.cols());
       Mat zscore(data.rows(), data.cols());
@@ -378,7 +383,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           zscore(i, j) = - T(1);
         }
       const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-      //const int  dratio(sqrt(rxy));
       const int  dratio(sqrt(sqrt(rxy)));
             Vec  camera(2);
             Vec  cpoint(2);
@@ -403,7 +407,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         assert(int(y0) * 2 <= data.rows());
         const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
         const auto& Dop0(Dop.row(Dop.rows() / 2));
-        //  N.B. d^2C_k/dy^2 on zi.
+        //  N.B. dC_k/dy on zi.
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -423,6 +427,92 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             }
         }
       }
+    }
+    break;
+  case BUMP_Y:
+    {
+      reDig<T> redig;
+      const auto bump(compute(data, BUMP_Y_SHALLOW));
+      const auto t0(redig.tilt(redig.makeRefMatrix(data, 1), bump,
+                               redig.tiltprep(bump, 0, 4, dbratio)));
+      const auto data0(redig.pullRefMatrix(t0, 1, data));
+      const auto data1(redig.tilt(data, bump, redig.tiltprep(bump, 2, 4, dbratio)) );
+      result = Mat(data.rows(), data.cols());
+      Mat zscore(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++) {
+          result(i, j) = T(0);
+          zscore(i, j) = T(1e20);
+        }
+      const auto rxy(sqrt(T(data0.rows()) * T(data0.cols())));
+      const int  dratio(sqrt(sqrt(rxy)));
+            Vec  camera(2);
+            Vec  cpoint(2);
+      camera[0] = T(0);
+      camera[1] = T(1);
+      cpoint[0] = T(1) / T(2 * dratio);
+      for(int zi = 0; zi < dratio; zi ++) {
+        Mat A(data0.rows(), data0.cols());
+        for(int i = 0; i < A.rows(); i ++)
+          for(int j = 0; j < A.cols(); j ++)
+            A(i, j) = T(0);
+        cpoint[1] = T(zi) / T(dratio);
+        const auto t(- camera[1] / (cpoint[1] - camera[1]));
+        const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
+        if(abs(int(y0 * T(2))) < 3 || data0.rows() / 2 < int(y0 * T(2)))
+          continue;
+        assert(int(y0) * 2 <= data.rows());
+        const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
+        const auto& Dop0(Dop.row(Dop.rows() / 2));
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+        for(int i = 0; i < A.rows(); i ++) {
+          for(int j = 0; j < Dop0.size(); j ++)
+            A.row(i) += (data0.row(getImgPt(i + j - Dop0.size() / 2, data.rows())) - data1.row(getImgPt(i + j - Dop0.size() / 2, data.rows()))) * Dop0[j];
+        }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+        for(int i = 0; i < A.rows(); i ++) {
+          for(int j = 0; j < A.cols(); j ++)
+            if(abs(A(i, j)) < zscore(i, j)) {
+              result(i, j) = - T(zi + 1);
+              zscore(i, j) = abs(A(i, j));
+            }
+        }
+      }
+      int ii(0);
+      for(int i = 0; i < t0.rows(); i ++) {
+        bool flg(true);
+        for(int j = 0; j < t0.cols(); j ++)
+          flg = flg &&
+            t0(i, j) != T(0) && t0(t0.rows() - i - 1, j) != T(0);
+        if(flg) {
+          ii = i;
+          break;
+        }
+      }
+      MatU b0(t0.rows() - ii * 2, t0.cols());
+      for(int i = 0; i < b0.rows(); i ++)
+        for(int j = 0; j < b0.cols(); j ++)
+          b0(i, j) = U(result(i + ii, j));
+      b0 = p.seed(b0.rows()) * b0 / sqrt(T(b0.rows()));
+      MatU b1(t0.rows(), t0.cols());
+      for(int i = 0; i < b0.rows(); i ++)
+        b1.row(i) = b0.row(i);
+      for(int i = b0.rows(); i < b1.rows(); i ++)
+        b1.row(i) *= U(T(0));
+#if defined(_WITHOUT_EIGEN_)
+      result = (p.seed(- t0.rows()) * b1).template real<T>() * sqrt(T(t0.rows()));
+#else
+      result = (p.seed(- t0.rows()) * b1).real().template cast<T>() * sqrt(T(t0.rows()));
+#endif
     }
     break;
   case EXTEND_Y:
