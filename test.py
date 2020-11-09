@@ -10,7 +10,7 @@ zratio  = .25
 psi     = .05
 rot     = 7
 comp    = 4
-tppred  = .01
+tppred  = .1
 bhabit  = ""
 
 if(len(argv) < 4):
@@ -56,9 +56,9 @@ elif(argv[2] == "ppred" or argv[2] == "ppredr"):
     except:
       r, e = os.path.splitext(s)
       roots.append(r)
-  #cmd = [argv[1], argv[2], "1", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
+  cmd = [argv[1], argv[2], "1", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
   #cmd = [argv[1], argv[2], "2", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
-  cmd = [argv[1], argv[2], "4", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
+  #cmd = [argv[1], argv[2], "4", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
   #cmd = [argv[1], argv[2], "20", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
   for s in roots:
     cmd.append(s + ".ppm")
@@ -79,7 +79,7 @@ else:
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", "1", "1"])
       subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-equalize", "-blur", "12x12+6", "-compress", "none", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
