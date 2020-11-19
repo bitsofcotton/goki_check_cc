@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P0_)
 
-template <typename T> class P0 {
+template <typename T, int residue = 8> class P0 {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
@@ -46,6 +46,7 @@ public:
   const Vec&  nextQ(const int& size);
   const Vec&  nextR(const int& size);
   const Vec&  nextS(const int& size);
+  const Vec&  nextT(const int& size);
   inline const Vec& next(const int& size);
   const Vec&  minSq(const int& size);
   const T&    Pi() const;
@@ -53,25 +54,25 @@ public:
   const complex<T>& J() const;
 };
 
-template <typename T> inline P0<T>::P0() {
+template <typename T, int residue> inline P0<T,residue>::P0() {
   ;
 }
 
-template <typename T> inline P0<T>::~P0() {
+template <typename T, int residue> inline P0<T,residue>::~P0() {
   ;
 }
 
-template <typename T> const T& P0<T>::Pi() const {
+template <typename T, int residue> const T& P0<T,residue>::Pi() const {
   const static auto pi(atan2(T(1), T(1)) * T(4));
   return pi;
 }
 
-template <typename T> const complex<T>& P0<T>::J() const {
+template <typename T, int residue> const complex<T>& P0<T,residue>::J() const {
   const static auto i(complex<T>(T(0), T(1)));
   return i;
 }
 
-template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size0) {
+template <typename T, int residue> const typename P0<T,residue>::MatU& P0<T,residue>::seed(const int& size0) {
   const auto size(abs(size0));
   assert(0 < size);
   static vector<MatU> dft;
@@ -99,7 +100,7 @@ template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size0) 
   return size0 < 0 ? eidft : edft;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size0) {
+template <typename T, int residue> const typename P0<T,residue>::Mat& P0<T,residue>::diff(const int& size0) {
   const auto size(abs(size0));
   static vector<Mat> D;
   static vector<Mat> I;
@@ -123,7 +124,7 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size0) {
   return size0 < 0 ? ii : dd;
 }
 
-template <typename T> const typename P0<T>::Mat& P0<T>::diffCalibrate(const int& size) {
+template <typename T, int residue> const typename P0<T,residue>::Mat& P0<T,residue>::diffCalibrate(const int& size) {
   assert(0 < size);
   static vector<Mat> D;
   if(D.size() <= size)
@@ -136,28 +137,28 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diffCalibrate(const int&
   return dd *= - T(2) * Pi() / T(dd.rows()) / dd.row(dd.rows() / 2).dot(calibrate);
 }
 
-template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
+template <typename T, int residue> inline typename P0<T,residue>::Vec P0<T,residue>::taylor(const int& size, const T& step) {
   const int  step00(max(0, min(size - 1, int(floor(step)))));
   const auto residue0(step - T(step00));
   const auto step0(step00 == size - 1 || abs(residue0) <= T(1) / T(2) ? step00 : step00 + 1);
-  const auto residue(step - T(step0));
+  const auto residue1(step - T(step0));
         Vec  res(size);
   for(int i = 0; i < size; i ++)
     res[i] = i == step0 ? T(1) : T(0);
-  if(residue == T(0))
+  if(residue1 == T(0))
     return res;
   const auto& D(diff(size));
-        auto  dt(D.col(step0) * residue);
+        auto  dt(D.col(step0) * residue1);
   for(int i = 2; ; i ++) {
     const auto last(res);
     res += dt;
     if(last == res) break;
-    dt   = D * dt * residue / T(i);
+    dt   = D * dt * residue1 / T(i);
   }
   return res;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
+template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,residue>::nextP(const int& size) {
   assert(1 < size);
   static vector<Vec> P;
   if(P.size() <= size)
@@ -173,7 +174,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
   return p;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextQ(const int& size) {
+template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,residue>::nextQ(const int& size) {
   assert(1 < size);
   static vector<Vec> P;
   if(P.size() <= size)
@@ -193,7 +194,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextQ(const int& size) {
   return p;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextR(const int& size) {
+template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,residue>::nextR(const int& size) {
   assert(1 < size);
   static vector<Vec> P;
   if(P.size() <= size)
@@ -209,7 +210,7 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextR(const int& size) {
   return p;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextS(const int& size) {
+template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,residue>::nextS(const int& size) {
   assert(1 < size);
   static vector<Vec> P;
   if(P.size() <= size)
@@ -242,18 +243,44 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextS(const int& size) {
   return p;
 }
 
-template <typename T> inline const typename P0<T>::Vec& P0<T>::next(const int& size) {
-  return nextS(size);
+template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,residue>::nextT(const int& size) {
+  assert(1 < size);
+  assert(0 < residue);
+  static vector<Vec> P;
+  if(P.size() <= size)
+    P.resize(size + 1, Vec());
+  auto& p(P[size]);
+  if(p.size() != size) {
+    auto D(diff(  size));
+    auto I(diff(- size));
+    for(int i = 0; i < residue; i ++) {
+      D = D * D;
+      I = I * I;
+    }
+    const auto& n(nextS(size));
+          auto  nn(I.row(0) * n[0]);
+    for(int i = 1; i < n.size(); i ++)
+      nn += I.row(i) * n[i];
+    for(int i = 1; i < n.size(); i ++)
+      I.row(i - 1) = I.row(i);
+    I.row(I.rows() - 1) = nn;
+    p = (D * I).row(D.rows() - 1);
+  }
+  return p;
 }
 
-template <typename T> inline T P0<T>::dot1(const Vec& x) {
+template <typename T, int residue> inline const typename P0<T,residue>::Vec& P0<T,residue>::next(const int& size) {
+  return nextT(size);
+}
+
+template <typename T, int residue> inline T P0<T,residue>::dot1(const Vec& x) {
   auto sum(x[0]);
   for(int i = 1; i < x.size(); i ++)
     sum += x[i];
   return sum;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::minSq(const int& size) {
+template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,residue>::minSq(const int& size) {
   assert(1 < size);
   static vector<Vec> S;
   if(S.size() <= size)
