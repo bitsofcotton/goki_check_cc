@@ -42,9 +42,11 @@ public:
     INTEG_X,
     INTEG_Y,
     INTEG_BOTH,
+    BUMP_X_SHALLOW,
     BUMP_X,
     BUMP_Y_SHALLOW,
     BUMP_Y,
+    BUMP_BOTH_SHALLOW,
     BUMP_BOTH,
     EXTEND_X,
     EXTEND_Y,
@@ -222,6 +224,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case BUMP_BOTH:
     result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
     break;
+  case BUMP_BOTH_SHALLOW:
+    result = gmean(compute(data, BUMP_X_SHALLOW), compute(data, BUMP_Y_SHALLOW));
+    break;
   case EXTEND_BOTH:
     result = compute(compute(data, EXTEND_X), EXTEND_Y);
     break;
@@ -239,6 +244,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     break;
   case INTEG_X:
     result = compute(data.transpose(), INTEG_Y).transpose();
+    break;
+  case BUMP_X_SHALLOW:
+    result = compute(data.transpose(), BUMP_Y_SHALLOW).transpose();
     break;
   case BUMP_X:
     result = compute(data.transpose(), BUMP_Y).transpose();
@@ -432,7 +440,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   case BUMP_Y:
     {
       reDig<T> redig;
-      const auto bump(compute(data, BUMP_Y_SHALLOW));
+      const auto bump(redig.normalize(compute(data, BUMP_Y_SHALLOW), T(1)));
       const auto t0(redig.tilt(redig.makeRefMatrix(data, 1), bump,
                                redig.tiltprep(bump, 0, 4, dbratio)));
       const auto data0(redig.pullRefMatrix(t0, 1, data));
