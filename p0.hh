@@ -47,6 +47,7 @@ public:
   const Vec&  nextR(const int& size);
   const Vec&  nextS(const int& size);
   const Vec&  nextT(const int& size);
+  const Vec&  nextU(const int& size);
   inline const Vec& next(const int& size);
   const Vec&  minSq(const int& size);
   const T&    Pi() const;
@@ -273,8 +274,24 @@ template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,resid
   return p;
 }
 
+template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,residue>::nextU(const int& size) {
+  assert(1 < size);
+  static vector<Vec> P;
+  if(P.size() <= size)
+    P.resize(size + 1, Vec());
+  auto& p(P[size]);
+  if(p.size() != size) {
+    p = nextT(size);
+    for(int i = 3; i < size; i ++)
+      for(int j = 0; j < i; j ++)
+        p[j - i + p.size()] += nextT(i)[j];
+    p /= dot1(p);
+  }
+  return p;
+}
+
 template <typename T, int residue> inline const typename P0<T,residue>::Vec& P0<T,residue>::next(const int& size) {
-  return nextT(size);
+  return nextU(size);
 }
 
 template <typename T, int residue> inline T P0<T,residue>::dot1(const Vec& x) {
