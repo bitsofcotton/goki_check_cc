@@ -112,8 +112,8 @@ template <typename T, int residue> const typename P0<T,residue>::Mat& P0<T,resid
   auto& ii(I[size]);
   if(dd.rows() != size || dd.cols() != size) {
     auto DD(seed(size));
-    auto II(DD);
     DD.row(0) *= complex<T>(T(0));
+    auto II(DD);
     for(int i = 1; i < DD.rows(); i ++) {
       DD.row(i) *= J() * T(2) * Pi() * T(i) / T(DD.rows());
       II.row(i) /= J() * T(2) * Pi() * T(i) / T(DD.rows());
@@ -253,6 +253,9 @@ template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,resid
   if(p.size() != size) {
     auto D(diff(  size));
     auto I(diff(- size));
+    for(int i = 1; i < I.rows(); i ++)
+      for(int j = 0; j < I.cols(); j ++)
+        I(i, j) += T(i) / T(I.rows()) / T(I.cols());
     for(int i = 0; i < residue; i ++) {
       D = D * D;
       I = I * I;
@@ -264,7 +267,8 @@ template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,resid
     for(int i = 1; i < n.size(); i ++)
       I.row(i - 1) = I.row(i);
     I.row(I.rows() - 1) = nn;
-    p = (D * I).row(D.rows() - 1);
+    p  = (D * I).row(D.rows() - 1);
+    p /= dot1(p);
   }
   return p;
 }
