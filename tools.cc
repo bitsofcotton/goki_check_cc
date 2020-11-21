@@ -584,15 +584,23 @@ int main(int argc, const char* argv[]) {
     const auto& comp(p.next(in.size()));
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
-        out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
-        for(int k = 0; k < in.size(); k ++)
-          for(int kk = 0; kk < 3; kk ++)
-            out[kk](y, x) += in[k][kk](y, x) * comp[k];
+        SimpleVector<num_t> i0(in.size());
+        SimpleVector<num_t> i1(in.size());
+        SimpleVector<num_t> i2(in.size());
+        for(int k = 0; k < in.size(); k ++) {
+          i0[k] = in[k][0](y, x);
+          i1[k] = in[k][1](y, x);
+          i2[k] = in[k][2](y, x);
+        }
+        out[0](y, x) = p.next(i0);
+        out[1](y, x) = p.next(i1);
+        out[2](y, x) = p.next(i2);
       }
     }
     redig.normalize(out, 1.);
     file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
   } else if(strcmp(argv[1], "ppred") == 0 ||
+            strcmp(argv[1], "ppreds") == 0 ||
             strcmp(argv[1], "ppredr") == 0) {
     if(argc < 11 || (argc & 1)) {
       usage();
