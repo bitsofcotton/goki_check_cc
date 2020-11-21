@@ -47,7 +47,7 @@ elif(argv[2] == "pred"):
       subprocess.call(["convert", s, "-compress", "none", r + ".ppm"])
     cmd.append(r + ".ppm")
   subprocess.call(cmd)
-elif(argv[2] == "ppred" or argv[2] == "ppredr"):
+elif(argv[2] == "ppred" or argv[2] == "ppredr" or argv[2] == "ppreds"):
   roots = []
   for s in argv[3:]:
     try:
@@ -56,14 +56,16 @@ elif(argv[2] == "ppred" or argv[2] == "ppredr"):
     except:
       r, e = os.path.splitext(s)
       roots.append(r)
-  cmd = [argv[1], argv[2], "1", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
+  #cmd = [argv[1], argv[2], "1", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
   #cmd = [argv[1], argv[2], "2", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
-  #cmd = [argv[1], argv[2], "4", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
+  cmd = [argv[1], argv[2], "4", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
   #cmd = [argv[1], argv[2], "20", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
   for s in roots:
     cmd.append(s + ".ppm")
     if(argv[2] == "ppred"):
       cmd.append(s + "-bump.ppm")
+    elif(argv[2] == "ppreds"):
+      cmd.append(s + "-bumps.ppm")
     else:
       cmd.append(s + ".ppm")
   print " ".join(cmd)

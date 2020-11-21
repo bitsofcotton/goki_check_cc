@@ -49,10 +49,14 @@ public:
   const Vec&  nextT(const int& size);
   const Vec&  nextU(const int& size);
   inline const Vec& next(const int& size);
+  inline       T    next(const Vec& data);
   const Vec&  minSq(const int& size);
   const T&    Pi() const;
   inline T    dot1(const Vec& x);
   const complex<T>& J() const;
+  const T&    sgn(const T& x) const;
+  inline T    expscale(const T& x) const;
+  inline T    logscale(const T& x) const;
 };
 
 template <typename T, int residue> inline P0<T,residue>::P0() {
@@ -190,7 +194,6 @@ template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,resid
     p /= pp[0];
     p += pp;
     p /= dot1(p);
-    std::cerr << "q" << std::flush;
   }
   return p;
 }
@@ -230,11 +233,16 @@ template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,resid
     for(int i = 0; i < pp.size(); i ++)
       predict(predict.rows() - 1, i) = pp[i];
     auto retry(minusMinSq * predict);
+    T epsilon(1);
+    while(T(1) + epsilon != T(1)) epsilon /= T(2);
     while(true) {
+      const auto  btry0(retry.row(1));
       const auto  btry(retry.row(retry.rows() - 1));
       retry = retry * retry;
+      const auto& rtry0(retry.row(1));
       const auto& rtry(retry.row(retry.rows() - 1));
-      if(abs(rtry.dot(btry) / sqrt(rtry.dot(rtry) * btry.dot(btry)) - T(1)) <= T(0)) break;
+      if(abs(rtry.dot(btry) / sqrt(rtry.dot(rtry) * btry.dot(btry)) - T(1)) +
+         abs(rtry0.dot(btry0) / sqrt(rtry0.dot(rtry0) * btry0.dot(btry0)) - T(1)) <= sqrt(epsilon)) break;
     }
     p.resize(size);
     for(int i = 0; i < p.size(); i ++)
@@ -270,6 +278,7 @@ template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,resid
     I.row(I.rows() - 1) = nn;
     p  = (D * I).row(D.rows() - 1);
     p /= dot1(p);
+    std::cerr << "t" << std::flush;
   }
   return p;
 }
@@ -294,6 +303,17 @@ template <typename T, int residue> inline const typename P0<T,residue>::Vec& P0<
   return nextU(size);
 }
 
+template <typename T, int residue> inline T P0<T,residue>::next(const Vec& data) {
+  const auto& n(nextU(data.size()));
+        auto  e(data);
+        auto  l(data);
+  for(int i = 0; i < data.size(); i ++) {
+    e[i] = expscale(e[i]);
+    l[i] = logscale(l[i]);
+  }
+  return (n.dot(data) + logscale(n.dot(e)) + expscale(n.dot(l))) / T(3);
+}
+
 template <typename T, int residue> inline T P0<T,residue>::dot1(const Vec& x) {
   auto sum(x[0]);
   for(int i = 1; i < x.size(); i ++)
@@ -316,6 +336,21 @@ template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,resid
       s[i] = (T(i) * T(size) - xsum) / denom;
   }
   return s;
+}
+
+template <typename T, int residue> const T& P0<T,residue>::sgn(const T& x) const {
+  static const T zero(0);
+  static const T one(1);
+  static const T mone(- one);
+  return x == zero ? zero : (x < zero ? mone : one);
+}
+
+template <typename T, int residue> inline T P0<T,residue>::expscale(const T& x) const {
+  return sgn(x) * (exp(abs(x)) - T(1));
+}
+
+template <typename T, int residue> inline T P0<T,residue>::logscale(const T& x) const {
+  return sgn(x) * log(abs(x) + T(1));
 }
 
 
@@ -350,7 +385,8 @@ template <typename T> inline T P0B<T>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
-  return p.next(buf.size()).dot(buf);
+//  return p.next(buf.size()).dot(buf);
+  return p.next(buf);
 }
 
 #define _P0_
