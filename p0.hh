@@ -264,7 +264,7 @@ template <typename T, int residue> const typename P0<T,residue>::Vec& P0<T,resid
     auto I(diff(- size));
     for(int i = 1; i < I.rows(); i ++)
       for(int j = 0; j < I.cols(); j ++)
-        I(i, j) += T(i) / T(I.rows()) / T(I.cols());
+        I(i, j) += T(i) / T(I.rows()) / T(I.cols()) - T(1) / T(I.cols());
     for(int i = 0; i < residue; i ++) {
       D = D * D;
       I = I * I;
