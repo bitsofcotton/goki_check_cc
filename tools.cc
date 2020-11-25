@@ -78,7 +78,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|sharpen|bump|bumps|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck pred  <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -115,7 +115,6 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
-     strcmp(argv[1], "bumps")   == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
      strcmp(argv[1], "b2wd")    == 0) {
@@ -131,20 +130,18 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.rotcompute(data[i], filter.COLLECT_BOTH, rot);
+        data[i] = filter.compute(data[i], filter.COLLECT_BOTH, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.rotcompute(data[i], filter.ENLARGE_BOTH, rot), filter.CLIP);
+        data[i] = filter.compute(filter.compute(data[i], filter.ENLARGE_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.rotcompute(data[i], filter.EXTEND_BOTH, rot), filter.CLIP);
+        data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.rotcompute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
+        data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = redig.autoLevel(filter.rotcompute(redig.rgb2d(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
-    else if(strcmp(argv[1], "bumps") == 0)
-      data[0] = data[1] = data[2] = redig.autoLevel(filter.rotcompute(redig.rgb2d(data), filter.BUMP_BOTH_SHALLOW, rot), 4 * (data[0].rows() + data[0].cols()));
+      data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(redig.rgb2d(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -593,7 +590,6 @@ int main(int argc, const char* argv[]) {
     redig.normalize(out, 1.);
     file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
   } else if(strcmp(argv[1], "ppred") == 0 ||
-            strcmp(argv[1], "ppreds") == 0 ||
             strcmp(argv[1], "ppredr") == 0) {
     if(argc < 11 || (argc & 1)) {
       usage();
