@@ -100,13 +100,9 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
   auto& dd(D[size]);
   if(dd.rows() != size || dd.cols() != size) {
     auto DD(seed(size));
-    for(int i = 1; i < DD.rows(); i ++)
+    for(int i = 0; i < DD.rows(); i ++)
       DD.row(i) *= - J() * T(2) * Pi() * T(i) / T(DD.rows());
-    dd = (seed(- size) * DD).template real<T>();
-    Vec calibrate(dd.rows());
-    for(int i = 0; i < calibrate.size(); i ++)
-      calibrate[i] = sin(T(i) / T(calibrate.size()) * T(2) * Pi());
-    dd /= - dd.row(dd.rows() / 2).dot(calibrate);
+    dd = (seed(- size) * DD).template real<T>() / Pi();
   }
   return dd;
 }
@@ -128,8 +124,8 @@ template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, 
   // (n! < n^n but a^n < n! somewhere).
   // And, we treat D * residue as a block, so Readme.md's condition 1/x^k needs
   // to be in the series in this.
-  const auto D(diff(size));
-        auto dt(D.col(step0) * residue);
+  const auto& D(diff(size));
+        auto  dt(D.col(step0) * residue);
   for(int i = 2; ; i ++) {
     const auto last(res);
     res += dt;
