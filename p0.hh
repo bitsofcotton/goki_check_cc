@@ -38,11 +38,10 @@ public:
   typedef SimpleMatrix<complex<T> > MatU;
   inline P0();
   inline ~P0();
-  inline Vec  taylor(const int& size, const T& step);
   const MatU& seed(const int& size0);
   const Mat&  diff(const int& size);
-  const Vec&  nextP(const int& size);
-  const Vec&  next(const int& size);
+  inline Vec  taylor(const int& size, const T& step);
+  const Vec&  nextHalf(const int& size);
   const T&    Pi() const;
   const complex<T>& J() const;
 };
@@ -67,7 +66,7 @@ template <typename T> const complex<T>& P0<T>::J() const {
 
 template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size0) {
   const auto size(abs(size0));
-  assert(0 < size);
+  assert(size);
   static vector<MatU> dft;
   static vector<MatU> idft;
   if(dft.size() <= size)
@@ -107,7 +106,7 @@ template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size) {
     Vec calibrate(dd.rows());
     for(int i = 0; i < calibrate.size(); i ++)
       calibrate[i] = sin(T(i) / T(calibrate.size()) * T(2) * Pi());
-    dd *= - T(2) * Pi() / dd.row(dd.rows() / 2).dot(calibrate);
+    dd /= - dd.row(dd.rows() / 2).dot(calibrate);
   }
   return dd;
 }
@@ -133,35 +132,31 @@ template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, 
   return res;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextP(const int& size) {
-  assert(1 < size);
+template <typename T> const typename P0<T>::Vec& P0<T>::nextHalf(const int& size) {
+  assert(0 < size);
   static vector<Vec> P;
   if(P.size() <= size)
     P.resize(size + 1, Vec());
   auto& p(P[size]);
   if(p.size() != size) {
-    const auto reverse(taylor(size, - T(1) / T(2)));
-    p = taylor(size, T(size - 1) + T(1) / T(2));
-    for(int i = 0; i < reverse.size(); i ++)
-      p[i] += reverse[reverse.size() - i - 1];
-    p /= T(2);
+    if(size <= 2) {
+      p.resize(size);
+      p[0] = T(0);
+      p[p.size() - 1] = T(1);
+    } else {
+      const auto reverse(taylor(size, - T(1) / T(2)));
+      p = taylor(size, T(size - 1) + T(1) / T(2));
+      for(int i = 0; i < reverse.size(); i ++)
+        p[i] += reverse[reverse.size() - i - 1];
+      p /= T(2);
+    }
     std::cerr << "p" << std::flush;
-  }
-  return p;
-}
-
-template <typename T> const typename P0<T>::Vec& P0<T>::next(const int& size) {
-  assert(1 < size);
-  static vector<Vec> P;
-  if(P.size() <= size)
-    P.resize(size + 1, Vec());
-  auto& p(P[size]);
-  if(p.size() != size) {
-    p = nextP(size);
-    for(int i = 3; i < size; i ++)
-      for(int j = 0; j < i; j ++)
-        p[j - i + p.size()] += nextP(i)[j];
-    p /= T(size - 3 + 1);
+    if(1 < size) {
+      const auto& back(nextHalf(size - 1));
+      for(int i = 0; i < back.size(); i ++)
+        p[i - back.size() + p.size()] += back[i] * T(size - 1);
+      p /= T(size);
+    }
   }
   return p;
 }
@@ -205,12 +200,12 @@ template <typename T> inline T P0B<T>::next(const T& in) {
     for(int i = 0; i < buf0.size() - 1; i ++)
       buf0[i] = buf0[i + 1];
     buf0[buf0.size() - 1] = in;
-    return p.next(buf0.size()).dot(buf0);
+    return p.nextHalf(buf0.size()).dot(buf0);
   }
   for(int i = 0; i < buf1.size() - 1; i ++)
     buf1[i] = buf1[i + 1];
   buf1[buf1.size() - 1] = in;
-  return p.next(buf1.size()).dot(buf1);
+  return p.nextHalf(buf1.size()).dot(buf1);
 }
 
 #define _P0_

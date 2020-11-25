@@ -331,41 +331,19 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         Eop.resize(size + 1, vector<Mat>());
       else if(recur < Eop[size].size())
         goto eopi;
-      for(int i = 3; i <= size; i ++) {
-        if(Eop[i].size() <= recur)
-          Eop[i].resize(recur + 1, Mat());
-        auto& eop(Eop[i][recur]);
-        if(eop.cols() == i)
-          continue;
+      if(Eop[size].size() <= recur)
+        Eop[size].resize(recur + 1, Mat());
+      {
+        auto& eop(Eop[size][recur]);
+        if(eop.cols() == size)
+          goto eopi;
         cerr << "e" << flush;
-        eop.resize((i - 1) * recur + 1, i);
-        if(i == 3)
-          for(int j = 0; j < eop.rows(); j ++)
-            eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
-        else {
-          for(int j = 0; j < eop.rows(); j ++)
-            eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
-          const auto& bop(Eop[i - 1][recur]);
-          for(int j = 0; j < recur / 2; j ++)
-            for(int k = 0; k < bop.cols(); k ++) {
-              eop(j, k) += bop(j, k);
-              eop(eop.rows() - j - 1, eop.cols() - k - 1) +=
-                bop(bop.rows() - j - 1, bop.cols() - k - 1);
-            }
-          for(int j = recur / 2; j < eop.rows() - recur / 2; j ++)
-            for(int k = 0; k < bop.cols(); k ++)
-              if(bop.rows() <= j)
-                eop(j, k + 1) += bop(j - recur, k);
-              else if(j < recur)
-                eop(j, k)     += bop(j, k);
-              else {
-                eop(j, k)     += bop(j, k) / T(2);
-                eop(j, k + 1) += bop(j - recur, k) / T(2);
-              }
-        }
+        eop.resize((size - 1) * recur + 1, size);
+        for(int j = 0; j < eop.rows(); j ++)
+          eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
       }
      eopi:
-      result = Eop[size][recur] * data / T(size - 2);
+      result = Eop[size][recur] * data;
     }
     break;
   case DETECT_Y:
@@ -533,20 +511,19 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         result.row(i + recur) = data.row(i);
       }
       for(int i = 0; i < recur; i ++) {
-        const auto  size(min(120, int(data.rows()) / (i + 1) / 2));
-        const auto& temp(p.next(size));
+        const auto& comp(p.nextHalf(min(120, int(data.rows()) / (i + 1) / 2)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int j = 0; j < data.cols(); j ++) {
           result(data.rows() + recur + i, j) =
             result(recur - i - 1, j) = T(0);
-          for(int k = size & 1, kk = 0; k <= size; k += 2, kk ++) {
+          for(int k = 0; k < comp.size(); k ++) {
             result(data.rows() + recur + i, j) +=
-              result(data.rows() + recur - 1 + (k - size) * (i + 1), j) *
-                temp[kk];
+              result(data.rows() + recur - 1 + 2 * (k + 1 - comp.size()) *
+                (i + 1), j) * comp[k];
             result(recur - i - 1, j) +=
-              result(recur + (size - k) * (i + 1), j) * temp[kk];
+              result(recur + (comp.size() - k - 1) * (i + 1) * 2, j) * comp[k];
           }
         }
       }
