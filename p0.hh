@@ -41,7 +41,7 @@ public:
   const MatU& seed(const int& size0);
   const Mat&  diff(const int& size);
   inline Vec  taylor(const int& size, const T& step);
-  const Vec&  nextHalf(const int& size);
+  const Vec&  next(const int& size);
   const T&    Pi() const;
   const complex<T>& J() const;
 };
@@ -121,8 +121,15 @@ template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, 
     res[i] = i == step0 ? T(1) : T(0);
   if(residue == T(0))
     return res;
-  const auto& D(diff(size));
-        auto  dt(D.col(step0) * residue);
+  // N.B.
+  // if we deal with (D *= r, residue /= r), it is identical with (D, residue)
+  // So ||D^n * residue^n|| / T(n!) < 1 case, this loop converges.
+  // but with n^n v.s. n!, differential of n! is faster than n^n.
+  // (n! < n^n but a^n < n! somewhere).
+  // And, we treat D * residue as a block, so Readme.md's condition 1/x^k needs
+  // to be in the series in this.
+  const auto D(diff(size));
+        auto dt(D.col(step0) * residue);
   for(int i = 2; ; i ++) {
     const auto last(res);
     res += dt;
@@ -132,7 +139,7 @@ template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, 
   return res;
 }
 
-template <typename T> const typename P0<T>::Vec& P0<T>::nextHalf(const int& size) {
+template <typename T> const typename P0<T>::Vec& P0<T>::next(const int& size) {
   assert(0 < size);
   static vector<Vec> P;
   if(P.size() <= size)
@@ -143,16 +150,11 @@ template <typename T> const typename P0<T>::Vec& P0<T>::nextHalf(const int& size
       p.resize(size);
       p[0] = T(0);
       p[p.size() - 1] = T(1);
-    } else {
-      const auto reverse(taylor(size, - T(1) / T(2)));
-      p = taylor(size, T(size - 1) + T(1) / T(2));
-      for(int i = 0; i < reverse.size(); i ++)
-        p[i] += reverse[reverse.size() - i - 1];
-      p /= T(2);
-    }
+    } else
+      p = taylor(size, T(size));
     std::cerr << "p" << std::flush;
     if(1 < size) {
-      const auto& back(nextHalf(size - 1));
+      const auto& back(next(size - 1));
       for(int i = 0; i < back.size(); i ++)
         p[i - back.size() + p.size()] += back[i] * T(size - 1);
       p /= T(size);
@@ -171,9 +173,7 @@ public:
   inline ~P0B();
   inline T next(const T& in);
 private:
-  Vec buf0;
-  Vec buf1;
-  int t;
+  Vec buf;
 };
 
 template <typename T> inline P0B<T>::P0B() {
@@ -181,13 +181,9 @@ template <typename T> inline P0B<T>::P0B() {
 }
 
 template <typename T> inline P0B<T>::P0B(const int& size) {
-  buf0.resize(size);
-  buf1.resize(size);
-  for(int i = 0; i < buf0.size(); i ++) {
-    buf0[i] = T(0);
-    buf1[i] = T(0);
-  }
-  t = 0;
+  buf.resize(size);
+  for(int i = 0; i < buf.size(); i ++)
+    buf[i] = T(0);
 }
 
 template <typename T> inline P0B<T>::~P0B() {
@@ -196,16 +192,10 @@ template <typename T> inline P0B<T>::~P0B() {
 
 template <typename T> inline T P0B<T>::next(const T& in) {
   static P0<T> p;
-  if((t ++) & 1) {
-    for(int i = 0; i < buf0.size() - 1; i ++)
-      buf0[i] = buf0[i + 1];
-    buf0[buf0.size() - 1] = in;
-    return p.nextHalf(buf0.size()).dot(buf0);
-  }
-  for(int i = 0; i < buf1.size() - 1; i ++)
-    buf1[i] = buf1[i + 1];
-  buf1[buf1.size() - 1] = in;
-  return p.nextHalf(buf1.size()).dot(buf1);
+  for(int i = 0; i < buf.size() - 1; i ++)
+    buf[i] = buf[i + 1];
+  buf[buf.size() - 1] = in;
+  return p.next(buf.size()).dot(buf);
 }
 
 #define _P0_
