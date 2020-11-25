@@ -289,9 +289,7 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
   const int idx(idx0 == srccenter.size() ? srccenter.size() - 1 : idx0);
   assert(0 <= idx && idx < srccenter.size());
   static P0<T> p;
-  const auto comp(T(srccenter.size()) == iemph
-                  ? p.next(srccenter.size())
-                  : p.taylor(srccenter.size(), iemph));
+  const auto comp(p.taylor(srccenter.size(), iemph));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
