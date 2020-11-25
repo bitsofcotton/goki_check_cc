@@ -578,13 +578,13 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     for(int i = 0; i < 3; i ++)
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-    const auto& comp(p.nextHalf(in.size() / 2));
+    const auto& comp(p.next(in.size()));
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
         out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
         for(int k = 0; k < comp.size(); k ++)
           for(int m = 0; m < 3; m ++)
-            out[m](y, x) += in[(k + 1 - comp.size()) * 2 + in.size() - 1][m](y, x) * comp[k];
+            out[m](y, x) += in[(k + 1 - comp.size()) + in.size() - 1][m](y, x) * comp[k];
       }
     }
     redig.normalize(out, 1.);
