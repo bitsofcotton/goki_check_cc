@@ -585,7 +585,7 @@ int main(int argc, const char* argv[]) {
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
         out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
-        for(int k = (in.size() & 1) ^ 1, kk = 0; k < in.size(); k ++, kk ++)
+        for(int k = (in.size() & 1) ^ 1, kk = 0; k < in.size(); k += 2, kk ++)
           for(int m = 0; m < 3; m ++)
             out[m](y, x) += in[k][m](y, x) * comp[kk];
       }
@@ -655,30 +655,7 @@ int main(int argc, const char* argv[]) {
     std::vector<typename simpleFile<num_t>::Mat>  pout;
     typename simpleFile<num_t>::Mat out[3];
     const auto rin0(redig.makeRefMatrix(in[0][0], 1));
-    {
-            auto center1(center);
-      const auto idx(center.size() - 1);
-      std::vector<std::vector<typename simpleFile<num_t>::Vec3> > lcenter;
-      std::vector<std::vector<typename simpleFile<num_t>::Mat> > lin;
-      lcenter.reserve(std::atoi(argv[6]) * 2);
-      lin.reserve(std::atoi(argv[6]) * 2);
-      for(int i = max(int(in.size()) - std::atoi(argv[6]), 0), ii = 0;
-              i < in.size(); i ++, ii ++) {
-        lcenter.emplace_back(i == idx ? center[i] : redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]));
-        lin.emplace_back(in[i]);
-        assert(lcenter[ii].size() == center[idx].size());
-        std::cerr << "." << std::flush;
-      }
-      redig.complement(pout, outcenter, lin, lcenter, attend[attend.size() - 1],
-                       redig.getReverseLookup(attend[attend.size() - 1],
-                         in[in.size() - 1][0]),
-                       num_t(lcenter.size()));
-      in.emplace_back(pout);
-      center.emplace_back(outcenter);
-      centerr.emplace_back(centerr[centerr.size() - 1]);
-    }
-    const auto center0(center);
-    for(int idx = 0; idx < center.size() - 1; idx ++) {
+    for(int idx = 0; idx < center.size(); idx ++) {
       std::vector<std::vector<typename simpleFile<num_t>::Vec3> > lcenter;
       std::vector<std::vector<typename simpleFile<num_t>::Mat> > lin;
       lcenter.reserve(std::atoi(argv[6]) * 2);
@@ -686,9 +663,9 @@ int main(int argc, const char* argv[]) {
       for(int i = max(idx - std::atoi(argv[6]), 0), ii = 0;
               i < min(idx + std::atoi(argv[6]) + 1, int(in.size()));
               i ++, ii ++) {
-        lcenter.emplace_back(i == idx ? center0[i] : redig.copyBone(center0[idx], centerr[idx], center0[i], centerr[i]));
+        lcenter.emplace_back(i == idx ? center[i] : redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]));
         lin.emplace_back(in[i]);
-        assert(lcenter[ii].size() == center0[idx].size());
+        assert(lcenter[ii].size() == center[idx].size());
         std::cerr << "." << std::flush;
       }
       const auto a2xy(redig.getReverseLookup(attend[idx], in[idx][0]));
