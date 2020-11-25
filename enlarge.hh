@@ -42,11 +42,8 @@ public:
     INTEG_X,
     INTEG_Y,
     INTEG_BOTH,
-    BUMP_X_SHALLOW,
     BUMP_X,
-    BUMP_Y_SHALLOW,
     BUMP_Y,
-    BUMP_BOTH_SHALLOW,
     BUMP_BOTH,
     EXTEND_X,
     EXTEND_Y,
@@ -67,12 +64,10 @@ public:
 #endif
   Filter(const int& recur = 2);
   ~Filter();
-  Mat rotcompute(const Mat& data, const direction_t& dir, const int& n);
-  Mat compute(const Mat& data, const direction_t& dir);
+  Mat compute(const Mat& data, const direction_t& dir, const int& n = 0);
   inline int getImgPt(const int& y, const int& h);
   inline Mat gmean(const Mat& a, const Mat& b);
 
-  T   dbratio;
 private:
   T   Pi;
   int recur;
@@ -81,7 +76,6 @@ private:
 template <typename T> Filter<T>::Filter(const int& recur) {
   Pi  = atan2(T(1), T(1)) * T(4);
   this->recur = recur;
-  dbratio = T(5) / T(100);
   assert(0 < recur);
 }
 
@@ -89,11 +83,275 @@ template <typename T> Filter<T>::~Filter() {
   ;
 }
 
-template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& data, const direction_t& dir, const int& n) {
-  if(dir == EXTEND_X)
-    return rotcompute(data.transpose(), EXTEND_Y, n).transpose();
-  if(dir == EXTEND_BOTH)
-    return rotcompute(rotcompute(data, EXTEND_Y, n), EXTEND_X, n);
+template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir, const int& n) {
+  assert(0 <= n);
+  if(! n) {
+    static P0<T> p;
+    Mat result;
+    switch(dir) {
+    case SHARPEN_BOTH:
+      result = compute(compute(data, SHARPEN_X), SHARPEN_Y);
+      break;
+    case ENLARGE_BOTH:
+      result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
+      break;
+    case DETECT_BOTH:
+      result = gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
+      break;
+    case COLLECT_BOTH:
+      result = gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
+      break;
+    case INTEG_BOTH:
+      result = gmean(compute(data, INTEG_X), compute(data, INTEG_Y));
+      break;
+    case BUMP_BOTH:
+      result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
+      break;
+    case EXTEND_BOTH:
+      result = compute(compute(data, EXTEND_X), EXTEND_Y);
+      break;
+    case SHARPEN_X:
+      result = compute(data.transpose(), SHARPEN_Y).transpose();
+      break;
+    case ENLARGE_X:
+      result = compute(data.transpose(), ENLARGE_Y).transpose();
+      break;
+    case DETECT_X:
+      result = compute(data.transpose(), DETECT_Y).transpose();
+      break;
+    case COLLECT_X:
+      result = compute(data.transpose(), COLLECT_Y).transpose();
+      break;
+    case INTEG_X:
+      result = compute(data.transpose(), INTEG_Y).transpose();
+      break;
+    case BUMP_X:
+      result = compute(data.transpose(), BUMP_Y).transpose();
+      break;
+    case EXTEND_X:
+      result = compute(data.transpose(), EXTEND_Y).transpose();
+      break;
+    case SHARPEN_Y:
+      {
+        assert(2 <= data.rows());
+        static vector<vector<Mat> > Sop;
+        int idx(0);
+        for(int i = 0; i < Sop.size(); i ++)
+          if(Sop[i][0].rows() == data.rows()) {
+            idx = i;
+            goto sopi;
+          }
+        cerr << "s" << flush;
+        idx = Sop.size();
+        Sop.emplace_back(vector<Mat>());
+        Sop[idx].emplace_back(Mat(data.rows(), data.rows()));
+        {
+          auto& sop(Sop[idx][0]);
+          for(int i = 0; i < sop.rows(); i ++)
+            for(int j = 0; j < sop.cols(); j ++)
+              sop(i, j) = T(0);
+          int cnt(1);
+          for(int ss = 2; ss <= data.rows(); ss *= 2, cnt ++) {
+            auto DFTS(p.seed(ss));
+            DFTS.row(0) *= U(T(0));
+            for(int i = 1; i < DFTS.rows(); i ++) {
+              // N.B. d/dt((d^(t)/dy^(t)) f), differential-integral space tilt on f.
+              // DFTH.row(i) *= log(phase);
+              // N.B. please refer enlarge.wxm, half freq space refer and uses each.
+              //   -> This is sharpen operation at all because this is same as original
+              //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
+              //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
+              DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
+            }
+            DFTS /= T(DFTS.rows() - 1);
+#if defined(_WITHOUT_EIGEN_)
+            Mat lSop(- (p.seed(- ss) * DFTS).template real<T>());
+#else
+            Mat lSop(- (p.seed(- ss) * DFTS).template real<T>());
+#endif
+            for(int i = 0; i < lSop.rows(); i ++)
+              lSop(i, i) += T(1);
+            for(int i = 0; i < sop.rows(); i ++)
+              for(int j = 0; j < lSop.rows(); j ++) {
+                int ij(i - lSop.rows() / 2 + j);
+                int jj(lSop.rows() / 2);
+                if(i < lSop.rows() / 2) {
+                  ij = j;
+                  jj = i;
+                } else if(sop.rows() - i < (lSop.rows() + 1) / 2) {
+                  ij = j - lSop.rows() + sop.rows();
+                  jj = i - sop.rows() + lSop.rows();
+                }
+                sop(i, ij) += lSop(jj, j);
+              }
+          }
+          sop /= T(cnt);
+          const Mat SS(sop);
+          for(int i = 0; i < SS.rows(); i ++)
+            for(int j = 0; j < SS.cols(); j ++)
+              sop(SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
+          sop /= T(2);
+        }
+       sopi:
+        // N.B. insufficient:
+        for( ; Sop[idx].size() <= recur; )
+          Sop[idx].emplace_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][0]);
+        result = Sop[idx][recur] * data;
+      }
+      break;
+    case ENLARGE_Y:
+      {
+        assert(2 <= data.rows());
+        static vector<vector<Mat> > Eop;
+        const auto& size(data.rows());
+        if(Eop.size() <= size)
+          Eop.resize(size + 1, vector<Mat>());
+        else if(recur < Eop[size].size())
+          goto eopi;
+        if(Eop[size].size() <= recur)
+          Eop[size].resize(recur + 1, Mat());
+        {
+          auto& eop(Eop[size][recur]);
+          if(eop.cols() == size)
+            goto eopi;
+          cerr << "e" << flush;
+          eop.resize((size - 1) * recur + 1, size);
+          for(int j = 0; j < eop.rows(); j ++)
+            eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
+        }
+       eopi:
+        result = Eop[size][recur] * data;
+      }
+      break;
+    case DETECT_Y:
+      result = p.diff(data.rows()) * data;
+      break;
+    case COLLECT_Y:
+      result = compute(compute(data, DETECT_Y), ABS);
+      break;
+    case INTEG_Y:
+      result = p.diff(- data.rows()) * data;
+      break;
+    case BUMP_Y:
+      {
+        result = Mat(data.rows(), data.cols());
+        Mat zscore(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+        for(int i = 0; i < result.rows(); i ++)
+          for(int j = 0; j < result.cols(); j ++) {
+            result(i, j) = T(0);
+            zscore(i, j) = - T(1);
+          }
+        const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
+        const int  dratio(sqrt(sqrt(rxy)));
+              Vec  camera(2);
+              Vec  cpoint(2);
+        camera[0] = T(0);
+        camera[1] = T(1);
+        cpoint[0] = T(1) / T(2 * dratio);
+        cerr << dratio << "depth ";
+        for(int zi = 0; zi < dratio; zi ++) {
+          Mat A(data.rows(), data.cols());
+          for(int i = 0; i < A.rows(); i ++)
+            for(int j = 0; j < A.cols(); j ++)
+              A(i, j) = T(0);
+          // N.B. projection scale is linear.
+          cpoint[1] = T(zi) / T(dratio);
+          // x-z plane projection of point p with camera geometry c to z=0.
+          // c := camera, p := cpoint.
+          // <c + (p - c) * t, [0, 1]> = 0
+          const auto t(- camera[1] / (cpoint[1] - camera[1]));
+          const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
+          if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
+            continue;
+          assert(int(y0) * 2 <= data.rows());
+          const auto& Dop(p.diff(abs(int(y0 * T(2)))));
+          const auto& Dop0(Dop.row(Dop.rows() / 2));
+          //  N.B. dC_k/dy on zi.
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+          for(int i = 0; i < A.rows(); i ++) {
+            for(int j = 0; j < Dop0.size(); j ++)
+              A.row(i) += data.row(getImgPt(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
+          }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+          for(int i = 0; i < A.rows(); i ++) {
+            for(int j = 0; j < A.cols(); j ++)
+              if(zscore(i, j) < abs(A(i, j))) {
+                result(i, j) = - T(zi + 1);
+                zscore(i, j) = abs(A(i, j));
+              }
+          }
+        }
+      }
+      break;
+    case EXTEND_Y:
+      {
+        result = Mat(data.rows() + 2 * recur, data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+        for(int i = 0; i < data.rows(); i ++) {
+          result.row(i + recur) = data.row(i);
+        }
+        for(int i = 0; i < recur; i ++) {
+          const auto& comp(p.nextHalf(min(120, int(data.rows()) / (i + 1) / 2)));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+          for(int j = 0; j < data.cols(); j ++) {
+            result(data.rows() + recur + i, j) =
+              result(recur - i - 1, j) = T(0);
+            for(int k = 0; k < comp.size(); k ++) {
+              result(data.rows() + recur + i, j) +=
+                result(data.rows() + recur - 1 + 2 * (k + 1 - comp.size()) *
+                  (i + 1), j) * comp[k];
+              result(recur - i - 1, j) +=
+                result(recur + (comp.size() - k - 1) * (i + 1) * 2, j) * comp[k];
+            }
+          }
+        }
+      }
+      break;
+    case CLIP:
+      {
+        result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+        for(int i = 0; i < result.rows(); i ++)
+          for(int j = 0; j < result.cols(); j ++)
+            result(i, j) = max(T(0), min(T(1), data(i, j)));
+      }
+      break;
+    case ABS:
+      {
+        result = Mat(data.rows(), data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+        for(int i = 0; i < result.rows(); i ++)
+          for(int j = 0; j < result.cols(); j ++)
+            result(i, j) = abs(data(i, j));
+      }
+      break;
+    default:
+      assert(0 && "unknown command in Filter (should not be reached.)");
+    }
+    return result;
+  } else if(dir == EXTEND_X)
+    return compute(data.transpose(), EXTEND_Y, n).transpose();
+  else if(dir == EXTEND_BOTH)
+    return compute(compute(data, EXTEND_Y, n), EXTEND_X, n);
   vector<Mat> res;
   res.emplace_back(compute(data, dir));
   for(int i = 1; i < n; i ++) {
@@ -200,363 +458,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::rotcompute(const Mat& d
   for(int i = 1; i < res.size(); i ++)
     rres += res[i];
   return rres /= T(res.size());
-}
-
-template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir) {
-  static P0<T> p;
-  Mat result;
-  switch(dir) {
-  case SHARPEN_BOTH:
-    result = compute(compute(data, SHARPEN_X), SHARPEN_Y);
-    break;
-  case ENLARGE_BOTH:
-    result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
-    break;
-  case DETECT_BOTH:
-    result = gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
-    break;
-  case COLLECT_BOTH:
-    result = gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
-    break;
-  case INTEG_BOTH:
-    result = gmean(compute(data, INTEG_X), compute(data, INTEG_Y));
-    break;
-  case BUMP_BOTH:
-    result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
-    break;
-  case BUMP_BOTH_SHALLOW:
-    result = gmean(compute(data, BUMP_X_SHALLOW), compute(data, BUMP_Y_SHALLOW));
-    break;
-  case EXTEND_BOTH:
-    result = compute(compute(data, EXTEND_X), EXTEND_Y);
-    break;
-  case SHARPEN_X:
-    result = compute(data.transpose(), SHARPEN_Y).transpose();
-    break;
-  case ENLARGE_X:
-    result = compute(data.transpose(), ENLARGE_Y).transpose();
-    break;
-  case DETECT_X:
-    result = compute(data.transpose(), DETECT_Y).transpose();
-    break;
-  case COLLECT_X:
-    result = compute(data.transpose(), COLLECT_Y).transpose();
-    break;
-  case INTEG_X:
-    result = compute(data.transpose(), INTEG_Y).transpose();
-    break;
-  case BUMP_X_SHALLOW:
-    result = compute(data.transpose(), BUMP_Y_SHALLOW).transpose();
-    break;
-  case BUMP_X:
-    result = compute(data.transpose(), BUMP_Y).transpose();
-    break;
-  case EXTEND_X:
-    result = compute(data.transpose(), EXTEND_Y).transpose();
-    break;
-  case SHARPEN_Y:
-    {
-      assert(2 <= data.rows());
-      static vector<vector<Mat> > Sop;
-      int idx(0);
-      for(int i = 0; i < Sop.size(); i ++)
-        if(Sop[i][0].rows() == data.rows()) {
-          idx = i;
-          goto sopi;
-        }
-      cerr << "s" << flush;
-      idx = Sop.size();
-      Sop.emplace_back(vector<Mat>());
-      Sop[idx].emplace_back(Mat(data.rows(), data.rows()));
-      {
-        auto& sop(Sop[idx][0]);
-        for(int i = 0; i < sop.rows(); i ++)
-          for(int j = 0; j < sop.cols(); j ++)
-            sop(i, j) = T(0);
-        int cnt(1);
-        for(int ss = 2; ss <= data.rows(); ss *= 2, cnt ++) {
-          auto DFTS(p.seed(ss));
-          DFTS.row(0) *= U(T(0));
-          for(int i = 1; i < DFTS.rows(); i ++) {
-            // N.B. d/dt((d^(t)/dy^(t)) f), differential-integral space tilt on f.
-            // DFTH.row(i) *= log(phase);
-            // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-            //   -> This is sharpen operation at all because this is same as original
-            //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
-            //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
-            DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
-          }
-          DFTS /= T(DFTS.rows() - 1);
-#if defined(_WITHOUT_EIGEN_)
-          Mat lSop(- (p.seed(- ss) * DFTS).template real<T>());
-#else
-          Mat lSop(- (p.seed(- ss) * DFTS).template real<T>());
-#endif
-          for(int i = 0; i < lSop.rows(); i ++)
-            lSop(i, i) += T(1);
-          for(int i = 0; i < sop.rows(); i ++)
-            for(int j = 0; j < lSop.rows(); j ++) {
-              int ij(i - lSop.rows() / 2 + j);
-              int jj(lSop.rows() / 2);
-              if(i < lSop.rows() / 2) {
-                ij = j;
-                jj = i;
-              } else if(sop.rows() - i < (lSop.rows() + 1) / 2) {
-                ij = j - lSop.rows() + sop.rows();
-                jj = i - sop.rows() + lSop.rows();
-              }
-              sop(i, ij) += lSop(jj, j);
-            }
-        }
-        sop /= T(cnt);
-        const Mat SS(sop);
-        for(int i = 0; i < SS.rows(); i ++)
-          for(int j = 0; j < SS.cols(); j ++)
-            sop(SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
-        sop /= T(2);
-      }
-     sopi:
-      // N.B. insufficient:
-      for( ; Sop[idx].size() <= recur; )
-        Sop[idx].emplace_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][0]);
-      result = Sop[idx][recur] * data;
-    }
-    break;
-  case ENLARGE_Y:
-    {
-      assert(2 <= data.rows());
-      static vector<vector<Mat> > Eop;
-      const auto& size(data.rows());
-      if(Eop.size() <= size)
-        Eop.resize(size + 1, vector<Mat>());
-      else if(recur < Eop[size].size())
-        goto eopi;
-      if(Eop[size].size() <= recur)
-        Eop[size].resize(recur + 1, Mat());
-      {
-        auto& eop(Eop[size][recur]);
-        if(eop.cols() == size)
-          goto eopi;
-        cerr << "e" << flush;
-        eop.resize((size - 1) * recur + 1, size);
-        for(int j = 0; j < eop.rows(); j ++)
-          eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
-      }
-     eopi:
-      result = Eop[size][recur] * data;
-    }
-    break;
-  case DETECT_Y:
-    result = p.diff(data.rows()) * data;
-    break;
-  case COLLECT_Y:
-    result = compute(compute(data, DETECT_Y), ABS);
-    break;
-  case INTEG_Y:
-    result = p.diff(- data.rows()) * data;
-    break;
-  case BUMP_Y_SHALLOW:
-    {
-      result = Mat(data.rows(), data.cols());
-      Mat zscore(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++) {
-          result(i, j) = T(0);
-          zscore(i, j) = - T(1);
-        }
-      const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
-      const int  dratio(sqrt(sqrt(rxy)));
-            Vec  camera(2);
-            Vec  cpoint(2);
-      camera[0] = T(0);
-      camera[1] = T(1);
-      cpoint[0] = T(1) / T(2 * dratio);
-      cerr << dratio << "depth ";
-      for(int zi = 0; zi < dratio; zi ++) {
-        Mat A(data.rows(), data.cols());
-        for(int i = 0; i < A.rows(); i ++)
-          for(int j = 0; j < A.cols(); j ++)
-            A(i, j) = T(0);
-        // N.B. projection scale is linear.
-        cpoint[1] = T(zi) / T(dratio);
-        // x-z plane projection of point p with camera geometry c to z=0.
-        // c := camera, p := cpoint.
-        // <c + (p - c) * t, [0, 1]> = 0
-        const auto t(- camera[1] / (cpoint[1] - camera[1]));
-        const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
-          continue;
-        assert(int(y0) * 2 <= data.rows());
-        const auto& Dop(p.diff(abs(int(y0 * T(2)))));
-        const auto& Dop0(Dop.row(Dop.rows() / 2));
-        //  N.B. dC_k/dy on zi.
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-        for(int i = 0; i < A.rows(); i ++) {
-          for(int j = 0; j < Dop0.size(); j ++)
-            A.row(i) += data.row(getImgPt(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
-        }
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-        for(int i = 0; i < A.rows(); i ++) {
-          for(int j = 0; j < A.cols(); j ++)
-            if(zscore(i, j) < abs(A(i, j))) {
-              result(i, j) = - T(zi + 1);
-              zscore(i, j) = abs(A(i, j));
-            }
-        }
-      }
-    }
-    break;
-  case BUMP_Y:
-    {
-      reDig<T> redig;
-      const auto bump(redig.normalize(compute(data, BUMP_Y_SHALLOW), T(1)));
-      const auto t0(redig.tilt(redig.makeRefMatrix(data, 1), bump,
-                               redig.tiltprep(bump, 0, 4, dbratio)));
-      const auto data0(redig.pullRefMatrix(t0, 1, data));
-      const auto data1(redig.tilt(data, bump, redig.tiltprep(bump, 2, 4, dbratio)) );
-      result = Mat(data.rows(), data.cols());
-      Mat zscore(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++) {
-          result(i, j) = T(0);
-          zscore(i, j) = T(1e20);
-        }
-      const auto rxy(sqrt(T(data0.rows()) * T(data0.cols())));
-      const int  dratio(sqrt(sqrt(rxy)));
-            Vec  camera(2);
-            Vec  cpoint(2);
-      camera[0] = T(0);
-      camera[1] = T(1);
-      cpoint[0] = T(1) / T(2 * dratio);
-      for(int zi = 0; zi < dratio; zi ++) {
-        Mat A(data0.rows(), data0.cols());
-        for(int i = 0; i < A.rows(); i ++)
-          for(int j = 0; j < A.cols(); j ++)
-            A(i, j) = T(0);
-        cpoint[1] = T(zi) / T(dratio);
-        const auto t(- camera[1] / (cpoint[1] - camera[1]));
-        const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(abs(int(y0 * T(2))) < 3 || data0.rows() / 2 < int(y0 * T(2)))
-          continue;
-        assert(int(y0) * 2 <= data.rows());
-        const auto& Dop(p.diff(abs(int(y0 * T(2)))));
-        const auto& Dop0(Dop.row(Dop.rows() / 2));
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-        for(int i = 0; i < A.rows(); i ++) {
-          for(int j = 0; j < Dop0.size(); j ++)
-            A.row(i) += (data0.row(getImgPt(i + j - Dop0.size() / 2, data.rows())) - data1.row(getImgPt(i + j - Dop0.size() / 2, data.rows()))) * Dop0[j];
-        }
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-        for(int i = 0; i < A.rows(); i ++) {
-          for(int j = 0; j < A.cols(); j ++)
-            if(abs(A(i, j)) < zscore(i, j)) {
-              result(i, j) = - T(zi + 1);
-              zscore(i, j) = abs(A(i, j));
-            }
-        }
-      }
-      int ii(0);
-      for(int i = 0; i < t0.rows(); i ++) {
-        bool flg(true);
-        for(int j = 0; j < t0.cols(); j ++)
-          flg = flg &&
-            t0(i, j) != T(0) && t0(t0.rows() - i - 1, j) != T(0);
-        if(flg) {
-          ii = i;
-          break;
-        }
-      }
-      MatU b0(t0.rows() - ii * 2, t0.cols());
-      for(int i = 0; i < b0.rows(); i ++)
-        for(int j = 0; j < b0.cols(); j ++)
-          b0(i, j) = U(result(i + ii, j));
-      b0 = p.seed(b0.rows()) * b0 / sqrt(T(b0.rows()));
-      MatU b1(t0.rows(), t0.cols());
-      for(int i = 0; i < b0.rows(); i ++)
-        b1.row(i) = b0.row(i);
-      for(int i = b0.rows(); i < b1.rows(); i ++)
-        b1.row(i) *= U(T(0));
-#if defined(_WITHOUT_EIGEN_)
-      result = (p.seed(- t0.rows()) * b1).template real<T>() * sqrt(T(t0.rows()));
-#else
-      result = (p.seed(- t0.rows()) * b1).real().template cast<T>() * sqrt(T(t0.rows()));
-#endif
-    }
-    break;
-  case EXTEND_Y:
-    {
-      result = Mat(data.rows() + 2 * recur, data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.rows(); i ++) {
-        result.row(i + recur) = data.row(i);
-      }
-      for(int i = 0; i < recur; i ++) {
-        const auto& comp(p.nextHalf(min(120, int(data.rows()) / (i + 1) / 2)));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-        for(int j = 0; j < data.cols(); j ++) {
-          result(data.rows() + recur + i, j) =
-            result(recur - i - 1, j) = T(0);
-          for(int k = 0; k < comp.size(); k ++) {
-            result(data.rows() + recur + i, j) +=
-              result(data.rows() + recur - 1 + 2 * (k + 1 - comp.size()) *
-                (i + 1), j) * comp[k];
-            result(recur - i - 1, j) +=
-              result(recur + (comp.size() - k - 1) * (i + 1) * 2, j) * comp[k];
-          }
-        }
-      }
-    }
-    break;
-  case CLIP:
-    {
-      result = Mat(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = max(T(0), min(T(1), data(i, j)));
-    }
-    break;
-  case ABS:
-    {
-      result = Mat(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = abs(data(i, j));
-    }
-    break;
-  default:
-    assert(0 && "unknown command in Filter (should not be reached.)");
-  }
-  return result;
 }
 
 template <typename T> inline int Filter<T>::getImgPt(const int& y, const int& h) {

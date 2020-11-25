@@ -47,7 +47,7 @@ elif(argv[2] == "pred"):
       subprocess.call(["convert", s, "-compress", "none", r + ".ppm"])
     cmd.append(r + ".ppm")
   subprocess.call(cmd)
-elif(argv[2] == "ppred" or argv[2] == "ppredr" or argv[2] == "ppreds"):
+elif(argv[2] == "ppred" or argv[2] == "ppredr"):
   roots = []
   for s in argv[3:]:
     try:
@@ -64,8 +64,6 @@ elif(argv[2] == "ppred" or argv[2] == "ppredr" or argv[2] == "ppreds"):
     cmd.append(s + ".ppm")
     if(argv[2] == "ppred"):
       cmd.append(s + "-bump.ppm")
-    elif(argv[2] == "ppreds"):
-      cmd.append(s + "-bumps.ppm")
     else:
       cmd.append(s + ".ppm")
   print " ".join(cmd)
@@ -80,9 +78,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", "1"])
-    elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "bumps" or argv[2] == "enlarge" or argv[2] == "pextend"):
+    if(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels), "1",  str(zratio), "0", root + "-bump.ppm", root + ".obj"])
