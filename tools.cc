@@ -581,20 +581,13 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     for(int i = 0; i < 3; i ++)
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-    const auto& comp(p.next(in.size()));
+    const auto& comp(p.next(in.size() / 2));
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
-        SimpleVector<num_t> i0(in.size());
-        SimpleVector<num_t> i1(in.size());
-        SimpleVector<num_t> i2(in.size());
-        for(int k = 0; k < in.size(); k ++) {
-          i0[k] = in[k][0](y, x);
-          i1[k] = in[k][1](y, x);
-          i2[k] = in[k][2](y, x);
-        }
-        out[0](y, x) = p.next(i0);
-        out[1](y, x) = p.next(i1);
-        out[2](y, x) = p.next(i2);
+        out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
+        for(int k = (in.size() & 1) ^ 1, kk = 0; k < in.size(); k ++, kk ++)
+          for(int m = 0; m < 3; m ++)
+            out[m](y, x) += in[k][m](y, x) * comp[kk];
       }
     }
     redig.normalize(out, 1.);

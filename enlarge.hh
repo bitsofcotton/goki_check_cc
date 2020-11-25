@@ -413,7 +413,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
           continue;
         assert(int(y0) * 2 <= data.rows());
-        const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
+        const auto& Dop(p.diff(abs(int(y0 * T(2)))));
         const auto& Dop0(Dop.row(Dop.rows() / 2));
         //  N.B. dC_k/dy on zi.
 #if defined(_OPENMP)
@@ -474,7 +474,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         if(abs(int(y0 * T(2))) < 3 || data0.rows() / 2 < int(y0 * T(2)))
           continue;
         assert(int(y0) * 2 <= data.rows());
-        const auto& Dop(p.diffCalibrate(abs(int(y0 * T(2)))));
+        const auto& Dop(p.diff(abs(int(y0 * T(2)))));
         const auto& Dop0(Dop.row(Dop.rows() / 2));
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -533,22 +533,21 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         result.row(i + recur) = data.row(i);
       }
       for(int i = 0; i < recur; i ++) {
-        const auto  size(min(120, int(data.rows()) / (i + 1)));
+        const auto  size(min(120, int(data.rows()) / (i + 1) / 2));
         const auto& temp(p.next(size));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int j = 0; j < data.cols(); j ++) {
-          SimpleVector<T> forward(size);
-          SimpleVector<T> backward(size);
-          for(int k = 1; k <= size; k ++) {
-            forward[k - 1] =
-              result(data.rows() + recur - 1 + (k - size) * (i + 1), j);
-            backward[k - 1] =
-              result(recur + (size - k) * (i + 1), j);
+          result(data.rows() + recur + i, j) =
+            result(recur - i - 1, j) = T(0);
+          for(int k = size & 1, kk = 0; k <= size; k += 2, kk ++) {
+            result(data.rows() + recur + i, j) +=
+              result(data.rows() + recur - 1 + (k - size) * (i + 1), j) *
+                temp[kk];
+            result(recur - i - 1, j) +=
+              result(recur + (size - k) * (i + 1), j) * temp[kk];
           }
-          result(data.rows() + recur + i, j) = p.next(forward);
-          result(recur - i - 1, j) = p.next(backward);
         }
       }
     }
