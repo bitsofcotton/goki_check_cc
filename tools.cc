@@ -134,7 +134,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.rotcompute(data[i], filter.COLLECT_BOTH, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.rotcompute(data[i], filter.ENLARGE_BOTH, rot), filter.CLIP);
+        data[i] = filter.rotcompute(data[i], filter.ENLARGE_BOTH, rot);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.rotcompute(data[i], filter.EXTEND_BOTH, rot), filter.CLIP);
@@ -581,7 +581,7 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     for(int i = 0; i < 3; i ++)
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-    const auto& comp(p.next(in.size() / 2));
+    const auto& comp(p.nextHalf(in.size() / 2));
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
         out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
