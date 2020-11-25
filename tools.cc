@@ -134,7 +134,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.rotcompute(data[i], filter.COLLECT_BOTH, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.rotcompute(data[i], filter.ENLARGE_BOTH, rot);
+        data[i] = filter.compute(filter.rotcompute(data[i], filter.ENLARGE_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.rotcompute(data[i], filter.EXTEND_BOTH, rot), filter.CLIP);
@@ -585,9 +585,9 @@ int main(int argc, const char* argv[]) {
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
         out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
-        for(int k = (in.size() & 1) ^ 1, kk = 0; k < in.size(); k += 2, kk ++)
+        for(int k = 0; k < comp.size(); k ++)
           for(int m = 0; m < 3; m ++)
-            out[m](y, x) += in[k][m](y, x) * comp[kk];
+            out[m](y, x) += in[(k + 1 - comp.size()) * 2 + in.size() - 1][m](y, x) * comp[k];
       }
     }
     redig.normalize(out, 1.);
