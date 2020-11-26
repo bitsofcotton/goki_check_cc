@@ -109,7 +109,7 @@ int main(int argc, const char* argv[]) {
   simpleFile<num_t> file;
   reDig<num_t>      redig;
   Filter<num_t>     filter;
-  P0<num_t>         p;
+  P0<num_t, false>  p;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
@@ -578,7 +578,7 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     for(int i = 0; i < 3; i ++)
       out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-    const auto& comp(p.next(in.size()));
+    const auto comp(p.taylor(in.size(), num_t(in.size())));
     for(int y = 0; y < out[0].rows(); y ++) {
       for(int x = 0; x < out[0].cols(); x ++) {
         out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
@@ -652,23 +652,18 @@ int main(int argc, const char* argv[]) {
     typename simpleFile<num_t>::Mat out[3];
     const auto rin0(redig.makeRefMatrix(in[0][0], 1));
     for(int idx = 0; idx < center.size(); idx ++) {
-      std::vector<std::vector<typename simpleFile<num_t>::Vec3> > lcenter;
-      std::vector<std::vector<typename simpleFile<num_t>::Mat> > lin;
-      lcenter.reserve(std::atoi(argv[6]) * 2);
-      lin.reserve(std::atoi(argv[6]) * 2);
-      for(int i = max(idx - std::atoi(argv[6]), 0), ii = 0;
-              i < min(idx + std::atoi(argv[6]) + 1, int(in.size()));
-              i ++, ii ++) {
-        lcenter.emplace_back(i == idx ? center[i] : redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]));
-        lin.emplace_back(in[i]);
-        assert(lcenter[ii].size() == center[idx].size());
+      auto lcenter(center);
+      for(int i = 0; i < lcenter.size(); i ++) {
+        if(i == idx) continue;
+        lcenter[i] = redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]);
+        assert(lcenter[i].size() == center[idx].size());
         std::cerr << "." << std::flush;
       }
       const auto a2xy(redig.getReverseLookup(attend[idx], in[idx][0]));
       for(int i = - std::atoi(argv[5]); i < std::atoi(argv[5]); i ++) {
-        redig.complement(pout, outcenter, lin, lcenter, attend[idx], a2xy,
-          num_t(idx - max(0, idx - std::atoi(argv[6]))) +
-            (num_t(i) + num_t(1) / num_t(2)) / num_t(std::atoi(argv[5])) );
+        redig.complement(pout, outcenter, in, lcenter, attend[idx], a2xy,
+          num_t(idx) - num_t(1) / num_t(2) +
+          (num_t(i) + num_t(1) / num_t(2)) / num_t(std::atoi(argv[5])));
         const auto reref(redig.draw(rin0, shape[idx],
           redig.takeShape(shape[idx], center[idx], outcenter,
             attend[idx], num_t(1)), delau[idx]));

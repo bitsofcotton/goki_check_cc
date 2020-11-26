@@ -86,7 +86,7 @@ template <typename T> Filter<T>::~Filter() {
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir, const int& n) {
   assert(0 <= n);
   if(! n) {
-    static P0<T> p;
+    static P0<T,false> p;
     Mat result;
     switch(dir) {
     case SHARPEN_BOTH:
@@ -301,22 +301,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < data.rows(); i ++) {
           result.row(i + recur) = data.row(i);
         }
+        const auto forward(data.transpose());
         for(int i = 0; i < recur; i ++) {
-          const auto& comp(p.next(min(120, int(data.rows()) / (i + 1))));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-          for(int j = 0; j < data.cols(); j ++) {
-            result(data.rows() + recur + i, j) =
-              result(recur - i - 1, j) = T(0);
-            for(int k = 0; k < comp.size(); k ++) {
-              result(data.rows() + recur + i, j) +=
-                result(data.rows() + recur - 1 + (k + 1 - comp.size()) *
-                  (i + 1), j) * comp[k];
-              result(recur - i - 1, j) +=
-                result(recur + (comp.size() - k - 1) * (i + 1), j) * comp[k];
-            }
-          }
+          result.row(data.rows() + recur + i) =
+            forward * p.taylor(data.rows(), T(data.rows() + i));
+          result.row(recur - i - 1) =
+            forward * p.taylor(data.rows(), - T(i + 1));
         }
       }
       break;
