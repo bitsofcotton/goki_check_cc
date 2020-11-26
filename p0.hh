@@ -101,7 +101,7 @@ template <typename T, bool recur> const typename P0<T,recur>::Mat& P0<T,recur>::
   if(dd.rows() != size || dd.cols() != size) {
     auto DD(seed(size));
     for(int i = 0; i < DD.rows(); i ++)
-      DD.row(i) *= - J() * T(2) * Pi() * T(i) / T(DD.rows());
+      DD.row(i) *= J() * T(2) * Pi() * T(i) / T(DD.rows());
     dd = (seed(- size) * DD).template real<T>() / Pi();
   }
   return dd;
