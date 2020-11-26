@@ -280,15 +280,16 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
 
 template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph) {
   cerr << "p" << flush;
+  static P0<T,false> p;
+  static Filter<T> filter;
+  const int  idx(max(0, min(int(srccenter.size()) - 1, int(floor(iemph)))));
+  const auto comp(p.taylor(srccenter.size(), iemph));
   assert(srcimg.size() == srccenter.size());
   assert(srccenter[0].size() == attend.size());
-  assert(3 < srcimg.size());
   dstcenter = vector<Vec3>();
+  dstimg    = vector<Mat>();
   dstcenter.resize(srccenter[0].size(), Vec3(3));
-  const int idx(max(0, min(int(srccenter.size()) - 1, int(floor(iemph)))));
-  assert(0 <= idx && idx < srccenter.size());
-  static P0<T,false> p;
-  const auto comp(p.taylor(srccenter.size(), iemph));
+  dstimg.reserve(3);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -299,11 +300,8 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
       for(int k = 0; k < 3; k ++)
         dstcenter[i][k] += srccenter[j][i][k] * comp[j];
   }
-  dstimg = vector<Mat>();
-  dstimg.reserve(3);
   for(int i = 0; i < 3; i ++)
     dstimg.emplace_back(Mat(srcimg[0][i].rows(), srcimg[0][i].cols()));
-  Filter<T> filter;
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
