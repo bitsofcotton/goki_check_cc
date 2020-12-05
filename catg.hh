@@ -77,9 +77,6 @@ template <typename T> void Catg<T>::inq(const Vec& in) {
 
 template <typename T> void Catg<T>::compute() {
   Left  = roughQR(AAt);
-  for(int i = 0; i < AAt.rows(); i ++)
-    for(int j = 0; j < AAt.cols(); j ++)
-      std::cerr << Left(i, j) << std::endl;
   Right = Left.transpose() * AAt;
   lambda.resize(Right.rows());
 #if defined(_OPENMP)
