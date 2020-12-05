@@ -72,11 +72,14 @@ template <typename T> void Catg<T>::inq(const Vec& in) {
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < in.size(); i ++)
-    AAt.row(i) = in * in[i];
+    AAt.row(i) += in * in[i];
 }
 
 template <typename T> void Catg<T>::compute() {
   Left  = roughQR(AAt);
+  for(int i = 0; i < AAt.rows(); i ++)
+    for(int j = 0; j < AAt.cols(); j ++)
+      std::cerr << Left(i, j) << std::endl;
   Right = Left.transpose() * AAt;
   lambda.resize(Right.rows());
 #if defined(_OPENMP)
@@ -91,6 +94,9 @@ template <typename T> void Catg<T>::compute() {
 
 template <typename T> inline typename Catg<T>::Mat Catg<T>::roughQR(const Mat& At) const {
   Mat Q(At.rows(), At.cols());
+  for(int i = 0; i < Q.rows(); i ++)
+    for(int j = 0; j < Q.cols(); j ++)
+      Q(i, j) = T(0);
   for(int i = 0; i < At.rows(); i ++) {
     const auto work(At.row(i) - Q.projectionPt(At.row(i)));
     // generally, assert norm > error is needed.
