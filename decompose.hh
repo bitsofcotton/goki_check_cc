@@ -41,7 +41,7 @@ public:
          Vec mimic(const Vec& dst, const Vec& src, const T& intensity = T(1)) const;
          Vec emphasis(const Vec& dst, const T& intensity = T(1)) const;
   inline Vec mimic0(const Vec& dst, const Vec& src) const;
-         Vec next(const Vec& in0) const;
+         Vec next(const Vec& in) const;
          Mat complementMat(const Vec& in) const;
 private:
   std::vector<Mat> bA;
@@ -64,10 +64,10 @@ template <typename T> inline Decompose<T>::Decompose(const int& size) {
     SimpleMatrix<T> AA(size, size);
     for(int j = 0; j < AA.rows(); j ++) {
       const auto jj(T(j) * T(i + 1) / T(size));
-      AA.row(j) = p0.taylor(AA.cols(), (jj - floor(jj)) * T(size));
+      AA.row(j) = p0.taylor(AA.cols(), (jj - floor(jj)) * T(size - 1));
     }
-    bA.emplace_back(AA);
     A += AA;
+    bA.emplace_back(AA);
   }
 }
 
@@ -138,7 +138,6 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::apply(const Vec& 
   const auto cnt(int(v.size() + size - 1) / size - 1);
   assert(0 < cnt);
   auto res(v);
-  if(! isfinite(dst.dot(dst)) || ! isfinite(src.dot(src))) return res;
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
@@ -156,11 +155,8 @@ template <typename T> inline typename Decompose<T>::Vec Decompose<T>::mimic0(con
   return complementMat(next(dst)) * complementMat(next(src)).solve(dst);
 }
 
-template <typename T> typename Decompose<T>::Vec Decompose<T>::next(const Vec& in0) const {
-  assert(A.rows() == in0.size());
-  auto in(in0);
-  for(int i = 0; i < in.size(); i ++)
-    in[i] -= in0[0];
+template <typename T> typename Decompose<T>::Vec Decompose<T>::next(const Vec& in) const {
+  assert(A.rows() == in.size());
   auto f(A.solve(in));
   return f /= sqrt(f.dot(f));
 }
