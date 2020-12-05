@@ -67,6 +67,7 @@ namespace goki {
 #include "p0.hh"
 #include "p1.hh"
 #include "decompose.hh"
+#include "catg.hh"
 #include "fileio.hh"
 #include "enlarge.hh"
 #include "match.hh"
@@ -81,6 +82,7 @@ void usage() {
   cout << "gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck pred  <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck cat   <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
@@ -555,7 +557,8 @@ int main(int argc, const char* argv[]) {
         output.close();
       }
     }
-  } else if(strcmp(argv[1], "pred") == 0) {
+  } else if(strcmp(argv[1], "pred") == 0 ||
+            strcmp(argv[1], "cat") == 0) {
     if(argc < 5) {
       usage();
       return - 1;
@@ -576,19 +579,38 @@ int main(int argc, const char* argv[]) {
     }
     const auto idx(in.size() - 1);
     typename simpleFile<num_t>::Mat out[3];
-    for(int i = 0; i < 3; i ++)
-      out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-    const auto comp(p.taylor(in.size(), num_t(in.size())));
-    for(int y = 0; y < out[0].rows(); y ++) {
-      for(int x = 0; x < out[0].cols(); x ++) {
-        out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
-        for(int k = 0; k < comp.size(); k ++)
-          for(int m = 0; m < 3; m ++)
-            out[m](y, x) += in[(k + 1 - comp.size()) + in.size() - 1][m](y, x) * comp[k];
+    if(strcmp(argv[1], "pred") == 0) {
+      for(int i = 0; i < 3; i ++)
+        out[i].resize(in[idx][0].rows(), in[idx][0].cols());
+      const auto comp(p.taylor(in.size(), num_t(in.size())));
+      for(int y = 0; y < out[0].rows(); y ++) {
+        for(int x = 0; x < out[0].cols(); x ++) {
+          out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
+          for(int k = 0; k < comp.size(); k ++)
+            for(int m = 0; m < 3; m ++)
+              out[m](y, x) += in[(k + 1 - comp.size()) + in.size() - 1][m](y, x) * comp[k];
+        }
+      }
+      redig.normalize(out, 1.);
+      file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
+    } else {
+      std::vector<typename simpleFile<num_t>::Mat> rgb[3];
+      for(int i = 0; i < in.size(); i ++) {
+        for(int j = 0; j < 3; j ++)
+          rgb[j].emplace_back(const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]));
+      }
+      const auto rr(redig.catImage(rgb[0], min(20, int(rgb[0].size()))));
+      const auto gg(redig.catImage(rgb[1], min(20, int(rgb[1].size()))));
+      const auto bb(redig.catImage(rgb[2], min(20, int(rgb[2].size()))));
+      assert(rr.size() == gg.size() && gg.size() == bb.size());
+      for(int i = 0; i < rr.size(); i ++) {
+        out[0] = rr[i];
+        out[1] = gg[i];
+        out[2] = bb[i];
+        redig.normalize(out, 1.);
+        file.savep2or3((std::string(argv[2]) + std::to_string(i)).c_str(), out, ! true);
       }
     }
-    redig.normalize(out, 1.);
-    file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
   } else if(strcmp(argv[1], "ppred") == 0 ||
             strcmp(argv[1], "ppredr") == 0) {
     if(argc < 11 || (argc & 1)) {

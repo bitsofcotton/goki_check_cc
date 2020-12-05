@@ -121,6 +121,7 @@ public:
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
+  vector<Mat> catImage(const vector<Mat>& imgs, const int& count = 20);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -799,6 +800,44 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, c
   Mat res(dst.rows(), dst.cols());
   for(int i = 0; i < res.rows(); i ++)
     res.row(i) = decom.emphasis(dst.row(i), intensity);
+  return res;
+}
+
+template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& imgs, const int& count) {
+  assert(count <= imgs.size() && imgs.size() && imgs[0].rows() * imgs[0].cols() < 8192);
+  for(int i = 1; i < imgs.size(); i ++)
+    assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
+  SimpleVector<T> buf(imgs[0].rows() * imgs[0].cols());
+  Catg<T> cat(buf.size());
+  for(int i = 0; i < imgs.size(); i ++) {
+    for(int j = 0; j < imgs[i].rows(); j ++)
+      for(int k = 0; k < imgs[i].cols(); k ++)
+        buf[j * imgs[i].cols() + k] = imgs[i](j, k);
+    cat.inq(buf);
+  }
+  cat.compute();
+  std::vector<std::pair<T, int> > scat;
+  scat.resize(cat.lambda.size());
+  for(int i = 0; i < cat.lambda.size(); i ++) {
+    scat[i].first  = abs(cat.lambda[i]);
+    scat[i].second = i;
+    assert(isfinite(scat[i].first));
+  }
+  std::sort(scat.begin(), scat.end());
+  std::vector<Mat> res;
+  res.reserve(count * 2);
+  for(int i = 0; i < count; i ++) {
+    Mat lres(imgs[0].rows(), imgs[0].cols());
+    Mat rres(imgs[0].rows(), imgs[0].cols());
+    const auto& ii(scat[scat.size() - 1 - i].second);
+    for(int j = 0; j < imgs[0].rows(); j ++)
+      for(int k = 0; k < imgs[0].cols(); k ++) {
+        lres(j, k) = cat.Left(j * imgs[0].cols() + k, ii);
+        rres(j, k) = cat.Right(ii, j * imgs[0].cols() + k);
+      }
+    res.emplace_back(lres);
+    res.emplace_back(rres);
+  }
   return res;
 }
 
