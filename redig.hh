@@ -808,12 +808,14 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   for(int i = 1; i < imgs.size(); i ++)
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
   SimpleVector<T> buf(imgs[0].rows() * imgs[0].cols());
+  Decompose<T> dec(buf.size());
   Catg<T> cat(buf.size());
   for(int i = 0; i < imgs.size(); i ++) {
     for(int j = 0; j < imgs[i].rows(); j ++)
       for(int k = 0; k < imgs[i].cols(); k ++)
         buf[j * imgs[i].cols() + k] = imgs[i](j, k);
-    cat.inq(buf);
+    cat.inq(dec.next(buf));
+    std::cerr << "." << std::flush;
   }
   cat.compute();
   std::vector<std::pair<T, int> > scat;
