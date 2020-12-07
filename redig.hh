@@ -827,18 +827,15 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   }
   std::sort(scat.begin(), scat.end());
   std::vector<Mat> res;
-  res.reserve(count * 2);
+  res.reserve(count);
   for(int i = 0; i < count; i ++) {
     Mat lres(imgs[0].rows(), imgs[0].cols());
     Mat rres(imgs[0].rows(), imgs[0].cols());
     const auto& ii(scat[scat.size() - 1 - i].second);
     for(int j = 0; j < imgs[0].rows(); j ++)
-      for(int k = 0; k < imgs[0].cols(); k ++) {
+      for(int k = 0; k < imgs[0].cols(); k ++)
         lres(j, k) = cat.Left(j * imgs[0].cols() + k, ii);
-        rres(j, k) = cat.Right(ii, j * imgs[0].cols() + k);
-      }
     res.emplace_back(lres);
-    res.emplace_back(rres);
   }
   return res;
 }
