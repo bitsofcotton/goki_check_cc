@@ -41,7 +41,6 @@ public:
   void inq(const Vec& in);
   void compute();
   Mat Left;
-  Mat Right;
   Vec lambda;
 private:
   Mat roughQR(const Mat& At) const;
@@ -77,15 +76,13 @@ template <typename T> void Catg<T>::inq(const Vec& in) {
 
 template <typename T> void Catg<T>::compute() {
   Left  = roughQR(AAt);
-  Right = Left.transpose() * AAt;
+  const auto Right(Left.transpose() * AAt);
   lambda.resize(Right.rows());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < lambda.size(); i ++) {
+  for(int i = 0; i < lambda.size(); i ++)
     lambda[i] = sqrt(Right.row(i).dot(Right.row(i)));
-    Right.row(i) /= lambda[i];
-  }
   return;
 }
 
