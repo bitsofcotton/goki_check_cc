@@ -39,9 +39,6 @@ public:
     COLLECT_X,
     COLLECT_Y,
     COLLECT_BOTH,
-    INTEG_X,
-    INTEG_Y,
-    INTEG_BOTH,
     BUMP_X,
     BUMP_Y,
     BUMP_BOTH,
@@ -87,50 +84,31 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
   assert(0 <= n);
   if(! n) {
     static P0<T,false> p;
-    Mat result;
     switch(dir) {
     case SHARPEN_BOTH:
-      result = compute(compute(data, SHARPEN_X), SHARPEN_Y);
-      break;
+      return compute(compute(data, SHARPEN_X), SHARPEN_Y);
     case ENLARGE_BOTH:
-      result = compute(compute(data, ENLARGE_X), ENLARGE_Y);
-      break;
+      return compute(compute(data, ENLARGE_X), ENLARGE_Y);
     case DETECT_BOTH:
-      result = gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
-      break;
+      return gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
     case COLLECT_BOTH:
-      result = gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
-      break;
-    case INTEG_BOTH:
-      result = gmean(compute(data, INTEG_X), compute(data, INTEG_Y));
-      break;
+      return gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
     case BUMP_BOTH:
-      result = gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
-      break;
+      return gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
     case EXTEND_BOTH:
-      result = compute(compute(data, EXTEND_X), EXTEND_Y);
-      break;
+      return compute(compute(data, EXTEND_X), EXTEND_Y);
     case SHARPEN_X:
-      result = compute(data.transpose(), SHARPEN_Y).transpose();
-      break;
+      return compute(data.transpose(), SHARPEN_Y).transpose();
     case ENLARGE_X:
-      result = compute(data.transpose(), ENLARGE_Y).transpose();
-      break;
+      return compute(data.transpose(), ENLARGE_Y).transpose();
     case DETECT_X:
-      result = compute(data.transpose(), DETECT_Y).transpose();
-      break;
+      return compute(data.transpose(), DETECT_Y).transpose();
     case COLLECT_X:
-      result = compute(data.transpose(), COLLECT_Y).transpose();
-      break;
-    case INTEG_X:
-      result = compute(data.transpose(), INTEG_Y).transpose();
-      break;
+      return compute(data.transpose(), COLLECT_Y).transpose();
     case BUMP_X:
-      result = compute(data.transpose(), BUMP_Y).transpose();
-      break;
+      return compute(data.transpose(), BUMP_Y).transpose();
     case EXTEND_X:
-      result = compute(data.transpose(), EXTEND_Y).transpose();
-      break;
+      return compute(data.transpose(), EXTEND_Y).transpose();
     case SHARPEN_Y:
       {
         assert(2 <= data.rows());
@@ -196,7 +174,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         // N.B. insufficient:
         for( ; Sop[idx].size() <= recur; )
           Sop[idx].emplace_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][0]);
-        result = Sop[idx][recur] * data;
+        return Sop[idx][recur] * data;
       }
       break;
     case ENLARGE_Y:
@@ -220,21 +198,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
         }
        eopi:
-        result = Eop[size][recur] * data;
+        return Eop[size][recur] * data;
       }
       break;
     case DETECT_Y:
-      result = p.diff(data.rows()) * data;
-      break;
+      return p.diff(data.rows()) * data;
     case COLLECT_Y:
-      result = compute(compute(data, DETECT_Y), ABS);
-      break;
-    case INTEG_Y:
-      result = p.diff(- data.rows()) * data;
-      break;
+      return compute(compute(data, DETECT_Y), ABS);
     case BUMP_Y:
       {
-        result = Mat(data.rows(), data.cols());
+        Mat result(data.rows(), data.cols());
         Mat zscore(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
@@ -290,29 +263,41 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               }
           }
         }
+        return result;
       }
       break;
     case EXTEND_Y:
       {
-        result = Mat(data.rows() + 2 * recur, data.cols());
+        Mat result(data.rows() + 2 * recur, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 0; i < data.rows(); i ++) {
           result.row(i + recur) = data.row(i);
         }
-        const auto forward(data.transpose());
         for(int i = 0; i < recur; i ++) {
-          result.row(data.rows() + recur + i) =
-            forward * p.taylor(data.rows(), T(data.rows() + i));
-          result.row(recur - i - 1) =
-            forward * p.taylor(data.rows(), - T(i + 1));
+          const auto& next(p.next(int(data.rows()) / (i + 1)));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+          for(int j = 0; j < data.cols(); j ++) {
+            result(data.rows() + recur + i, j) =
+              result(recur - i - 1, j) = T(0);
+            for(int k = 0; k < next.size(); k ++) {
+              result(data.rows() + recur + i, j) +=
+                data((k - next.size() + 1) * (i + 1) + data.rows() - 1, j) *
+                  next[k];
+              result(recur - i - 1, j) +=
+                data(- (k - next.size() + 1) * (i + 1), j) * next[k];
+            }
+          }
         }
+        return result;
       }
       break;
     case CLIP:
       {
-        result = Mat(data.rows(), data.cols());
+        Mat result(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -320,11 +305,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
             result(i, j) = max(T(0), min(T(1), data(i, j)));
+        return result;
       }
       break;
     case ABS:
       {
-        result = Mat(data.rows(), data.cols());
+        Mat result(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -332,122 +318,66 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
             result(i, j) = abs(data(i, j));
+        return result;
       }
       break;
     default:
       assert(0 && "unknown command in Filter (should not be reached.)");
     }
-    return result;
-  } else if(dir == EXTEND_X)
-    return compute(data.transpose(), EXTEND_Y, n).transpose();
-  else if(dir == EXTEND_BOTH)
-    return compute(compute(data, EXTEND_Y, n), EXTEND_X, n);
+    return Mat();
+  }
+  if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH)
+    return compute(data, dir, 0);
   vector<Mat> res;
+  res.reserve(n);
   res.emplace_back(compute(data, dir));
   for(int i = 1; i < n; i ++) {
     cerr << "r" << flush;
-          auto lres(res[0]);
+          Mat  lres(res[0]);
     const auto theta(T(i) * Pi / T(2 * n));
-    if(dir == EXTEND_Y) {
-      const auto c(cos(theta - Pi / T(4) + T(1) / T(8 * n)));
-      const auto s(sin(theta - Pi / T(4) + T(1) / T(8 * n)));
-      const auto rows(abs(int(c * T(data.rows()) + s * T(data.cols()))));
-      const auto cols(abs(int(s * T(data.rows()) + c * T(data.cols()))));
-      if(rows / (recur + 1) - 1 < 8 || cols < 8) continue;
-      Mat workt(rows, cols);
-      Mat workb(rows, cols);
-      for(int j = - (workt.rows() + workt.cols());
-              j <   (workt.rows() + workt.cols()) * 2; j ++)
-        for(int k = - (workt.rows() + workt.cols());
-                k <   (workt.rows() + workt.cols()) * 2; k ++) {
-          const int yy(c * T(j));
-          const int xx(s * T(j) + c * T(k) + T(1) / T(2));
-          if(0 <= yy && yy < workt.rows() &&
-             0 <= xx && xx < workt.cols()) {
-            const auto dyy(((j % data.rows()) + data.rows()) % data.rows());
-            const auto dxx(((k % data.cols()) + data.cols()) % data.cols());
-            workt(yy, xx) =
-              workt(min(yy + 1, int(workt.rows()) - 1), xx) =
-              workt(yy, min(xx + 1, int(workt.cols()) - 1)) =
-              workt(min(yy + 1, int(workt.rows()) - 1),
-                     min(xx + 1, int(workt.cols()) - 1)) =
-                data(dyy, dxx);
-            workb(yy, xx) =
-              workb(min(yy + 1, int(workb.rows()) - 1), xx) =
-              workb(yy, min(xx + 1, int(workb.cols()) - 1)) =
-              workb(min(yy + 1, int(workb.rows()) - 1),
-                     min(xx + 1, int(workb.cols()) - 1)) =
-                data(data.rows() - dyy - 1, data.cols() - dxx - 1);
-          }
+    const auto c(cos(theta));
+    const auto s(sin(theta));
+    Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
+             abs(int(s * T(data.rows()) + c * T(data.cols()))));
+    for(int j = 0; j < work.rows(); j ++)
+      for(int k = 0; k < work.cols(); k ++)
+        work(j, k) = T(0);
+    for(int j = - (work.rows() + work.cols());
+            j <   (work.rows() + work.cols()) * 2; j ++)
+      for(int k = - (work.rows() + work.cols());
+              k <   (work.rows() + work.cols()) * 2; k ++) {
+        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
+        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
+        if(0 <= yy && yy < work.rows() &&
+           0 <= xx && xx < work.cols()) {
+          const auto dyy(((j % data.rows()) + data.rows()) % data.rows());
+          const auto dxx(((k % data.cols()) + data.cols()) % data.cols());
+          work(yy, xx) = work(min(yy + 1, int(work.rows()) - 1), xx) =
+            work(yy, min(xx + 1, int(work.cols()) - 1)) =
+            work(min(yy + 1, int(work.rows()) - 1),
+                 min(xx + 1, int(work.cols()) - 1)) =
+              data(dyy, dxx);
         }
-      workt = compute(workt, dir);
-      workb = compute(workb, dir);
-      for(int i = 0; i < data.rows(); i ++)
-        for(int j = 0; j < res[0].cols(); j ++)
-          for(int k = 1; k <= recur; k ++) {
-            const int bx(T(j) - s * T(k - 1));
-            const int xx(T(j) - s * T(k));
-            if(0 <= min(xx, bx) && max(xx, bx) < workt.cols()) {
-              const auto yy(recur - k);
-              const auto yyy(k - recur - 1 + res[0].rows());
-              if(0 <= yy && yy + 1 <= workt.rows()) {
-                const auto lst(abs(workt(yy, xx) - workt(yy + 1, bx)));
-                const auto lsb(abs(workb(yy, xx) - workb(yy + 1, bx)));
-                if(0 <= yy  && yy  < lres.rows())
-                  lres(yy,  j) = workt(yy, xx);
-                if(0 <= yyy && yyy < lres.rows())
-                  lres(yyy, j) = workb(yy, xx);
-              }
-            }
-          }
-    } else {
-      const auto c(cos(theta));
-      const auto s(sin(theta));
-      Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
-               abs(int(s * T(data.rows()) + c * T(data.cols()))));
-      for(int j = 0; j < work.rows(); j ++)
-        for(int k = 0; k < work.cols(); k ++)
-          work(j, k) = T(0);
-      for(int j = - (work.rows() + work.cols());
-              j <   (work.rows() + work.cols()) * 2; j ++)
-        for(int k = - (work.rows() + work.cols());
-                k <   (work.rows() + work.cols()) * 2; k ++) {
-          const int yy(c * T(j) - s * T(k) + T(1) / T(2));
-          const int xx(s * T(j) + c * T(k) + T(1) / T(2));
-          if(0 <= yy && yy < work.rows() &&
-             0 <= xx && xx < work.cols()) {
-            const auto dyy(((j % data.rows()) + data.rows()) % data.rows());
-            const auto dxx(((k % data.cols()) + data.cols()) % data.cols());
-            work(yy, xx) = work(min(yy + 1, int(work.rows()) - 1), xx) =
-              work(yy, min(xx + 1, int(work.cols()) - 1)) =
-              work(min(yy + 1, int(work.rows()) - 1),
-                   min(xx + 1, int(work.cols()) - 1)) =
-                data(dyy, dxx);
-          }
+      }
+    work = compute(work, dir);
+    // XXX inefficient:
+    for(int j = - (work.rows() + work.cols());
+            j <   (work.rows() + work.cols()) * 2; j ++)
+      for(int k = - (work.rows() + work.cols());
+              k <   (work.rows() + work.cols()) * 2; k ++) {
+        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
+        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
+        if(0 <= yy && yy < work.rows() &&
+           0 <= xx && xx < work.cols()) {
+          lres(((j % lres.rows()) + lres.rows()) % lres.rows(),
+               ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
         }
-      work = compute(work, dir);
-      // XXX inefficient:
-      for(int j = - (work.rows() + work.cols());
-              j <   (work.rows() + work.cols()) * 2; j ++)
-        for(int k = - (work.rows() + work.cols());
-                k <   (work.rows() + work.cols()) * 2; k ++) {
-          const int yy(c * T(j) - s * T(k) + T(1) / T(2));
-          const int xx(s * T(j) + c * T(k) + T(1) / T(2));
-          const int jj(((j % lres.rows()) + lres.rows()) % lres.rows());
-          const int kk(((k % lres.cols()) + lres.cols()) % lres.cols());
-          if(0 <= yy && yy < work.rows() &&
-             0 <= xx && xx < work.cols()) {
-            lres(((j % lres.rows()) + lres.rows()) % lres.rows(),
-                 ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
-          }
-        }
-    }
+      }
     res.emplace_back(lres);
   }
-  Mat rres(res[0]);
   for(int i = 1; i < res.size(); i ++)
-    rres += res[i];
-  return rres /= T(res.size());
+    res[0] += res[i];
+  return res[0] /= T(res.size());
 }
 
 template <typename T> inline int Filter<T>::getImgPt(const int& y, const int& h) {

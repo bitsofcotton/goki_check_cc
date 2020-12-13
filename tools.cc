@@ -592,23 +592,24 @@ int main(int argc, const char* argv[]) {
         }
       }
       redig.normalize(out, 1.);
-      file.savep2or3((std::string(argv[2])).c_str(), out, ! true);
+      file.savep2or3(argv[2], out, ! true);
     } else {
       std::vector<typename simpleFile<num_t>::Mat> rgb[3];
       for(int i = 0; i < in.size(); i ++) {
         for(int j = 0; j < 3; j ++)
           rgb[j].emplace_back(const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]));
       }
-      const auto rr(redig.catImage(rgb[0], min(20, int(rgb[0].size()))));
-      const auto gg(redig.catImage(rgb[1], min(20, int(rgb[1].size()))));
-      const auto bb(redig.catImage(rgb[2], min(20, int(rgb[2].size()))));
-      assert(rr.size() == gg.size() && gg.size() == bb.size());
-      for(int i = 0; i < rr.size(); i ++) {
-        out[0] = rr[i];
-        out[1] = gg[i];
-        out[2] = bb[i];
-        redig.normalize(out, 1.);
-        file.savep2or3((std::string(argv[2]) + std::to_string(i)).c_str(), out, ! true);
+      for(int i = 0; i < 3; i ++)
+        out[i] = redig.catImage(rgb[i]);
+      file.savep2or3(argv[2], out, ! true);
+      for(int i = 0; i < 3; i ++)
+        out[i] = out[i].transpose();
+      for(int i = 0; i < rgb[0].size(); i ++) {
+        typename simpleFile<num_t>::Mat out2[3];
+        for(int j = 0; j < 3; j ++)
+          out2[j] = rgb[j][i] * out[j];
+        redig.normalize(out2, 1.);
+        file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out2, ! true);
       }
     }
   } else if(strcmp(argv[1], "ppred") == 0 ||
