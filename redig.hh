@@ -121,7 +121,7 @@ public:
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
-  vector<Mat> catImage(const vector<Mat>& imgs, const int& count = 20);
+  Mat  catImage(const vector<Mat>& imgs);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -803,19 +803,17 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, c
   return res;
 }
 
-template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& imgs, const int& count) {
-  assert(count <= imgs.size() && imgs.size() && imgs[0].rows() * imgs[0].cols() < 8192);
+template <typename T> typename reDig<T>::Mat reDig<T>::catImage(const vector<Mat>& imgs) {
+  assert(imgs.size());
   for(int i = 1; i < imgs.size(); i ++)
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
-  SimpleVector<T> buf(imgs[0].rows() * imgs[0].cols());
-  Decompose<T> dec(buf.size());
-  Catg<T> cat(buf.size());
+  Decompose<T> dec(imgs[0].cols());
+  Catg<T> cat(imgs[0].cols());
   for(int i = 0; i < imgs.size(); i ++) {
-    for(int j = 0; j < imgs[i].rows(); j ++)
-      for(int k = 0; k < imgs[i].cols(); k ++)
-        buf[j * imgs[i].cols() + k] = imgs[i](j, k);
-    cat.inq(dec.next(buf));
-    std::cerr << "." << std::flush;
+    for(int j = 0; j < imgs[i].rows(); j ++) {
+      cat.inq(dec.next(imgs[i].row(j)));
+      std::cerr << "." << std::flush;
+    }
   }
   cat.compute();
   std::vector<std::pair<T, int> > scat;
@@ -826,16 +824,10 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     assert(isfinite(scat[i].first));
   }
   std::sort(scat.begin(), scat.end());
-  std::vector<Mat> res;
-  res.reserve(count);
-  for(int i = 0; i < count; i ++) {
-    Mat lres(imgs[0].rows(), imgs[0].cols());
-    Mat rres(imgs[0].rows(), imgs[0].cols());
+  Mat res(imgs[0].cols(), imgs[0].cols());
+  for(int i = 0; i < res.rows(); i ++) {
     const auto& ii(scat[scat.size() - 1 - i].second);
-    for(int j = 0; j < imgs[0].rows(); j ++)
-      for(int k = 0; k < imgs[0].cols(); k ++)
-        lres(j, k) = cat.Left(j * imgs[0].cols() + k, ii);
-    res.emplace_back(lres);
+    res.row(i) = cat.Left.col(ii);
   }
   return res;
 }
