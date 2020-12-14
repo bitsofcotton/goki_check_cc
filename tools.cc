@@ -594,22 +594,23 @@ int main(int argc, const char* argv[]) {
       redig.normalize(out, 1.);
       file.savep2or3(argv[2], out, ! true);
     } else {
-      std::vector<typename simpleFile<num_t>::Mat> rgb[3];
+      std::vector<typename simpleFile<num_t>::Mat> glay;
       for(int i = 0; i < in.size(); i ++) {
+        typename simpleFile<num_t>::Mat inn[3];
         for(int j = 0; j < 3; j ++)
-          rgb[j].emplace_back(const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]));
+          inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
+        glay.emplace_back(redig.rgb2d(inn));
       }
-      for(int i = 0; i < 3; i ++)
-        out[i] = redig.catImage(rgb[i]);
-      file.savep2or3(argv[2], out, ! true);
-      for(int i = 0; i < 3; i ++)
-        out[i] = out[i].transpose();
-      for(int i = 0; i < rgb[0].size(); i ++) {
-        typename simpleFile<num_t>::Mat out2[3];
-        for(int j = 0; j < 3; j ++)
-          out2[j] = rgb[j][i] * out[j];
-        redig.normalize(out2, 1.);
-        file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out2, ! true);
+      const auto cat(redig.catImage(glay));
+      for(int i = 0; i < cat.size(); i ++) {
+        out[0] = out[1] = out[2] = cat[i].transpose();
+        file.savep2or3(argv[2], out, ! true);
+        for(int j = 0; j < glay.size(); j ++) {
+          typename simpleFile<num_t>::Mat out2[3];
+          out2[0] = out2[1] = out2[2] = glay[j] * out[0];
+          redig.normalize(out2, 1.);
+          file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out2, ! true);
+        }
       }
     }
   } else if(strcmp(argv[1], "ppred") == 0 ||

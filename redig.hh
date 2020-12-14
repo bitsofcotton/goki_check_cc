@@ -121,7 +121,7 @@ public:
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
-  Mat  catImage(const vector<Mat>& imgs);
+  vector<Mat> catImage(const vector<Mat>& imgs, const T& thresh = T(1));
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -531,7 +531,7 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, const vec
 }
 
 template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask) {
-  std::vector<int> elim, elimp, after;
+  vector<int> elim, elimp, after;
   for(int i = 0, ii = 0; i < points.size(); i ++) {
     const int y(std::max(std::min(int(points[i][0]), int(mask.rows() - 1)), 0));
     const int x(std::max(std::min(int(points[i][1]), int(mask.cols() - 1)), 0));
@@ -803,31 +803,58 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, c
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::catImage(const vector<Mat>& imgs) {
+template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& imgs, const T& thresh) {
   assert(imgs.size());
   for(int i = 1; i < imgs.size(); i ++)
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
   Decompose<T> dec(imgs[0].cols());
-  Catg<T> cat(imgs[0].cols());
+  vector<vector<Vec> > work;
+  work.resize(1, vector<Vec>());
+  work[0].reserve(imgs.size() * imgs[0].rows());
   for(int i = 0; i < imgs.size(); i ++) {
-    for(int j = 0; j < imgs[i].rows(); j ++) {
-      cat.inq(dec.next(imgs[i].row(j)));
-      std::cerr << "." << std::flush;
+    for(int j = 0; j < imgs[i].rows(); j ++)
+      work[0].emplace_back(dec.next(imgs[i].row(j)));
+    std::cerr << "." << std::flush;
+  }
+  int t(0);
+  while(t < work.size()) {
+    CatG<T> cat(imgs[0].cols());
+    for(int i = 0; i < work[t].size(); i ++)
+      cat.inq(work[t][i]);
+    cat.compute();
+    if(thresh < abs(cat.distance)) {
+      vector<Vec> left;
+      vector<Vec> right;
+      for(int i = 0; i < work[t].size(); i ++)
+        if(work[t][i].dot(cat.cut) < T(0))
+          left.emplace_back(work[t][i]);
+        else
+          right.emplace_back(work[t][i]);
+      work[t] = left;
+      work.emplace_back(right);
+    } else
+      t ++;
+  }
+  vector<Mat> res;
+  res.reserve(work.size());
+  for(int i = 0; i < work.size(); i ++) {
+    res.emplace_back(Mat(imgs[0].cols(), imgs[0].cols()));
+    Catg<T> cat(imgs[0].cols());
+    for(int j = 0; j < work[i].size(); j ++)
+      cat.inq(work[i][j]);
+    cat.compute();
+    vector<std::pair<T, int> > scat;
+    scat.resize(cat.lambda.size());
+    for(int i = 0; i < cat.lambda.size(); i ++) {
+      scat[i].first  = abs(cat.lambda[i]);
+      scat[i].second = i;
+      assert(isfinite(scat[i].first));
     }
-  }
-  cat.compute();
-  std::vector<std::pair<T, int> > scat;
-  scat.resize(cat.lambda.size());
-  for(int i = 0; i < cat.lambda.size(); i ++) {
-    scat[i].first  = abs(cat.lambda[i]);
-    scat[i].second = i;
-    assert(isfinite(scat[i].first));
-  }
-  std::sort(scat.begin(), scat.end());
-  Mat res(imgs[0].cols(), imgs[0].cols());
-  for(int i = 0; i < res.rows(); i ++) {
-    const auto& ii(scat[scat.size() - 1 - i].second);
-    res.row(i) = cat.Left.col(ii);
+    std::sort(scat.begin(), scat.end());
+    for(int i = 0; i < res[res.size() - 1].rows(); i ++) {
+      const auto& ii(scat[scat.size() - 1 - i].second);
+      res[res.size() - 1].row(i) = cat.Left.col(ii);
+    }
   }
   return res;
 }

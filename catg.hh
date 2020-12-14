@@ -38,8 +38,8 @@ public:
   inline Catg();
   inline Catg(const int& size);
   inline ~Catg();
-  void inq(const Vec& in);
-  void compute();
+  inline void inq(const Vec& in);
+  inline void compute();
   Mat Left;
   Vec lambda;
 private:
@@ -65,7 +65,7 @@ template <typename T> inline Catg<T>::~Catg() {
   ;
 }
 
-template <typename T> void Catg<T>::inq(const Vec& in) {
+template <typename T> inline void Catg<T>::inq(const Vec& in) {
   assert(AAt.rows() == in.size() && AAt.cols() == in.size());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -74,7 +74,7 @@ template <typename T> void Catg<T>::inq(const Vec& in) {
     AAt.row(i) += in * in[i];
 }
 
-template <typename T> void Catg<T>::compute() {
+template <typename T> inline void Catg<T>::compute() {
   Left  = roughQR(AAt);
   const auto Right(Left.transpose() * AAt);
   lambda.resize(Right.rows());
@@ -98,6 +98,232 @@ template <typename T> inline typename Catg<T>::Mat Catg<T>::roughQR(const Mat& A
     Q.row(i) = work / sqrt(work.dot(work));
   }
   return Q;
+}
+
+
+template <typename T> class CatG {
+public:
+  typedef SimpleVector<T> Vec;
+  typedef SimpleMatrix<T> Mat;
+  inline CatG();
+  inline CatG(const int& size);
+  inline ~CatG();
+  inline void inq(const Vec& in);
+  inline void compute();
+  Vec cut;
+  T   distance;
+  Catg<T> catg;
+  std::vector<Vec> cache;
+private:
+  T threshold_feas;
+  T threshold_p0;
+  T threshold_inner;
+};
+
+template <typename T> inline CatG<T>::CatG() {
+#if defined(_FLOAT_BITS_)
+  const auto epsilon(T(1) >> int64_t(mybits - 2));
+#else
+  const auto epsilon(std::numeric_limits<T>::epsilon());
+#endif
+  threshold_feas  = pow(epsilon, T(5) / T(6));
+  threshold_p0    = pow(epsilon, T(4) / T(6));
+  threshold_inner = pow(epsilon, T(2) / T(6));
+}
+
+template <typename T> inline CatG<T>::CatG(const int& size) {
+#if defined(_FLOAT_BITS_)
+  const auto epsilon(T(1) >> int64_t(mybits - 2));
+#else
+  const auto epsilon(std::numeric_limits<T>::epsilon());
+#endif
+  threshold_feas  = pow(epsilon, T(5) / T(6));
+  threshold_p0    = pow(epsilon, T(4) / T(6));
+  threshold_inner = pow(epsilon, T(2) / T(6));
+  catg = Catg<T>(size);;
+}
+
+template <typename T> inline CatG<T>::~CatG() {
+  ;
+}
+
+template <typename T> inline void CatG<T>::inq(const Vec& in) {
+  if(cache.size())
+    assert(cache[0].size() == in.size());
+  cache.push_back(in);;
+  catg.inq(in);
+}
+
+template <typename T> inline void CatG<T>::compute() {
+  Mat A(cache[0].size(), cache.size());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < A.cols(); i ++)
+    A.setCol(i, cache[i]);
+  catg.compute();
+  Mat Pt(A.rows(), A.cols() * 2);
+  Vec b(Pt.cols());
+  Vec one(b.size());
+  SimpleVector<bool> fix(b.size());
+  {
+    auto Pt0(catg.Left.transpose() * A);
+    for(int i = 0; i < Pt0.rows(); i ++)
+      Pt0.row(i) /= sqrt(Pt0.row(i).dot(Pt0.row(i))) * T(2);
+    for(int i = 0; i < Pt0.cols(); i ++) {
+      Pt.setCol(2 * i,       Pt0.col(i));
+      Pt.setCol(2 * i + 1, - Pt0.col(i));
+      b[2 * i]       = T(0);
+      b[2 * i + 1]   = T(0);
+      one[2 * i]     = T(1);
+      one[2 * i + 1] = T(1);
+      fix[2 * i]     = 0;
+      fix[2 * i + 1] = 0;
+    }
+  }
+  auto checked(fix);
+  auto norm(b);
+  auto norm2(b);
+  Mat  F(Pt.rows(), Pt.rows());
+  Vec  f(Pt.rows());
+  Mat  Pverb;
+  Vec  fvec;
+  Vec  orth;
+  T lasterr(Pt.rows() + Pt.cols());
+  // from bitsofcotton/p1/p1.hh
+  for(auto ratio0(lasterr / T(2));
+           threshold_inner <= ratio0;
+           ratio0 /= T(2)) {
+    const auto ratio(lasterr - ratio0);
+    int n_fixed;
+    T   ratiob;
+    T   normb0;
+    Vec rvec;
+    Vec on;
+    Vec deltab;
+    Vec mbb;
+    Vec bb;
+    if(Pt.cols() == Pt.rows()) {
+      rvec = Pt * b;
+      goto pnext;
+    }
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+    for(int i = 0; i < one.size(); i ++)
+      fix[i]  = false;
+    bb = b - Pt.projectionPt(b);
+    if(sqrt(bb.dot(bb)) <= threshold_feas * sqrt(b.dot(b))) {
+      for(int i = 0; i < bb.size(); i ++)
+        bb[i] = sqrt(Pt.col(i).dot(Pt.col(i)));
+      const auto bbb(bb - Pt.projectionPt(bb));
+      if(sqrt(bbb.dot(bbb)) <= threshold_feas * sqrt(bb.dot(bb))) {
+        rvec  = Pt * (b - bb - bbb);
+        goto pnext;
+      }
+      bb = bbb;
+    }
+    mbb    = - bb;
+    normb0 = sqrt(mbb.dot(mbb));
+    Pverb  = Pt;
+    for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+      for(int j = 0; j < Pverb.cols(); j ++) {
+        norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
+        norm2[j]   = j & 1 ? norm[j] : - norm[j];
+        checked[j] = fix[j] || norm[j] <= threshold_p0;
+      }
+      auto mb(mbb + norm2 * normb0 * ratio);
+      mb -= (deltab = Pverb.projectionPt(mb));
+      mb /= (ratiob = sqrt(mb.dot(mb)));
+      on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
+      int fidx(0);
+      for( ; fidx < on.size(); fidx ++)
+        if(!checked[fidx])
+          break;
+      for(int j = (fidx + 1) & ~1; j < on.size() / 2; j ++)
+        if(!checked[j] && !checked[j + 1] &&
+           (on[fidx] / norm[fidx] < on[j] / norm[j] ||
+            on[fidx] / norm[fidx] < on[j + 1] / norm[j + 1]) &&
+           T(0) <= on[j] && T(0) <= on[j + 1])
+          fidx = j;
+      if(fidx >= one.size())
+        break;
+      on /= abs(mb.dot(on));
+      if(on[fidx] * sqrt(norm.dot(norm)) / norm[fidx] <= threshold_inner)
+        break;
+      orth = Pverb.col(fidx);
+      const auto norm2orth(orth.dot(orth));
+      const auto mbb0(mbb[fidx]);
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+      for(int j = 0; j < Pverb.cols(); j ++) {
+        const auto work(Pverb.col(j).dot(orth) / norm2orth);
+        Pverb.setCol(j, Pverb.col(j) - orth * work);
+        mbb[j] -= mbb0 * work;
+      }
+      mbb[fidx] = T(0);
+      fix[fidx] = true;
+    }
+    if(n_fixed == Pt.rows()) {
+      int j(0);
+      for(int i = 0; i < Pt.cols() && j < f.size(); i ++)
+        if(fix[i]) {
+          const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i)) + b[i] * b[i]));
+          F.row(j) = Pt.col(i) / lratio;
+          f[j]     = b[i]      / lratio + ratio;
+          j ++;
+        }
+      assert(j == f.size());
+      try {
+        rvec = F.solve(f);
+      } catch (const char* e) {
+        std::cerr << e << std::endl;
+        continue;
+      }
+    } else
+      rvec = Pt * (on * ratiob + deltab + b);
+   pnext:
+    SimpleVector<T> err0(Pt.cols());
+    for(int i = 0; i < err0.size(); i ++)
+      err0[i] = Pt.col(i).dot(rvec);
+    auto err(err0 - b - one * ratio);
+    for(int i = 0; i < b.size(); i ++)
+      if(err[i] <= T(0)) err[i] = T(0);
+    if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0)) && T(0) < rvec.dot(rvec)) {
+      fvec     = rvec;
+      lasterr -= ratio0;
+    }
+   next:
+    ;
+  }
+  fvec = catg.Left.transpose() * fvec;
+  // on ||fvec|| == 1, ||n'|| == 1, n' - n_0' 1 == fvec.
+  // to ||n' - n_0'1 - fvec||^2 -> min.
+  //   n_0'^2 * ||1||^2 + ||n' - fvec||^2 - 2 * n_0' * <1, n' - fvec> -> min.
+  //   n_0' = (<1, fvec - n'> \pm
+  //     sqrt(||1||^2 ||n' - fvec||^2 - ||1||^2 <1, fvec - n'>)) / ||1||^2
+  // to n_0' -> max.
+  //   (fvec - n') // 1.
+  fvec /= sqrt(fvec.dot(fvec));
+  T fvM(0);
+  for(int i = 0; i < fvec.size(); i ++)
+    fvM = max(fvM, abs(fvec[i]));
+  assert(fvM != T(0));
+  cut = - fvec;
+  for(int i = 0; i < cut.size(); i ++)
+    cut[i] += fvM;
+  cut /= sqrt(cut.dot(cut));
+  const auto fvmcut(fvec - cut);
+  distance = (fvmcut.dot(Pt * one) + sqrt(one.dot(one) * fvmcut.dot(fvmcut - Pt * one))) / one.dot(one);
+  // cut - distance * 1 == diag(lambda') V * n.
+  cut = catg.Left * cut;
+  return;
 }
 
 #define _CATG_
