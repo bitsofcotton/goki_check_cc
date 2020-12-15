@@ -601,7 +601,7 @@ int main(int argc, const char* argv[]) {
           inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
         glay.emplace_back(redig.rgb2d(inn));
       }
-      const auto cat(redig.catImage(glay, num_t(1) / num_t(20)));
+      const auto cat(redig.catImage(glay));
       for(int i = 0; i < cat.size(); i ++) {
         out[0] = out[1] = out[2] = cat[i];
         redig.normalize(out, 1.);
