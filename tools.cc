@@ -601,16 +601,11 @@ int main(int argc, const char* argv[]) {
           inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
         glay.emplace_back(redig.rgb2d(inn));
       }
-      const auto cat(redig.catImage(glay));
+      const auto cat(redig.catImage(glay, num_t(1) / num_t(20)));
       for(int i = 0; i < cat.size(); i ++) {
-        out[0] = out[1] = out[2] = cat[i].transpose();
-        file.savep2or3(argv[2], out, ! true);
-        for(int j = 0; j < glay.size(); j ++) {
-          typename simpleFile<num_t>::Mat out2[3];
-          out2[0] = out2[1] = out2[2] = glay[j] * out[0];
-          redig.normalize(out2, 1.);
-          file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out2, ! true);
-        }
+        out[0] = out[1] = out[2] = cat[i];
+        redig.normalize(out, 1.);
+        file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true);
       }
     }
   } else if(strcmp(argv[1], "ppred") == 0 ||
