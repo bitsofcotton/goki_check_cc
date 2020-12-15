@@ -683,11 +683,8 @@ int main(int argc, const char* argv[]) {
         redig.complement(pout, outcenter, in, lcenter, attend[idx], a2xy,
           num_t(idx) - num_t(1) / num_t(2) +
           (num_t(i) + num_t(1) / num_t(2)) / num_t(std::atoi(argv[5])));
-        const auto reref(redig.draw(rin0, shape[idx],
-          redig.takeShape(shape[idx], center[idx], outcenter,
-            attend[idx], num_t(1)), delau[idx]));
         for(int ii = 0; ii < 3; ii ++)
-          out[ii] = filter.compute(redig.pullRefMatrix(reref, 1, pout[ii]), filter.CLIP);
+          out[ii] = filter.compute(pout[ii], filter.CLIP);
         file.savep2or3((std::string(argv[7]) + std::to_string((2 * idx + 1) * std::atoi(argv[5]) + i) + std::string(".ppm")).c_str(), out, ! true);
       }
     }

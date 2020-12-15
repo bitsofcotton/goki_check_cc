@@ -22,7 +22,7 @@ CLEANFILES= *.o gokicheck
 all:	gokicheck
 clean:
 	@rm -rf ${CLEANFILES}
-tools.o: tools.cc enlarge.hh match.hh redig.hh fileio.hh p0.hh p1.hh simplelin.hh ifloat.hh
+tools.o: tools.cc enlarge.hh match.hh redig.hh fileio.hh p0.hh p1.hh catg.hh simplelin.hh ifloat.hh
 gokicheck: tools.o
 	${LD} ${LDFLAGS} -o gokicheck tools.o
 
