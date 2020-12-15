@@ -139,6 +139,8 @@ else:
       subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])
     elif(argv[2] == "prepsq"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "x" + str(pixels) + "!", root + "-prepsq.png"])
+    elif(argv[2] == "rot"):
+      subprocess.call(["convert", line, "-rotate", "90", root + "-rot.png"])
     elif(argv[2] == "mask"):
       subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
     elif(argv[2] == "mask0"):

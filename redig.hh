@@ -121,7 +121,7 @@ public:
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
-  vector<Mat> catImage(const vector<Mat>& imgs, const T& thresh = T(1));
+  vector<Mat> catImage(const vector<Mat>& imgs);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -803,7 +803,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, c
   return res;
 }
 
-template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& imgs, const T& thresh) {
+template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& imgs) {
   assert(imgs.size());
   for(int i = 1; i < imgs.size(); i ++)
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
@@ -817,6 +817,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     std::cerr << "." << std::flush;
   }
   int t(0);
+  T thresh(0);
   while(t < work.size()) {
     CatG<T> cat(imgs[0].cols());
     for(int i = 0; i < work[t].size(); i ++)
@@ -824,7 +825,8 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     std::cerr << "(" << cat.cache.size() << ", " << work[t][0].size() << std::flush;
     cat.compute();
     std::cerr << " : " << cat.distance << ")" << std::flush;
-    if(cat.cut.size() && thresh < abs(cat.distance)) {
+    if(thresh == T(0) && ! t) thresh = abs(cat.distance);
+    if(cat.cut.size() && thresh <= abs(cat.distance)) {
       vector<Vec> left;
       vector<Vec> right;
       for(int i = 0; i < work[t].size(); i ++)

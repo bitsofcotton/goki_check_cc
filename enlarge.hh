@@ -82,7 +82,7 @@ template <typename T> Filter<T>::~Filter() {
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir, const int& n) {
   assert(0 <= n);
-  if(! n) {
+  if(n <= 1) {
     static P0<T,false> p;
     switch(dir) {
     case SHARPEN_BOTH:
@@ -109,6 +109,10 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return compute(data.transpose(), BUMP_Y).transpose();
     case EXTEND_X:
       return compute(data.transpose(), EXTEND_Y).transpose();
+    case DETECT_Y:
+      return p.diff(data.rows()) * data;
+    case COLLECT_Y:
+      return compute(compute(data, DETECT_Y), ABS);
     case SHARPEN_Y:
       {
         assert(2 <= data.rows());
@@ -201,10 +205,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         return Eop[size][recur] * data;
       }
       break;
-    case DETECT_Y:
-      return p.diff(data.rows()) * data;
-    case COLLECT_Y:
-      return compute(compute(data, DETECT_Y), ABS);
     case BUMP_Y:
       {
         Mat result(data.rows(), data.cols());
@@ -225,7 +225,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         camera[0] = T(0);
         camera[1] = T(1);
         cpoint[0] = T(1) / T(2 * dratio);
-        cerr << dratio << "depth ";
         for(int zi = 0; zi < dratio; zi ++) {
           Mat A(data.rows(), data.cols());
           for(int i = 0; i < A.rows(); i ++)
@@ -241,7 +240,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
             continue;
           assert(int(y0) * 2 <= data.rows());
-          const auto& Dop(p.diff(abs(int(y0 * T(2)))));
+          const auto& Dop(p.diff(abs(int(y0 * T(2))) & ~ int(1)));
           const auto& Dop0(Dop.row(Dop.rows() / 2));
           //  N.B. dC_k/dy on zi.
 #if defined(_OPENMP)
@@ -258,11 +257,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           for(int i = 0; i < A.rows(); i ++) {
             for(int j = 0; j < A.cols(); j ++)
               if(zscore(i, j) < abs(A(i, j))) {
-                result(i, j) = - T(zi + 1);
+                result(i, j) = T(zi + 1);
                 zscore(i, j) = abs(A(i, j));
               }
           }
         }
+        result = p.diff(- result.rows()) * result;
         return result;
       }
       break;
@@ -321,9 +321,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         return result;
       }
       break;
-    default:
-      assert(0 && "unknown command in Filter (should not be reached.)");
     }
+    assert(0 && "unknown command in Filter (should not be reached.)");
     return Mat();
   }
   if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH)

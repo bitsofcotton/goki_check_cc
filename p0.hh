@@ -92,19 +92,28 @@ template <typename T, bool recur> const typename P0<T,recur>::MatU& P0<T,recur>:
   return size0 < 0 ? eidft : edft;
 }
 
-template <typename T, bool recur> const typename P0<T,recur>::Mat& P0<T,recur>::diff(const int& size) {
-  assert(0 < size);
+template <typename T, bool recur> const typename P0<T,recur>::Mat& P0<T,recur>::diff(const int& size0) {
+  assert(size0);
+  const auto size(abs(size0));
   static vector<Mat> D;
+  static vector<Mat> I;
   if(D.size() <= size)
     D.resize(size + 1, Mat());
+  if(I.size() <= size)
+    I.resize(size + 1, Mat());
   auto& dd(D[size]);
+  auto& ii(I[size]);
   if(dd.rows() != size || dd.cols() != size) {
     auto DD(seed(size));
+    auto II(seed(size));
     for(int i = 0; i < DD.rows(); i ++)
       DD.row(i) *= J() * T(2) * Pi() * T(i) / T(DD.rows());
+    for(int i = 1; i < DD.rows(); i ++)
+      II.row(i) /= J() * T(2) * Pi() * T(i) / T(DD.rows()) / Pi();
     dd = (seed(- size) * DD).template real<T>() / Pi();
+    ii = (seed(- size) * II).template real<T>();
   }
-  return dd;
+  return size0 < 0 ? ii : dd;
 }
 
 template <typename T, bool recur> inline typename P0<T,recur>::Vec P0<T,recur>::taylor(const int& size, const T& step) {
