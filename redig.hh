@@ -821,39 +821,51 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     CatG<T> cat(imgs[0].cols());
     for(int i = 0; i < work[t].size(); i ++)
       cat.inq(work[t][i]);
+    std::cerr << "(" << cat.cache.size() << ", " << work[t][0].size() << std::flush;
     cat.compute();
-    if(thresh < abs(cat.distance)) {
+    std::cerr << " : " << cat.distance << ")" << std::flush;
+    if(cat.cut.size() && thresh < abs(cat.distance)) {
       vector<Vec> left;
       vector<Vec> right;
       for(int i = 0; i < work[t].size(); i ++)
-        if(work[t][i].dot(cat.cut) < T(0))
+        if(work[t][i].dot(cat.cut) < cat.origin)
           left.emplace_back(work[t][i]);
         else
           right.emplace_back(work[t][i]);
-      work[t] = left;
-      work.emplace_back(right);
+      if(left.size() && right.size()) {
+        work[t] = left;
+        work.emplace_back(right);
+      } else
+        t ++;
     } else
       t ++;
   }
   vector<Mat> res;
   res.reserve(work.size());
   for(int i = 0; i < work.size(); i ++) {
-    res.emplace_back(Mat(imgs[0].cols(), imgs[0].cols()));
-    Catg<T> cat(imgs[0].cols());
-    for(int j = 0; j < work[i].size(); j ++)
-      cat.inq(work[i][j]);
-    cat.compute();
-    vector<std::pair<T, int> > scat;
-    scat.resize(cat.lambda.size());
-    for(int i = 0; i < cat.lambda.size(); i ++) {
-      scat[i].first  = abs(cat.lambda[i]);
-      scat[i].second = i;
-      assert(isfinite(scat[i].first));
-    }
-    std::sort(scat.begin(), scat.end());
-    for(int i = 0; i < res[res.size() - 1].rows(); i ++) {
-      const auto& ii(scat[scat.size() - 1 - i].second);
-      res[res.size() - 1].row(i) = cat.Left.col(ii);
+    if(imgs[0].cols() < work[i].size()) {
+      res.emplace_back(Mat(imgs[0].cols(), imgs[0].cols()));
+      Catg<T> cat(imgs[0].cols());
+      for(int j = 0; j < work[i].size(); j ++)
+        cat.inq(work[i][j]);
+      std::cerr << "." << std::flush;
+      cat.compute();
+      vector<std::pair<T, int> > scat;
+      scat.resize(cat.lambda.size());
+      for(int i = 0; i < cat.lambda.size(); i ++) {
+        scat[i].first  = abs(cat.lambda[i]);
+        scat[i].second = i;
+        assert(isfinite(scat[i].first));
+      }
+      std::sort(scat.begin(), scat.end());
+      for(int i = 0; i < res[res.size() - 1].rows(); i ++) {
+        const auto& ii(scat[scat.size() - 1 - i].second);
+        res[res.size() - 1].row(i) = cat.Left.col(ii);
+      }
+    } else {
+      res.emplace_back(Mat(work[i].size(), imgs[0].cols()));
+      for(int j = 0; j < work[i].size(); j ++)
+        res[res.size() - 1].row(j) = work[i][j];
     }
   }
   return res;
