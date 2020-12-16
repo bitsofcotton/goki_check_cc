@@ -309,7 +309,8 @@ template <typename T> inline void CatG<T>::compute() {
   assert(cut.size() == catg.lambda.size());
   for(int i = 0; i < cut.size(); i ++)
     cut[i] *= catg.lambda[i];
-  cut = catg.Left * cut;
+  cut  = catg.Left * cut;
+  cut /= sqrt(cut.dot(cut));
   std::vector<T> s;
   s.reserve(cache.size());
   for(int i = 0; i < cache.size(); i ++)
