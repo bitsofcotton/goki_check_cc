@@ -189,7 +189,6 @@ template <typename T> inline void CatG<T>::compute() {
   Mat  F(Pt.rows(), Pt.rows());
   Vec  f(Pt.rows());
   Mat  Pverb;
-  Vec  fvec;
   Vec  orth;
   T    lasterr(Pt.rows() + Pt.cols());
   // from bitsofcotton/p1/p1.hh
@@ -297,36 +296,20 @@ template <typename T> inline void CatG<T>::compute() {
     for(int i = 0; i < b.size(); i ++)
       if(err[i] <= T(0)) err[i] = T(0);
     if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0))) {
-      fvec     = rvec;
+      cut      = rvec;
       lasterr -= ratio0;
     }
    next:
     ;
   }
-  if(! fvec.size()) {
+  if(! cut.size()) {
     distance = origin = T(0);
-    cut = Vec();
     return;
   }
-  fvec = catg.Left.transpose() * fvec;
-  // on ||fvec|| == 1, ||n'|| == 1, n' - n_0' 1 == fvec.
-  // to ||n' - n_0'1 - fvec||^2 -> min.
-  //   n_0'^2 * ||1||^2 + ||n' - fvec||^2 - 2 * n_0' * <1, n' - fvec> -> min.
-  //   n_0' = (<1, fvec - n'> \pm
-  //     sqrt(||1||^2 ||n' - fvec||^2 - ||1||^2 <1, fvec - n'>)) / ||1||^2
-  // to n_0' -> max.
-  //   (fvec - n') // 1.
-  T fvM(0);
-  for(int i = 0; i < fvec.size(); i ++)
-    fvM = max(fvM, abs(fvec[i]));
-  if(fvM == T(0))
-    fvM = T(1);
-  cut = - fvec;
+  assert(cut.size() == catg.lambda.size());
   for(int i = 0; i < cut.size(); i ++)
-    cut[i] += fvM;
-  // cut - distance * 1 == diag(lambda') V * n.
-  cut  = catg.Left * cut;
-  cut /= sqrt(cut.dot(cut));
+    cut[i] *= catg.lambda[i];
+  cut = catg.Left * cut;
   std::vector<T> s;
   s.reserve(cache.size());
   for(int i = 0; i < cache.size(); i ++)
