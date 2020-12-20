@@ -816,7 +816,8 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     for(int j = 0; j < imgs[i].rows(); j ++)
       for(int k = 0; k < imgs[i].cols(); k ++)
         buf0[imgs[i].cols() * j + k] = imgs[i](j, j & 1 ? imgs[i].cols() - 1 - k : k);
-    const auto buf(dec.next(buf0));
+    //const auto buf(dec.next(buf0));
+    const auto& buf(buf0);
     for(int j = 0; j < buf.size(); j ++)
       if(! isfinite(buf[j]))
         goto next;
@@ -838,7 +839,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
       vector<pair<Vec, int> > left;
       vector<pair<Vec, int> > right;
       for(int i = 0; i < work[t].size(); i ++)
-        if(work[t][i].first.dot(cat.cut) < T(0))
+        if(work[t][i].first.dot(cat.cut) < cat.origin)
           left.emplace_back(work[t][i]);
         else
           right.emplace_back(work[t][i]);
