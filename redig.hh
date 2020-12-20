@@ -838,7 +838,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
       vector<pair<Vec, int> > left;
       vector<pair<Vec, int> > right;
       for(int i = 0; i < work[t].size(); i ++)
-        if(work[t][i].first.dot(cat.cut) < cat.origin)
+        if(work[t][i].first.dot(cat.cut) < T(0))
           left.emplace_back(work[t][i]);
         else
           right.emplace_back(work[t][i]);
