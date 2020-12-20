@@ -807,30 +807,38 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   assert(imgs.size());
   for(int i = 1; i < imgs.size(); i ++)
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
-  Decompose<T> dec(imgs[0].cols());
-  vector<vector<Vec> > work;
-  work.resize(1, vector<Vec>());
+  Decompose<T> dec(imgs[0].rows() * imgs[0].cols());
+  vector<vector<pair<Vec, int> > > work;
+  work.resize(1, vector<pair<Vec, int> >());
   work[0].reserve(imgs.size() * imgs[0].rows());
   for(int i = 0; i < imgs.size(); i ++) {
+    SimpleVector<T> buf0(imgs[i].rows() * imgs[i].cols());
     for(int j = 0; j < imgs[i].rows(); j ++)
-      work[0].emplace_back(dec.next(imgs[i].row(j)));
+      for(int k = 0; k < imgs[i].cols(); k ++)
+        buf0[imgs[i].cols() * j + k] = imgs[i](j, j & 1 ? imgs[i].cols() - 1 - k : k);
+    const auto buf(dec.next(buf0));
+    for(int j = 0; j < buf.size(); j ++)
+      if(! isfinite(buf[j]))
+        goto next;
+    work[0].emplace_back(make_pair(buf, i));
+   next:
     std::cerr << "." << std::flush;
   }
   int t(0);
   T thresh(0);
   while(t < work.size()) {
-    CatG<T> cat(imgs[0].cols());
+    CatG<T> cat(imgs[0].rows() * imgs[0].cols());
     for(int i = 0; i < work[t].size(); i ++)
-      cat.inq(work[t][i]);
-    std::cerr << "(" << cat.cache.size() << ", " << work[t][0].size() << std::flush;
+      cat.inq(work[t][i].first);
+    std::cerr << "(" << cat.cache.size() << ", " << work[t][0].first.size() << std::flush;
     cat.compute();
     std::cerr << " : " << cat.distance << ")" << std::flush;
-    if(thresh == T(0) && ! t) thresh = abs(cat.distance);
+    if(thresh == T(0) && ! t) thresh = abs(cat.distance) / T(2);
     if(cat.cut.size() && thresh <= abs(cat.distance)) {
-      vector<Vec> left;
-      vector<Vec> right;
+      vector<pair<Vec, int> > left;
+      vector<pair<Vec, int> > right;
       for(int i = 0; i < work[t].size(); i ++)
-        if(work[t][i].dot(cat.cut) < cat.origin)
+        if(work[t][i].first.dot(cat.cut) < cat.origin)
           left.emplace_back(work[t][i]);
         else
           right.emplace_back(work[t][i]);
@@ -845,30 +853,10 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   vector<Mat> res;
   res.reserve(work.size());
   for(int i = 0; i < work.size(); i ++) {
-    if(imgs[0].cols() < work[i].size()) {
-      res.emplace_back(Mat(imgs[0].cols(), imgs[0].cols()));
-      Catg<T> cat(imgs[0].cols());
-      for(int j = 0; j < work[i].size(); j ++)
-        cat.inq(work[i][j]);
-      std::cerr << "." << std::flush;
-      cat.compute();
-      vector<std::pair<T, int> > scat;
-      scat.resize(cat.lambda.size());
-      for(int i = 0; i < cat.lambda.size(); i ++) {
-        scat[i].first  = abs(cat.lambda[i]);
-        scat[i].second = i;
-        assert(isfinite(scat[i].first));
-      }
-      std::sort(scat.begin(), scat.end());
-      for(int i = 0; i < res[res.size() - 1].rows(); i ++) {
-        const auto& ii(scat[scat.size() - 1 - i].second);
-        res[res.size() - 1].row(i) = cat.Left.col(ii);
-      }
-    } else {
-      res.emplace_back(Mat(work[i].size(), imgs[0].cols()));
-      for(int j = 0; j < work[i].size(); j ++)
-        res[res.size() - 1].row(j) = work[i][j];
-    }
+    res.emplace_back(Mat(work[i].size() * imgs[0].rows(), imgs[0].cols()));
+    for(int j = 0; j < work[i].size(); j ++)
+      for(int k = 0; k < imgs[0].rows(); k ++)
+        res[i].row(j * imgs[0].rows() + k) = imgs[work[i][j].second].row(k);
   }
   return res;
 }

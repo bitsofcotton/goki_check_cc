@@ -10,7 +10,7 @@ zratio  = .25
 psi     = .1
 rot     = 7
 comp    = 4
-tppred  = .1
+tppred  = .2
 bhabit  = ""
 
 if(len(argv) < 4):

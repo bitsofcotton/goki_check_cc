@@ -81,8 +81,7 @@ void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
-  cout << "gokicheck pred  <output.ppm> <input0.ppm> ..." << endl;
-  cout << "gokicheck cat   <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck (pred|cat) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
@@ -559,7 +558,7 @@ int main(int argc, const char* argv[]) {
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
             strcmp(argv[1], "cat") == 0) {
-    if(argc < 5) {
+    if(argc < 4) {
       usage();
       return - 1;
     }
@@ -571,9 +570,8 @@ int main(int argc, const char* argv[]) {
         return - 2;
       const auto ii(i - 3);
       in[ii].resize(3);
-      in[ii][0] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[0]);
-      in[ii][1] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[1]);
-      in[ii][2] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[2]);
+      for(int j = 0; j < 3; j ++)
+        in[ii][j] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[j]);
       assert(in[ii][0].rows() == in[0][0].rows());
       assert(in[ii][0].cols() == in[0][0].cols());
     }
@@ -595,6 +593,7 @@ int main(int argc, const char* argv[]) {
       file.savep2or3(argv[2], out, ! true);
     } else {
       std::vector<typename simpleFile<num_t>::Mat> glay;
+      glay.reserve(in.size());
       for(int i = 0; i < in.size(); i ++) {
         typename simpleFile<num_t>::Mat inn[3];
         for(int j = 0; j < 3; j ++)
