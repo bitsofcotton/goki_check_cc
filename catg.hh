@@ -112,6 +112,7 @@ public:
   inline void compute();
   Vec cut;
   T   distance;
+  T   origin;
   Catg<T> catg;
   std::vector<Vec> cache;
 private:
@@ -190,6 +191,8 @@ template <typename T> inline void CatG<T>::compute() {
   Mat  Pverb;
   Vec  orth;
   T    lasterr(Pt.rows() + Pt.cols());
+  distance = T(0);
+  cut      = Vec();
   // from bitsofcotton/p1/p1.hh
   for(auto ratio0(lasterr / T(2));
            threshold_inner <= ratio0;
@@ -288,39 +291,34 @@ template <typename T> inline void CatG<T>::compute() {
     } else
       rvec = Pt * (on * ratiob + deltab + b);
    pnext:
-    SimpleVector<T> err0(Pt.cols());
-    for(int i = 0; i < err0.size(); i ++)
-      err0[i] = Pt.col(i).dot(rvec);
-    auto err(err0 - b - one * ratio * ratio);
-    for(int i = 0; i < b.size(); i ++)
-      if(err[i] <= T(0)) err[i] = T(0);
-    if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0))) {
+    std::vector<T> s;
+    T newdist(0);
+    T neworigin(0);
+    rvec /= sqrt(rvec.dot(rvec));
+    for(int i = 0; i < rvec.size(); i ++)
+      if(! isfinite(rvec[i]))
+        goto next;
+      else
+        rvec[i] *= catg.lambda[i];
+    rvec  = catg.Left * rvec;
+    rvec /= sqrt(rvec.dot(rvec));
+    s.reserve(cache.size());
+    for(int i = 0; i < cache.size(); i ++)
+      s.emplace_back(cache[i].dot(rvec));
+    std::sort(s.begin(), s.end());
+    for(int i = 0; i < s.size() - 1; i ++)
+      if(newdist < s[i + 1] - s[i]) {
+        newdist   =  s[i + 1] - s[i];
+        neworigin = (s[i + 1] + s[i]) / T(2);
+      }
+    if(distance < newdist) {
       cut      = rvec;
-      lasterr -= ratio0;
+      distance = newdist;
+      origin   = neworigin;
     }
    next:
     ;
   }
-  if(! cut.size()) {
-    distance = T(0);
-    return;
-  }
-  assert(cut.size() == catg.lambda.size());
-  for(int i = 0; i < cut.size(); i ++)
-    cut[i] *= catg.lambda[i];
-  cut  = catg.Left * cut;
-  cut /= sqrt(cut.dot(cut));
-  std::vector<T> s;
-  s.reserve(cache.size());
-  for(int i = 0; i < cache.size(); i ++)
-    s.emplace_back(cache[i].dot(cut));
-  std::sort(s.begin(), s.end());
-  distance = T(0);
-  for(int i = 0; i < s.size() - 1; i ++)
-    if(s[i] * s[i + 1] < T(0)) {
-      distance = s[i + 1] - s[i];
-      break;
-    }
   return;
 }
 
