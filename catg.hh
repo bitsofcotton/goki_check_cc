@@ -112,7 +112,6 @@ public:
   inline void compute();
   Vec cut;
   T   distance;
-  T   origin;
   Catg<T> catg;
   std::vector<Vec> cache;
 private:
@@ -303,7 +302,7 @@ template <typename T> inline void CatG<T>::compute() {
     ;
   }
   if(! cut.size()) {
-    distance = origin = T(0);
+    distance = T(0);
     return;
   }
   assert(cut.size() == catg.lambda.size());
@@ -316,11 +315,11 @@ template <typename T> inline void CatG<T>::compute() {
   for(int i = 0; i < cache.size(); i ++)
     s.emplace_back(cache[i].dot(cut));
   std::sort(s.begin(), s.end());
-  origin = distance = T(0);
+  distance = T(0);
   for(int i = 0; i < s.size() - 1; i ++)
-    if(distance < s[i + 1] - s[i]) {
-      distance =  s[i + 1] - s[i];
-      origin   = (s[i + 1] + s[i]) / T(2);
+    if(s[i] * s[i + 1] < T(0)) {
+      distance = s[i + 1] - s[i];
+      break;
     }
   return;
 }
