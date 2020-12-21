@@ -109,16 +109,20 @@ public:
   inline CatG(const int& size);
   inline ~CatG();
   inline void inq(const Vec& in);
+  inline void inqRecur(const Vec& in);
   inline void compute();
+  inline std::pair<int, int> lmrRecur(const Vec& in);
   Vec cut;
   T   distance;
   T   origin;
   Catg<T> catg;
   std::vector<Vec> cache;
 private:
+  const vector<Vec>& tayl(const int& in);
   T threshold_feas;
   T threshold_p0;
   T threshold_inner;
+  int size;
 };
 
 template <typename T> inline CatG<T>::CatG() {
@@ -130,6 +134,7 @@ template <typename T> inline CatG<T>::CatG() {
   threshold_feas  = pow(epsilon, T(5) / T(6));
   threshold_p0    = pow(epsilon, T(4) / T(6));
   threshold_inner = pow(epsilon, T(2) / T(6));
+  size = 0;
 }
 
 template <typename T> inline CatG<T>::CatG(const int& size) {
@@ -141,18 +146,51 @@ template <typename T> inline CatG<T>::CatG(const int& size) {
   threshold_feas  = pow(epsilon, T(5) / T(6));
   threshold_p0    = pow(epsilon, T(4) / T(6));
   threshold_inner = pow(epsilon, T(2) / T(6));
-  catg = Catg<T>(size);;
+  catg = Catg<T>(this->size = size);;
 }
 
 template <typename T> inline CatG<T>::~CatG() {
   ;
 }
 
+template <typename T> const vector<typename CatG<T>::Vec>& CatG<T>::tayl(const int& in) {
+  static vector<vector<Vec> > t;
+  static P0<T> p;
+  if(in < t.size() && t[in].size())
+    return t[in];
+  t.resize(in + 1, vector<Vec>());
+  t[in].reserve(size);
+  for(int i = 0; i < size; i ++)
+    t[in].emplace_back(p.taylor(in, T(i) * T(in) / T(size)));
+  return t[in];
+}
+
 template <typename T> inline void CatG<T>::inq(const Vec& in) {
-  if(cache.size())
-    assert(cache[0].size() == in.size());
-  cache.push_back(in);;
-  catg.inq(in);
+  if(in.size() == size) {
+    cache.push_back(in);
+    catg.inq(in);
+  } else {
+    const auto& t(tayl(in.size()));
+    Vec work(size);
+    for(int i = 0; i < work.size(); i ++)
+      work[i] = t[i].dot(in);
+    cache.push_back(work);
+    catg.inq(work);
+  }
+  return;
+}
+
+template <typename T> inline void CatG<T>::inqRecur(const Vec& in) {
+  auto work(in);
+  for(int i = 0; i < in.size(); i ++) {
+    inq(work);
+    if(i == in.size() - 1) break;
+    auto tmp(work[0]);
+    for(int j = 1; j < work.size() - 1; j ++)
+      work[j - 1] = work[j];
+    work[work.size() - 1] = tmp;
+  }
+  return;
 }
 
 template <typename T> inline void CatG<T>::compute() {
@@ -320,6 +358,29 @@ template <typename T> inline void CatG<T>::compute() {
     ;
   }
   return;
+}
+
+template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in) {
+  std::pair<int, int> res(make_pair(0, 0));
+  T   dM(0);
+  Vec work(size);
+  if(in.size() == size)
+    work = in;
+  else {
+    const auto& t(tayl(in.size()));
+    for(int i = 0; i < work.size(); i ++)
+      work[i] = t[i].dot(in);
+  }
+  for(int i = 0; i < in.size(); i ++) {
+    const auto score(work.dot(cut) - origin);
+    if(abs(dM) < abs(score))
+      res = make_pair(score < 0 ? - 1 : (! score ? 0 : 1), i);
+    auto tmp(work[0]);
+    for(int j = 1; j < work.size() - 1; j ++)
+      work[j - 1] = work[j];
+    work[work.size() - 1] = tmp;
+  }
+  return res;
 }
 
 #define _CATG_

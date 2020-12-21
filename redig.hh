@@ -807,17 +807,16 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   assert(imgs.size());
   for(int i = 1; i < imgs.size(); i ++)
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
-  Decompose<T> dec(imgs[0].rows() * imgs[0].cols());
   vector<vector<pair<Vec, int> > > work;
   work.resize(1, vector<pair<Vec, int> >());
   work[0].reserve(imgs.size() * imgs[0].rows());
   for(int i = 0; i < imgs.size(); i ++) {
-    SimpleVector<T> buf0(imgs[i].rows() * imgs[i].cols());
+    SimpleVector<T> buf(imgs[i].rows() * imgs[i].cols() * 2);
     for(int j = 0; j < imgs[i].rows(); j ++)
       for(int k = 0; k < imgs[i].cols(); k ++)
-        buf0[imgs[i].cols() * j + k] = imgs[i](j, j & 1 ? imgs[i].cols() - 1 - k : k);
-    //const auto buf(dec.next(buf0));
-    const auto& buf(buf0);
+        buf[imgs[i].cols() * j + k] = imgs[i](j, j & 1 ? imgs[i].cols() - 1 - k : k);
+    for(int j = imgs[i].rows() * imgs[i].cols(); j < buf.size(); j ++)
+      buf[j] = buf[buf.size() - j - 1];
     for(int j = 0; j < buf.size(); j ++)
       if(! isfinite(buf[j]))
         goto next;
@@ -828,24 +827,37 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   int t(0);
   T thresh(0);
   while(t < work.size()) {
-    CatG<T> cat(imgs[0].rows() * imgs[0].cols());
+    CatG<T> cat(imgs[0].rows() * imgs[0].cols() * 2);
     for(int i = 0; i < work[t].size(); i ++)
-      cat.inq(work[t][i].first);
+      cat.inqRecur(work[t][i].first);
     std::cerr << "(" << cat.cache.size() << ", " << work[t][0].first.size() << std::flush;
     cat.compute();
     std::cerr << " : " << cat.distance << ")" << std::flush;
     if(thresh == T(0) && ! t) thresh = abs(cat.distance) / T(2);
     if(cat.cut.size() && thresh <= abs(cat.distance)) {
       vector<pair<Vec, int> > left;
+      vector<pair<Vec, int> > mid;
       vector<pair<Vec, int> > right;
-      for(int i = 0; i < work[t].size(); i ++)
-        if(work[t][i].first.dot(cat.cut) < cat.origin)
+      for(int i = 0; i < work[t].size(); i ++) {
+        const auto score(cat.lmrRecur(work[t][i].first).first);
+        if(score < 0)
           left.emplace_back(work[t][i]);
+        else if(! score)
+          mid.emplace_back(work[t][i]);
         else
           right.emplace_back(work[t][i]);
-      if(left.size() && right.size()) {
-        work[t] = left;
-        work.emplace_back(right);
+      }
+      int flg(0);
+      flg += left.size() ? 1 : 0;
+      flg += mid.size() ? 1 : 0;
+      flg += right.size() ? 1 : 0;
+      if(1 < flg) {
+        if(left.size()) {
+          work[t] = left;
+          if(mid.size()) work.emplace_back(mid);
+        } else
+          work[t] = mid;
+        if(right.size()) work.emplace_back(right);
       } else
         t ++;
     } else
