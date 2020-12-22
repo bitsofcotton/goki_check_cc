@@ -807,9 +807,8 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   assert(imgs.size());
   for(int i = 1; i < imgs.size(); i ++)
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
-  vector<vector<pair<Vec, int> > > work;
-  work.resize(1, vector<pair<Vec, int> >());
-  work[0].reserve(imgs.size() * imgs[0].rows());
+  vector<Vec> work;
+  work.reserve(imgs.size());
   for(int i = 0; i < imgs.size(); i ++) {
     Vec buf(imgs[i].rows() * imgs[i].cols() * 2);
     for(int j = 0; j < imgs[i].rows(); j ++)
@@ -820,64 +819,19 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     for(int j = 0; j < buf.size(); j ++)
       if(! isfinite(buf[j]))
         goto next;
-    work[0].emplace_back(make_pair(buf, i));
+    work.emplace_back(buf);
    next:
     std::cerr << "." << std::flush;
   }
-  int t(0);
-  T thresh(0);
-  while(t < work.size()) {
-    CatG<T> cat(cs);
-    for(int i = 0; i < work[t].size(); i ++)
-      cat.inqRecur(work[t][i].first);
-    std::cerr << "(" << cat.cache.size() << ", " << work[t][0].first.size() << std::flush;
-    cat.computeRecur();
-    std::cerr << " : " << cat.distance << ")" << std::flush;
-    vector<vector<pair<pair<Vec, int>, int> > > cts;
-    cts.resize(3, vector<pair<pair<Vec, int>, int> >());
-    for(int i = 0; i < work[t].size(); i ++) {
-      const auto lmr(cat.lmrRecur(work[t][i].first));
-      cts[lmr.first + 1].emplace_back(make_pair(work[t][i], lmr.second));
-    }
-    vector<vector<pair<Vec, int> > > cache;
-    cache.reserve(cts.size() * 2);
-    for(int i = 0; i < cts.size(); i ++) {
-      if(! cts[i].size()) continue;
-      CatG<T> cat(cs);
-      for(int j = 0; j < cts[i].size(); j ++) {
-        Vec work(cts[i][j].first.first.size());
-        for(int k = 0; k < work.size(); k ++)
-          work[k] = cts[i][j].first.first[(k + cts[i][j].second) % work.size()];
-        cat.inq(work);
-      }
-      cat.compute();
-      if(thresh == T(0) && ! t) thresh = abs(cat.distance) / T(2);
-      if(cat.cut.size() && thresh <= abs(cat.distance)) {
-        vector<pair<Vec, int> > left;
-        vector<pair<Vec, int> > right;
-        for(int j = 0; j < cts[i].size(); j ++) {
-          if(cat.lmr(cts[i][j].first.first) < 0)
-            left.emplace_back(work[t][i]);
-          else
-            right.emplace_back(work[t][i]);
-        }
-        if(left.size()) cache.emplace_back(std::move(left));
-        if(right.size()) cache.emplace_back(std::move(right));
-      }
-    }
-    if(cache.size()) work[t] = cache[0];
-    for(int i = 1; i < cache.size(); i ++)
-      work.emplace_back(std::move(cache[i]));
-    if(cache.size() <= 1)
-      t ++;
-  }
+  const auto cg(crushNoContext<T>(work, cs));
   vector<Mat> res;
-  res.reserve(work.size());
-  for(int i = 0; i < work.size(); i ++) {
-    res.emplace_back(Mat(work[i].size() * imgs[0].rows(), imgs[0].cols()));
-    for(int j = 0; j < work[i].size(); j ++)
+  res.reserve(cg.size());
+  for(int i = 0; i < cg.size(); i ++) {
+    if(! cg[i].first.size()) continue;
+    res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
+    for(int j = 0; j < cg[i].first.size(); j ++)
       for(int k = 0; k < imgs[0].rows(); k ++)
-        res[i].row(j * imgs[0].rows() + k) = imgs[work[i][j].second].row(k);
+        res[i].row(j * imgs[0].rows() + k) = imgs[cg[i].first[j].first.second].row(k);
   }
   return res;
 }
