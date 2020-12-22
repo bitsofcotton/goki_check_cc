@@ -302,7 +302,8 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
           if(score < mm.first || mm.second < 0)
             mm = std::make_pair(score, jj);
         }
-        if(on[fidx] / norm[fidx] < on[mm.second] / norm[mm.second] &&
+        if(0 <= mm.second &&
+           on[fidx] / norm[fidx] < on[mm.second] / norm[mm.second] &&
            T(0) <= on[mm.second])
           fidx = mm.second;
       }
