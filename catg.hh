@@ -307,9 +307,9 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
            T(0) <= on[mm.second])
           fidx = mm.second;
       }
-      assert(fidx < one.size());
       on /= abs(mb.dot(on));
-      if(on[fidx] * sqrt(norm.dot(norm)) / norm[fidx] <= threshold_inner)
+      if(one.size() <= fidx ||
+         on[fidx] * sqrt(norm.dot(norm)) / norm[fidx] <= threshold_inner)
         break;
       orth = Pverb.col(fidx);
       const auto norm2orth(orth.dot(orth));
