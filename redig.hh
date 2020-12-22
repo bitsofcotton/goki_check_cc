@@ -121,7 +121,7 @@ public:
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
-  vector<Mat> catImage(const vector<Mat>& imgs);
+  vector<Mat> catImage(const vector<Mat>& imgs, const int& cs = 80);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -133,7 +133,7 @@ public:
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
   void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
-  vector<vector<std::pair<int, int> > > getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg);
+  vector<vector<pair<int, int> > > getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg);
   vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
@@ -803,7 +803,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, c
   return res;
 }
 
-template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& imgs) {
+template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& imgs, const int& cs) {
   assert(imgs.size());
   for(int i = 1; i < imgs.size(); i ++)
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
@@ -811,7 +811,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   work.resize(1, vector<pair<Vec, int> >());
   work[0].reserve(imgs.size() * imgs[0].rows());
   for(int i = 0; i < imgs.size(); i ++) {
-    SimpleVector<T> buf(imgs[i].rows() * imgs[i].cols() * 2);
+    Vec buf(imgs[i].rows() * imgs[i].cols() * 2);
     for(int j = 0; j < imgs[i].rows(); j ++)
       for(int k = 0; k < imgs[i].cols(); k ++)
         buf[imgs[i].cols() * j + k] = imgs[i](j, j & 1 ? imgs[i].cols() - 1 - k : k);
@@ -827,40 +827,48 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   int t(0);
   T thresh(0);
   while(t < work.size()) {
-    CatG<T> cat(imgs[0].rows() * imgs[0].cols() * 2);
+    CatG<T> cat(cs);
     for(int i = 0; i < work[t].size(); i ++)
       cat.inqRecur(work[t][i].first);
     std::cerr << "(" << cat.cache.size() << ", " << work[t][0].first.size() << std::flush;
-    cat.compute();
+    cat.computeRecur();
     std::cerr << " : " << cat.distance << ")" << std::flush;
-    if(thresh == T(0) && ! t) thresh = abs(cat.distance) / T(2);
-    if(cat.cut.size() && thresh <= abs(cat.distance)) {
-      vector<pair<Vec, int> > left;
-      vector<pair<Vec, int> > mid;
-      vector<pair<Vec, int> > right;
-      for(int i = 0; i < work[t].size(); i ++) {
-        const auto score(cat.lmrRecur(work[t][i].first).first);
-        if(score < 0)
-          left.emplace_back(work[t][i]);
-        else if(! score)
-          mid.emplace_back(work[t][i]);
-        else
-          right.emplace_back(work[t][i]);
+    vector<vector<pair<pair<Vec, int>, int> > > cts;
+    cts.resize(3, vector<pair<pair<Vec, int>, int> >());
+    for(int i = 0; i < work[t].size(); i ++) {
+      const auto lmr(cat.lmrRecur(work[t][i].first));
+      cts[lmr.first + 1].emplace_back(make_pair(work[t][i], lmr.second));
+    }
+    vector<vector<pair<Vec, int> > > cache;
+    cache.reserve(cts.size() * 2);
+    for(int i = 0; i < cts.size(); i ++) {
+      if(! cts[i].size()) continue;
+      CatG<T> cat(cs);
+      for(int j = 0; j < cts[i].size(); j ++) {
+        Vec work(cts[i][j].first.first.size());
+        for(int k = 0; k < work.size(); k ++)
+          work[k] = cts[i][j].first.first[(k + cts[i][j].second) % work.size()];
+        cat.inq(work);
       }
-      int flg(0);
-      flg += left.size() ? 1 : 0;
-      flg += mid.size() ? 1 : 0;
-      flg += right.size() ? 1 : 0;
-      if(1 < flg) {
-        if(left.size()) {
-          work[t] = left;
-          if(mid.size()) work.emplace_back(mid);
-        } else
-          work[t] = mid;
-        if(right.size()) work.emplace_back(right);
-      } else
-        t ++;
-    } else
+      cat.compute();
+      if(thresh == T(0) && ! t) thresh = abs(cat.distance) / T(2);
+      if(cat.cut.size() && thresh <= abs(cat.distance)) {
+        vector<pair<Vec, int> > left;
+        vector<pair<Vec, int> > right;
+        for(int j = 0; j < cts[i].size(); j ++) {
+          if(cat.lmr(cts[i][j].first.first) < 0)
+            left.emplace_back(work[t][i]);
+          else
+            right.emplace_back(work[t][i]);
+        }
+        if(left.size()) cache.emplace_back(std::move(left));
+        if(right.size()) cache.emplace_back(std::move(right));
+      }
+    }
+    if(cache.size()) work[t] = cache[0];
+    for(int i = 1; i < cache.size(); i ++)
+      work.emplace_back(std::move(cache[i]));
+    if(cache.size() <= 1)
       t ++;
   }
   vector<Mat> res;
@@ -1308,8 +1316,8 @@ template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& 
   return;
 }
 
-template <typename T> vector<vector<std::pair<int, int> > > reDig<T>::getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg) {
-  vector<vector<std::pair<int, int> > > res;
+template <typename T> vector<vector<pair<int, int> > > reDig<T>::getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg) {
+  vector<vector<pair<int, int> > > res;
   res.resize(attend.size());
   const auto h(refimg.rows() / vbox + 1);
   const auto w(refimg.cols() / vbox + 1);
