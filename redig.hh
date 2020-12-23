@@ -831,7 +831,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
     for(int j = 0; j < cg[i].first.size(); j ++)
       for(int k = 0; k < imgs[0].rows(); k ++)
-        res[i].row(j * imgs[0].rows() + k) = imgs[cg[i].first[j].first.second].row(k);
+        res[i].row(j * imgs[0].rows() + k) = imgs[cg[i].first[j].second].row(k);
   }
   return res;
 }
