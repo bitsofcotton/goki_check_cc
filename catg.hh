@@ -241,7 +241,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
   for(auto ratio0(lasterr / T(2));
            threshold_inner <= ratio0;
            ratio0 /= T(2)) {
-    const auto ratio(lasterr - ratio0);
+    const auto ratio(lasterr -= ratio0);
     int n_fixed;
     T   ratiob;
     T   normb0;
@@ -280,7 +280,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
 #endif
       for(int j = 0; j < Pverb.cols(); j ++) {
         norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
-        norm2[j]   = (j & 1 ? - norm[j] : norm[j]) + ratio;
+        norm2[j]   = (j & 1 ? - ratio : ratio) + norm[j];
         checked[j] = fix[j] || norm[j] <= threshold_p0;
       }
       auto mb(mbb + norm2 * normb0 * ratio);
@@ -338,7 +338,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
         if(fix[i]) {
           const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i)) + b[i] * b[i]));
           F.row(j) = Pt.col(i) / lratio;
-          f[j]     = b[i]      / lratio + ratio * ratio;
+          f[j]     = (b[i] + ratio) / lratio * ratio;
           j ++;
         }
       assert(j == f.size());
@@ -439,8 +439,16 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T
       for(int i = 0; i < result[t].first.size(); i ++)
         (cat.lmr(result[t].first[i].first) < 0 ? left : right).emplace_back(result[t].first[i]);
       if(left.size() && right.size()) {
-        result[t] = std::make_pair(std::move(left), cat.catg);
-        result.emplace_back(std::make_pair(std::move(right), cat.catg));
+        CatG<T> lC(cs);
+        CatG<T> rC(cs);
+        for(int i = 0; i < left.size(); i ++)
+          lC.inq(left[i].first);
+        for(int i = 0; i < right.size(); i ++)
+          rC.inq(right[i].first);
+        lC.catg.compute();
+        rC.catg.compute();
+        result[t] = std::make_pair(std::move(left), std::move(lC.catg));
+        result.emplace_back(std::make_pair(std::move(right), std::move(rC.catg)));
       } else
         t ++;
     } else
@@ -519,8 +527,13 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<Simp
       t ++;
   }
   result.reserve(vv.size());
-  for(int i = 0; i < vv.size(); i ++)
-    result.emplace_back(std::make_pair(std::move(vv[i]), Catg<T>()));
+  for(int i = 0; i < vv.size(); i ++) {
+    CatG<T> cg(cs);
+    for(int j = 0; j < vv[i].size(); j ++)
+      cg.inq(vv[i][j].first.first);
+    cg.compute();
+    result.emplace_back(std::make_pair(std::move(vv[i]), std::move(cg.catg)));
+  }
   return result;
 }
 
