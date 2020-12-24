@@ -112,6 +112,7 @@ public:
   inline void inqRecur(const Vec& in);
   inline void compute(const bool& recur = false);
   inline void computeRecur();
+  inline T    lmrS(const Vec& in);
   inline int  lmr(const Vec& in);
   inline std::pair<int, int> lmrRecur(const Vec& in);
   Vec cut;
@@ -287,10 +288,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       mb -= (deltab = Pverb.projectionPt(mb));
       mb /= (ratiob = sqrt(mb.dot(mb)));
       on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
-      int fidx(0);
-      for( ; fidx < on.size(); fidx ++)
-        if(!checked[fidx])
-          break;
+      int fidx(- 1);
       const auto block(recur ? size * 2 : 2);
       for(int i = 0; i < Pverb.cols() / block; i ++) {
         std::pair<T, int> mm;
@@ -308,13 +306,13 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
           if(score < mm.first || mm.second < 0)
             mm = std::make_pair(score, jj);
         }
-        if(0 <= mm.second &&
-           on[fidx] / norm[fidx] < on[mm.second] / norm[mm.second] &&
-           T(0) <= on[mm.second])
+        if(0 <= mm.second && (fidx < 0 ||
+            (on[fidx] / norm[fidx] < on[mm.second] / norm[mm.second] &&
+             T(0) <= on[mm.second])))
           fidx = mm.second;
       }
       on /= abs(mb.dot(on));
-      if(one.size() <= fidx ||
+      if(fidx < 0 ||
          on[fidx] * sqrt(norm.dot(norm)) / norm[fidx] <= threshold_inner)
         break;
       orth = Pverb.col(fidx);
@@ -381,7 +379,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
   return;
 }
 
-template <typename T> inline int CatG<T>::lmr(const Vec& in) {
+template <typename T> inline T CatG<T>::lmrS(const Vec& in) {
   Vec work(size);
   if(in.size() == size)
     work = in;
@@ -390,7 +388,11 @@ template <typename T> inline int CatG<T>::lmr(const Vec& in) {
     for(int i = 0; i < work.size(); i ++)
       work[i] = t[i].dot(in);
   }
-  return work.dot(cut) < origin ? - 1 : 1;
+  return work.dot(cut) - origin;
+}
+
+template <typename T> inline int CatG<T>::lmr(const Vec& in) {
+  return lmrS(in) < T(0) ? - 1 : 1;
 }
 
 template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in) {
@@ -398,9 +400,11 @@ template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in
   T    dM(0);
   auto work(in);
   for(int i = 0; i < in.size(); i ++) {
-    const auto score(lmr(work));
-    if(abs(dM) < abs(score))
-      res = make_pair(score < 0 ? - 1 : (! score ? 0 : 1), i);
+    const auto score(lmrS(work));
+    if(abs(dM) < abs(score)) {
+      res = make_pair(score < 0 ? - 1 : 1, i);
+      dM  = abs(score);
+    }
     auto tmp(work[0]);
     for(int j = 0; j < work.size() - 1; j ++)
       work[j] = work[j + 1];
