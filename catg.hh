@@ -231,11 +231,12 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
   T    lasterr(Pt.rows() + Pt.cols());
   distance = T(0);
   cut      = Vec();
+  const auto block(recur ? size * 2 : 2);
   // from bitsofcotton/p1/p1.hh
   for(auto ratio0(lasterr / T(2));
            threshold_inner <= ratio0;
            ratio0 /= T(2)) {
-    const auto ratio(lasterr -= ratio0);
+    const auto ratio(lasterr - ratio0);
     int n_fixed;
     T   ratiob;
     T   normb0;
@@ -282,7 +283,6 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       mb /= (ratiob = sqrt(mb.dot(mb)));
       on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
       int fidx(- 1);
-      const auto block(recur ? size * 2 : 2);
       for(int i = 0; i < Pverb.cols() / block; i ++) {
         std::pair<T, int> mm;
         mm = std::make_pair(T(0), - 1);
@@ -328,7 +328,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
         if(fix[i]) {
           const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i)) + b[i] * b[i]));
           F.row(j) = Pt.col(i) / lratio;
-          f[j]     = (b[i] + ratio) / lratio * ratio;
+          f[j]     = (b[i] + (i & 1 ? - ratio : ratio)) / lratio * ratio;
           j ++;
         }
       assert(j == f.size());
@@ -341,6 +341,24 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
     } else
       rvec = Pt * (on * ratiob + deltab + b);
    pnext:
+    SimpleVector<T> err0(Pt.cols());
+    for(int i = 0; i < err0.size(); i ++)
+      err0[i] = Pt.col(i).dot(rvec);
+    auto err(err0 - b - one * ratio * ratio);
+    for(int i = 0; i < b.size() / block; i ++) {
+      auto work(err[i * block] + ratio * ratio);
+      for(int j = 1; j < block; j ++) {
+        const auto jj(i * block + j);
+        work = min(work, err[jj] + (jj & 1 ? - ratio * ratio : ratio * ratio));
+      }
+      for(int j = 0; j < block; j ++) {
+        const auto jj(i * block + j);
+        if(work <= T(0) || err[jj] + ratio * ratio < work)
+          err[jj] = T(0);
+      }
+    }
+    if(! (sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0)) && T(0) < rvec.dot(rvec)))
+      continue;
     std::vector<T> s;
     T newdist(0);
     T neworigin(0);
@@ -365,6 +383,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       distance = newdist;
       origin   = neworigin;
     }
+    lasterr -= ratio0;
    next:
     ;
   }
