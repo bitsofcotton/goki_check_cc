@@ -41,7 +41,7 @@ public:
   inline void inq(const Vec& in);
   inline void compute();
   Mat Left;
-  Vec lambda;
+  Mat R;
 private:
   Mat roughQR(const Mat& At) const;
   Mat AAt;
@@ -75,14 +75,8 @@ template <typename T> inline void Catg<T>::inq(const Vec& in) {
 }
 
 template <typename T> inline void Catg<T>::compute() {
-  Left  = roughQR(AAt);
-  const auto Right(Left.transpose() * AAt);
-  lambda.resize(Right.rows());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < lambda.size(); i ++)
-    lambda[i] = sqrt(Right.row(i).dot(Right.row(i)));
+  Left = roughQR(AAt);
+  R    = Left.transpose() * AAt;
   return;
 }
 
@@ -215,11 +209,10 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
   SimpleVector<bool> fix(b.size());
   {
     auto Pt0(catg.Left.transpose() * A);
-    for(int i = 0; i < Pt0.rows(); i ++)
-      Pt0.row(i) /= sqrt(Pt0.row(i).dot(Pt0.row(i))) * T(2);
     for(int i = 0; i < Pt0.cols(); i ++) {
-      Pt.setCol(2 * i,       Pt0.col(i));
-      Pt.setCol(2 * i + 1, - Pt0.col(i));
+      const auto pp(catg.R.solve(Pt0.col(i)));
+      Pt.setCol(2 * i,       pp);
+      Pt.setCol(2 * i + 1, - pp);
       b[2 * i]       = T(0);
       b[2 * i + 1]   = T(0);
       one[2 * i]     = T(1);
@@ -351,12 +344,11 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
     std::vector<T> s;
     T newdist(0);
     T neworigin(0);
+    rvec  = catg.R * rvec;
     rvec /= sqrt(rvec.dot(rvec));
     for(int i = 0; i < rvec.size(); i ++)
       if(! isfinite(rvec[i]))
         goto next;
-      else
-        rvec[i] *= catg.lambda[i];
     rvec  = catg.Left * rvec;
     rvec /= sqrt(rvec.dot(rvec));
     s.reserve(cache.size());
