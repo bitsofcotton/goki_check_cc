@@ -297,7 +297,13 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
         mm = std::make_pair(T(0), - 1);
         for(int j = 0; j < block; j ++) {
           const auto jj(i * block + j);
-          if(checked[jj]) continue;
+          if(fix[jj]) {
+            // no matter other dimensions if one of them is fixed.
+            mm.second = - 1;
+            break;
+          }
+          if(checked[jj])
+            continue;
           const auto score(on[jj] / norm[jj]);
           if(score < mm.first || mm.second < 0)
             mm = std::make_pair(score, jj);
@@ -324,13 +330,6 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       }
       mbb[fidx] = T(0);
       fix[fidx] = true;
-      if(recur) {
-        const auto ffidx(fidx - (fidx % block));
-        for(int i = ffidx; i < ffidx + block; i ++) {
-          Pverb.setCol(i, Pverb.col(i) * T(0));
-          mbb[i] = T(0);
-        }
-      }
     }
     if(n_fixed == Pt.rows()) {
       int j(0);
