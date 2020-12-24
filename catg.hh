@@ -358,8 +358,8 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
           err[jj] = T(0);
       }
     }
-    if(! (sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0)) && T(0) < rvec.dot(rvec)))
-      continue;
+    if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0)) && T(0) < rvec.dot(rvec))
+      lasterr -= ratio0;
     std::vector<T> s;
     T newdist(0);
     T neworigin(0);
@@ -384,7 +384,6 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       distance = newdist;
       origin   = neworigin;
     }
-    lasterr -= ratio0;
    next:
     ;
   }
