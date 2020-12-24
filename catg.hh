@@ -228,7 +228,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
   Vec  f(Pt.rows());
   Mat  Pverb;
   Vec  orth;
-  T    lasterr(Pt.rows() + Pt.cols());
+  T    lasterr(1);
   distance = T(0);
   cut      = Vec();
   const auto block(recur ? size * 2 : 2);
