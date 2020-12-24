@@ -353,7 +353,8 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       }
       for(int j = 0; j < block; j ++) {
         const auto jj(i * block + j);
-        if(work <= T(0) || err[jj] + ratio * ratio < work)
+        if(work <= T(0) || err[jj] <= T(0) ||
+           work < err[jj] + (jj & 1 ? - ratio * ratio : ratio * ratio))
           err[jj] = T(0);
       }
     }
