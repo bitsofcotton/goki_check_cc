@@ -36,29 +36,16 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline Catg();
-  inline Catg(const int& size);
   inline ~Catg();
   inline void inq(const Vec& in);
   inline void compute();
-  Mat Left;
   Mat R;
 private:
-  Mat roughQR(const Mat& At) const;
-  Mat AAt;
+  std::vector<Vec> cache;
 };
 
 template <typename T> inline Catg<T>::Catg() {
   ;
-}
-
-template <typename T> inline Catg<T>::Catg(const int& size) {
-  AAt.resize(size, size);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < AAt.rows(); i ++)
-    for(int j = 0; j < AAt.cols(); j ++)
-      AAt(i, j) = T(0);
 }
 
 template <typename T> inline Catg<T>::~Catg() {
@@ -66,21 +53,14 @@ template <typename T> inline Catg<T>::~Catg() {
 }
 
 template <typename T> inline void Catg<T>::inq(const Vec& in) {
-  assert(AAt.rows() == in.size() && AAt.cols() == in.size());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < in.size(); i ++)
-    AAt.row(i) += in * in[i];
+  if(cache.size()) assert(in.size() == cache[0].size());
+  cache.emplace_back(in);
 }
 
 template <typename T> inline void Catg<T>::compute() {
-  Left = roughQR(AAt);
-  R    = Left.transpose() * AAt;
-  return;
-}
-
-template <typename T> inline typename Catg<T>::Mat Catg<T>::roughQR(const Mat& At) const {
+  Mat At(cache[0].size(), cache.size());
+  for(int i = 0; i < At.cols(); i ++)
+    At.setCol(i, cache[i]);
   Mat Q(At.rows(), At.cols());
   for(int i = 0; i < Q.rows(); i ++)
     for(int j = 0; j < Q.cols(); j ++)
@@ -91,7 +71,8 @@ template <typename T> inline typename Catg<T>::Mat Catg<T>::roughQR(const Mat& A
     // in this case, not.
     Q.row(i) = work / sqrt(work.dot(work));
   }
-  return Q;
+  R = (Q * At.transpose()).transpose();
+  return;
 }
 
 
@@ -143,7 +124,7 @@ template <typename T> inline CatG<T>::CatG(const int& size) {
   threshold_feas  = pow(epsilon, T(5) / T(6));
   threshold_p0    = pow(epsilon, T(4) / T(6));
   threshold_inner = pow(epsilon, T(2) / T(6));
-  catg = Catg<T>(this->size = size);;
+  this->size = size;
 }
 
 template <typename T> inline CatG<T>::~CatG() {
@@ -163,17 +144,16 @@ template <typename T> const vector<typename CatG<T>::Vec>& CatG<T>::tayl(const i
 }
 
 template <typename T> inline void CatG<T>::inq(const Vec& in) {
-  if(in.size() == size) {
+  if(in.size() == size)
     cache.push_back(in);
-    catg.inq(in);
-  } else {
+  else {
     const auto& t(tayl(in.size()));
     Vec work(size);
     for(int i = 0; i < work.size(); i ++)
       work[i] = t[i].dot(in);
     cache.push_back(work);
-    catg.inq(work);
   }
+  catg.inq(cache[cache.size() - 1]);
   return;
 }
 
@@ -195,31 +175,21 @@ template <typename T> inline void CatG<T>::computeRecur() {
 }
 
 template <typename T> inline void CatG<T>::compute(const bool& recur) {
-  Mat A(cache[0].size(), cache.size());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < A.cols(); i ++)
-    A.setCol(i, cache[i]);
   catg.compute();
-  Mat Pt(A.rows(), A.cols() * 2);
+  Mat Pt(size, cache.size() * 2);
   Vec b(Pt.cols());
   Vec one(b.size());
   SimpleVector<bool> fix(b.size());
-  {
-    auto Pt0(catg.Left.transpose() * A);
-    for(int i = 0; i < Pt0.cols(); i ++) {
-      const auto pp(catg.R.solve(Pt0.col(i)));
-      Pt.setCol(2 * i,       pp);
-      Pt.setCol(2 * i + 1, - pp);
-      b[2 * i]       = T(0);
-      b[2 * i + 1]   = T(0);
-      one[2 * i]     = T(1);
-      one[2 * i + 1] = T(1);
-      fix[2 * i]     = 0;
-      fix[2 * i + 1] = 0;
-    }
+  for(int i = 0; i < cache.size(); i ++) {
+    const auto pp(catg.R.solve(cache[i]));
+    Pt.setCol(2 * i,       pp);
+    Pt.setCol(2 * i + 1, - pp);
+    b[2 * i]       = T(0);
+    b[2 * i + 1]   = T(0);
+    one[2 * i]     = T(1);
+    one[2 * i + 1] = T(1);
+    fix[2 * i]     = 0;
+    fix[2 * i + 1] = 0;
   }
   auto checked(fix);
   auto norm(b);
@@ -368,8 +338,6 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
     for(int i = 0; i < rvec.size(); i ++)
       if(! isfinite(rvec[i]))
         goto next;
-    rvec  = catg.Left * rvec;
-    rvec /= sqrt(rvec.dot(rvec));
     s.reserve(cache.size());
     for(int i = 0; i < cache.size(); i ++)
       s.emplace_back(cache[i].dot(rvec));
