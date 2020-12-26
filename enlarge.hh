@@ -36,6 +36,9 @@ public:
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
+    INTEG_X,
+    INTEG_Y,
+    INTEG_BOTH,
     COLLECT_X,
     COLLECT_Y,
     COLLECT_BOTH,
@@ -91,6 +94,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return compute(compute(data, ENLARGE_X), ENLARGE_Y);
     case DETECT_BOTH:
       return gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
+    case INTEG_BOTH:
+      return gmean(compute(data, INTEG_X), compute(data, INTEG_Y));
     case COLLECT_BOTH:
       return gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
     case BUMP_BOTH:
@@ -103,6 +108,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return compute(data.transpose(), ENLARGE_Y).transpose();
     case DETECT_X:
       return compute(data.transpose(), DETECT_Y).transpose();
+    case INTEG_X:
+      return compute(data.transpose(), INTEG_Y).transpose();
     case COLLECT_X:
       return compute(data.transpose(), COLLECT_Y).transpose();
     case BUMP_X:
@@ -110,7 +117,9 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     case EXTEND_X:
       return compute(data.transpose(), EXTEND_Y).transpose();
     case DETECT_Y:
-      return p.diff(data.rows()) * data;
+      return p.diff(  data.rows()) * data;
+    case INTEG_Y:
+      return p.diff(- data.rows()) * data;
     case COLLECT_Y:
       return compute(compute(data, DETECT_Y), ABS);
     case SHARPEN_Y:
@@ -262,7 +271,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               }
           }
         }
-        result = p.diff(- result.rows()) * result;
         return result;
       }
       break;
