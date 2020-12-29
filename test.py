@@ -78,7 +78,10 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "pextend"):
+    if(argv[2] == "bump"):
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
+      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "32x32+16", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels), "1",  str(zratio), "0", root + "-bump.ppm", root + ".obj"])
