@@ -134,9 +134,11 @@ template <typename T> inline CatG<T>::~CatG() {
 template <typename T> const vector<typename CatG<T>::Vec>& CatG<T>::tayl(const int& in) {
   static vector<vector<Vec> > t;
   static P0<T> p;
-  if(in < t.size() && t[in].size())
-    return t[in];
-  t.resize(in + 1, vector<Vec>());
+  if(in < t.size()) {
+    if(t[in].size())
+      return t[in];
+  } else
+    t.resize(in + 1, vector<Vec>());
   t[in].reserve(size);
   for(int i = 0; i < size; i ++)
     t[in].emplace_back(p.taylor(in, T(i) * T(in) / T(size)));
@@ -314,17 +316,17 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
     SimpleVector<T> err0(Pt.cols());
     for(int i = 0; i < err0.size(); i ++)
       err0[i] = Pt.col(i).dot(rvec);
-    auto err(err0 - b - one * ratio * ratio);
+    auto err(err0 - b - one * ratio * ratio * ratiob);
     for(int i = 0; i < b.size() / block; i ++) {
       auto work(err[i * block] + ratio * ratio);
       for(int j = 1; j < block; j ++) {
         const auto jj(i * block + j);
-        work = min(work, err[jj] + (jj & 1 ? - ratio * ratio : ratio * ratio));
+        work = min(work, err[jj] + (jj & 1 ? - ratio * ratio : ratio * ratio) * ratiob);
       }
       for(int j = 0; j < block; j ++) {
         const auto jj(i * block + j);
         if(work <= T(0) || err[jj] <= T(0) ||
-           work < err[jj] + (jj & 1 ? - ratio * ratio : ratio * ratio))
+           work < err[jj] + (jj & 1 ? - ratio * ratio : ratio * ratio) * ratiob)
           err[jj] = T(0);
       }
     }
@@ -381,7 +383,7 @@ template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in
   for(int i = 0; i < in.size(); i ++) {
     const auto score(lmrS(work));
     if(abs(dM) < abs(score)) {
-      res = make_pair(score < 0 ? - 1 : 1, i);
+      res = make_pair(score < T(0) ? - 1 : 1, i);
       dM  = abs(score);
     }
     auto tmp(work[0]);
@@ -431,8 +433,10 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T
         rC.catg.compute();
         result[t] = std::make_pair(std::move(left), std::move(lC.catg));
         result.emplace_back(std::make_pair(std::move(right), std::move(rC.catg)));
-      } else
+      } else {
+        result[t].second = cat.catg;
         t ++;
+      }
     } else
       t ++;
   }
@@ -501,7 +505,7 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<Simp
           if(! i) w0 = std::move(work);
           else vv.emplace_back(std::move(work));
         }
-        vv[t] = w0;
+        vv[t] = std::move(w0);
       }
       if(cache.size() <= 1)
         t ++;
