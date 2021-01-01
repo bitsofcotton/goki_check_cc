@@ -416,7 +416,7 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T
     cat.compute();
     std::cerr << cat.distance << std::flush;
     if(! t && Mdist == T(0))
-      Mdist = cat.distance;
+      Mdist = cat.distance / T(2);
     if(Mdist <= cat.distance && cat.cut.size()) {
       std::vector<std::pair<SimpleVector<T>, int> > left;
       std::vector<std::pair<SimpleVector<T>, int> > right;
@@ -465,7 +465,7 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<Simp
       cat.inqRecur(vv[t][i].first.first);
     std::cerr << "." << std::flush;
     cat.computeRecur();
-    if(! t && Mdist == T(0)) Mdist = cat.distance;
+    if(! t && Mdist == T(0)) Mdist = cat.distance / T(2);
     std::cerr << cat.distance << std::flush;
     if(Mdist <= cat.distance) {
       std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > left;
