@@ -60,7 +60,7 @@ matchPartial class default threshr is severe.
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
-* https://sites.google.com/view/bitsofcotton/
-* https://ja.osdn.net/projects/goki-check/
+* https://drive.google.com/drive/folders/1B71X1BMttL6yyi76REeOTNRrpopO8EAR?usp=sharing
+* https://1drv.ms/u/s!AnqkwcwMjB_PaDIfXya_M3-aLXw?e=qzfKcU
+* https://ja.osdn.net/users/bitsofcotton/
 * https://www.sourceforge.net/projects/gokicheck/
-
