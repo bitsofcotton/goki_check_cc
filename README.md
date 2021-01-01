@@ -33,40 +33,24 @@ Searching the Internet more...
 # Usage
     make gokicheck
     
-    gokicheck (collect|sharpen|bump|enlarge|pextend|illust) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
+    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
     gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
-    gokicheck pred  <output.ppm> <input0.ppm> ...
+    gokicheck (cat|pred)  <output.ppm> <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck (tilt|sbox)    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
-    gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck (match0|match|rmatch0|rmatch) <num_of_res_shown> <num_of_hidden_match|num_of_recursive_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
-    gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
-    gokicheck recolor <dimension> <input.ppm> <input-copy.ppm> <output.ppm>
+    gokicheck habit    <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
+    gokicheck recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm>
     gokicheck recolor2 <dimension> <input.ppm> <intensity> <output.ppm>
-    gokicheck retrace <dimension> <input-mask.ppm> <input-mask-copy.ppm> <intensity>
+    gokicheck recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
+    gokicheck retrace  <dimension> <input-mask.ppm> <input-mask-copy.ppm> <intensity>
     gokicheck retrace2 <dimension> <input-mask.ppm> <outbase> <intensity>
-    python2 test.py ./gokicheck match     input0.png input1.(png|obj)
-    python2 test.py ./gokicheck match0    input0.png input1.(png|obj)
-    python2 test.py ./gokicheck matcho    input0.png input1.(png|obj) match.txt
-    python2 test.py ./gokicheck pred      input0.png input1.png ...
-    python2 test.py ./gokicheck ppred     input0.png input1.png ...
-    python2 test.py ./gokicheck pextend   input.png
-    python2 test.py ./gokicheck penetrate input.png
-    python2 test.py ./gokicheck sharpen   input.png
-    python2 test.py ./gokicheck enlarge   input.png
-    python2 test.py ./gokicheck obj       input.png
-    python2 test.py ./gokicheck jps       input.png
-    python2 test.py ./gokicheck tilt      input.png
-    python2 test.py ./gokicheck btilt     input.png
-    python2 test.py ./gokicheck btilt2    input.png
-    python2 test.py ./gokicheck flicker   input.png
-    python2 test.py ./gokicheck sbox      input.png
-    python2 test.py ./gokicheck demosaic  input.png
-    python2 test.py ./gokicheck extend    input.png
-    python2 test.py ./gokicheck prep      input.png
-    python2 test.py ./gokicheck prepsq    input.png
-    python2 test.py ./gokicheck mask      input.png
-    python2 test.py ./gokicheck mask0     input.png
+    gokicheck reimage  <dimension> <input.ppm> <input-src.ppm> <output.ppm> <intensity>
+    gokicheck reimage2 <dimension> <input.ppm> <output.ppm> <intensity>
+    python2 test.py ./gokicheck (match|match0|rmatch|rmatch0) input0.png input1.(png|obj)
+    python2 test.py ./gokicheck (cat|pred|ppred|ppredr)       input0.png input1.png ...
+    python2 test.py ./gokicheck (pextend|sharpen|enlarge|jps|tilt|btilt|flicker|obj|sbox|demosaic|extend|prep|presq|mask|mask0) input.png
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive
@@ -76,7 +60,7 @@ matchPartial class default threshr is severe.
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
-* https://sites.google.com/view/bitsofcotton/
-* https://ja.osdn.net/projects/goki-check/
+* https://drive.google.com/drive/folders/1B71X1BMttL6yyi76REeOTNRrpopO8EAR?usp=sharing
+* https://1drv.ms/u/s!AnqkwcwMjB_PaDIfXya_M3-aLXw?e=qzfKcU
+* https://ja.osdn.net/users/bitsofcotton/
 * https://www.sourceforge.net/projects/gokicheck/
-
