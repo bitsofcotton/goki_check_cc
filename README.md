@@ -65,3 +65,5 @@ matchPartial class default threshr is severe.
 * https://ja.osdn.net/users/bitsofcotton/
 * https://www.sourceforge.net/projects/gokicheck/ (abandoned)
 
+# Archive
+This repository is archived, so without bug report, will no change.
