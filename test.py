@@ -122,21 +122,6 @@ else:
     elif(argv[2] == "demosaic"):
       subprocess.call(["convert", line, "-resize", str(int(10000. / pixels) / 100.) + "%", "-compress", "none", root + "-demosaic.ppm"])
       subprocess.call(["python2", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic.ppm"])
-    elif(argv[2] == "extend"):
-      for tami in range(1, pixels + 1):
-        tam = tami / 360. * 60 / pixels
-        for s in range(0, 4):
-          subprocess.call([argv[1], "tilt", str(s), "4", str(tam), root + ".ppm", root + ".obj", root + "-tilt" + str(s) + ".ppm"])
-          subprocess.call([argv[1], "bump", root + "-tilt" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".ppm"])
-          subprocess.call([argv[1], "obj", "1", "1", str(zratio), "0", root + "-bumpext" + str(s) + ".ppm", root + "-bumpext" + str(s) + ".obj"])
-        subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext0.obj", "0", "4", str(tam), root + "-bumpextA.obj"])
-        subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext1.obj", "1", "4", str(tam), root + "-bumpextB.obj"])
-        subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext2.obj", "2", "4", str(tam), root + "-bumpextC.obj"])
-        subprocess.call([argv[1], "habit", root + ".obj", root + "-bumpext3.obj", "3", "4", str(tam), root + "-bumpextD.obj"])
-        subprocess.call([argv[1], "habit", root + "-bumpextA.obj", root + "-bumpextC.obj", "0", "1", "0", root + "-bumpextAC.obj"])
-        subprocess.call([argv[1], "habit", root + "-bumpextB.obj", root + "-bumpextD.obj", "0", "1", "0", root + "-bumpextBD.obj"])
-        subprocess.call([argv[1], "habit", root + "-bumpextAC.obj", root + "-bumpextBD.obj", "0", "1", "0", root + "-bumpext.obj"])
-        subprocess.call(["cp", root + "-bumpext.obj", root + ".obj"])
     elif(argv[2] == "prep"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])
     elif(argv[2] == "prepsq"):

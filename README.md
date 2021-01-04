@@ -50,7 +50,7 @@ Searching the Internet more...
     gokicheck reimage2 <dimension> <input.ppm> <output.ppm> <intensity>
     python2 test.py ./gokicheck (match|match0|rmatch|rmatch0) input0.png input1.(png|obj)
     python2 test.py ./gokicheck (cat|pred|ppred|ppredr)       input0.png input1.png ...
-    python2 test.py ./gokicheck (pextend|sharpen|enlarge|jps|tilt|btilt|flicker|obj|sbox|demosaic|extend|prep|presq|mask|mask0) input.png
+    python2 test.py ./gokicheck (pextend|sharpen|enlarge|jps|tilt|btilt|flicker|obj|sbox|demosaic|prep|presq|mask|mask0) input.png
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive
@@ -63,4 +63,5 @@ matchPartial class default threshr is severe.
 * https://drive.google.com/drive/folders/1B71X1BMttL6yyi76REeOTNRrpopO8EAR?usp=sharing
 * https://1drv.ms/u/s!AnqkwcwMjB_PaDIfXya_M3-aLXw?e=qzfKcU
 * https://ja.osdn.net/users/bitsofcotton/
-* https://www.sourceforge.net/projects/gokicheck/
+* https://www.sourceforge.net/projects/gokicheck/ (abandoned)
+
