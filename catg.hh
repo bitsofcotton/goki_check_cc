@@ -395,11 +395,10 @@ template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in
 }
 
 
-template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > crush(const std::vector<SimpleVector<T> >& v, const int& cs) {
+template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > crush(const std::vector<SimpleVector<T> >& v, const int& cs, T cut = - T(1) / T(2)) {
   std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > result;
   if(! v.size()) return result;
   int t(0);
-  T   Mdist(0);
   result.emplace_back(std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> >());
   result[0].first.reserve(v.size());
   for(int i = 0; i < v.size(); i ++)
@@ -415,9 +414,9 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T
     std::cerr << "." << std::flush;
     cat.compute();
     std::cerr << cat.distance << std::flush;
-    if(! t && Mdist == T(0))
-      Mdist = cat.distance / T(2);
-    if(Mdist <= cat.distance && cat.cut.size()) {
+    if(! t && cut <= T(0))
+      cut = cat.distance * abs(cut);
+    if(cut <= cat.distance && cat.cut.size()) {
       std::vector<std::pair<SimpleVector<T>, int> > left;
       std::vector<std::pair<SimpleVector<T>, int> > right;
       for(int i = 0; i < result[t].first.size(); i ++)
@@ -443,12 +442,11 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T
   return result;
 }
 
-template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >, Catg<T> > > crushNoContext(const std::vector<SimpleVector<T> >& v, const int& cs) {
+template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >, Catg<T> > > crushNoContext(const std::vector<SimpleVector<T> >& v, const int& cs, T cut = - T(1) / T(2)) {
   std::vector<std::pair<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >, Catg<T> > > result;
   if(! v.size()) return result;
   std::vector<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > > vv;
   int t(0);
-  T   Mdist(0);
   vv.emplace_back(std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >());
   vv[0].reserve(v.size());
   for(int i = 0; i < v.size(); i ++)
@@ -465,9 +463,9 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<Simp
       cat.inqRecur(vv[t][i].first.first);
     std::cerr << "." << std::flush;
     cat.computeRecur();
-    if(! t && Mdist == T(0)) Mdist = cat.distance / T(2);
+    if(! t && cut <= T(0)) cut = cat.distance * abs(cut);
     std::cerr << cat.distance << std::flush;
-    if(Mdist <= cat.distance) {
+    if(cut <= cat.distance) {
       std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > left;
       std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > right;
       for(int i = 0; i < vv[t].size(); i ++) {
