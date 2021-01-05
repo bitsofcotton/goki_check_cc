@@ -208,7 +208,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           cerr << "e" << flush;
           eop.resize((size - 1) * recur + 1, size);
           for(int j = 0; j < eop.rows(); j ++)
-            eop.row(j) = p.taylor(eop.cols(), T(j) / T(recur));
+            eop.row(j) = p.taylor(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
         }
        eopi:
         return Eop[size][recur] * data;
