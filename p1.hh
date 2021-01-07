@@ -129,6 +129,10 @@ template <typename T> inline P1<T>::~P1() {
 
 template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
   assert(in.size() == statlen + varlen);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < statlen; i ++) {
     for(int j = 0; j < varlen; j ++)
       A(i, j) = in[i + j];
@@ -139,10 +143,16 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
       b[i]     /= norm;
     }
   }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < statlen; i ++) {
     A.row(statlen + i) = - A.row(i);
     b[statlen + i]     = - b[i];
   }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < fvec.size(); i ++)
     fvec[i] = T(0);
   lasterr = T(A.rows() + A.cols());
@@ -172,7 +182,7 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
       goto pnext;
     }
 #if defined(_OPENMP)
-#pragma omp simd
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 0; i < one.size(); i ++)
       fix[i]  = false;
@@ -192,7 +202,8 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
     Pverb  = Pt;
     for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
 #if defined(_OPENMP)
-#pragma omp simd
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
 #endif
       for(int j = 0; j < Pverb.cols(); j ++) {
         norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
@@ -218,7 +229,7 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
       const auto norm2orth(orth.dot(orth));
       const auto mbb0(mbb[fidx]);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp for schedule(static, 1)
 #endif
       for(int j = 0; j < Pverb.cols(); j ++) {
         const auto work(Pverb.col(j).dot(orth) / norm2orth);
@@ -268,6 +279,15 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
     }
    next:
     ;
+  }
+  if(fvec.dot(fvec) != T(0)) {
+    T num(0);
+    T denom(0);
+    for(int i = 0; i < statlen - 1; i ++) {
+      num   += abs(b[i]);
+      denom += abs(fvec.dot(A.row(i)));
+    }
+    fvec *= num / denom;
   }
   return fvec;
 }
