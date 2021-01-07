@@ -41,8 +41,8 @@ Searching the Internet more...
     gokicheck (match0|match|rmatch0|rmatch) <num_of_res_shown> <num_of_hidden_match|num_of_recursive_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit    <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
-    gokicheck recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm>
-    gokicheck recolor2 <dimension> <input.ppm> <intensity> <output.ppm>
+    gokicheck recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
+    gokicheck recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokicheck recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokicheck retrace  <dimension> <input-mask.ppm> <input-mask-copy.ppm> <intensity>
     gokicheck retrace2 <dimension> <input-mask.ppm> <outbase> <intensity>
@@ -67,3 +67,4 @@ matchPartial class default threshr is severe.
 
 # Archive
 This repository is archived, so without bug report, will no change.
+

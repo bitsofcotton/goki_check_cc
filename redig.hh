@@ -114,7 +114,7 @@ public:
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
-  Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20);
+  Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& intensity = T(1));
   Mat  reColor3(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reColor(const Mat& cbase, const int& count = 20, const T& intensity = T(1));
   Mat  reTrace(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
@@ -585,7 +585,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase,
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase, const Mat& vbase, const int& count) {
+template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase, const Mat& vbase, const int& count, const T& intensity) {
   assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
   vector<pair<T, pair<int, int> > > vpoints;
   vector<pair<T, pair<int, int> > > cpoints;
@@ -599,25 +599,15 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
       cpoints.emplace_back(make_pair(cbase(i, j), make_pair(i, j)));
   sort(vpoints.begin(), vpoints.end());
   sort(cpoints.begin(), cpoints.end());
-  Vec vv(vpoints.size());
-  Vec cc(cpoints.size());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < vpoints.size(); i ++)
+  SimpleVector<T> vv(vpoints.size());
+  SimpleVector<T> cc(cpoints.size());
+  for(int i = 0; i < vv.size(); i ++)
     vv[i] = vpoints[i].first;
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < cpoints.size(); i ++)
+  for(int i = 0; i < cc.size(); i ++)
     cc[i] = cpoints[i].first;
-  const auto ccc(Decompose<T>(count).mimic(cc, vv));
+  const auto ccc(Decompose<T>(count).mimic(cc, vv, intensity));
   Mat res(cbase);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < cpoints.size(); i ++)
+  for(int i = 0; i < ccc.size(); i ++)
     res(cpoints[i].second.first, cpoints[i].second.second) = ccc[i];
   return res;
 }
@@ -665,19 +655,12 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reColor(const Mat& cbase,
     for(int j = 0; j < cbase.cols(); j ++)
       cpoints.emplace_back(make_pair(cbase(i, j), make_pair(i, j)));
   sort(cpoints.begin(), cpoints.end());
-  Vec cc(cpoints.size());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < cpoints.size(); i ++)
+  SimpleVector<T> cc(cpoints.size());
+  for(int i = 0; i < cc.size(); i ++)
     cc[i] = cpoints[i].first;
   const auto ccc(Decompose<T>(count).emphasis(cc, intensity));
   Mat res(cbase);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < cpoints.size(); i ++)
+  for(int i = 0; i < ccc.size(); i ++)
     res(cpoints[i].second.first, cpoints[i].second.second) = ccc[i];
   return res;
 }

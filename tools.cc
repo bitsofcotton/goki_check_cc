@@ -89,8 +89,8 @@ void usage() {
   cout << "gokicheck (rmatch0|rmatch) <num_of_res_shown> <num_of_sub_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <intensity> <output.ppm>" << endl;
+  cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck retrace <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck retrace2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
@@ -206,12 +206,12 @@ int main(int argc, const char* argv[]) {
       redig.rgb2xyz(xyzs, datas);
       for(int i = 0; i < 3; i ++)
         xyzc[i] = strcmp(argv[1], "recolor") == 0 ?
-          redig.reColor(xyzc[i], xyzs[i], count) :
-          redig.reColor(xyzc[i], count, num_t(std::atof(argv[4])));
+          redig.reColor(xyzc[i], xyzs[i], count, num_t(std::atof(argv[6]))) :
+          redig.reColor(xyzc[i], count, num_t(std::atof(argv[5])));
       redig.xyz2rgb(datac, xyzc);
     }
     redig.normalize(datac, num_t(1));
-    if(!file.savep2or3(argv[5], datac, ! true))
+    if(!file.savep2or3(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], datac, ! true))
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
     typename simpleFile<num_t>::Mat data[3], mask[3];
