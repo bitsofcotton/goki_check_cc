@@ -40,14 +40,13 @@ public:
   inline ~Decompose();
          Vec mimic(const Vec& dst, const Vec& src, const T& intensity = T(1)) const;
          Vec emphasis(const Vec& dst, const T& intensity = T(1)) const;
-  inline Vec mimic0(const Vec& dst, const Vec& src) const;
          Vec next(const Vec& in) const;
          Mat complementMat(const Vec& in) const;
 private:
   std::vector<Mat> bA;
   Mat A;
-         Vec prepare(const Vec& in, const int& idx = 0) const;
-         Vec apply(const Vec& v, const Vec& dst, const Vec& src, const int& idx = 0) const;
+         Vec  prepare(const Vec& in, const int& idx = 0) const;
+         void apply(Vec& v, const Vec& dst, const Vec& src, const int& idx = 0) const;
 };
 
 template <typename T> inline Decompose<T>::Decompose() {
@@ -82,12 +81,9 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::mimic(const Vec& 
         auto res(dst);
   for(int i = 0; i < size2; i ++) {
     const auto dd(prepare(dst, i));
-    const auto m0(apply(dst, mimic0(dd,
-                    prepare(src, i * size3 / size2)) * intensity +
-                    dd * (T(1) - intensity), dd, i));
-    for(int j = i; j <= size; j ++)
-      res[(j * size2 + i + size2 / 2) % res.size()] =
-        m0[(j * size2 + i + size2 / 2) % m0.size()];
+    apply(res, complementMat(next(prepare(src, i * size3 / size2))) *
+                 complementMat(next(dd)).solve(dd) * intensity +
+                 dd * (T(1) - abs(intensity)), dd, i);
   }
   return res;
 }
@@ -98,16 +94,11 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Ve
         auto res(dst);
   for(int i = 0; i < size2; i ++) {
     const auto dd(prepare(dst, i));
-    const auto ndd(next(dd));
-          auto freq(complementMat(ndd).solve(dd));
+          auto freq(dd);
     freq[freq.size() - 1] = T(0);
     for(int j = 0; j < freq.size() - 1; j ++)
       freq[j] = T(j + 1) / T(freq.size() - 1);
-    const auto m0(apply(dst,
-      complementMat(ndd) * freq * intensity + dd * (T(1) - intensity), dd, i));
-    for(int j = 0; j <= size; j ++)
-      res[(j * size2 + i + size2 / 2) % res.size()] =
-        m0[(j * size2 + i + size2 / 2) % m0.size()];
+    apply(res, complementMat(next(dd)) * freq * intensity, dd, i);
   }
   return res;
 }
@@ -121,39 +112,35 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::prepare(const Vec
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < size; i ++) {
+  for(int i = 0; i < res.size(); i ++) {
     res[i] = T(0);
     const auto ibegin(i * cnt);
-    const auto iend(i < size - 1 ? min((i + 1) * cnt, int(in.size())) : int(in.size()));
+    const auto iend(i < size - 1 ? min((i + 1) * cnt, int(in.size()) - idx)
+                                 : int(in.size()) - idx);
     for(int j = ibegin; j < iend; j ++)
-      res[i] += in[(j + idx) % in.size()];
+      res[i] += in[j + idx];
     res[i] /= T(iend - ibegin);
   }
   return res;
 }
 
-template <typename T> typename Decompose<T>::Vec Decompose<T>::apply(const Vec& v, const Vec& dst, const Vec& src, const int& idx) const {
+template <typename T> void Decompose<T>::apply(Vec& v, const Vec& dst, const Vec& src, const int& idx) const {
   const int  size(bA.size());
   assert(dst.size() == size && src.size() == size);
   const auto cnt(int(v.size() + size - 1) / size - 1);
   assert(0 < cnt);
-  auto res(v);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < size; i ++) {
     const auto ratio(dst[i] - src[i]);
     for(int j = i * cnt;
-            j < (i < res.size() - 1 ? min((i + 1) * cnt, int(res.size())) : int(res.size()));
+            j < (i < size - 1 ? min((i + 1) * cnt, int(v.size()) - idx)
+                              : int(v.size()) - idx);
             j ++)
-      res[(j + idx) % res.size()] += ratio;
+      v[j + idx] += ratio;
   }
-  return res;
-}
-
-template <typename T> inline typename Decompose<T>::Vec Decompose<T>::mimic0(const Vec& dst, const Vec& src) const {
-  const auto rr(src.dot(src) / dst.dot(dst));
-  return complementMat(next(dst)) * complementMat(next(src)).solve(dst);
+  return;
 }
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::next(const Vec& in) const {
@@ -163,6 +150,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::next(const Vec& i
 }
 
 template <typename T> typename Decompose<T>::Mat Decompose<T>::complementMat(const Vec& in) const {
+  assert(A.cols() == in.size() && bA.size() == in.size());
   Mat B(A.rows(), A.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
