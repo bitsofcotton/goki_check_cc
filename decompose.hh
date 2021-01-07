@@ -152,7 +152,8 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::apply(const Vec& 
 }
 
 template <typename T> inline typename Decompose<T>::Vec Decompose<T>::mimic0(const Vec& dst, const Vec& src) const {
-  return complementMat(next(dst)) * complementMat(next(src)).solve(dst);
+  const auto rr(src.dot(src) / dst.dot(dst));
+  return complementMat(next(dst)) * complementMat(next(src)).solve(dst) * rr / sqrt(sqrt(rr));
 }
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::next(const Vec& in) const {
