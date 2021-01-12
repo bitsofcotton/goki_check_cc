@@ -75,12 +75,26 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::mimic(const Vec& 
   const auto size2(dst.size() / size);
   const auto size3(src.size() / size);
         auto res(dst);
+  Vec ddst;
+  Vec dsrc;
   for(int i = 0; i < size2; i ++) {
     const auto dd(prepare(dst, i));
-    apply(res, synth(mother(prepare(src, i * size3 / size2)),
-                     freq(mother(dd), dd)) * intensity +
-                 dd * (T(1) - abs(intensity)), dd, i);
+    if(i) {
+      dsrc += dd;
+      ddst += synth(mother(prepare(src, i * size3 / size2)),
+                    freq(mother(dd), dd)) * intensity +
+              dd * (T(1) - abs(intensity));
+   } else {
+      dsrc  = dd;
+      ddst  = synth(mother(prepare(src, i * size3 / size2)),
+                    freq(mother(dd), dd)) * intensity +
+              dd * (T(1) - abs(intensity));
+   }
   }
+  dsrc /= T(size2);
+  ddst /= T(size2);
+  for(int i = 0; i < size2; i ++)
+    apply(res, ddst, dsrc, i);
   return res;
 }
 
@@ -88,14 +102,26 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Ve
   const int  size(A.size());
   const auto size2(dst.size() / size);
         auto res(dst);
+  Vec   ddst;
+  Vec   dsrc;
   for(int i = 0; i < size2; i ++) {
     const auto dd(prepare(dst, i));
           auto lfreq(dd);
     lfreq[lfreq.size() - 1] = T(0);
     for(int j = 0; j < lfreq.size() - 1; j ++)
       lfreq[j] = T(j + 1) / T(lfreq.size() - 1);
-    apply(res, synth(mother(dd), lfreq) * intensity, dd, i);
+    if(i) {
+      dsrc += dd;
+      ddst += synth(mother(dd), lfreq) * intensity;
+    } else {
+      dsrc  = dd;
+      ddst  = synth(mother(dd), lfreq) * intensity;
+    }
   }
+  dsrc /= T(size2);
+  ddst /= T(size2);
+  for(int i = 0; i < size2; i ++)
+    apply(res, ddst, dsrc, i);
   return res;
 }
 
