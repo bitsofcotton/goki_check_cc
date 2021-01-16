@@ -81,7 +81,7 @@ void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
-  cout << "gokicheck (pred|cat) <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck (pred|predf|cat) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
@@ -557,6 +557,7 @@ int main(int argc, const char* argv[]) {
       }
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
+            strcmp(argv[1], "predf") == 0 ||
             strcmp(argv[1], "cat") == 0) {
     if(argc < 4) {
       usage();
@@ -591,6 +592,26 @@ int main(int argc, const char* argv[]) {
       }
       redig.normalize(out, 1.);
       file.savep2or3(argv[2], out, ! true);
+    } else if(strcmp(argv[1], "predf") == 0) {
+      std::vector<typename P0<num_t>::MatU> inm[3];
+      typename P0<num_t>::MatU outc[3];
+      for(int i = 0; i < in.size(); i ++)
+        for(int j = 0; j < in[i].size(); j ++)
+          inm[j].emplace_back(p.seed(in[i][j].rows()) * in[i][j].template cast<complex<num_t> >() * p.seed(in[i][j].cols()));
+      for(int i = 0; i < 3; i ++)
+        outc[i].resize(in[idx][0].rows(), in[idx][0].cols());
+      const auto comp(p.taylor(in.size(), num_t(in.size())));
+      for(int y = 0; y < outc[0].rows(); y ++) {
+        for(int x = 0; x < outc[0].cols(); x ++) {
+          outc[0](y, x) = outc[1](y, x) = outc[2](y, x) = num_t(0);
+          for(int k = 0; k < comp.size(); k ++)
+            for(int m = 0; m < 3; m ++)
+              outc[m](y, x) += inm[m][(k + 1 - comp.size()) + in.size() - 1](y, x) * comp[k];
+        }
+      }
+      for(int i = 0; i < 3; i ++)
+        out[i] = filter.compute((p.seed(- outc[i].rows()) * outc[i] * p.seed(- outc[i].cols())).template real<num_t>(), filter.CLIP);
+      file.savep2or3(argv[2], out, ! true, 65535);
     } else {
       std::vector<typename simpleFile<num_t>::Mat> glay;
       glay.reserve(in.size());
