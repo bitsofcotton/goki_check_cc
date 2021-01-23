@@ -926,6 +926,7 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
                                   j));
         sort(distances.begin(), distances.end());
         if(distances.size() && !binary_search(pj.begin(), pj.end(), distances[0].second)) {
+          assert(0 <= distances[0].second && distances[0].second < points.size());
           result[result.size() - 1].emplace_back(distances[0].second);
           pj.emplace_back(distances[0].second);
         }

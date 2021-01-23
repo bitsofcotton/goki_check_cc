@@ -236,9 +236,19 @@ int main(int argc, const char* argv[]) {
     std::vector<typename simpleFile<num_t>::Veci3> facets;
     redig.initialize(vbox, zratio);
     redig.getTileVec(data[0], points, facets);
-    const auto edges(redig.getEdges(mask[0], points));
+          auto edges(redig.getEdges(mask[0], points));
+    const auto points0(points);
     if(edges.size())
       redig.maskVectors(points, facets, mask[0]);
+    for(int i = 0; i < edges.size(); i ++)
+      for(int j = 0; j < edges[i].size(); j ++)
+        for(int k = 0; k < points.size(); k ++) {
+          const auto diff(points[k] - points0[edges[i][j]]);
+          if(diff.dot(diff) < num_t(vbox * vbox * 16)) {
+            edges[i][j] = k;
+            break;
+          }
+        }
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
     file.saveobj(points, ratio * num_t(data[0].rows()),
@@ -606,7 +616,9 @@ int main(int argc, const char* argv[]) {
           outc[0](y, x) = outc[1](y, x) = outc[2](y, x) = num_t(0);
           for(int k = 0; k < comp.size(); k ++)
             for(int m = 0; m < 3; m ++)
-              outc[m](y, x) += inm[m][(k + 1 - comp.size()) + in.size() - 1](y, x) * comp[k];
+              outc[m](y, x) += log(inm[m][(k + 1 - comp.size()) + in.size() - 1](y, x)) * comp[k];
+          for(int m = 0; m < 3; m ++)
+            outc[m](y, x) = exp(outc[m](y, x));
         }
       }
       for(int i = 0; i < 3; i ++)

@@ -201,32 +201,52 @@ public:
       }
       for(int i = 0; i < data.size(); i ++)
         output << "vt " << data[i][1] / T(Mh) / T(2) << " " << T(1) - data[i][0] / T(Mw) / T(2) << endl;
+      if(addstand != T(0))
+        for(int i = 0; i < data.size(); i ++)
+          output << "vt " << 0 <<" " << 0 << endl;
       // xchg with clockwise/counter clockwise.
       for(int i = 0; i < polys.size(); i ++) {
         const int i0(polys[i][0] + 1);
         const int i1(polys[i][1] + 1);
         const int i2(polys[i][2] + 1);
-        output << "f " << i0 << "/" << i0 << "/" << i0;
-        output << " "  << i1 << "/" << i1 << "/" << i1;
-        output << " "  << i2 << "/" << i2 << "/" << i2 << endl;
+        if(i0 != i1 && i1 != i2 && i2 != i0) {
+          output << "f " << i0 << "/" << i0 << "/" << i0;
+          output << " "  << i1 << "/" << i1 << "/" << i1;
+          output << " "  << i2 << "/" << i2 << "/" << i2 << endl;
+        }
       }
       if(addstand != T(0)) {
         for(int i = 0; i < polys.size(); i ++) {
-          output << "f " << data.size() + polys[i][0] + 1;
-          output << " "  << data.size() + polys[i][2] + 1;
-          output << " "  << data.size() + polys[i][1] + 1 << endl;
+          const int i0(data.size() + polys[i][0] + 1);
+          const int i1(data.size() + polys[i][2] + 1);
+          const int i2(data.size() + polys[i][1] + 1);
+          if(i0 != i1 && i1 != i2 && i2 != i0) {
+            output << "f " << i0 << "/" << i0 << "/" << i0;
+            output << " "  << i1 << "/" << i1 << "/" << i1;
+            output << " "  << i2 << "/" << i2 << "/" << i2 << endl;
+          }
         }
         assert(0 < edges.size());
         for(int ii = 0; ii < edges.size(); ii ++) if(edges[ii].size())
           for(int i0 = 0; i0 < edges[ii].size(); i0 ++) {
             const auto& outer(edges[ii]);
             const int   i1((i0 + 1) % edges[ii].size());
-            output << "f " << data.size() + outer[i0] + 1;
-            output << " "  << outer[i1] + 1;
-            output << " "  << data.size() + outer[i1] + 1 << endl;
-            output << "f " << data.size() + outer[i0] + 1;
-            output << " "  << outer[i0] + 1;
-            output << " "  << outer[i1] + 1 << endl;
+            const int   ii0(data.size() + outer[i0] + 1);
+            const int   ii1(outer[i1] + 1);
+            const int   ii2(data.size() + outer[i1] + 1);
+            const int   ii3(outer[i0] + 1);
+            assert(0 <= outer[i0] && outer[i0] < data.size());
+            assert(0 <= outer[i1] && outer[i1] < data.size());
+            if(ii0 != ii1 && ii1 != ii2 && ii2 != ii0) {
+              output << "f " << ii0 << "/" << ii0 << "/" << ii0;
+              output << " "  << ii1 << "/" << ii1 << "/" << ii1;
+              output << " "  << ii2 << "/" << ii2 << "/" << ii2 << endl;
+            }
+            if(ii0 != ii3 && ii3 != ii1 && ii1 != ii0) {
+              output << "f " << ii0 << "/" << ii0 << "/" << ii0;
+              output << " "  << ii3 << "/" << ii3 << "/" << ii3;
+              output << " "  << ii1 << "/" << ii1 << "/" << ii1 << endl;
+            }
           }
       }
       output.close();
