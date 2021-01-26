@@ -47,7 +47,7 @@ public:
   template <typename U> inline SimpleVector<U> cast() const;
   inline const int& size() const;
   inline       void resize(const int& size);
-private:
+//private:
   T*  entity;
   int esize;
 };

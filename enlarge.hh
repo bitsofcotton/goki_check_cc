@@ -93,13 +93,14 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     case ENLARGE_BOTH:
       return compute(compute(data, ENLARGE_X), ENLARGE_Y);
     case DETECT_BOTH:
-      return gmean(compute(data, DETECT_X), compute(data, DETECT_Y));
+      return (compute(data, DETECT_X) + compute(data, DETECT_Y)) / T(2);
     case INTEG_BOTH:
-      return gmean(compute(data, INTEG_X), compute(data, INTEG_Y));
+      return (compute(data, INTEG_X) + compute(data, INTEG_Y)) / T(2);
     case COLLECT_BOTH:
       return gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
     case BUMP_BOTH:
-      return gmean(compute(data, BUMP_X), compute(data, BUMP_Y));
+      // eigen sum on curvature.
+      return (compute(data, BUMP_X) + compute(data, BUMP_Y)) / T(2);
     case EXTEND_BOTH:
       return compute(compute(data, EXTEND_X), EXTEND_Y);
     case SHARPEN_X:
@@ -276,12 +277,19 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       break;
     case EXTEND_Y:
       {
-        Mat result(data.rows() + 2 * recur, data.cols());
+        Mat  result(data.rows() + 2 * recur, data.cols());
+        auto Rdiff(compute(data, DETECT_X));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 0; i < data.rows(); i ++) {
-          result.row(i + recur) = data.row(i);
+          result.row(i + recur) = std::move(Rdiff.row(i));
+          T avg(0);
+          for(int j = 0; j < data.cols(); j ++)
+            avg += data(i, j);
+          avg /= T(data.cols());
+          for(int j = 0; j < data.cols(); j ++)
+            result(i + recur, j) += avg;
         }
         for(int i = 0; i < recur; i ++) {
           const auto& next(p.next(int(data.rows()) / (i + 1)));
@@ -293,14 +301,14 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               result(recur - i - 1, j) = T(0);
             for(int k = 0; k < next.size(); k ++) {
               result(data.rows() + recur + i, j) +=
-                data((k - next.size() + 1) * (i + 1) + data.rows() - 1, j) *
+                result(recur + (k - next.size() + 1) * (i + 1) + data.rows() - 1, j) *
                   next[k];
               result(recur - i - 1, j) +=
-                data(- (k - next.size() + 1) * (i + 1), j) * next[k];
+                result(recur - (k - next.size() + 1) * (i + 1), j) * next[k];
             }
           }
         }
-        return result;
+        return compute(result, INTEG_X);
       }
       break;
     case CLIP:

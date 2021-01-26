@@ -137,7 +137,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(filter.compute(data[i], filter.ENLARGE_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH, rot), filter.CLIP);
+        data[i] = filter.compute(data[i], filter.EXTEND_BOTH, rot);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
