@@ -113,7 +113,7 @@ public:
   vector<Veci3> mesh2(const vector<Vec3>& p, const vector<int>& pp) const;
   void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
   void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
-  Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20);
+  Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& thresh = T(1) / T(128));
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& intensity = T(1));
   Mat  reColor3(const Mat& cbase, const Mat& vbase, const int& count = 20);
   Mat  reColor(const Mat& cbase, const int& count = 20, const T& intensity = T(1));
@@ -556,7 +556,7 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
   return;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase, const Mat& vbase, const int& count) {
+template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase, const Mat& vbase, const int& count, const T& thresh) {
   assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
   assert(cbase.rows() == vbase.rows() && cbase.cols() == vbase.cols());
   vector<pair<T, pair<int, int> > > vpoints;
@@ -582,6 +582,45 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase,
       ii   = i;
     }
   }
+  Mat masker(res);
+  Mat mask(res.rows(), res.cols());
+  for(int i = 0; i < mask.rows(); i ++)
+    for(int j = 0; j < mask.cols(); j ++)
+      mask(i, j) = false;
+  for(int i = 0; i < mask.rows(); i ++)
+    for(int j = 0; j < mask.cols(); j ++)
+      if(! mask(i, j)) {
+        vector<pair<int, int> > store;
+        vector<pair<int, int> > tries;
+        tries.emplace_back(make_pair(+ 1,   0));
+        tries.emplace_back(make_pair(  0, + 1));
+        tries.emplace_back(make_pair(- 1,   0));
+        tries.emplace_back(make_pair(  0, - 1));
+        vector<pair<int, int> > stack;
+        stack.emplace_back(make_pair(i, j));
+        T   avg(0);
+        int cnt(0);
+        while(stack.size()) {
+          const auto pop(stack[stack.size() - 1]);
+          stack.pop_back();
+          const int& yy(pop.first);
+          const int& xx(pop.second);
+          if(0 <= yy && yy < mask.rows() && 0 <= xx && xx < mask.cols() &&
+             masker(i, j) == masker(yy, xx) &&
+             abs(cbase(i, j) - cbase(yy, xx)) <= thresh &&
+             ! mask(yy, xx)) {
+            mask(yy, xx) = true;
+            store.emplace_back(make_pair(yy, xx));
+            for(int ii = 0; ii < tries.size(); ii ++)
+              stack.emplace_back(make_pair(yy + tries[ii].first, xx + tries[ii].second));
+            avg += cbase(yy, xx);
+            cnt ++;
+          }
+        }
+        avg /= T(cnt);
+        for(int i = 0; i < store.size(); i ++)
+          res(store[i].first, store[i].second) = avg;
+      }
   return res;
 }
 

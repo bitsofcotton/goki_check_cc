@@ -196,7 +196,7 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "reshape") == 0) {
       const auto datav(redig.rgb2d(datas));
       for(int i = 0; i < 3; i ++)
-        datac[i] = redig.reShape(datac[i], datav, count);
+        datac[i] = redig.reShape(datac[i], datav, count, std::atof(argv[6]));
     } else if(strcmp(argv[1], "recolor3") == 0)
       for(int i = 0; i < 3; i ++)
         datac[i] = redig.reColor3(datac[i], datas[i], count);
