@@ -179,46 +179,41 @@ template <typename T> inline void CatG<T>::computeRecur() {
 template <typename T> inline void CatG<T>::compute(const bool& recur) {
   catg.compute();
   Mat Pt(size, cache.size() * 2);
-  Vec b(Pt.cols());
-  Vec one(b.size());
-  SimpleVector<bool> fix(b.size());
+  Vec norm(Pt.cols());
+  Vec one(norm.size());
+  SimpleVector<bool> fix(norm.size());
   for(int i = 0; i < cache.size(); i ++) {
     const auto pp(catg.R.solve(cache[i]));
     Pt.setCol(2 * i,       pp);
     Pt.setCol(2 * i + 1, - pp);
-    b[2 * i]       = T(0);
-    b[2 * i + 1]   = T(0);
-    one[2 * i]     = T(1);
-    one[2 * i + 1] = T(1);
-    fix[2 * i]     = 0;
-    fix[2 * i + 1] = 0;
+    norm[2 * i]     = T(0);
+    norm[2 * i + 1] = T(0);
+    one[2 * i]      = T(1);
+    one[2 * i + 1]  = T(1);
+    fix[2 * i]      = 0;
+    fix[2 * i + 1]  = 0;
   }
   auto checked(fix);
-  auto norm(b);
-  auto norm2(b);
   Mat  F(Pt.rows(), Pt.rows());
   Vec  f(Pt.rows());
   Mat  Pverb;
   Vec  orth;
-  T    lasterr(1);
+  T    lasterr(0);
   distance = T(0);
   cut      = Vec();
   const auto block(recur ? size * 2 : 2);
   // from bitsofcotton/p1/p1.hh
-  for(auto ratio0(lasterr / T(2));
-           threshold_inner <= ratio0;
-           ratio0 /= T(2)) {
-    const auto ratio(lasterr - ratio0);
+  for(auto ratio0(threshold_inner);
+           ratio0 <= T(1) / threshold_inner;
+           ratio0 *= T(2)) {
+    const auto ratio(lasterr + ratio0);
     int n_fixed;
     T   ratiob;
-    T   normb0;
     Vec rvec;
     Vec on;
     Vec deltab;
-    Vec mbb;
-    Vec bb;
     if(Pt.cols() == Pt.rows()) {
-      rvec = Pt * b;
+      rvec = Pt.col(0) * T(0);
       goto pnext;
     }
 #if defined(_OPENMP)
@@ -226,19 +221,6 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
 #endif
     for(int i = 0; i < one.size(); i ++)
       fix[i]  = false;
-    bb = b - Pt.projectionPt(b);
-    if(sqrt(bb.dot(bb)) <= threshold_feas * sqrt(b.dot(b))) {
-      for(int i = 0; i < bb.size(); i ++)
-        bb[i] = sqrt(Pt.col(i).dot(Pt.col(i)));
-      const auto bbb(bb - Pt.projectionPt(bb));
-      if(sqrt(bbb.dot(bbb)) <= threshold_feas * sqrt(bb.dot(bb))) {
-        rvec  = Pt * (b - bb - bbb);
-        goto pnext;
-      }
-      bb = bbb;
-    }
-    mbb    = - bb;
-    normb0 = sqrt(mbb.dot(mbb));
     Pverb  = Pt;
     for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
 #if defined(_OPENMP)
@@ -247,17 +229,16 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
 #endif
       for(int j = 0; j < Pverb.cols(); j ++) {
         norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
-        norm2[j]   = (j & 1 ? - ratio : ratio) + norm[j];
         checked[j] = fix[j] || norm[j] <= threshold_p0;
       }
-      auto mb(mbb + norm2 * normb0 * ratio);
+      auto mb(norm * ratio);
       mb -= (deltab = Pverb.projectionPt(mb));
       mb /= (ratiob = sqrt(mb.dot(mb)));
       on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
       int fidx(- 1);
       for(int i = 0; i < Pverb.cols() / block; i ++) {
         std::pair<T, int> mm;
-        mm = std::make_pair(T(0), - 1);
+        mm = std::make_pair(- T(one.size()), - 1);
         for(int j = 0; j < block; j ++) {
           const auto jj(i * block + j);
           if(fix[jj]) {
@@ -268,39 +249,35 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
           if(checked[jj])
             continue;
           const auto score(on[jj] / norm[jj]);
-          if(score < mm.first || mm.second < 0)
+          if(mm.first < score || mm.second < 0)
             mm = std::make_pair(score, jj);
         }
         if(0 <= mm.second && (fidx < 0 ||
-            (on[fidx] / norm[fidx] < on[mm.second] / norm[mm.second] &&
+            (on[fidx] / norm[fidx] > on[mm.second] / norm[mm.second] &&
              T(0) <= on[mm.second])))
           fidx = mm.second;
       }
       on /= abs(mb.dot(on));
-      if(fidx < 0 ||
-         on[fidx] * sqrt(norm.dot(norm)) / norm[fidx] <= threshold_inner)
+      if(fidx < 0)
         break;
       orth = Pverb.col(fidx);
       const auto norm2orth(orth.dot(orth));
-      const auto mbb0(mbb[fidx]);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
       for(int j = 0; j < Pverb.cols(); j ++) {
         const auto work(Pverb.col(j).dot(orth) / norm2orth);
         Pverb.setCol(j, Pverb.col(j) - orth * work);
-        mbb[j] -= mbb0 * work;
       }
-      mbb[fidx] = T(0);
       fix[fidx] = true;
     }
     if(n_fixed == Pt.rows()) {
       int j(0);
       for(int i = 0; i < Pt.cols() && j < f.size(); i ++)
         if(fix[i]) {
-          const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i)) + b[i] * b[i]));
+          const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i))));
           F.row(j) = Pt.col(i) / lratio;
-          f[j]     = (b[i] + (i & 1 ? - ratio : ratio)) / lratio * ratio;
+          f[j]     = ratio     / lratio;
           j ++;
         }
       assert(j == f.size());
@@ -311,27 +288,8 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
         continue;
       }
     } else
-      rvec = Pt * (on * ratiob + deltab + b);
+      rvec = Pt * (on * ratiob + deltab);
    pnext:
-    SimpleVector<T> err0(Pt.cols());
-    for(int i = 0; i < err0.size(); i ++)
-      err0[i] = Pt.col(i).dot(rvec);
-    auto err(err0 - b - one * ratio * ratio * ratiob);
-    for(int i = 0; i < b.size() / block; i ++) {
-      auto work(err[i * block] + ratio * ratio);
-      for(int j = 1; j < block; j ++) {
-        const auto jj(i * block + j);
-        work = min(work, err[jj] + (jj & 1 ? - ratio * ratio : ratio * ratio) * ratiob);
-      }
-      for(int j = 0; j < block; j ++) {
-        const auto jj(i * block + j);
-        if(work <= T(0) || err[jj] <= T(0) ||
-           work < err[jj] + (jj & 1 ? - ratio * ratio : ratio * ratio) * ratiob)
-          err[jj] = T(0);
-      }
-    }
-    if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0)) && T(0) < rvec.dot(rvec))
-      lasterr -= ratio0;
     std::vector<T> s;
     T newdist(0);
     T neworigin(0);
@@ -353,6 +311,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       cut      = rvec;
       distance = newdist;
       origin   = neworigin;
+      lasterr += ratio0;
     }
    next:
     ;
