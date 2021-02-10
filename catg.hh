@@ -173,9 +173,9 @@ template <typename T> inline void CatG<T>::computeRecur() {
 template <typename T> inline void CatG<T>::compute(const bool& recur) {
   catg.compute();
   Mat Pt(size + 1, cache.size() * 2);
-  Vec norm(Pt.cols());
-  Vec one(norm.size());
-  SimpleVector<bool> fix(norm.size());
+  Vec q(Pt.cols());
+  Vec one(q.size());
+  SimpleVector<bool> fix(q.size());
   for(int i = 0; i < cache.size(); i ++) {
     const auto pp(catg.R.solve(cache[i]));
     for(int j = 0; j < Pt.rows() - 1; j ++) {
@@ -184,42 +184,28 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
     }
     Pt(Pt.rows() - 1, 2 * i) =
       Pt(Pt.rows() - 1, 2 * i + 1) = T(0);
-    norm[2 * i]     =   T(1);
-    norm[2 * i + 1] = - T(1);
-    one[2 * i]      = T(1);
-    one[2 * i + 1]  = T(1);
-    fix[2 * i]      = 0;
-    fix[2 * i + 1]  = 0;
+    q[2 * i]       =   T(1);
+    q[2 * i + 1]   = - T(1);
+    one[2 * i]     = T(1);
+    one[2 * i + 1] = T(1);
+    fix[2 * i]     = 0;
+    fix[2 * i + 1] = 0;
   }
-  Pt.row(Pt.rows() - 1)  = norm - Pt.projectionPt(norm);
+  Pt.row(Pt.rows() - 1)  = q - Pt.projectionPt(q);
   Pt.row(Pt.rows() - 1) /= sqrt(Pt.row(Pt.rows() - 1).dot(Pt.row(Pt.rows() - 1)));
   distance = origin = T(0);
   cut      = Vec();
   const auto block(recur ? size * 2 : 2);
   // from bitsofcotton/p1/p1.hh
   int  n_fixed;
-  T    ratiob;
   Vec  on;
-  Vec  deltab;
   Mat  Pverb(Pt);
-  auto checked(fix);
   if(Pt.cols() == Pt.rows()) {
     cut = Pt * one;
     goto pnext;
   }
   for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-    for(int j = 0; j < Pverb.cols(); j ++) {
-      norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
-      checked[j] = fix[j] || norm[j] <= threshold_p0;
-    }
-    auto mb(norm);
-    mb -= (deltab = Pverb.projectionPt(mb));
-    mb /= (ratiob = sqrt(mb.dot(mb)));
-    on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
+    on  = Pverb.projectionPt(- one);
     int fidx(- 1);
     for(int i = 0; i < Pverb.cols() / block; i ++) {
       std::pair<T, int> mm;
@@ -231,18 +217,15 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
           mm.second = - 1;
           break;
         }
-        if(checked[jj])
-          continue;
-        const auto score(on[jj] / norm[jj]);
+        const auto score(on[jj]);
         if(score > mm.first || mm.second < 0)
           mm = std::make_pair(score, jj);
       }
       if(0 <= mm.second && (fidx < 0 ||
-          (on[fidx] / norm[fidx] > on[mm.second] / norm[mm.second] &&
+          (on[fidx] > on[mm.second] &&
            T(0) <= on[mm.second])))
         fidx = mm.second;
     }
-    on /= abs(mb.dot(on));
     if(fidx < 0)
       break;
     Vec orth(Pverb.col(fidx));
@@ -271,7 +254,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       std::cerr << e << std::endl;
     }
   } else
-    cut = Pt * (on * ratiob + deltab);
+    cut = Pt * on;
  pnext:
   {
     Vec rvec(cut.size() - 1);
