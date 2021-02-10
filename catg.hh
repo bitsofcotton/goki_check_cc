@@ -191,6 +191,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
     fix[2 * i]     = 0;
     fix[2 * i + 1] = 0;
   }
+  one /= sqrt(one.dot(one));
   Pt.row(Pt.rows() - 1)  = q - Pt.projectionPt(q);
   Pt.row(Pt.rows() - 1) /= sqrt(Pt.row(Pt.rows() - 1).dot(Pt.row(Pt.rows() - 1)));
   distance = origin = T(0);
@@ -244,7 +245,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
     for(int i = 0; i < Pt.cols() && j < f.size(); i ++)
       if(fix[i]) {
         F.row(j) = Pt.col(i) / sqrt(Pt.col(i).dot(Pt.col(i)));
-        f[j]     = T(1);;
+        f[j]     = one[i];;
         j ++;
       }
     assert(j == f.size());
