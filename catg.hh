@@ -97,9 +97,7 @@ public:
   std::vector<Vec> cache;
 private:
   const vector<Vec>& tayl(const int& in);
-  T threshold_feas;
   T threshold_p0;
-  T threshold_inner;
   int size;
 };
 
@@ -109,9 +107,7 @@ template <typename T> inline CatG<T>::CatG() {
 #else
   const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
-  threshold_feas  = pow(epsilon, T(5) / T(6));
-  threshold_p0    = pow(epsilon, T(4) / T(6));
-  threshold_inner = pow(epsilon, T(2) / T(6));
+  threshold_p0 = sqrt(epsilon);
   size = 0;
 }
 
@@ -121,9 +117,7 @@ template <typename T> inline CatG<T>::CatG(const int& size) {
 #else
   const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
-  threshold_feas  = pow(epsilon, T(5) / T(6));
-  threshold_p0    = pow(epsilon, T(4) / T(6));
-  threshold_inner = pow(epsilon, T(2) / T(6));
+  threshold_p0 = sqrt(epsilon);
   this->size = size;
 }
 
@@ -178,144 +172,125 @@ template <typename T> inline void CatG<T>::computeRecur() {
 
 template <typename T> inline void CatG<T>::compute(const bool& recur) {
   catg.compute();
-  Mat Pt(size, cache.size() * 2);
+  Mat Pt(size + 1, cache.size() * 2);
   Vec norm(Pt.cols());
   Vec one(norm.size());
   SimpleVector<bool> fix(norm.size());
   for(int i = 0; i < cache.size(); i ++) {
     const auto pp(catg.R.solve(cache[i]));
-    Pt.setCol(2 * i,       pp);
-    Pt.setCol(2 * i + 1, - pp);
-    norm[2 * i]     = T(0);
-    norm[2 * i + 1] = T(0);
+    for(int j = 0; j < Pt.rows() - 1; j ++) {
+      Pt(j, 2 * i)     =   pp[j];
+      Pt(j, 2 * i + 1) = - pp[j];
+    }
+    Pt(Pt.rows() - 1, 2 * i) =
+      Pt(Pt.rows() - 1, 2 * i + 1) = T(0);
+    norm[2 * i]     =   T(1);
+    norm[2 * i + 1] = - T(1);
     one[2 * i]      = T(1);
     one[2 * i + 1]  = T(1);
     fix[2 * i]      = 0;
     fix[2 * i + 1]  = 0;
   }
-  auto checked(fix);
-  Mat  F(Pt.rows(), Pt.rows());
-  Vec  f(Pt.rows());
-  Mat  Pverb;
-  Vec  orth;
-  T    lasterr(0);
-  distance = T(0);
+  Pt.row(Pt.rows() - 1)  = norm - Pt.projectionPt(norm);
+  Pt.row(Pt.rows() - 1) /= sqrt(Pt.row(Pt.rows() - 1).dot(Pt.row(Pt.rows() - 1)));
+  distance = origin = T(0);
   cut      = Vec();
   const auto block(recur ? size * 2 : 2);
   // from bitsofcotton/p1/p1.hh
-  for(auto ratio0(threshold_inner);
-           ratio0 <= T(1) / threshold_inner;
-           ratio0 *= T(2)) {
-    const auto ratio(lasterr + ratio0);
-    int n_fixed;
-    T   ratiob;
-    Vec rvec;
-    Vec on;
-    Vec deltab;
-    if(Pt.cols() == Pt.rows()) {
-      rvec = Pt.col(0) * T(0);
-      goto pnext;
-    }
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < one.size(); i ++)
-      fix[i]  = false;
-    Pverb  = Pt;
-    for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
+  int  n_fixed;
+  T    ratiob;
+  Vec  on;
+  Vec  deltab;
+  Mat  Pverb(Pt);
+  auto checked(fix);
+  if(Pt.cols() == Pt.rows()) {
+    cut = Pt * one;
+    goto pnext;
+  }
+  for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-      for(int j = 0; j < Pverb.cols(); j ++) {
-        norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
-        checked[j] = fix[j] || norm[j] <= threshold_p0;
-      }
-      auto mb(norm * ratio);
-      mb -= (deltab = Pverb.projectionPt(mb));
-      mb /= (ratiob = sqrt(mb.dot(mb)));
-      on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
-      int fidx(- 1);
-      for(int i = 0; i < Pverb.cols() / block; i ++) {
-        std::pair<T, int> mm;
-        mm = std::make_pair(- T(one.size()), - 1);
-        for(int j = 0; j < block; j ++) {
-          const auto jj(i * block + j);
-          if(fix[jj]) {
-            // no matter other dimensions if one of them is fixed.
-            mm.second = - 1;
-            break;
-          }
-          if(checked[jj])
-            continue;
-          const auto score(on[jj] / norm[jj]);
-          if(mm.first < score || mm.second < 0)
-            mm = std::make_pair(score, jj);
+    for(int j = 0; j < Pverb.cols(); j ++) {
+      norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
+      checked[j] = fix[j] || norm[j] <= threshold_p0;
+    }
+    auto mb(norm);
+    mb -= (deltab = Pverb.projectionPt(mb));
+    mb /= (ratiob = sqrt(mb.dot(mb)));
+    on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
+    int fidx(- 1);
+    for(int i = 0; i < Pverb.cols() / block; i ++) {
+      std::pair<T, int> mm;
+      mm = std::make_pair(T(0), - 1);
+      for(int j = 0; j < block; j ++) {
+        const auto jj(i * block + j);
+        if(fix[jj]) {
+          // no matter other dimensions if one of them is fixed.
+          mm.second = - 1;
+          break;
         }
-        if(0 <= mm.second && (fidx < 0 ||
-            (on[fidx] / norm[fidx] > on[mm.second] / norm[mm.second] &&
-             T(0) <= on[mm.second])))
-          fidx = mm.second;
+        if(checked[jj])
+          continue;
+        const auto score(on[jj] / norm[jj]);
+        if(score > mm.first || mm.second < 0)
+          mm = std::make_pair(score, jj);
       }
-      on /= abs(mb.dot(on));
-      if(fidx < 0)
-        break;
-      orth = Pverb.col(fidx);
-      const auto norm2orth(orth.dot(orth));
+      if(0 <= mm.second && (fidx < 0 ||
+          (on[fidx] / norm[fidx] > on[mm.second] / norm[mm.second] &&
+           T(0) <= on[mm.second])))
+        fidx = mm.second;
+    }
+    on /= abs(mb.dot(on));
+    if(fidx < 0)
+      break;
+    Vec orth(Pverb.col(fidx));
+    const auto norm2orth(orth.dot(orth));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int j = 0; j < Pverb.cols(); j ++) {
-        const auto work(Pverb.col(j).dot(orth) / norm2orth);
-        Pverb.setCol(j, Pverb.col(j) - orth * work);
-      }
-      fix[fidx] = true;
-    }
-    if(n_fixed == Pt.rows()) {
-      int j(0);
-      for(int i = 0; i < Pt.cols() && j < f.size(); i ++)
-        if(fix[i]) {
-          const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i))));
-          F.row(j) = Pt.col(i) / lratio;
-          f[j]     = ratio     / lratio;
-          j ++;
-        }
-      assert(j == f.size());
-      try {
-        rvec = F.solve(f);
-      } catch (const char* e) {
-        std::cerr << e << std::endl;
-        continue;
-      }
-    } else
-      rvec = Pt * (on * ratiob + deltab);
-   pnext:
-    std::vector<T> s;
-    T newdist(0);
-    T neworigin(0);
-    rvec  = catg.R * rvec;
-    rvec /= sqrt(rvec.dot(rvec));
-    for(int i = 0; i < rvec.size(); i ++)
-      if(! isfinite(rvec[i]))
-        goto next;
-    s.reserve(cache.size());
-    for(int i = 0; i < cache.size(); i ++)
-      s.emplace_back(cache[i].dot(rvec));
-    std::sort(s.begin(), s.end());
-    for(int i = 0; i < s.size() - 1; i ++)
-      if(newdist < s[i + 1] - s[i]) {
-        newdist   =  s[i + 1] - s[i];
-        neworigin = (s[i + 1] + s[i]) / T(2);
-      }
-    if(distance < newdist) {
-      cut      = rvec;
-      distance = newdist;
-      origin   = neworigin;
-      lasterr += ratio0;
-    }
-   next:
-    ;
+    for(int j = 0; j < Pverb.cols(); j ++)
+      Pverb.setCol(j, Pverb.col(j) - orth * Pverb.col(j).dot(orth) / norm2orth);
+    fix[fidx] = true;
   }
+  if(n_fixed == Pt.rows()) {
+    int j(0);
+    Mat F(Pt.rows(), Pt.rows());
+    Vec f(F.rows());
+    for(int i = 0; i < Pt.cols() && j < f.size(); i ++)
+      if(fix[i]) {
+        F.row(j) = Pt.col(i) / sqrt(Pt.col(i).dot(Pt.col(i)));
+        f[j]     = T(1);;
+        j ++;
+      }
+    assert(j == f.size());
+    try {
+      cut = F.solve(f);
+    } catch (const char* e) {
+      std::cerr << e << std::endl;
+    }
+  } else
+    cut = Pt * (on * ratiob + deltab);
+ pnext:
+  {
+    Vec rvec(cut.size() - 1);
+    for(int i = 0; i < rvec.size(); i ++)
+      rvec[i] = cut[i] - Pt.row(i).dot(one) * cut[cut.size() - 1];
+    cut = rvec;
+  }
+  cut  = catg.R * cut;
+  cut /= sqrt(cut.dot(cut));
+  std::vector<T> s;
+  s.reserve(cache.size());
+  for(int i = 0; i < cache.size(); i ++)
+    s.emplace_back(cache[i].dot(cut));
+  std::sort(s.begin(), s.end());
+  for(int i = 0; i < s.size() - 1; i ++)
+    if(distance <= s[i + 1] - s[i]) {
+      distance =  s[i + 1] - s[i];
+      origin   = (s[i + 1] + s[i]) / T(2);
+    }
   return;
 }
 
