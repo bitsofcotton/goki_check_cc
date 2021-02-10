@@ -831,17 +831,14 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
   vector<Vec> work;
   work.reserve(imgs.size());
+  Decompose<T> dec(imgs[0].rows());
   for(int i = 0; i < imgs.size(); i ++) {
-    Vec buf(imgs[i].rows() * imgs[i].cols() * 2);
-    for(int j = 0; j < imgs[i].rows(); j ++)
-      for(int k = 0; k < imgs[i].cols(); k ++)
-        buf[imgs[i].cols() * j + k] = imgs[i](j, j & 1 ? imgs[i].cols() - 1 - k : k);
-    for(int j = imgs[i].rows() * imgs[i].cols(); j < buf.size(); j ++)
-      buf[j] = buf[buf.size() - j - 1];
-    for(int j = 0; j < buf.size(); j ++)
-      if(! isfinite(buf[j]))
-        goto next;
-    work.emplace_back(buf);
+    const auto mid(imgs[i].LSVD().transpose() * imgs[i]);
+    Vec buf(mid.rows());
+    for(int i = 0; i < buf.size(); i ++)
+      buf[i] = sqrt(mid.row(i).dot(mid.row(i)));
+    std::cerr << "." << std::flush;
+    work.emplace_back(dec.mother(buf));
    next:
     std::cerr << "." << std::flush;
   }
@@ -1489,10 +1486,13 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
     for(int k = 0; k < zb.cols(); k ++)
       zb(j, k) = z0;
 #if defined(_OPENMP)
-  SimpleMatrix<omp_lock_t> lock(result.rows(), result.cols());
-  for(int i = 0; i < lock.rows(); i ++)
-    for(int j = 0; j < lock.cols(); j ++)
-      omp_init_lock(&lock(i, j));
+  vector<vector<omp_lock_t> > lock;
+  vector<omp_lock_t> llock;
+  llock.resize(result.cols(), omp_lock_t());
+  lock.resize(result.rows(), llock);
+  for(int i = 0; i < lock.size(); i ++)
+    for(int j = 0; j < lock[i].size(); j ++)
+      omp_init_lock(&lock[i][j]);
 #endif
   // able to boost with divide and conquer.
 #if defined(_OPENMP)
@@ -1513,23 +1513,23 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
         if(onTriangle(z, tri, midgeom) && isfinite(z)) {
           {
 #if defined(_OPENMP)
-            omp_set_lock(&lock(y, x));
+            omp_set_lock(&lock[y][x]);
 #endif
             if(zb(y, x) < z) {
               result(y, x) = tri.c;
               zb(y, x)     = z;
             }
 #if defined(_OPENMP)
-            omp_unset_lock(&lock(y, x));
+            omp_unset_lock(&lock[y][x]);
 #endif
           }
         }
       }
   }
 #if defined(_OPENMP)
-  for(int i = 0; i < lock.rows(); i ++)
-    for(int j = 0; j < lock.cols(); j ++)
-      omp_destroy_lock(&lock(i, j));
+  for(int i = 0; i < lock.size(); i ++)
+    for(int j = 0; j < lock[i].size(); j ++)
+      omp_destroy_lock(&lock[i][j]);
 #endif
   return result;
 }
