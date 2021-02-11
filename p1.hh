@@ -1,7 +1,7 @@
 /*
 BSD 3-Clause License
 
-Copyright (c) 2020, kazunobu watatsu
+Copyright (c) 2020-2021, kazunobu watatsu
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,131 +31,51 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P1_)
 
-// data depend prediction:
-//   in taylor series meaning,
-//     f(x)=sum a_k*x^k, if such with relation, f(x)=sum a_k*(x\pm b_k)^k.
-//                    so with better conversion it'll be f(x)=sum a'_k*x^k.
-//   <a,x>==x+ series, if we suppose Diffmat and Integrate mat,
-//                     we get for all k in Z, x^k.
-//                     and with some start point x_0, we get <a,x>==x+ + const.
-//   if x is the same method, <a,Bx> == <B^ta,x> == <a',x>.
-//   in x, y, exp(k*log(x)+l*log(y)) series, there exists x^ky^l
-//     if <x,y> == 0, and, <x, y> != 0 case:
-//       series x + series x - <x,y>x/<x,x> converges to it.
-//   if we predict with d_k := d_{k-1} + sum(d0_k - d0_k-n),
-//     predict with A a, <a, x>.
-//   if we predict with copycat, it's in trivial in this <a+ - a, x>.
-//   if we prepare new function g(x) from f(x) with such prediction,
-//      it's the form g_k(x) = (b_k-<a_k,x>/||x||)*f_k(x) ..., recursive,
-//        so it's in such prediction.
-//      it causes g(x)_k:=<a'_k,x>, with lagrange polynomial, g(x):=<b,x>
-//   if original x series contains x^{{k}} term partially,
-//      k in R, there exists x^{{k}}^{{-k}} == x term, and, it can concat.
-//   if we predict with last saved value error,
-//      it's x+ + <a,x>/x[0], <=> x+ * x[0] + <a,x> with certain ratio in taylor
-//      x is one of A.row(sigma), so each <a,x> is to be A_sigma * x.
-//      And, A_sigma is below g_k(x), it's in the form A with x'.
-//   if there's lpf, hpf in prediction, it's trivial in this,
-//      a_k in lpf, shift A a, then, <a, x>.
-//   if there exists so to call triangular series like DFT,
-//      its series are trivial in this.
-template <typename T> class P1 {
-public:
-  typedef SimpleVector<T> Vec;
-  typedef SimpleMatrix<T> Mat;
-  inline P1();
-  inline P1(const int& statlen, const int& varlen);
-  inline ~P1();
-  const Vec& next(const Vec& in);
-  T    lasterr;
-private:
-  Vec  fvec;
-  Mat  A;
-  Vec  b;
-  int  statlen;
-  int  varlen;
-  T    threshold_feas;
-  T    threshold_p0;
-  T    threshold_inner;
-  Vec  one;
-  SimpleVector<bool> checked;
-  SimpleVector<bool> fix;
-  Mat  Pverb;
-  Vec  norm;
-  Vec  orth;
-  Mat  F;
-  Vec  f;
-  Mat  Pt;
-};
-
-template <typename T> inline P1<T>::P1() {
-  statlen = varlen = 0;
-  threshold_feas = threshold_p0 = threshold_inner = lasterr = T(0);
-}
-
-template <typename T> inline P1<T>::P1(const int& statlen, const int& varlen) {
-  assert(1 < varlen && varlen < statlen);
-  this->statlen = statlen;
-  this->varlen  = varlen;
-  b.resize(statlen * 2);
-  A.resize(b.size(), varlen);
-  lasterr = T(0);
+// Get invariant structure that
+// \[0, &alpha;\[ register computer with deterministic calculation
+// that whole in/out is shown in the varlen.
+// Please refer bitsofcotton/randtools .
+// [[A I], [I A^-1]] [x y], if rank A = dim x = dim y,
+// rank [[A I], [I A^-1]] == rank A.
+// so with this, U [[B], [O]] [x y] == 0.
+// this returns one of u_k that concerns 0.
+// skip attemps maximum skip status number if original data has a noised ones.
+template <typename T> const SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0) {
 #if defined(_FLOAT_BITS_)
   const auto epsilon(T(1) >> int64_t(mybits - 2));
 #else
   const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
-  threshold_feas    = pow(epsilon, T(5) / T(6));
-  threshold_p0      = pow(epsilon, T(4) / T(6));
-  threshold_inner   = pow(epsilon, T(2) / T(6));
-  one.resize(b.size());
-#if defined(_OPENMP)
-#pragma omp simd
-#endif
-  for(int i = 0; i < one.size(); i ++)
-    one[i] = T(1);
-  norm.resize(one.size());
-  checked.resize(one.size());
-  fix.resize(one.size());
-  Pt.resize(A.cols(), A.rows());
-  F.resize(A.cols(), A.cols());
-  f.resize(A.cols());
-  fvec.resize(A.cols());
-}
-
-template <typename T> inline P1<T>::~P1() {
-  ;
-}
-
-template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
-  assert(in.size() == statlen + varlen);
+  const auto threshold_inner(sqrt(epsilon));
+  SimpleMatrix<T> A((in.size() - varlen) * 2 + 1, varlen);
+  SimpleVector<T> fvec(A.cols());
+  SimpleVector<T> one(A.rows());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < statlen; i ++) {
-    for(int j = 0; j < varlen; j ++)
+  for(int i = 0; i < A.rows() / 2; i ++) {
+    for(int j = 0; j < A.cols(); j ++)
       A(i, j) = in[i + j];
-    b[i] = in[i + varlen];
-    const auto norm(sqrt(A.row(i).dot(A.row(i)) + b[i] * b[i]));
-    if(norm != T(0)) {
+    const auto norm(sqrt(A.row(i).dot(A.row(i))));
+    if(norm != T(0))
       A.row(i) /= norm;
-      b[i]     /= norm;
-    }
+    A.row(i + A.rows() / 2) = - A.row(i);
   }
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < statlen; i ++) {
-    A.row(statlen + i) = - A.row(i);
-    b[statlen + i]     = - b[i];
-  }
+  for(int i = 0; i < A.rows(); i ++)
+    one[i] = T(1);
+  one /= sqrt(one.dot(one));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < fvec.size(); i ++)
-    fvec[i] = T(0);
-  lasterr = T(A.rows() + A.cols());
+  for(int i = 0; i < fvec.size() - 1; i ++)
+    A(A.rows() - 1, i) = fvec[i] = T(0);
+  A(A.rows() - 1, A.cols() - 1) = T(1);
+  fvec[fvec.size() - 1] = T(0);
+  SimpleMatrix<T> Pt(A.cols(), A.rows());
   for(int i = 0; i < Pt.rows(); i ++)
     for(int j = 0; j < Pt.cols(); j ++)
       Pt(i, j) = T(0);
@@ -165,170 +85,76 @@ template <typename T> const typename P1<T>::Vec& P1<T>::next(const Vec& in) {
     Pt.row(i) = work / sqrt(work.dot(work));
   }
   const auto R(Pt * A);
-  for(auto ratio0(lasterr / T(2));
-           threshold_inner <= ratio0;
-           ratio0 /= T(2)) {
-    const auto ratio(lasterr - ratio0);
-    int n_fixed;
-    T   ratiob;
-    T   normb0;
-    Vec rvec;
-    Vec on;
-    Vec deltab;
-    Vec mbb;
-    Vec bb;
-    if(A.cols() == A.rows()) {
-      rvec = Pt * b;
-      goto pnext;
-    }
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < one.size(); i ++)
-      fix[i]  = false;
-    bb = b - Pt.projectionPt(b);
-    if(sqrt(bb.dot(bb)) <= threshold_feas * sqrt(b.dot(b))) {
-      for(int i = 0; i < bb.size(); i ++)
-        bb[i] = sqrt(Pt.col(i).dot(Pt.col(i)));
-      const auto bbb(bb - Pt.projectionPt(bb));
-      if(sqrt(bbb.dot(bbb)) <= threshold_feas * sqrt(bb.dot(bb))) {
-        rvec  = Pt * (b - bb - bbb);
-        goto pnext;
-      }
-      bb = bbb;
-    }
-    mbb    = - bb;
-    normb0 = sqrt(mbb.dot(mbb));
-    Pverb  = Pt;
-    for(n_fixed = 0 ; n_fixed < Pverb.rows(); n_fixed ++) {
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-      for(int j = 0; j < Pverb.cols(); j ++) {
-        norm[j]    = sqrt(Pverb.col(j).dot(Pverb.col(j)));
-        checked[j] = fix[j] || norm[j] <= threshold_p0;
-      }
-      auto mb(mbb + norm * normb0 * ratio);
-      mb -= (deltab = Pverb.projectionPt(mb));
-      mb /= (ratiob = sqrt(mb.dot(mb)));
-      on  = Pverb.projectionPt(- one) + mb * mb.dot(- one);
-      int fidx(0);
-      for( ; fidx < on.size(); fidx ++)
-        if(!checked[fidx])
-          break;
-      for(int j = fidx + 1; j < on.size(); j ++)
-        if(!checked[j] && on[fidx] / norm[fidx] < on[j] / norm[j])
-          fidx = j;
-      if(fidx >= one.size())
-        break;
-      on /= abs(mb.dot(on));
-      if(on[fidx] * sqrt(norm.dot(norm)) / norm[fidx] <= threshold_inner)
-        break;
-      orth = Pverb.col(fidx);
-      const auto norm2orth(orth.dot(orth));
-      const auto mbb0(mbb[fidx]);
+  SimpleVector<T> on;
+  SimpleVector<T> orth;
+  for(int n_fixed = 0 ; n_fixed < Pt.rows() - 1; n_fixed ++) {
+    on = Pt.projectionPt(- one);
+    std::vector<pair<T, int> > onM;
+    onM.reserve(on.size());
+    for(int j = 0; j < on.size(); j ++)
+      onM.emplace_back(std::make_pair(on[j], j));
+    std::sort(onM.begin(), onM.end());
+    const auto& fidx(onM[onM.size() - 1 - skip].second);
+    assert(isfinite(on[fidx]));
+    if(on[fidx] <= threshold_inner)
+      break;
+    orth = Pt.col(fidx);
+    const auto norm2orth(orth.dot(orth));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-      for(int j = 0; j < Pverb.cols(); j ++) {
-        const auto work(Pverb.col(j).dot(orth) / norm2orth);
-        Pverb.setCol(j, Pverb.col(j) - orth * work);
-        mbb[j] -= mbb0 * work;
-      }
-      mbb[fidx] = T(0);
-      fix[fidx] = true;
-    }
-    if(n_fixed == Pt.rows()) {
-      int j(0);
-      for(int i = 0; i < Pt.cols() && j < f.size(); i ++)
-        if(fix[i]) {
-          const auto lratio(sqrt(Pt.col(i).dot(Pt.col(i)) + b[i] * b[i]));
-          F.row(j) = Pt.col(i) / lratio;
-          f[j]     = b[i]      / lratio + ratio;
-          j ++;
-        }
-      assert(j == f.size());
-      try {
-        rvec = F.solve(f);
-      } catch (const char* e) {
-        std::cerr << e << std::endl;
-        continue;
-      }
-    } else
-      rvec = Pt * (on * ratiob + deltab + b);
-   pnext:
-    SimpleVector<T> err0(Pt.cols());
-    for(int i = 0; i < err0.size(); i ++)
-      err0[i] = Pt.col(i).dot(rvec);
-    auto err(err0 - b - one * ratio);
-    for(int i = 0; i < b.size(); i ++)
-      if(err[i] <= T(0)) err[i] = T(0);
-    if(sqrt(err.dot(err)) <= sqrt(threshold_inner * err0.dot(err0)) && T(0) < rvec.dot(rvec)) {
-      try {
-        const auto ffvec(R.solve(rvec));
-        for(int i = 0; i < ffvec.size(); i ++)
-          if(isnan(ffvec[i]) || ! isfinite(ffvec[i]))
-            goto next;
-        fvec = ffvec;
-      } catch(const char* e) {
-        std::cerr << e << std::endl;
-        continue;
-      }
-      lasterr -= ratio0;
-    }
-   next:
-    ;
+    for(int j = 0; j < Pt.cols(); j ++)
+      Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / norm2orth);
   }
-  if(fvec.dot(fvec) != T(0)) {
-    T num(0);
-    T denom(0);
-    for(int i = 0; i < statlen - 1; i ++) {
-      num   += abs(b[i]);
-      denom += abs(fvec.dot(A.row(i)));
-    }
-    fvec *= num / denom;
-  }
-  return fvec;
+  fvec = R.solve(Pt * on);
+  const auto nfv(fvec.dot(fvec));
+  return (isfinite(nfv) ? (nfv == T(0) ? fvec : fvec / sqrt(nfv))
+    : fvec * T(0));
 }
 
 
-template <typename T> class P1B {
+template <typename T> class P1 {
 public:
   typedef SimpleVector<T> Vec;
-  inline P1B();
-  inline P1B(const int& stat, const int& var);
-  inline ~P1B();
-  inline T next(const T& in);
+  inline P1();
+  inline P1(const int& stat, const int& var);
+  inline ~P1();
+  inline T next(const T& in, const int& skip = 0);
 private:
-  P1<T> p;
-  Vec   buf;
+  Vec buf;
+  int varlen;
+  int t;
 };
 
-template <typename T> inline P1B<T>::P1B() {
-  ;
+template <typename T> inline P1<T>::P1() {
+  varlen = t = 0;
 }
 
-template <typename T> inline P1B<T>::P1B(const int& stat, const int& var) {
-  buf.resize(stat + var);
+template <typename T> inline P1<T>::P1(const int& stat, const int& var) {
+  buf.resize(stat + (varlen = var) - 1);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
-  p = P1<T>(stat, var);
+  t = 0;
 }
 
-template <typename T> inline P1B<T>::~P1B() {
+template <typename T> inline P1<T>::~P1() {
   ;
 }
 
-template <typename T> inline T P1B<T>::next(const T& in) {
+template <typename T> inline T P1<T>::next(const T& in, const int& skip) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
-  const auto& fvec(p.next(buf));
+  if(t ++ < buf.size()) return T(0);
+  const auto fvec(invariantP1<T>(buf, varlen, skip));
+  SimpleVector<T> p(fvec.size() - 1);
+  for(int i = 0; i < p.size(); i ++)
+    p[i] = fvec[i] / fvec[fvec.size() - 1];
+  p /= sqrt(p.dot(p));
   T res(0);
-  for(int i = 0; i < fvec.size(); i ++)
-    res += buf[i - fvec.size() + buf.size()] * fvec[i];
-  return res;
+  for(int i = 0; i < p.size(); i ++)
+    res += buf[i - p.size() + buf.size()] * p[i];
+  return isfinite(res) ? res : T(0);
 }
 
 #define _P1_
