@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // this returns one of u_k that concerns 0.
 // skip attemps maximum skip status number if original data has a noised ones.
 template <typename T> const SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0) {
+  assert(varlen * 2 < in.size());
 #if defined(_FLOAT_BITS_)
   const auto epsilon(T(1) >> int64_t(mybits - 2));
 #else
@@ -84,6 +85,7 @@ template <typename T> const SimpleVector<T> invariantP1(const SimpleVector<T>& i
     const auto work(Atrowi - Pt.projectionPt(Atrowi));
     Pt.row(i) = work / sqrt(work.dot(work));
   }
+  const auto Pt0(Pt);
   const auto R(Pt * A);
   SimpleVector<T> on;
   SimpleVector<T> orth;
@@ -94,10 +96,15 @@ template <typename T> const SimpleVector<T> invariantP1(const SimpleVector<T>& i
     for(int j = 0; j < on.size(); j ++)
       onM.emplace_back(std::make_pair(on[j], j));
     std::sort(onM.begin(), onM.end());
-    const auto& fidx(onM[onM.size() - 1 - skip].second);
-    assert(isfinite(on[fidx]));
-    if(on[fidx] <= threshold_inner)
+    auto fidx(- 1);
+    for(int i = onM.size() - 1 - skip; i < onM.size(); i ++)
+      if(threshold_inner < onM[i].first) {
+        fidx = onM[i].second;
+        break;
+      }
+    if(fidx < 0)
       break;
+    assert(isfinite(on[fidx]));
     orth = Pt.col(fidx);
     const auto norm2orth(orth.dot(orth));
 #if defined(_OPENMP)
@@ -106,7 +113,7 @@ template <typename T> const SimpleVector<T> invariantP1(const SimpleVector<T>& i
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / norm2orth);
   }
-  fvec = R.solve(Pt * on);
+  fvec = R.solve(Pt0 * (- one) - Pt * on);
   const auto nfv(fvec.dot(fvec));
   return (isfinite(nfv) ? (nfv == T(0) ? fvec : fvec / sqrt(nfv))
     : fvec * T(0));
@@ -146,7 +153,8 @@ template <typename T> inline T P1<T>::next(const T& in, const int& skip) {
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;
   if(t ++ < buf.size()) return T(0);
-  const auto fvec(invariantP1<T>(buf, varlen, skip));
+  const auto normbuf(sqrt(buf.dot(buf)));
+  const auto fvec(invariantP1<T>(buf / normbuf, varlen, skip));
   SimpleVector<T> p(fvec.size() - 1);
   for(int i = 0; i < p.size(); i ++)
     p[i] = fvec[i] / fvec[fvec.size() - 1];
