@@ -173,7 +173,7 @@ template <typename T> inline T P1<T>::next(const T& in, const int& skip, const i
     buf[i]  = buf[i + 1];
     sbuf[i] = sbuf[i + 1];
   }
-  buf[buf.size() - 1] = in;
+  buf[ buf.size()  - 1] = abs(in);
   sbuf[sbuf.size() - 1] = sgn(in) + T(2);
   if(t ++ < buf.size()) return T(0);
   const auto normbuf(sqrt(buf.dot(buf)));
