@@ -61,7 +61,8 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
 #endif
   for(int i = 0; i < in.size() - varlen - guard; i ++) {
     for(int j = 0; j < varlen; j ++)
-      A(i, j) = in[i + j + guard] / nin;
+      A(i, j) = in[i + j] / nin;
+    A(i, varlen - 1) = in[i + varlen - 1 + guard] / nin;
     A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
     for(int j = 0; j < statlen; j ++)
       A(i, j + varlen + 1) = stin[i + j] / nst;
@@ -210,8 +211,8 @@ template <typename T> T P1Istatus<T>::next(const T& in, const int& skip) {
     vva = projinv_abs[projinv_abs.size() - 1] * ratio1;
     vvs = projinv_sgn[projinv_abs.size() - 1] * ratio1;
     for(int i = 0; i < projinv_abs.size() - 1; i ++) {
-      vva +=  buf[i - projinv_abs.size() +  buf.size()] * projinv_abs[i];
-      vvs += sbuf[i - projinv_sgn.size() + sbuf.size()] * projinv_sgn[i];
+      vva +=  buf[i - projinv_abs.size() +  buf.size() - guard + 1] * projinv_abs[i];
+      vvs += sbuf[i - projinv_sgn.size() + sbuf.size() - guard + 1] * projinv_sgn[i];
     }
     si ++;
     if(si < s_buf.size()) return T(0);
@@ -221,8 +222,8 @@ template <typename T> T P1Istatus<T>::next(const T& in, const int& skip) {
     }
     rabs = rsgn = T(0);
     for(int i = 0; i < varlen - 1; i ++) {
-      rabs +=  buf[i - (varlen - 1) +  buf.size()] * invariant_abs[i];
-      rsgn += sbuf[i - (varlen - 1) + sbuf.size()] * invariant_abs[i];
+      rabs +=  buf[i - varlen +  buf.size() - guard + 1] * invariant_abs[i];
+      rsgn += sbuf[i - varlen + sbuf.size() - guard + 1] * invariant_abs[i];
     }
     rabs += invariant_abs[varlen] * ratio1;
     rsgn += invariant_sgn[varlen] * ratio1;
