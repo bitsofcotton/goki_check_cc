@@ -224,7 +224,6 @@ template <typename T> T P1Istatus<T>::next(const T& in, const int& skip) {
       rabs +=  buf[i - (varlen - 1) +  buf.size()] * invariant_abs[i];
       rsgn += sbuf[i - (varlen - 1) + sbuf.size()] * invariant_abs[i];
     }
-    const auto inslen(invariant_abs.size() - varlen - 1);
     rabs += invariant_abs[varlen] * ratio1;
     rsgn += invariant_sgn[varlen] * ratio1;
     for(int i = 0; i < inslen; i ++) {
