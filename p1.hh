@@ -40,27 +40,34 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // so with this, U [[B], [O]] [x y] == 0.
 // this returns one of u_k that concerns 0.
 // skip attemps maximum skip status number if original data has a noised ones.
-template <typename T> const SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0) {
-  assert(varlen * 2 < in.size());
+template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0, const int& guard = 0) {
+  assert(varlen * 2 < in.size() && !(guard & 1));
 #if defined(_FLOAT_BITS_)
   const auto epsilon(T(1) >> int64_t(mybits - 2));
 #else
   const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
   const auto threshold_inner(sqrt(epsilon));
-  SimpleMatrix<T> A((in.size() - varlen) * 2 + 1, varlen);
+  SimpleMatrix<T> A((in.size() - varlen - guard) * 2 + 1, varlen + 1);
   SimpleVector<T> fvec(A.cols());
   SimpleVector<T> one(A.rows());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < A.rows() / 2; i ++) {
-    for(int j = 0; j < A.cols(); j ++)
-      A(i, j) = in[i + j];
+  for(int ii = 0; ii < in.size() - varlen; ii ++) {
+    const auto left(ii <= (in.size() - varlen - guard) / 2);
+    const auto right((in.size() - varlen + guard) / 2 < ii);
+    if(! left && ! right)
+      continue;
+    const auto i(left ? ii : ii - guard);
+    for(int j = 0; j < varlen; j ++)
+      A(i, j) = in[ii + j];
+    A(i, varlen) = T(0);
     const auto norm(sqrt(A.row(i).dot(A.row(i))));
     if(norm != T(0))
       A.row(i) /= norm;
+    A(i, varlen) = T(1) / sqrt(T(varlen));
     A.row(i + A.rows() / 2) = - A.row(i);
   }
 #if defined(_OPENMP)
@@ -84,6 +91,9 @@ template <typename T> const SimpleVector<T> invariantP1(const SimpleVector<T>& i
     const auto Atrowi(A.col(i));
     const auto work(Atrowi - Pt.projectionPt(Atrowi));
     Pt.row(i) = work / sqrt(work.dot(work));
+    const auto npt(Pt.row(i).dot(Pt.row(i)));
+    if(! (isfinite(npt) && ! isnan(npt)))
+      return fvec;
   }
   const auto Pt0(Pt);
   const auto R(Pt * A);
@@ -104,7 +114,6 @@ template <typename T> const SimpleVector<T> invariantP1(const SimpleVector<T>& i
       }
     if(fidx < 0)
       break;
-    assert(isfinite(on[fidx]));
     orth = Pt.col(fidx);
     const auto norm2orth(orth.dot(orth));
 #if defined(_OPENMP)
@@ -126,9 +135,11 @@ public:
   inline P1();
   inline P1(const int& stat, const int& var);
   inline ~P1();
-  inline T next(const T& in, const int& skip = 0);
+  inline T next(const T& in, const int& skip = 0, const int& guard = 0);
 private:
+  inline const T& sgn(const T& x) const;
   Vec buf;
+  Vec sbuf;
   int varlen;
   int t;
 };
@@ -141,6 +152,7 @@ template <typename T> inline P1<T>::P1(const int& stat, const int& var) {
   buf.resize(stat + (varlen = var) - 1);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
+  sbuf = buf;
   t = 0;
 }
 
@@ -148,20 +160,42 @@ template <typename T> inline P1<T>::~P1() {
   ;
 }
 
-template <typename T> inline T P1<T>::next(const T& in, const int& skip) {
-  for(int i = 0; i < buf.size() - 1; i ++)
-    buf[i] = buf[i + 1];
+template <typename T> inline const T& P1<T>::sgn(const T& x) const {
+  static const T zero(0);
+  static const T one(1);
+  static const T mone(- one);
+  return x != zero ? (x < zero ? mone : one) : zero;
+}
+
+template <typename T> inline T P1<T>::next(const T& in, const int& skip, const int& guard) {
+  assert(buf.size() == sbuf.size());
+  for(int i = 0; i < buf.size() - 1; i ++) {
+    buf[i]  = buf[i + 1];
+    sbuf[i] = sbuf[i + 1];
+  }
   buf[buf.size() - 1] = in;
+  sbuf[sbuf.size() - 1] = sgn(in) + T(2);
   if(t ++ < buf.size()) return T(0);
   const auto normbuf(sqrt(buf.dot(buf)));
-  const auto fvec(invariantP1<T>(buf / normbuf, varlen, skip));
+  const auto normsbuf(sqrt(sbuf.dot(sbuf)));
+  const auto fvec(invariantP1<T>(buf / normbuf, varlen, skip, guard));
+  const auto sfvec(invariantP1<T>(sbuf / normsbuf, varlen, skip, guard));
   SimpleVector<T> p(fvec.size() - 1);
-  for(int i = 0; i < p.size(); i ++)
-    p[i] = fvec[i] / fvec[fvec.size() - 1];
+  SimpleVector<T> q(sfvec.size() - 1);
+  assert(p.size() == q.size());
+  for(int i = 0; i < p.size(); i ++) {
+    p[i] = fvec[i]  / fvec[fvec.size() - 1];
+    q[i] = sfvec[i] / sfvec[sfvec.size() - 1];
+  }
   p /= sqrt(p.dot(p));
-  T res(0);
-  for(int i = 0; i < p.size(); i ++)
-    res += buf[i - p.size() + buf.size()] * p[i];
+  q /= sqrt(q.dot(q));
+  auto res( p[p.size() - 1] / sqrt(T(varlen)));
+  auto sres(q[q.size() - 1] / sqrt(T(varlen)));
+  for(int i = 0; i < p.size() - 1; i ++) {
+    res  += buf[ i - (p.size() - 1) + buf.size()]  * p[i];
+    sres += sbuf[i - (q.size() - 1) + sbuf.size()] * q[i];
+  }
+  res = abs(res) * sgn(abs(sres) - T(2));
   return isfinite(res) ? res : T(0);
 }
 
