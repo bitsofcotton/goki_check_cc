@@ -41,14 +41,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // this returns one of u_k that concerns 0.
 // skip attemps maximum skip status number if original data has a noised ones.
 template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const SimpleVector<T>& stin, const int& varlen, const int& skip = 0, const int& guard = 0) {
-  assert(varlen * 2 < in.size());
+  assert(varlen < in.size() && stin.size() < in.size());
 #if defined(_FLOAT_BITS_)
   const auto epsilon(T(1) >> int64_t(mybits - 2));
 #else
   const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
   const auto threshold_inner(sqrt(epsilon));
-  const auto statlen(max(varlen + stin.size() - in.size(), 0));
+  const auto statlen(max(varlen + stin.size() - in.size() + guard, 0));
   SimpleMatrix<T> A((in.size() - varlen - guard) * 2 + 1,
     varlen + 1 + statlen);
   SimpleVector<T> fvec(A.cols());
@@ -158,11 +158,11 @@ template <typename T> inline P1Istatus<T>::P1Istatus() {
 }
 
 template <typename T> inline P1Istatus<T>::P1Istatus(const int& stat, const int& var, const int& instat, const int& guard) {
-  buf.resize(stat + (varlen = var) - 1);
+  buf.resize(stat + (varlen = var) + (this->guard = guard) - 1);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
   sbuf = buf;
-  s_buf.resize(stat + instat - 1 - (this->guard = guard));
+  s_buf.resize(stat + instat - 1);
   for(int i = 0; i < s_buf.size(); i ++)
     s_buf[i] = T(0);
   s_sbuf = s_buf;
@@ -192,48 +192,45 @@ template <typename T> T P1Istatus<T>::next(const T& in, const int& skip) {
   buf[ buf.size()  - 1] = abs(in);
   sbuf[sbuf.size() - 1] = sgn(in) + T(2);
   if(t ++ < buf.size()) return T(0);
-  else if(! projinv_abs.size() || ! projinv_sgn.size()) {
-    projinv_abs = invariantP1<T>(buf , Vec(), varlen, skip, guard);
-    projinv_sgn = invariantP1<T>(sbuf, Vec(), varlen, skip, guard);
-  } else {
-    assert(projinv_abs.size() == projinv_sgn.size());
-    const auto bs_buf(s_buf);
-    const auto bs_sbuf(s_sbuf);
-    for(int i = 0; i < s_buf.size() - 1; i ++) {
-      s_buf[i]  = s_buf[i + 1];
-      s_sbuf[i] = s_sbuf[i + 1];
-    }
-    assert(s_buf.size() == s_sbuf.size());
-    const auto inslen(invariant_abs.size() - varlen - 1);
-    const auto ratio1(T(1) / sqrt(T(s_buf.size() - invariant_sgn.size() + 1) * T(invariant_sgn.size())));
-    auto& vva(s_buf[ s_buf.size() - 1]);
-    auto& vvs(s_sbuf[s_sbuf.size() - 1]);
-    vva = projinv_abs[projinv_abs.size() - 1] * ratio1;
-    vvs = projinv_sgn[projinv_abs.size() - 1] * ratio1;
-    for(int i = 0; i < projinv_abs.size() - 1; i ++) {
-      vva +=  buf[i - projinv_abs.size() +  buf.size() - guard + 1] * projinv_abs[i];
-      vvs += sbuf[i - projinv_sgn.size() + sbuf.size() - guard + 1] * projinv_sgn[i];
-    }
-    si ++;
-    if(si < s_buf.size()) return T(0);
-    else if(si == s_buf.size()) {
-      invariant_abs = invariantP1<T>(buf , bs_buf,  varlen, skip, guard);
-      invariant_sgn = invariantP1<T>(sbuf, bs_sbuf, varlen, skip, guard);
-    }
-    rabs = rsgn = T(0);
-    for(int i = 0; i < varlen - 1; i ++) {
-      rabs +=  buf[i - varlen +  buf.size() - guard + 1] * invariant_abs[i];
-      rsgn += sbuf[i - varlen + sbuf.size() - guard + 1] * invariant_abs[i];
-    }
-    rabs += invariant_abs[varlen] * ratio1;
-    rsgn += invariant_sgn[varlen] * ratio1;
-    for(int i = 0; i < inslen; i ++) {
-      rabs += s_buf[ i - inslen +  s_buf.size()] * invariant_abs[i + varlen + 1];
-      rsgn += s_sbuf[i - inslen + s_sbuf.size()] * invariant_sgn[i + varlen + 1];
-    }
-    rabs = abs(rabs / invariant_abs[varlen - 1]);
-    rsgn = sgn(abs(rsgn / invariant_sgn[varlen - 1]) - T(2));
+  // N.B. to compete with cheating, we calculate long term same invariant each.
+  projinv_abs = invariantP1<T>(buf , Vec(), varlen, skip, guard);
+  projinv_sgn = invariantP1<T>(sbuf, Vec(), varlen, skip, guard);
+  assert(projinv_abs.size() == projinv_sgn.size());
+  const auto bs_buf(s_buf);
+  const auto bs_sbuf(s_sbuf);
+  assert(s_buf.size() == s_sbuf.size());
+  for(int i = 0; i < s_buf.size() - 1; i ++) {
+    s_buf[i]  = s_buf[i + 1];
+    s_sbuf[i] = s_sbuf[i + 1];
   }
+  const auto inslen(invariant_abs.size() - varlen - 1);
+  const auto ratio1(T(1) / sqrt(T(s_buf.size() - invariant_sgn.size() + 1) * T(invariant_sgn.size())));
+  auto& vva(s_buf[ s_buf.size() - 1]);
+  auto& vvs(s_sbuf[s_sbuf.size() - 1]);
+  vva = projinv_abs[projinv_abs.size() - 1] * ratio1;
+  vvs = projinv_sgn[projinv_abs.size() - 1] * ratio1;
+  for(int i = 0; i < projinv_abs.size() - 1; i ++) {
+    vva +=  buf[i - projinv_abs.size() +  buf.size() - guard + 1] * projinv_abs[i];
+    vvs += sbuf[i - projinv_sgn.size() + sbuf.size() - guard + 1] * projinv_sgn[i];
+  }
+  si ++;
+  if(si < s_buf.size()) return T(0);
+  // N.B. to compete with cheating, we calculate long term same invariant each.
+  invariant_abs = invariantP1<T>(buf , bs_buf,  varlen, skip, guard);
+  invariant_sgn = invariantP1<T>(sbuf, bs_sbuf, varlen, skip, guard);
+  rabs = rsgn = T(0);
+  for(int i = 0; i < varlen - 1; i ++) {
+    rabs +=  buf[i - varlen +  buf.size() - guard + 1] * invariant_abs[i];
+    rsgn += sbuf[i - varlen + sbuf.size() - guard + 1] * invariant_abs[i];
+  }
+  rabs += invariant_abs[varlen] * ratio1;
+  rsgn += invariant_sgn[varlen] * ratio1;
+  for(int i = 0; i < inslen; i ++) {
+    rabs += s_buf[ i - inslen +  s_buf.size()] * invariant_abs[i + varlen + 1];
+    rsgn += s_sbuf[i - inslen + s_sbuf.size()] * invariant_sgn[i + varlen + 1];
+  }
+  rabs = abs(rabs / invariant_abs[varlen - 1]);
+  rsgn = sgn(abs(rsgn / invariant_sgn[varlen - 1]) - T(2));
   return rabs * rsgn;
 }
 
