@@ -204,7 +204,7 @@ template <typename T> T P1Istatus<T>::next(const T& in, const int& skip) {
     s_sbuf[i] = s_sbuf[i + 1];
   }
   const auto inslen(invariant_abs.size() - varlen - 1);
-  const auto ratio1(T(1) / sqrt(T(s_buf.size() - invariant_sgn.size() + 1) * T(invariant_sgn.size())));
+  const auto ratio1(T(1) / sqrt(T(s_buf.size() - inslen + 1) * T(invariant_abs.size())));
   auto& vva(s_buf[ s_buf.size() - 1]);
   auto& vvs(s_sbuf[s_sbuf.size() - 1]);
   vva = projinv_abs[projinv_abs.size() - 1] * ratio1;
