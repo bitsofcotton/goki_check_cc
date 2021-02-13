@@ -1,5 +1,5 @@
 /* BSD 3-Clause License:
- * Copyright (c) 2018, bitsofcotton.
+ * Copyright (c) 2018-2021, bitsofcotton.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -281,7 +281,7 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
 
 template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph) {
   cerr << "p" << flush;
-  static P0<T,false> p;
+  static P0<T>     p;
   static Filter<T> filter;
   const int  idx(max(0, min(int(srccenter.size()) - 1, int(floor(iemph)))));
   const auto comp(p.taylor(srccenter.size(), iemph));

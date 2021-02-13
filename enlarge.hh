@@ -1,5 +1,5 @@
 /* BSD 3-Clause License:
- * Copyright (c) 2018-2020, bitsofcotton.
+ * Copyright (c) 2018-2021, bitsofcotton.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -86,7 +86,7 @@ template <typename T> Filter<T>::~Filter() {
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir, const int& n) {
   assert(0 <= n);
   if(n <= 1) {
-    static P0<T,false> p;
+    static P0<T> p;
     switch(dir) {
     case SHARPEN_BOTH:
       return compute(compute(data, SHARPEN_X), SHARPEN_Y);
@@ -292,7 +292,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             result(i + recur, j) += avg;
         }
         for(int i = 0; i < recur; i ++) {
-          const auto& next(p.next(int(data.rows()) / (i + 1)));
+          const auto& next(p.next(p.betterRange(int(data.rows()) / (i + 1))));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif

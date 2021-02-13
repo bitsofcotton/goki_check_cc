@@ -1,7 +1,7 @@
 /*
  BSD 3-Clause License
 
-Copyright (c) 2019-2020, bitsofcotton (kazunobu watatsu)
+Copyright (c) 2019-2021, bitsofcotton (kazunobu watatsu)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P0_)
 
-template <typename T, bool recur = true> class P0 {
+template <typename T> class P0 {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
@@ -42,29 +42,30 @@ public:
   const Mat&  diff(const int& size);
   inline Vec  taylor(const int& size, const T& step);
   const Vec&  next(const int& size);
+  inline int  betterRange(const int& size) const;
   const T&    Pi() const;
   const complex<T>& J() const;
 };
 
-template <typename T, bool recur> inline P0<T,recur>::P0() {
+template <typename T> inline P0<T>::P0() {
   ;
 }
 
-template <typename T, bool recur> inline P0<T,recur>::~P0() {
+template <typename T> inline P0<T>::~P0() {
   ;
 }
 
-template <typename T, bool recur> const T& P0<T,recur>::Pi() const {
+template <typename T> const T& P0<T>::Pi() const {
   const static auto pi(atan2(T(1), T(1)) * T(4));
   return pi;
 }
 
-template <typename T, bool recur> const complex<T>& P0<T,recur>::J() const {
+template <typename T> const complex<T>& P0<T>::J() const {
   const static auto i(complex<T>(T(0), T(1)));
   return i;
 }
 
-template <typename T, bool recur> const typename P0<T,recur>::MatU& P0<T,recur>::seed(const int& size0) {
+template <typename T> const typename P0<T>::MatU& P0<T>::seed(const int& size0) {
   const auto size(abs(size0));
   assert(size);
   static vector<MatU> dft;
@@ -92,7 +93,7 @@ template <typename T, bool recur> const typename P0<T,recur>::MatU& P0<T,recur>:
   return size0 < 0 ? eidft : edft;
 }
 
-template <typename T, bool recur> const typename P0<T,recur>::Mat& P0<T,recur>::diff(const int& size0) {
+template <typename T> const typename P0<T>::Mat& P0<T>::diff(const int& size0) {
   assert(size0);
   const auto size(abs(size0));
   static vector<Mat> D;
@@ -116,7 +117,7 @@ template <typename T, bool recur> const typename P0<T,recur>::Mat& P0<T,recur>::
   return size0 < 0 ? ii : dd;
 }
 
-template <typename T, bool recur> inline typename P0<T,recur>::Vec P0<T,recur>::taylor(const int& size, const T& step) {
+template <typename T> inline typename P0<T>::Vec P0<T>::taylor(const int& size, const T& step) {
   const int  step00(max(0, min(size - 1, int(floor(step)))));
   const auto residue0(step - T(step00));
   const auto step0(step00 == size - 1 || abs(residue0) <= T(1) / T(2) ? step00 : step00 + 1);
@@ -144,29 +145,25 @@ template <typename T, bool recur> inline typename P0<T,recur>::Vec P0<T,recur>::
   return res;
 }
 
-template <typename T, bool recur> const typename P0<T,recur>::Vec& P0<T,recur>::next(const int& size) {
+template <typename T> const typename P0<T>::Vec& P0<T>::next(const int& size) {
   assert(0 < size);
   static vector<Vec> P;
   if(P.size() <= size)
     P.resize(size + 1, Vec());
   auto& p(P[size]);
-  if(p.size() != size) {
-    p = taylor(size, T(size));
-    if(recur) {
-      std::cerr << "p" << std::flush;
-      if(1 < size) {
-        const auto& back(next(size - 1));
-        for(int i = 0; i < back.size(); i ++)
-          p[i - back.size() + p.size()] += back[i] * T(size - 1);
-        p /= T(size);
-      }
-    }
-  }
+  if(p.size() != size) p = taylor(size, T(size));
   return p;
 }
 
+template <typename T> inline int P0<T>::betterRange(const int& size) const {
+  assert(2 < size);
+  int res(1);
+  for(int i = 2; res * (i + 1) <= size; i ++) res *= i;
+  return res;
+}
 
-template <typename T, bool recur = true> class P0B {
+
+template <typename T> class P0B {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleVector<complex<T> > VecU;
@@ -178,22 +175,25 @@ private:
   Vec buf;
 };
 
-template <typename T, bool recur> inline P0B<T,recur>::P0B() {
+template <typename T> inline P0B<T>::P0B() {
   ;
 }
 
-template <typename T, bool recur> inline P0B<T,recur>::P0B(const int& size) {
-  buf.resize(size);
+template <typename T> inline P0B<T>::P0B(const int& size) {
+  assert(0 < size);
+  int bsize(size);
+  for(int i = 2; i < size; i ++) bsize *= i;
+  buf.resize(bsize);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
 }
 
-template <typename T, bool recur> inline P0B<T,recur>::~P0B() {
+template <typename T> inline P0B<T>::~P0B() {
   ;
 }
 
-template <typename T, bool recur> inline T P0B<T,recur>::next(const T& in) {
-  static P0<T,recur> p;
+template <typename T> inline T P0B<T>::next(const T& in) {
+  static P0<T> p;
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i] = buf[i + 1];
   buf[buf.size() - 1] = in;

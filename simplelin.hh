@@ -1,6 +1,6 @@
 /* You can use one of the both BSD 3-Clause License or GNU Lesser General Public License 3.0 for this source. */
 /* BSD 3-Clause License:
- * Copyright (c) 2013 - 2018, kazunobu watatsu.
+ * Copyright (c) 2013 - 2021, kazunobu watatsu.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

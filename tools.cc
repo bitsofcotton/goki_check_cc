@@ -110,7 +110,7 @@ int main(int argc, const char* argv[]) {
   simpleFile<num_t> file;
   reDig<num_t>      redig;
   Filter<num_t>     filter;
-  P0<num_t, false>  p;
+  P0<num_t>         p;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
@@ -591,7 +591,7 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "pred") == 0) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      const auto comp(p.taylor(in.size(), num_t(in.size())));
+      const auto& comp(p.next(p.betterRange(in.size())));
       for(int y = 0; y < out[0].rows(); y ++) {
         for(int x = 0; x < out[0].cols(); x ++) {
           out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
@@ -610,7 +610,7 @@ int main(int argc, const char* argv[]) {
           inm[j].emplace_back(p.seed(in[i][j].rows()) * in[i][j].template cast<complex<num_t> >() * p.seed(in[i][j].cols()));
       for(int i = 0; i < 3; i ++)
         outc[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      const auto comp(p.taylor(in.size(), num_t(in.size())));
+      const auto& comp(p.next(p.betterRange(in.size())));
       for(int y = 0; y < outc[0].rows(); y ++) {
         for(int x = 0; x < outc[0].cols(); x ++) {
           outc[0](y, x) = outc[1](y, x) = outc[2](y, x) = num_t(0);
