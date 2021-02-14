@@ -845,7 +845,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
    next:
     std::cerr << "." << std::flush;
   }
-  const auto cg(crush<T>(work, cs, int(cs * 1.2)));
+  const auto cg(crush<T>(work, cs, - T(1) / T(2), int(cs * 1.2)));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
