@@ -43,11 +43,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const SimpleVector<T>& stin, const int& varlen, const int& skip = 0, const int& guard = 0) {
   assert(varlen < in.size() && stin.size() < in.size());
 #if defined(_FLOAT_BITS_)
-  const auto epsilon(T(1) >> int64_t(mybits - 2));
+  static const auto epsilon(T(1) >> int64_t(mybits - 2));
 #else
-  const auto epsilon(std::numeric_limits<T>::epsilon());
+  static const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
-  const auto threshold_inner(sqrt(epsilon));
+  static const auto threshold_inner(sqrt(epsilon));
   const auto statlen(max(varlen + stin.size() - in.size() + guard, 0));
   SimpleMatrix<T> A((in.size() - varlen - guard) * 2 + 1,
     varlen + 1 + statlen);
@@ -93,8 +93,8 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
     if(! (isfinite(npt) && ! isnan(npt)))
       return fvec;
   }
-  const auto Pt0(Pt);
   const auto R(Pt * A);
+  const auto mone(Pt * (- one));
   SimpleVector<T> on;
   SimpleVector<T> orth;
   for(int n_fixed = 0 ; n_fixed < Pt.rows() - 1; n_fixed ++) {
@@ -120,7 +120,7 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / norm2orth);
   }
-  fvec = R.solve(Pt0 * (- one) - Pt * on);
+  fvec = R.solve(mone - Pt * on);
   const auto nfv(fvec.dot(fvec));
   return (isfinite(nfv) ? (nfv == T(0) ? fvec : fvec / sqrt(nfv))
     : fvec * T(0));
@@ -137,10 +137,10 @@ public:
   inline T next(const T& in, const int& skip = 0);
   Vec invariant_abs;
   Vec invariant_sgn;
-  T   rabs;
-  T   rsgn;
   Vec s_buf;
   Vec s_sbuf;
+  T   rabs;
+  T   rsgn;
 private:
   inline const T& sgn(const T& x) const;
   Vec buf;
@@ -196,42 +196,40 @@ template <typename T> T P1Istatus<T>::next(const T& in, const int& skip) {
   projinv_abs = invariantP1<T>(buf , Vec(), varlen, skip, guard);
   projinv_sgn = invariantP1<T>(sbuf, Vec(), varlen, skip, guard);
   assert(projinv_abs.size() == projinv_sgn.size());
-  const auto bs_buf(s_buf);
-  const auto bs_sbuf(s_sbuf);
+  if(buf.size() + s_buf.size() < t) {
+    invariant_abs = invariantP1<T>(buf , s_buf,  varlen, skip, guard);
+    invariant_sgn = invariantP1<T>(sbuf, s_sbuf, varlen, skip, guard);
+    assert(invariant_abs.size() == invariant_sgn.size());
+  }
   assert(s_buf.size() == s_sbuf.size());
   for(int i = 0; i < s_buf.size() - 1; i ++) {
     s_buf[i]  = s_buf[i + 1];
     s_sbuf[i] = s_sbuf[i + 1];
   }
-  const auto inslen(invariant_abs.size() - varlen - 1);
-  const auto ratio1(T(1) / sqrt(T(s_buf.size() - inslen + 1) * T(invariant_abs.size())));
+  const auto statlen(max(varlen + s_buf.size() - buf.size() + guard, 0));
+  const auto ratio0(T(1) / sqrt(T(buf.size() - varlen - guard) * 2 + 1) * T(varlen + 1));
+  const auto ratio(T(1) / sqrt(T(buf.size() - varlen - guard) * 2 + 1) * T(varlen + statlen + 1));
   auto& vva(s_buf[ s_buf.size() - 1]);
   auto& vvs(s_sbuf[s_sbuf.size() - 1]);
-  vva = projinv_abs[projinv_abs.size() - 1] * ratio1;
-  vvs = projinv_sgn[projinv_abs.size() - 1] * ratio1;
+  vva = projinv_abs[projinv_abs.size() - 1] * ratio0;
+  vvs = projinv_sgn[projinv_abs.size() - 1] * ratio0;
   for(int i = 0; i < projinv_abs.size() - 1; i ++) {
     vva +=  buf[i - projinv_abs.size() +  buf.size() - guard + 1] * projinv_abs[i];
     vvs += sbuf[i - projinv_sgn.size() + sbuf.size() - guard + 1] * projinv_sgn[i];
   }
-  si ++;
-  if(si < s_buf.size()) return T(0);
-  // N.B. to compete with cheating, we calculate long term same invariant each.
-  invariant_abs = invariantP1<T>(buf , bs_buf,  varlen, skip, guard);
-  invariant_sgn = invariantP1<T>(sbuf, bs_sbuf, varlen, skip, guard);
-  rabs = rsgn = T(0);
+  if(! (invariant_abs.size() && invariant_sgn.size())) return T(0);
+  rabs = invariant_abs[varlen] * ratio;
+  rsgn = invariant_sgn[varlen] * ratio;
   for(int i = 0; i < varlen - 1; i ++) {
     rabs +=  buf[i - varlen +  buf.size() - guard + 1] * invariant_abs[i];
     rsgn += sbuf[i - varlen + sbuf.size() - guard + 1] * invariant_abs[i];
   }
-  rabs += invariant_abs[varlen] * ratio1;
-  rsgn += invariant_sgn[varlen] * ratio1;
-  for(int i = 0; i < inslen; i ++) {
-    rabs += s_buf[ i - inslen +  s_buf.size()] * invariant_abs[i + varlen + 1];
-    rsgn += s_sbuf[i - inslen + s_sbuf.size()] * invariant_sgn[i + varlen + 1];
+  for(int i = 0; i < statlen; i ++) {
+    rabs += s_buf[ i - statlen +  s_buf.size()] * invariant_abs[i + varlen + 1];
+    rsgn += s_sbuf[i - statlen + s_sbuf.size()] * invariant_sgn[i + varlen + 1];
   }
-  rabs = abs(rabs / invariant_abs[varlen - 1]);
-  rsgn = sgn(abs(rsgn / invariant_sgn[varlen - 1]) - T(2));
-  return rabs * rsgn;
+  return (rabs = abs(rabs / invariant_abs[varlen - 1])) *
+    (rsgn = sgn(abs(rsgn / invariant_sgn[varlen - 1]) - T(2)));
 }
 
 #define _P1_

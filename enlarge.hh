@@ -277,19 +277,13 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       break;
     case EXTEND_Y:
       {
-        Mat  result(data.rows() + 2 * recur, data.cols());
-        auto Rdiff(compute(data, DETECT_X));
+        MatU result(data.rows() + 2 * recur, data.cols());
+        auto DFT(data.template cast<complex<T> >() * p.seed(data.cols()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 0; i < data.rows(); i ++) {
-          result.row(i + recur) = std::move(Rdiff.row(i));
-          T avg(0);
-          for(int j = 0; j < data.cols(); j ++)
-            avg += data(i, j);
-          avg /= T(data.cols());
-          for(int j = 0; j < data.cols(); j ++)
-            result(i + recur, j) += avg;
+          result.row(i + recur) = std::move(DFT.row(i));
         }
         for(int i = 0; i < recur; i ++) {
           const auto& next(p.next(p.betterRange(int(data.rows()) / (i + 1))));
@@ -308,7 +302,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             }
           }
         }
-        return compute(result, INTEG_X);
+        return (result * p.seed(- result.cols())).template real<T>();
       }
       break;
     case CLIP:

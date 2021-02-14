@@ -837,12 +837,15 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     Vec buf(mid.rows());
     for(int i = 0; i < buf.size(); i ++)
       buf[i] = sqrt(mid.row(i).dot(mid.row(i)));
+    const auto nbuf(buf.dot(buf));
+    if(nbuf != T(0))
+      buf /= sqrt(nbuf);
     std::cerr << "." << std::flush;
     work.emplace_back(dec.mother(buf));
    next:
     std::cerr << "." << std::flush;
   }
-  const auto cg(crushNoContext<T>(work, cs));
+  const auto cg(crush<T>(work, cs, int(cs * 1.2)));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
