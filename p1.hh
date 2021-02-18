@@ -40,21 +40,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // so with this, U [[B], [O]] [x y] == 0.
 // this returns one of u_k that concerns 0.
 // skip attemps maximum skip status number if original data has a noised ones.
-template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const SimpleVector<T>& stin, const int& varlen, const int& skip = 0, const int& guard = 0) {
-  assert(varlen < in.size() && stin.size() < in.size());
+template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0, const int& guard = 0) {
+  assert(varlen < in.size());
 #if defined(_FLOAT_BITS_)
   static const auto epsilon(T(1) >> int64_t(mybits - 2));
 #else
   static const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
   static const auto threshold_inner(sqrt(epsilon));
-  const auto statlen(max(varlen + stin.size() - in.size() + guard, 0));
-  SimpleMatrix<T> A((in.size() - varlen - guard) * 2 + 1,
-    varlen + 1 + statlen);
+  SimpleMatrix<T> A((in.size() - varlen - guard) * 2 + 1, varlen + 1);
   SimpleVector<T> fvec(A.cols());
   SimpleVector<T> one(A.rows());
   const auto nin(sqrt(in.dot(in)));
-  const auto nst(stin.size() ? sqrt(stin.dot(stin)) : T(1));
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -64,8 +61,6 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
       A(i, j) = in[i + j] / nin;
     A(i, varlen - 1) = in[i + varlen - 1 + guard] / nin;
     A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
-    for(int j = 0; j < statlen; j ++)
-      A(i, j + varlen + 1) = stin[i + j] / nst;
     A.row(i + A.rows() / 2) = - A.row(i);
   }
 #if defined(_OPENMP)
@@ -127,109 +122,69 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
 }
 
 
-template <typename T> class P1Istatus {
+template <typename T> class P1I {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
-  inline P1Istatus();
-  inline P1Istatus(const int& stat, const int& var, const int& instat, const int& guard);
-  inline ~P1Istatus();
+  inline P1I();
+  inline P1I(const int& stat, const int& var, const int& guard);
+  inline ~P1I();
   inline T next(const T& in, const int& skip = 0);
-  Vec invariant_abs;
-  Vec invariant_sgn;
-  Vec s_buf;
-  Vec s_sbuf;
-  T   rabs;
-  T   rsgn;
+  std::vector<Vec> invariant;
 private:
   inline const T& sgn(const T& x) const;
   Vec buf;
-  Vec sbuf;
-  Vec projinv_abs;
-  Vec projinv_sgn;
   int varlen;
   int guard;
   int t;
-  int si;
 };
 
-template <typename T> inline P1Istatus<T>::P1Istatus() {
-  rabs = rsgn = T(varlen = guard = t = si = 0);
+template <typename T> inline P1I<T>::P1I() {
+  varlen = guard = t = 0;
 }
 
-template <typename T> inline P1Istatus<T>::P1Istatus(const int& stat, const int& var, const int& instat, const int& guard) {
-  buf.resize(stat + (varlen = var) + (this->guard = guard) - 1);
+template <typename T> inline P1I<T>::P1I(const int& stat, const int& var, const int& guard) {
+  buf.resize(stat + (varlen = var) * 2 - 1+ (this->guard = guard));
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
-  sbuf = buf;
-  s_buf.resize(stat + instat - 1);
-  for(int i = 0; i < s_buf.size(); i ++)
-    s_buf[i] = T(0);
-  s_sbuf = s_buf;
-  rabs = rsgn = T(t = si = 0);
+  t = 0;
 }
 
-template <typename T> inline P1Istatus<T>::~P1Istatus() {
+template <typename T> inline P1I<T>::~P1I() {
   ;
 }
 
-template <typename T> inline const T& P1Istatus<T>::sgn(const T& x) const {
+template <typename T> inline const T& P1I<T>::sgn(const T& x) const {
   static const T zero(0);
   static const T one(1);
   static const T mone(- one);
   return x != zero ? (x < zero ? mone : one) : zero;
 }
 
-// Get invariant with inner status.
-// Get <a, [x0 y0 x1 y1]> = 0 case, which is <a', [x0 x1]> = <a'', [y0 y1]> .
-// With non invariant case on them, we get X a' == b == B [y0 y1].
-template <typename T> T P1Istatus<T>::next(const T& in, const int& skip) {
-  assert(buf.size() == sbuf.size());
-  for(int i = 0; i < buf.size() - 1; i ++) {
+template <typename T> T P1I<T>::next(const T& in, const int& skip) {
+  for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
-    sbuf[i] = sbuf[i + 1];
-  }
-  buf[ buf.size()  - 1] = abs(in);
-  sbuf[sbuf.size() - 1] = sgn(in) + T(2);
+  buf[buf.size() - 1] = in;
   if(t ++ < buf.size()) return T(0);
   // N.B. to compete with cheating, we calculate long term same invariant each.
-  projinv_abs = invariantP1<T>(buf , Vec(), varlen, skip, guard);
-  projinv_sgn = invariantP1<T>(sbuf, Vec(), varlen, skip, guard);
-  assert(projinv_abs.size() == projinv_sgn.size());
-  if(buf.size() + s_buf.size() < t) {
-    invariant_abs = invariantP1<T>(buf , s_buf,  varlen, skip, guard);
-    invariant_sgn = invariantP1<T>(sbuf, s_sbuf, varlen, skip, guard);
-    assert(invariant_abs.size() == invariant_sgn.size());
+  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip), guard));
+  if(invariant.size() < skip) {
+    invariant.emplace_back(invariant0);
+    return T(0);
+  } else if(skip <= 0)
+    invariant.resize(1, invariant0);
+  else {
+    for(int i = 0; i < invariant.size() - 1; i ++)
+      std::swap(invariant[i], invariant[i + 1]);
+    invariant[invariant.size() - 1] = invariant0;
   }
-  assert(s_buf.size() == s_sbuf.size());
-  for(int i = 0; i < s_buf.size() - 1; i ++) {
-    s_buf[i]  = s_buf[i + 1];
-    s_sbuf[i] = s_sbuf[i + 1];
-  }
-  const auto statlen(max(varlen + s_buf.size() - buf.size() + guard, 0));
-  const auto ratio0(T(1) / sqrt(T(buf.size() - varlen - guard) * 2 + 1) * T(varlen + 1));
-  const auto ratio(T(1) / sqrt(T(buf.size() - varlen - guard) * 2 + 1) * T(varlen + statlen + 1));
-  auto& vva(s_buf[ s_buf.size() - 1]);
-  auto& vvs(s_sbuf[s_sbuf.size() - 1]);
-  vva = projinv_abs[projinv_abs.size() - 1] * ratio0;
-  vvs = projinv_sgn[projinv_abs.size() - 1] * ratio0;
-  for(int i = 0; i < projinv_abs.size() - 1; i ++) {
-    vva +=  buf[i - projinv_abs.size() +  buf.size() - guard + 1] * projinv_abs[i];
-    vvs += sbuf[i - projinv_sgn.size() + sbuf.size() - guard + 1] * projinv_sgn[i];
-  }
-  if(! (invariant_abs.size() && invariant_sgn.size())) return T(0);
-  rabs = invariant_abs[varlen] * ratio;
-  rsgn = invariant_sgn[varlen] * ratio;
-  for(int i = 0; i < varlen - 1; i ++) {
-    rabs +=  buf[i - varlen +  buf.size() - guard + 1] * invariant_abs[i];
-    rsgn += sbuf[i - varlen + sbuf.size() - guard + 1] * invariant_abs[i];
-  }
-  for(int i = 0; i < statlen; i ++) {
-    rabs += s_buf[ i - statlen +  s_buf.size()] * invariant_abs[i + varlen + 1];
-    rsgn += s_sbuf[i - statlen + s_sbuf.size()] * invariant_sgn[i + varlen + 1];
-  }
-  return (rabs = abs(rabs / invariant_abs[varlen - 1])) *
-    (rsgn = sgn(abs(rsgn / invariant_sgn[varlen - 1]) - T(2)));
+  auto avg(invariant[0]);
+  for(int i = 1; i < invariant.size(); i ++)
+    avg += invariant[i];
+  auto res(avg[varlen] / sqrt(T((buf.size() - varlen - guard) * 2 + 1) * T(varlen + 1)));
+  for(int i = 0; i < varlen - 1; i ++)
+    res += buf[i - varlen + buf.size() - guard + 1] * avg[i];
+  return res / avg[varlen - 1];
 }
 
 #define _P1_
