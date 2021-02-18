@@ -286,7 +286,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           result.row(i + recur) = std::move(DFT.row(i));
         }
         for(int i = 0; i < recur; i ++) {
-          const auto& next(p.next(p.betterRange(int(data.rows()) / (i + 1))));
+          const auto& next(p.next(int(data.rows()) / (i + 1)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif

@@ -591,13 +591,13 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "pred") == 0) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      const auto& comp(p.next(p.betterRange(in.size())));
+      const auto& comp(p.next(in.size()));
       for(int y = 0; y < out[0].rows(); y ++) {
         for(int x = 0; x < out[0].cols(); x ++) {
           out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
           for(int k = 0; k < comp.size(); k ++)
             for(int m = 0; m < 3; m ++)
-              out[m](y, x) += in[(k + 1 - comp.size()) + in.size() - 1][m](y, x) * comp[k];
+              out[m](y, x) += in[(k - comp.size()) + in.size()][m](y, x) * comp[k];
         }
       }
       redig.normalize(out, 1.);
@@ -610,7 +610,7 @@ int main(int argc, const char* argv[]) {
           inm[j].emplace_back(p.seed(in[i][j].rows()) * in[i][j].template cast<complex<num_t> >() * p.seed(in[i][j].cols()));
       for(int i = 0; i < 3; i ++)
         outc[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      const auto& comp(p.next(p.betterRange(in.size())));
+      const auto& comp(p.next(in.size()));
       for(int y = 0; y < outc[0].rows(); y ++) {
         for(int x = 0; x < outc[0].cols(); x ++) {
           outc[0](y, x) = outc[1](y, x) = outc[2](y, x) = num_t(0);
