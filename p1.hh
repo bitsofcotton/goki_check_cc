@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // so with this, U [[B], [O]] [x y] == 0.
 // this returns one of u_k that concerns 0.
 // skip attemps maximum skip status number if original data has a noised ones.
-template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0, const int& guard = 0) {
+template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0) {
   assert(varlen < in.size());
 #if defined(_FLOAT_BITS_)
   static const auto epsilon(T(1) >> int64_t(mybits - 2));
@@ -48,7 +48,7 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
   static const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
   static const auto threshold_inner(sqrt(epsilon));
-  SimpleMatrix<T> A((in.size() - varlen - guard) * 2 + 1, varlen + 1);
+  SimpleMatrix<T> A((in.size() - varlen) * 2 + 1, varlen + 1);
   SimpleVector<T> fvec(A.cols());
   SimpleVector<T> one(A.rows());
   const auto nin(sqrt(in.dot(in)));
@@ -56,10 +56,9 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < in.size() - varlen - guard; i ++) {
+  for(int i = 0; i < in.size() - varlen; i ++) {
     for(int j = 0; j < varlen; j ++)
       A(i, j) = in[i + j] / nin;
-    A(i, varlen - 1) = in[i + varlen - 1 + guard] / nin;
     A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
     A.row(i + A.rows() / 2) = - A.row(i);
   }
@@ -72,10 +71,9 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i < fvec.size() - 1; i ++)
+  for(int i = 0; i < fvec.size(); i ++)
     A(A.rows() - 1, i) = fvec[i] = T(0);
-  A(A.rows() - 1, A.cols() - 1) = T(1);
-  fvec[fvec.size() - 1] = T(0);
+  A(A.rows() - 1, varlen - 1) = T(1);
   SimpleMatrix<T> Pt(A.cols(), A.rows());
   for(int i = 0; i < Pt.rows(); i ++)
     for(int j = 0; j < Pt.cols(); j ++)
@@ -102,7 +100,7 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
     auto fidx(- 1);
     for(int i = onM.size() - 1 - skip; i < onM.size(); i ++)
       if(threshold_inner < onM[i].first) {
-        fidx = onM[i].second;
+        fidx = onM[onM.size() - 1].second;
         break;
       }
     if(fidx < 0)
@@ -127,7 +125,7 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline P1I();
-  inline P1I(const int& stat, const int& var, const int& guard);
+  inline P1I(const int& stat, const int& var);
   inline ~P1I();
   inline T next(const T& in, const int& skip = 0);
   std::vector<Vec> invariant;
@@ -135,16 +133,15 @@ private:
   inline const T& sgn(const T& x) const;
   Vec buf;
   int varlen;
-  int guard;
   int t;
 };
 
 template <typename T> inline P1I<T>::P1I() {
-  varlen = guard = t = 0;
+  varlen = t = 0;
 }
 
-template <typename T> inline P1I<T>::P1I(const int& stat, const int& var, const int& guard) {
-  buf.resize(stat + (varlen = var) * 2 - 1+ (this->guard = guard));
+template <typename T> inline P1I<T>::P1I(const int& stat, const int& var) {
+  buf.resize(stat + (varlen = var) * 2 - 1);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
   t = 0;
@@ -167,13 +164,12 @@ template <typename T> T P1I<T>::next(const T& in, const int& skip) {
   buf[buf.size() - 1] = in;
   if(t ++ < buf.size()) return T(0);
   // N.B. to compete with cheating, we calculate long term same invariant each.
-  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip), guard));
-  if(invariant.size() < skip) {
+  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip)));
+  if(int(invariant.size()) < skip) {
     invariant.emplace_back(invariant0);
     return T(0);
-  } else if(skip <= 0)
-    invariant.resize(1, invariant0);
-  else {
+  } else {
+    if(! invariant.size()) invariant.emplace_back(invariant0);
     for(int i = 0; i < invariant.size() - 1; i ++)
       std::swap(invariant[i], invariant[i + 1]);
     invariant[invariant.size() - 1] = invariant0;
@@ -181,9 +177,9 @@ template <typename T> T P1I<T>::next(const T& in, const int& skip) {
   auto avg(invariant[0]);
   for(int i = 1; i < invariant.size(); i ++)
     avg += invariant[i];
-  auto res(avg[varlen] / sqrt(T((buf.size() - varlen - guard) * 2 + 1) * T(varlen + 1)));
+  auto res(avg[varlen] / sqrt(T((buf.size() - varlen) * 2 + 1) * T(varlen + 1)));
   for(int i = 0; i < varlen - 1; i ++)
-    res += buf[i - varlen + buf.size() - guard + 1] * avg[i];
+    res += buf[i - varlen + buf.size() + 1] * avg[i];
   return res / avg[varlen - 1];
 }
 
