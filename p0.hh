@@ -160,7 +160,7 @@ template <typename T, bool denoise> const typename P0<T, denoise>::Vec& P0<T, de
         std::cerr << "." << std::flush;
         const auto& pp(next(size - 1));
         for(int i = 0; i < pp.size(); i ++)
-          p[i] += pp[i] * T(size - 1);
+          p[i - pp.size() + p.size()] += pp[i] * T(size - 1);
         p /= T(size);
       }
     }
