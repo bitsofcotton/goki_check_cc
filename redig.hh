@@ -836,12 +836,10 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     const auto mid(imgs[i].LSVD().transpose() * imgs[i]);
     Vec buf(mid.rows());
     for(int i = 0; i < buf.size(); i ++)
-      buf[i] = sqrt(mid.row(i).dot(mid.row(i)));
-    const auto nbuf(buf.dot(buf));
-    if(nbuf != T(0))
-      buf /= sqrt(nbuf);
+      buf[i] = sqrt(mid.row(i).dot(mid.row(i))) + num_t(1) / num_t(256);
     std::cerr << "." << std::flush;
-    work.emplace_back(dec.mother(buf));
+    //work.emplace_back(dec.mother(buf));
+    work.emplace_back(buf);
    next:
     std::cerr << "." << std::flush;
   }

@@ -140,14 +140,18 @@ template <typename T> const vector<typename CatG<T>::Vec>& CatG<T>::tayl(const i
 }
 
 template <typename T> inline void CatG<T>::inq(const Vec& in) {
-  if(in.size() == size)
-    cache.push_back(in);
-  else {
+  if(in.size() == size) {
+    auto pd(in[0]);
+    for(int i = 1; i < in.size(); i ++)
+      pd *= in[i];
+    cache.push_back(in * pow(abs(pd), - T(1) / T(in.size())));
+  } else {
     const auto& t(tayl(in.size()));
     Vec work(size);
+    T   pd(1);
     for(int i = 0; i < work.size(); i ++)
-      work[i] = t[i].dot(in);
-    cache.push_back(work);
+      pd *= (work[i] = t[i].dot(in));
+    cache.push_back(work * pow(abs(pd), - T(1) / T(work.size())));
   }
   catg.inq(cache[cache.size() - 1]);
   return;
@@ -287,7 +291,10 @@ template <typename T> inline T CatG<T>::lmrS(const Vec& in) {
     for(int i = 0; i < work.size(); i ++)
       work[i] = t[i].dot(in);
   }
-  return work.dot(cut) - origin;
+  auto pd(work[0]);
+  for(int i = 1; i < work.size(); i ++)
+    pd *= work[i];
+  return work.dot(cut) * pow(abs(pd), - T(1) / T(work.size())) - origin;
 }
 
 template <typename T> inline int CatG<T>::lmr(const Vec& in) {
