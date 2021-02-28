@@ -835,19 +835,39 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   for(int i = 0; i < imgs.size(); i ++) {
     const auto mid(imgs[i].LSVD().transpose() * imgs[i]);
     Vec buf(mid.rows());
-    for(int i = 0; i < buf.size(); i ++)
+    bool bogus(false);
+    for(int i = 0; i < buf.size(); i ++) {
       buf[i] = sqrt(mid.row(i).dot(mid.row(i))) + num_t(1) / num_t(256);
+      if(! isfinite(buf[i])) {
+        std::cerr << "X" << std::flush;
+        bogus = true;
+        break;
+      }
+    }
+    if(bogus) continue;
     std::cerr << "." << std::flush;
     //work.emplace_back(dec.mother(buf));
     work.emplace_back(buf);
+/*
+    for(int j = 0; j < imgs[i].rows(); j ++) {
+      work.emplace_back(imgs[i].row(j));
+      for(int k = 0; k < work[work.size() - 1].size(); k ++)
+        work[work.size() - 1][k] += num_t(1) / num_t(256);
+    }
+*/
    next:
     std::cerr << "." << std::flush;
   }
-  const auto cg(crush<T>(work, cs, - T(1) / T(2), int(cs * 1.2)));
+  const auto cg(crushNoContext<T>(work, cs, - T(1) / T(2), int(cs * 1.2), true));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
     if(! cg[i].first.size()) continue;
+/*
+    res.emplace_back(Mat(cg[i].first.size(), imgs[0].cols()));
+    for(int j = 0; j < cg[i].first.size(); j ++)
+      res[i].row(j) = cg[i].first[j].first;
+*/
     res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
     for(int j = 0; j < cg[i].first.size(); j ++)
       for(int k = 0; k < imgs[0].rows(); k ++)

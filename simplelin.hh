@@ -310,7 +310,7 @@ template <typename T> inline SimpleMatrix<T>::SimpleMatrix() {
   erows  = 0;
   ecols  = 0;
   entity = NULL;
-  epsilon = pow(T(2), - T(8));
+  epsilon = pow(T(2), - T(6));
   return;
 }
 
@@ -324,7 +324,7 @@ template <typename T> inline SimpleMatrix<T>::SimpleMatrix(const int& rows, cons
     entity[i].resize(cols);
   erows = rows;
   ecols = cols;
-  epsilon = pow(T(2), - T(8));
+  epsilon = pow(T(2), - T(6));
   return; 
 }
 

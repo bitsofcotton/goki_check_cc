@@ -38,7 +38,7 @@ public:
   inline Catg();
   inline ~Catg();
   inline void inq(const Vec& in);
-  inline void compute();
+  Mat compute();
   Mat R;
 private:
   std::vector<Vec> cache;
@@ -57,7 +57,7 @@ template <typename T> inline void Catg<T>::inq(const Vec& in) {
   cache.emplace_back(in);
 }
 
-template <typename T> inline void Catg<T>::compute() {
+template <typename T> inline typename Catg<T>::Mat Catg<T>::compute() {
   Mat At(cache[0].size(), cache.size());
   for(int i = 0; i < At.cols(); i ++)
     At.setCol(i, cache[i]);
@@ -70,9 +70,10 @@ template <typename T> inline void Catg<T>::compute() {
     // generally, assert norm > error is needed.
     // in this case, not.
     Q.row(i) = work / sqrt(work.dot(work));
+    if(! isfinite(Q(i, 0))) Q.row(i) *= T(0);
   }
   R = (Q * At.transpose()).transpose();
-  return;
+  return Q;
 }
 
 
@@ -87,9 +88,9 @@ public:
   inline void inqRecur(const Vec& in, const bool& computer = false);
   inline void compute(const bool& recur = false);
   inline void computeRecur();
-  inline T    lmrS(const Vec& in);
-  inline int  lmr(const Vec& in);
-  inline std::pair<int, int> lmrRecur(const Vec& in);
+  inline T    lmrS(const Vec& in, const bool& computer = false);
+  inline int  lmr(const Vec& in, const bool& computer = false);
+  inline std::pair<int, int> lmrRecur(const Vec& in, const bool& computer = false);
   Vec cut;
   T   distance;
   T   origin;
@@ -150,12 +151,12 @@ template <typename T> inline void CatG<T>::inq(const Vec& in, const bool& comput
   }
   if(computer) {
     T pd(1);
-    work /= sqrt(work.dot(work));
     for(int i = 0; i < work.size(); i ++)
-      pd *= work[i];
-    cache.emplace_back(work * pow(abs(pd), - T(1) / T(work.size())));
+      pd += log(abs(work[i]));
+    cache.emplace_back(work * exp(- pd / T(work.size())));
   } else
     cache.emplace_back(work);
+  assert(isfinite(cache[cache.size() - 1][0]));
   catg.inq(cache[cache.size() - 1]);
   return;
 }
@@ -178,13 +179,13 @@ template <typename T> inline void CatG<T>::computeRecur() {
 }
 
 template <typename T> inline void CatG<T>::compute(const bool& recur) {
-  catg.compute();
   Mat Pt(size + 1, cache.size() * 2);
   Vec q(Pt.cols());
   Vec one(q.size());
   SimpleVector<bool> fix(q.size());
+  const auto Q(catg.compute());
   for(int i = 0; i < cache.size(); i ++) {
-    const auto pp(catg.R.solve(cache[i]));
+    const auto pp(Q.col(i));
     for(int j = 0; j < Pt.rows() - 1; j ++) {
       Pt(j, 2 * i)     =   pp[j];
       Pt(j, 2 * i + 1) = - pp[j];
@@ -201,6 +202,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
   one /= sqrt(one.dot(one));
   Pt.row(Pt.rows() - 1)  = q - Pt.projectionPt(q);
   Pt.row(Pt.rows() - 1) /= sqrt(Pt.row(Pt.rows() - 1).dot(Pt.row(Pt.rows() - 1)));
+  assert(isfinite(Pt(Pt.rows() - 1, 0)));
   distance = origin = T(0);
   cut      = Vec();
   const auto block(recur ? size * 2 : 2);
@@ -270,8 +272,11 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
       rvec[i] = cut[i] - Pt.row(i).dot(one) * cut[cut.size() - 1];
     cut = rvec;
   }
+  assert(isfinite(cut[0]));
   cut  = catg.R * cut;
+  assert(isfinite(cut[0]));
   cut /= sqrt(cut.dot(cut));
+  assert(isfinite(cut[0]));
   std::vector<T> s;
   s.reserve(cache.size());
   for(int i = 0; i < cache.size(); i ++)
@@ -285,7 +290,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
   return;
 }
 
-template <typename T> inline T CatG<T>::lmrS(const Vec& in) {
+template <typename T> inline T CatG<T>::lmrS(const Vec& in, const bool& computer) {
   Vec work(size);
   if(in.size() == size)
     work = in;
@@ -294,19 +299,25 @@ template <typename T> inline T CatG<T>::lmrS(const Vec& in) {
     for(int i = 0; i < work.size(); i ++)
       work[i] = t[i].dot(in);
   }
+  if(computer) {
+    T pd(1);
+    for(int i = 0; i < work.size(); i ++)
+      pd += log(abs(work[i]));
+    return work.dot(cut) * exp(- pd / T(work.size())) - origin;
+  }
   return work.dot(cut) - origin;
 }
 
-template <typename T> inline int CatG<T>::lmr(const Vec& in) {
-  return lmrS(in) < T(0) ? - 1 : 1;
+template <typename T> inline int CatG<T>::lmr(const Vec& in, const bool& computer) {
+  return lmrS(in, computer) < T(0) ? - 1 : 1;
 }
 
-template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in) {
+template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in, const bool& computer) {
   std::pair<int, int> res(make_pair(0, 0));
   T    dM(0);
   auto work(in);
   for(int i = 0; i < in.size(); i ++) {
-    const auto score(lmrS(work));
+    const auto score(lmrS(work, computer));
     if(abs(dM) < abs(score)) {
       res = make_pair(score < T(0) ? - 1 : 1, i);
       dM  = abs(score);
@@ -346,7 +357,7 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T
       std::vector<std::pair<SimpleVector<T>, int> > left;
       std::vector<std::pair<SimpleVector<T>, int> > right;
       for(int i = 0; i < result[t].first.size(); i ++)
-        (cat.lmr(result[t].first[i].first) < 0 ? left : right).emplace_back(result[t].first[i]);
+        (cat.lmr(result[t].first[i].first, computer) < 0 ? left : right).emplace_back(result[t].first[i]);
       if(left.size() && right.size()) {
         CatG<T> lC(cs);
         CatG<T> rC(cs);
@@ -395,7 +406,7 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<Simp
       std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > left;
       std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > right;
       for(int i = 0; i < vv[t].size(); i ++) {
-        const auto lmr(cat.lmrRecur(vv[t][i].first.first));
+        const auto lmr(cat.lmrRecur(vv[t][i].first.first, computer));
         patch[vv[t][i].second] = vv[t][i].first.second = lmr.second;
         (lmr.first < 0 ? left : right).emplace_back(vv[t][i]);
       }
