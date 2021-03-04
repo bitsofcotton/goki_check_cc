@@ -111,7 +111,10 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
     auto fidx(- 1);
     for(int i = onM.size() - 1 - skip; i < onM.size(); i ++)
       if(threshold_inner < onM[i].first) {
-        fidx = onM[onM.size() - 1].second;
+        // XXX: select one of these.
+        // fidx = onM[onM.size() - 1].second;
+        // fidx = onM[i].second;
+        fidx = onM[(onM.size() - 1 + i) / 2].second;
         break;
       }
     if(fidx < 0)
