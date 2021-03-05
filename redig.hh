@@ -236,18 +236,18 @@ template <typename T> typename reDig<T>::Mat reDig<T>::drawBone(const vector<Vec
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
       for(int l = 0; l < center.size(); l ++) {
-        const auto score(pow(num_t(i) - center[l][0], num_t(2)) +
-                         pow(num_t(j) - center[l][1], num_t(2)) +
-                         pow(num_t(0) - center[l][2], num_t(2)) -
-                         pow(r[l], num_t(2)));
-        if(score <= num_t(0)) {
+        const auto score(pow(T(i) - center[l][0], T(2)) +
+                         pow(T(j) - center[l][1], T(2)) +
+                         pow(T(0) - center[l][2], T(2)) -
+                         pow(r[l], T(2)));
+        if(score <= T(0)) {
           result(i, j) += sqrt(abs(score));
-          count(i, j)  += num_t(1);
+          count(i, j)  += T(1);
         }
       }
   for(int i = 0; i < result.rows(); i ++)
     for(int j = 0; j < result.cols(); j ++)
-      if(count(i, j) != num_t(0))
+      if(count(i, j) != T(0))
         result(i, j) /= count(i, j);
   return normalize(result, 1.);
 }
@@ -833,38 +833,33 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   work.reserve(imgs.size());
   Decompose<T> dec(imgs[0].rows());
   for(int i = 0; i < imgs.size(); i ++) {
-    const auto mid(imgs[i].LSVD().transpose() * imgs[i]);
+    const auto lsvd(imgs[i].LSVD());
+    const auto mid(lsvd.transpose() * imgs[i]);
     Vec buf(mid.rows());
+    std::vector<T> stored;
+    stored.reserve(buf.size());
     for(int i = 0; i < buf.size(); i ++) {
-      buf[i] = sqrt(mid.row(i).dot(mid.row(i))) + T(1) / T(256);
+      int jj(- 1);
+      for(int j = 0; j < buf.size(); j ++)
+        if(! std::binary_search(stored.begin(), stored.end(), j) &&
+           (jj < 0 || abs(lsvd(jj, i)) < abs(lsvd(j, i)))) jj = j;
+      assert(0 <= jj);
+      stored.emplace_back(jj);
+      std::sort(stored.begin(), stored.end());
+      buf[i] = sqrt(mid.row(jj).dot(mid.row(jj))) + T(1) / T(256);
       if(! isfinite(buf[i])) {
         std::cerr << "X" << std::flush;
         buf[i] = T(1) / T(256);
       }
     }
-    std::cerr << "." << std::flush;
-    //work.emplace_back(dec.mother(buf));
-    work.emplace_back(buf);
-/*
-    for(int j = 0; j < imgs[i].rows(); j ++) {
-      work.emplace_back(imgs[i].row(j));
-      for(int k = 0; k < work[work.size() - 1].size(); k ++)
-        work[work.size() - 1][k] += num_t(1) / num_t(256);
-    }
-*/
-   next:
+    work.emplace_back(dec.mother(buf));
     std::cerr << "." << std::flush;
   }
-  const auto cg(crushNoContext<T>(work, cs, - T(1) / T(2), int(cs * 1.2), true));
+  const auto cg(crushNoContext<T>(work, cs, - T(1) / T(4), int(cs * 1.2), true));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
     if(! cg[i].first.size()) continue;
-/*
-    res.emplace_back(Mat(cg[i].first.size(), imgs[0].cols()));
-    for(int j = 0; j < cg[i].first.size(); j ++)
-      res[i].row(j) = cg[i].first[j].first;
-*/
     res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
     for(int j = 0; j < cg[i].first.size(); j ++)
       for(int k = 0; k < imgs[0].rows(); k ++)
