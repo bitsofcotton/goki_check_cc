@@ -719,8 +719,10 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::LSVD() const {
         }
       }
     }
-    for(int i = 0; i < idx.size(); i ++)
+    for(int i = 0; i < idx.size(); i ++) {
       std::swap(work.row(idx[idx.size() - 1 - i]), work.row(idx.size() - 1 - i));
+      std::swap(d[idx[idx.size() - 1 - i]], d[idx.size() - 1 - i]);
+    }
     auto eMidx(0);
     for(int i = 1; i < d.size(); i ++)
       if(abs(d[eMidx]) < abs(d[i]))
