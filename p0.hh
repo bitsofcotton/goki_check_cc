@@ -107,9 +107,9 @@ template <typename T, bool denoise> const typename P0<T, denoise>::Mat& P0<T, de
     auto DD(seed(size));
     auto II(seed(size));
     for(int i = 0; i < DD.rows(); i ++)
-      DD.row(i) *= J() * T(2) * Pi() * T(i) / T(DD.rows());
+      DD.row(i) *= - J() * T(2) * Pi() * T(i) / T(DD.rows());
     for(int i = 1; i < DD.rows(); i ++)
-      II.row(i) /= J() * T(2) * Pi() * T(i) / T(DD.rows()) / Pi();
+      II.row(i) /= - J() * T(2) * Pi() * T(i) / T(DD.rows()) / Pi();
     dd = (seed(- size) * DD).template real<T>() / Pi();
     ii = (seed(- size) * II).template real<T>();
   }

@@ -79,7 +79,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend) <input.ppm> <output.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck (pred|predf|cat) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -113,6 +113,7 @@ int main(int argc, const char* argv[]) {
   P0<num_t>         p;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
+     strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
@@ -135,6 +136,9 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.compute(data[i], filter.ENLARGE_BOTH, rot), filter.CLIP);
+    else if(strcmp(argv[1], "flarge") == 0)
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter.compute(data[i], filter.FLARGE_BOTH, rot);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.EXTEND_BOTH, rot);

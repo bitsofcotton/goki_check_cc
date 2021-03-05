@@ -33,6 +33,9 @@ public:
     ENLARGE_X,
     ENLARGE_Y,
     ENLARGE_BOTH,
+    FLARGE_X,
+    FLARGE_Y,
+    FLARGE_BOTH,
     DETECT_X,
     DETECT_Y,
     DETECT_BOTH,
@@ -92,6 +95,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return compute(compute(data, SHARPEN_X), SHARPEN_Y);
     case ENLARGE_BOTH:
       return compute(compute(data, ENLARGE_X), ENLARGE_Y);
+    case FLARGE_BOTH:
+      return compute(compute(data, FLARGE_X), FLARGE_Y);
     case DETECT_BOTH:
       return (compute(data, DETECT_X) + compute(data, DETECT_Y)) / T(2);
     case INTEG_BOTH:
@@ -107,6 +112,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return compute(data.transpose(), SHARPEN_Y).transpose();
     case ENLARGE_X:
       return compute(data.transpose(), ENLARGE_Y).transpose();
+    case FLARGE_X:
+      return compute(data.transpose(), FLARGE_Y).transpose();
     case DETECT_X:
       return compute(data.transpose(), DETECT_Y).transpose();
     case INTEG_X:
@@ -213,6 +220,15 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         }
        eopi:
         return Eop[size][recur] * data;
+      }
+      break;
+    case FLARGE_Y:
+      {
+        Decompose<T> e(data.rows());
+        Mat result(data.rows() * recur, data.cols());
+        for(int i = 0; i < data.cols(); i ++)
+          result.setCol(i, e.enlarge(data.col(i), recur));
+        return result;
       }
       break;
     case BUMP_Y:
