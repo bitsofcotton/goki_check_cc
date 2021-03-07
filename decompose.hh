@@ -76,26 +76,12 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::mimic(const Vec& 
   const auto size2(dst.size() / size);
   const auto size3(src.size() / size);
         auto res(dst);
-  Vec ddst;
-  Vec dsrc;
   for(int i = 0; i < size2; i ++) {
     const auto dd(prepare(dst, i));
-    if(i) {
-      dsrc += dd;
-      ddst += synth(mother(prepare(src, i * size3 / size2)),
-                    freq(mother(dd), dd)) * intensity +
-              dd * (T(1) - abs(intensity));
-   } else {
-      dsrc  = dd;
-      ddst  = synth(mother(prepare(src, i * size3 / size2)),
-                    freq(mother(dd), dd)) * intensity +
-              dd * (T(1) - abs(intensity));
-   }
+    apply(res, synth(mother(prepare(src, i * size3 / size2)),
+                     freq(mother(dd), dd)) * intensity +
+               dd * (T(1) - abs(intensity)), dd, i);
   }
-  dsrc /= T(size2);
-  ddst /= T(size2);
-  for(int i = 0; i < size2; i ++)
-    apply(res, ddst, dsrc, i);
   return res;
 }
 
@@ -103,26 +89,14 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Ve
   const int  size(A.size());
   const auto size2(dst.size() / size);
         auto res(dst);
-  Vec   ddst;
-  Vec   dsrc;
   for(int i = 0; i < size2; i ++) {
     const auto dd(prepare(dst, i));
           auto lfreq(dd);
     lfreq[lfreq.size() - 1] = T(0);
     for(int j = 0; j < lfreq.size() - 1; j ++)
       lfreq[j] = T(j + 1) / T(lfreq.size() - 1);
-    if(i) {
-      dsrc += dd;
-      ddst += synth(mother(dd), lfreq) * intensity;
-    } else {
-      dsrc  = dd;
-      ddst  = synth(mother(dd), lfreq) * intensity;
-    }
+    apply(res, synth(mother(dd), lfreq) * intensity, dd, i);
   }
-  dsrc /= T(size2);
-  ddst /= T(size2);
-  for(int i = 0; i < size2; i ++)
-    apply(res, ddst, dsrc, i);
   return res;
 }
 
@@ -150,7 +124,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::enlarge(const Vec
     ff.resize(pp.rows());
     for(int i = 0; i < pp.rows(); i ++) {
       pp.row(i) = p0.taylor(in.size(), T(i) / T(r));
-      ff[i] = T(1);
+      ff[i] = i < in.size() ? T(1) : T(0);
     }
     ff /= sqrt(ff.dot(ff));
     ee  = Decompose<T>(in.size() * r);
@@ -228,6 +202,8 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::synth(const Vec& 
     res[i] = T(0);
   for(int i = 0; i < A.size(); i ++)
     res += A[i] * mother * in[i];
+  // XXX:
+  res[0] = res[res.size() - 1];
   return res;
 }
 

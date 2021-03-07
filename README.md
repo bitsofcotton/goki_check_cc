@@ -33,7 +33,7 @@ Searching the Internet more...
 # Usage
     make gokicheck
     
-    gokicheck (collect|sharpen|bump|enlarge|pextend) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
+    gokicheck (collect|sharpen|bump|enlarge|flarge|pextend) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
     gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
     gokicheck (cat|pred)  <output.ppm> <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
@@ -46,11 +46,15 @@ Searching the Internet more...
     gokicheck recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokicheck retrace  <dimension> <input-mask.ppm> <input-mask-copy.ppm> <intensity>
     gokicheck retrace2 <dimension> <input-mask.ppm> <outbase> <intensity>
+    gokicheck newtrace <dimension> <size> <output.ppm>
     gokicheck reimage  <dimension> <input.ppm> <input-src.ppm> <output.ppm> <intensity>
     gokicheck reimage2 <dimension> <input.ppm> <output.ppm> <intensity>
     python2 test.py ./gokicheck (match|match0|rmatch|rmatch0) input0.png input1.(png|obj)
     python2 test.py ./gokicheck (cat|pred|ppred|ppredr)       input0.png input1.png ...
-    python2 test.py ./gokicheck (pextend|sharpen|enlarge|jps|tilt|btilt|flicker|obj|sbox|demosaic|prep|presq|mask|mask0) input.png
+    python2 test.py ./gokicheck newtrace dimension size
+    python2 test.py ./gokicheck retrace  dimension input.ppm intensity
+    python2 test.py ./gokicheck retrace2 dimension dst.ppm src.ppm intensity
+    python2 test.py ./gokicheck (pextend|sharpen|enlarge|flarge|jps|tilt|btilt|flicker|obj|sbox|demosaic|prep|presq|mask|mask0) input.png
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive

@@ -140,6 +140,7 @@ public:
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1000000));
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0 = - T(1000000));
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
+  Mat  applyTrace(const pair<Vec, Vec>& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw);
 
 private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
@@ -152,7 +153,6 @@ private:
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(100000));
   inline int  getImgPtRecursive(const int& h, const int& y) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
-  Mat  applyTrace(const pair<Vec, Vec>& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw);
   
   T   Pi;
   int vbox;

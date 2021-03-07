@@ -69,6 +69,19 @@ elif(argv[2] == "ppred" or argv[2] == "ppredr"):
   print " ".join(cmd)
   subprocess.call(cmd)
   subprocess.call(["ffmpeg", "-i", "pose%d.ppm", "-frame_drop_threshold", "0.0", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "pose.mp4"])
+elif(argv[2] == "retrace" or argv[2] == "newtrace" or argv[2] == "retrace2"):
+  idx = 3
+  try:
+    pixels = int(argv[3])
+    idx = 4
+  except:
+    pass
+  if(argv[2] == "retrace"):
+    subprocess.call([argv[1], "retrace2", str(pixels), argv[idx], argv[idx] + "-emphmask.ppm", argv[idx + 1]])
+  elif(argv[2] == "retrace2"):
+    subprocess.call([argv[1], "retrace", str(pixels), argv[idx], argv[idx + 1], argv[idx] + "-" + argv[idx + 1] + "-mask.ppm", argv[idx + 2]])
+  else:
+    subprocess.call([argv[1], "newtrace", str(pixels), argv[idx], "newtrace.ppm"])
 else:
   for line in argv[3:]:
     try:

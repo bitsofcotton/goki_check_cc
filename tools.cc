@@ -77,6 +77,8 @@ using namespace goki;
 using std::cout;
 using std::endl;
 
+#include <stdlib.h>
+
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend) <input.ppm> <output.ppm>" << endl;
@@ -94,6 +96,7 @@ void usage() {
   cout << "gokicheck recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck retrace <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck retrace2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokicheck newtrace <num_shape_per_point> <size> <output.ppm>" << endl;
   cout << "gokicheck reimage <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck reimage2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
   return;
@@ -798,6 +801,31 @@ int main(int argc, const char* argv[]) {
     redig.normalize(out, 1.);
     if(!file.savep2or3(argv[4], out, ! true, 255))
       return - 3;
+  } else if(strcmp(argv[1], "newtrace") == 0) {
+    if(argc < 5) {
+      usage();
+      return -1;
+    }
+    SimpleVector<num_t> m(std::atoi(argv[2]));
+    Decompose<num_t> dec(m.size());
+    auto n(m);
+    auto f(m);
+    m[0] = n[0] = num_t(std::atoi(argv[2]) * 2);
+    // XXX (f[0] := 1 causes flat result.):
+    f[0] = num_t(0);
+    for(int i = 1; i < m.size(); i ++) {
+      m[i] = m[i - 1] + (num_t(arc4random_uniform(3000)) - num_t(1500)) / num_t(1500);
+      n[i] = n[i - 1] + (num_t(arc4random_uniform(3000)) - num_t(1500)) / num_t(1500);
+      f[i] = num_t(1);
+    }
+    f /= sqrt(f.dot(f));
+    const auto pp(std::make_pair(std::make_pair(std::atoi(argv[3]),
+      std::atoi(argv[3])), std::make_pair(0, 0)));
+    typename simpleFile<num_t>::Mat M[3];
+    M[0] = M[1] = M[2] = redig.normalize(redig.applyTrace(
+      std::make_pair(dec.synth(m, f), dec.synth(n, f)),
+      std::make_pair(pp, pp)), num_t(1));
+    file.savep2or3(argv[4], M, true, 255);
   } else if(strcmp(argv[1], "omake") == 0) {
     std::vector<std::vector<num_t> > data;
     std::string header;
