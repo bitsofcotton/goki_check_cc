@@ -303,14 +303,14 @@ private:
   SimpleVector<T>* entity;
   int              erows;
   int              ecols;
-  T                epsilon;
+  num_t            epsilon;
 };
 
 template <typename T> inline SimpleMatrix<T>::SimpleMatrix() {
   erows  = 0;
   ecols  = 0;
   entity = NULL;
-  epsilon = pow(T(2), - T(6));
+  epsilon = pow(num_t(2), - num_t(6));
   return;
 }
 
@@ -324,7 +324,7 @@ template <typename T> inline SimpleMatrix<T>::SimpleMatrix(const int& rows, cons
     entity[i].resize(cols);
   erows = rows;
   ecols = cols;
-  epsilon = pow(T(2), - T(6));
+  epsilon = pow(num_t(2), - num_t(6));
   return; 
 }
 
@@ -621,6 +621,7 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector
     }
   }
   for(int i = erows - 1; 0 <= i; i --) {
+    if(work.entity[i][i] == T(0)) continue;
     const T buf(other[i] / work.entity[i][i]);
     if(!isfinite(buf) || isnan(buf)) {
     //  assert(!isfinite(work.entity[i][i] / other[i]) || isnan(work.entity[i][i] / other[i]));

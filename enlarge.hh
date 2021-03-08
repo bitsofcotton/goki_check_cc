@@ -224,10 +224,14 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       break;
     case FLARGE_Y:
       {
-        Decompose<T> e(data.rows());
-        Mat result(data.rows() * recur, data.cols());
-        for(int i = 0; i < data.cols(); i ++)
-          result.setCol(i, e.enlarge(data.col(i), recur));
+        Mat work(data);
+        for(int i = 0; i < work.rows(); i ++)
+          for(int j = 0; j < work.cols(); j ++)
+            work(i, j) += T(1) / T(256);
+        Decompose<T> e(work.rows());
+        Mat result(work.rows() * recur, work.cols());
+        for(int i = 0; i < work.cols(); i ++)
+          result.setCol(i, e.enlarge(work.col(i), recur));
         return result;
       }
       break;

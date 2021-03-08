@@ -101,35 +101,33 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Ve
 }
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::enlarge(const Vec& in, const int& r) const {
-  assert(1 < r);
+  assert(0 < r);
   static P0<T> p0;
   static std::vector<std::vector<Mat> > p;
-  static std::vector<std::vector<Vec> > f;
   static std::vector<Decompose<T> > e;
-  if(p.size() < in.size()) {
+  if(p.size() <= in.size())
     p.resize(in.size() + 1, std::vector<Mat>());
-    f.resize(in.size() + 1, std::vector<Vec>());
-  }
-  if(p[in.size()].size() < r) {
+  if(p[in.size()].size() <= r)
     p[in.size()].resize(r + 1, Mat());
-    f[in.size()].resize(r + 1, Vec());
-  }
-  if(e.size() < in.size() * r)
+  if(e.size() <= in.size() * r)
     e.resize(in.size() * r + 1, Decompose<T>());
   auto& pp(p[in.size()][r]);
-  auto& ff(f[in.size()][r]);
   auto& ee(e[in.size() * r]);
   if(pp.rows() < in.size() * r) {
     pp.resize(in.size() * r, in.size());
-    ff.resize(pp.rows());
-    for(int i = 0; i < pp.rows(); i ++) {
-      pp.row(i) = p0.taylor(in.size(), T(i) / T(r));
-      ff[i] = i < in.size() ? T(1) : T(0);
-    }
-    ff /= sqrt(ff.dot(ff));
-    ee  = Decompose<T>(in.size() * r);
+    for(int i = 0; i < pp.rows(); i ++)
+      pp.row(i) = p0.taylor(in.size(), T(i) * T(in.size() - 1) / T(pp.rows() - 1));
+    if(! ee.A.size()) ee = Decompose<T>(in.size() * r);
   }
-  return ee.synth(pp * mother(in), ff) * sqrt(in.dot(in));
+  const auto m(mother(in));
+  const auto f2(freq(m, in));
+  const auto bm(pp * m);
+        auto ff(bm);
+  for(int i = 0; i < ff.size(); i ++)
+    //ff[i] = f2[i % f2.size()];
+    ff[i] = i < f2.size() ? f2[i % f2.size()] : T(0);
+  auto result(ee.synth(bm, ff));
+  return result *= sqrt(in.dot(in) / result.dot(result) * T(r));
 }
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::prepare(const Vec& in, const int& idx) const {

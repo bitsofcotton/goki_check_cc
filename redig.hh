@@ -841,7 +841,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     for(int i = 0; i < buf.size(); i ++) {
       int jj(- 1);
       for(int j = 0; j < buf.size(); j ++)
-        if(! std::binary_search(stored.begin(), stored.end(), j) &&
+        if(! std::binary_search(stored.begin(), stored.end(), T(j)) &&
            (jj < 0 || abs(lsvd(jj, i)) < abs(lsvd(j, i)))) jj = j;
       assert(0 <= jj);
       stored.emplace_back(jj);
