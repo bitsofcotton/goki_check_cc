@@ -46,6 +46,7 @@ public:
          Vec  synth(const Vec& mother, const Vec& freq) const;
 private:
   std::vector<Mat> A;
+         Mat  A0;
          Vec  prepare(const Vec& in, const int& idx = 0) const;
          void apply(Vec& v, const Vec& dst, const Vec& src, const int& idx = 0) const;
 };
@@ -59,12 +60,16 @@ template <typename T> inline Decompose<T>::Decompose(const int& size) {
   for(int i = 0; i < size; i ++) {
     SimpleMatrix<T> AA(size, size);
     for(int j = 0; j < AA.rows(); j ++) {
-      // XXX: we avoid const. function.
-      const auto jj(T(j) * T(i + 1) / T(size + 1));
+      const auto jj(T(j) * T(i + 2) / T(size + 1));
       AA.row(j) = p0.taylor(AA.cols(), (jj - floor(jj)) * T(size - 1));
     }
     A.emplace_back(AA);
   }
+  for(int i = 1; i < A.size(); i ++)
+    std::swap(A[A.size() - i], A[A.size() - i - 1]);
+  A0 = A[0];
+  for(int i = 1; i < A.size(); i ++)
+    A0 += A[i];
 }
 
 template <typename T> inline Decompose<T>::~Decompose() {
@@ -124,8 +129,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::enlarge(const Vec
   const auto bm(pp * m);
         auto ff(bm);
   for(int i = 0; i < ff.size(); i ++)
-    //ff[i] = f2[i % f2.size()];
-    ff[i] = i < f2.size() ? f2[i % f2.size()] : T(0);
+    ff[i] = i ? f2[(i % (f2.size() - 1)) + 1] : f2[i];
   auto result(ee.synth(bm, ff));
   return result *= sqrt(in.dot(in) / result.dot(result) * T(r));
 }
@@ -173,14 +177,7 @@ template <typename T> void Decompose<T>::apply(Vec& v, const Vec& dst, const Vec
 template <typename T> typename Decompose<T>::Vec Decompose<T>::mother(const Vec& in) const {
   assert(in.size() && A.size() == in.size() &&
          A[0].rows() == in.size() && A[0].cols() == in.size());
-  Mat work(in.size(), in.size());
-  Vec one(in.size());
-  for(int i = 0; i < A.size(); i ++) {
-    work.setCol(i, A[i] * in);
-    one[i] = T(1);
-  }
-  auto f(work.solve(one));
-  return f /= sqrt(f.dot(f));
+  return A0.solve(in);
 }
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::freq(const Vec& mother, const Vec& in) const {
@@ -200,8 +197,6 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::synth(const Vec& 
     res[i] = T(0);
   for(int i = 0; i < A.size(); i ++)
     res += A[i] * mother * in[i];
-  // XXX:
-  res[0] = res[res.size() - 1];
   return res;
 }
 
