@@ -53,9 +53,10 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
   SimpleVector<T> one(A.rows());
   const auto nin(sqrt(in.dot(in)));
 #if defined(_OPENMP)
-#pragma omp parallel
 #pragma omp for schedule(static, 1)
 #endif
+  for(int i = 0; i < fvec.size(); i ++)
+    A(A.rows() - 1, i) = fvec[i] = T(0);
   for(int i = 0; i < in.size() - varlen; i ++) {
     for(int j = 0; j < varlen; j ++)
       A(i, j) = in[i + j] / nin;
@@ -64,8 +65,11 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
       auto mul(A(i, 0));
       for(int j = 1; j < A.cols(); j ++)
         mul *= A(i, j);
+      if(mul == T(0)) return fvec;
       assert(mul != T(0));
       A.row(i) /= pow(abs(mul), T(1) / T(A.cols()));
+      for(int j = 0; j < A.cols(); j ++)
+        A(i, j) = T(1) / A(i, j);
     }
     A.row(i + A.rows() / 2) = - A.row(i);
   }
@@ -79,11 +83,6 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
   for(int i = 0; i < A.rows(); i ++)
     one[i] = T(1);
   one /= sqrt(one.dot(one));
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < fvec.size(); i ++)
-    A(A.rows() - 1, i) = fvec[i] = T(0);
   A(A.rows() - 1, varlen - 1) = T(1);
   SimpleMatrix<T> Pt(A.cols(), A.rows());
   for(int i = 0; i < Pt.rows(); i ++)
@@ -141,7 +140,7 @@ public:
   inline P1I();
   inline P1I(const int& stat, const int& var);
   inline ~P1I();
-  inline T next(const T& in, const int& skip = 0, const bool& computer = false);
+  inline T next(const T& in, const int& skip = 0, const T& computer = T(0));
   std::vector<Vec> invariant;
 private:
   inline const T& sgn(const T& x) const;
@@ -172,16 +171,17 @@ template <typename T> inline const T& P1I<T>::sgn(const T& x) const {
   return x != zero ? (x < zero ? mone : one) : zero;
 }
 
-template <typename T> T P1I<T>::next(const T& in, const int& skip, const bool& computer) {
+template <typename T> T P1I<T>::next(const T& in, const int& skip, const T& computer) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
-  buf[buf.size() - 1] = in;
-  if(t ++ < buf.size()) return T(0);
+  buf[buf.size() - 1] = in + computer;
+  if(t ++ < buf.size()) return computer;
   // N.B. to compete with cheating, we calculate long term same invariant each.
-  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip), computer));
+  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip), computer != T(0)));
+  if(invariant0.dot(invariant0) == T(0)) return computer;
   if(int(invariant.size()) < skip) {
     invariant.emplace_back(invariant0);
-    return T(0);
+    return computer;
   } else {
     if(! invariant.size()) invariant.emplace_back(invariant0);
     for(int i = 0; i < invariant.size() - 1; i ++)
@@ -191,10 +191,10 @@ template <typename T> T P1I<T>::next(const T& in, const int& skip, const bool& c
   auto avg(invariant[0]);
   for(int i = 1; i < invariant.size(); i ++)
     avg += invariant[i];
-  auto res(avg[varlen] / sqrt(T((buf.size() - varlen) * 2 + 1) * T(varlen + 1)));
+  auto res(avg[varlen] * sqrt(T((buf.size() - varlen) * 2 + 1) * T(varlen + 1)));
   for(int i = 0; i < varlen - 1; i ++)
-    res += buf[i - varlen + buf.size() + 1] * avg[i];
-  return res /= avg[varlen - 1];
+    res += avg[i] / buf[i - varlen + buf.size() + 1];
+  return res = avg[varlen - 1] / res;
 }
 
 #define _P1_

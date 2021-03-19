@@ -831,7 +831,6 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
   vector<Vec> work;
   work.reserve(imgs.size());
-  Decompose<T> dec(imgs[0].rows());
   for(int i = 0; i < imgs.size(); i ++) {
     const auto lsvd(imgs[i].LSVD());
     const auto mid(lsvd.transpose() * imgs[i]);
@@ -852,10 +851,10 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
         buf[i] = T(1) / T(256);
       }
     }
-    work.emplace_back(dec.mother(buf));
+    work.emplace_back(buf);
     std::cerr << "." << std::flush;
   }
-  const auto cg(crushNoContext<T>(work, cs, - T(1) / T(4), int(cs * 1.2), true));
+  const auto cg(crush<T>(work, cs, - T(1) / T(20), work[0].size(), true));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {

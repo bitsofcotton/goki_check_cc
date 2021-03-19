@@ -312,7 +312,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
           for(int j = 0; j < data.cols(); j ++) {
             result(data.rows() + recur + i, j) =
-              result(recur - i - 1, j) = T(0);
+              result(recur - i - 1, j) = complex<T>(T(0));
             for(int k = 0; k < next.size(); k ++) {
               result(data.rows() + recur + i, j) +=
                 result(recur + (k - next.size() + 1) * (i + 1) + data.rows() - 1, j) *

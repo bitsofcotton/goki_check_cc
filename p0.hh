@@ -199,7 +199,7 @@ template <typename T, bool denoise> inline P0B<T, denoise>::~P0B() {
 template <typename T, bool denoise> inline T P0B<T, denoise>::next(const T& in) {
   static P0<T, denoise> p;
   for(int i = 0; i < buf.size() - 1; i ++)
-    buf[i] = buf[i + 1];
+    buf[i]  = buf[i + 1];
   buf[buf.size() - 1] = in;
   return p.next(buf.size()).dot(buf);
 }

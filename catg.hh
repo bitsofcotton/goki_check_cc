@@ -153,7 +153,10 @@ template <typename T> inline void CatG<T>::inq(const Vec& in, const bool& comput
     T pd(0);
     for(int i = 0; i < work.size(); i ++)
       pd += log(abs(work[i]));
-    cache.emplace_back(work * exp(- pd / T(work.size())));
+    pd = exp(- pd / T(work.size()));
+    for(int i = 0; i < work.size(); i ++)
+      work[i] = pd / work[i];
+    cache.emplace_back(work);
   } else
     cache.emplace_back(work);
   assert(isfinite(cache[cache.size() - 1][0]));
@@ -301,7 +304,10 @@ template <typename T> inline T CatG<T>::lmrS(const Vec& in, const bool& computer
     T pd(0);
     for(int i = 0; i < work.size(); i ++)
       pd += log(abs(work[i]));
-    return work.dot(cut) * exp(- pd / T(work.size())) - origin;
+    pd = exp(- pd / T(work.size()));
+    for(int i = 0; i < work.size(); i ++)
+      work[i] = pd / work[i];
+    return work.dot(cut) - origin;
   }
   return work.dot(cut) - origin;
 }
@@ -454,6 +460,93 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<Simp
     result.emplace_back(std::make_pair(std::move(vv[i]), std::move(cg.catg)));
   }
   return result;
+}
+
+
+template <typename T> class P012L {
+public:
+  typedef SimpleVector<T> Vec;
+  inline P012L();
+  inline P012L(const int& d, const int& stat, const int& slide, const T& intensity = - T(1) / T(2));
+  inline ~P012L();
+  inline T next(const T& in);
+  inline T lastAvg() const;
+private:
+  std::vector<Vec> cache;
+  std::vector<Vec> pp;
+  Vec work;
+  int stat;
+  int slide;
+  T   inten;
+  int t;
+};
+
+template <typename T> inline P012L<T>::P012L() {
+  t = stat = slide = 0;
+}
+
+template <typename T> inline P012L<T>::P012L(const int& d, const int& stat, const int& slide, const T& intensity) {
+  work.resize(d);
+  cache.reserve(stat);
+  this->stat  = stat;
+  this->slide = slide;
+  this->inten = intensity;
+  t = 0;
+}
+
+template <typename T> inline P012L<T>::~P012L() {
+  ;
+}
+
+template <typename T> inline T P012L<T>::next(const T& in) {
+  // XXX:
+  static Decompose<T> dec(work.size());
+  work[work.size() - 1] = in;
+  if(t ++ < work.size() - 1) {
+    work[(t - 1) % work.size()] = in;
+    return in;
+  }
+  const auto v(dec.next(work));
+  cache.emplace_back(v / sqrt(v.dot(v)));
+  for(int i = 0; i < work.size() - 1; i ++)
+    work[i] = work[i + 1];
+  work[work.size() - 2] = in;
+  if(stat <= cache.size()) {
+    const auto cat(crush<T>(cache, work.size(), inten, - 1, true));
+    pp = std::vector<Vec>();
+    pp.reserve(cat.size());
+    for(int i = 0; i < cat.size(); i ++) {
+      pp.emplace_back(cat[i].first[0].first);
+      for(int j = 1; j < cat[i].first.size(); j ++)
+        pp[i] += cat[i].first[j].first;
+      pp[i] /= sqrt(pp[i].dot(pp[i]));
+    }
+    const auto cache0(cache);
+    cache = std::vector<Vec>();
+    cache.reserve(stat);
+    for(int i = 0; i < slide; i ++)
+      cache.emplace_back(cache0[i - slide + cache0.size()]);
+  }
+  T MM(0);
+  T res(0);
+  for(int i = 0; i < pp.size(); i ++) {
+    const auto& p(pp[i]);
+    const auto  vdp(dec.next(work).dot(p));
+    const auto  last(p[p.size() - 1] - p[p.size() - 2]);
+    if(! isfinite(vdp)) continue;
+    if(MM <= abs(vdp) && last != T(0)) {
+      MM  = abs(vdp);
+      res = last * vdp;
+    }
+  }
+  return in + res;
+}
+
+template <typename T> inline T P012L<T>::lastAvg() const{
+  T la(0);
+  for(int i = 0; i < cache.size(); i ++)
+    la += abs(cache[i][cache[i].size() - 1] - cache[i][cache[i].size() - 2]);
+  return la /= T(cache.size());
 }
 
 #define _CATG_
