@@ -191,10 +191,21 @@ template <typename T> T P1I<T>::next(const T& in, const int& skip, const T& comp
   auto avg(invariant[0]);
   for(int i = 1; i < invariant.size(); i ++)
     avg += invariant[i];
-  auto res(avg[varlen] * sqrt(T((buf.size() - varlen) * 2 + 1) * T(varlen + 1)));
+  const auto nin(sqrt(buf.dot(buf)));
+  auto work(avg);
+  for(int i = 2; i < work.size(); i ++)
+    work[i - 2] = buf[i - work.size() + buf.size()] / nin;
+  work[work.size() - 2] = work[work.size() - 3];
+  work[work.size() - 1] = T(1) / sqrt(T((buf.size() - varlen) * 2 + 1) * T(varlen + 1));
+  // <avg, 1 / work> * alpha == 0, alpha != 0.
+  // <=> work[k] = 1 / (<avg, 1 / work> - avg[k] / work[k]).
+  // in the condition that work is scaled some.
+  T res(0);
   for(int i = 0; i < varlen - 1; i ++)
-    res += avg[i] / buf[i - varlen + buf.size() + 1];
-  return res = avg[varlen - 1] / res;
+    res += avg[i] / work[i];
+  for(int i = varlen; i < avg.size(); i ++)
+    res += avg[i] / work[i];
+  return res = nin * avg[varlen - 1] / res;
 }
 
 #define _P1_
