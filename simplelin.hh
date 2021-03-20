@@ -689,6 +689,12 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::LSVD() const {
   for(int i = 0; i < left.rows(); i ++)
     for(int j = 0; j < left.cols(); j ++)
       left(i, j) = i == j ? T(1) : T(0);
+  for(int i = 0; i < this->rows(); i ++)
+    for(int j = 0; j < this->cols(); j ++)
+      assert(isfinite((*this)(i, j)));
+  for(int i = 0; i < s.rows(); i ++)
+    for(int j = 0; j < s.cols(); j ++)
+      assert(isfinite(s(i, j)));
   for(int ii = 0; ii < s.rows(); ii ++) {
     // find eigen max on working matrix:
     SimpleMatrix<T> work(s.rows() - ii, s.rows() - ii);

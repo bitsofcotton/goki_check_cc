@@ -44,11 +44,14 @@ public:
          Vec  mother(const Vec& in) const;
          Vec  freq(const Vec& mother, const Vec& in) const;
          Vec  synth(const Vec& mother, const Vec& freq) const;
+         Mat  decompose(const Mat& img, const int& depth = 3) const;
+         Mat  subImage(const Mat& img, const int& x, const int& y, const int& r) const;
 private:
   std::vector<Mat> A;
          Mat  A0;
          Vec  prepare(const Vec& in, const int& idx = 0) const;
          void apply(Vec& v, const Vec& dst, const Vec& src, const int& idx = 0) const;
+         int  flip(const int& x, const int& s) const;
 };
 
 template <typename T> inline Decompose<T>::Decompose() {
@@ -198,6 +201,103 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::synth(const Vec& 
   for(int i = 0; i < A.size(); i ++)
     res += A[i] * mother * in[i];
   return res;
+}
+
+template <typename T> typename Decompose<T>::Mat Decompose<T>::decompose(const Mat& img, const int& depth) const {
+  static P0<T> p;
+  Mat res0(1, A.size());
+  Mat w00(img.rows() - A.size() * 2, A.size());
+  for(int i = A.size(); i < img.rows() - A.size(); i ++) {
+    Mat w0(img.cols() - A.size() * 2, A.size());
+    for(int j = A.size(); j < img.cols() - A.size(); j ++) {
+      std::vector<Vec> w1;
+      for(int r = A.size();
+              r < min(min(i, j),
+                    min(img.rows() - i - 1, img.cols() - j - 1));
+              r += min(img.rows() / A.size(), img.cols() / A.size())) {
+        const auto part(subImage(img, i, j, r));
+        const auto left(part.LSVD().transpose() * part);
+              Vec  work(left.rows());
+        for(int k = 0; k < work.size(); k ++)
+          work[k] = sqrt(left.row(k).dot(left.row(k))) + T(1);
+        w1.emplace_back(std::move(work /= sqrt(work.dot(work))));
+      }
+      if(! w1.size())
+        for(int k = 0; k < w0.cols(); k ++)
+          w0(j - A.size(), k) = T(1) / sqrt(T(w0.cols()));
+      else if(w1.size() == 1)
+        w0.row(j - A.size()) = std::move(w1[0]);
+      else {
+        Mat w1m(w1.size(), A.size());
+        for(int i = 0; i < w1m.rows(); i ++)
+          w1m.row(i) = std::move(w1[i]);
+        w1m = w1m.transpose();
+        const auto left(w1m.LSVD().transpose() * w1m);
+        for(int k = 0; k < left.rows(); k ++)
+          w0(j - A.size(), k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
+        w0.row(j - A.size())  = p.diff(- w0.cols()) * mother(w0.row(j - A.size()));
+        w0.row(j - A.size()) /= sqrt(w0.row(j - A.size()).dot(w0.row(j - A.size())));
+      }
+    }
+    w0 = w0.transpose();
+    for(int j = 0; j < w0.rows(); j ++)
+      for(int k = 0; k < w0.cols(); k ++)
+        assert(isfinite(w0(j, k)) && ! isnan(w0(j, k)));
+    const auto left(w0.LSVD().transpose() * w0);
+    for(int k = 0; k < left.rows(); k ++)
+      w00(i - A.size(), k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
+    w00.row(i - A.size())  = p.diff(- w00.cols()) * mother(w00.row(i - A.size()));
+    w00.row(i - A.size()) /= sqrt(w00.row(i - A.size()).dot(w00.row(i - A.size())));
+  }
+  w00 = w00.transpose();
+  const auto left(w00.LSVD().transpose() * w00);
+  for(int k = 0; k < left.rows(); k ++)
+    res0(0, k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
+  res0.row(0)  = p.diff(- res0.cols()) * mother(res0.row(0));
+  res0.row(0) /= sqrt(res0.row(0).dot(res0.row(0)));
+  // N.B. recursive on them.
+  if(0 < depth) {
+    Mat dimg[5];
+    for(int i = 0; i < 5; i ++)
+      dimg[i] = Mat(img.rows() / 2, img.cols() / 2);
+    for(int i = 0; i < dimg[0].rows(); i ++)
+      for(int j = 0; j < dimg[0].cols(); j ++) {
+        dimg[0](i, j) = img(i, j);
+        dimg[1](i, j) = img(i - dimg[0].rows() + img.rows(), j);
+        dimg[2](i, j) = img(i, j - dimg[0].cols() + img.cols());
+        dimg[3](i, j) = img(i - dimg[0].rows() + img.rows(),
+                            j - dimg[0].cols() + img.cols());
+        dimg[4](i, j) = img(i + (img.rows() - dimg[0].rows()) / 2,
+                            j + (img.cols() - dimg[0].cols()) / 2);
+      }
+    Mat dres[5];
+    for(int i = 0; i < 5; i ++)
+      dres[i] = decompose(dimg[i], min(dimg[i].rows(), dimg[i].cols()) < A.size() * 4 ? 0 : depth - 1);
+    Mat res(1 + dres[0].rows() * 5, A.size());
+    res.row(0) = res0.row(0);
+    for(int i = 0; i < 5; i ++)
+      for(int j = 0; j < dres[i].rows(); j ++)
+        res.row(1 + i * dres[i].rows() + j) = dres[i].row(j);
+    return res;
+  }
+  return res0;
+}
+
+template <typename T> typename Decompose<T>::Mat Decompose<T>::subImage(const Mat& img, const int& x, const int& y, const int& r) const {
+  Mat res(A.size(), A.size());
+  for(int i = 0; i < res.rows(); i ++)
+    for(int j = 0; j < res.cols(); j ++) {
+      const auto rr(T(j - res.cols() / 2) / T(res.cols() / 2) * r);
+      const auto th(T(i) / T(res.rows()) * T(2) * T(4) * atan2(T(1), T(1)));
+      res(i, j) = img(flip(x + int(rr * cos(th)), img.rows()),
+                      flip(y + int(rr * sin(th)), img.cols()));
+    }
+  return res;
+}
+
+template <typename T> int Decompose<T>::flip(const int& x, const int& s) const {
+  const int xx(abs(x % (s * 2)));
+  return s <= xx ? s * 2 - xx - 1 : xx;
 }
 
 #define _DECOMPOSE_

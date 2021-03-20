@@ -81,9 +81,10 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend) <input.ppm> <output.ppm>" << endl;
+  cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
-  cout << "gokicheck (pred|predf|cat) <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck (pred|predf) <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck cat <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
@@ -120,6 +121,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
+     strcmp(argv[1], "represent") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
      strcmp(argv[1], "b2wd")    == 0) {
@@ -150,6 +152,8 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "bump") == 0)
       data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(redig.rgb2d(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
+    else if(strcmp(argv[1], "represent") == 0)
+      data[0] = data[1] = data[2] = filter.compute(redig.rgb2d(data), filter.REPRESENT, rot);
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -590,8 +594,10 @@ int main(int argc, const char* argv[]) {
       in[ii].resize(3);
       for(int j = 0; j < 3; j ++)
         in[ii][j] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[j]);
-      assert(in[ii][0].rows() == in[0][0].rows());
-      assert(in[ii][0].cols() == in[0][0].cols());
+      if(strcmp(argv[1], "cat") == 0 && ! (ii & 1)) {
+        assert(in[ii][0].rows() == in[0][0].rows());
+        assert(in[ii][0].cols() == in[0][0].cols());
+      }
     }
     const auto idx(in.size() - 1);
     typename simpleFile<num_t>::Mat out[3];
@@ -632,15 +638,16 @@ int main(int argc, const char* argv[]) {
         out[i] = filter.compute((p.seed(- outc[i].rows()) * outc[i] * p.seed(- outc[i].cols())).template real<num_t>(), filter.CLIP);
       file.savep2or3(argv[2], out, ! true, 65535);
     } else {
+      std::vector<typename simpleFile<num_t>::Mat> rep;
       std::vector<typename simpleFile<num_t>::Mat> glay;
       glay.reserve(in.size());
       for(int i = 0; i < in.size(); i ++) {
         typename simpleFile<num_t>::Mat inn[3];
         for(int j = 0; j < 3; j ++)
           inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
-        glay.emplace_back(redig.rgb2d(inn));
+        (i & 1 ? rep : glay).emplace_back(redig.rgb2d(inn));
       }
-      const auto cat(redig.catImage(glay));
+      const auto cat(redig.catImage(rep, glay));
       for(int i = 0; i < cat.size(); i ++) {
         out[0] = out[1] = out[2] = cat[i];
         redig.normalize(out, 1.);

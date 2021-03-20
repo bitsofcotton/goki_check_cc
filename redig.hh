@@ -121,7 +121,7 @@ public:
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
-  vector<Mat> catImage(const vector<Mat>& imgs, const int& cs = 40);
+  vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -825,35 +825,21 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, c
   return res;
 }
 
-template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& imgs, const int& cs) {
-  assert(imgs.size());
-  for(int i = 1; i < imgs.size(); i ++)
-    assert(imgs[i].rows() == imgs[0].rows() && imgs[i].cols() == imgs[0].cols());
-  vector<Vec> work;
-  work.reserve(imgs.size());
-  for(int i = 0; i < imgs.size(); i ++) {
-    const auto lsvd(imgs[i].LSVD());
-    const auto mid(lsvd.transpose() * imgs[i]);
-    Vec buf(mid.rows());
-    std::vector<T> stored;
-    stored.reserve(buf.size());
-    for(int i = 0; i < buf.size(); i ++) {
-      int jj(- 1);
-      for(int j = 0; j < buf.size(); j ++)
-        if(! std::binary_search(stored.begin(), stored.end(), T(j)) &&
-           (jj < 0 || abs(lsvd(jj, i)) < abs(lsvd(j, i)))) jj = j;
-      assert(0 <= jj);
-      stored.emplace_back(jj);
-      std::sort(stored.begin(), stored.end());
-      buf[i] = sqrt(mid.row(jj).dot(mid.row(jj))) + T(1) / T(256);
-      if(! isfinite(buf[i])) {
-        std::cerr << "X" << std::flush;
-        buf[i] = T(1) / T(256);
-      }
-    }
-    work.emplace_back(buf);
-    std::cerr << "." << std::flush;
+template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs) {
+  assert(imgs.size() && rep.size() == imgs.size());
+  for(int i = 1; i < rep.size(); i ++) {
+    assert(rep[i].cols() == rep[0].cols());
+    assert(imgs[i].rows() == imgs[0].rows());
+    assert(imgs[i].cols() == imgs[0].cols());
   }
+  vector<Vec> work;
+  vector<int> workidx;
+  work.reserve(imgs.size());
+  for(int i = 0; i < rep.size(); i ++)
+    for(int j = 0; j < rep[i].rows(); j ++) {
+      work.emplace_back(rep[i].row(j));
+      workidx.emplace_back(i);
+    }
   const auto cg(crush<T>(work, cs, - T(1) / T(20), work[0].size(), true));
   vector<Mat> res;
   res.reserve(cg.size());
@@ -862,7 +848,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
     for(int j = 0; j < cg[i].first.size(); j ++)
       for(int k = 0; k < imgs[0].rows(); k ++)
-        res[i].row(j * imgs[0].rows() + k) = imgs[cg[i].first[j].second].row(k);
+        res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].first[j].second]].row(k);
   }
   return res;
 }

@@ -51,6 +51,7 @@ public:
     EXTEND_X,
     EXTEND_Y,
     EXTEND_BOTH,
+    REPRESENT,
     CLIP,
     ABS } direction_t;
   typedef complex<T> U;
@@ -88,7 +89,7 @@ template <typename T> Filter<T>::~Filter() {
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir, const int& n) {
   assert(0 <= n);
-  if(n <= 1) {
+  if(n <= 1 || dir == REPRESENT) {
     static P0<T> p;
     switch(dir) {
     case SHARPEN_BOTH:
@@ -325,6 +326,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         return (result * p.seed(- result.cols())).template real<T>();
       }
       break;
+    case REPRESENT:
+      return Decompose<T>(recur).decompose(data, n);
     case CLIP:
       {
         Mat result(data.rows(), data.cols());
@@ -355,7 +358,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     assert(0 && "unknown command in Filter (should not be reached.)");
     return Mat();
   }
-  if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH)
+  if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == REPRESENT)
     return compute(data, dir, 0);
   vector<Mat> res;
   res.reserve(n);
