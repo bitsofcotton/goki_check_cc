@@ -62,14 +62,13 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
       A(i, j) = in[i + j] / nin;
     A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
     if(computer) {
-      auto mul(A(i, 0));
-      for(int j = 1; j < A.cols(); j ++)
-        mul *= A(i, j);
-      if(mul == T(0)) return fvec;
-      assert(mul != T(0));
-      A.row(i) /= pow(abs(mul), T(1) / T(A.cols()));
+      T pd(0);
       for(int j = 0; j < A.cols(); j ++)
-        A(i, j) = T(1) / A(i, j);
+        pd += log(abs(A(i, j)));
+      pd = exp(pd / T(A.cols()));
+      assert(isfinite(pd) && pd != T(0));
+      for(int j = 0; j < A.cols(); j ++)
+        A(i, j) = pd / A(i, j);
     }
     A.row(i + A.rows() / 2) = - A.row(i);
   }
