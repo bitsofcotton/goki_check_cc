@@ -756,6 +756,13 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::LSVD() const {
     left = left * mul.transpose();
     s    = mul * s * mul.transpose();
   }
+  for(int i = 0; i < left.rows(); i ++) {
+    int jj(i);
+    for(int j = i + 1; j < left.cols(); j ++)
+      if(abs(left(jj, i)) < abs(left(j, i)))
+        jj = j;
+    std::swap(left.row(i), left.row(jj));
+  }
   return left;
 }
 
