@@ -46,6 +46,8 @@ elif(argv[2] == "pred" or argv[2] == "predf" or argv[2] == "cat"):
     if(e != ".ppm"):
       subprocess.call(["convert", s, "-compress", "none", r + ".ppm"])
     cmd.append(r + ".ppm")
+    if(argv[2] == "cat"):
+      cmd.append(r + "-represent.ppm")
   subprocess.call(cmd)
 elif(argv[2] == "ppred" or argv[2] == "ppredr"):
   roots = []

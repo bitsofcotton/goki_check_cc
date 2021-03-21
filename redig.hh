@@ -836,7 +836,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   vector<int> workidx;
   work.reserve(imgs.size());
   for(int i = 0; i < rep.size(); i ++)
-    for(int j = 0; j < rep[i].rows(); j ++) {
+    for(int j = 0; j < min(rep[i].rows(), 1 + 5 + 1); j ++) {
       work.emplace_back(rep[i].row(j));
       workidx.emplace_back(i);
     }
