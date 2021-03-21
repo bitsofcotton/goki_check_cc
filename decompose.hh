@@ -256,7 +256,7 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::decompose(const M
   res0.row(0)  = p.diff(- res0.cols()) * mother(res0.row(0));
   res0.row(0) /= sqrt(res0.row(0).dot(res0.row(0)));
   // N.B. recursive on them.
-  if(0 < depth) {
+  if(0 < depth && A.size() * 4 <= min(img.rows(), img.cols()) / 2) {
     Mat dimg[5];
     for(int i = 0; i < 5; i ++)
       dimg[i] = Mat(img.rows() / 2, img.cols() / 2);
@@ -272,7 +272,7 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::decompose(const M
       }
     Mat dres[5];
     for(int i = 0; i < 5; i ++)
-      dres[i] = decompose(dimg[i], min(dimg[i].rows(), dimg[i].cols()) < A.size() * 4 ? 0 : depth - 1);
+      dres[i] = decompose(dimg[i], depth - 1);
     Mat res(1 + dres[0].rows() * 5, A.size());
     res.row(0) = res0.row(0);
     for(int i = 0; i < 5; i ++)

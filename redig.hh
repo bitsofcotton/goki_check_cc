@@ -834,21 +834,40 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   }
   vector<Vec> work;
   vector<int> workidx;
+  vector<int> workidx2;
   work.reserve(imgs.size());
   for(int i = 0; i < rep.size(); i ++)
     for(int j = 0; j < min(rep[i].rows(), 1 + 5 + 1); j ++) {
       work.emplace_back(rep[i].row(j));
       workidx.emplace_back(i);
+      workidx2.emplace_back(j);
     }
-  const auto cg(crush<T>(work, cs, - T(1) / T(20), work[0].size(), true));
+  const auto cg(crushNoContext<T>(work, cs, - T(1) / T(20), work[0].size(), true));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
     if(! cg[i].first.size()) continue;
     res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
-    for(int j = 0; j < cg[i].first.size(); j ++)
+    for(int j = 0; j < cg[i].first.size(); j ++) {
       for(int k = 0; k < imgs[0].rows(); k ++)
         res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].first[j].second]].row(k);
+      const auto widx2(workidx2[cg[i].first[j].second]);
+      if(!widx2)
+        for(int k = 0; k < imgs[0].rows(); k ++)
+          res[i].row(j * imgs[0].rows() + k) = - res[i].row(j * imgs[0].rows() + k);
+      else if(widx2 < 1 + 5 + 1)
+        for(int k = 0; k < imgs[0].rows() / 2; k ++)
+          for(int kk = 0; kk < imgs[0].cols() / 2; kk ++) {
+            auto& rr(res[i](j * imgs[0].rows() + k +
+              (widx2 == 2 || widx2 == 4 ? imgs[0].rows() / 2 :
+                (widx2 == 5 ? imgs[0].rows() / 4 : 0)), kk +
+              (widx2 == 3 || widx2 == 4 ? imgs[0].cols() / 2 :
+                (widx2 == 5 ? imgs[0].cols() / 4 : 0)) ) );
+            rr = - rr;
+          }
+      else
+        assert(0 && "Should not be reached.");
+    }
   }
   return res;
 }
