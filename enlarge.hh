@@ -51,6 +51,9 @@ public:
     EXTEND_X,
     EXTEND_Y,
     EXTEND_BOTH,
+    BLINK_X,
+    BLINK_Y,
+    BLINK_BOTH,
     REPRESENT,
     CLIP,
     ABS } direction_t;
@@ -80,7 +83,6 @@ private:
 template <typename T> Filter<T>::Filter(const int& recur) {
   Pi  = atan2(T(1), T(1)) * T(4);
   this->recur = recur;
-  assert(0 < recur);
 }
 
 template <typename T> Filter<T>::~Filter() {
@@ -109,6 +111,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return (compute(data, BUMP_X) + compute(data, BUMP_Y)) / T(2);
     case EXTEND_BOTH:
       return compute(compute(data, EXTEND_X), EXTEND_Y);
+    case BLINK_BOTH:
+      return compute(compute(data, BLINK_X), BLINK_Y);
     case SHARPEN_X:
       return compute(data.transpose(), SHARPEN_Y).transpose();
     case ENLARGE_X:
@@ -125,6 +129,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return compute(data.transpose(), BUMP_Y).transpose();
     case EXTEND_X:
       return compute(data.transpose(), EXTEND_Y).transpose();
+    case BLINK_X:
+      return compute(data.transpose(), BLINK_Y).transpose();
     case DETECT_Y:
       return p.diff(  data.rows()) * data;
     case INTEG_Y:
@@ -324,6 +330,32 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           }
         }
         return (result * p.seed(- result.cols())).template real<T>();
+      }
+      break;
+    case BLINK_Y:
+      {
+        auto diff(p.seed(data.rows()) * data.template cast<complex<T> >());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+        for(int i = 1; i < data.rows(); i ++) {
+          diff.row(i) *= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
+        }
+        diff = p.seed(- data.rows()) * diff;
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+        for(int i = 1; i < recur - 1; i ++) {
+          diff.row(i) += (diff.row(i - 1) + diff.row(i + 1)) * complex<T>(T(recur) / T(256));
+        }
+        diff = p.seed(data.rows()) * diff;
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+        for(int i = 1; i < data.rows(); i ++) {
+          diff.row(i) /= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
+        }
+        return (p.seed(- data.rows()) * diff).template real<T>();
       }
       break;
     case REPRESENT:

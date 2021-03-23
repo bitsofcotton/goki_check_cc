@@ -81,7 +81,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck (pred|predf) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck cat <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
@@ -119,6 +119,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
+     strcmp(argv[1], "blink") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "represent") == 0 ||
@@ -147,6 +148,9 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.EXTEND_BOTH, rot);
+    else if(strcmp(argv[1], "blink") == 0)
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter.compute(data[i], filter.BLINK_BOTH, rot);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
@@ -646,6 +650,10 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < 3; j ++)
           inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
         (i & 1 ? rep : glay).emplace_back(redig.rgb2d(inn));
+        if(i & 1)
+          for(int ii = 0; ii < rep[rep.size() - 1].rows(); ii ++)
+            for(int jj = 0; jj < rep[rep.size() - 1].cols(); jj ++)
+              rep[rep.size() - 1](ii, jj) += num_t(1) / num_t(65536);
       }
       const auto cat(redig.catImage(rep, glay));
       for(int i = 0; i < cat.size(); i ++) {
