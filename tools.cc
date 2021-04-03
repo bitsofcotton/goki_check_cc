@@ -84,7 +84,7 @@ void usage() {
   cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck (pred|predf) <output.ppm> <input0.ppm> ..." << endl;
-  cout << "gokicheck cat <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
+  cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
@@ -583,7 +583,8 @@ int main(int argc, const char* argv[]) {
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
             strcmp(argv[1], "predf") == 0 ||
-            strcmp(argv[1], "cat") == 0) {
+            strcmp(argv[1], "cat") == 0 ||
+            strcmp(argv[1], "composite") == 0) {
     if(argc < 4) {
       usage();
       return - 1;
@@ -641,7 +642,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         out[i] = filter.compute((p.seed(- outc[i].rows()) * outc[i] * p.seed(- outc[i].cols())).template real<num_t>(), filter.CLIP);
       file.savep2or3(argv[2], out, ! true, 65535);
-    } else {
+    } else if(strcmp(argv[1], "cat") == 0) {
       std::vector<typename simpleFile<num_t>::Mat> rep;
       std::vector<typename simpleFile<num_t>::Mat> glay;
       glay.reserve(in.size());
@@ -658,6 +659,21 @@ int main(int argc, const char* argv[]) {
       const auto cat(redig.catImage(rep, glay));
       for(int i = 0; i < cat.size(); i ++) {
         out[0] = out[1] = out[2] = cat[i];
+        redig.normalize(out, 1.);
+        file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true);
+      }
+    } else if(strcmp(argv[1], "composite") == 0) {
+      std::vector<typename simpleFile<num_t>::Mat> glay;
+      glay.reserve(in.size());
+      for(int i = 0; i < in.size(); i ++) {
+        typename simpleFile<num_t>::Mat inn[3];
+        for(int j = 0; j < 3; j ++)
+          inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
+        glay.emplace_back(redig.rgb2d(inn));
+      }
+      const auto composite(redig.compositeImage(glay));
+      for(int i = 0; i < composite.size(); i ++) {
+        out[0] = out[1] = out[2] = composite[i];
         redig.normalize(out, 1.);
         file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true);
       }

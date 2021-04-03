@@ -122,6 +122,7 @@ public:
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
+  vector<Mat> compositeImage(const vector<Mat>& imgs);
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -868,6 +869,38 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
       else
         assert(0 && "Should not be reached.");
     }
+  }
+  return res;
+}
+
+template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(const vector<Mat>& imgs) {
+  assert(imgs.size());
+  vector<SimpleVector<T> > work;
+  for(int i = 0; i < imgs.size(); i ++) {
+    assert(imgs[i].rows() == imgs[0].rows());
+    assert(imgs[i].cols() == imgs[0].cols());
+    work.emplace_back(SimpleVector<T>(imgs[i].rows() * imgs[i].cols()));
+    for(int ii = 0; ii < imgs[i].rows(); ii ++)
+      for(int jj = 0; jj < imgs[i].cols(); jj ++)
+        work[i][ii * imgs[i].cols() + jj] =
+          imgs[i](ii, ii & 1 ? imgs[i].cols() - 1 - jj : jj);
+    assert(imgs[i].rows() * imgs[i].cols() == work[i].size());
+  }
+  const auto cg(crush<T>(work, work[0].size(), - T(1) / T(20), work[0].size(), true));
+  vector<Mat> res;
+  res.reserve(cg.size());
+  for(int i = 0; i < cg.size(); i ++) {
+    res.emplace_back(SimpleMatrix<T>(imgs[0].rows(), imgs[0].cols()));
+    const auto& R(cg[i].second.R);
+          auto  work(R.col(0));
+    for(int j = 1; j < R.cols(); j ++)
+      work += R.col(j);
+    work /= sqrt(work.dot(work));
+    assert(res[i].rows() * res[i].cols() == work.size());
+    for(int ii = 0; ii < res[i].rows(); ii ++)
+      for(int jj = 0; jj < res[i].cols(); jj ++)
+        res[i](ii, ii & 1 ? res[i].cols() - 1 - jj : jj) =
+          work[ii * res[i].cols() + jj];
   }
   return res;
 }
