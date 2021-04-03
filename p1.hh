@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if !defined(_P1_)
 
 // Get invariant structure that
-// \[0, &alpha;\[ register computer with deterministic calculation
+// \[- &alpha, &alpha;\[ register computer with deterministic calculation
 // that whole in/out is shown in the varlen.
 // Please refer bitsofcotton/randtools .
 // [[A I], [I A^-1]] [x y], if rank A = dim x = dim y,
@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // so with this, U [[B], [O]] [x y] == 0.
 // this returns one of u_k that concerns 0.
 // skip attemps maximum skip status number if original data has a noised ones.
-template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0, const bool& computer = false) {
+template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0) {
   assert(varlen < in.size());
 #if defined(_FLOAT_BITS_)
   static const auto epsilon(T(1) >> int64_t(mybits - 2));
@@ -48,28 +48,30 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
   static const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
   static const auto threshold_inner(sqrt(epsilon));
-  SimpleMatrix<T> A((in.size() - varlen) * 2 + 1, varlen + 1);
+  SimpleMatrix<T> A((in.size() - varlen + 1) * 2, varlen + 2);
   SimpleVector<T> fvec(A.cols());
   SimpleVector<T> one(A.rows());
-  const auto nin(sqrt(in.dot(in)));
+               auto MM(abs(in[0]));
+  assert(A.rows() >= A.cols());
+  for(int i = 1; i < in.size(); i ++)
+    MM = max(MM, abs(in[i]));
+  MM *= T(2);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < fvec.size(); i ++)
-    A(A.rows() - 1, i) = fvec[i] = T(0);
-  for(int i = 0; i < in.size() - varlen; i ++) {
+    fvec[i] = T(0);
+  for(int i = 0; i < in.size() - varlen + 1; i ++) {
     for(int j = 0; j < varlen; j ++)
-      A(i, j) = in[i + j] / nin;
+      A(i, j) = in[i + j];
     A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
-    if(computer) {
-      T pd(0);
-      for(int j = 0; j < A.cols(); j ++)
-        pd += log(abs(A(i, j)));
-      pd = exp(pd / T(A.cols()));
-      assert(isfinite(pd) && pd != T(0));
-      for(int j = 0; j < A.cols(); j ++)
-        A(i, j) = pd / A(i, j);
-    }
+    A(i, varlen + 1) = T(i + 1) / T(in.size() - varlen + 2) / sqrt(T(A.rows() * A.cols()));
+    T pd(0);
+    for(int j = 0; j < A.cols(); j ++)
+      pd += log(A(i, j) + MM);
+    pd = exp(- pd / T(A.cols()));
+    assert(isfinite(pd) && pd != T(0));
+    A.row(i) *= pd;
     A.row(i + A.rows() / 2) = - A.row(i);
   }
   auto denom(A.row(0).dot(A.row(0)));
@@ -82,7 +84,6 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
   for(int i = 0; i < A.rows(); i ++)
     one[i] = T(1);
   one /= sqrt(one.dot(one));
-  A(A.rows() - 1, varlen - 1) = T(1);
   SimpleMatrix<T> Pt(A.cols(), A.rows());
   for(int i = 0; i < Pt.rows(); i ++)
     for(int j = 0; j < Pt.cols(); j ++)
@@ -126,9 +127,7 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / norm2orth);
   }
   fvec = R.solve(mone - Pt * on);
-  const auto nfv(fvec.dot(fvec));
-  return (isfinite(nfv) ? (nfv == T(0) ? fvec : fvec / sqrt(nfv))
-    : fvec * T(0));
+  return isfinite(fvec.dot(fvec)) ? fvec : fvec * T(0);
 }
 
 
@@ -139,7 +138,7 @@ public:
   inline P1I();
   inline P1I(const int& stat, const int& var);
   inline ~P1I();
-  inline T next(const T& in, const int& skip = 0, const T& computer = T(0));
+  inline T next(const T& in, const int& skip = 0);
   std::vector<Vec> invariant;
 private:
   inline const T& sgn(const T& x) const;
@@ -170,17 +169,17 @@ template <typename T> inline const T& P1I<T>::sgn(const T& x) const {
   return x != zero ? (x < zero ? mone : one) : zero;
 }
 
-template <typename T> T P1I<T>::next(const T& in, const int& skip, const T& computer) {
+template <typename T> T P1I<T>::next(const T& in, const int& skip) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
-  buf[buf.size() - 1] = in + computer;
-  if(t ++ < buf.size()) return computer;
+  buf[buf.size() - 1] = in;
+  if(t ++ < buf.size()) return T(0);
   // N.B. to compete with cheating, we calculate long term same invariant each.
-  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip), computer != T(0)));
-  if(invariant0.dot(invariant0) == T(0)) return computer;
+  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip)));
+  if(invariant0.dot(invariant0) == T(0)) return T(0);
   if(int(invariant.size()) < skip) {
     invariant.emplace_back(invariant0);
-    return computer;
+    return T(0);
   } else {
     if(! invariant.size()) invariant.emplace_back(invariant0);
     for(int i = 0; i < invariant.size() - 1; i ++)
@@ -190,21 +189,16 @@ template <typename T> T P1I<T>::next(const T& in, const int& skip, const T& comp
   auto avg(invariant[0]);
   for(int i = 1; i < invariant.size(); i ++)
     avg += invariant[i];
-  const auto nin(sqrt(buf.dot(buf)));
   auto work(avg);
-  for(int i = 2; i < work.size(); i ++)
-    work[i - 2] = buf[i - work.size() + buf.size()] / nin;
-  work[work.size() - 2] = work[work.size() - 3];
-  work[work.size() - 1] = T(1) / sqrt(T((buf.size() - varlen) * 2 + 1) * T(varlen + 1));
-  // <avg, 1 / work> * alpha == 0, alpha != 0.
-  // <=> work[k] = 1 / (<avg, 1 / work> - avg[k] / work[k]).
+  for(int i = 1; i < varlen; i ++)
+    work[i - 1] = buf[i - varlen + buf.size()];
+  work[varlen - 1] = work[varlen - 2];
+  work[varlen + 1] = work[varlen] =
+    T(1) / sqrt(T((buf.size() - varlen) * 2) * T(varlen + 2));
+  // <avg, 1 / work> * pd * alpha == 0, alpha != 0.
+  // <=> work[k] = avg[k] / (<avg, 1 / work> - avg[k] / work[k]).
   // in the condition that work is scaled some.
-  T res(0);
-  for(int i = 0; i < varlen - 1; i ++)
-    res += avg[i] / work[i];
-  for(int i = varlen; i < avg.size(); i ++)
-    res += avg[i] / work[i];
-  return res = nin * avg[varlen - 1] / res;
+  return (avg.dot(work) - avg[varlen - 1] * work[varlen - 1]) / avg[varlen - 1];
 }
 
 #define _P1_
