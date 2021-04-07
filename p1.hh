@@ -39,19 +39,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // rank [[A I], [I A^-1]] == rank A.
 // so with this, U [[B], [O]] [x y] == 0.
 // this returns one of u_k that concerns 0.
-// skip attemps maximum skip status number if original data has a noised ones.
-template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip = 0) {
-  assert(varlen < in.size());
+// suppose input stream is in [-1,1]^k.
+// skip0 attemps maximum skip status number if original data has a noised ones.
+// with noised ones, we can use catgp instead of this.
+template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip0 = 0, const int& ratio = 0) {
+  const auto skip(skip0 + varlen - 2);
+  assert(varlen < in.size() && skip < in.size() - varlen);
 #if defined(_FLOAT_BITS_)
   static const auto epsilon(T(1) >> int64_t(mybits - 2));
 #else
   static const auto epsilon(std::numeric_limits<T>::epsilon());
 #endif
   static const auto threshold_inner(sqrt(epsilon));
+               auto MM(abs(in[0]));
   SimpleMatrix<T> A((in.size() - varlen + 1) * 2, varlen + 2);
   SimpleVector<T> fvec(A.cols());
   SimpleVector<T> one(A.rows());
-               auto MM(abs(in[0]));
   assert(A.rows() >= A.cols());
   for(int i = 1; i < in.size(); i ++)
     MM = max(MM, abs(in[i]));
@@ -61,15 +64,15 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
 #endif
   for(int i = 0; i < fvec.size(); i ++)
     fvec[i] = T(0);
-  for(int i = 0; i < in.size() - varlen + 1; i ++) {
+  for(int i = 0; i < A.rows() / 2; i ++) {
     for(int j = 0; j < varlen; j ++)
       A(i, j) = in[i + j];
     A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
-    A(i, varlen + 1) = T(i + 1) / T(in.size() - varlen + 2) / sqrt(T(A.rows() * A.cols()));
+    A(i, varlen + 1) = T(i + 1) / T(A.rows() / 2 + 1) / sqrt(T(A.rows() * A.cols()));
     T pd(0);
     for(int j = 0; j < A.cols(); j ++)
       pd += log(A(i, j) + MM);
-    pd = exp(- pd / T(A.cols()));
+    pd = exp(ratio ? T(ratio) * pd / T(A.cols()) : - pd / T(A.cols()));
     assert(isfinite(pd) && pd != T(0));
     A.row(i) *= pd;
     A.row(i + A.rows() / 2) = - A.row(i);
@@ -89,15 +92,15 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
     for(int j = 0; j < Pt.cols(); j ++)
       Pt(i, j) = T(0);
   for(int i = 0; i < A.cols(); i ++) {
-    const auto Atrowi(A.col(i));
-    const auto work(Atrowi - Pt.projectionPt(Atrowi));
+    const auto  Atrowi(A.col(i));
+    const auto  work(Atrowi - Pt.projectionPt(Atrowi));
     Pt.row(i) = work / sqrt(work.dot(work));
-    const auto npt(Pt.row(i).dot(Pt.row(i)));
+    const auto& npt(Pt(i, 0));
     if(! (isfinite(npt) && ! isnan(npt)))
       return fvec;
   }
   const auto R(Pt * A);
-  const auto mone(Pt * (- one));
+  const auto mone(- Pt * one);
   SimpleVector<T> on;
   SimpleVector<T> orth;
   for(int n_fixed = 0 ; n_fixed < Pt.rows() - 1; n_fixed ++) {
@@ -108,7 +111,7 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
       onM.emplace_back(std::make_pair(on[j], j));
     std::sort(onM.begin(), onM.end());
     auto fidx(- 1);
-    for(int i = onM.size() - 1 - skip; i < onM.size(); i ++)
+    for(int i = onM.size() - 1 - skip + n_fixed; i < onM.size(); i ++)
       if(threshold_inner < onM[i].first) {
         // XXX: select one of these.
         // fidx = onM[onM.size() - 1].second;
@@ -116,8 +119,10 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
         fidx = onM[(onM.size() - 1 + i) / 2].second;
         break;
       }
-    if(fidx < 0)
-      break;
+    if(fidx < 0) {
+      fvec = R.solve(Pt * on);
+      return isfinite(fvec.dot(fvec)) ? fvec : fvec * T(0);
+    }
     orth = Pt.col(fidx);
     const auto norm2orth(orth.dot(orth));
 #if defined(_OPENMP)
@@ -138,7 +143,7 @@ public:
   inline P1I();
   inline P1I(const int& stat, const int& var);
   inline ~P1I();
-  inline T next(const T& in, const int& skip = 0);
+  inline T next(const T& in, const int& skip = 0, const int& ratio = 0);
   std::vector<Vec> invariant;
 private:
   inline const T& sgn(const T& x) const;
@@ -169,13 +174,13 @@ template <typename T> inline const T& P1I<T>::sgn(const T& x) const {
   return x != zero ? (x < zero ? mone : one) : zero;
 }
 
-template <typename T> T P1I<T>::next(const T& in, const int& skip) {
+template <typename T> T P1I<T>::next(const T& in, const int& skip, const int& ratio) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
   buf[buf.size() - 1] = in;
   if(t ++ < buf.size()) return T(0);
   // N.B. to compete with cheating, we calculate long term same invariant each.
-  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip)));
+  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip), ratio));
   if(invariant0.dot(invariant0) == T(0)) return T(0);
   if(int(invariant.size()) < skip) {
     invariant.emplace_back(invariant0);

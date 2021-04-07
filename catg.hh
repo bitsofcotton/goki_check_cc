@@ -84,13 +84,13 @@ public:
   inline CatG();
   inline CatG(const int& size);
   inline ~CatG();
-  inline void inq(const Vec& in, const bool& computer = false);
-  inline void inqRecur(const Vec& in, const bool& computer = false);
+  inline void inq(const Vec& in, const int& computer = - 1);
+  inline void inqRecur(const Vec& in, const int& computer = - 1);
   inline void compute(const bool& recur = false);
   inline void computeRecur();
-  inline T    lmrS(const Vec& in, const bool& computer = false);
-  inline int  lmr(const Vec& in, const bool& computer = false);
-  inline std::pair<int, int> lmrRecur(const Vec& in, const bool& computer = false);
+  inline T    lmrS(const Vec& in, const int& computer = - 1);
+  inline int  lmr(const Vec& in, const int& computer = - 1);
+  inline std::pair<int, int> lmrRecur(const Vec& in, const int& computer = - 1);
   Vec cut;
   T   distance;
   T   origin;
@@ -140,7 +140,7 @@ template <typename T> const vector<typename CatG<T>::Vec>& CatG<T>::tayl(const i
   return t[in];
 }
 
-template <typename T> inline void CatG<T>::inq(const Vec& in, const bool& computer) {
+template <typename T> inline void CatG<T>::inq(const Vec& in, const int& computer) {
   Vec work(size);
   if(in.size() == size)
     work = in;
@@ -149,13 +149,11 @@ template <typename T> inline void CatG<T>::inq(const Vec& in, const bool& comput
     for(int i = 0; i < work.size(); i ++)
       work[i] = t[i].dot(in);
   }
-  if(computer) {
+  if(0 <= computer) {
     T pd(0);
     for(int i = 0; i < work.size(); i ++)
       pd += log(abs(work[i]));
-    pd = exp(pd / T(work.size()));
-    for(int i = 0; i < work.size(); i ++)
-      work[i] = pd / work[i];
+    work *= exp(computer ? T(computer) * pd / T(work.size()) : - pd / T(work.size()));
     cache.emplace_back(work);
   } else
     cache.emplace_back(work);
@@ -164,7 +162,7 @@ template <typename T> inline void CatG<T>::inq(const Vec& in, const bool& comput
   return;
 }
 
-template <typename T> inline void CatG<T>::inqRecur(const Vec& in, const bool& computer) {
+template <typename T> inline void CatG<T>::inqRecur(const Vec& in, const int& computer) {
   auto work(in);
   for(int i = 0; i < in.size(); i ++) {
     inq(work, computer);
@@ -291,7 +289,7 @@ template <typename T> inline void CatG<T>::compute(const bool& recur) {
   return;
 }
 
-template <typename T> inline T CatG<T>::lmrS(const Vec& in, const bool& computer) {
+template <typename T> inline T CatG<T>::lmrS(const Vec& in, const int& computer) {
   Vec work(size);
   if(in.size() == size)
     work = in;
@@ -300,23 +298,21 @@ template <typename T> inline T CatG<T>::lmrS(const Vec& in, const bool& computer
     for(int i = 0; i < work.size(); i ++)
       work[i] = t[i].dot(in);
   }
-  if(computer) {
+  if(0 <= computer) {
     T pd(0);
     for(int i = 0; i < work.size(); i ++)
       pd += log(abs(work[i]));
-    pd = exp(pd / T(work.size()));
-    for(int i = 0; i < work.size(); i ++)
-      work[i] = pd / work[i];
+    work *= exp(computer ? T(computer) * pd / T(work.size()) : - pd / T(work.size()));
     return work.dot(cut) - origin;
   }
   return work.dot(cut) - origin;
 }
 
-template <typename T> inline int CatG<T>::lmr(const Vec& in, const bool& computer) {
+template <typename T> inline int CatG<T>::lmr(const Vec& in, const int& computer) {
   return lmrS(in, computer) < T(0) ? - 1 : 1;
 }
 
-template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in, const bool& computer) {
+template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in, const int& computer) {
   std::pair<int, int> res(make_pair(0, 0));
   T    dM(0);
   auto work(in);
@@ -335,7 +331,7 @@ template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in
 }
 
 
-template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > crush(const std::vector<SimpleVector<T> >& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1, const bool& computer = false) {
+template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > crush(const std::vector<SimpleVector<T> >& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1, const int& computer = 20) {
   std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > result;
   if(! v.size()) return result;
   int t(0);
@@ -383,7 +379,7 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T
   return result;
 }
 
-template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >, Catg<T> > > crushNoContext(const std::vector<SimpleVector<T> >& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1, const bool& computer = false) {
+template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >, Catg<T> > > crushNoContext(const std::vector<SimpleVector<T> >& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1, const int& computer = 20) {
   std::vector<std::pair<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >, Catg<T> > > result;
   if(! v.size()) return result;
   std::vector<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > > vv;
@@ -506,13 +502,13 @@ template <typename T> inline T P012L<T>::next(const T& in) {
     work[(t - 1) % work.size()] = in;
     return in;
   }
-  const auto v(dec.next(work));
+  const auto v(dec.mother(work));
   cache.emplace_back(v / sqrt(v.dot(v)));
   for(int i = 0; i < work.size() - 1; i ++)
     work[i] = work[i + 1];
   work[work.size() - 2] = in;
   if(stat <= cache.size()) {
-    const auto cat(crush<T>(cache, work.size(), inten, - 1, true));
+    const auto cat(crush<T>(cache, work.size(), inten, - 1));
     pp = std::vector<Vec>();
     pp.reserve(cat.size());
     for(int i = 0; i < cat.size(); i ++) {
@@ -531,7 +527,7 @@ template <typename T> inline T P012L<T>::next(const T& in) {
   T res(0);
   for(int i = 0; i < pp.size(); i ++) {
     const auto& p(pp[i]);
-    const auto  vdp(dec.next(work).dot(p));
+    const auto  vdp(dec.mother(work).dot(p));
     const auto  last(p[p.size() - 1] - p[p.size() - 2]);
     if(! isfinite(vdp)) continue;
     if(MM <= abs(vdp) && last != T(0)) {
