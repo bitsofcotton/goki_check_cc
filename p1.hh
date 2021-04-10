@@ -40,90 +40,58 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // so with this, U [[B], [O]] [x y] == 0.
 // this returns one of u_k that concerns 0.
 // suppose input stream is in [-1,1]^k.
-// skip0 attemps maximum skip status number if original data has a noised ones.
 // with noised ones, we can use catgp instead of this.
-template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& skip0 = 0, const int& ratio = 0) {
-  const auto skip(skip0 + varlen - 2);
-  assert(varlen < in.size() && skip < in.size() - varlen);
-#if defined(_FLOAT_BITS_)
-  static const auto epsilon(T(1) >> int64_t(mybits - 2));
-#else
-  static const auto epsilon(std::numeric_limits<T>::epsilon());
-#endif
-  static const auto threshold_inner(sqrt(epsilon));
-               auto MM(abs(in[0]));
-  SimpleMatrix<T> A((in.size() - varlen + 1) * 2, varlen + 2);
+template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& ratio = 0) {
+  SimpleMatrix<T> A((in.size() - varlen + 1) * 2 - 1, varlen + 2);
+  assert(A.cols() <= (A.rows() + 1) / 2);
   SimpleVector<T> fvec(A.cols());
   SimpleVector<T> one(A.rows());
-  assert(A.rows() >= A.cols());
-  for(int i = 1; i < in.size(); i ++)
-    MM = max(MM, abs(in[i]));
-  MM *= T(2);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < fvec.size(); i ++)
     fvec[i] = T(0);
-  for(int i = 0; i < A.rows() / 2; i ++) {
-    for(int j = 0; j < varlen; j ++)
-      A(i, j) = in[i + j];
-    A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
-    A(i, varlen + 1) = T(i + 1) / T(A.rows() / 2 + 1) / sqrt(T(A.rows() * A.cols()));
-    T pd(0);
-    for(int j = 0; j < A.cols(); j ++)
-      pd += log(A(i, j) + MM);
-    pd = exp(ratio ? T(ratio) * pd / T(A.cols()) : - pd / T(A.cols()));
-    assert(isfinite(pd) && pd != T(0));
-    A.row(i) *= pd;
-    A.row(i + A.rows() / 2) = - A.row(i);
-  }
-  auto denom(A.row(0).dot(A.row(0)));
-  for(int i = 1; i < A.rows() / 2; i ++)
-    denom = max(denom, A.row(i).dot(A.row(i)));
-  A /= sqrt(denom);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < A.rows(); i ++)
     one[i] = T(1);
   one /= sqrt(one.dot(one));
+  for(int i = 0; i < (A.rows() + 1) / 2; i ++) {
+    for(int j = 0; j < varlen; j ++)
+      A(i, j) = in[i + j];
+    A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
+    A(i, varlen + 1) = T(i + 1) / T((A.rows() + 1) / 2 + 1) / sqrt(T(A.rows() * A.cols()));
+    T pd(0);
+    for(int j = 0; j < A.cols(); j ++)
+      pd += log(A(i, j) + T(2));
+    A.row(i) *= exp((ratio ? T(ratio) * pd : - pd) / T(A.cols()));
+    assert(isfinite(A.row(i).dot(A.row(i))));
+    if(i + (A.rows() + 1) / 2 < A.rows())
+      A.row(i + (A.rows() + 1) / 2) = - A.row(i);
+  }
   SimpleMatrix<T> Pt(A.cols(), A.rows());
   for(int i = 0; i < Pt.rows(); i ++)
     for(int j = 0; j < Pt.cols(); j ++)
       Pt(i, j) = T(0);
   for(int i = 0; i < A.cols(); i ++) {
-    const auto  Atrowi(A.col(i));
-    const auto  work(Atrowi - Pt.projectionPt(Atrowi));
+    const auto Atrowi(A.col(i));
+    const auto work(Atrowi - Pt.projectionPt(Atrowi));
     Pt.row(i) = work / sqrt(work.dot(work));
-    const auto& npt(Pt(i, 0));
+    const auto npt(Pt.row(i).dot(Pt.row(i)));
     if(! (isfinite(npt) && ! isnan(npt)))
       return fvec;
   }
   const auto R(Pt * A);
-  const auto mone(- Pt * one);
-  SimpleVector<T> on;
-  SimpleVector<T> orth;
-  for(int n_fixed = 0 ; n_fixed < Pt.rows() - 1; n_fixed ++) {
-    on = Pt.projectionPt(- one);
-    std::vector<pair<T, int> > onM;
-    onM.reserve(on.size());
-    for(int j = 0; j < on.size(); j ++)
-      onM.emplace_back(std::make_pair(on[j], j));
-    std::sort(onM.begin(), onM.end());
-    auto fidx(- 1);
-    for(int i = onM.size() - 1 - skip + n_fixed; i < onM.size(); i ++)
-      if(threshold_inner < onM[i].first) {
-        // XXX: select one of these.
-        // fidx = onM[onM.size() - 1].second;
-        // fidx = onM[i].second;
-        fidx = onM[(onM.size() - 1 + i) / 2].second;
-        break;
-      }
-    if(fidx < 0) {
-      fvec = R.solve(Pt * on);
-      return isfinite(fvec.dot(fvec)) ? fvec : fvec * T(0);
-    }
-    orth = Pt.col(fidx);
+  for(int n_fixed = 0; n_fixed < Pt.rows() - 1; n_fixed ++) {
+    const auto on(Pt.projectionPt(- one));
+    auto fidx(0);
+    for( ; fidx < on.size(); fidx ++)
+      if(T(0) < on[fidx]) break;
+    for(int i = 1; i < on.size(); i ++)
+      if(T(0) < on[i] && on[i] <= on[fidx]) fidx = i;
+    if(on[fidx] <= T(0)) break;
+    const auto orth(Pt.col(fidx));
     const auto norm2orth(orth.dot(orth));
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -131,7 +99,7 @@ template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, con
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / norm2orth);
   }
-  fvec = R.solve(mone - Pt * on);
+  fvec = R.solve(- Pt * one);
   return isfinite(fvec.dot(fvec)) ? fvec : fvec * T(0);
 }
 
@@ -143,10 +111,8 @@ public:
   inline P1I();
   inline P1I(const int& stat, const int& var);
   inline ~P1I();
-  inline T next(const T& in, const int& skip = 0, const int& ratio = 0);
-  std::vector<Vec> invariant;
+  inline T next(const T& in, const int& ratio = 0);
 private:
-  inline const T& sgn(const T& x) const;
   Vec buf;
   int varlen;
   int t;
@@ -157,7 +123,8 @@ template <typename T> inline P1I<T>::P1I() {
 }
 
 template <typename T> inline P1I<T>::P1I(const int& stat, const int& var) {
-  buf.resize(stat + (varlen = var) * 2 - 1);
+  assert(0 <= stat && 1 <= var);
+  buf.resize(stat + (varlen = var) * 2 + 1);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
   t = 0;
@@ -167,43 +134,22 @@ template <typename T> inline P1I<T>::~P1I() {
   ;
 }
 
-template <typename T> inline const T& P1I<T>::sgn(const T& x) const {
-  static const T zero(0);
-  static const T one(1);
-  static const T mone(- one);
-  return x != zero ? (x < zero ? mone : one) : zero;
-}
-
-template <typename T> T P1I<T>::next(const T& in, const int& skip, const int& ratio) {
+template <typename T> T P1I<T>::next(const T& in, const int& ratio) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
   buf[buf.size() - 1] = in;
   if(t ++ < buf.size()) return T(0);
-  // N.B. to compete with cheating, we calculate long term same invariant each.
-  const auto invariant0(invariantP1<T>(buf, varlen, abs(skip), ratio));
-  if(invariant0.dot(invariant0) == T(0)) return T(0);
-  if(int(invariant.size()) < skip) {
-    invariant.emplace_back(invariant0);
-    return T(0);
-  } else {
-    if(! invariant.size()) invariant.emplace_back(invariant0);
-    for(int i = 0; i < invariant.size() - 1; i ++)
-      std::swap(invariant[i], invariant[i + 1]);
-    invariant[invariant.size() - 1] = invariant0;
-  }
-  auto avg(invariant[0]);
-  for(int i = 1; i < invariant.size(); i ++)
-    avg += invariant[i];
-  auto work(avg);
+  // N.B. to compete with noise, we calculate each.
+  //      we can use catgp on worse noised ones.
+  const auto nin(sqrt(buf.dot(buf)));
+  const auto invariant(invariantP1<T>(buf / nin, varlen, ratio));
+        auto work(invariant);
   for(int i = 1; i < varlen; i ++)
-    work[i - 1] = buf[i - varlen + buf.size()];
+    work[i - 1] = buf[i - varlen + buf.size()] / nin;
   work[varlen - 1] = work[varlen - 2];
   work[varlen + 1] = work[varlen] =
-    T(1) / sqrt(T((buf.size() - varlen) * 2) * T(varlen + 2));
-  // <avg, 1 / work> * pd * alpha == 0, alpha != 0.
-  // <=> work[k] = avg[k] / (<avg, 1 / work> - avg[k] / work[k]).
-  // in the condition that work is scaled some.
-  return (avg.dot(work) - avg[varlen - 1] * work[varlen - 1]) / avg[varlen - 1];
+    T(1) / sqrt(T((buf.size() - varlen + 1) * 2) * T(varlen + 2));
+  return (invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1] * nin;
 }
 
 #define _P1_
