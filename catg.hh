@@ -59,8 +59,18 @@ template <typename T> inline void Catg<T>::inq(const Vec& in) {
 
 template <typename T> inline typename Catg<T>::Mat Catg<T>::compute() {
   Mat At(cache[0].size(), cache.size());
-  for(int i = 0; i < At.cols(); i ++)
+  T   MM(0), mm(0);
+  for(int i = 0; i < At.cols(); i ++) {
     At.setCol(i, cache[i]);
+    if(! i) MM = mm = At(0, 0);
+    for(int j = 0; j < At.rows(); j ++) {
+      MM = max(MM, At(j, i));
+      mm = min(mm, At(j, i));
+    }
+  }
+  for(int i = 0; i < At.rows(); i ++)
+    for(int j = 0; j < At.cols(); j ++)
+      At(i, j) -= mm + (MM - mm) / T(2);
   Mat Q(At.rows(), At.cols());
   for(int i = 0; i < Q.rows(); i ++)
     for(int j = 0; j < Q.cols(); j ++)
@@ -279,13 +289,13 @@ template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in
   std::pair<int, int> res(make_pair(0, 0));
   T    dM(0);
   auto work(in);
-  for(int i = 0; i < in.size(); i ++) {
+  for(int i = 1; i <= in.size(); i ++) {
     const auto score(lmrS(work, computer));
     if(abs(dM) < abs(score)) {
-      res = make_pair(score < T(0) ? - 1 : 1, i);
+      res = make_pair(score < T(0) ? - 1 : 1, i - 1);
       dM  = abs(score);
     }
-    if(i == in.size() - 1) break;
+    if(i == in.size()) break;
     for(int j = 0; j < work.size(); j ++)
       work[j] = in[(j + i * size / in.size()) % in.size()];
   }
@@ -404,8 +414,8 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<Simp
           work.reserve(cache[i].first.size());
           for(int j = 0; j < cache[i].first.size(); j ++) {
             const auto& idx(i < lG.size() ?
-              left[cache[i].first[j].second].second :
-              right[cache[i].first[j].second].second);
+              left[i][cache[i].first[j].second].second :
+              right[i - lG.size()][cache[i].first[j].second].second);
             work.emplace_back(std::make_pair(std::make_pair(std::move(cache[i].first[j].first), patch[idx]), idx));
           }
           if(! i) w0 = std::move(work);
