@@ -172,7 +172,6 @@ template <typename T, bool denoise> const typename P0<T, denoise>::Vec& P0<T, de
 template <typename T, bool denoise = false> class P0B {
 public:
   typedef SimpleVector<T> Vec;
-  typedef SimpleVector<complex<T> > VecU;
   inline P0B();
   inline P0B(const int& size);
   inline ~P0B();
@@ -202,6 +201,48 @@ template <typename T, bool denoise> inline T P0B<T, denoise>::next(const T& in) 
     buf[i]  = buf[i + 1];
   buf[buf.size() - 1] = in;
   return p.next(buf.size()).dot(buf);
+}
+
+
+template <typename T, bool denoise = false> class P0C {
+public:
+  typedef complex<T> U;
+  typedef SimpleVector<T> Vec;
+  typedef SimpleVector<U> VecU;
+  typedef SimpleMatrix<T> Mat;
+  typedef SimpleMatrix<U> MatU;
+  inline P0C();
+  inline P0C(const int& size);
+  inline ~P0C();
+  inline T next(const T& in);
+private:
+  MatU buf;
+};
+
+template <typename T, bool denoise> inline P0C<T, denoise>::P0C() {
+  ;
+}
+
+template <typename T, bool denoise> inline P0C<T, denoise>::P0C(const int& size) {
+  assert(0 < size);
+  buf.resize(size, size);
+  for(int i = 0; i < buf.rows(); i ++)
+    for(int j = 0; j < buf.cols(); j ++)
+      buf(i, j) = U(T(0));
+}
+
+template <typename T, bool denoise> inline P0C<T, denoise>::~P0C() {
+  ;
+}
+
+template <typename T, bool denoise> inline T P0C<T, denoise>::next(const T& in) {
+  static P0<T> p;
+  for(int i = 0; i < buf.rows() - 1; i ++)
+    buf.row(i) = buf.row(i + 1);
+  for(int i = 0; i < buf.cols() - 1; i ++)
+    buf(buf.rows() - 1, i) = buf(buf.rows() - 1, i + 1);
+  buf(buf.rows() - 1, buf.cols() - 1) = U(in);
+  return (((buf * p.seed(buf.cols()).transpose() * p.next(buf.rows()).template cast<U>()).dot(p.seed(- buf.cols()).row(buf.cols() - 1)))).real();
 }
 
 #define _P0_

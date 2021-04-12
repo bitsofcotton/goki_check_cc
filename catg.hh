@@ -414,8 +414,8 @@ template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<Simp
           work.reserve(cache[i].first.size());
           for(int j = 0; j < cache[i].first.size(); j ++) {
             const auto& idx(i < lG.size() ?
-              left[i][cache[i].first[j].second].second :
-              right[i - lG.size()][cache[i].first[j].second].second);
+              left[cache[i].first[j].second].second :
+              right[cache[i].first[j].second].second);
             work.emplace_back(std::make_pair(std::make_pair(std::move(cache[i].first[j].first), patch[idx]), idx));
           }
           if(! i) w0 = std::move(work);

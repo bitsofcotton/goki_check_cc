@@ -81,7 +81,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck (pred|predf) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
@@ -116,6 +116,7 @@ int main(int argc, const char* argv[]) {
   Filter<num_t>     filter;
   P0<num_t>         p;
   if(strcmp(argv[1], "collect") == 0 ||
+     strcmp(argv[1], "integ") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
@@ -139,6 +140,9 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.COLLECT_BOTH, rot);
+    else if(strcmp(argv[1], "integ") == 0)
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter.compute(data[i], filter.INTEG_BOTH, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(filter.compute(data[i], filter.ENLARGE_BOTH, rot), filter.CLIP);
@@ -670,6 +674,9 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < 3; j ++)
           inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
         glay.emplace_back(redig.rgb2d(inn));
+        for(int ii = 0; ii < glay[glay.size() - 1].rows(); ii ++)
+          for(int jj = 0; jj < glay[glay.size() - 1].cols(); jj ++)
+            glay[glay.size() - 1](ii, jj) += num_t(1) / num_t(65536);
       }
       const auto composite(redig.compositeImage(glay));
       for(int i = 0; i < composite.size(); i ++) {
