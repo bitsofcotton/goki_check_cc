@@ -51,6 +51,9 @@ public:
     EXTEND_X,
     EXTEND_Y,
     EXTEND_BOTH,
+    EXTEND2_X,
+    EXTEND2_Y,
+    EXTEND2_BOTH,
     BLINK_X,
     BLINK_Y,
     BLINK_BOTH,
@@ -111,6 +114,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return (compute(data, BUMP_X) + compute(data, BUMP_Y)) / T(2);
     case EXTEND_BOTH:
       return compute(compute(data, EXTEND_X), EXTEND_Y);
+    case EXTEND2_BOTH:
+      return compute(compute(data, EXTEND2_X), EXTEND2_Y);
     case BLINK_BOTH:
       return compute(compute(data, BLINK_X), BLINK_Y);
     case SHARPEN_X:
@@ -129,6 +134,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return compute(data.transpose(), BUMP_Y).transpose();
     case EXTEND_X:
       return compute(data.transpose(), EXTEND_Y).transpose();
+    case EXTEND2_X:
+      return compute(data.transpose(), EXTEND2_Y).transpose();
     case BLINK_X:
       return compute(data.transpose(), BLINK_Y).transpose();
     case DETECT_Y:
@@ -322,14 +329,51 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               result(recur - i - 1, j) = complex<T>(T(0));
             for(int k = 0; k < next.size(); k ++) {
               result(data.rows() + recur + i, j) +=
-                result(recur + (k - next.size() + 1) * (i + 1) + data.rows() - 1, j) *
-                  next[k];
+                result(recur + (k - next.size() + 1) * (i + 1) + data.rows() - 1, j) * next[k];
               result(recur - i - 1, j) +=
                 result(recur - (k - next.size() + 1) * (i + 1), j) * next[k];
             }
           }
         }
         return (result * p.seed(- result.cols())).template real<T>();
+      }
+      break;
+    case EXTEND2_Y:
+      {
+        Mat result(data.rows() + 2 * recur, data.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+        for(int i = 0; i < data.rows(); i ++)
+          result.row(recur + i) = data.row(i);
+        for(int i = 0; i < recur; i ++)
+          for(int j = 0; j < data.cols(); j ++) {
+            SimpleVector<T> bnext(data.rows() / (i + 1));
+            SimpleVector<T> bback(bnext.size());
+            for(int k = 0; k < bnext.size(); k ++) {
+              bnext[k] = data(  (k - bnext.size() + 1) * (i + 1) + data.rows() - 1, j);
+              bback[k] = data(- (k - bback.size() + 1) * (i + 1), j);
+            }
+            const auto varlen(min(bnext.size(), bnext.size() / 3));
+            const auto nbn(sqrt(bnext.dot(bnext)));
+            const auto nbb(sqrt(bback.dot(bback)));
+            const auto next(invariantP1(bnext / nbn, varlen, T(n)));
+            const auto back(invariantP1(bback / nbb, varlen, T(n)));
+                  auto bbnext(next);
+                  auto bbback(back);
+            for(int k = 1; k < varlen; k ++) {
+              bbnext[k - 1] = bnext[k - varlen + bnext.size()] / nbn;
+              bbback[k - 1] = bback[k - varlen + bnext.size()] / nbb;
+            }
+            bbnext[varlen - 1] = bbnext[varlen - 2];
+            bbback[varlen - 1] = bbback[varlen - 2];
+            bbnext[varlen + 1] = bbnext[varlen] =
+              bbback[varlen + 1] = bbback[varlen] =
+                T(1) / sqrt(T((bnext.size() - varlen + 1) * 2) * T(varlen + 2));
+            result(data.rows() + recur + i, j) = (next.dot(bbnext) - next[varlen - 1] * bbnext[varlen - 1]) / next[varlen - 1] * nbn;
+            result(recur - i - 1, j) = (back.dot(bbback) - back[varlen - 1] * bbback[varlen - 1]) / back[varlen - 1] * nbb;
+          }
+        return result;
       }
       break;
     case BLINK_Y:
@@ -390,7 +434,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     assert(0 && "unknown command in Filter (should not be reached.)");
     return Mat();
   }
-  if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == REPRESENT)
+  if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == EXTEND2_Y || dir == EXTEND2_X || dir == EXTEND2_BOTH || dir == REPRESENT)
     return compute(data, dir, 0);
   vector<Mat> res;
   res.reserve(n);

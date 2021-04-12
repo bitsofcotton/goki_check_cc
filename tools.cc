@@ -81,7 +81,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|pextend2|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck (pred|predf) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
@@ -120,6 +120,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
+     strcmp(argv[1], "pextend2") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
@@ -152,6 +153,16 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.EXTEND_BOTH, rot);
+    else if(strcmp(argv[1], "pextend2") == 0)
+      for(int i = 0; i < 3; i ++) {
+        for(int ii = 0; ii < data[i].rows(); ii ++)
+          for(int jj = 0; jj < data[i].cols(); jj ++)
+            data[i](ii, jj) += num_t(1) / num_t(256);
+        data[i] = filter.compute(data[i], filter.EXTEND2_BOTH, rot);
+        for(int ii = 0; ii < data[i].rows(); ii ++)
+          for(int jj = 0; jj < data[i].cols(); jj ++)
+            data[i](ii, jj) -= num_t(1) / num_t(256);
+      }
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.BLINK_BOTH, rot);
