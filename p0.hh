@@ -31,134 +31,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P0_)
 
-template <typename T, bool denoise = false> class P0 {
-public:
-  typedef SimpleVector<T> Vec;
-  typedef SimpleMatrix<T> Mat;
-  typedef SimpleMatrix<complex<T> > MatU;
-  inline P0();
-  inline ~P0();
-  const MatU& seed(const int& size0);
-  const Mat&  diff(const int& size);
-  inline Vec  taylor(const int& size, const T& step);
-  const Vec&  next(const int& size);
-  const T&    Pi() const;
-  const complex<T>& J() const;
-};
-
-template <typename T, bool denoise> inline P0<T, denoise>::P0() {
-  ;
-}
-
-template <typename T, bool denoise> inline P0<T, denoise>::~P0() {
-  ;
-}
-
-template <typename T, bool denoise> const T& P0<T, denoise>::Pi() const {
-  const static auto pi(atan2(T(1), T(1)) * T(4));
-  return pi;
-}
-
-template <typename T, bool denoise> const complex<T>& P0<T, denoise>::J() const {
-  const static auto i(complex<T>(T(0), T(1)));
-  return i;
-}
-
-template <typename T, bool denoise> const typename P0<T, denoise>::MatU& P0<T, denoise>::seed(const int& size0) {
-  const auto size(abs(size0));
-  assert(size);
-  static vector<MatU> dft;
-  static vector<MatU> idft;
-  if(dft.size() <= size)
-    dft.resize(size + 1, MatU());
-  if(idft.size() <= size)
-    idft.resize(size + 1, MatU());
-  auto& edft( dft[size]);
-  auto& eidft(idft[size]);
-  if(edft.rows() != size || edft.cols() != size) {
-    edft.resize(size, size);
-    eidft.resize(size, size);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < edft.rows(); i ++) {
-      for(int j = 0; j < edft.cols(); j ++) {
-        const auto theta(- T(2) * Pi() * T(i) * T(j) / T(edft.rows()));
-        edft(i, j)  = complex<T>(cos(  theta), sin(  theta));
-        eidft(i, j) = complex<T>(cos(- theta), sin(- theta)) / complex<T>(T(size));
-      }
-    }
-  }
-  return size0 < 0 ? eidft : edft;
-}
-
-template <typename T, bool denoise> const typename P0<T, denoise>::Mat& P0<T, denoise>::diff(const int& size0) {
-  assert(size0);
-  const auto size(abs(size0));
-  static vector<Mat> D;
-  static vector<Mat> I;
-  if(D.size() <= size)
-    D.resize(size + 1, Mat());
-  if(I.size() <= size)
-    I.resize(size + 1, Mat());
-  auto& dd(D[size]);
-  auto& ii(I[size]);
-  if(dd.rows() != size || dd.cols() != size) {
-    auto DD(seed(size));
-    auto II(seed(size));
-    for(int i = 0; i < DD.rows(); i ++)
-      DD.row(i) *= - J() * T(2) * Pi() * T(i) / T(DD.rows());
-    for(int i = 1; i < DD.rows(); i ++)
-      II.row(i) /= - J() * T(2) * Pi() * T(i) / T(DD.rows()) / Pi();
-    dd = (seed(- size) * DD).template real<T>() / Pi();
-    ii = (seed(- size) * II).template real<T>();
-  }
-  return size0 < 0 ? ii : dd;
-}
-
-template <typename T, bool denoise> inline typename P0<T, denoise>::Vec P0<T, denoise>::taylor(const int& size, const T& step) {
-  const int  step00(max(0, min(size - 1, int(floor(step)))));
-  const auto residue0(step - T(step00));
-  const auto step0(step00 == size - 1 || abs(residue0) <= T(1) / T(2) ? step00 : step00 + 1);
-  const auto residue(step - T(step0));
-        Vec  res(size);
-  for(int i = 0; i < size; i ++)
-    res[i] = i == step0 ? T(1) : T(0);
-  if(residue == T(0))
-    return res;
-  // N.B.
-  // if we deal with (D *= r, residue /= r), it is identical with (D, residue)
-  // So ||D^n * residue^n|| / T(n!) < 1 case, this loop converges.
-  // but with n^n v.s. n!, differential of n! is faster than n^n.
-  // (n! < n^n but a^n < n! somewhere).
-  // And, we treat D * residue as a block, so Readme.md's condition 1/x^k needs
-  // to be in the series in this.
-  const auto& D(diff(size));
-        auto  dt(D.col(step0) * residue);
-  for(int i = 2; ; i ++) {
-    const auto last(res);
-    res += dt;
-    if(last == res) break;
-    dt   = D * dt * residue / T(i);
-  }
-  return res;
-}
-
-template <typename T, bool denoise> const typename P0<T, denoise>::Vec& P0<T, denoise>::next(const int& size) {
+template <typename T, bool denoise = false> const SimpleVector<T>& nextP0(const int& size) {
   assert(0 < size);
-  static vector<Vec> P;
+  static vector<SimpleVector<T> > P;
   if(P.size() <= size)
-    P.resize(size + 1, Vec());
+    P.resize(size + 1, SimpleVector<T>());
   auto& p(P[size]);
   if(p.size() != size) {
     if(size <= 1) {
-      p    = Vec(1);
+      p    = SimpleVector<T>(1);
       p[0] = T(1);
     } else {
-      p = taylor(size, T(size));
+      p = taylor<T>(size, T(size));
       if(denoise) {
         std::cerr << "." << std::flush;
-        const auto& pp(next(size - 1));
+        const auto& pp(nextP0<T, denoise>(size - 1));
         for(int i = 0; i < pp.size(); i ++)
           p[i - pp.size() + p.size()] += pp[i] * T(size - 1);
         p /= T(size);
@@ -168,39 +55,37 @@ template <typename T, bool denoise> const typename P0<T, denoise>::Vec& P0<T, de
   return p;
 }
 
-
-template <typename T, bool denoise = false> class P0B {
+template <typename T, bool denoise = false> class P0 {
 public:
   typedef SimpleVector<T> Vec;
-  inline P0B();
-  inline P0B(const int& size);
-  inline ~P0B();
+  inline P0();
+  inline P0(const int& size);
+  inline ~P0();
   inline T next(const T& in);
 private:
   Vec buf;
 };
 
-template <typename T, bool denoise> inline P0B<T, denoise>::P0B() {
+template <typename T, bool denoise> inline P0<T, denoise>::P0() {
   ;
 }
 
-template <typename T, bool denoise> inline P0B<T, denoise>::P0B(const int& size) {
+template <typename T, bool denoise> inline P0<T, denoise>::P0(const int& size) {
   assert(0 < size);
   buf.resize(size);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
 }
 
-template <typename T, bool denoise> inline P0B<T, denoise>::~P0B() {
+template <typename T, bool denoise> inline P0<T, denoise>::~P0() {
   ;
 }
 
-template <typename T, bool denoise> inline T P0B<T, denoise>::next(const T& in) {
-  static P0<T, denoise> p;
+template <typename T, bool denoise> inline T P0<T, denoise>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
   buf[buf.size() - 1] = in;
-  return p.next(buf.size()).dot(buf);
+  return nextP0<T, denoise>(buf.size()).dot(buf);
 }
 
 
@@ -236,13 +121,12 @@ template <typename T, bool denoise> inline P0C<T, denoise>::~P0C() {
 }
 
 template <typename T, bool denoise> inline T P0C<T, denoise>::next(const T& in) {
-  static P0<T> p;
   for(int i = 0; i < buf.rows() - 1; i ++)
     buf.row(i) = buf.row(i + 1);
   for(int i = 0; i < buf.cols() - 1; i ++)
     buf(buf.rows() - 1, i) = buf(buf.rows() - 1, i + 1);
   buf(buf.rows() - 1, buf.cols() - 1) = U(in);
-  return (((buf * p.seed(buf.cols()).transpose() * p.next(buf.rows()).template cast<U>()).dot(p.seed(- buf.cols()).row(buf.cols() - 1)))).real();
+  return (((buf * dft<T>(buf.cols()).transpose() * nextP0<T, denoise>(buf.rows()).template cast<U>()).dot(dft<T>(- buf.cols()).row(buf.cols() - 1)))).real();
 }
 
 #define _P0_

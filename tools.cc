@@ -81,7 +81,7 @@ using std::endl;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|pextend2|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck (pred|predf) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
@@ -120,7 +120,6 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
-     strcmp(argv[1], "pextend2") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
@@ -153,16 +152,6 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.EXTEND_BOTH, rot);
-    else if(strcmp(argv[1], "pextend2") == 0)
-      for(int i = 0; i < 3; i ++) {
-        for(int ii = 0; ii < data[i].rows(); ii ++)
-          for(int jj = 0; jj < data[i].cols(); jj ++)
-            data[i](ii, jj) += num_t(1) / num_t(256);
-        data[i] = filter.compute(data[i], filter.EXTEND2_BOTH, rot);
-        for(int ii = 0; ii < data[i].rows(); ii ++)
-          for(int jj = 0; jj < data[i].cols(); jj ++)
-            data[i](ii, jj) -= num_t(1) / num_t(256);
-      }
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.BLINK_BOTH, rot);
@@ -624,7 +613,7 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "pred") == 0) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      const auto& comp(p.next(in.size()));
+      const auto& comp(nextP0<num_t>(in.size()));
       for(int y = 0; y < out[0].rows(); y ++) {
         for(int x = 0; x < out[0].cols(); x ++) {
           out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
@@ -636,14 +625,14 @@ int main(int argc, const char* argv[]) {
       redig.normalize(out, 1.);
       file.savep2or3(argv[2], out, ! true);
     } else if(strcmp(argv[1], "predf") == 0) {
-      std::vector<typename P0<num_t>::MatU> inm[3];
-      typename P0<num_t>::MatU outc[3];
+      std::vector<typename P0C<num_t>::MatU> inm[3];
+      typename P0C<num_t>::MatU outc[3];
       for(int i = 0; i < in.size(); i ++)
         for(int j = 0; j < in[i].size(); j ++)
-          inm[j].emplace_back(p.seed(in[i][j].rows()) * in[i][j].template cast<complex<num_t> >() * p.seed(in[i][j].cols()));
+          inm[j].emplace_back(dft<num_t>(in[i][j].rows()) * in[i][j].template cast<complex<num_t> >() * dft<num_t>(in[i][j].cols()));
       for(int i = 0; i < 3; i ++)
         outc[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      const auto& comp(p.next(in.size()));
+      const auto& comp(nextP0<num_t>(in.size()));
       for(int y = 0; y < outc[0].rows(); y ++) {
         for(int x = 0; x < outc[0].cols(); x ++) {
           outc[0](y, x) = outc[1](y, x) = outc[2](y, x) = num_t(0);
@@ -655,7 +644,7 @@ int main(int argc, const char* argv[]) {
         }
       }
       for(int i = 0; i < 3; i ++)
-        out[i] = filter.compute((p.seed(- outc[i].rows()) * outc[i] * p.seed(- outc[i].cols())).template real<num_t>(), filter.CLIP);
+        out[i] = filter.compute((dft<num_t>(- outc[i].rows()) * outc[i] * dft<num_t>(- outc[i].cols())).template real<num_t>(), filter.CLIP);
       file.savep2or3(argv[2], out, ! true, 65535);
     } else if(strcmp(argv[1], "cat") == 0) {
       std::vector<typename simpleFile<num_t>::Mat> rep;
@@ -880,8 +869,8 @@ int main(int argc, const char* argv[]) {
     std::string header;
     file.loaddat(argv[3], header, data);
     simpleFile<num_t>::Mat buf(std::atoi(argv[4]), std::atoi(argv[4]));
-    const auto& dft(p.seed(buf.rows()));
-    const auto& idft(p.seed(- buf.rows()));
+    const auto& mdft(dft<num_t>(buf.rows()));
+    const auto& midft(dft<num_t>(- buf.rows()));
     for(int i0 = 1; i0 < data.size(); i0 ++) {
       for(int i = 0; i <= data[i0].size() / buf.rows() / buf.rows(); i ++) {
         for(int k = 0; k < buf.cols(); k ++)
@@ -892,33 +881,33 @@ int main(int argc, const char* argv[]) {
         Filter<num_t>::Mat buf2;
         if(strcmp(argv[2], "diff") == 0){
 #if defined(_WITHOUT_EIGEN_)
-          buf2 = (idft * (
-            filter.compute(dft.template real<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
-            filter.compute(dft.template imag<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+          buf2 = (midft * (
+            filter.compute(mdft.template real<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
+            filter.compute(mdft.template imag<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-          buf2 = (idft * (
-            filter.compute(dft.real() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
-            filter.compute(dft.imag() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
+          buf2 = (midft * (
+            filter.compute(mdft.real() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
+            filter.compute(mdft.imag() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
         } else if(strcmp(argv[2], "sharpen") == 0) {
 #if defined(_WITHOUT_EIGEN_)
-          buf2 = (idft * (
-            filter.compute(dft.template real<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
-            filter.compute(dft.template imag<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+          buf2 = (midft * (
+            filter.compute(mdft.template real<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
+            filter.compute(mdft.template imag<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-          buf2 = (idft * (
-            filter.compute(dft.real() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
-            filter.compute(dft.imag() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
+          buf2 = (midft * (
+            filter.compute(mdft.real() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
+            filter.compute(mdft.imag() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
         } else if(strcmp(argv[2], "bump") == 0) {
 #if defined(_WITHOUT_EIGEN_)
-          buf2 = (idft * (
-            filter.compute(dft.template real<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
-            filter.compute(dft.template imag<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+          buf2 = (midft * (
+            filter.compute(mdft.template real<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
+            filter.compute(mdft.template imag<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
 #else
-          buf2 = (idft * (
-            filter.compute(dft.real() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
-            filter.compute(dft.imag() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
+          buf2 = (midft * (
+            filter.compute(mdft.real() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
+            filter.compute(mdft.imag() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
 #endif
         }
         for(int k = 0; k < buf2.cols(); k ++)

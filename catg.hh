@@ -31,96 +31,41 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_CATG_)
 
-template <typename T> class Catg {
-public:
-  typedef SimpleVector<T> Vec;
-  typedef SimpleMatrix<T> Mat;
-  inline Catg();
-  inline ~Catg();
-  inline void inq(const Vec& in);
-  Mat compute();
-  Mat R;
-private:
-  std::vector<Vec> cache;
-};
-
-template <typename T> inline Catg<T>::Catg() {
-  ;
-}
-
-template <typename T> inline Catg<T>::~Catg() {
-  ;
-}
-
-template <typename T> inline void Catg<T>::inq(const Vec& in) {
-  if(cache.size()) assert(in.size() == cache[0].size());
-  cache.emplace_back(in);
-}
-
-template <typename T> inline typename Catg<T>::Mat Catg<T>::compute() {
-  Mat At(cache[0].size(), cache.size());
-  T   MM(0), mm(0);
-  for(int i = 0; i < At.cols(); i ++) {
-    At.setCol(i, cache[i]);
-    if(! i) MM = mm = At(0, 0);
-    for(int j = 0; j < At.rows(); j ++) {
-      MM = max(MM, At(j, i));
-      mm = min(mm, At(j, i));
-    }
-  }
-  for(int i = 0; i < At.rows(); i ++)
-    for(int j = 0; j < At.cols(); j ++)
-      At(i, j) -= mm + (MM - mm) / T(2);
-  Mat Q(At.rows(), At.cols());
-  for(int i = 0; i < Q.rows(); i ++)
-    for(int j = 0; j < Q.cols(); j ++)
-      Q(i, j) = T(0);
-  for(int i = 0; i < At.rows(); i ++) {
-    const auto work(At.row(i) - Q.projectionPt(At.row(i)));
-    // generally, assert norm > error is needed.
-    // in this case, not.
-    Q.row(i) = work / sqrt(work.dot(work));
-    if(! isfinite(Q.row(i).dot(Q.row(i)))) {
-      std::cerr << "!" << std::flush;
-      Q.row(i) *= T(0);
-    }
-  }
-  R = At * Q.transpose();
-  return Q;
-}
-
+using std::move;
+using std::vector;
+using std::pair;
+using std::make_pair;
+using std::cerr;
+using std::flush;
 
 template <typename T> class CatG {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline CatG();
-  inline CatG(const int& size);
+  inline CatG(const int& size, const bool& recur = false, const int& complexity = 8);
   inline ~CatG();
-  inline void inq(const Vec& in, const int& computer = - 1);
-  inline void inqRecur(const Vec& in, const int& computer = - 1);
-         void compute(const bool& recur = false);
-  inline void computeRecur();
-  inline T    lmrS(const Vec& in, const int& computer = - 1);
-  inline int  lmr(const Vec& in, const int& computer = - 1);
-  inline std::pair<int, int> lmrRecur(const Vec& in, const int& computer = - 1);
+         void compute(const vector<Vec>& in);
+  inline pair<T, int> score(const Vec& in);
   Vec cut;
   T   distance;
   T   origin;
-  std::vector<Vec> cache;
-  inline Vec normalizeComputer(const Vec& v, const int& computer);
-  Catg<T> catg;
-private:
   const Mat& tayl(const int& in);
-  int size;
+private:
+  int  size;
+  bool recur;
+  int  complexity;
 };
 
 template <typename T> inline CatG<T>::CatG() {
-  size = 0;
+  recur = false;
+  size  = complexity = 0;
 }
 
-template <typename T> inline CatG<T>::CatG(const int& size) {
-  this->size = size;
+template <typename T> inline CatG<T>::CatG(const int& size, const bool& recur, const int& complexity) {
+  this->size       = size;
+  this->recur      = recur;
+  this->complexity = complexity;
 }
 
 template <typename T> inline CatG<T>::~CatG() {
@@ -129,7 +74,6 @@ template <typename T> inline CatG<T>::~CatG() {
 
 template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& in) {
   static vector<Mat> t;
-  static P0<T> p;
   if(in < t.size()) {
     if(t[in].rows() && t[in].cols())
       return t[in];
@@ -137,135 +81,69 @@ template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& in) 
     t.resize(in + 1, Mat());
   t[in].resize(size, in);
   for(int i = 0; i < size; i ++)
-    t[in].row(i) = p.taylor(in, T(i) * T(in) / T(size));
+    t[in].row(i) = taylor<T>(in, T(i) * T(in) / T(size));
   return t[in];
 }
 
-template <typename T> inline typename CatG<T>::Vec CatG<T>::normalizeComputer(const Vec& v, const int& computer) {
-  if(computer < 0)
-    return v;
-  T pd(0);
-  for(int i = 0; i < v.size(); i ++)
-    pd += log(abs(v[i]));
-  const auto res(v * exp((computer ? T(computer) * pd : - pd) / T(v.size())));
-  assert(isfinite(res.dot(res)) && res.dot(res) != T(0));
-  return res;
-}
-
-template <typename T> inline void CatG<T>::inq(const Vec& in, const int& computer) {
-  cache.emplace_back(
-    normalizeComputer(in.size() == size ? in :
-      tayl(in.size()) * in, computer));
-  catg.inq(cache[cache.size() - 1]);
-  return;
-}
-
-template <typename T> inline void CatG<T>::inqRecur(const Vec& in, const int& computer) {
-  auto work(in);
-  for(int i = 1; i <= in.size(); i ++) {
-    inq(work, computer);
-    if(i == in.size()) break;
-    for(int j = 0; j < work.size(); j ++)
-      work[j] = in[(j + i * size / in.size()) % in.size()];
-  }
-  return;
-}
-
-template <typename T> inline void CatG<T>::computeRecur() {
-  return compute(true);
-}
-
-template <typename T> void CatG<T>::compute(const bool& recur) {
+template <typename T> void CatG<T>::compute(const vector<Vec>& in) {
   const auto block(recur ? size * 2 : 2);
-  const auto Q(catg.compute());
-        Mat  Pt(Q.rows() + 1, Q.cols() * 2 - 1);
-        Vec  q(Pt.cols());
-        Vec  one(q.size());
-  SimpleVector<bool> fix(q.size());
+  SimpleMatrix<T> A(in.size() * block - (recur ? size : 1), size + 1);
+  for(int i = 0; i < in.size(); i ++) {
+    if(recur) {
+      Vec inn(in.size());
+      for(int k = 0; k < size; k ++) {
+        for(int j = 0; j < size; j ++)
+          inn[j] = in[i][(j + i * size / in[i].size()) % in[i].size()];
+        A.row(i * size * 2 + k) = makeProgramInvariant(inn.size() == size ? inn : tayl(inn.size()) * inn, complexity, - T(1));
+      }
+    } else
+      A.row(i * 2) = makeProgramInvariant(in[i].size() == size ? in[i] : tayl(in[i].size()) * in[i], complexity, - T(1));
+    if(in.size() - 1 <= i) break;
+    if(recur) {
+      for(int k = 0; k < size; k ++)
+        A.row(i * size * 2 + size + k) = - A.row(i * size * 2 + k);
+    } else
+      A.row(i * 2 + 1) = - A.row(i * 2);
+  }
+        auto Pt(A.QR());
+  const auto R(Pt * A);
+  Vec  one(Pt.cols());
+  SimpleVector<bool> fix(one.size());
   for(int i = 0; i < Pt.cols(); i ++) {
-    const auto qq(Q.col(i / 2));
-    for(int j = 0; j < Q.rows(); j ++)
-      Pt(j, i) = qq[j];
-    Pt(Q.rows(), i) = T(0);
-    q[i]   = i & 1 ? - T(1) : T(1);
     one[i] = T(1);
     fix[i] = false;
   }
-  one /= sqrt(one.dot(one));
-  Pt.row(Pt.rows() - 1)  = q - Pt.projectionPt(q);
-  Pt.row(Pt.rows() - 1) /= sqrt(Pt.row(Pt.rows() - 1).dot(Pt.row(Pt.rows() - 1)));
-  auto Ptt(Pt);
-  int  n_fixed;
-  int  ntry(0);
-  if(! isfinite(Pt.row(Pt.rows() - 1).dot(Pt.row(Pt.rows() - 1)))) {
-    ntry ++;
-    Pt.resize(Ptt.rows() - 1, Ptt.cols());
-    for(int i = 0; i < Pt.rows(); i ++)
-      Pt.row(i) = std::move(Ptt.row(i));
-  }
- retry:
-  for(n_fixed = 0; n_fixed < Pt.rows() - 1; n_fixed ++) {
-    const auto on(Pt.projectionPt(- one));
-          int  fidx(- 1);
-    for(int i = 0; i < Pt.cols() / block; i ++) {
-      std::pair<T, int> mm;
-      mm = std::make_pair(T(0), - 1);
-      for(int j = 0; j < block && i * block + j < Pt.cols(); j ++) {
-        const auto jj(i * block + j);
-        if(fix[jj]) {
-          // no matter other dimensions if one of them is fixed.
-          mm.second = - 1;
-          break;
-        }
-        const auto& score(on[jj]);
-        if(mm.first < score)
-          mm = std::make_pair(score, jj);
+  const auto on(Pt.projectionPt(one));
+  vector<pair<T, int> > fidx;
+  fidx.reserve(on.size());
+  for(int i = 0; i < on.size(); i ++)
+    fidx.emplace_back(make_pair(abs(on[i]), i));
+  sort(fidx.begin(), fidx.end());
+  for(int n_fixed = 0, idx = 0; n_fixed < Pt.rows() - 1 && idx < fidx.size(); n_fixed ++, idx ++) {
+    const auto& iidx(fidx[idx].second);
+    for(int j = iidx - iidx % block;
+            j < min((iidx - iidx % block) + block, fix.size());
+            j ++)
+      if(fix[j]) {
+        fix[iidx] = true;
+        break;
       }
-      if(fidx < 0 || (0 <= mm.second && on[mm.second] < on[fidx]))
-        fidx = mm.second;
-    }
-    if(fidx < 0)
-      break;
-    const auto orth(Pt.col(fidx));
-    const auto norm2orth(orth.dot(orth));
-    if(norm2orth <= T(0)) break;
+    if(fix[iidx]) continue;
+    const auto  orth(Pt.col(iidx));
+    const auto  n2(orth.dot(orth));
+    if(n2 <= Pt.epsilon) continue;
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int j = 0; j < Pt.cols(); j ++)
-      Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / norm2orth);
-    fix[fidx] = true;
+      Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
+    fix[iidx] = true;
   }
-  if(n_fixed) {
-    cut = - Pt * one;
-    if(catg.R.cols() != cut.size()) {
-      Vec rvec(cut.size() - 1);
-      for(int i = 0; i < rvec.size(); i ++)
-        rvec[i] = cut[i] + Pt.row(i).dot(one) * cut[cut.size() - 1];
-      cut = catg.R * rvec;
-    } else
-      cut = catg.R * cut;
-  } else if(ntry) {
-    cut = Vec(catg.R.cols());
-    for(int i = 0; i < cut.size(); i ++)
-      cut[i] = T(0);
-    distance = origin = T(0);
-    std::cerr << "?" << std::flush;
-    return;
-  } else {
-    ntry ++;
-    Pt.resize(Ptt.rows() - 1, Ptt.cols());
-    for(int i = 0; i < Pt.rows(); i ++)
-      Pt.row(i) = std::move(Ptt.row(i));
-    goto retry;
-  }
-  const auto ncut(cut.dot(cut));
-  if(isfinite(ncut) && T(0) < ncut)
-    cut /= sqrt(ncut);
+  cut = R.solve(Pt * one);
   std::vector<T> s;
-  s.reserve(cache.size());
-  for(int i = 0; i < cache.size(); i ++)
-    s.emplace_back(cache[i].dot(cut));
+  s.reserve(in.size());
+  for(int i = 0; i < in.size(); i ++)
+    s.emplace_back(makeProgramInvariant(in[i].size() == size ? in[i] : tayl(in[i].size()) * in[i], complexity, - T(1)).dot(cut));
   std::sort(s.begin(), s.end());
   distance = origin = T(0);
   for(int i = 0; i < s.size() - 1; i ++)
@@ -276,169 +154,75 @@ template <typename T> void CatG<T>::compute(const bool& recur) {
   return;
 }
 
-template <typename T> inline T CatG<T>::lmrS(const Vec& in, const int& computer) {
-  return normalizeComputer(in.size() == size ? in :
-           tayl(in.size()) * in, computer).dot(cut) - origin;
-}
-
-template <typename T> inline int CatG<T>::lmr(const Vec& in, const int& computer) {
-  return lmrS(in, computer) < T(0) ? - 1 : 1;
-}
-
-template <typename T> inline std::pair<int, int> CatG<T>::lmrRecur(const Vec& in, const int& computer) {
-  std::pair<int, int> res(make_pair(0, 0));
-  T    dM(0);
-  auto work(in);
-  for(int i = 1; i <= in.size(); i ++) {
-    const auto score(lmrS(work, computer));
-    if(abs(dM) < abs(score)) {
-      res = make_pair(score < T(0) ? - 1 : 1, i - 1);
-      dM  = abs(score);
-    }
-    if(i == in.size()) break;
-    for(int j = 0; j < work.size(); j ++)
-      work[j] = in[(j + i * size / in.size()) % in.size()];
+template <typename T> inline pair<T, int> CatG<T>::score(const Vec& in) {
+  if(! recur)
+    return make_pair(makeProgramInvariant<T>(in.size() == size ? in : tayl(in.size()) * in, complexity, - T(1)).dot(cut) - origin, 0);
+  pair<T, int> res(make_pair(0, 0));
+  for(int i = 0; i < in.size(); i ++) {
+    Vec inn(in.size());
+    for(int j = 0; j < size; j ++)
+      inn[j] = in[(j + i * size / in.size()) % in.size()];
+    const auto score(makeProgramInvariant<T>(inn.size() == size ? inn : tayl(inn.size()) * inn, complexity, - T(1)).dot(cut) - origin);
+    if(abs(res.first) < abs(score))
+      res = make_pair(score, i);
   }
   return res;
 }
 
 
-template <typename T> std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > crush(const std::vector<SimpleVector<T> >& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1, const int& computer = 20) {
-  std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > result;
+template <typename T> vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int, int> > >, SimpleMatrix<T> > > crush(const vector<SimpleVector<T> >& v, const int& cs, const bool& recur, T cut = - T(1) / T(2), const int& Mcount = - 1, const int& complexity = 8) {
+  vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int, int> > >, SimpleMatrix<T> > > result;
   if(! v.size() || !v[0].size()) return result;
   auto MM(v[0].dot(v[0]));
   for(int i = 1; i < v.size(); i ++)
     MM = max(MM, v[i].dot(v[i]));
   MM = sqrt(MM);
   int t(0);
-  result.emplace_back(std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> >());
-  result[0].first.reserve(v.size());
-  for(int i = 0; i < v.size(); i ++)
-    result[0].first.emplace_back(std::make_pair(v[i] / MM, i));
+  result.emplace_back(pair<pair<vector<SimpleVector<T> >, vector<pair<int, int> > >, SimpleMatrix<T>  >());
+  result[0].first.first.reserve(v.size());
+  result[0].first.second.reserve(v.size());
+  for(int i = 0; i < v.size(); i ++) {
+    result[0].first.first.emplace_back(v[i] / MM / T(2));
+    result[0].first.second.emplace_back(make_pair(0, i));
+  }
   while(t < result.size()) {
-    if(! result[t].first.size()) {
+    if(result[t].first.first.size() < cs + 2) {
       t ++;
       continue;
     }
-    CatG<T> cat(cs);
-    for(int i = 0; i < result[t].first.size(); i ++)
-      cat.inq(result[t].first[i].first, computer);
-    cat.compute();
-    std::cerr << cat.distance << std::flush;
+    CatG<T> catg(cs, recur, complexity);
+    catg.compute(result[t].first.first);
     if(! t && cut <= T(0))
-      cut = cat.distance * abs(cut);
-    if((cut <= cat.distance && cat.cut.size()) ||
-       (0 < Mcount && Mcount < result[t].first.size())) {
-      std::vector<std::pair<SimpleVector<T>, int> > left;
-      std::vector<std::pair<SimpleVector<T>, int> > right;
-      for(int i = 0; i < result[t].first.size(); i ++)
-        (cat.lmr(result[t].first[i].first, computer) < 0 ? left : right).emplace_back(result[t].first[i]);
+      cut = catg.distance * abs(cut);
+    if(catg.cut.size() && (cut <= catg.distance ||
+       (0 < Mcount && Mcount < result[t].first.first.size())) ) {
+      vector<SimpleVector<T> > left;
+      vector<SimpleVector<T> > right;
+      vector<pair<int, int> >  lidx;
+      vector<pair<int, int> >  ridx;
+      for(int i = 0; i < result[t].first.first.size(); i ++) {
+        const auto score(catg.score(result[t].first.first[i]));
+        (score.first < T(0) ? left : right).emplace_back(move(result[t].first.first[i]));
+      }
       if(left.size() && right.size()) {
-        CatG<T> lC(cs);
-        CatG<T> rC(cs);
-        for(int i = 0; i < left.size(); i ++)
-          lC.inq(left[i].first, computer);
-        for(int i = 0; i < right.size(); i ++)
-          rC.inq(right[i].first, computer);
-        lC.catg.compute();
-        rC.catg.compute();
-        result[t] = std::make_pair(std::move(left), std::move(lC.catg));
-        result.emplace_back(std::make_pair(std::move(right), std::move(rC.catg)));
-      } else {
-        result[t].second = std::move(cat.catg);
-        t ++;
-      }
+        result[t].first.first  = move(left);
+        result[t].first.second = move(lidx);
+        result.emplace_back(make_pair(make_pair(move(right), move(ridx)), SimpleMatrix<T>()));
+      } else
+        result[t ++].first.first = (left.size() ? move(left) : move(right));
     } else
       t ++;
   }
-  for(int i = 0; i < result.size(); i ++)
-    for(int j = 0; j < result[i].first.size(); j ++)
-      result[i].first[j].first *= MM;
-  return result;
-}
-
-template <typename T> std::vector<std::pair<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >, Catg<T> > > crushNoContext(const std::vector<SimpleVector<T> >& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1, const int& computer = 20) {
-  std::vector<std::pair<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >, Catg<T> > > result;
-  if(! v.size() || ! v[0].size()) return result;
-  auto MM(v[0].dot(v[0]));
-  for(int i = 1; i < v.size(); i ++)
-    MM = max(MM, v[i].dot(v[i]));
-  MM = sqrt(MM);
-  std::vector<std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > > vv;
-  int t(0);
-  vv.emplace_back(std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> >());
-  vv[0].reserve(v.size());
-  for(int i = 0; i < v.size(); i ++)
-    vv[0].emplace_back(std::make_pair(std::make_pair(v[i] / MM, 0), i));
-  std::vector<int> patch;
-  patch.resize(v.size(), 0);
-  while(t < vv.size()) {
-    if(! vv[t].size()) {
-      t ++;
-      continue;
+  for(int i = 0; i < result.size(); i ++) {
+    if(result[i].first.first.size() < cs + 2) continue;
+    SimpleMatrix<T> spec(result[i].first.first.size(), cs);
+    CatG<T> catg(cs, recur, complexity);
+    for(int j = 0; j < result[i].first.first.size(); j ++) {
+      const auto& v(result[i].first.first[j] *= MM);
+      spec.row(j) = (v.size() == cs ? v : catg.tayl(v.size()) * v);
     }
-    CatG<T> cat(cs);
-    for(int i = 0; i < vv[t].size(); i ++)
-      cat.inqRecur(vv[t][i].first.first, computer);
-    cat.computeRecur();
-    std::cerr << cat.distance << std::flush;
-    if(! t && cut <= T(0)) cut = cat.distance * abs(cut);
-    if(cut <= cat.distance || (0 < Mcount && Mcount < vv[t].size())) {
-      std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > left;
-      std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > right;
-      for(int i = 0; i < vv[t].size(); i ++) {
-        const auto lmr(cat.lmrRecur(vv[t][i].first.first, computer));
-        patch[vv[t][i].second] = vv[t][i].first.second = lmr.second;
-        (lmr.first < 0 ? left : right).emplace_back(vv[t][i]);
-      }
-      std::vector<std::pair<std::vector<std::pair<SimpleVector<T>, int> >, Catg<T> > > cache;
-      std::vector<SimpleVector<T> > ll;
-      std::vector<SimpleVector<T> > rr;
-      ll.reserve(left.size());
-      rr.reserve(right.size());
-      for(int i = 0; i < left.size(); i ++)
-        ll.emplace_back(left[i].first.first);
-      for(int i = 0; i < right.size(); i ++)
-        rr.emplace_back(right[i].first.first);
-      auto lG(crush<T>(ll, cs, cut, Mcount, computer));
-      auto rG(crush<T>(rr, cs, cut, Mcount, computer));
-      cache.reserve(lG.size() + rG.size());
-      for(int i = 0; i < lG.size(); i ++)
-        cache.emplace_back(std::move(lG[i]));
-      for(int i = 0; i < rG.size(); i ++)
-        cache.emplace_back(std::move(rG[i]));
-      if(cache.size()) {
-        std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > w0;
-        for(int i = 0; i < cache.size(); i ++) {
-          std::vector<std::pair<std::pair<SimpleVector<T>, int>, int> > work;
-          work.reserve(cache[i].first.size());
-          for(int j = 0; j < cache[i].first.size(); j ++) {
-            const auto& idx(i < lG.size() ?
-              left[cache[i].first[j].second].second :
-              right[cache[i].first[j].second].second);
-            work.emplace_back(std::make_pair(std::make_pair(std::move(cache[i].first[j].first), patch[idx]), idx));
-          }
-          if(! i) w0 = std::move(work);
-          else vv.emplace_back(std::move(work));
-        }
-        vv[t] = std::move(w0);
-      }
-      if(cache.size() <= 1)
-        t ++;
-    } else
-      t ++;
+    result[i].second = spec.QR() * spec;
   }
-  result.reserve(vv.size());
-  for(int i = 0; i < vv.size(); i ++) {
-    CatG<T> cg(cs);
-    for(int j = 0; j < vv[i].size(); j ++)
-      cg.inq(vv[i][j].first.first, computer);
-    cg.compute();
-    result.emplace_back(std::make_pair(std::move(vv[i]), std::move(cg.catg)));
-  }
-  for(int i = 0; i < result.size(); i ++)
-    for(int j = 0; j < result[i].first.size(); j ++)
-      result[i].first[j].first.first *= MM;
   return result;
 }
 
@@ -449,10 +233,10 @@ public:
   inline P012L();
   inline P012L(const int& d, const int& stat, const int& slide, const T& intensity = - T(1) / T(2));
   inline ~P012L();
-  T next(const T& in, const int& computer = 20);
+  T next(const T& in, const int& complexity = 8);
 private:
-  std::vector<Vec> cache;
-  std::vector<Vec> pp;
+  vector<Vec> cache;
+  vector<Vec> pp;
   Vec work;
   int stat;
   int slide;
@@ -461,7 +245,7 @@ private:
 };
 
 template <typename T, bool dec> inline P012L<T,dec>::P012L() {
-  t = stat = slide = 0;
+  inten = T(t = stat = slide = 0);
 }
 
 template <typename T, bool dec> inline P012L<T,dec>::P012L(const int& d, const int& stat, const int& slide, const T& intensity) {
@@ -477,9 +261,9 @@ template <typename T, bool dec> inline P012L<T,dec>::~P012L() {
   ;
 }
 
-template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in, const int& computer) {
-  static std::vector<Decompose<T> > decompose;
-  static std::vector<bool> isinit;
+template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in, const int& complexity) {
+  static vector<Decompose<T> > decompose;
+  static vector<bool> isinit;
   if(dec && decompose.size() <= work.size()) {
     decompose.resize(work.size() + 1, Decompose<T>());
     isinit.resize(decompose.size(), false);
@@ -488,39 +272,39 @@ template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in, const i
     decompose[work.size()] = Decompose<T>(work.size());
     isinit[work.size()] = true;
   }
-  work[work.size() - 1] = in;
   if(t ++ < work.size() - 1) {
     work[(t - 1) % work.size()] = in;
     return in;
   }
+  work[work.size() - 1] = in;
   cache.emplace_back(dec ? decompose[work.size()].mother(work) : work);
   for(int i = 0; i < work.size() - 1; i ++)
     work[i] = work[i + 1];
   if(stat <= cache.size()) {
-    const auto cat(crush<T>(cache, work.size(), inten, - 1, computer));
-    pp = std::vector<Vec>();
+    const auto cat(crush<T>(cache, work.size(), false, inten, work.size() * 4, complexity));
+    pp = vector<Vec>();
     pp.reserve(cat.size());
-    static CatG<T> ncCaller;
     for(int i = 0; i < cat.size(); i ++) {
-      pp.emplace_back(ncCaller.normalizeComputer(cat[i].first[0].first, computer));
-      for(int j = 1; j < cat[i].first.size(); j ++)
-        pp[i] += ncCaller.normalizeComputer(cat[i].first[j].first, computer);
+      pp.emplace_back(cat[i].first.first[0]);
+      for(int j = 1; j < cat[i].first.first.size(); j ++)
+        pp[i] += cat[i].first.first[j];
       pp[i] /= sqrt(pp[i].dot(pp[i]));
     }
     auto cache0(cache);
-    cache = std::vector<Vec>();
+    cache = vector<Vec>();
     cache.reserve(stat);
     for(int i = 0; i < slide; i ++)
-      cache.emplace_back(std::move(cache0[i - slide + cache0.size()]));
+      cache.emplace_back(move(cache0[i - slide + cache0.size()]));
   }
   T MM(0);
   T res(0);
   for(int i = 0; i < pp.size(); i ++) {
     const auto& p(pp[i]);
+    if(! p.size()) continue;
     const auto  vdp((dec ? decompose[work.size()].mother(work) : work).dot(p));
     const auto  last(p[p.size() - 1] - p[p.size() - 2]);
     if(! isfinite(vdp)) continue;
-    if(MM <= abs(vdp) && last != T(0)) {
+    if(MM <= abs(vdp)) {
       MM  = abs(vdp);
       res = last * vdp;
     }

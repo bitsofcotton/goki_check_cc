@@ -59,12 +59,11 @@ template <typename T> inline Decompose<T>::Decompose() {
 }
 
 template <typename T> inline Decompose<T>::Decompose(const int& size) {
-  static P0<T> p0;
   for(int i = 0; i < size; i ++) {
     SimpleMatrix<T> AA(size, size);
     for(int j = 0; j < AA.rows(); j ++) {
       const auto jj(T(j) * T(i + 2) / T(size + 1));
-      AA.row(j) = p0.taylor(AA.cols(), (jj - floor(jj)) * T(size - 1));
+      AA.row(j) = taylor<T>(AA.cols(), (jj - floor(jj)) * T(size - 1));
     }
     A.emplace_back(AA);
   }
@@ -110,7 +109,6 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::emphasis(const Ve
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::enlarge(const Vec& in, const int& r) const {
   assert(0 < r);
-  static P0<T> p0;
   static std::vector<std::vector<Mat> > p;
   static std::vector<Decompose<T> > e;
   if(p.size() <= in.size())
@@ -124,7 +122,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::enlarge(const Vec
   if(pp.rows() < in.size() * r) {
     pp.resize(in.size() * r, in.size());
     for(int i = 0; i < pp.rows(); i ++)
-      pp.row(i) = p0.taylor(in.size(), T(i) * T(in.size() - 1) / T(pp.rows() - 1));
+      pp.row(i) = taylor<T>(in.size(), T(i) * T(in.size() - 1) / T(pp.rows() - 1));
     if(! ee.A.size()) ee = Decompose<T>(in.size() * r);
   }
   const auto m(mother(in));
@@ -216,7 +214,7 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::decompose(const M
                     min(img.rows() - i - 1, img.cols() - j - 1));
               r += min(img.rows() / A.size(), img.cols() / A.size())) {
         const auto part(subImage(img, i, j, r));
-        const auto left(part.LSVD().transpose() * part);
+        const auto left(part.SVD().transpose() * part);
               Vec  work(left.rows());
         for(int k = 0; k < work.size(); k ++)
           work[k] = sqrt(left.row(k).dot(left.row(k))) + T(1);
@@ -232,10 +230,10 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::decompose(const M
         for(int i = 0; i < w1m.rows(); i ++)
           w1m.row(i) = std::move(w1[i]);
         w1m = w1m.transpose();
-        const auto left(w1m.LSVD().transpose() * w1m);
+        const auto left(w1m.SVD().transpose() * w1m);
         for(int k = 0; k < left.rows(); k ++)
           w0(j - A.size(), k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
-        w0.row(j - A.size())  = p.diff(- w0.cols()) * mother(w0.row(j - A.size()));
+        w0.row(j - A.size())  = diff<T>(- w0.cols()) * mother(w0.row(j - A.size()));
         w0.row(j - A.size()) /= sqrt(w0.row(j - A.size()).dot(w0.row(j - A.size())));
       }
     }
@@ -243,17 +241,17 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::decompose(const M
     for(int j = 0; j < w0.rows(); j ++)
       for(int k = 0; k < w0.cols(); k ++)
         assert(isfinite(w0(j, k)) && ! isnan(w0(j, k)));
-    const auto left(w0.LSVD().transpose() * w0);
+    const auto left(w0.SVD().transpose() * w0);
     for(int k = 0; k < left.rows(); k ++)
       w00(i - A.size(), k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
-    w00.row(i - A.size())  = p.diff(- w00.cols()) * mother(w00.row(i - A.size()));
+    w00.row(i - A.size())  = diff<T>(- w00.cols()) * mother(w00.row(i - A.size()));
     w00.row(i - A.size()) /= sqrt(w00.row(i - A.size()).dot(w00.row(i - A.size())));
   }
   w00 = w00.transpose();
-  const auto left(w00.LSVD().transpose() * w00);
+  const auto left(w00.SVD().transpose() * w00);
   for(int k = 0; k < left.rows(); k ++)
     res0(0, k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
-  res0.row(0)  = p.diff(- res0.cols()) * mother(res0.row(0));
+  res0.row(0)  = diff<T>(- res0.cols()) * mother(res0.row(0));
   res0.row(0) /= sqrt(res0.row(0).dot(res0.row(0)));
   // N.B. recursive on them.
   if(0 < depth && A.size() * 4 <= min(img.rows(), img.cols()) / 2) {

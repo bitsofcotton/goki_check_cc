@@ -51,9 +51,6 @@ public:
     EXTEND_X,
     EXTEND_Y,
     EXTEND_BOTH,
-    EXTEND2_X,
-    EXTEND2_Y,
-    EXTEND2_BOTH,
     BLINK_X,
     BLINK_Y,
     BLINK_BOTH,
@@ -114,8 +111,6 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return (compute(data, BUMP_X) + compute(data, BUMP_Y)) / T(2);
     case EXTEND_BOTH:
       return compute(compute(data, EXTEND_X), EXTEND_Y);
-    case EXTEND2_BOTH:
-      return compute(compute(data, EXTEND2_X), EXTEND2_Y);
     case BLINK_BOTH:
       return compute(compute(data, BLINK_X), BLINK_Y);
     case SHARPEN_X:
@@ -134,14 +129,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return compute(data.transpose(), BUMP_Y).transpose();
     case EXTEND_X:
       return compute(data.transpose(), EXTEND_Y).transpose();
-    case EXTEND2_X:
-      return compute(data.transpose(), EXTEND2_Y).transpose();
     case BLINK_X:
       return compute(data.transpose(), BLINK_Y).transpose();
     case DETECT_Y:
-      return p.diff(  data.rows()) * data;
+      return diff<T>(  data.rows()) * data;
     case INTEG_Y:
-      return p.diff(- data.rows()) * data;
+      return diff<T>(- data.rows()) * data;
     case COLLECT_Y:
       return compute(compute(data, DETECT_Y), ABS);
     case SHARPEN_Y:
@@ -165,7 +158,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               sop(i, j) = T(0);
           int cnt(1);
           for(int ss = 2; ss <= data.rows(); ss *= 2, cnt ++) {
-            auto DFTS(p.seed(ss));
+            auto DFTS(dft<T>(ss));
             DFTS.row(0) *= U(T(0));
             for(int i = 1; i < DFTS.rows(); i ++) {
               // N.B. d/dt((d^(t)/dy^(t)) f), differential-integral space tilt on f.
@@ -177,11 +170,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
             }
             DFTS /= T(DFTS.rows() - 1);
-#if defined(_WITHOUT_EIGEN_)
-            Mat lSop(- (p.seed(- ss) * DFTS).template real<T>());
-#else
-            Mat lSop(- (p.seed(- ss) * DFTS).template real<T>());
-#endif
+            Mat lSop(- (dft<T>(- ss) * DFTS).template real<T>());
             for(int i = 0; i < lSop.rows(); i ++)
               lSop(i, i) += T(1);
             for(int i = 0; i < sop.rows(); i ++)
@@ -230,7 +219,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           cerr << "e" << flush;
           eop.resize((size - 1) * recur + 1, size);
           for(int j = 0; j < eop.rows(); j ++)
-            eop.row(j) = p.taylor(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
+            eop.row(j) = taylor<T>(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
         }
        eopi:
         return Eop[size][recur] * data;
@@ -284,7 +273,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
             continue;
           assert(int(y0) * 2 <= data.rows());
-          const auto& Dop(p.diff(abs(int(y0 * T(2))) & ~ int(1)));
+          const auto& Dop(diff<T>(abs(int(y0 * T(2))) & ~ int(1)));
           const auto& Dop0(Dop.row(Dop.rows() / 2));
           //  N.B. dC_k/dy on zi.
 #if defined(_OPENMP)
@@ -312,7 +301,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     case EXTEND_Y:
       {
         MatU result(data.rows() + 2 * recur, data.cols());
-        auto DFT(data.template cast<complex<T> >() * p.seed(data.cols()));
+        auto DFT(data.template cast<complex<T> >() * dft<T>(data.cols()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -320,7 +309,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           result.row(i + recur) = std::move(DFT.row(i));
         }
         for(int i = 0; i < recur; i ++) {
-          const auto& next(p.next(int(data.rows()) / (i + 1)));
+          const auto& next(nextP0<T>(int(data.rows()) / (i + 1)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -335,71 +324,33 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
             }
           }
         }
-        return (result * p.seed(- result.cols())).template real<T>();
-      }
-      break;
-    case EXTEND2_Y:
-      {
-        Mat result(data.rows() + 2 * recur, data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-        for(int i = 0; i < data.rows(); i ++)
-          result.row(recur + i) = data.row(i);
-        for(int i = 0; i < recur; i ++)
-          for(int j = 0; j < data.cols(); j ++) {
-            SimpleVector<T> bnext(data.rows() / (i + 1));
-            SimpleVector<T> bback(bnext.size());
-            for(int k = 0; k < bnext.size(); k ++) {
-              bnext[k] = data(  (k - bnext.size() + 1) * (i + 1) + data.rows() - 1, j);
-              bback[k] = data(- (k - bback.size() + 1) * (i + 1), j);
-            }
-            const auto varlen(min(bnext.size(), bnext.size() / 3));
-            const auto nbn(sqrt(bnext.dot(bnext)));
-            const auto nbb(sqrt(bback.dot(bback)));
-            const auto next(invariantP1(bnext / nbn, varlen, T(n)));
-            const auto back(invariantP1(bback / nbb, varlen, T(n)));
-                  auto bbnext(next);
-                  auto bbback(back);
-            for(int k = 1; k < varlen; k ++) {
-              bbnext[k - 1] = bnext[k - varlen + bnext.size()] / nbn;
-              bbback[k - 1] = bback[k - varlen + bnext.size()] / nbb;
-            }
-            bbnext[varlen - 1] = bbnext[varlen - 2];
-            bbback[varlen - 1] = bbback[varlen - 2];
-            bbnext[varlen + 1] = bbnext[varlen] =
-              bbback[varlen + 1] = bbback[varlen] =
-                T(1) / sqrt(T((bnext.size() - varlen + 1) * 2) * T(varlen + 2));
-            result(data.rows() + recur + i, j) = (next.dot(bbnext) - next[varlen - 1] * bbnext[varlen - 1]) / next[varlen - 1] * nbn;
-            result(recur - i - 1, j) = (back.dot(bbback) - back[varlen - 1] * bbback[varlen - 1]) / back[varlen - 1] * nbb;
-          }
-        return result;
+        return (result * dft<T>(- result.cols())).template real<T>();
       }
       break;
     case BLINK_Y:
       {
-        auto diff(p.seed(data.rows()) * data.template cast<complex<T> >());
+        auto dif(dft<T>(data.rows()) * data.template cast<complex<T> >());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 1; i < data.rows(); i ++) {
-          diff.row(i) *= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
+          dif.row(i) *= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
         }
-        diff = p.seed(- data.rows()) * diff;
+        dif = dft<T>(- data.rows()) * dif;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 1; i < recur - 1; i ++) {
-          diff.row(i) += (diff.row(i - 1) + diff.row(i + 1)) * complex<T>(T(recur) / T(256));
+          dif.row(i) += (dif.row(i - 1) + dif.row(i + 1)) * complex<T>(T(recur) / T(256));
         }
-        diff = p.seed(data.rows()) * diff;
+        dif = dft<T>(data.rows()) * dif;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 1; i < data.rows(); i ++) {
-          diff.row(i) /= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
+          dif.row(i) /= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
         }
-        return (p.seed(- data.rows()) * diff).template real<T>();
+        return (dft<T>(- data.rows()) * dif).template real<T>();
       }
       break;
     case REPRESENT:
@@ -434,7 +385,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     assert(0 && "unknown command in Filter (should not be reached.)");
     return Mat();
   }
-  if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == EXTEND2_Y || dir == EXTEND2_X || dir == EXTEND2_BOTH || dir == REPRESENT)
+  if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == REPRESENT)
     return compute(data, dir, 0);
   vector<Mat> res;
   res.reserve(n);

@@ -33,85 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Get invariant structure that
 // \[- &alpha, &alpha;\[ register computer with deterministic calculation
-// that whole in/out is shown in the varlen.
 // Please refer bitsofcotton/randtools .
-// [[A I], [I A^-1]] [x y], if rank A = dim x = dim y,
-// rank [[A I], [I A^-1]] == rank A.
-// so with this, U [[B], [O]] [x y] == 0.
-// this returns one of u_k that concerns 0.
-// suppose input stream is in [-1,1]^k.
 // with noised ones, we can use catgp instead of this.
-template <typename T> SimpleVector<T> invariantP1(const SimpleVector<T>& in, const int& varlen, const int& ratio = 0) {
-#if defined(_FLOAT_BITS_)
-  static const auto epsilon(T(1) >> int64_t(mybits - 1));
-#else
-  static const auto epsilon(std::numeric_limits<T>::epsilon());
-#endif
-  SimpleMatrix<T> A((in.size() - varlen + 1) * 2 - 1, varlen + 2);
-  assert(A.cols() <= (A.rows() + 1) / 2);
-  SimpleVector<T> fvec(A.cols());
-  SimpleVector<T> one(A.rows());
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < fvec.size(); i ++)
-    fvec[i] = T(0);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < A.rows(); i ++)
-    one[i] = T(1);
-  for(int i = 0; i < (A.rows() + 1) / 2; i ++) {
-    for(int j = 0; j < varlen; j ++)
-      A(i, j) = in[i + j];
-    A(i, varlen) = T(1) / sqrt(T(A.rows() * A.cols()));
-    A(i, varlen + 1) = T(i + 1) / T((A.rows() + 1) / 2 + 1) / sqrt(T(A.rows() * A.cols()));
-    T pd(0);
-    for(int j = 0; j < A.cols(); j ++)
-      pd += log(A(i, j) + T(2));
-    A.row(i) *= exp((ratio ? T(ratio) * pd : - pd) / T(A.cols()));
-    assert(isfinite(A.row(i).dot(A.row(i))));
-    if(i + (A.rows() + 1) / 2 < A.rows())
-      A.row(i + (A.rows() + 1) / 2) = - A.row(i);
-  }
-  SimpleMatrix<T> Pt(A.cols(), A.rows());
-  for(int i = 0; i < Pt.rows(); i ++)
-    for(int j = 0; j < Pt.cols(); j ++)
-      Pt(i, j) = T(0);
-  for(int i = 0; i < A.cols(); i ++) {
-    const auto Atrowi(A.col(i));
-    const auto work(Atrowi - Pt.projectionPt(Atrowi));
-    Pt.row(i) = work / sqrt(work.dot(work));
-    const auto npt(Pt.row(i).dot(Pt.row(i)));
-    if(! (isfinite(npt) && ! isnan(npt)))
-      return fvec;
-  }
-  const auto R(Pt * A);
-  const auto on(Pt.projectionPt(one));
-  std::vector<std::pair<T, int> > fidx;
-  fidx.reserve(on.size());
-  for(int i = 0; i < on.size(); i ++)
-    fidx.emplace_back(std::make_pair(abs(on[i]), i));
-  std::sort(fidx.begin(), fidx.end());
-  for(int n_fixed = 0, idx = 0; n_fixed < Pt.rows() - 1 && idx < fidx.size(); n_fixed ++, idx ++) {
-    const auto& iidx(fidx[idx].second);
-    const auto  orth(Pt.col(idx));
-    const auto  norm2orth(orth.dot(orth));
-    if(norm2orth <= epsilon) {
-      n_fixed --;
-      continue;
-    }
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-    for(int j = 0; j < Pt.cols(); j ++)
-      Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / norm2orth);
-  }
-  fvec = R.solve(Pt * one);
-  return isfinite(fvec.dot(fvec)) ? fvec : fvec * T(0);
-}
-
-
 template <typename T> class P1I {
 public:
   typedef SimpleVector<T> Vec;
@@ -122,6 +45,7 @@ public:
   inline T next(const T& in, const int& ratio = 0);
 private:
   Vec buf;
+  int statlen;
   int varlen;
   int t;
 };
@@ -132,7 +56,7 @@ template <typename T> inline P1I<T>::P1I() {
 
 template <typename T> inline P1I<T>::P1I(const int& stat, const int& var) {
   assert(0 <= stat && 1 <= var);
-  buf.resize(stat + (varlen = var) * 2 + 1);
+  buf.resize((statlen = stat + var + 2) + (varlen = var) - 1);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
   t = 0;
@@ -150,14 +74,21 @@ template <typename T> T P1I<T>::next(const T& in, const int& ratio) {
   // N.B. to compete with noise, we calculate each.
   //      we can use catgp on worse noised ones.
   const auto nin(sqrt(buf.dot(buf)));
-  const auto invariant(invariantP1<T>(buf / nin, varlen, ratio));
+  vector<SimpleVector<T>> toeplitz;
+  toeplitz.reserve(statlen);
+  for(int i = 0; i < statlen; i ++) {
+    SimpleVector<T> work(varlen);
+    for(int j = 0; j < varlen; j ++)
+      work[j] = buf[i + 1] / nin;
+    toeplitz.emplace_back(makeProgramInvariant<T>(work, ratio, T(i + 1) / T(statlen + 1)));
+  }
+  const auto invariant(linearInvariant<T>(toeplitz));
         auto work(invariant);
   for(int i = 1; i < varlen; i ++)
-    work[i - 1] = buf[i - varlen + buf.size()] / nin;
+    work[i - 1] = toeplitz[toeplitz.size() - 1][i];
   work[varlen - 1] = work[varlen - 2];
-  work[varlen + 1] = work[varlen] =
-    T(1) / sqrt(T((buf.size() - varlen + 1) * 2 - 1) * T(varlen + 2));
-  return (invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1] * nin;
+  work[varlen + 1] = work[varlen] = T(1);
+  return (atan((invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1]) * T(2) / atan2(T(1), T(1)) - T(1)) * nin;
 }
 
 #define _P1_

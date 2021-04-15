@@ -285,7 +285,7 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
   static P0<T>     p;
   static Filter<T> filter;
   const int  idx(max(0, min(int(srccenter.size()) - 1, int(floor(iemph)))));
-  const auto comp(p.taylor(srccenter.size(), iemph));
+  const auto comp(taylor<T>(srccenter.size(), iemph));
   assert(srcimg.size() == srccenter.size());
   assert(srccenter[0].size() == attend.size());
   dstcenter = vector<Vec3>();
@@ -843,16 +843,16 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
       workidx.emplace_back(i);
       workidx2.emplace_back(j);
     }
-  const auto cg(crushNoContext<T>(work, cs, - T(1) / T(20), work[0].size(), true));
+  const auto cg(crush<T>(work, cs, false, - T(1) / T(20), work[0].size(), true));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
-    if(! cg[i].first.size()) continue;
-    res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
-    for(int j = 0; j < cg[i].first.size(); j ++) {
+    if(! cg[i].first.first.size()) continue;
+    res.emplace_back(Mat(cg[i].first.first.size() * imgs[0].rows(), imgs[0].cols()));
+    for(int j = 0; j < cg[i].first.first.size(); j ++) {
       for(int k = 0; k < imgs[0].rows(); k ++)
-        res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].first[j].second]].row(k);
-      const auto widx2(workidx2[cg[i].first[j].second]);
+        res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].first.second[j].second]].row(k);
+      const auto widx2(workidx2[cg[i].first.second[j].second]);
       if(!widx2)
         for(int k = 0; k < imgs[0].rows(); k ++)
           res[i].row(j * imgs[0].rows() + k) = - res[i].row(j * imgs[0].rows() + k);
@@ -891,7 +891,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
     res.emplace_back(SimpleMatrix<T>(imgs[0].rows(), imgs[0].cols()));
-    const auto& R(cg[i].second.R);
+    const auto& R(cg[i].second);
           auto  work(R.col(0));
     for(int j = 1; j < R.cols(); j ++)
       work += R.col(j);
