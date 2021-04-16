@@ -31,21 +31,12 @@ template <typename T> class match_t;
 
 template <typename T> class simpleFile {
 public:
-#if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<T> Mat3x3;
   typedef SimpleVector<T> Vec3;
   typedef SimpleVector<T> Vec;
   typedef SimpleVector<int> Veci3;
   typedef SimpleVector<int> Veci4;
-#else
-  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
-  typedef Eigen::Matrix<T,   3, 3> Mat3x3;
-  typedef Eigen::Matrix<T,   3, 1> Vec3;
-  typedef Eigen::Matrix<int, 3, 1> Veci3;
-  typedef Eigen::Matrix<int, 4, 1> Veci4;
-#endif
   
   inline bool whiteline(const std::string& s) {
     for(auto ss(s.begin()); ss < s.end(); ++ ss)

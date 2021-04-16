@@ -203,6 +203,7 @@ template <typename T> vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int
       for(int i = 0; i < result[t].first.first.size(); i ++) {
         const auto score(catg.score(result[t].first.first[i]));
         (score.first < T(0) ? left : right).emplace_back(move(result[t].first.first[i]));
+        (score.first < T(0) ? lidx : ridx).emplace_back(make_pair(score.second, result[t].first.second[i].second));
       }
       if(left.size() && right.size()) {
         result[t].first.first  = move(left);

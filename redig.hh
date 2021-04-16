@@ -36,13 +36,8 @@ template <typename T> static inline bool less0(const T& x, const T& y) {
 
 template <typename T> class triangles_t {
 public:
-#if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat3x3;
   typedef SimpleVector<T> Vec3;
-#else
-  typedef Eigen::Matrix<T, 3, 3> Mat3x3;
-  typedef Eigen::Matrix<T, 3, 1> Vec3;
-#endif
   Mat3x3 p;
   Vec3   n;
   T      c;
@@ -53,11 +48,7 @@ public:
   }
   inline triangles_t<T>& rotate(const Mat3x3& R, const Vec3& origin) {
     for(int i = 0; i < 3; i ++)
-#if defined(_WITHOUT_EIGEN_)
       p.setCol(i, R * (p.col(i) - origin) + origin);
-#else
-      p.col(i) = R * (p.col(i) - origin) + origin;
-#endif
     return *this;
   }
   inline triangles_t<T>& solveN() {
@@ -75,7 +66,6 @@ public:
 
 template <typename T> class reDig {
 public:
-#if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<complex<T> > MatU;
   typedef SimpleMatrix<T> Mat4x4;
@@ -85,17 +75,6 @@ public:
   typedef SimpleVector<T> Vec3;
   typedef SimpleVector<T> Vec2;
   typedef SimpleVector<int> Veci3;
-#else
-  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Eigen::Matrix<complex<T>, Eigen::Dynamic, Eigen::Dynamic> MatU;
-  typedef Eigen::Matrix<T, 4, 4>                           Mat4x4;
-  typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
-  typedef Eigen::Matrix<T, 2, 2>                           Mat2x2;
-  typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vec;
-  typedef Eigen::Matrix<T,   3, 1> Vec3;
-  typedef Eigen::Matrix<int, 3, 1> Veci3;
-  typedef Eigen::Matrix<T,   2, 1> Vec2;
-#endif
   typedef triangles_t<T>           Triangles;
   
   inline reDig();
@@ -189,13 +168,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
     assert(0 <= hull[i][1] && hull[i][1] < shape.size());
     assert(0 <= hull[i][2] && hull[i][2] < shape.size());
     Triangles work;
-    for(int j = 0; j < 3; j ++) {
-#if defined(_WITHOUT_EIGEN_)
+    for(int j = 0; j < 3; j ++)
       work.p.setCol(j, emph[hull[i][j]]);
-#else
-      work.p.col(j) = emph[hull[i][j]];
-#endif
-    }
     work.c = img(max(0, min(int(img.rows() - 1),
                    int(shape[hull[i][0]][0]))),
                  max(0, min(int(img.cols() - 1),
@@ -282,7 +256,6 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
 
 template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph) {
   cerr << "p" << flush;
-  static P0<T>     p;
   static Filter<T> filter;
   const int  idx(max(0, min(int(srccenter.size()) - 1, int(floor(iemph)))));
   const auto comp(taylor<T>(srccenter.size(), iemph));
@@ -1481,13 +1454,8 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
   vector<Triangles> result;
   for(int i = 0; i < polys.size(); i ++) {
     Triangles work;
-    for(int j = 0; j < 3; j ++) {
-#if defined(_WITHOUT_EIGEN_)
+    for(int j = 0; j < 3; j ++)
       work.p.setCol(j, m.transform(points[polys[i][j]]));
-#else
-      work.p.col(j) = m.transform(points[polys[i][j]]);
-#endif
-    }
     if(T(0) <= points[polys[i][0]][0] && points[polys[i][0]][0] < T(in.rows()) &&
        T(0) <= points[polys[i][0]][1] && points[polys[i][0]][1] < T(in.cols()))
       work.c = in(int(points[polys[i][0]][0]),
@@ -1515,11 +1483,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   vector<Triangles> triangles(triangles0);
   for(int j = 0; j < triangles.size(); j ++) {
     for(int k = 0; k < 3; k ++)
-#if defined(_WITHOUT_EIGEN_)
       triangles[j].p.setCol(k, m.transform(triangles[j].p.col(k)));
-#else
-      triangles[j].p.col(k) = m.transform(triangles[j].p.col(k));
-#endif
     triangles[j].solveN();
   }
   return tilt(in, triangles, z0);

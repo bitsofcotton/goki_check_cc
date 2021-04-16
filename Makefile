@@ -1,28 +1,24 @@
 CXX=	clang++
-CXX=	/usr/local/bin/clang++
-LD=	${CXX}
 
 # compiler flags.
-CXXFLAGS+=	-I/usr/local/include/eigen3
-CXXFLAGS+=	-I/usr/local/include
-#CXXFLAGS+=	-fopenmp -lomp -pthread
-CXXFLAGS+=	-pg
-CXXFLAGS+=	-std=c++11
 CXXFLAGS+=	-Ofast -mtune=native -gfull
-# Do not use these because of the slowness,
-# so this implementation is for what around licenses.
-#CXXFLAGS+=	-D_WITHOUT_EIGEN_
-# Accuracy reason, not needed.
-#CXXFLAGS+=	-D_WITH_NO_FLOAT_
-#CXXFLAGS+=	-D_WITH_MPFR_=512
-LDFLAGS+=	-lc -lc++
+CXXFLAGS+=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
+CXXFLAGS+=	-std=c++11
+LDFLAGS+=	-lc++ -L/usr/local/lib
+#LDFLAGS+=	-static
 
-CLEANFILES= *.o gokicheck
+#CXXFLAGS+=	-D_FLOAT_BITS_=32
+#CXXFLAGS+=	-D_FLOAT_BITS_=64
+#CXXFLAGS+=	-D_FLOAT_BITS_=128
+#CXXFLAGS+=	-D_FLOAT_BITS_=256
+#CXXFLAGS+=	-D_FLOAT_BITS_=512
 
-all:	gokicheck
+CLEANFILES= *.o tools
+
+all:	tools
+
 clean:
 	@rm -rf ${CLEANFILES}
-tools.o: tools.cc enlarge.hh match.hh redig.hh fileio.hh p0.hh p1.hh catg.hh simplelin.hh ifloat.hh
-gokicheck: tools.o
-	${LD} ${LDFLAGS} -o gokicheck tools.o
+
+tools.o:        tools.cc catg.hh decompose.hh enlarge.hh fileio.hh ifloat.hh match.hh p0.hh p1.hh redig.hh simplelin.hh
 

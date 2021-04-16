@@ -69,17 +69,10 @@ public:
 
 template <typename T> class match_t {
 public:
-#if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T>   Mat3x3;
   typedef SimpleVector<T>   Vec3;
   typedef SimpleVector<T>   Vec2;
   typedef SimpleVector<int> Vec3i;
-#else
-  typedef Eigen::Matrix<T, 3, 3> Mat3x3;
-  typedef Eigen::Matrix<T, 3, 1> Vec3;
-  typedef Eigen::Matrix<T, 2, 1> Vec2;
-  typedef Eigen::Matrix<int, 3, 1> Vec3i;
-#endif
   Mat3x3      rot;
   Vec3        offset;
   T           ratio;
@@ -263,17 +256,10 @@ public:
 
 template <typename T> class matchPartial {
 public:
-#if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<T> Mat3x3;
   typedef SimpleMatrix<T> Mat2x2;
   typedef SimpleVector<T> Vec3;
-#else
-  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
-  typedef Eigen::Matrix<T, 2, 2>                           Mat2x2;
-  typedef Eigen::Matrix<T, 3, 1>                           Vec3;
-#endif
   typedef complex<T> U;
   inline matchPartial();
   inline matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
@@ -527,17 +513,10 @@ template <typename T> T matchPartial<T>::isElim(const match_t<T>& m, const Mat d
 
 template <typename T> class matchWhole {
 public:
-#if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T>   Mat;
   typedef SimpleMatrix<T>   Mat3x3;
   typedef SimpleVector<T>   Vec3;
   typedef SimpleVector<int> Veci4;
-#else
-  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Eigen::Matrix<T, 3, 3>                           Mat3x3;
-  typedef Eigen::Matrix<T, 3, 1>                           Vec3;
-  typedef Eigen::Matrix<int, 4, 1>                         Veci4;
-#endif
   typedef complex<T> U;
   inline matchWhole();
   inline ~matchWhole();

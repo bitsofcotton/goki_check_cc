@@ -1,7 +1,7 @@
 /*
 BSD 3-Clause License
 
-Copyright (c) 2020, kazunobu watatsu
+Copyright (c) 2020-2021, kazunobu watatsu
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -202,7 +202,6 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::synth(const Vec& 
 }
 
 template <typename T> typename Decompose<T>::Mat Decompose<T>::decompose(const Mat& img, const int& depth) const {
-  static P0<T> p;
   Mat res0(1, A.size());
   Mat w00(img.rows() - A.size() * 2, A.size());
   for(int i = A.size(); i < img.rows() - A.size(); i ++) {

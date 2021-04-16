@@ -58,17 +58,10 @@ public:
     CLIP,
     ABS } direction_t;
   typedef complex<T> U;
-#if defined(_WITHOUT_EIGEN_)
   typedef SimpleMatrix<T> Mat;
   typedef SimpleMatrix<U> MatU;
   typedef SimpleVector<T> Vec;
   typedef SimpleVector<U> VecU;
-#else
-  typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Mat;
-  typedef Eigen::Matrix<U, Eigen::Dynamic, Eigen::Dynamic> MatU;
-  typedef Eigen::Matrix<T, Eigen::Dynamic, 1>              Vec;
-  typedef Eigen::Matrix<U, Eigen::Dynamic, 1>              VecU;
-#endif
   Filter(const int& recur = 2);
   ~Filter();
   Mat compute(const Mat& data, const direction_t& dir, const int& n = 0);
@@ -76,12 +69,10 @@ public:
   inline Mat gmean(const Mat& a, const Mat& b);
 
 private:
-  T   Pi;
   int recur;
 };
 
 template <typename T> Filter<T>::Filter(const int& recur) {
-  Pi  = atan2(T(1), T(1)) * T(4);
   this->recur = recur;
 }
 
@@ -91,8 +82,8 @@ template <typename T> Filter<T>::~Filter() {
 
 template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir, const int& n) {
   assert(0 <= n);
-  if(n <= 1 || dir == REPRESENT) {
-    static P0<T> p;
+  static const auto Pi(atan2(T(1), T(1)) * T(4));
+  if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH) {
     switch(dir) {
     case SHARPEN_BOTH:
       return compute(compute(data, SHARPEN_X), SHARPEN_Y);
@@ -195,9 +186,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           sop /= T(2);
         }
        sopi:
-        // N.B. insufficient:
         for( ; Sop[idx].size() <= recur; )
-          Sop[idx].emplace_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][0]);
+          Sop[idx].emplace_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][Sop[idx].size() - 1]);
         return Sop[idx][recur] * data;
       }
       break;

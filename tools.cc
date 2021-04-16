@@ -5,65 +5,17 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <algorithm>
-#include <cmath>
 #include <cctype>
 #include <assert.h>
-
-#if defined(_WITH_NO_FLOAT_)
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
 
 #include "ifloat.hh"
-template <typename T> using complex = Complex<T>;
-//typedef SimpleFloat<uint32_t, uint64_t, 32, int16_t> num_t;
-typedef SimpleFloat<uint32_t, uint64_t, 32, Signed<DUInt<uint64_t, 64>, 128> > num_t;
-
-#else
-
-using std::sqrt;
-using std::exp;
-using std::log;
-using std::pow;
-using std::sin;
-using std::cos;
-using std::tan;
-using std::atan2;
-using std::ceil;
-
-#include <complex>
-using std::complex;
-
-#  if defined(_WITH_MPFR_)
-
-#include <mpreal.h>
-typedef mpfr::mpreal num_t;
-using std::sqrt;
-using mpfr::pow;
-using mpfr::log;
-using mpfr::isfinite;
-
-#  else
-
-typedef long double num_t;
-
-#  endif
-#endif
-
-#if defined(_WITHOUT_EIGEN_)
+typedef myfloat num_t;
 #include "simplelin.hh"
-#else
-#include "simplelin.hh"
-#include <Eigen/Core>
-#include <Eigen/LU>
-#endif
-
-using std::max;
-using std::min;
-using std::pair;
-using std::make_pair;
-using std::vector;
-
-#include <omp.h>
-namespace goki {
 #include "p0.hh"
 #include "p1.hh"
 #include "decompose.hh"
@@ -72,8 +24,7 @@ namespace goki {
 #include "enlarge.hh"
 #include "match.hh"
 #include "redig.hh"
-};
-using namespace goki;
+
 using std::cout;
 using std::endl;
 
@@ -114,7 +65,6 @@ int main(int argc, const char* argv[]) {
   simpleFile<num_t> file;
   reDig<num_t>      redig;
   Filter<num_t>     filter;
-  P0<num_t>         p;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "integ") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
@@ -879,37 +829,18 @@ int main(int argc, const char* argv[]) {
             buf(j, k) = idx < data[i0].size() ? data[i0][idx] : num_t(0);
           }
         Filter<num_t>::Mat buf2;
-        if(strcmp(argv[2], "diff") == 0){
-#if defined(_WITHOUT_EIGEN_)
+        if(strcmp(argv[2], "diff") == 0)
           buf2 = (midft * (
             filter.compute(mdft.template real<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
             filter.compute(mdft.template imag<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
-#else
-          buf2 = (midft * (
-            filter.compute(mdft.real() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
-            filter.compute(mdft.imag() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
-#endif
-        } else if(strcmp(argv[2], "sharpen") == 0) {
-#if defined(_WITHOUT_EIGEN_)
+        else if(strcmp(argv[2], "sharpen") == 0)
           buf2 = (midft * (
             filter.compute(mdft.template real<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
             filter.compute(mdft.template imag<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
-#else
-          buf2 = (midft * (
-            filter.compute(mdft.real() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
-            filter.compute(mdft.imag() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
-#endif
-        } else if(strcmp(argv[2], "bump") == 0) {
-#if defined(_WITHOUT_EIGEN_)
+        else if(strcmp(argv[2], "bump") == 0)
           buf2 = (midft * (
             filter.compute(mdft.template real<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
             filter.compute(mdft.template imag<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
-#else
-          buf2 = (midft * (
-            filter.compute(mdft.real() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
-            filter.compute(mdft.imag() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).real();
-#endif
-        }
         for(int k = 0; k < buf2.cols(); k ++)
           for(int j = 0; j < buf2.rows(); j ++) {
             const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
