@@ -228,6 +228,36 @@ template <typename T> vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int
 }
 
 
+template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1, const int& complexity = 8) {
+  vector<SimpleVector<T> > work;
+  vector<int> edge;
+  // N.B. it's O(v.size()^3 * cs^2).
+  work.reserve((v.size() * v.size() * v.size() - 19 * v.size() + 30) / 6);
+  edge.reserve(v.size() - 1);
+  edge.emplace_back(0);
+  for(int i = 3; i < v.size(); i ++) {
+    SimpleVector<T> buf(i);
+    for(int j = 0; j <= v.size() - i; j ++) {
+      for(int k = j; k < j + i; k ++)
+        buf[k - j] = v[k];
+      work.emplace_back(buf);
+    }
+    edge.emplace_back(work.size());
+  }
+  auto whole_crush(crush<T>(work, cs, false, cut, Mcount, complexity));
+  vector<pair<vector<SimpleVector<T> >, vector<int> > > res;
+  res.reserve(whole_crush.size());
+  for(int i = 0; i < whole_crush.size(); i ++) {
+    vector<int> idx;
+    const auto& sec(whole_crush[i].first.second);
+    idx.reserve(sec.size());
+    for(int j = 0; j < sec.size(); j ++)
+      idx.emplace_back(sec[j].second - *std::lower_bound(edge.begin(), edge.end(), sec[j].second));
+    res.emplace_back(make_pair(move(whole_crush[i].first.first), move(idx)));
+  }
+  return res;
+}
+
 template <typename T, bool dec = true> class P012L {
 public:
   typedef SimpleVector<T> Vec;

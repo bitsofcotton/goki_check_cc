@@ -19,7 +19,6 @@ template <typename T> class Filter;
 using std::abs;
 using std::min;
 using std::max;
-using std::isinf;
 using std::cerr;
 using std::endl;
 using std::flush;

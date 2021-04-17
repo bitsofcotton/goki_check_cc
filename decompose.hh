@@ -284,7 +284,7 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::subImage(const Ma
   Mat res(A.size(), A.size());
   for(int i = 0; i < res.rows(); i ++)
     for(int j = 0; j < res.cols(); j ++) {
-      const auto rr(T(j - res.cols() / 2) / T(res.cols() / 2) * r);
+      const auto rr(T(j - res.cols() / 2) / T(res.cols() / 2) * T(r));
       const auto th(T(i) / T(res.rows()) * T(2) * T(4) * atan2(T(1), T(1)));
       res(i, j) = img(flip(x + int(rr * cos(th)), img.rows()),
                       flip(y + int(rr * sin(th)), img.cols()));
