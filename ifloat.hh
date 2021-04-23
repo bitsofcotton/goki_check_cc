@@ -1261,6 +1261,7 @@ template <typename T, typename W, int bits, typename U> std::ostream& operator <
 }
 
 template <typename T, typename W, int bits, typename U> std::istream& operator >> (std::istream& is, SimpleFloat<T,W,bits,U>& v) {
+  const static SimpleFloat<T,W,bits,U> two(2);
   const static SimpleFloat<T,W,bits,U> ten(10);
                SimpleFloat<T,W,bits,U> e(0);
   bool mode(false);
@@ -1285,7 +1286,7 @@ template <typename T, typename W, int bits, typename U> std::istream& operator >
         throw "Wrong input";
       fsign = true;
       break;
-    case 'e':
+    case '*':
       if(mode)
         goto ensure;
       if(sign)
@@ -1293,6 +1294,8 @@ template <typename T, typename W, int bits, typename U> std::istream& operator >
       mode  = true;
       sign  = false;
       fsign = false;
+      if(is.get() != '2') goto ensure;
+      if(is.get() != '^') goto ensure;
       break;
     case '.':
       throw "not implemented now";
@@ -1319,7 +1322,7 @@ template <typename T, typename W, int bits, typename U> std::istream& operator >
     else
       v = - v;
   }
-  v *= pow(ten, e);
+  v *= pow(two, e);
   return is;
 }
 
@@ -1775,7 +1778,7 @@ template <typename T> using complex = Complex<T>;
 # elif _FLOAT_BITS_ == 256
   typedef DUInt<uint64_t, 64> uint128_t;
   typedef DUInt<uint128_t, 128> uint256_t;
-  typedef Signed<uint256_t, 128> int256_t;
+  typedef Signed<uint256_t, 256> int256_t;
   typedef uint256_t myuint;
   typedef int256_t  myint;
   typedef SimpleFloat<myuint, DUInt<myuint, 256>, 256, int64_t> myfloat;
@@ -1783,12 +1786,22 @@ template <typename T> using complex = Complex<T>;
 # elif _FLOAT_BITS_ == 512
   typedef DUInt<uint64_t, 64> uint128_t;
   typedef DUInt<uint128_t, 128> uint256_t;
-  typedef DUInt<uint256_t, 128> int256_t;
-  typedef Signed<uint512_t, 128> int1024_t;
+  typedef DUInt<uint256_t, 256> uint512_t;
+  typedef Signed<uint512_t, 512> int512_t;
   typedef uint512_t myuint;
   typedef int512_t  myint;
   typedef SimpleFloat<myuint, DUInt<myuint, 512>, 512, int64_t> myfloat;
-  #define mybits 256
+  #define mybits 512
+# elif _FLOAT_BITS_ == 1024
+  typedef DUInt<uint64_t, 64> uint128_t;
+  typedef DUInt<uint128_t, 128> uint256_t;
+  typedef DUInt<uint256_t, 256> uint512_t;
+  typedef DUInt<uint512_t, 512> uint1024_t;
+  typedef Signed<uint1024_t, 1024> int1024_t;
+  typedef uint1024_t myuint;
+  typedef int1024_t  myint;
+  typedef SimpleFloat<myuint, DUInt<myuint, 1024>, 1024, int64_t> myfloat;
+  #define mybits 1024
 # else
 #   error cannot handle float
 # endif

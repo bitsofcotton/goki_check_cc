@@ -42,7 +42,7 @@ public:
   inline P1I();
   inline P1I(const int& stat, const int& var);
   inline ~P1I();
-  inline T next(const T& in, const int& ratio = 0);
+  inline T next(const T& in);
 private:
   Vec buf;
   int statlen;
@@ -66,7 +66,7 @@ template <typename T> inline P1I<T>::~P1I() {
   ;
 }
 
-template <typename T> T P1I<T>::next(const T& in, const int& ratio) {
+template <typename T> T P1I<T>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
   buf[buf.size() - 1] = in;
@@ -80,7 +80,7 @@ template <typename T> T P1I<T>::next(const T& in, const int& ratio) {
     SimpleVector<T> work(varlen);
     for(int j = 0; j < varlen; j ++)
       work[j] = buf[i + 1] / nin;
-    toeplitz.emplace_back(makeProgramInvariant<T>(work, ratio, T(i + 1) / T(statlen + 1)));
+    toeplitz.emplace_back(makeProgramInvariant<T>(work, T(i + 1) / T(statlen + 1)));
   }
   const auto invariant(linearInvariant<T>(toeplitz));
         auto work(invariant);

@@ -43,7 +43,7 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline CatG();
-  inline CatG(const int& size, const bool& recur = false, const int& complexity = 8);
+  inline CatG(const int& size, const bool& recur = false);
   inline ~CatG();
          void compute(const vector<Vec>& in);
   inline pair<T, int> score(const Vec& in);
@@ -54,18 +54,16 @@ public:
 private:
   int  size;
   bool recur;
-  int  complexity;
 };
 
 template <typename T> inline CatG<T>::CatG() {
   recur = false;
-  size  = complexity = 0;
+  size  = 0;
 }
 
-template <typename T> inline CatG<T>::CatG(const int& size, const bool& recur, const int& complexity) {
+template <typename T> inline CatG<T>::CatG(const int& size, const bool& recur) {
   this->size       = size;
   this->recur      = recur;
-  this->complexity = complexity;
 }
 
 template <typename T> inline CatG<T>::~CatG() {
@@ -94,10 +92,10 @@ template <typename T> void CatG<T>::compute(const vector<Vec>& in) {
       for(int k = 0; k < size; k ++) {
         for(int j = 0; j < size; j ++)
           inn[j] = in[i][(j + i * size / in[i].size()) % in[i].size()];
-        A.row(i * size * 2 + k) = makeProgramInvariant(inn.size() == size ? inn : tayl(inn.size()) * inn, complexity, - T(1));
+        A.row(i * size * 2 + k) = makeProgramInvariant(inn.size() == size ? inn : tayl(inn.size()) * inn);
       }
     } else
-      A.row(i * 2) = makeProgramInvariant(in[i].size() == size ? in[i] : tayl(in[i].size()) * in[i], complexity, - T(1));
+      A.row(i * 2) = makeProgramInvariant(in[i].size() == size ? in[i] : tayl(in[i].size()) * in[i]);
     if(in.size() - 1 <= i) break;
     if(recur) {
       for(int k = 0; k < size; k ++)
@@ -143,7 +141,7 @@ template <typename T> void CatG<T>::compute(const vector<Vec>& in) {
   std::vector<T> s;
   s.reserve(in.size());
   for(int i = 0; i < in.size(); i ++)
-    s.emplace_back(makeProgramInvariant(in[i].size() == size ? in[i] : tayl(in[i].size()) * in[i], complexity, - T(1)).dot(cut));
+    s.emplace_back(makeProgramInvariant(in[i].size() == size ? in[i] : tayl(in[i].size()) * in[i]).dot(cut));
   std::sort(s.begin(), s.end());
   distance = origin = T(0);
   for(int i = 0; i < s.size() - 1; i ++)
@@ -156,13 +154,13 @@ template <typename T> void CatG<T>::compute(const vector<Vec>& in) {
 
 template <typename T> inline pair<T, int> CatG<T>::score(const Vec& in) {
   if(! recur)
-    return make_pair(makeProgramInvariant<T>(in.size() == size ? in : tayl(in.size()) * in, complexity, - T(1)).dot(cut) - origin, 0);
+    return make_pair(makeProgramInvariant<T>(in.size() == size ? in : tayl(in.size()) * in).dot(cut) - origin, 0);
   pair<T, int> res(make_pair(0, 0));
   for(int i = 0; i < in.size(); i ++) {
     Vec inn(in.size());
     for(int j = 0; j < size; j ++)
       inn[j] = in[(j + i * size / in.size()) % in.size()];
-    const auto score(makeProgramInvariant<T>(inn.size() == size ? inn : tayl(inn.size()) * inn, complexity, - T(1)).dot(cut) - origin);
+    const auto score(makeProgramInvariant<T>(inn.size() == size ? inn : tayl(inn.size()) * inn).dot(cut) - origin);
     if(abs(res.first) < abs(score))
       res = make_pair(score, i);
   }
@@ -170,7 +168,7 @@ template <typename T> inline pair<T, int> CatG<T>::score(const Vec& in) {
 }
 
 
-template <typename T> vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int, int> > >, SimpleMatrix<T> > > crush(const vector<SimpleVector<T> >& v, const int& cs, const bool& recur, T cut = - T(1) / T(2), const int& Mcount = - 1, const int& complexity = 8) {
+template <typename T> vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int, int> > >, SimpleMatrix<T> > > crush(const vector<SimpleVector<T> >& v, const int& cs, const bool& recur, T cut = - T(1) / T(2), const int& Mcount = - 1) {
   vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int, int> > >, SimpleMatrix<T> > > result;
   if(! v.size() || !v[0].size()) return result;
   auto MM(v[0].dot(v[0]));
@@ -190,10 +188,12 @@ template <typename T> vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int
       t ++;
       continue;
     }
-    CatG<T> catg(cs, recur, complexity);
+    CatG<T> catg(cs, recur);
     catg.compute(result[t].first.first);
-    if(! t && cut <= T(0))
-      cut = catg.distance * abs(cut);
+    if(! t && cut <= T(0)) {
+      cut = abs(cut) * catg.distance;
+      cerr << "c(" << cut << ")" << flush;
+    }
     if(catg.cut.size() && (cut <= catg.distance ||
        (0 < Mcount && Mcount < result[t].first.first.size())) ) {
       vector<SimpleVector<T> > left;
@@ -217,7 +217,7 @@ template <typename T> vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int
   for(int i = 0; i < result.size(); i ++) {
     if(result[i].first.first.size() < cs + 2) continue;
     SimpleMatrix<T> spec(result[i].first.first.size(), cs);
-    CatG<T> catg(cs, recur, complexity);
+    CatG<T> catg(cs, recur);
     for(int j = 0; j < result[i].first.first.size(); j ++) {
       const auto& v(result[i].first.first[j] *= MM);
       spec.row(j) = (v.size() == cs ? v : catg.tayl(v.size()) * v);
@@ -228,7 +228,7 @@ template <typename T> vector<pair<pair<vector<SimpleVector<T> >, vector<pair<int
 }
 
 
-template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1, const int& complexity = 8) {
+template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs, T cut = - T(1) / T(2), const int& Mcount = - 1) {
   vector<SimpleVector<T> > work;
   vector<int> edge;
   // N.B. it's O(v.size()^3 * cs^2).
@@ -244,7 +244,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
     }
     edge.emplace_back(work.size());
   }
-  auto whole_crush(crush<T>(work, cs, false, cut, Mcount, complexity));
+  auto whole_crush(crush<T>(work, cs, false, cut, Mcount));
   vector<pair<vector<SimpleVector<T> >, vector<int> > > res;
   res.reserve(whole_crush.size());
   for(int i = 0; i < whole_crush.size(); i ++) {
@@ -262,29 +262,26 @@ template <typename T, bool dec = true> class P012L {
 public:
   typedef SimpleVector<T> Vec;
   inline P012L();
-  inline P012L(const int& d, const int& stat, const int& slide, const T& intensity = - T(1) / T(2));
+  inline P012L(const int& d, const int& stat, const T& intensity = - T(1) / T(2));
   inline ~P012L();
-  T next(const T& in, const int& complexity = 8);
+  T next(const T& in);
 private:
   vector<Vec> cache;
-  vector<Vec> pp;
+  vector<pair<Vec, T> > pp;
   Vec work;
   int stat;
-  int slide;
   T   inten;
   int t;
 };
 
 template <typename T, bool dec> inline P012L<T,dec>::P012L() {
-  inten = T(t = stat = slide = 0);
+  inten = T(t = stat = 0);
 }
 
-template <typename T, bool dec> inline P012L<T,dec>::P012L(const int& d, const int& stat, const int& slide, const T& intensity) {
+template <typename T, bool dec> inline P012L<T,dec>::P012L(const int& d, const int& stat, const T& intensity) {
   work.resize(d);
-  cache.reserve(stat);
-  this->stat  = stat;
-  this->slide = slide;
-  this->inten = intensity;
+  cache.reserve(this->stat = stat);
+  inten = intensity;
   t = 0;
 }
 
@@ -292,7 +289,7 @@ template <typename T, bool dec> inline P012L<T,dec>::~P012L() {
   ;
 }
 
-template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in, const int& complexity) {
+template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in) {
   static vector<Decompose<T> > decompose;
   static vector<bool> isinit;
   if(dec && decompose.size() <= work.size()) {
@@ -312,32 +309,42 @@ template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in, const i
   for(int i = 0; i < work.size() - 1; i ++)
     work[i] = work[i + 1];
   if(stat <= cache.size()) {
-    const auto cat(crush<T>(cache, work.size(), false, inten, work.size() * 4, complexity));
-    pp = vector<Vec>();
+    const auto cat(crush<T>(cache, work.size(), false, inten, - 1));
+    pp = vector<pair<Vec, T> >();
     pp.reserve(cat.size());
     for(int i = 0; i < cat.size(); i ++) {
-      pp.emplace_back(cat[i].first.first[0]);
-      for(int j = 1; j < cat[i].first.first.size(); j ++)
-        pp[i] += cat[i].first.first[j];
-      pp[i] /= sqrt(pp[i].dot(pp[i]));
+      vector<Vec> pw;
+      T M(0);
+      for(int j = 0; j < cat[i].first.first.size(); j ++)
+        M = max(M, sqrt(cat[i].first.first[j].dot(cat[i].first.first[j])));
+      M *= T(2);
+      for(int j = 0; j < cat[i].first.first.size(); j ++)
+        pw.emplace_back(makeProgramInvariant<T>(cat[i].first.first[j] / M));
+      if(pw[0].size() < pw.size())
+        pp.emplace_back(make_pair(linearInvariant<T>(pw), M));
     }
-    auto cache0(cache);
-    cache = vector<Vec>();
-    cache.reserve(stat);
-    for(int i = 0; i < slide; i ++)
-      cache.emplace_back(move(cache0[i - slide + cache0.size()]));
+    cache.erase(cache.begin());
   }
   T MM(0);
   T res(0);
+  auto worki(pp.size() ? pp[0].first : SimpleVector<T>());
+  for(int i = 0; i < worki.size() - 1; i ++)
+    worki[i] = work[i];
+  if(worki.size()) worki[work.size()] = T(1);
   for(int i = 0; i < pp.size(); i ++) {
-    const auto& p(pp[i]);
+    const auto& p(pp[i].first);
     if(! p.size()) continue;
-    const auto  vdp((dec ? decompose[work.size()].mother(work) : work).dot(p));
-    const auto  last(p[p.size() - 1] - p[p.size() - 2]);
+    const auto  vdp0(dec ? decompose[work.size()].mother(work) : work);
+    const auto  vdpn(vdp0 / pp[i].second);
+    bool flag(true);
+    for(int j = 0; j < vdpn.size() && flag; j ++)
+      if(vdpn[j] < - T(1) || T(1) < vdpn[j]) flag = false;
+    if(! flag) continue;
+    const auto  vdp(makeProgramInvariant<T>(vdpn).dot(p));
     if(! isfinite(vdp)) continue;
-    if(MM <= abs(vdp)) {
+    if(MM < abs(vdp)) {
       MM  = abs(vdp);
-      res = last * vdp;
+      res = atan((p.dot(worki) - p[work.size()] * worki[work.size()]) / worki[work.size()] * T(2) / atan2(T(1), T(1)) - T(1)) - work[work.size() - 2];
     }
   }
   return in + res;

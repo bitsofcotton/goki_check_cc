@@ -627,6 +627,7 @@ int main(int argc, const char* argv[]) {
         for(int ii = 0; ii < glay[glay.size() - 1].rows(); ii ++)
           for(int jj = 0; jj < glay[glay.size() - 1].cols(); jj ++)
             glay[glay.size() - 1](ii, jj) += num_t(1) / num_t(65536);
+        glay[glay.size() - 1] /= num_t(2);
       }
       const auto composite(redig.compositeImage(glay));
       for(int i = 0; i < composite.size(); i ++) {
