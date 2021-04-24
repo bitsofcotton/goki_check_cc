@@ -83,12 +83,12 @@ template <typename T> T P1I<T>::next(const T& in) {
     toeplitz.emplace_back(makeProgramInvariant<T>(work, T(i + 1) / T(statlen + 1)));
   }
   const auto invariant(linearInvariant<T>(toeplitz));
-        auto work(invariant);
+  SimpleVector<T> work(varlen);
   for(int i = 1; i < varlen; i ++)
-    work[i - 1] = toeplitz[toeplitz.size() - 1][i];
-  work[varlen - 1] = work[varlen - 2];
-  work[varlen + 1] = work[varlen] = T(1);
-  return (atan((invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1]) * T(2) / atan2(T(1), T(1)) - T(1)) * nin;
+    work[i - 1] = buf[i - varlen + buf.size()] / nin;
+  work[work.size() - 1] = work[work.size() - 2];
+  work = makeProgramInvariant<T>(work, T(1));
+  return (atan((invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1]) * T(4) / atan2(T(1), T(1)) - T(1)) * nin;
 }
 
 #define _P1_

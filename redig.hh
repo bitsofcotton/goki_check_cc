@@ -815,16 +815,16 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
       workidx.emplace_back(i);
       workidx2.emplace_back(j);
     }
-  const auto cg(crush<T>(work, cs, false, - T(1) / T(20), work[0].size()));
+  const auto cg(crush<T>(work, cs, false));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
-    if(! cg[i].first.first.size()) continue;
-    res.emplace_back(Mat(cg[i].first.first.size() * imgs[0].rows(), imgs[0].cols()));
-    for(int j = 0; j < cg[i].first.first.size(); j ++) {
+    if(! cg[i].first.size()) continue;
+    res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
+    for(int j = 0; j < cg[i].first.size(); j ++) {
       for(int k = 0; k < imgs[0].rows(); k ++)
-        res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].first.second[j].second]].row(k);
-      const auto widx2(workidx2[cg[i].first.second[j].second]);
+        res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].second[j].second]].row(k);
+      const auto widx2(workidx2[cg[i].second[j].second]);
       if(!widx2)
         for(int k = 0; k < imgs[0].rows(); k ++)
           res[i].row(j * imgs[0].rows() + k) = - res[i].row(j * imgs[0].rows() + k);
@@ -858,16 +858,14 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
           imgs[i](ii, ii & 1 ? imgs[i].cols() - 1 - jj : jj);
     assert(imgs[i].rows() * imgs[i].cols() == work[i].size());
   }
-  const auto cg(crush<T>(work, work[0].size(), false, - T(1) / T(20), work[0].size()));
+  const auto cg(crush<T>(work, work[0].size(), false));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
     res.emplace_back(SimpleMatrix<T>(imgs[0].rows(), imgs[0].cols()));
-    const auto& R(cg[i].second);
-          auto  work(R.col(0));
-    for(int j = 1; j < R.cols(); j ++)
-      work += R.col(j);
-    work /= sqrt(work.dot(work));
+    auto work(cg[i].first[0]);
+    for(int j = 1; j < cg[i].first.size(); j ++)
+      work += cg[i].first[j];
     assert(res[i].rows() * res[i].cols() == work.size());
     for(int ii = 0; ii < res[i].rows(); ii ++)
       for(int jj = 0; jj < res[i].cols(); jj ++)

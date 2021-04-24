@@ -39,7 +39,7 @@ elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho" or argv[2]
     subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
   if(argv[2] == "matcho" or argv[2] == "rmatch" or argv[2] == "rmatch0"):
     subprocess.call(["ffmpeg", "-loop", "1", "-i", argv[5] + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", argv[5] + ".mp4"])
-elif(argv[2] == "pred" or argv[2] == "predf" or argv[2] == "cat" or argv[2] == "composite"):
+elif(argv[2] == "pred" or argv[2] == "predf" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "composite"):
   cmd = [argv[1], argv[2], argv[2] + ".ppm"]
   for s in argv[3:]:
     r, e = os.path.splitext(s)
@@ -48,6 +48,10 @@ elif(argv[2] == "pred" or argv[2] == "predf" or argv[2] == "cat" or argv[2] == "
     cmd.append(r + ".ppm")
     if(argv[2] == "cat"):
       cmd.append(r + "-represent.ppm")
+    elif(argv[2] == "catr"):
+      cmd.append(r + ".ppm")
+  if(argv[2] == "catr"):
+    cmd[1] = "cat"
   subprocess.call(cmd)
 elif(argv[2] == "ppred" or argv[2] == "ppredr"):
   roots = []
