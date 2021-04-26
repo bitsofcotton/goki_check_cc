@@ -174,13 +174,13 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
   auto MM(v[0].dot(v[0]));
   for(int i = 1; i < v.size(); i ++)
     MM = max(MM, v[i].dot(v[i]));
-  MM = sqrt(MM);
+  MM = sqrt(MM) * T(2);
   int t(0);
   result.emplace_back(pair<vector<SimpleVector<T> >, vector<pair<int, int> > >());
   result[0].first.reserve(v.size());
   result[0].second.reserve(v.size());
   for(int i = 0; i < v.size(); i ++) {
-    result[0].first.emplace_back(v[i] / MM / T(2));
+    result[0].first.emplace_back(v[i] / MM);
     result[0].second.emplace_back(make_pair(0, i));
   }
   vector<pair<T, pair<int, bool> > > sidx;
@@ -193,7 +193,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
         cs + 1 < result[sidx[iidx].second.first].first.size()) )
         break;
     if(iidx < 0) break;
-    const auto t(sidx[iidx].second.first);
+    const auto& t(sidx[iidx].second.first);
     CatG<T> catg(cs, recur);
     catg.compute(result[t].first);
     if(catg.cut.size()) {
@@ -224,6 +224,9 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
       sidx[iidx].second.second = true;
     }
   }
+  for(int i = 0; i < result.size(); i ++)
+    for(int j = 0; j < result[i].first.size(); j ++)
+      result[i].first[j] *= MM;
   return result;
 }
 
@@ -269,7 +272,7 @@ template <typename T, bool dec = true> class P012L {
 public:
   typedef SimpleVector<T> Vec;
   inline P012L();
-  inline P012L(const int& d, const int& stat);
+  inline P012L(const int& stat, const int& d);
   inline ~P012L();
   T next(const T& in);
 private:
@@ -285,7 +288,7 @@ template <typename T, bool dec> inline P012L<T,dec>::P012L() {
   M = T(t = stat = 0);
 }
 
-template <typename T, bool dec> inline P012L<T,dec>::P012L(const int& d, const int& stat) {
+template <typename T, bool dec> inline P012L<T,dec>::P012L(const int& stat, const int& d) {
   work.resize(d);
   cache.reserve(this->stat = stat);
   M = T(t = 0);
@@ -306,7 +309,8 @@ template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in) {
     decompose[work.size()] = Decompose<T>(work.size());
     isinit[work.size()] = true;
   }
-  if(M * T(2) < abs(in)) M = abs(in);
+  if(M < abs(in)) M = abs(in) * T(2);
+  if(work[min(max(0, t - 1), work.size() - 1)] == in) return T(0);
   if(t ++ < work.size() - 1) {
     work[(t - 1) % work.size()] = in;
     return T(0);
@@ -324,7 +328,7 @@ template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in) {
       if(cat[i].first.size() <= work.size()) continue;
       vector<Vec> pw;
       for(int j = 0; j < cat[i].first.size(); j ++)
-        pw.emplace_back(makeProgramInvariant<T>(cat[i].first[j] / M / T(2)));
+        pw.emplace_back(makeProgramInvariant<T>(cat[i].first[j] / M));
       pp.emplace_back(linearInvariant<T>(pw));
     }
     cache.erase(cache.begin());
@@ -332,18 +336,20 @@ template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in) {
  skip:
   T MM(0);
   T res(0);
+  if(M == T(0)) return res;
   auto worki(pp.size() ? pp[0] : SimpleVector<T>());
   for(int i = 0; i < worki.size() - 1; i ++)
     worki[i] = work[i];
   if(worki.size()) worki[work.size()] = T(1);
+  const auto vdp0(dec ? decompose[work.size()].mother(work) : work);
+  const auto vdpn(makeProgramInvariant<T>(vdp0 / M));
   for(int i = 0; i < pp.size(); i ++) {
     const auto& p(pp[i]);
     if(! p.size()) continue;
-    const auto vdp0(dec ? decompose[work.size()].mother(work) : work);
-    const auto vdp(makeProgramInvariant<T>(vdp0 / M / T(2)).dot(p));
+    const auto vdp(vdpn.dot(p) / sqrt(vdpn.dot(vdpn) * p.dot(p)));
     if(! isfinite(vdp)) continue;
-    if(MM < abs(vdp)) {
-      const auto v((atan((p.dot(worki) - p[work.size()] * worki[work.size()]) / worki[work.size()]) * T(4) / atan2(T(1), T(1)) - T(1)) * M * T(2));
+    if(MM < abs(vdp) && p[work.size()] != T(0)) {
+      const auto v((atan((p.dot(vdpn) - p[work.size()] * vdpn[work.size()]) / p[work.size()]) * T(4) / atan2(T(1), T(1)) - T(1)) * M);
       if(v != T(0)) {
         MM  = abs(vdp);
         res = v;
