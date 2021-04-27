@@ -290,14 +290,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       break;
     case EXTEND_Y:
       {
-        MatU result(data.rows() + 2 * recur, data.cols());
-        auto DFT(data.template cast<complex<T> >() * dft<T>(data.cols()));
+        Mat result(data.rows() + 2 * recur, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-        for(int i = 0; i < data.rows(); i ++) {
-          result.row(i + recur) = std::move(DFT.row(i));
-        }
+        for(int i = 0; i < data.rows(); i ++)
+          result.row(i + recur) = data.row(i);
         for(int i = 0; i < recur; i ++) {
           const auto& next(nextP0<T>(int(data.rows()) / (i + 1)));
 #if defined(_OPENMP)
@@ -305,16 +303,18 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
           for(int j = 0; j < data.cols(); j ++) {
             result(data.rows() + recur + i, j) =
-              result(recur - i - 1, j) = complex<T>(T(0));
+              result(recur - i - 1, j) = T(0);
             for(int k = 0; k < next.size(); k ++) {
               result(data.rows() + recur + i, j) +=
-                result(recur + (k - next.size() + 1) * (i + 1) + data.rows() - 1, j) * next[k];
+                atan(result(recur + (k - next.size() + 1) * (i + 1) + data.rows() - 1, j)) * next[k];
               result(recur - i - 1, j) +=
-                result(recur - (k - next.size() + 1) * (i + 1), j) * next[k];
+                atan(result(recur - (k - next.size() + 1) * (i + 1), j)) * next[k];
             }
+            result(data.rows() + recur + i, j) = tan(result(data.rows() + recur + i, j));
+            result(recur - i - 1, j) = tan(result(recur - i - 1, j));
           }
         }
-        return (result * dft<T>(- result.cols())).template real<T>();
+        return result;
       }
       break;
     case BLINK_Y:

@@ -34,7 +34,7 @@ void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
-  cout << "gokicheck (pred|predf) <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck pred <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
@@ -101,7 +101,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter.compute(data[i], filter.FLARGE_BOTH, rot);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.EXTEND_BOTH, rot);
+        data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH, rot), filter.CLIP);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter.compute(data[i], filter.BLINK_BOTH, rot);
@@ -569,33 +569,14 @@ int main(int argc, const char* argv[]) {
           out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
           for(int k = 0; k < comp.size(); k ++)
             for(int m = 0; m < 3; m ++)
-              out[m](y, x) += in[(k - comp.size()) + in.size()][m](y, x) * comp[k];
-        }
-      }
-      redig.normalize(out, 1.);
-      file.savep2or3(argv[2], out, ! true);
-    } else if(strcmp(argv[1], "predf") == 0) {
-      std::vector<typename P0C<num_t>::MatU> inm[3];
-      typename P0C<num_t>::MatU outc[3];
-      for(int i = 0; i < in.size(); i ++)
-        for(int j = 0; j < in[i].size(); j ++)
-          inm[j].emplace_back(dft<num_t>(in[i][j].rows()) * in[i][j].template cast<complex<num_t> >() * dft<num_t>(in[i][j].cols()));
-      for(int i = 0; i < 3; i ++)
-        outc[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      const auto& comp(nextP0<num_t>(in.size()));
-      for(int y = 0; y < outc[0].rows(); y ++) {
-        for(int x = 0; x < outc[0].cols(); x ++) {
-          outc[0](y, x) = outc[1](y, x) = outc[2](y, x) = num_t(0);
-          for(int k = 0; k < comp.size(); k ++)
-            for(int m = 0; m < 3; m ++)
-              outc[m](y, x) += log(inm[m][(k + 1 - comp.size()) + in.size() - 1](y, x)) * comp[k];
+              out[m](y, x) += atan(in[(k - comp.size()) + in.size()][m](y, x)) * comp[k];
           for(int m = 0; m < 3; m ++)
-            outc[m](y, x) = exp(outc[m](y, x));
+            out[m](y, x) = tan(out[m](y, x));
         }
       }
       for(int i = 0; i < 3; i ++)
-        out[i] = filter.compute((dft<num_t>(- outc[i].rows()) * outc[i] * dft<num_t>(- outc[i].cols())).template real<num_t>(), filter.CLIP);
-      file.savep2or3(argv[2], out, ! true, 65535);
+        out[i] = filter.compute(out[i], filter.CLIP);
+      file.savep2or3(argv[2], out, ! true);
     } else if(strcmp(argv[1], "cat") == 0) {
       std::vector<typename simpleFile<num_t>::Mat> rep;
       std::vector<typename simpleFile<num_t>::Mat> glay;

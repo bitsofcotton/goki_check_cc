@@ -84,8 +84,8 @@ template <typename T, bool denoise> inline P0<T, denoise>::~P0() {
 template <typename T, bool denoise> inline T P0<T, denoise>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
-  buf[buf.size() - 1] = in;
-  return nextP0<T, denoise>(buf.size()).dot(buf);
+  buf[buf.size() - 1] = atan(in);
+  return tan(nextP0<T, denoise>(buf.size()).dot(buf));
 }
 
 
@@ -125,8 +125,8 @@ template <typename T, bool denoise> inline T P0C<T, denoise>::next(const T& in) 
     buf.row(i) = buf.row(i + 1);
   for(int i = 0; i < buf.cols() - 1; i ++)
     buf(buf.rows() - 1, i) = buf(buf.rows() - 1, i + 1);
-  buf(buf.rows() - 1, buf.cols() - 1) = U(in);
-  return (((buf * dft<T>(buf.cols()).transpose() * nextP0<T, denoise>(buf.rows()).template cast<U>()).dot(dft<T>(- buf.cols()).row(buf.cols() - 1)))).real();
+  buf(buf.rows() - 1, buf.cols() - 1) = U(atan(in));
+  return tan((((buf * dft<T>(buf.cols()).transpose() * nextP0<T, denoise>(buf.rows()).template cast<U>()).dot(dft<T>(- buf.cols()).row(buf.cols() - 1)))).real());
 }
 
 #define _P0_
