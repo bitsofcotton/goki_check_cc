@@ -88,6 +88,27 @@ elif(argv[2] == "retrace" or argv[2] == "newtrace" or argv[2] == "retrace2"):
     subprocess.call([argv[1], "retrace", str(pixels), argv[idx], argv[idx + 1], argv[idx] + "-" + argv[idx + 1] + "-mask.ppm", argv[idx + 2]])
   else:
     subprocess.call([argv[1], "newtrace", str(pixels), argv[idx], "newtrace.ppm"])
+elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
+  files = []
+  if(argv[2] == "seinsq"):
+    exts = argv[4:]
+  else:
+    exts = ["pdf"]
+  for root, dirs, filesw in os.walk(argv[3]):
+    for f in filesw:
+      r, e = os.path.splitext(f)
+      for s in exts:
+        if(e.lower() == "." + s.lower()):
+          files.append(os.path.join(root, f))
+          break
+  ex = len(str(len(files)))
+  pixels = int(pow(float(len(files)), .5) / 2.)
+  if(argv[2] == "seinsq"):
+    for t in range(0, len(files)):
+      subprocess.call(["convert", files[t], "-resize", str(pixels) + "x" + str(pixels) + "!", "sein-" + str(t).zfill(ex) + ".png"])
+  else:
+    for t in range(0, len(files)):
+      subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 else:
   for line in argv[3:]:
     try:
