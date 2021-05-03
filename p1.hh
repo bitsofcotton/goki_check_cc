@@ -79,7 +79,7 @@ template <typename T> T P1I<T>::next(const T& in) {
   for(int i = 0; i < statlen; i ++) {
     SimpleVector<T> work(varlen);
     for(int j = 0; j < varlen; j ++)
-      work[j] = buf[i + 1] / nin;
+      work[j] = buf[i + j] / nin;
     toeplitz.emplace_back(makeProgramInvariant<T>(work, T(i + 1) / T(statlen + 1)));
   }
   const auto invariant(linearInvariant<T>(toeplitz));

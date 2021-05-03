@@ -14,7 +14,7 @@ tppred  = .0025
 bhabit  = ""
 
 if(len(argv) < 4):
-  print "no much argments."
+  print("no much argments.")
 elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho" or argv[2] == "rmatch" or argv[2] == "rmatch0"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
@@ -72,7 +72,7 @@ elif(argv[2] == "ppred" or argv[2] == "ppredr"):
       cmd.append(s + "-bump.ppm")
     else:
       cmd.append(s + ".ppm")
-  print " ".join(cmd)
+  print(" ".join(cmd))
   subprocess.call(cmd)
   subprocess.call(["ffmpeg", "-i", "pose%d.ppm", "-frame_drop_threshold", "0.0", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "pose.mp4"])
 elif(argv[2] == "retrace" or argv[2] == "newtrace" or argv[2] == "retrace2"):
