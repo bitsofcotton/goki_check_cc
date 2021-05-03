@@ -815,7 +815,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
       workidx.emplace_back(i);
       workidx2.emplace_back(j);
     }
-  const auto cg(crush<T>(work, cs, false));
+  const auto cg(crush<T>(work, cs, false, 0));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
@@ -858,7 +858,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
           imgs[i](ii, ii & 1 ? imgs[i].cols() - 1 - jj : jj);
     assert(imgs[i].rows() * imgs[i].cols() == work[i].size());
   }
-  const auto cg(crush<T>(work, work[0].size(), false));
+  const auto cg(crush<T>(work, work[0].size(), false, 0));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {

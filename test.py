@@ -105,10 +105,22 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   pixels = int(pow(float(len(files)), .5) / 2.)
   if(argv[2] == "seinsq"):
     for t in range(0, len(files)):
-      subprocess.call(["convert", files[t], "-resize", str(pixels) + "x" + str(pixels) + "!", "sein-" + str(t).zfill(ex) + ".png"])
+      subprocess.call(["convert", files[t], "-resize", str(pixels) + "x" + str(pixels) + "!", "-compress", "none", "sein-" + str(t).zfill(ex) + ".ppm"])
   else:
     for t in range(0, len(files)):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
+elif(argv[2] == "tile"):
+  idx = 3
+  try:
+    pixels = int(argv[3])
+    idx += 1
+  except:
+    pass
+  for t in range(0, int((pow(len(argv) - idx, .5) + pixels) / pixels)):
+    cmd = ["montage"]
+    cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels+ idx, len(argv))])
+    cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "tile-" + str(t) + ".png"])
+    subprocess.call(cmd)
 else:
   for line in argv[3:]:
     try:

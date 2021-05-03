@@ -185,7 +185,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
   }
   vector<pair<T, pair<int, bool> > > sidx;
   sidx.emplace_back(make_pair(T(0), make_pair(0, false)));
-  while(sidx.size() < count) {
+  while(sidx.size() < (count ? count : v.size())) {
     sort(sidx.begin(), sidx.end());
     int iidx(sidx.size() - 1);
     for( ; - 1 <= iidx; iidx --)
