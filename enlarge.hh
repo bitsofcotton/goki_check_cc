@@ -344,7 +344,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       }
       break;
     case REPRESENT:
-      return Decompose<T>(recur).decompose(data, n);
+      return Decompose<T>(recur).represent(data, n);
     case CLIP:
       {
         Mat result(data.rows(), data.cols());

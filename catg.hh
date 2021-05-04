@@ -214,10 +214,14 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
         result.emplace_back(make_pair(move(right), move(ridx)));
         sidx.emplace_back(make_pair(catg.distance, make_pair(sidx.size(), false)));
       } else {
-        result[t].first = move(left);
+        result[t].first  = move(left);
+        result[t].second = move(lidx);
         result[t].first.reserve(result[t].first.size() + right.size());
-        for(int i = 0; i < right.size(); i ++)
+        result[t].second.reserve(result[t].second.size() + ridx.size());
+        for(int i = 0; i < right.size(); i ++) {
           result[t].first.emplace_back(move(right[i]));
+          result[t].second.emplace_back(move(ridx[i]));
+        }
         sidx[iidx].first = catg.distance;
         sidx[iidx].second.second = true;
       }
@@ -301,41 +305,32 @@ template <typename T, bool dec> inline P012L<T,dec>::~P012L() {
 }
 
 template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in) {
-  static vector<Decompose<T> > decompose;
-  static vector<bool> isinit;
-  if(dec && decompose.size() <= work.size()) {
-    decompose.resize(work.size() + 1, Decompose<T>());
-    isinit.resize(decompose.size(), false);
-  }
-  if(dec && ! isinit[work.size()]) {
-    decompose[work.size()] = Decompose<T>(work.size());
-    isinit[work.size()] = true;
-  }
   if(M < abs(in)) M = abs(in) * T(2);
   if(work[min(max(0, t - 1), work.size() - 1)] == in) return T(0);
   if(t ++ < work.size() - 1) {
     work[(t - 1) % work.size()] = in;
     return T(0);
   }
-  if(work[work.size() - 2] == in) goto skip;
-  work[work.size() - 1] = in;
-  cache.emplace_back(dec ? decompose[work.size()].mother(work) : work);
-  for(int i = 0; i < work.size() - 1; i ++)
-    work[i] = work[i + 1];
-  if(stat <= cache.size()) {
-    const auto cat(crush<T>(cache, work.size(), false));
-    pp = vector<Vec>();
-    pp.reserve(cat.size());
-    for(int i = 0; i < cat.size(); i ++) {
-      if(cat[i].first.size() <= work.size()) continue;
-      vector<Vec> pw;
-      for(int j = 0; j < cat[i].first.size(); j ++)
-        pw.emplace_back(makeProgramInvariant<T>(cat[i].first[j] / M));
-      pp.emplace_back(linearInvariant<T>(pw));
+  Decompose<T> decompose(work.size());
+  if(work[work.size() - 2] != in) {
+    work[work.size() - 1] = in;
+    cache.emplace_back(dec ? decompose.mother(work) : work);
+    for(int i = 0; i < work.size() - 1; i ++)
+      work[i] = work[i + 1];
+    if(stat <= cache.size()) {
+      const auto cat(crush<T>(cache, work.size(), false));
+      pp = vector<Vec>();
+      pp.reserve(cat.size());
+      for(int i = 0; i < cat.size(); i ++) {
+        if(cat[i].first.size() <= work.size()) continue;
+        vector<Vec> pw;
+        for(int j = 0; j < cat[i].first.size(); j ++)
+          pw.emplace_back(makeProgramInvariant<T>(cat[i].first[j] / M));
+        pp.emplace_back(linearInvariant<T>(pw));
+      }
+      cache.erase(cache.begin());
     }
-    cache.erase(cache.begin());
   }
- skip:
   T MM(0);
   T res(0);
   if(M == T(0)) return res;
@@ -343,7 +338,7 @@ template <typename T, bool dec> inline T P012L<T,dec>::next(const T& in) {
   for(int i = 0; i < worki.size() - 1; i ++)
     worki[i] = worki[i + 1];
   const auto vdp(makeProgramInvariant<T>(
-    (dec ? decompose[work.size()].mother(worki) : worki) / M));
+    (dec ? decompose.mother(worki) : worki) / M));
   for(int i = 0; i < pp.size(); i ++) {
     const auto& p(pp[i]);
     if(! p.size()) continue;
