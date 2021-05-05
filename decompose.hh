@@ -213,43 +213,59 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::represent(const M
       for(int r = size;
               r < min(min(i, j),
                     min(img.rows() - i - 1, img.cols() - j - 1));
-              r += min(img.rows() / size, img.cols() / size)) {
+              r += max(1, min(img.rows() / size, img.cols() / size))) {
         const auto part(subImage(img, i, j, r));
-        const auto left(part.SVD().transpose() * part);
+        const auto left(part.SVD() * part);
               Vec  work(left.rows());
         for(int k = 0; k < work.size(); k ++)
           work[k] = sqrt(left.row(k).dot(left.row(k))) + T(1);
+        // N.B. normalized singular values on the image with circle region.
+        //      permutation matrix describes each line when original is
+        //      symmetric. when so, singular value describes each line
+        //      intensity.
         w1.emplace_back(std::move(work /= sqrt(work.dot(work))));
       }
       if(! w1.size())
         for(int k = 0; k < w0.cols(); k ++)
           w0(j - size, k) = T(1) / sqrt(T(w0.cols()));
       else if(w1.size() == 1)
+        // N.B. line intensity.
         w0.row(j - size) = std::move(w1[0]);
       else {
         Mat w1m(w1.size(), size);
         for(int i = 0; i < w1m.rows(); i ++)
           w1m.row(i) = std::move(w1[i]);
         w1m = w1m.transpose();
-        const auto left(w1m.SVD().transpose() * w1m);
+        const auto left(w1m.SVD() * w1m);
         for(int k = 0; k < left.rows(); k ++)
           w0(j - size, k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
+        // N.B. we have now each line intensity differ quantities when
+        //      r increases.
         w0.row(j - size)  = diff<T>(- w0.cols()) * mother(w0.row(j - size));
+        // N.B. integrate the mother wavelet (specific quantities on
+        //      differ quantities of each line intensity) on them.
+        //      mother wavelet is needed because we need specific value
+        //      to compare with other images.
+        //      integrate is needed because each loop, we make differs.
         w0.row(j - size) /= sqrt(w0.row(j - size).dot(w0.row(j - size)));
+        // N.B. we have obscure but normalized each line intensity
+        //      representation.
       }
     }
+    // N.B. do same on x axis:
     w0 = w0.transpose();
     for(int j = 0; j < w0.rows(); j ++)
       for(int k = 0; k < w0.cols(); k ++)
         assert(isfinite(w0(j, k)) && ! isnan(w0(j, k)));
-    const auto left(w0.SVD().transpose() * w0);
+    const auto left(w0.SVD() * w0);
     for(int k = 0; k < left.rows(); k ++)
       w00(i - size, k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
     w00.row(i - size)  = diff<T>(- w00.cols()) * mother(w00.row(i - size));
     w00.row(i - size) /= sqrt(w00.row(i - size).dot(w00.row(i - size)));
   }
+  // N.B. do same on whole image:
   w00 = w00.transpose();
-  const auto left(w00.SVD().transpose() * w00);
+  const auto left(w00.SVD() * w00);
   for(int k = 0; k < left.rows(); k ++)
     res0(0, k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
   res0.row(0)  = diff<T>(- res0.cols()) * mother(res0.row(0));
@@ -286,7 +302,7 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::subImage(const Ma
   Mat res(size, size);
   for(int i = 0; i < res.rows(); i ++)
     for(int j = 0; j < res.cols(); j ++) {
-      const auto rr(T(j - res.cols() / 2) / T(res.cols() / 2) * T(r));
+      const auto rr(T(j + 1) / T(res.cols()) * T(r));
       const auto th(T(i) / T(res.rows()) * T(2) * T(4) * atan2(T(1), T(1)));
       res(i, j) = img(flip(x + int(rr * cos(th)), img.rows()),
                       flip(y + int(rr * sin(th)), img.cols()));
