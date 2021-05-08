@@ -13,9 +13,8 @@
 #include <omp.h>
 #endif
 
-#include "ifloat.hh"
+#include "lieonn.hh"
 typedef myfloat num_t;
-#include "simplelin.hh"
 #include "p0.hh"
 #include "p1.hh"
 #include "decompose.hh"
