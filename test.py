@@ -133,7 +133,8 @@ else:
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call([argv[1], "integ", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm", "-average", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm", "-average", "-compress", "none", root + "-" + argv[2] + "2.ppm"])
+      subprocess.call([argv[1], "bumpc", str(zratio / 2.), root + ".ppm", root + "-" + argv[2] + "2.ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "-global.ppm", str(pixels), str(rot)])
       subprocess.call(["convert", root + "-" + argv[2] + "-global.ppm", "-blur", str(int(pow(pixels, .5))), "-compress", "none", root + "-" + argv[2] + "-global-blur.ppm"])
@@ -151,7 +152,9 @@ else:
       subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + ".obj", root + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + ".obj", root + "-R.ppm"])
       subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
+      subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereoR.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
+      subprocess.call(["montage", root + "-stereoR.jps", "-geometry", "100%x100%", root + "-stereoR.png"])
       subprocess.call(["cp", root + "-L.ppm", root + "-jps-0.ppm"])
       subprocess.call(["cp", root + "-R.ppm", root + "-jps-1.ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-jps-%d.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-LR.mp4"])

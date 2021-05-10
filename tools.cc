@@ -32,6 +32,7 @@ using std::endl;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << "gokicheck bumpc <psi> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
   cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck pred <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
@@ -144,6 +145,21 @@ int main(int argc, const char* argv[]) {
       redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;
+  } else if(strcmp(argv[1], "bumpc") == 0) {
+    if(argc < 6) {
+      usage();
+      return 0;
+    }
+    const auto psi(std::atof(argv[2]));
+    typename simpleFile<num_t>::Mat datac[3], bump[3];
+    if(!file.loadp2or3(datac, argv[3]))
+      return -1;
+    if(!file.loadp2or3(bump, argv[4]))
+      return -1;
+    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]));
+    redig.normalize(bump, num_t(1));
+    if(!file.savep2or3(argv[5], bump, !true) )
+      return - 2;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
             strcmp(argv[1], "recolor2") == 0 ||

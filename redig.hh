@@ -101,6 +101,7 @@ public:
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
+  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi) const;
   vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -114,10 +115,10 @@ public:
   void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
   vector<vector<pair<int, int> > > getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg);
   vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc);
-  match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi);
+  match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const;
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1000000));
-  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0 = - T(1000000));
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1000000)) const;
+  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0 = - T(1000000)) const;
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
   Mat  applyTrace(const pair<Vec, Vec>& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw);
 
@@ -125,12 +126,12 @@ private:
   void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
   void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
   inline bool isClockwise(const Vec3 p[3]) const;
-  inline bool onTriangle(T& z, const Triangles& tri, const Vec2& geom);
-  inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg);
+  inline bool onTriangle(T& z, const Triangles& tri, const Vec2& geom) const;
+  inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const;
   inline bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
   inline bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(100000));
-  inline int  getImgPtRecursive(const int& h, const int& y) const;
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(100000)) const;
+  inline int  getImgPt(const int& y, const int& h) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
   
   T   Pi;
@@ -255,7 +256,6 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
 
 template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph) {
   cerr << "p" << flush;
-  static Filter<T> filter;
   const int  idx(max(0, min(int(srccenter.size()) - 1, int(floor(iemph)))));
   const auto comp(taylor<T>(srccenter.size(), iemph));
   assert(srcimg.size() == srccenter.size());
@@ -281,12 +281,12 @@ template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3
 #endif
   for(int i = 0; i < attend.size(); i ++)
     for(int j = 0; j < attend[i].size(); j ++) {
-      const auto yy(filter.getImgPt(a2xy[i][j].first,  srcimg[idx][0].rows()));
-      const auto xx(filter.getImgPt(a2xy[i][j].second, srcimg[idx][0].cols()));
+      const auto yy(getImgPt(a2xy[i][j].first,  srcimg[idx][0].rows()));
+      const auto xx(getImgPt(a2xy[i][j].second, srcimg[idx][0].cols()));
       dstimg[0](yy, xx) = dstimg[1](yy, xx) = dstimg[2](yy, xx) = T(0);
       for(int k = 0; k < srccenter.size(); k ++) {
-        const auto yf(filter.getImgPt(a2xy[i][j].first  + int(srccenter[k][i][0] - srccenter[idx][i][0]), srcimg[idx][0].rows()));
-        const auto xf(filter.getImgPt(a2xy[i][j].second + int(srccenter[k][i][1] - srccenter[idx][i][1]), srcimg[idx][0].cols()));
+        const auto yf(getImgPt(a2xy[i][j].first  + int(srccenter[k][i][0] - srccenter[idx][i][0]), srcimg[idx][0].rows()));
+        const auto xf(getImgPt(a2xy[i][j].second + int(srccenter[k][i][1] - srccenter[idx][i][1]), srcimg[idx][0].cols()));
         for(int kk = 0; kk < 3; kk ++)
           dstimg[kk](yy, xx) += srcimg[k][kk](yf, xf) * comp[k];
       }
@@ -875,6 +875,60 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
   return res;
 }
 
+template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi) const {
+  assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
+  const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 4, - abs(psi))));
+  const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 4,   abs(psi))));
+        Mat  result(color.rows(), color.cols());
+        auto zscore(result);
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++) {
+      result(i, j) = T(0);
+      zscore(i, j) = - T(1);
+    }
+  const T   rxy(color0.cols());
+  const int dratio(sqrt(sqrt(rxy)));
+        Vec camera(2);
+        Vec cpoint(2);
+  camera[0] = T(0);
+  camera[1] = T(1);
+  for(int j = 0; j < result.cols(); j ++)
+    for(int zi = 0; zi < dratio; zi ++) {
+      cpoint[0] = T(1) / T(2 * dratio);
+      cpoint[1] = T(zi) / T(dratio);
+      const auto t(- camera[1] / (cpoint[1] - camera[1]));
+      const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
+      if(result.cols() <= abs(x0)) continue;
+      Vec work(result.rows());
+      for(int i = 0; i < work.size(); i ++)
+        work[i] = T(0);
+      const auto& Dop(diff<T>(abs(int(x0 * T(2))) & ~ int(1)));
+      const auto& Dop0(Dop.row(Dop.rows() / 2));
+      for(int k = 0; k < Dop0.size(); k ++)
+        for(int i = 0; i < result.rows(); i ++) {
+          // N.B. projection scale is linear.
+          cpoint[0] = (T(j + k) - T(Dop0.size() + result.cols()) / T(2)) / T(2 * dratio) / (T(result.cols()) / T(2));
+          // x-z plane projection of point p with camera geometry c to z=0.
+          // c := camera, p := cpoint.
+          // <c + (p - c) * t, [0, 1]> = 0
+          const auto t(- camera[1] / (cpoint[1] - camera[1]));
+          const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
+          work[i] += (k < Dop0.size() / 2 ? color0 : color1)(i,
+            getImgPt(x0, color.cols())) * Dop0[k];
+        }
+      for(int i = 0; i < work.size(); i ++)
+        if(zscore(i, j) < abs(work[i])) {
+          result(i, j) = T(zi + 1);
+          zscore(i, j) = abs(work[i]);
+        }
+    }
+  return result;
+}
+
 template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x) {
   assert(mask.rows() == checked.rows() && mask.cols() == checked.cols());
   vector<pair<int, int> > tries;
@@ -1349,7 +1403,7 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const v
   return result;
 }
 
-template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) {
+template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const {
   Triangles work;
   if(flg) {
     work.p(0, 0) = u;
@@ -1389,7 +1443,7 @@ template <typename T> inline bool reDig<T>::sameSide3(const Vec3& p0, const Vec3
 }
 
 // <[x, y, t], triangle.n> == triangle.z
-template <typename T> inline bool reDig<T>::onTriangle(T& z, const Triangles& tri, const Vec2& geom) {
+template <typename T> inline bool reDig<T>::onTriangle(T& z, const Triangles& tri, const Vec2& geom) const {
   Vec3 v0(3);
   Vec3 camera(3);
   v0[0] = 0;
@@ -1406,7 +1460,7 @@ template <typename T> inline bool reDig<T>::onTriangle(T& z, const Triangles& tr
           sameSide3(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, true, T(0125) / T(1000)));
 }
 
-template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) {
+template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const {
   const T theta(T(2) * Pi * T(idx) / T(samples));
   const T lpsi(Pi * psi);
   Mat3x3 R0(3, 3);
@@ -1464,7 +1518,7 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0) const {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
   vector<Triangles> triangles;
   triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
@@ -1476,7 +1530,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   return tilt(in, triangles, m, z0);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& z0) const {
   vector<Triangles> triangles(triangles0);
   for(int j = 0; j < triangles.size(); j ++) {
     for(int k = 0; k < 3; k ++)
@@ -1486,7 +1540,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   return tilt(in, triangles, z0);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0) {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0) const {
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
@@ -1545,8 +1599,13 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   return result;
 }
 
-template <typename T> inline int reDig<T>::getImgPtRecursive(const int& h, const int& y) const {
-  return ((y % h) + h) % h;
+template <typename T> inline int reDig<T>::getImgPt(const int& y, const int& h) const {
+  int yy(y % (2 * h));
+  if(yy < 0)
+    yy = - yy;
+  if(yy >= h)
+    yy = h - (yy - h);
+  return yy % h;
 }
 
 #define _REDIG_
