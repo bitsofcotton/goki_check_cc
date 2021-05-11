@@ -65,8 +65,9 @@ public:
   Filter(const int& recur = 2);
   ~Filter();
   Mat compute(const Mat& data, const direction_t& dir, const int& n = 0);
-  inline int getImgPt(const int& y, const int& h);
-  inline Mat gmean(const Mat& a, const Mat& b);
+  inline int getImgPt(const int& y, const int& h) const;
+  inline Mat rot(const Mat& d, const T& theta) const;
+  inline Mat getCenter(const Mat& dr, const Mat& d) const;
 
 private:
   int recur;
@@ -96,7 +97,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     case INTEG_BOTH:
       return (compute(data, INTEG_X) + compute(data, INTEG_Y)) / T(2);
     case COLLECT_BOTH:
-      return gmean(compute(data, COLLECT_X), compute(data, COLLECT_Y));
+      return (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / T(2);
     case BUMP_BOTH:
       // eigen sum on curvature.
       return (compute(data, BUMP_X) + compute(data, BUMP_Y)) / T(2);
@@ -375,61 +376,16 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     assert(0 && "unknown command in Filter (should not be reached.)");
     return Mat();
   }
-  if(dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == REPRESENT)
-    return compute(data, dir, 0);
-  vector<Mat> res;
-  res.reserve(n);
-  res.emplace_back(compute(data, dir));
-  for(int i = 1; i < n; i ++) {
+  auto res(compute(data, dir));
+  for(int i = 0; i < n; i ++) {
     cerr << "r" << flush;
-          Mat  lres(res[0]);
-    const auto theta(T(i) * Pi / T(2 * n));
-    const auto c(cos(theta));
-    const auto s(sin(theta));
-    Mat work(abs(int(c * T(data.rows()) + s * T(data.cols()))),
-             abs(int(s * T(data.rows()) + c * T(data.cols()))));
-    for(int j = 0; j < work.rows(); j ++)
-      for(int k = 0; k < work.cols(); k ++)
-        work(j, k) = T(0);
-    for(int j = - (work.rows() + work.cols());
-            j <   (work.rows() + work.cols()) * 2; j ++)
-      for(int k = - (work.rows() + work.cols());
-              k <   (work.rows() + work.cols()) * 2; k ++) {
-        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
-        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
-        if(0 <= yy && yy < work.rows() &&
-           0 <= xx && xx < work.cols()) {
-          const auto dyy(((j % data.rows()) + data.rows()) % data.rows());
-          const auto dxx(((k % data.cols()) + data.cols()) % data.cols());
-          work(yy, xx) = work(min(yy + 1, int(work.rows()) - 1), xx) =
-            work(yy, min(xx + 1, int(work.cols()) - 1)) =
-            work(min(yy + 1, int(work.rows()) - 1),
-                 min(xx + 1, int(work.cols()) - 1)) =
-              data(dyy, dxx);
-        }
-      }
-    work = compute(work, dir);
-    // XXX inefficient:
-    for(int j = - (work.rows() + work.cols());
-            j <   (work.rows() + work.cols()) * 2; j ++)
-      for(int k = - (work.rows() + work.cols());
-              k <   (work.rows() + work.cols()) * 2; k ++) {
-        const int yy(c * T(j) - s * T(k) + T(1) / T(2));
-        const int xx(s * T(j) + c * T(k) + T(1) / T(2));
-        if(0 <= yy && yy < work.rows() &&
-           0 <= xx && xx < work.cols()) {
-          lres(((j % lres.rows()) + lres.rows()) % lres.rows(),
-               ((k % lres.cols()) + lres.cols()) % lres.cols()) = work(yy, xx);
-        }
-      }
-    res.emplace_back(lres);
+    const auto theta((T(i) - T(n - 1) / T(2)) * atan(T(1)) / (T(n) / T(2)));
+    res += getCenter(rot(compute(rot(data, theta), dir), - theta), res);
   }
-  for(int i = 1; i < res.size(); i ++)
-    res[0] += res[i];
-  return res[0] /= T(res.size());
+  return res /= T(n + 1);
 }
 
-template <typename T> inline int Filter<T>::getImgPt(const int& y, const int& h) {
+template <typename T> inline int Filter<T>::getImgPt(const int& y, const int& h) const {
   int yy(y % (2 * h));
   if(yy < 0)
     yy = - yy;
@@ -438,14 +394,62 @@ template <typename T> inline int Filter<T>::getImgPt(const int& y, const int& h)
   return yy % h;
 }
 
-template <typename T> inline typename Filter<T>::Mat Filter<T>::gmean(const Mat& a, const Mat& b) {
-  assert(a.rows() == b.rows() && a.cols() == b.cols());
-  Mat res(a.rows(), a.cols());
-  for(int i = 0; i < a.rows(); i ++)
-    for(int j = 0; j < a.cols(); j ++) {
-      const auto lval(a(i, j) * b(i, j));
-      res(i, j) = (abs(a(i, j)) < abs(b(i, j)) ? (b(i, j) < T(0) ? - T(1) : T(1)) : (a(i, j) < T(0) ? - T(1) : T(1))) * sqrt(abs(lval));
+template <typename T> inline typename Filter<T>::Mat Filter<T>::rot(const Mat& d, const T& theta) const {
+  assert(abs(theta) < atan(T(1)));
+  const auto c(cos(theta));
+  const auto s(sin(theta));
+  Mat res(abs(int(c * T(d.rows()) - s * T(d.cols()))) + abs(int(s * T(d.cols()))) * 2,
+          abs(int(s * T(d.rows()) + c * T(d.cols()))) + abs(int(c * T(d.rows()))) * 2);
+  const T offy(abs(int(s * T(d.cols()))));
+  const T offx(abs(int(c * T(d.rows()))));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = 0; j < res.rows(); j ++)
+    for(int k = 0; k < res.cols(); k ++)
+      res(j, k) = T(0);
+  const auto diag(int(sqrt(res.rows() * res.rows() +
+                           res.cols() * res.cols())) + 1);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = - diag; j < diag; j ++)
+    for(int k = - diag; k < diag; k ++) {
+      const int yy(c * T(j) - s * T(k) + offy);
+      const int xx(s * T(j) + c * T(k) + offx);
+      if(0 <= yy && yy < res.rows() &&
+         0 <= xx && xx < res.cols()) {
+/*
+        const auto dyy(((j % d.rows()) + d.rows()) % d.rows());
+        const auto dxx(((k % d.cols()) + d.cols()) % d.cols());
+*/
+        const auto dyy(getImgPt(j, d.rows()));
+        const auto dxx(getImgPt(k, d.cols()));
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+        {
+          res(yy, xx) = res(min(yy + 1, int(res.rows()) - 1), xx) =
+            res(yy, min(xx + 1, int(res.cols()) - 1)) =
+            res(min(yy + 1, int(res.rows()) - 1),
+                min(xx + 1, int(res.cols()) - 1)) =
+              d(dyy, dxx);
+        }
+      }
     }
+  return res;
+}
+
+template <typename T> inline typename Filter<T>::Mat Filter<T>::getCenter(const Mat& dr, const Mat& d) const {
+  assert(d.rows() <= dr.rows() && d.cols() <= dr.cols());
+  Mat res(d.rows(), d.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < d.rows(); i ++)
+    for(int j = 0; j < d.cols(); j ++)
+      res(i, j) = dr(min(i + (dr.rows() - d.rows()) / 2, dr.rows() - 1),
+                     min(j + (dr.cols() - d.cols()) / 2, dr.cols() - 1));
   return res;
 }
 
