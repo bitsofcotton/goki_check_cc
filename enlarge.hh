@@ -21,8 +21,6 @@ using std::max;
 using std::min;
 using std::abs;
 
-template <typename T> class reDig;
-
 // This class is NOT thread safe.
 template <typename T> class Filter {
 public:
@@ -419,10 +417,6 @@ template <typename T> inline typename Filter<T>::Mat Filter<T>::rot(const Mat& d
       const int xx(s * T(j) + c * T(k) + offx);
       if(0 <= yy && yy < res.rows() &&
          0 <= xx && xx < res.cols()) {
-/*
-        const auto dyy(((j % d.rows()) + d.rows()) % d.rows());
-        const auto dxx(((k % d.cols()) + d.cols()) % d.cols());
-*/
         const auto dyy(getImgPt(j, d.rows()));
         const auto dxx(getImgPt(k, d.cols()));
 #if defined(_OPENMP)

@@ -27,8 +27,6 @@ using std::vector;
 using std::pair;
 using std::make_pair;
 
-template <typename T> class match_t;
-
 template <typename T> class simpleFile {
 public:
   typedef SimpleMatrix<T> Mat;
@@ -38,7 +36,7 @@ public:
   typedef SimpleVector<int> Veci3;
   typedef SimpleVector<int> Veci4;
   
-  inline bool whiteline(const std::string& s) {
+  inline bool whiteline(const string& s) {
     for(auto ss(s.begin()); ss < s.end(); ++ ss)
       if(! std::isspace(* ss) && *ss != '\n')
         return false;
@@ -302,19 +300,19 @@ public:
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
-      std::string pstr(photo);
+      string pstr(photo);
       for(int i = 0; i < pstr.size(); i ++)
         if(pstr[pstr.size() - i - 1] == '.') {
-          pstr = pstr.substr(0, max(0, int(pstr.size()) - i - 1)) + std::string(".ppm");
+          pstr = pstr.substr(0, max(0, int(pstr.size()) - i - 1)) + string(".ppm");
           break;
         }
-      output << "newmtl material0" << std::endl;
-      output << "Ka 1.000000 1.000000 1.000000" << std::endl;
-      output << "Kd 1.000000 1.000000 1.000000" << std::endl;
-      output << "Ks 0.000000 0.000000 0.000000" << std::endl;
-      output << "illum 1" << std::endl;
-      output << "map_Ka " << pstr << std::endl;
-      output << "map_Kd " << pstr << std::endl << std::endl;
+      output << "newmtl material0" << endl;
+      output << "Ka 1.000000 1.000000 1.000000" << endl;
+      output << "Kd 1.000000 1.000000 1.000000" << endl;
+      output << "Ks 0.000000 0.000000 0.000000" << endl;
+      output << "illum 1" << endl;
+      output << "map_Ka " << pstr << endl;
+      output << "map_Kd " << pstr << endl << endl;
       output.close();
     } else {
       cerr << "Unable to open file for write: " << filename << endl;
@@ -323,18 +321,18 @@ public:
     return true;
   }
 
-  bool loaddat(const char* filename, std::string& header, vector<vector<T> >& data) {
+  bool loaddat(const char* filename, string& header, vector<vector<T> >& data) {
     ifstream input;
     input.open(filename);
     if(input.is_open()) {
       string work;
-      header = std::string("");
+      header = string("");
       data   = vector<vector<T> >();
       while(getline(input, work) && !input.eof() && !input.bad())
         if(whiteline(work))
           continue;
         else if(work[0] == ';')
-          header += work + std::string("\n");
+          header += work + string("\n");
         else {
           std::stringstream ss(work);
           for(int i = 0, j = 0; ss.tellg() <= work.size(); j ++) {
@@ -352,7 +350,7 @@ public:
     return true;
   }
   
-  bool savedat(const char* filename, std::string& header, vector<vector<T> >& data) {
+  bool savedat(const char* filename, string& header, vector<vector<T> >& data) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -360,7 +358,7 @@ public:
       for(int i = 0; i < data[0].size(); i ++) {
         for(int j = 0; j < data.size(); j ++)
           output << (i < data[j].size() ? data[j][i] : T(0)) << " ";
-        output << std::endl;
+        output << endl;
       }
       output.close();
     } else {
@@ -376,7 +374,7 @@ public:
     std::ifstream input;
     try {
       input.open(filename);
-      std::string buf;
+      string buf;
       while(getline(input, buf) && !input.eof() && !input.bad()) {
         std::stringstream sbuf(buf);
         typename simpleFile<num_t>::Vec3 work(3);
@@ -390,7 +388,7 @@ public:
       }
       input.close();
     } catch(...) {
-      std::cerr << "Something had occured when reading center - r txt." << std::endl;
+      cerr << "Something had occured when reading center - r txt." << endl;
       return false;
     }
     return center.size() == r.size();
@@ -403,7 +401,7 @@ public:
       assert(center.size() == r.size());
       for(int i = 0; i < center.size(); i ++) {
         assert(center[i].size() == 3);
-        output << center[i][0] << " " << center[i][1] << " " << center[i][2] << " " << r[i] << std::endl;
+        output << center[i][0] << " " << center[i][1] << " " << center[i][2] << " " << r[i] << endl;
       }
       output.close();
     } else {

@@ -33,7 +33,6 @@ void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck bumpc <psi> <rot> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
-  cout << "gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ..." << endl;
   cout << "gokicheck pred <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -59,9 +58,6 @@ int main(int argc, const char* argv[]) {
     usage();
     return 0;
   }
-#if defined(_WITH_MPFR_)
-  num_t::set_default_prec(_WITH_MPFR_);
-#endif
   simpleFile<num_t> file;
   reDig<num_t>      redig;
   Filter<num_t>     filter;
@@ -554,7 +550,6 @@ int main(int argc, const char* argv[]) {
       }
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
-            strcmp(argv[1], "predf") == 0 ||
             strcmp(argv[1], "cat") == 0 ||
             strcmp(argv[1], "composite") == 0) {
     if(argc < 4) {
@@ -633,86 +628,6 @@ int main(int argc, const char* argv[]) {
         out[0] = out[1] = out[2] = composite[i];
         redig.normalize(out, 1.);
         file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true);
-      }
-    }
-  } else if(strcmp(argv[1], "ppred") == 0 ||
-            strcmp(argv[1], "ppredr") == 0) {
-    if(argc < 11 || (argc & 1)) {
-      usage();
-      return - 1;
-    }
-    const auto  vbox(std::atoi(argv[2]));
-    const auto  thresh(std::atof(argv[3]));
-    const num_t zratio(std::atof(argv[4]));
-    std::vector<std::vector<typename simpleFile<num_t>::Mat> > in;
-    std::vector<typename simpleFile<num_t>::Mat> inb;
-    in.resize((argc - 8) / 2);
-    inb.resize((argc - 8) / 2);
-    int i;
-    for(i = 8; i < argc; ) {
-      typename simpleFile<num_t>::Mat ibuf[3];
-      if(!file.loadp2or3(ibuf, argv[i]))
-        exit(- 2);
-      const auto ii((i - 8) / 2);
-      in[ii].resize(3);
-      in[ii][0] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[0]);
-      in[ii][1] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[1]);
-      in[ii][2] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[2]);
-      i ++;
-      if(!file.loadp2or3(ibuf, argv[i]))
-        exit(- 2);
-      inb[ii] = redig.rgb2d(ibuf);
-      i ++;
-      assert(in[ii][0].rows() == inb[ii].rows());
-      assert(in[ii][0].cols() == inb[ii].cols());
-      assert(in[ii][0].rows() == in[0][0].rows());
-      assert(in[ii][0].cols() == in[0][0].cols());
-    }
-    std::cerr << "i" << std::flush;
-    redig.initialize(vbox, zratio);
-    std::vector<std::vector<typename simpleFile<num_t>::Veci3> > delau;
-    std::vector<std::vector<typename simpleFile<num_t>::Vec3> >  shape;
-    std::vector<std::vector<typename simpleFile<num_t>::Vec3> >  center;
-    std::vector<std::vector<std::vector<int> > > attend;
-    std::vector<std::vector<num_t> > centerr;
-    delau.resize(in.size());
-    shape.resize(in.size());
-    center.resize(in.size());
-    attend.resize(in.size());
-    centerr.resize(in.size());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < in.size(); i ++) {
-      auto lredig(redig);
-      lredig.getTileVec(inb[i], shape[i], delau[i]);
-      lredig.getBone(inb[i], shape[i], center[i], centerr[i], attend[i], thresh);
-#if !defined(_OPENMP)
-      assert(center[i].size() == centerr[i].size());
-      assert(center[i].size() == attend[i].size());
-#endif
-      std::cerr << center[i].size() << ":" << std::flush;
-    }
-    std::vector<typename simpleFile<num_t>::Vec3> outcenter;
-    std::vector<typename simpleFile<num_t>::Mat>  pout;
-    typename simpleFile<num_t>::Mat out[3];
-    const auto rin0(redig.makeRefMatrix(in[0][0], 1));
-    for(int idx = 0; idx < center.size(); idx ++) {
-      auto lcenter(center);
-      for(int i = 0; i < lcenter.size(); i ++) {
-        if(i == idx) continue;
-        lcenter[i] = redig.copyBone(center[idx], centerr[idx], center[i], centerr[i]);
-        assert(lcenter[i].size() == center[idx].size());
-        std::cerr << "." << std::flush;
-      }
-      const auto a2xy(redig.getReverseLookup(attend[idx], in[idx][0]));
-      for(int i = - std::atoi(argv[5]); i < std::atoi(argv[5]); i ++) {
-        redig.complement(pout, outcenter, in, lcenter, attend[idx], a2xy,
-          num_t(idx) - num_t(1) / num_t(2) +
-          (num_t(i) + num_t(1) / num_t(2)) / num_t(std::atoi(argv[5])));
-        for(int ii = 0; ii < 3; ii ++)
-          out[ii] = filter.compute(pout[ii], filter.CLIP);
-        file.savep2or3((std::string(argv[7]) + std::to_string((2 * idx + 1) * std::atoi(argv[5]) + i) + std::string(".ppm")).c_str(), out, ! true);
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {

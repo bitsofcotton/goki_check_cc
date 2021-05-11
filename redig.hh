@@ -81,10 +81,8 @@ public:
   inline void initialize(const int& vbox, const T& rz = - T(1));
   Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Vec3>& emph, const vector<Veci3>& hull);
   Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const bool& elim = false);
-  Mat  drawBone(const vector<Vec3>& center, const vector<T>& r, const int& rows, const int& cols);
   vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
   vector<Vec3> takeShape(const vector<Vec3>& shape, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio);
-  void complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph);
   Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
@@ -112,9 +110,7 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
-  void getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh = T(1) / T(20));
   vector<vector<pair<int, int> > > getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg);
-  vector<Vec3> copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const;
   vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& z0 = - T(1000000)) const;
@@ -201,32 +197,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::drawBone(const vector<Vec3>& center, const vector<T>& r, const int& rows, const int& cols) {
-  Mat result(rows, cols);
-  assert(center.size() == r.size());
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = T(0);
-  Mat count(result);
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      for(int l = 0; l < center.size(); l ++) {
-        const auto score(pow(T(i) - center[l][0], T(2)) +
-                         pow(T(j) - center[l][1], T(2)) +
-                         pow(T(0) - center[l][2], T(2)) -
-                         pow(r[l], T(2)));
-        if(score <= T(0)) {
-          result(i, j) += sqrt(abs(score));
-          count(i, j)  += T(1);
-        }
-      }
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      if(count(i, j) != T(0))
-        result(i, j) /= count(i, j);
-  return normalize(result, 1.);
-}
-
 template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
   vector<Vec3> result(dst);
 #if defined(_OPENMP)
@@ -252,60 +222,6 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
       result[attend[i][j]] += delta;
   }
   return result;
-}
-
-template <typename T> void reDig<T>::complement(vector<Mat>& dstimg, vector<Vec3>& dstcenter, const vector<vector<Mat> >& srcimg, const vector<vector<Vec3> >& srccenter, const vector<vector<int> >& attend, const vector<vector<pair<int, int> > >& a2xy, const T& iemph) {
-  cerr << "p" << flush;
-  const int  idx(max(0, min(int(srccenter.size()) - 1, int(floor(iemph)))));
-  const auto comp(taylor<T>(srccenter.size(), iemph));
-  assert(srcimg.size() == srccenter.size());
-  assert(srccenter[0].size() == attend.size());
-  dstcenter = vector<Vec3>();
-  dstimg    = vector<Mat>();
-  dstcenter.resize(srccenter[0].size(), Vec3(3));
-  dstimg.reserve(3);
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < srccenter[idx].size(); i ++) {
-    dstcenter[i][0] = dstcenter[i][1] = dstcenter[i][2] = T(0);
-    for(int j = 0; j < srccenter.size(); j ++)
-      for(int k = 0; k < 3; k ++)
-        dstcenter[i][k] += srccenter[j][i][k] * comp[j];
-  }
-  for(int i = 0; i < 3; i ++)
-    dstimg.emplace_back(Mat(srcimg[0][i].rows(), srcimg[0][i].cols()));
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < attend.size(); i ++)
-    for(int j = 0; j < attend[i].size(); j ++) {
-      const auto yy(getImgPt(a2xy[i][j].first,  srcimg[idx][0].rows()));
-      const auto xx(getImgPt(a2xy[i][j].second, srcimg[idx][0].cols()));
-      dstimg[0](yy, xx) = dstimg[1](yy, xx) = dstimg[2](yy, xx) = T(0);
-      for(int k = 0; k < srccenter.size(); k ++) {
-        const auto yf(getImgPt(a2xy[i][j].first  + int(srccenter[k][i][0] - srccenter[idx][i][0]), srcimg[idx][0].rows()));
-        const auto xf(getImgPt(a2xy[i][j].second + int(srccenter[k][i][1] - srccenter[idx][i][1]), srcimg[idx][0].cols()));
-        for(int kk = 0; kk < 3; kk ++)
-          dstimg[kk](yy, xx) += srcimg[k][kk](yf, xf) * comp[k];
-      }
-      const auto n0(dstimg[0](yy, xx));
-      const auto n1(dstimg[1](yy, xx));
-      const auto n2(dstimg[2](yy, xx));
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-      {
-        for(int y0 = yy; y0 < min(yy + vbox, int(srcimg[idx][0].rows()) - 1); y0 ++)
-          for(int x0 = xx; x0 < min(xx + vbox, int(srcimg[idx][0].cols()) - 1); x0 ++) {
-            dstimg[0](y0, x0) = n0;
-            dstimg[1](y0, x0) = n1;
-            dstimg[2](y0, x0) = n2;
-          }
-      }
-    }
-  return;
 }
 
 template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph) {
@@ -994,7 +910,8 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
   cerr << " with " << store.size() << " edge points " << flush;
   
   // stored indices.
-  vector<int>          se;
+  vector<int> se;
+  se.reserve(store.size());
   for( ; se.size() < store.size(); ) {
     // tree index.
     vector<int> e;
@@ -1022,13 +939,11 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
       for( ; j < si.size(); j ++) {
         const auto& sti(store[i]);
         const auto& stj(store[si[j]]);
-        const T y(stj.first  - sti.first);
-        const T x(stj.second - stj.second);
-        const T x2(x - y + T(sti.second));
-        const T y2(x + y + T(sti.first));
-        if(T(0) <= x2 && x2 < T(mask.cols()) &&
-           T(0) <= y2 && y2 < T(mask.rows()) &&
-           mask(y2, x2) < T(1) / T(2))
+        const auto  y(stj.first  - sti.first);
+        const auto  x(stj.second - sti.second);
+        if(T(0) <= x && x < T(mask.cols()) &&
+           T(0) <= y && y < T(mask.rows()) &&
+           mask(y, x) < T(1) / T(2))
           break;
       }
       if(si.size() <= j)
@@ -1039,29 +954,7 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
       se.emplace_back(i);
       sort(se.begin(), se.end());
     }
-    // N.B. almost bruteforce...
-    if(1 < e.size()) {
-      result.emplace_back(vector<int>());
-      // apply to points index.
-      vector<int> pj;
-      for(int i = 0; i < e.size(); i ++) {
-        const auto& s(store[e[i]]);
-        vector<pair<T, int> > distances;
-        for(int j = 0; j < points.size(); j ++)
-          distances.emplace_back(make_pair(
-                                  pow(T(s.first)  - points[j][0], T(2)) +
-                                    pow(T(s.second) - points[j][1], T(2)),
-                                  j));
-        sort(distances.begin(), distances.end());
-        if(distances.size() && !binary_search(pj.begin(), pj.end(), distances[0].second)) {
-          assert(0 <= distances[0].second && distances[0].second < points.size());
-          result[result.size() - 1].emplace_back(distances[0].second);
-          pj.emplace_back(distances[0].second);
-        }
-      }
-      result[result.size() - 1].emplace_back(result[result.size() - 1][0]);
-    } else
-      se.emplace_back(i);
+    result.emplace_back(move(e));
     cerr << "." << flush;
   }
   return result;
@@ -1280,108 +1173,6 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
   return;
 }
 
-template <typename T> void reDig<T>::getBone(const Mat& in, const vector<Vec3>& geoms, vector<Vec3>& center, vector<T>& r, vector<vector<int> >& attend, const T& thresh) {
-  int idx(0);
-  r      = vector<T>();
-  center = vector<Vec3>();
-  attend = vector<vector<int> >();
-  for(int i = 0; i < in.rows() / vbox + 1; i ++) {
-    vector<T> workx;
-    vector<T> workz;
-    for(int j = 0; j < in.cols() / vbox + 1; j ++) {
-      assert(0 <= idx && idx < geoms.size());
-      workx.emplace_back(geoms[idx][1]);
-      workz.emplace_back(geoms[idx][2]);
-      // N.B. for any k, on the line (workx[k] - x)^2 + (workz[k] - z)^2 = r^2.
-      T x(0);
-      T z(0);
-      for(int k = 0; k < workx.size(); k ++) {
-        x += workx[k];
-        z += workz[k];
-      }
-      x /= T(workx.size());
-      z /= T(workz.size());
-      T r(0);
-      for(int k = 0; k < workx.size(); k ++)
-        r += (workx[k] - x) * (workx[k] - x) + (workz[k] - z) * (workz[k] - z);
-      r  = sqrt(r / T(workx.size()));
-      T err(0);
-      for(int k = 0; k < workx.size(); k ++)
-        err += abs((workx[k] - x) * (workx[k] - x) +
-                   (workz[k] - z) * (workz[k] - z) - r * r);
-      err = sqrt(err / T(workx.size()));
-      if(j && err < thresh * thresh * sqrt(T(in.rows() * in.cols())) && center.size()) {
-        center[center.size() - 1][1] = x;
-        center[center.size() - 1][2] = z;
-      } else {
-        auto gc(geoms[idx]);
-        gc[1] = x;
-        gc[2] = z;
-        center.emplace_back(gc);
-        attend.emplace_back(vector<int>());
-        workx = vector<T>();
-        workz = vector<T>();
-      }
-      attend[attend.size() - 1].emplace_back(idx);
-      idx ++;
-    }
-  }
-  if(attend.size() && !attend[attend.size() - 1].size()) {
-    center.resize(center.size() - 1);
-    attend.resize(attend.size() - 1);
-  }
-  vector<Vec3>         newcenter;
-  vector<vector<int> > newattend;
-  assert(attend.size() == center.size());
-  int i;
-  for(i = 0; i < attend.size(); i ++) {
-    auto z(center[i] * attend[i].size());
-    int  zc(attend[i].size());
-    T    rr(0);
-    int  lastj(i);
-    for(int j = i + 1; j < attend.size(); j ++) {
-      // N.B. for any k, on the line ||center[k] - z||^2 = r^2.
-      // <=> sum_k (ck_0 - z_0)^2 + (ck_1 - z_1)^2 + (ck_2 - z_2)^2 == r^2.
-      const auto newz(z + center[j] * T(attend[j].size()));
-      const auto newz0(newz / T(zc + attend[j].size()));
-      T   newr(0);
-      int cnt(0);
-      for(int jj = i; jj <= j; jj ++)
-        for(int k = 0; k < attend[jj].size(); k ++) {
-          const auto diff(geoms[attend[jj][k]] - newz0);
-          newr += diff.dot(diff);
-          cnt ++;
-        }
-      newr = sqrt(newr / T(cnt));
-      T err(0);
-      for(int jj = i; jj <= j; jj ++)
-        for(int k = 0; k < attend[jj].size(); k ++) {
-          const auto diff(geoms[attend[jj][k]] - newz0);
-          err += abs(diff.dot(diff) - newr * newr);
-        }
-      err = sqrt(err / T(cnt));
-      if(err < thresh * sqrt(T(in.rows() * in.cols()))) {
-        z   = newz;
-        zc += attend[j].size();
-        rr  = newr;
-        lastj = j;
-      } else
-        break;
-    }
-    r.emplace_back(rr);
-    newcenter.emplace_back(z / T(zc));
-    newattend.emplace_back(attend[i]);
-    for(int k = i + 1; k <= lastj; k ++)
-      newattend[newattend.size() - 1].insert(
-        newattend[newattend.size() - 1].end(),
-        attend[k].begin(), attend[k].end());
-    i = lastj;
-  }
-  center = newcenter;
-  attend = newattend;
-  return;
-}
-
 template <typename T> vector<vector<pair<int, int> > > reDig<T>::getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg) {
   vector<vector<pair<int, int> > > res;
   res.resize(attend.size());
@@ -1397,28 +1188,6 @@ template <typename T> vector<vector<pair<int, int> > > reDig<T>::getReverseLooku
     }
   }
   return res;
-}
-
-template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::copyBone(const vector<Vec3>& centerdst, const vector<T>& rdst, const vector<Vec3>& centersrc, const vector<T>& rsrc) {
-  assert(centerdst.size() == rdst.size());
-  assert(centersrc.size() == rsrc.size());
-  assert(centerdst.size());
-  vector<Vec3> result(centerdst);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < centerdst.size(); i ++) {
-    int midx(i ? 0 : 1);
-    for(int j = 0; j < centersrc.size(); j ++) if(i != j) {
-      const auto diff0(centerdst[i] - centersrc[j]);
-      const auto diff1(centerdst[i] - centersrc[midx]);
-      if(diff0.dot(diff0) + (rdst[i] - rsrc[j]) * (rdst[i] - rsrc[j]) <=
-         diff1.dot(diff1) + (rdst[i] - rsrc[midx]) * (rdst[i] - rsrc[midx]))
-        midx = j;
-    }
-    result[i] = centersrc[midx];
-  }
-  return result;
 }
 
 template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const {
@@ -1618,12 +1387,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
 }
 
 template <typename T> inline int reDig<T>::getImgPt(const int& y, const int& h) const {
-  int yy(y % (2 * h));
-  if(yy < 0)
-    yy = - yy;
-  if(yy >= h)
-    yy = h - (yy - h);
-  return yy % h;
+  static Filter<T> filter;
+  return filter.getImgPt(y, h);
 }
 
 #define _REDIG_

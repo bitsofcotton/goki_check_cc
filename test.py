@@ -9,9 +9,6 @@ pixels  = 4
 zratio  = .25
 psi     = .1
 rot     = 7
-comp    = 4
-tppred  = .0025
-bhabit  = ""
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -53,28 +50,6 @@ elif(argv[2] == "pred" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "c
   if(argv[2] == "catr"):
     cmd[1] = "cat"
   subprocess.call(cmd)
-elif(argv[2] == "ppred" or argv[2] == "ppredr"):
-  roots = []
-  for s in argv[3:]:
-    try:
-      pixels = int(s)
-      continue
-    except:
-      r, e = os.path.splitext(s)
-      roots.append(r)
-  #cmd = [argv[1], argv[2], "1", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
-  #cmd = [argv[1], argv[2], "2", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
-  cmd = [argv[1], argv[2], "4", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
-  #cmd = [argv[1], argv[2], "20", str(tppred), str(zratio), str(pixels), str(comp), "pose"]
-  for s in roots:
-    cmd.append(s + ".ppm")
-    if(argv[2] == "ppred"):
-      cmd.append(s + "-bump.ppm")
-    else:
-      cmd.append(s + ".ppm")
-  print(" ".join(cmd))
-  subprocess.call(cmd)
-  subprocess.call(["ffmpeg", "-i", "pose%d.ppm", "-frame_drop_threshold", "0.0", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "pose.mp4"])
 elif(argv[2] == "retrace" or argv[2] == "newtrace" or argv[2] == "retrace2"):
   idx = 3
   try:
