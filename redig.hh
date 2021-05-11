@@ -124,8 +124,7 @@ private:
   inline bool isClockwise(const Vec3 p[3]) const;
   inline bool onTriangle(T& z, const Triangles& tri, const Vec2& geom) const;
   inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const;
-  inline bool sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p, const Vec2& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
-  inline bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const bool& extend = true, const T& err = T(1) / T(100000)) const;
+  inline bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const T& err = T(1) / T(100000)) const;
   Mat  tilt(const Mat& in, vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(100000)) const;
   inline int  getImgPt(const int& y, const int& h) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
@@ -1210,20 +1209,14 @@ template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle
   return work.solveN();
 }
 
-template <typename T> inline bool reDig<T>::sameSide2(const Vec2& p0, const Vec2& p1, const Vec2& p2, const Vec2& q, const bool& extend, const T& err) const {
-  const Vec2 dlt(p1 - p0);
-        Vec2 dp(p2 - p0);
+template <typename T> inline bool reDig<T>::sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const T& err) const {
+  auto dlt(p1 - p0);
+  auto dp(p2 - p0);
+  dlt[2] = dp[2] = T(0);
   if(T(0) < dlt.dot(dlt))
     dp -= dlt * dlt.dot(dp) / dlt.dot(dlt);
   // N.B. dp.dot(p1 - p0) >> 0.
-  return dp.dot(q - p0) >= (extend ? - T(1) : T(1)) * (abs(dp[0]) + abs(dp[1])) * err;
-}
-
-template <typename T> inline bool reDig<T>::sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const bool& extend, const T& err) const {
-  Vec2 q0(2), q1(2), q2(2), qq(2);
-  q0[0] = p0[0]; q0[1] = p0[1]; q1[0] = p1[0]; q1[1] = p1[1];
-  q2[0] = p2[0]; q2[1] = p2[1]; qq[0] = q[0];  qq[1] = q[1];
-  return sameSide2(q0, q1, q2, qq, extend, err);
+  return dp.dot(q - p0) >= (abs(dp[0]) + abs(dp[1])) * err;
 }
 
 // <[x, y, t], triangle.n> == triangle.z
@@ -1239,9 +1232,10 @@ template <typename T> inline bool reDig<T>::onTriangle(T& z, const Triangles& tr
   // <v0 t + camera, tri.n> = tri.z
   const T t((tri.z - tri.n.dot(camera)) / (tri.n.dot(v0)));
   z = camera[2] + v0[2] * t;
-  return (sameSide3(tri.p.col(0), tri.p.col(1), tri.p.col(2), camera, true, T(0125) / T(1000)) &&
-          sameSide3(tri.p.col(1), tri.p.col(2), tri.p.col(0), camera, true, T(0125) / T(1000)) &&
-          sameSide3(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, true, T(0125) / T(1000)));
+  static const auto err(- T(0125) / T(1000));
+  return sameSide3(tri.p.col(0), tri.p.col(1), tri.p.col(2), camera, err) &&
+         sameSide3(tri.p.col(1), tri.p.col(2), tri.p.col(0), camera, err) &&
+         sameSide3(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, err);
 }
 
 template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const {
@@ -1338,16 +1332,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vecto
   std::mt19937 engine(seed());
   std::shuffle(triangles.begin(), triangles.end(), engine);
 #if defined(_OPENMP)
-  vector<vector<omp_lock_t> > lock;
-  vector<omp_lock_t> llock;
-  llock.resize(result.cols(), omp_lock_t());
-  lock.resize(result.rows(), llock);
-  for(int i = 0; i < lock.size(); i ++)
-    for(int j = 0; j < lock[i].size(); j ++)
-      omp_init_lock(&lock[i][j]);
-#endif
-  // able to boost with divide and conquer.
-#if defined(_OPENMP)
 #pragma omp parallel for schedule(dynamic)
 #endif
   for(int j = 0; j < triangles.size(); j ++) {
@@ -1363,26 +1347,18 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vecto
         midgeom[0] = y;
         midgeom[1] = x;
         if(onTriangle(z, tri, midgeom) && isfinite(z)) {
-          {
 #if defined(_OPENMP)
-            omp_set_lock(&lock[y][x]);
+#pragma omp critical
 #endif
+          {
             if(zb(y, x) < z) {
               result(y, x) = tri.c;
               zb(y, x)     = z;
             }
-#if defined(_OPENMP)
-            omp_unset_lock(&lock[y][x]);
-#endif
           }
         }
       }
   }
-#if defined(_OPENMP)
-  for(int i = 0; i < lock.size(); i ++)
-    for(int j = 0; j < lock[i].size(); j ++)
-      omp_destroy_lock(&lock[i][j]);
-#endif
   return result;
 }
 

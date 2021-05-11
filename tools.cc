@@ -10,9 +10,6 @@
 #include <cctype>
 #include <random>
 #include <assert.h>
-#if defined(_OPENMP)
-#include <omp.h>
-#endif
 
 #include "lieonn.hh"
 typedef myfloat num_t;
