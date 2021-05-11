@@ -8,6 +8,7 @@
 #include <map>
 #include <algorithm>
 #include <cctype>
+#include <random>
 #include <assert.h>
 #if defined(_OPENMP)
 #include <omp.h>
@@ -275,9 +276,10 @@ int main(int argc, const char* argv[]) {
                      num_t(index) / num_t(Mindex) * zratio *
                        sqrt(num_t(data[0].rows() * data[0].cols())) :
                      - num_t(1000000));
-    if(is_obj)
-      tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt), depth);
-    else
+    if(is_obj) {
+      auto tp (redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1), mtilt));
+      tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), tp, depth);
+    } else
       tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, depth);
     for(int j = 0; j < 3; j ++)
       data[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
