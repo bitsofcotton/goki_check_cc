@@ -14,7 +14,9 @@
 #if !defined(_REDIG_)
 
 template <typename T> class match_t;
-template <typename T> class Filter;
+template <typename T> static inline T getImgPt(const T& y, const T& h);
+template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& theta);
+template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>& dr, const SimpleMatrix<T>& d);
 
 using std::swap;
 using std::abs;
@@ -121,7 +123,6 @@ private:
   void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
   inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& depth = - T(1000)) const;
-  inline int  getImgPt(const int& y, const int& h) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
   
   T   Pi;
@@ -791,9 +792,9 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& rot) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
-  if(rot == 0) {
+  if(n == 0) {
     const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 4, - abs(psi))));
     const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 4,   abs(psi))));
           Mat  result(color.rows(), color.cols());
@@ -838,7 +839,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
           const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
           for(int i = 0; i < result.rows(); i ++)
             work[i] += (k < Dop0.size() / 2 ? color0 : color1)(i,
-              getImgPt(x0, color.cols())) * Dop0[k];
+              getImgPt<int>(x0, color.cols())) * Dop0[k];
         }
         for(int i = 0; i < work.size(); i ++)
           if(zscore(i, j) < abs(work[i])) {
@@ -850,14 +851,13 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
     return result;
   }
   static const auto Pi(atan2(T(1), T(1)) * T(4));
-  Filter<T> filter;
   Mat res(color * T(0));
-  for(int i = 0; i < rot; i ++) {
-    const auto theta((T(i) - T(rot - 1) / T(2)) * atan(T(1)) / (T(rot) / T(2)));
-    res += filter.getCenter(filter.rot(bump(filter.rot(color, theta),
-             filter.rot(bumpm, theta), psi), - theta), color);
+  for(int i = 0; i < n; i ++) {
+    const auto theta((T(i) - T(n - 1) / T(2)) * atan(T(1)) / (T(n) / T(2)));
+    res += center<T>(rotate<T>(bump(rotate<T>(color, theta),
+             rotate<T>(bumpm, theta), psi), - theta), color);
   }
-  return res /= T(rot);
+  return res /= T(n);
 }
 
 template <typename T> vector<vector<int> > reDig<T>::floodfill(const Mat& mask, const vector<Vec>& points) {
@@ -1268,11 +1268,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
     drawMatchTriangle(result, zbi.p.col(0), zbi.p.col(1), zbi.p.col(2), zbi.c);
   }
   return result;
-}
-
-template <typename T> inline int reDig<T>::getImgPt(const int& y, const int& h) const {
-  static Filter<T> filter;
-  return filter.getImgPt(y, h);
 }
 
 #define _REDIG_

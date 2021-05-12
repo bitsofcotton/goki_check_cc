@@ -58,7 +58,6 @@ int main(int argc, const char* argv[]) {
   }
   simpleFile<num_t> file;
   reDig<num_t>      redig;
-  Filter<num_t>     filter;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "integ") == 0 ||
      strcmp(argv[1], "rot") == 0 ||
@@ -72,44 +71,43 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
      strcmp(argv[1], "b2wd")    == 0) {
-    if(argc < 4) {
+    if(argc < 3) {
       usage();
       return 0;
     }
-    if(4 < argc && strcmp(argv[1], "b2wd"))
-      filter = Filter<num_t>(std::atoi(argv[4]));
-    const auto rot(5 < argc ? std::atoi(argv[5]) : 1);
+    const auto recur(4 < argc ? std::atoi(argv[4]) : 1);
+    const auto n(5 < argc ? std::atoi(argv[5]) : 1);
     typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.COLLECT_BOTH, rot);
+        data[i] = filter<num_t>(data[i], COLLECT_BOTH, n, recur);
     else if(strcmp(argv[1], "integ") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.INTEG_BOTH, rot);
+        data[i] = filter<num_t>(data[i], INTEG_BOTH, n, recur);
     else if(strcmp(argv[1], "rot") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.getCenter(filter.rot(filter.rot(data[i], atan(num_t(1)) / num_t(rot)), - atan(num_t(1)) / num_t(rot)), data[i]);
+        data[i] = center<num_t>(rotate<num_t>(rotate<num_t>(data[i], atan(num_t(1)) / num_t(n)), - atan(num_t(1)) / num_t(n)), data[i]);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.compute(data[i], filter.ENLARGE_BOTH, rot), filter.CLIP);
+        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, n, recur), CLIP);
     else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.FLARGE_BOTH, rot);
+        data[i] = filter<num_t>(data[i], FLARGE_BOTH, n, recur);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.compute(data[i], filter.EXTEND_BOTH, rot), filter.CLIP);
+        data[i] = filter<num_t>(filter<num_t>(data[i], EXTEND_BOTH, n, recur), CLIP);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(data[i], filter.BLINK_BOTH, rot);
+        data[i] = filter<num_t>(data[i], BLINK_BOTH, n, recur);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter.compute(filter.compute(data[i], filter.SHARPEN_BOTH, rot), filter.CLIP);
+        data[i] = filter<num_t>(filter<num_t>(data[i], SHARPEN_BOTH, n, recur), CLIP);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = redig.autoLevel(filter.compute(redig.rgb2d(data), filter.BUMP_BOTH, rot), 4 * (data[0].rows() + data[0].cols()));
+      data[0] = data[1] = data[2] = redig.autoLevel(filter<num_t>(redig.rgb2d(data), BUMP_BOTH, n, recur), 4 * (data[0].rows() + data[0].cols()));
     else if(strcmp(argv[1], "represent") == 0)
-      data[0] = data[1] = data[2] = filter.compute(redig.rgb2d(data), filter.REPRESENT, rot);
+      data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), REPRESENT, n, recur);
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -574,7 +572,7 @@ int main(int argc, const char* argv[]) {
         }
       }
       for(int i = 0; i < 3; i ++)
-        out[i] = filter.compute(out[i], filter.CLIP);
+        out[i] = filter<num_t>(out[i], CLIP);
       file.savep2or3(argv[2], out, ! true);
     } else if(strcmp(argv[1], "cat") == 0) {
       std::vector<typename simpleFile<num_t>::Mat> rep;
@@ -728,19 +726,19 @@ int main(int argc, const char* argv[]) {
             const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
             buf(j, k) = idx < data[i0].size() ? data[i0][idx] : num_t(0);
           }
-        Filter<num_t>::Mat buf2;
+        typename simpleFile<num_t>::Mat buf2;
         if(strcmp(argv[2], "diff") == 0)
           buf2 = (midft * (
-            filter.compute(mdft.template real<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() +
-            filter.compute(mdft.template imag<num_t>() * buf, filter.DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, DETECT_X).template cast<complex<num_t> >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "sharpen") == 0)
           buf2 = (midft * (
-            filter.compute(mdft.template real<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() +
-            filter.compute(mdft.template imag<num_t>() * buf, filter.SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, SHARPEN_X).template cast<complex<num_t> >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "bump") == 0)
           buf2 = (midft * (
-            filter.compute(mdft.template real<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() +
-            filter.compute(mdft.template imag<num_t>() * buf, filter.BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, BUMP_X).template cast<complex<num_t> >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
         for(int k = 0; k < buf2.cols(); k ++)
           for(int j = 0; j < buf2.rows(); j ++) {
             const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);

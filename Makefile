@@ -20,5 +20,5 @@ all:	tools
 clean:
 	@rm -rf ${CLEANFILES}
 
-tools.o:        tools.cc catg.hh decompose.hh enlarge.hh fileio.hh ifloat.hh match.hh p0.hh p1.hh redig.hh simplelin.hh
+tools.o:        tools.cc catg.hh decompose.hh enlarge.hh fileio.hh match.hh p0.hh p1.hh redig.hh lieonn.hh
 

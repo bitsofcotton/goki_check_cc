@@ -5,12 +5,9 @@ And this library is written in deterministic way. So this don't use machine lear
 # How to use
 Please touch Makefile for libc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
-For speed, we need http://eigen.tuxfamily.org/ library.  
 We need imagemagick for normal use, and ffmpeg to make .mp4.  
 
 # Status Parameters
-* enlarge.hh
-* * recur : operator recursive num.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
@@ -56,6 +53,19 @@ Searching the Internet more...
 Please refer tools.cc, and please include with namespace directive
 (but include guard definition should harms).  
 They are NOT thread-safe.  
+
+# Things undone.
+If we use bitsofcotton/catg for many of inputs and categorize, then,
+get invariants multiple times alike in P012L, the structure will be gained.
+So if we don't have much information for some image to input, we can complement
+it with optimize way. But this needs huge time on calculation,
+they are not implemented. And it is predicted that it's slight difference to
+ongoing deep learning methods.
+(But we can use them with pseudo enlarge with such method.)
+
+# Known Bug not to be fixed.
+reDig::edge returns relaxed edges, this can be fixed with multiple on counting
++/- on same scan line.
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)

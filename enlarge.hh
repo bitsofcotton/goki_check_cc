@@ -11,7 +11,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !defined(_ENLARGE2X_)
+#if !defined(_FILTER_)
 
 using std::cerr;
 using std::flush;
@@ -21,113 +21,157 @@ using std::max;
 using std::min;
 using std::abs;
 
-// This class is NOT thread safe.
-template <typename T> class Filter {
-public:
-  typedef enum {
-    SHARPEN_X,
-    SHARPEN_Y,
-    SHARPEN_BOTH,
-    ENLARGE_X,
-    ENLARGE_Y,
-    ENLARGE_BOTH,
-    FLARGE_X,
-    FLARGE_Y,
-    FLARGE_BOTH,
-    DETECT_X,
-    DETECT_Y,
-    DETECT_BOTH,
-    INTEG_X,
-    INTEG_Y,
-    INTEG_BOTH,
-    COLLECT_X,
-    COLLECT_Y,
-    COLLECT_BOTH,
-    BUMP_X,
-    BUMP_Y,
-    BUMP_BOTH,
-    EXTEND_X,
-    EXTEND_Y,
-    EXTEND_BOTH,
-    BLINK_X,
-    BLINK_Y,
-    BLINK_BOTH,
-    REPRESENT,
-    CLIP,
-    ABS } direction_t;
-  typedef SimpleMatrix<T> Mat;
-  typedef SimpleVector<T> Vec;
-  Filter(const int& recur = 2);
-  ~Filter();
-  Mat compute(const Mat& data, const direction_t& dir, const int& n = 0);
-  inline int getImgPt(const int& y, const int& h) const;
-  inline Mat rot(const Mat& d, const T& theta) const;
-  inline Mat getCenter(const Mat& dr, const Mat& d) const;
+typedef enum {
+  SHARPEN_X,
+  SHARPEN_Y,
+  SHARPEN_BOTH,
+  ENLARGE_X,
+  ENLARGE_Y,
+  ENLARGE_BOTH,
+  FLARGE_X,
+  FLARGE_Y,
+  FLARGE_BOTH,
+  DETECT_X,
+  DETECT_Y,
+  DETECT_BOTH,
+  INTEG_X,
+  INTEG_Y,
+  INTEG_BOTH,
+  COLLECT_X,
+  COLLECT_Y,
+  COLLECT_BOTH,
+  BUMP_X,
+  BUMP_Y,
+  BUMP_BOTH,
+  EXTEND_X,
+  EXTEND_Y,
+  EXTEND_BOTH,
+  BLINK_X,
+  BLINK_Y,
+  BLINK_BOTH,
+  REPRESENT,
+  CLIP,
+  ABS } direction_t;
 
-private:
-  int recur;
-};
-
-template <typename T> Filter<T>::Filter(const int& recur) {
-  this->recur = recur;
+template <typename T> static inline T getImgPt(const T& y, const T& h) {
+  auto yy(y % (2 * h));
+  if(yy < 0)
+    yy = - yy;
+  if(yy >= h)
+    yy = h - (yy - h);
+  return yy % h;
 }
 
-template <typename T> Filter<T>::~Filter() {
-  ;
+template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& theta) {
+  assert(abs(theta) < atan(T(1)));
+  const auto c(cos(theta));
+  const auto s(sin(theta));
+  SimpleMatrix<T> res(abs(int(c * T(d.rows()) - s * T(d.cols()))) +
+                        abs(int(s * T(d.cols()))) * 2,
+                      abs(int(s * T(d.rows()) + c * T(d.cols()))) +
+                        abs(int(c * T(d.rows()))) * 2);
+  const T offy(abs(int(s * T(d.cols()))));
+  const T offx(abs(int(c * T(d.rows()))));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = 0; j < res.rows(); j ++)
+    for(int k = 0; k < res.cols(); k ++)
+      res(j, k) = T(0);
+  const auto diag(int(sqrt(res.rows() * res.rows() +
+                           res.cols() * res.cols())) + 1);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = - diag; j < diag; j ++)
+    for(int k = - diag; k < diag; k ++) {
+      const int yy(c * T(j) - s * T(k) + offy);
+      const int xx(s * T(j) + c * T(k) + offx);
+      if(0 <= yy && yy < res.rows() &&
+         0 <= xx && xx < res.cols()) {
+        const auto dyy(getImgPt<int>(j, d.rows()));
+        const auto dxx(getImgPt<int>(k, d.cols()));
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+        {
+          res(yy, xx) = res(min(yy + 1, int(res.rows()) - 1), xx) =
+            res(yy, min(xx + 1, int(res.cols()) - 1)) =
+            res(min(yy + 1, int(res.rows()) - 1),
+                min(xx + 1, int(res.cols()) - 1)) =
+              d(dyy, dxx);
+        }
+      }
+    }
+  return res;
 }
 
-template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data, const direction_t& dir, const int& n) {
-  assert(0 <= n);
+template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>& dr, const SimpleMatrix<T>& d) {
+  assert(d.rows() <= dr.rows() && d.cols() <= dr.cols());
+  SimpleMatrix<T> res(d.rows(), d.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < d.rows(); i ++)
+    for(int j = 0; j < d.cols(); j ++)
+      res(i, j) = dr(min(i + (dr.rows() - d.rows()) / 2, dr.rows() - 1),
+                     min(j + (dr.cols() - d.cols()) / 2, dr.cols() - 1));
+  return res;
+}
+
+// N.B. this function is NOT thread safe.
+template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& n = 0, const int& recur = 2) {
+  assert(0 <= n && 0 < recur);
   static const auto Pi(atan2(T(1), T(1)) * T(4));
   if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH) {
     switch(dir) {
     case SHARPEN_BOTH:
-      return compute(compute(data, SHARPEN_X), SHARPEN_Y);
+      return filter<T>(filter<T>(data, SHARPEN_X), SHARPEN_Y);
     case ENLARGE_BOTH:
-      return compute(compute(data, ENLARGE_X), ENLARGE_Y);
+      return filter<T>(filter<T>(data, ENLARGE_X), ENLARGE_Y);
     case FLARGE_BOTH:
-      return compute(compute(data, FLARGE_X), FLARGE_Y);
+      return filter<T>(filter<T>(data, FLARGE_X), FLARGE_Y);
     case DETECT_BOTH:
-      return (compute(data, DETECT_X) + compute(data, DETECT_Y)) / T(2);
+      return (filter<T>(data, DETECT_X) + filter<T>(data, DETECT_Y)) / T(2);
     case INTEG_BOTH:
-      return (compute(data, INTEG_X) + compute(data, INTEG_Y)) / T(2);
+      return (filter<T>(data, INTEG_X) + filter<T>(data, INTEG_Y)) / T(2);
     case COLLECT_BOTH:
-      return (compute(data, COLLECT_X) + compute(data, COLLECT_Y)) / T(2);
+      return (filter<T>(data, COLLECT_X) + filter<T>(data, COLLECT_Y)) / T(2);
     case BUMP_BOTH:
       // eigen sum on curvature.
-      return (compute(data, BUMP_X) + compute(data, BUMP_Y)) / T(2);
+      return (filter<T>(data, BUMP_X) + filter<T>(data, BUMP_Y)) / T(2);
     case EXTEND_BOTH:
-      return compute(compute(data, EXTEND_X), EXTEND_Y);
+      return filter<T>(filter<T>(data, EXTEND_X), EXTEND_Y);
     case BLINK_BOTH:
-      return compute(compute(data, BLINK_X), BLINK_Y);
+      return filter<T>(filter<T>(data, BLINK_X), BLINK_Y);
     case SHARPEN_X:
-      return compute(data.transpose(), SHARPEN_Y).transpose();
+      return filter<T>(data.transpose(), SHARPEN_Y).transpose();
     case ENLARGE_X:
-      return compute(data.transpose(), ENLARGE_Y).transpose();
+      return filter<T>(data.transpose(), ENLARGE_Y).transpose();
     case FLARGE_X:
-      return compute(data.transpose(), FLARGE_Y).transpose();
+      return filter<T>(data.transpose(), FLARGE_Y).transpose();
     case DETECT_X:
-      return compute(data.transpose(), DETECT_Y).transpose();
+      return filter<T>(data.transpose(), DETECT_Y).transpose();
     case INTEG_X:
-      return compute(data.transpose(), INTEG_Y).transpose();
+      return filter<T>(data.transpose(), INTEG_Y).transpose();
     case COLLECT_X:
-      return compute(data.transpose(), COLLECT_Y).transpose();
+      return filter<T>(data.transpose(), COLLECT_Y).transpose();
     case BUMP_X:
-      return compute(data.transpose(), BUMP_Y).transpose();
+      return filter<T>(data.transpose(), BUMP_Y).transpose();
     case EXTEND_X:
-      return compute(data.transpose(), EXTEND_Y).transpose();
+      return filter<T>(data.transpose(), EXTEND_Y).transpose();
     case BLINK_X:
-      return compute(data.transpose(), BLINK_Y).transpose();
+      return filter<T>(data.transpose(), BLINK_Y).transpose();
     case DETECT_Y:
       return diff<T>(  data.rows()) * data;
     case INTEG_Y:
       return diff<T>(- data.rows()) * data;
     case COLLECT_Y:
-      return compute(compute(data, DETECT_Y), ABS);
+      return filter<T>(filter<T>(data, DETECT_Y), ABS);
     case SHARPEN_Y:
       {
         assert(2 <= data.rows());
-        static vector<vector<Mat> > Sop;
+        static vector<vector<SimpleMatrix<T> > > Sop;
         int idx(0);
         for(int i = 0; i < Sop.size(); i ++)
           if(Sop[i][0].rows() == data.rows()) {
@@ -136,8 +180,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           }
         cerr << "s" << flush;
         idx = Sop.size();
-        Sop.emplace_back(vector<Mat>());
-        Sop[idx].emplace_back(Mat(data.rows(), data.rows()));
+        Sop.emplace_back(vector<SimpleMatrix<T> >());
+        Sop[idx].emplace_back(SimpleMatrix<T>(data.rows(), data.rows()));
         {
           auto& sop(Sop[idx][0]);
           for(int i = 0; i < sop.rows(); i ++)
@@ -157,7 +201,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               DFTS.row(i) /= exp(complex<T>(T(0), T(1)) * Pi * complex<T>(T(i)) / T(DFTS.rows())) - complex<T>(T(1));
             }
             DFTS /= T(DFTS.rows() - 1);
-            Mat lSop(- (dft<T>(- ss) * DFTS).template real<T>());
+            SimpleMatrix<T> lSop(- (dft<T>(- ss) * DFTS).template real<T>());
             for(int i = 0; i < lSop.rows(); i ++)
               lSop(i, i) += T(1);
             for(int i = 0; i < sop.rows(); i ++)
@@ -175,7 +219,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               }
           }
           sop /= T(cnt);
-          const Mat SS(sop);
+          const SimpleMatrix<T> SS(sop);
           for(int i = 0; i < SS.rows(); i ++)
             for(int j = 0; j < SS.cols(); j ++)
               sop(SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
@@ -190,14 +234,14 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
     case ENLARGE_Y:
       {
         assert(2 <= data.rows());
-        static vector<vector<Mat> > Eop;
+        static vector<vector<SimpleMatrix<T> > > Eop;
         const auto& size(data.rows());
         if(Eop.size() <= size)
-          Eop.resize(size + 1, vector<Mat>());
+          Eop.resize(size + 1, vector<SimpleMatrix<T> >());
         else if(recur < Eop[size].size())
           goto eopi;
         if(Eop[size].size() <= recur)
-          Eop[size].resize(recur + 1, Mat());
+          Eop[size].resize(recur + 1, SimpleMatrix<T>());
         {
           auto& eop(Eop[size][recur]);
           if(eop.cols() == size)
@@ -213,12 +257,12 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       break;
     case FLARGE_Y:
       {
-        Mat work(data);
+        SimpleMatrix<T> work(data);
         for(int i = 0; i < work.rows(); i ++)
           for(int j = 0; j < work.cols(); j ++)
             work(i, j) += T(1) / T(256);
         Decompose<T> e(work.rows());
-        Mat result(work.rows() * recur, work.cols());
+        SimpleMatrix<T> result(work.rows() * recur, work.cols());
         for(int i = 0; i < work.cols(); i ++)
           result.setCol(i, e.enlarge(work.col(i), recur));
         return result;
@@ -226,8 +270,8 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       break;
     case BUMP_Y:
       {
-        Mat result(data.rows(), data.cols());
-        Mat zscore(data.rows(), data.cols());
+        SimpleMatrix<T> result(data.rows(), data.cols());
+        SimpleMatrix<T> zscore(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -239,13 +283,13 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           }
         const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
         const int  dratio(sqrt(sqrt(rxy)));
-              Vec  camera(2);
-              Vec  cpoint(2);
+              SimpleVector<T> camera(2);
+              SimpleVector<T> cpoint(2);
         camera[0] = T(0);
         camera[1] = T(1);
         cpoint[0] = T(1) / T(2 * dratio);
         for(int zi = 0; zi < dratio; zi ++) {
-          Mat A(data.rows(), data.cols());
+          SimpleMatrix<T> A(data.rows(), data.cols());
           for(int i = 0; i < A.rows(); i ++)
             for(int j = 0; j < A.cols(); j ++)
               A(i, j) = T(0);
@@ -268,7 +312,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
 #endif
           for(int i = 0; i < A.rows(); i ++) {
             for(int j = 0; j < Dop0.size(); j ++)
-              A.row(i) += data.row(getImgPt(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
+              A.row(i) += data.row(getImgPt<int>(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
           }
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -286,7 +330,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       break;
     case EXTEND_Y:
       {
-        Mat result(data.rows() + 2 * recur, data.cols());
+        SimpleMatrix<T> result(data.rows() + 2 * recur, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -343,7 +387,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       return Decompose<T>(recur).represent(data, n);
     case CLIP:
       {
-        Mat result(data.rows(), data.cols());
+        SimpleMatrix<T> result(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -356,7 +400,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       break;
     case ABS:
       {
-        Mat result(data.rows(), data.cols());
+        SimpleMatrix<T> result(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -368,82 +412,18 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
       }
       break;
     }
-    assert(0 && "unknown command in Filter (should not be reached.)");
-    return Mat();
+    assert(0 && "unknown command in filter (should not be reached.)");
+    return SimpleMatrix<T>();
   }
-  auto res(compute(data, dir));
+  auto res(filter<T>(data, dir, 0, recur));
   for(int i = 0; i < n; i ++) {
     cerr << "r" << flush;
     const auto theta((T(i) - T(n - 1) / T(2)) * atan(T(1)) / (T(n) / T(2)));
-    res += getCenter(rot(compute(rot(data, theta), dir), - theta), res);
+    res += center<T>(rotate<T>(filter<T>(rotate<T>(data, theta), dir, 0, recur), - theta), res);
   }
   return res /= T(n + 1);
 }
 
-template <typename T> inline int Filter<T>::getImgPt(const int& y, const int& h) const {
-  int yy(y % (2 * h));
-  if(yy < 0)
-    yy = - yy;
-  if(yy >= h)
-    yy = h - (yy - h);
-  return yy % h;
-}
-
-template <typename T> inline typename Filter<T>::Mat Filter<T>::rot(const Mat& d, const T& theta) const {
-  assert(abs(theta) < atan(T(1)));
-  const auto c(cos(theta));
-  const auto s(sin(theta));
-  Mat res(abs(int(c * T(d.rows()) - s * T(d.cols()))) + abs(int(s * T(d.cols()))) * 2,
-          abs(int(s * T(d.rows()) + c * T(d.cols()))) + abs(int(c * T(d.rows()))) * 2);
-  const T offy(abs(int(s * T(d.cols()))));
-  const T offx(abs(int(c * T(d.rows()))));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int j = 0; j < res.rows(); j ++)
-    for(int k = 0; k < res.cols(); k ++)
-      res(j, k) = T(0);
-  const auto diag(int(sqrt(res.rows() * res.rows() +
-                           res.cols() * res.cols())) + 1);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int j = - diag; j < diag; j ++)
-    for(int k = - diag; k < diag; k ++) {
-      const int yy(c * T(j) - s * T(k) + offy);
-      const int xx(s * T(j) + c * T(k) + offx);
-      if(0 <= yy && yy < res.rows() &&
-         0 <= xx && xx < res.cols()) {
-        const auto dyy(getImgPt(j, d.rows()));
-        const auto dxx(getImgPt(k, d.cols()));
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-        {
-          res(yy, xx) = res(min(yy + 1, int(res.rows()) - 1), xx) =
-            res(yy, min(xx + 1, int(res.cols()) - 1)) =
-            res(min(yy + 1, int(res.rows()) - 1),
-                min(xx + 1, int(res.cols()) - 1)) =
-              d(dyy, dxx);
-        }
-      }
-    }
-  return res;
-}
-
-template <typename T> inline typename Filter<T>::Mat Filter<T>::getCenter(const Mat& dr, const Mat& d) const {
-  assert(d.rows() <= dr.rows() && d.cols() <= dr.cols());
-  Mat res(d.rows(), d.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < d.rows(); i ++)
-    for(int j = 0; j < d.cols(); j ++)
-      res(i, j) = dr(min(i + (dr.rows() - d.rows()) / 2, dr.rows() - 1),
-                     min(j + (dr.cols() - d.cols()) / 2, dr.cols() - 1));
-  return res;
-}
-
-#define _ENLARGE2X_
+#define _FILTER_
 #endif
 
