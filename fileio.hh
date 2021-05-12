@@ -160,7 +160,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec>& data, const T& Mw0, const T& Mh0, const vector<Veci>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0)) {
+  bool saveobj(const vector<Vec>& data, const T& Mw0, const T& Mh0, const vector<Veci>& polys, const char* filename, const vector<int>& edges = vector<int>(), const T& addstand = T(0)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -213,27 +213,26 @@ public:
           }
         }
         assert(0 < edges.size());
-        for(int ii = 0; ii < edges.size(); ii ++) if(edges[ii].size())
-          for(int i0 = 0; i0 < edges[ii].size(); i0 ++) {
-            const auto& outer(edges[ii]);
-            const int   i1((i0 + 1) % edges[ii].size());
-            const int   ii0(data.size() + outer[i0] + 1);
-            const int   ii1(outer[i1] + 1);
-            const int   ii2(data.size() + outer[i1] + 1);
-            const int   ii3(outer[i0] + 1);
-            assert(0 <= outer[i0] && outer[i0] < data.size());
-            assert(0 <= outer[i1] && outer[i1] < data.size());
-            if(ii0 != ii1 && ii1 != ii2 && ii2 != ii0) {
-              output << "f " << ii0 << "/" << ii0 << "/" << ii0;
-              output << " "  << ii1 << "/" << ii1 << "/" << ii1;
-              output << " "  << ii2 << "/" << ii2 << "/" << ii2 << endl;
-            }
-            if(ii0 != ii3 && ii3 != ii1 && ii1 != ii0) {
-              output << "f " << ii0 << "/" << ii0 << "/" << ii0;
-              output << " "  << ii3 << "/" << ii3 << "/" << ii3;
-              output << " "  << ii1 << "/" << ii1 << "/" << ii1 << endl;
-            }
+        for(int i0 = 0; i0 < edges.size(); i0 ++) {
+          const auto& outer(edges);
+          const int   i1((i0 + 1) % edges.size());
+          const int   ii0(data.size() + outer[i0] + 1);
+          const int   ii1(outer[i1] + 1);
+          const int   ii2(data.size() + outer[i1] + 1);
+          const int   ii3(outer[i0] + 1);
+          assert(0 <= outer[i0] && outer[i0] < data.size());
+          assert(0 <= outer[i1] && outer[i1] < data.size());
+          if(ii0 != ii1 && ii1 != ii2 && ii2 != ii0) {
+            output << "f " << ii0 << "/" << ii0 << "/" << ii0;
+            output << " "  << ii1 << "/" << ii1 << "/" << ii1;
+            output << " "  << ii2 << "/" << ii2 << "/" << ii2 << endl;
           }
+          if(ii0 != ii3 && ii3 != ii1 && ii1 != ii0) {
+            output << "f " << ii0 << "/" << ii0 << "/" << ii0;
+            output << " "  << ii3 << "/" << ii3 << "/" << ii3;
+            output << " "  << ii1 << "/" << ii1 << "/" << ii1 << endl;
+          }
+        }
       }
       output.close();
     } else {

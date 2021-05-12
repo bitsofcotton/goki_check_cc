@@ -86,6 +86,7 @@ public:
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
   vector<Veci> mesh2(const vector<Vec>& p, const vector<int>& pp) const;
+  vector<int>  edge(const vector<Vec>& p, const vector<int>& pp) const;
   void maskVectors(vector<Vec>& points, const vector<Veci>& polys, const Mat& mask);
   void maskVectors(vector<Vec>& points, vector<Veci>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& thresh = T(1) / T(128));
@@ -99,7 +100,7 @@ public:
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
   Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0) const;
-  vector<vector<int> > getEdges(const Mat& mask, const vector<Vec>& points);
+  vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   void xyz2rgb(Mat rgb[3], const Mat xyz[3]);
@@ -113,13 +114,11 @@ public:
   vector<Triangles> tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth = - T(1000)) const;
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
-  void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
   Mat  applyTrace(const pair<Vec, Vec>& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw);
 
 private:
   void drawMatchLine(Mat& map, const Vec& lref0, const Vec& lref1, const T& c) const;
   void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
-  inline bool isClockwise(const Vec p[3]) const;
   inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& depth = - T(1000)) const;
   inline int  getImgPt(const int& y, const int& h) const;
@@ -291,6 +290,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
   vector<pair<Vec, int> > sp;
   vector<pair<Vec, int> > sp2;
+  sp.reserve(pp.size());
   T m0(0);
   T m1(0);
   T M0(0);
@@ -385,14 +385,35 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   return res;
 }
 
-template <typename T> inline bool reDig<T>::isClockwise(const Vec p[3]) const {
-  Mat dc(3, 3);
-  for(int i = 0; i < 3; i ++) {
-    dc(i, 0) = T(1);
-    dc(i, 1) = p[i][0];
-    dc(i, 2) = p[i][1];
+template <typename T> vector<int> reDig<T>::edge(const vector<Vec>& p, const vector<int>& pp) const {
+  vector<pair<Vec, int> > sp;
+  sp.reserve(pp.size());
+  for(int i = 0; i < pp.size(); i ++)
+    sp.emplace_back(make_pair(p[pp[i]], pp[i]));
+  sort(sp.begin(), sp.end(), less0<pair<Vec, int> >);
+  vector<int> resl, resr;
+  int i;
+  for(i = 0; i < sp.size(); i ++) {
+    const auto y(sp[i].first[0]);
+    int jj = i;
+    for(int j = i; j < sp.size() && y == sp[j].first[0]; j ++)
+      if(sp[j].first[1] <= sp[jj].first[1])
+        jj = j;
+    resl.emplace_back(sp[jj].second);
+    jj = i;
+    for(int j = i; j < sp.size() && y == sp[j].first[0]; j ++)
+      if(sp[j].first[1] >= sp[jj].first[1])
+        jj = j;
+    resr.emplace_back(sp[jj].second);
+    i = jj + 1;
   }
-  return dc.determinant() <= T(0);
+  vector<int> res;
+  res.reserve(resl.size() + resr.size());
+  for(int i = 0; i < resl.size(); i ++)
+    res.emplace_back(std::move(resl[i]));
+  for(int i = 0; i < resr.size(); i ++)
+    res.emplace_back(std::move(resr[resr.size() - i - 1]));
+  return res;
 }
 
 template <typename T> void reDig<T>::maskVectors(vector<Vec>& points, const vector<Veci>& polys, const Mat& mask) {
@@ -599,12 +620,12 @@ template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int,
   vector<Vec>  pdst;
   vector<Veci> facets;
   getTileVec(mask, pdst, facets);
-  const auto idsts(getEdges(mask, pdst));
+  const auto idsts(floodfill(mask, pdst));
   assert(idsts.size());
   int iidst(0);
   for(int i = 1; i < idsts.size(); i ++)
     if(idsts[iidst].size() < idsts[i].size()) iidst = i;
-  const auto& idst(idsts[iidst]);
+  const auto idst(edge(pdst, idsts[iidst]));
   assert(idst.size());
   auto& yMd(hw.first.first   = pdst[idst[0]][0]);
   auto& ymd(hw.second.first  = pdst[idst[0]][0]);
@@ -623,7 +644,7 @@ template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int,
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < idst.size(); i ++) {
-    v.first[i]  = pdst[idst[i]][0];
+    v.first[ i] = pdst[idst[i]][0];
     v.second[i] = pdst[idst[i]][1];
   }
   return;
@@ -839,98 +860,56 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
   return res /= T(rot);
 }
 
-template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x) {
-  assert(mask.rows() == checked.rows() && mask.cols() == checked.cols());
-  vector<pair<int, int> > tries;
-  tries.emplace_back(make_pair(+ 1,   0));
-  tries.emplace_back(make_pair(  0, + 1));
-  tries.emplace_back(make_pair(- 1,   0));
-  tries.emplace_back(make_pair(  0, - 1));
-  vector<pair<int, int> > stack;
-  stack.emplace_back(make_pair(y, x));
-  while(stack.size()) {
-    const auto pop(stack[stack.size() - 1]);
-    stack.pop_back();
-    const int& yy(pop.first);
-    const int& xx(pop.second);
-    if(! (0 <= yy && yy < checked.rows() && 0 <= xx && xx < checked.cols()) )
-      store.emplace_back(pop);
-    else if(!checked(yy, xx)) {
-      checked(yy, xx) = true;
-      if(T(1) / T(2) < mask(yy, xx))
-        store.emplace_back(pop);
-      else
-        for(int i = 0; i < tries.size(); i ++)
-          stack.emplace_back(make_pair(yy + tries[i].first, xx + tries[i].second));
-    }
-  }
-  return;
-}
-
-template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, const vector<Vec>& points) {
+template <typename T> vector<vector<int> > reDig<T>::floodfill(const Mat& mask, const vector<Vec>& points) {
   vector<vector<int> > result;
-  if(mask.rows() <= 0 || mask.cols() <= 0)
-    return result;
-  Mat checked(mask.rows(), mask.cols());
+  SimpleMatrix<bool> checked(mask.rows(), mask.cols());
   for(int i = 0; i < checked.rows(); i ++)
     for(int j = 0; j < checked.cols(); j ++)
       checked(i, j) = false;
-  vector<pair<int, int> > store;
-  for(int i = 0; i < checked.rows(); i ++)
-    for(int j = 0; j < checked.cols(); j ++)
-      if(mask(i, j) < T(1) / T(2))
-        floodfill(checked, store, mask, i, j);
-  sort(store.begin(), store.end());
-  store.erase(unique(store.begin(), store.end()), store.end());
-  cerr << "getEdges(" << store.size() << ")" << flush;
-  
-  // stored indices.
-  vector<int> se;
-  se.reserve(store.size());
-  for( ; se.size() < store.size(); ) {
-    // tree index.
-    vector<int> e;
-    int         i(0);
-    for( ; i < store.size(); i ++)
-      if(!binary_search(se.begin(), se.end(), i))
-        break;
-    if(store.size() <= i)
-      break;
-    // get edge point tree.
-    for( ; i < store.size(); ) {
-      // get nearest points.
-      vector<int> si;
-      for(int j = 0; j < store.size(); j ++)
-        if(!binary_search(se.begin(), se.end(), j) &&
-           abs(store[i].first  - store[j].first)  <= 1 &&
-           abs(store[i].second - store[j].second) <= 1)
-          si.emplace_back(j);
-      if(!si.size())
-        break;
-      // normal vector direction.
-      sort(si.begin(), si.end());
-      int j(0);
-      // XXX: sorting is needed.
-      for( ; j < si.size(); j ++) {
-        const auto& sti(store[i]);
-        const auto& stj(store[si[j]]);
-        const auto  y(stj.first  - sti.first);
-        const auto  x(stj.second - sti.second);
-        if(T(0) <= x && x < T(mask.cols()) &&
-           T(0) <= y && y < T(mask.rows()) &&
-           mask(y, x) < T(1) / T(2))
-          break;
+  for(int i = 0; i < points.size(); i ++) {
+    const auto& pi(points[i]);
+    const int   y0(pi[0]);
+    const int   x0(pi[1]);
+    if(0 <= y0 && y0 < mask.rows() &&
+       0 <= x0 && x0 < mask.cols() &&
+       mask(y0, x0) < T(1) / T(2)) {
+      vector<pair<T, T> > tries;
+      tries.emplace_back(make_pair(+ T(vbox),         0));
+      tries.emplace_back(make_pair(        0, + T(vbox)));
+      tries.emplace_back(make_pair(- T(vbox),         0));
+      tries.emplace_back(make_pair(        0, - T(vbox)));
+      vector<pair<int, int> > stack;
+      vector<int> store;
+      stack.emplace_back(make_pair(i, i));
+      while(stack.size()) {
+        const auto pop(stack[stack.size() - 1]);
+        stack.pop_back();
+        if(pop.first < 0 || points.size() <= pop.first)
+          store.emplace_back(pop.second);
+        const int& yy(points[pop.first][0]);
+        const int& xx(points[pop.first][1]);
+        if(! (0 <= yy && yy < checked.rows() &&
+              0 <= xx && xx < checked.cols() &&
+              mask(yy, xx) < T(1) / T(2) &&
+              !checked(yy, xx) ) )
+          store.emplace_back(pop.first);
+        else if(!checked(yy, xx)) {
+          checked(yy, xx) = true;
+          for(int ii = 0; ii < tries.size(); ii ++) {
+            const auto ny(yy + tries[ii].first);
+            const auto nx(xx + tries[ii].second);
+            for(int k = 0; k < points.size(); k ++)
+              if(abs(points[k][0] - ny) < T(1) / T(2) &&
+                 abs(points[k][1] - nx) < T(1) / T(2)) {
+                stack.emplace_back(make_pair(k, pop.first));
+                break;
+              }
+          }
+        }
       }
-      if(si.size() <= j)
-        j = 0;
-      // store.
-      i = si[j];
-      e.emplace_back(i);
-      se.emplace_back(i);
-      sort(se.begin(), se.end());
+      if(! store.size()) continue;
+      result.emplace_back(std::move(store));
     }
-    cerr << ":" << e.size() << flush;
-    result.emplace_back(move(e));
   }
   return result;
 }
@@ -1281,7 +1260,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
       zbuf.emplace_back(camera[2] + vz[2] * t, tri);
     }
   }
-  std::sort(zbuf.begin(), zbuf.end(), lessf<pair<T, Triangles> >);
+  sort(zbuf.begin(), zbuf.end(), lessf<pair<T, Triangles> >);
   int i;
   for(i = 0; i < zbuf.size() && zbuf[i].first < depth; i ++) ;
   for( ; i < zbuf.size(); i ++) {

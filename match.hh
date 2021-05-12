@@ -267,8 +267,7 @@ template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebas
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int nd = 0; nd < ndiv; nd ++) {
-    vector<T> ddiv;
-    ddiv.resize(4, T(0));
+    vector<T> ddiv(4);
     ddiv[0] = cos(T(2) * Pi * T(nd) / T(ndiv));
     ddiv[1] = sin(T(2) * Pi * T(nd) / T(ndiv));
     for(int nd2 = 0; nd2 < (norot ? 1 : ndiv); nd2 ++) {
@@ -336,7 +335,8 @@ template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebas
             work.dstpoints.emplace_back(msub[t1].j);
             work.srcpoints.emplace_back(msub[t1].k);
             tt = t1;
-          }
+          } else
+            break;
         // N.B. rough match.
         t0 += max(1, (tt - t0) / 2);
         // if it's good:

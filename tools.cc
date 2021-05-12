@@ -217,24 +217,13 @@ int main(int argc, const char* argv[]) {
     std::vector<typename simpleFile<num_t>::Veci> facets;
     redig.initialize(vbox, zratio);
     redig.getTileVec(data[0], points, facets);
-          auto edges(redig.getEdges(mask[0], points));
-    const auto points0(points);
-    if(edges.size())
-      redig.maskVectors(points, facets, mask[0]);
-    for(int i = 0; i < edges.size(); i ++)
-      for(int j = 0; j < edges[i].size(); j ++)
-        for(int k = 0; k < points.size(); k ++) {
-          const auto diff(points[k] - points0[edges[i][j]]);
-          if(diff.dot(diff) < num_t(vbox * vbox * 16)) {
-            edges[i][j] = k;
-            break;
-          }
-        }
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
+    const auto ff(redig.floodfill(redig.rgb2d(mask), points)[0]);
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
-                 facets, argv[sidx], edges, thin);
+                 redig.mesh2(points, ff), argv[sidx],
+                 redig.edge(points, ff), thin);
     file.saveMTL(argv[sidx], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
