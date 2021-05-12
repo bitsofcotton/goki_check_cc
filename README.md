@@ -8,17 +8,12 @@ This program needs ascii raw ppm files to input/output.
 For speed, we need http://eigen.tuxfamily.org/ library.  
 We need imagemagick for normal use, and ffmpeg to make .mp4.  
 
-# Parameters
+# Status Parameters
 * enlarge.hh
 * * recur : operator recursive num.
 * redig.hh
 * * vbox : size of vector gathering rectangle.
 * * rz   : z-axis output ratio.
-* match.hh
-* * ndiv    : number of divides that match angles, effects the matching errors.
-* * threshr : error tolerance rate for matching, smaller is tight.
-* * threshp : ratio of threshold for number of matched points.
-* * threshs : ratio of threshold for operator ==.
 
 # Context
 This program is inspired from re-focus photo softwares.  
@@ -33,10 +28,10 @@ Searching the Internet more...
 # Usage
     make gokicheck
     
-    gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|represent) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
-    gokicheck ppred <vbox> <thresh> <zratio> <num_of_emph> <outbase> <input0.ppm> <input0-bump.ppm> ...
-    gokicheck (pred|predr)  <output.ppm> <input0.ppm> ...
-    gokicheck cat   <output.ppm> <input0.ppm> <input0-represent.ppm> ...
+    gokicheck (collect|intg|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
+    gokicheck bumpc <psi> <rot> <color.ppm< <bump.ppm> <output.ppm>
+    gokicheck pred  <output.ppm> <input0.ppm> ...
+    gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck (tilt|sbox)    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
     gokicheck (match0|match|rmatch0|rmatch) <num_of_res_shown> <num_of_hidden_match|num_of_recursive_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
@@ -51,17 +46,16 @@ Searching the Internet more...
     gokicheck reimage  <dimension> <input.ppm> <input-src.ppm> <output.ppm> <intensity>
     gokicheck reimage2 <dimension> <input.ppm> <output.ppm> <intensity>
     python2 test.py ./gokicheck (match|match0|rmatch|rmatch0) input0.png input1.(png|obj)
-    python2 test.py ./gokicheck (cat|pred|ppred|ppredr)       input0.png input1.png ...
+    python2 test.py ./gokicheck (cat|pred|composite) input0.png input1.png ...
     python2 test.py ./gokicheck newtrace dimension size
     python2 test.py ./gokicheck retrace  dimension input.ppm intensity
     python2 test.py ./gokicheck retrace2 dimension dst.ppm src.ppm intensity
-    python2 test.py ./gokicheck (pextend|sharpen|enlarge|flarge|represent|jps|tilt|btilt|flicker|obj|sbox|demosaic|prep|presq|mask|mask0) input.png
+    python2 test.py ./gokicheck (pextend|sharpen|bump|enlarge|flarge|represent|jps|tilt|btilt|flicker|obj|sbox|demosaic|prep|presq|mask|mask0) input.png
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive
 (but include guard definition should harms).  
 They are NOT thread-safe.  
-matchPartial class default threshr is severe.
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -69,7 +63,4 @@ matchPartial class default threshr is severe.
 * https://1drv.ms/u/s!AnqkwcwMjB_PaDIfXya_M3-aLXw?e=qzfKcU
 * https://ja.osdn.net/users/bitsofcotton/
 * https://www.sourceforge.net/projects/gokicheck/ (abandoned)
-
-# Archive
-This repository is archived, so without bug report, will no change.
 

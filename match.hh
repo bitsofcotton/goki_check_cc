@@ -19,6 +19,8 @@ using std::cerr;
 using std::endl;
 using std::flush;
 using std::vector;
+using std::pair;
+using std::make_pair;
 using std::lower_bound;
 using std::upper_bound;
 using std::distance;
@@ -76,18 +78,15 @@ public:
   vector<int> dstpoints;
   vector<int> srcpoints;
   T           thresh;
-  T           rthresh;
   T           othresh;
   inline match_t() {
     thresh  = T(0);
-    rthresh = T(1) / T(100);
     othresh = T(0);
     initId();
   }
-  inline match_t(const T& thresh, const T& h, const T& w) {
+  inline match_t(const T& thresh, const T& d) {
     this->thresh  = thresh;
-    this->rthresh = pow(h * w, - T(1) / T(4));
-    this->othresh = sqrt(h * w) * thresh;
+    this->othresh = thresh * d;
     initId();
   }
   inline match_t(const match_t<T>& src) {
@@ -135,7 +134,6 @@ public:
     dstpoints  = other.dstpoints;
     srcpoints  = other.srcpoints;
     thresh     = other.thresh;
-    rthresh    = other.rthresh;
     othresh    = other.othresh;
     return *this;
   }
@@ -207,7 +205,6 @@ public:
       os << x.srcpoints[i] << " ";
     os << endl;
     os << x.thresh  << endl;
-    os << x.rthresh << endl;
     return os;
   }
   friend istream& operator >> (istream& is, match_t<T>& x) {
@@ -229,7 +226,6 @@ public:
       for(int i = 0; i < size; i ++)
         is >> x.srcpoints[i];
       is >> x.thresh;
-      is >> x.rthresh;
     } catch(...) {
       assert(0 && "match_t input failed.");
     }
@@ -237,13 +233,21 @@ public:
   }
 };
 
-template <typename T> static inline SimpleVector<T> makeG(const vector<SimpleVector<T> >& in) {
-  SimpleVector<T> result(3);
-  result[0] = result[1] = result[2] = T(0);
+template <typename T> static inline pair<pair<T, T>, pair<SimpleVector<T>, vector<SimpleVector<T> > > > makeG(const vector<SimpleVector<T> >& in) {
+  pair<pair<T, T>, pair<SimpleVector<T>, vector<SimpleVector<T> > > > res;
+  res.first.first = res.first.second = T(0);
+  res.second.second.reserve(in.size());
   assert(in.size() && in[0].size() == 3);
-  for(int i = 0; i < in.size(); i ++)
-    result += in[i];
-  return result / in.size();
+  res.second.first = in[0];
+  for(int i = 1; i < in.size(); i ++)
+    res.second.first += in[i];
+  res.second.first /= T(in.size());
+  for(int i = 0; i < in.size(); i ++) {
+    res.second.second.emplace_back(in[i] - res.second.first);
+    res.first.first  = max(res.first.first,  abs(res.second.second[i][0]));
+    res.first.second = max(res.first.second, abs(res.second.second[i][0]));
+  }
+  return res;
 }
 
 template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebase0, const vector<SimpleVector<T> >& points0, vector<match_t<T> >& result, const bool& norot = false, const int& ndiv = 40, const T& threshr = T(2), const T& threshp = T(1) / T(1000), const T& threshs = T(1) / T(10)) {
@@ -251,26 +255,14 @@ template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebas
   static const auto I(complex<T>(T(0), T(1)));
          const auto thresh(sin(T(2) * Pi / T(ndiv)) / T(2) * threshr);
   assert(thresh < T(1));
-  const auto gs(makeG(shapebase0));
-  const auto gp(makeG(points0));
-  vector<SimpleVector<T> > shapebase;
-  vector<SimpleVector<T> > points;
-  shapebase.reserve(shapebase0.size());
-  points.reserve(points0.size());
-  SimpleVector<T> gd(3);
-  gd[0] = gd[1] = gd[2] = T(0);
-  for(int i = 0; i < shapebase0.size(); i ++) {
-    shapebase.emplace_back(shapebase0[i] - gs);
-    const auto& diff(shapebase[i]);
-    gd[0] = max(gd[0], abs(diff[0]));
-    gd[1] = max(gd[1], abs(diff[1]));
-  }
-  for(int i = 0; i < points0.size(); i ++) {
-    points.emplace_back(points0[i] - gp);
-    const auto& diff(points[i]);
-    gd[0] = max(gd[0], abs(diff[0]));
-    gd[1] = max(gd[1], abs(diff[1]));
-  }
+  const auto  gs0(makeG(shapebase0));
+  const auto  gp0(makeG(points0));
+  const auto& gs(gs0.second.first);
+  const auto& gp(gp0.second.first);
+  const auto& shapebase(gs0.second.second);
+  const auto& points(gp0.second.second);
+  const auto  gd(sqrt(max(gs0.first.first * gs0.first.second,
+                          gp0.first.first * gp0.first.second)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -282,7 +274,7 @@ template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebas
     for(int nd2 = 0; nd2 < (norot ? 1 : ndiv); nd2 ++) {
       ddiv[2] = cos(T(2) * Pi * T(nd2) / T(ndiv));
       ddiv[3] = sin(T(2) * Pi * T(nd2) / T(ndiv));
-      match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
+      match_t<T> work0(threshs, gd);
       for(int k = 0; k < ddiv.size() / 2; k ++) {
         SimpleMatrix<T> lrot(3, 3);
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];

@@ -82,7 +82,6 @@ public:
   Mat  draw(const Mat& img, const vector<Vec>& shape, const vector<Vec>& emph, const vector<Veci>& hull);
   Mat  draw(const Mat& img, const vector<Vec>& shape, const vector<Veci>& hull, const bool& elim = false);
   vector<Vec> takeShape(const vector<Vec>& dst, const vector<Vec>& src, const match_t<T>& match, const T& ratio);
-  vector<Vec> takeShape(const vector<Vec>& shape, const vector<Vec>& center, const vector<Vec>& outcenter, const vector<vector<int> >& attend, const T& ratio);
   Mat  showMatch(const Mat& dstimg, const vector<Vec>& dst, const vector<Veci>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
@@ -110,7 +109,6 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay);
-  vector<vector<pair<int, int> > > getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const;
   vector<Triangles> tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m);
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth = - T(1000)) const;
@@ -123,7 +121,6 @@ private:
   void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
   inline bool isClockwise(const Vec p[3]) const;
   inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const;
-  inline bool sameSide3(const Vec& p0, const Vec& p1, const Vec& p, const Vec& q, const T& err = T(1) / T(100000)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& depth = - T(1000)) const;
   inline int  getImgPt(const int& y, const int& h) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
@@ -205,22 +202,6 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::takeShape(const v
 #endif
   for(int i = 0; i < match.srcpoints.size(); i ++)
     result[match.dstpoints[i]] += (match.transform(src[match.srcpoints[i]]) - dst[match.dstpoints[i]]) * ratio;
-  return result;
-}
-
-template <typename T> vector<typename reDig<T>::Vec> reDig<T>::takeShape(const vector<Vec>& shape, const vector<Vec>& center, const vector<Vec>& outcenter, const vector<vector<int> >& attend, const T& ratio) {
-  assert(center.size() == outcenter.size());
-  assert(center.size() == attend.size());
-  vector<Vec> result(shape);
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < center.size(); i ++) {
-    const auto delta((outcenter[i] - center[i]) * ratio);
-    for(int j = 0; j < attend[i].size(); j ++)
-      result[attend[i][j]] += delta;
-  }
   return result;
 }
 
@@ -624,7 +605,6 @@ template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int,
   for(int i = 1; i < idsts.size(); i ++)
     if(idsts[iidst].size() < idsts[i].size()) iidst = i;
   const auto& idst(idsts[iidst]);
-  cerr << iidst << "/" << idsts.size() << ":" << idst.size() << flush;
   assert(idst.size());
   auto& yMd(hw.first.first   = pdst[idst[0]][0]);
   auto& ymd(hw.second.first  = pdst[idst[0]][0]);
@@ -668,7 +648,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::applyTrace(const pair<Vec
                     srchw.first.second - srchw.second.second) + 1);
   const auto yyy(MM.first - mm.first + 1);
   const auto xxx(MM.second - mm.second + 1);
-  cerr << ":" << yy << ":" << xx << ":" << yyy << ":" << xxx << flush;
   Mat res(yy, xx);
 #if defined(_OPENMP)
 #pragma omp for schedule(static, 1)
@@ -889,7 +868,6 @@ template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, in
 }
 
 template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, const vector<Vec>& points) {
-  cerr << "getEdges" << flush;
   vector<vector<int> > result;
   if(mask.rows() <= 0 || mask.cols() <= 0)
     return result;
@@ -904,7 +882,7 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
         floodfill(checked, store, mask, i, j);
   sort(store.begin(), store.end());
   store.erase(unique(store.begin(), store.end()), store.end());
-  cerr << " with " << store.size() << " edge points " << flush;
+  cerr << "getEdges(" << store.size() << ")" << flush;
   
   // stored indices.
   vector<int> se;
@@ -951,8 +929,8 @@ template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, c
       se.emplace_back(i);
       sort(se.begin(), se.end());
     }
+    cerr << ":" << e.size() << flush;
     result.emplace_back(move(e));
-    cerr << "." << flush;
   }
   return result;
 }
@@ -1170,23 +1148,6 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec>& geom
   return;
 }
 
-template <typename T> vector<vector<pair<int, int> > > reDig<T>::getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg) {
-  vector<vector<pair<int, int> > > res;
-  res.resize(attend.size());
-  const auto h(refimg.rows() / vbox + 1);
-  const auto w(refimg.cols() / vbox + 1);
-  for(int i = 0; i < attend.size(); i ++) {
-    res[i].resize(attend[i].size());
-    for(int j = 0; j < attend[i].size(); j ++) {
-      const auto& a0ij(attend[i][j]);
-            auto& a2xyij(res[i][j]);
-      a2xyij.first  = (a0ij / w) * vbox;
-      a2xyij.second = (a0ij % w) * vbox;
-    }
-  }
-  return res;
-}
-
 template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const {
   Triangles work;
   if(flg) {
@@ -1208,16 +1169,6 @@ template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle
   for(int i = 0; i < 3;  i ++)
     work.p(2, i) = bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
   return work.solveN();
-}
-
-template <typename T> inline bool reDig<T>::sameSide3(const Vec& p0, const Vec& p1, const Vec& p2, const Vec& q, const T& err) const {
-  auto dlt(p1 - p0);
-  auto dp(p2 - p0);
-  dlt[2] = dp[2] = T(0);
-  if(T(0) < dlt.dot(dlt))
-    dp -= dlt * dlt.dot(dp) / dlt.dot(dlt);
-  // N.B. dp.dot(p1 - p0) >> 0.
-  return dp.dot(q - p0) >= (abs(dp[0]) + abs(dp[1])) * err;
 }
 
 template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const {
