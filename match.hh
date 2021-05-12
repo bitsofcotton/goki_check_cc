@@ -13,8 +13,6 @@
 
 #if !defined(_MATCH_)
 
-template <typename T> class reDig;
-
 using std::min;
 using std::max;
 using std::cerr;
@@ -29,6 +27,7 @@ using std::unique;
 using std::istream;
 using std::ostream;
 
+template <typename T> class reDig;
 template <typename T> class msub_t;
 template <typename T> bool lmsublt(const msub_t<T>& x, const msub_t<T>& y) {
   return x.err < y.err;
@@ -67,58 +66,49 @@ public:
 
 template <typename T> class match_t {
 public:
-  typedef SimpleMatrix<T>   Mat3x3;
-  typedef SimpleVector<T>   Vec3;
-  typedef SimpleVector<T>   Vec2;
-  typedef SimpleVector<int> Vec3i;
-  Mat3x3      rot;
-  Vec3        offset;
+  typedef SimpleMatrix<T>   Mat;
+  typedef SimpleVector<T>   Vec;
+  typedef SimpleVector<int> Veci;
+  Mat         rot;
+  Vec         offset;
   T           ratio;
   T           rdepth;
   vector<int> dstpoints;
   vector<int> srcpoints;
   T           thresh;
   T           rthresh;
-  Vec2        threshsize;
+  T           othresh;
   inline match_t() {
     thresh  = T(0);
     rthresh = T(1) / T(100);
-    threshsize    = Vec2(2);
-    threshsize[0] = threshsize[1] = T(0);
+    othresh = T(0);
     initId();
   }
   inline match_t(const T& thresh, const T& h, const T& w) {
-    this->thresh        = thresh;
-    this->rthresh       = pow(h * w, - T(1) / T(4));
-    this->threshsize    = Vec2(2);
-    this->threshsize[0] = h;
-    this->threshsize[1] = w;
+    this->thresh  = thresh;
+    this->rthresh = pow(h * w, - T(1) / T(4));
+    this->othresh = sqrt(h * w) * thresh;
     initId();
   }
+  inline match_t(const match_t<T>& src) {
+    *this = src;
+  }
   inline void initId() {
-    rot       = Mat3x3(3, 3);
+    rot       = Mat(3, 3);
     rot(0, 0) = rot(1, 1) = rot(2, 2) = T(1);
     rot(1, 0) = rot(2, 0) = rot(0, 1) = rot(2, 1)
               = rot(0, 2) = rot(1, 2) = T(0);
-    offset    = Vec3(3);
+    offset    = Vec(3);
     offset[0] = offset[1] = offset[2] = T(0);
     ratio     = T(1);
     rdepth    = T(0);
   }
-  inline match_t(const match_t<T>& other) {
-    *this = other;
-  }
   inline match_t<T>  operator ~ () const {
-    match_t<T> result;
+    match_t<T> result(*this);
     result.rot    = rot.transpose();
     result.ratio  = T(1) / ratio;
     result.offset = - result.rot * offset * result.ratio;
-    result.rdepth = rdepth;
-    result.dstpoints  = srcpoints;
-    result.srcpoints  = dstpoints;
-    result.thresh     = thresh;
-    result.rthresh    = rthresh;
-    result.threshsize = threshsize;
+    std::swap(result.srcpoints, result.dstpoints);
     return result;
   }
   inline match_t<T>  operator / (const match_t<T>& src) const {
@@ -146,19 +136,19 @@ public:
     srcpoints  = other.srcpoints;
     thresh     = other.thresh;
     rthresh    = other.rthresh;
-    threshsize = other.threshsize;
+    othresh    = other.othresh;
     return *this;
   }
-  inline T distance(const match_t<T>& other, const Vec3& p) {
+  inline T distance(const match_t<T>& other, const Vec& p) {
     const auto d(transform(p) - other.transform(p));
     return sqrt(d.dot(d));
   }
-  inline vector<Vec3i> hullConv(const vector<Vec3i>& srchull) const {
+  inline vector<Veci> hullConv(const vector<Veci>& srchull) const {
     assert(srcpoints.size() == dstpoints.size());
-    vector<Vec3i> res;
+    vector<Veci> res;
     res.reserve(srchull.size());
     for(int i = 0; i < srchull.size(); i ++) {
-      Vec3i tmp(3);
+      Veci tmp(3);
       tmp[0] = tmp[1] = tmp[2] = - 1;
       for(int j = 0; j < srchull[i].size(); j ++)
         for(int k = 0; k < srcpoints.size(); k ++)
@@ -170,11 +160,11 @@ public:
     }
     return res;
   }
-  inline Vec3 transform(const Vec3& x) const {
+  inline Vec transform(const Vec& x) const {
     return rot * x * ratio + offset;
   }
-  inline vector<Vec3> transform(const vector<Vec3>& x) const {
-    vector<Vec3> result(x);
+  inline vector<Vec> transform(const vector<Vec>& x) const {
+    vector<Vec> result(x);
     for(int i = 0; i < result.size(); i ++)
       result[i] = transform(result[i]);
     return result;
@@ -191,8 +181,7 @@ public:
            !(abs(T(1) - roterr(1, 1)) <= thresh) ||
            !(abs(T(1) - roterr(2, 2)) <= thresh) ||
            !(sqrt(test.dot(test) / 
-               (offset.dot(offset) + x.offset.dot(x.offset))) /
-                 sqrt(threshsize[0] * threshsize[1]) <= thresh) ||
+               (offset.dot(offset) + x.offset.dot(x.offset))) <= othresh) ||
            ratio * x.ratio < T(0) ||
            !(abs(ratio - x.ratio) / sqrt(ratio * x.ratio) <= thresh);
   }
@@ -219,7 +208,6 @@ public:
     os << endl;
     os << x.thresh  << endl;
     os << x.rthresh << endl;
-    os << x.threshsize[0] << " " << x.threshsize[1] << endl;
     return os;
   }
   friend istream& operator >> (istream& is, match_t<T>& x) {
@@ -242,8 +230,6 @@ public:
         is >> x.srcpoints[i];
       is >> x.thresh;
       is >> x.rthresh;
-      is >> x.threshsize[0];
-      is >> x.threshsize[1];
     } catch(...) {
       assert(0 && "match_t input failed.");
     }
@@ -251,93 +237,27 @@ public:
   }
 };
 
-
-template <typename T> class matchPartial {
-public:
-  typedef SimpleMatrix<T> Mat;
-  typedef SimpleMatrix<T> Mat3x3;
-  typedef SimpleMatrix<T> Mat2x2;
-  typedef SimpleVector<T> Vec3;
-  typedef complex<T> U;
-  inline matchPartial();
-  inline matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
-  inline ~matchPartial();
-  void init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs);
-  
-  vector<match_t<T> > match(const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& norot = false);
-  void match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result, const bool& norot = false);
-  
-  Vec3 makeG(const vector<Vec3>& in) const;
-  vector<match_t<T> > elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh = T(4) / T(256));
-  
-  // theta resolution.
-  int ndiv;
-  // match points thresh in [0, 1].
-  T   threshp;
-  // match operator == thresh in [0, 1].
-  T   threshs;
-  
-private:
-  T   isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh);
-  U   I;
-  T   Pi;
-  // match theta  thresh in [0, 1].
-  T   thresh;
-  // match ratio  thresh in [0, 1].
-  T   thresht;
-};
-
-template <typename T> inline matchPartial<T>::matchPartial() {
-  I  = sqrt(U(- T(1)));
-  Pi = atan2(T(1), T(1)) * T(4);
-  // rough match.
-  init(40, 2, T(1) / T(1000), T(1) / T(10));
-}
-
-template <typename T> inline matchPartial<T>::matchPartial(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
-  I  = sqrt(U(- T(1)));
-  Pi = atan2(T(1), T(1)) * T(4);
-  init(ndiv, threshr, threshp, threshs);
-}
-
-template <typename T> inline matchPartial<T>::~matchPartial() {
-  ;
-}
-
-template <typename T> void matchPartial<T>::init(const int& ndiv, const T& threshr, const T& threshp, const T& threshs) {
-  assert(0 < ndiv && T(1) <= threshr && T(0) <= threshp && threshp <= T(1));
-  this->ndiv    = ndiv;
-  this->thresh  = sin(T(2) * Pi / T(ndiv)) / T(2) * threshr;
-  this->thresht = sin(T(2) * Pi / T(ndiv)) / T(2) * threshr;
-  this->threshp = threshp;
-  this->threshs = threshs;
-  assert(this->thresh < T(1));
-  cerr << "e(" << this->thresh << ")" << endl;
-  return;
-}
-
-template <typename T> vector<match_t<T> > matchPartial<T>::match(const vector<Vec3>& shapebase, const vector<Vec3>& points, const bool& norot) {
-  vector<match_t<T> > result;
-  match(shapebase, points, result, norot);
-  return result;
-}
-
-template <typename T> typename matchPartial<T>::Vec3 matchPartial<T>::makeG(const vector<Vec3>& in) const {
-  Vec3 result(3);
+template <typename T> static inline SimpleVector<T> makeG(const vector<SimpleVector<T> >& in) {
+  SimpleVector<T> result(3);
   result[0] = result[1] = result[2] = T(0);
+  assert(in.size() && in[0].size() == 3);
   for(int i = 0; i < in.size(); i ++)
     result += in[i];
   return result / in.size();
 }
 
-template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0, const vector<Vec3>& points0, vector<match_t<T> >& result, const bool& norot) {
+template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebase0, const vector<SimpleVector<T> >& points0, vector<match_t<T> >& result, const bool& norot = false, const int& ndiv = 40, const T& threshr = T(2), const T& threshp = T(1) / T(1000), const T& threshs = T(1) / T(10)) {
+  static const auto Pi(atan(1) * T(4));
+  static const auto I(complex<T>(T(0), T(1)));
+         const auto thresh(sin(T(2) * Pi / T(ndiv)) / T(2) * threshr);
+  assert(thresh < T(1));
   const auto gs(makeG(shapebase0));
   const auto gp(makeG(points0));
-  vector<Vec3> shapebase;
-  vector<Vec3> points;
+  vector<SimpleVector<T> > shapebase;
+  vector<SimpleVector<T> > points;
   shapebase.reserve(shapebase0.size());
   points.reserve(points0.size());
-  Vec3 gd(3);
+  SimpleVector<T> gd(3);
   gd[0] = gd[1] = gd[2] = T(0);
   for(int i = 0; i < shapebase0.size(); i ++) {
     shapebase.emplace_back(shapebase0[i] - gs);
@@ -351,10 +271,8 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
     gd[0] = max(gd[0], abs(diff[0]));
     gd[1] = max(gd[1], abs(diff[1]));
   }
-  // for each rotation, we can now handle t <= 0:
-  // We need large memory for this.
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int nd = 0; nd < ndiv; nd ++) {
     vector<T> ddiv;
@@ -366,7 +284,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
       ddiv[3] = sin(T(2) * Pi * T(nd2) / T(ndiv));
       match_t<T> work0(threshs, abs(gd[0]), abs(gd[1]));
       for(int k = 0; k < ddiv.size() / 2; k ++) {
-        Mat3x3 lrot(3, 3);
+        SimpleMatrix<T> lrot(3, 3);
         lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
         lrot((k + 1) % 3, (k    ) % 3) =   ddiv[k * 2 + 1];
         lrot((k + 2) % 3, (k    ) % 3) = T(0);
@@ -391,7 +309,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
           const auto  lerr(aj - bk * t);
           const auto  err(lerr.dot(lerr) / sqrt(aj.dot(aj) * bk.dot(bk) * t * t));
           // if t <= T(0), it's mirrored and this should not match.
-          if(T(0) <= t && err <= thresht * thresht &&
+          if(T(0) <= t && err <= thresh * thresh &&
              isfinite(t) && isfinite(err)) {
             msub_t<T> work;
             work.t   = t;
@@ -422,7 +340,7 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
           //   get condition sum||aj-abar||, sum||P*bk-bbar|| -> 0
           //   with this imcomplete set.
           // N.B. t >= 0 and msub is sorted by t0 > t1.
-          if((msub[t0].t - msub[t1].t) / msub[t0].t <= thresht) {
+          if((msub[t0].t - msub[t1].t) / msub[t0].t <= thresh) {
             work.dstpoints.emplace_back(msub[t1].j);
             work.srcpoints.emplace_back(msub[t1].k);
             tt = t1;
@@ -471,89 +389,56 @@ template <typename T> void matchPartial<T>::match(const vector<Vec3>& shapebase0
   return;
 }
 
-template <typename T> vector<match_t<T> > matchPartial<T>::elim(const vector<match_t<T> >& m, const Mat dst[3], const Mat src[3], const Mat& srcbump, const vector<Vec3>& srcpts, const T& thresh) {
+template <typename T> static inline vector<match_t<T> > matchPartial(const vector<SimpleVector<T> >& shapebase, const vector<SimpleVector<T> >& points, const bool& norot = false, const int& ndiv = 40, const T& threshr = T(2), const T& threshp = T(1) / T(1000), const T& threshs = T(1) / T(10)) {
+  vector<match_t<T> > result;
+  matchPartial<T>(shapebase, points, result, norot, ndiv, threshr, threshp, threshs);
+  return result;
+}
+
+template <typename T> vector<match_t<T> > elimMatch(const vector<match_t<T> >& m, const SimpleMatrix<T> dst[3], const SimpleMatrix<T> src[3], const SimpleMatrix<T>& srcbump, const vector<SimpleVector<T> >& srcpts, const T& thresh) {
   vector<match_t<T> > res(m);
   reDig<T> redig;
   for(int i = 0; i < m.size(); i ++) {
-    Mat tsrc[3];
+    SimpleMatrix<T> tsrc[3];
     const auto ref(redig.tilt(redig.makeRefMatrix(src[0], 1), srcbump, m[i]));
     for(int j = 0; j < 3; j ++)
       tsrc[j] = redig.pullRefMatrix(ref, 1, src[j]);
-    res[i].rdepth *= isElim(m[i], dst, tsrc, srcpts, thresh);
+    vector<T> diffs;
+    diffs.reserve(m[i].srcpoints.size());
+    for(int j = 0; j < m[i].srcpoints.size(); j ++) {
+      const auto  g(m.transform(srcpts[m[i].srcpoints[j]]));
+      const auto& y(g[0]);
+      const auto& x(g[1]);
+      if(T(0) <= y && y < T(tsrc[0].rows()) &&
+         T(0) <= x && x < T(tsrc[0].cols())) {
+        if(tsrc[0](y, x) == T(0) &&
+           tsrc[1](y, x) == T(0) &&
+           tsrc[2](y, x) == T(0))
+          continue;
+        T diff(0);
+        for(int k = 0; k < 3; j ++)
+          diff += pow(tsrc[k](y, x) - dst[k](y, x), T(2));
+        diffs.emplace_back(sqrt(diff));
+      }
+    }
+    sort(diffs.begin(), diffs.end());
+    vector<T> ddiffs;
+    ddiffs.reserve(diffs.size() - 1);
+    for(int i = 1; i < diffs.size(); i ++)
+      ddiffs.emplace_back(diffs[i] - diffs[i - 1]);
+    sort(ddiffs.begin(), ddiffs.end());
+    res[i].rdepth *= ddiffs.size() ? T(1) - T(distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh))) / T(ddiffs.size()) : T(0);
   }
   sort(res.begin(), res.end());
   return res;
 }
 
-template <typename T> T matchPartial<T>::isElim(const match_t<T>& m, const Mat dst[3], const Mat tsrc[3], const vector<Vec3>& srcpts, const T& thresh) {
-  vector<T> diffs;
-  for(int i = 0; i < m.srcpoints.size(); i ++) {
-    const auto  g(m.transform(srcpts[m.srcpoints[i]]));
-    const auto& y(g[0]);
-    const auto& x(g[1]);
-    if(T(0) <= y && y < T(tsrc[0].rows()) && T(0) <= x && x < T(tsrc[0].cols())) {
-      if(tsrc[0](y, x) == T(0) && tsrc[1](y, x) == T(0) && tsrc[2](y, x) == T(0))
-        continue;
-      T diff(0);
-      for(int j = 0; j < 3; j ++)
-        diff += pow(tsrc[j](y, x) - dst[j](y, x), T(2));
-      diffs.emplace_back(sqrt(diff));
-    }
-  }
-  sort(diffs.begin(), diffs.end());
-  vector<T> ddiffs;
-  for(int i = 1; i < diffs.size(); i ++)
-    ddiffs.emplace_back(diffs[i] - diffs[i - 1]);
-  sort(ddiffs.begin(), ddiffs.end());
-  return ddiffs.size() ? T(1) - T(distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh))) / T(ddiffs.size()) : T(0);
-}
-
-
-template <typename T> class matchWhole {
-public:
-  typedef SimpleMatrix<T>   Mat;
-  typedef SimpleMatrix<T>   Mat3x3;
-  typedef SimpleVector<T>   Vec3;
-  typedef SimpleVector<int> Veci4;
-  typedef complex<T> U;
-  inline matchWhole();
-  inline ~matchWhole();
-  void init(const int& ndiv, const T& threshp, const T& threshs);
-
-  vector<vector<match_t<T> > > match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<vector<Veci4> >& bones, const int& ntry = 6);
-private:
-  U   I;
-  T   Pi;
-  int ndiv;
-  T   threshp;
-  T   threshs;
-};
-
-template <typename T> inline matchWhole<T>::matchWhole() {
-  I  = sqrt(U(- T(1)));
-  Pi = atan2(T(1), T(1)) * T(4);
-  init(40, .05, .1);
-}
-
-template <typename T> inline matchWhole<T>::~matchWhole() {
-  ;
-}
-
-template <typename T> void matchWhole<T>::init(const int& ndiv, const T& threshp, const T& threshs) {
-  this->ndiv    = ndiv;
-  this->threshp = threshp;
-  this->threshs = threshs;
-  return;
-}
-
-template <typename T> vector<vector<match_t<T> > > matchWhole<T>::match(const vector<Vec3>& shapebase, const vector<vector<Vec3> >& points, const vector<Vec3>& origins, const vector<vector<Veci4> >& bones, const int& ntry) {
+template <typename T> vector<vector<match_t<T> > > matchWhole(const vector<SimpleVector<T> >& shapebase, const vector<vector<SimpleVector<T> > >& points, const vector<SimpleVector<T> >& origins, const vector<vector<SimpleVector<int> > >& bones, const int& ntry = 6, const int& ndiv = 40, const T& threshr = T(2), const T& threshp = T(5) / T(100), const T& threshs = T(1) / T(10)) {
   assert(points.size() == origins.size());
   vector<vector<match_t<T> > > pmatches;
-  matchPartial<T> pmatch(ndiv, threshp, threshs);
-  for(int i = 0; i < points.size(); i ++) {
-    cerr << "matching partials : " << i << "/" << shapebase.size() << endl;
-    pmatches.emplace_back(pmatch.match(shapebase, points[i]));
-  }
+  pmatches.reserve(points.size());
+  for(int i = 0; i < points.size(); i ++)
+    pmatches.emplace_back(matchPartial<T>(shapebase, points[i], false, ndiv, threshr, threshp, threshs));
   int i0idx(0);
   for(int i = 1; i < pmatches.size(); i ++)
     if(pmatches[i0idx].size() < pmatches[i].size())
@@ -573,17 +458,17 @@ template <typename T> vector<vector<match_t<T> > > matchWhole<T>::match(const ve
           T lm(0);
           T llratio(1);
           vector<int> boneidxs;
-          for(int j = 0; j < pmatches[i][0].srcpoints.size(); j ++) {
-            const auto& work(bones[i][pmatches[i][0].srcpoints[j]]);
-            for(int k = 0; k < work.size(); k ++)
-              if(0 <= work[k])
-                boneidxs.emplace_back(work[k]);
+          for(int j = 0; j < pmatches[i][k].srcpoints.size(); j ++) {
+            const auto& work(bones[i][pmatches[i][k].srcpoints[j]]);
+            for(int kk = 0; kk < work.size(); kk ++)
+              if(0 <= work[kk])
+                boneidxs.emplace_back(work[kk]);
           }
           sort(boneidxs.begin(), boneidxs.end());
           boneidxs.erase(unique(boneidxs.begin(), boneidxs.end()), boneidxs.end());
           for(int j = 0; j < boneidxs.size(); j ++) {
-            lm      += lmatch[boneidxs[j]].distance(pmatches[i][0], origins[i]);
-            llratio *= max(abs(pmatches[i][0].ratio) / abs(lmatch[boneidxs[j]].ratio), abs(lmatch[boneidxs[j]].ratio) / abs(pmatches[i][0].ratio));
+            lm      += lmatch[boneidxs[j]].distance(pmatches[i][k], origins[i]);
+            llratio *= max(abs(pmatches[i][k].ratio) / abs(lmatch[boneidxs[j]].ratio), abs(lmatch[boneidxs[j]].ratio) / abs(pmatches[i][k].ratio));
           }
           if(!k || (m < lm && (llratio <= lratio || llratio < T(1) + threshs))) {
             m      = lm;

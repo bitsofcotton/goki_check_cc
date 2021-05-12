@@ -16,6 +16,7 @@
 template <typename T> class match_t;
 template <typename T> class Filter;
 
+using std::swap;
 using std::abs;
 using std::min;
 using std::max;
@@ -27,25 +28,30 @@ using std::lower_bound;
 using std::upper_bound;
 using std::distance;
 using std::sort;
+using std::binary_search;
 using std::unique;
 
 template <typename T> static inline bool less0(const T& x, const T& y) {
   return x.first[0] < y.first[0] || (x.first[0] == y.first[0] && x.first[1] < y.first[1]);
 }
 
+template <typename T> static inline bool lessf(const T& x, const T& y) {
+  return x.first < y.first;
+}
+
 template <typename T> class triangles_t {
 public:
-  typedef SimpleMatrix<T> Mat3x3;
-  typedef SimpleVector<T> Vec3;
-  Mat3x3 p;
-  Vec3   n;
-  T      c;
-  T      z;
+  typedef SimpleMatrix<T> Mat;
+  typedef SimpleVector<T> Vec;
+  Mat p;
+  Vec n;
+  T   c;
+  T   z;
   inline triangles_t() {
-    p = Mat3x3(3, 3);
-    n = Vec3(3);
+    p = Mat(3, 3);
+    n = Vec(3);
   }
-  inline triangles_t<T>& rotate(const Mat3x3& R, const Vec3& origin) {
+  inline triangles_t<T>& rotate(const Mat& R, const Vec& origin) {
     for(int i = 0; i < 3; i ++)
       p.setCol(i, R * (p.col(i) - origin) + origin);
     return *this;
@@ -65,30 +71,24 @@ public:
 
 template <typename T> class reDig {
 public:
-  typedef SimpleMatrix<T> Mat;
-  typedef SimpleMatrix<complex<T> > MatU;
-  typedef SimpleMatrix<T> Mat4x4;
-  typedef SimpleMatrix<T> Mat3x3;
-  typedef SimpleMatrix<T> Mat2x2;
-  typedef SimpleVector<T> Vec;
-  typedef SimpleVector<T> Vec3;
-  typedef SimpleVector<T> Vec2;
-  typedef SimpleVector<int> Veci3;
-  typedef triangles_t<T>           Triangles;
+  typedef SimpleMatrix<T>   Mat;
+  typedef SimpleVector<T>   Vec;
+  typedef SimpleVector<int> Veci;
+  typedef triangles_t<T>    Triangles;
   
   inline reDig();
   inline ~reDig();
   inline void initialize(const int& vbox, const T& rz = - T(1));
-  Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Vec3>& emph, const vector<Veci3>& hull);
-  Mat  draw(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const bool& elim = false);
-  vector<Vec3> takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio);
-  vector<Vec3> takeShape(const vector<Vec3>& shape, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio);
-  Mat  showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph = T(1));
+  Mat  draw(const Mat& img, const vector<Vec>& shape, const vector<Vec>& emph, const vector<Veci>& hull);
+  Mat  draw(const Mat& img, const vector<Vec>& shape, const vector<Veci>& hull, const bool& elim = false);
+  vector<Vec> takeShape(const vector<Vec>& dst, const vector<Vec>& src, const match_t<T>& match, const T& ratio);
+  vector<Vec> takeShape(const vector<Vec>& shape, const vector<Vec>& center, const vector<Vec>& outcenter, const vector<vector<int> >& attend, const T& ratio);
+  Mat  showMatch(const Mat& dstimg, const vector<Vec>& dst, const vector<Veci>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
-  vector<Veci3> mesh2(const vector<Vec3>& p, const vector<int>& pp) const;
-  void maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask);
-  void maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask);
+  vector<Veci> mesh2(const vector<Vec>& p, const vector<int>& pp) const;
+  void maskVectors(vector<Vec>& points, const vector<Veci>& polys, const Mat& mask);
+  void maskVectors(vector<Vec>& points, vector<Veci>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& thresh = T(1) / T(128));
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& intensity = T(1));
   Mat  reColor3(const Mat& cbase, const Mat& vbase, const int& count = 20);
@@ -100,7 +100,7 @@ public:
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
   Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0) const;
-  vector<vector<int> > getEdges(const Mat& mask, const vector<Vec3>& points);
+  vector<vector<int> > getEdges(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   void xyz2rgb(Mat rgb[3], const Mat xyz[3]);
@@ -109,23 +109,22 @@ public:
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
-  void getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay);
+  void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay);
   vector<vector<pair<int, int> > > getReverseLookup(const vector<vector<int> >& attend, const Mat& refimg);
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const;
-  vector<Triangles> tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m);
-  Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& z0 = - T(1000000)) const;
-  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0 = - T(1000000)) const;
+  vector<Triangles> tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m);
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth = - T(1000)) const;
+  Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
   void floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x);
   Mat  applyTrace(const pair<Vec, Vec>& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw);
 
 private:
-  void drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph);
-  void drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2);
-  inline bool isClockwise(const Vec3 p[3]) const;
-  inline bool onTriangle(T& z, const Triangles& tri, const Vec2& geom) const;
+  void drawMatchLine(Mat& map, const Vec& lref0, const Vec& lref1, const T& c) const;
+  void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
+  inline bool isClockwise(const Vec p[3]) const;
   inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const;
-  inline bool sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p, const Vec3& q, const T& err = T(1) / T(100000)) const;
-  Mat  tilt(const Mat& in, vector<Triangles>& triangles0, const match_t<T>& m, const T& z0 = - T(100000)) const;
+  inline bool sameSide3(const Vec& p0, const Vec& p1, const Vec& p, const Vec& q, const T& err = T(1) / T(100000)) const;
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& depth = - T(1000)) const;
   inline int  getImgPt(const int& y, const int& h) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
   
@@ -153,7 +152,7 @@ template <typename T> inline void reDig<T>::initialize(const int& vbox, const T&
   return;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, const vector<Vec3>& shape, const vector<Vec3>& emph, const vector<Veci3>& hull) {
+template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, const vector<Vec>& shape, const vector<Vec>& emph, const vector<Veci>& hull) {
   assert(shape.size() == emph.size());
   vector<Triangles> tris;
   tris.reserve(hull.size());
@@ -174,7 +173,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
   return tilt(img * T(0), tris);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, const vector<Vec3>& shape, const vector<Veci3>& hull, const bool& elim) {
+template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, const vector<Vec>& shape, const vector<Veci>& hull, const bool& elim) {
   Mat result(img);
   T   M(0);
   T   m(0);
@@ -192,12 +191,14 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
   for(int ii = 0; ii < hull.size(); ii ++)
     drawMatchTriangle(result, tsrc[hull[ii][0]],
                               tsrc[hull[ii][1]],
-                              tsrc[hull[ii][2]]);
+                              tsrc[hull[ii][2]],
+                              (tsrc[hull[ii][0]][2] + tsrc[hull[ii][1]][2] +
+                               tsrc[hull[ii][2]][2]) / T(3));
   return result;
 }
 
-template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& dst, const vector<Vec3>& src, const match_t<T>& match, const T& ratio) {
-  vector<Vec3> result(dst);
+template <typename T> vector<typename reDig<T>::Vec> reDig<T>::takeShape(const vector<Vec>& dst, const vector<Vec>& src, const match_t<T>& match, const T& ratio) {
+  vector<Vec> result(dst);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -207,10 +208,10 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
   return result;
 }
 
-template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const vector<Vec3>& shape, const vector<Vec3>& center, const vector<Vec3>& outcenter, const vector<vector<int> >& attend, const T& ratio) {
+template <typename T> vector<typename reDig<T>::Vec> reDig<T>::takeShape(const vector<Vec>& shape, const vector<Vec>& center, const vector<Vec>& outcenter, const vector<vector<int> >& attend, const T& ratio) {
   assert(center.size() == outcenter.size());
   assert(center.size() == attend.size());
-  vector<Vec3> result(shape);
+  vector<Vec> result(shape);
 #if defined(_OPENMP)
 #pragma omp parallel
 #pragma omp for schedule(static, 1)
@@ -223,46 +224,46 @@ template <typename T> vector<typename reDig<T>::Vec3> reDig<T>::takeShape(const 
   return result;
 }
 
-template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec3& lref0, const Vec3& lref1, const T& emph) {
+template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec& lref0, const Vec& lref1, const T& c) const {
   int idxm(0);
   int idxM(1);
   if(abs(lref1[idxM] - lref0[idxM]) < abs(lref1[idxm] - lref0[idxm])) {
     idxm = 1;
     idxM = 0;
   }
-  for(int i = 0; i <= int(abs(lref0[idxM] - lref1[idxM])); i ++) {
-    const auto gidx(lref0 + (lref1 - lref0) * T(i) / abs(lref0[idxM] - lref1[idxM]));
+  const auto d10(lref1 - lref0);
+  const auto dlt(abs(lref0[idxM] - lref1[idxM]));
+  const auto denom(T(1) / dlt);
+  for(int i = 0; i <= int(dlt); i ++) {
+    const auto gidx(lref0 + d10 * T(i) * denom);
     map(max(0, min(int(gidx[0]), int(map.rows() - 1))),
-        max(0, min(int(gidx[1]), int(map.cols() - 1)))) = emph;
+        max(0, min(int(gidx[1]), int(map.cols() - 1)))) = c;
   }
   return;
 }
 
-template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, const Vec3& lref0, const Vec3& lref1, const Vec3& lref2) {
+template <typename T> void reDig<T>::drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const {
   int idxm(0);
   int idxM(1);
   if(abs(lref1[idxM] - lref0[idxM]) < abs(lref1[idxm] - lref0[idxm])) {
     idxm = 1;
     idxM = 0;
   }
-  const Vec3 ldiff0(lref0 - lref1);
-        Vec3 ldiff(lref2 - lref0);
+  lref0[2] = lref1[2] = lref2[2] = T(0);
+  const auto ldiff0(lref1 - lref0);
+        auto ldiff(lref2 - lref0);
   ldiff -= ldiff0 * ldiff.dot(ldiff0) / ldiff0.dot(ldiff0);
-  const T    lnum(sqrt(ldiff.dot(ldiff)) + T(1));
+  const auto lnum((sqrt(ldiff.dot(ldiff)) + T(1)) * T(2));
   // XXX : tan theta depend loop num, this have glitches.
-  for(int k = 0; k < int(lnum * T(4)); k ++) {
-    const Vec3 l0(lref0 + (lref2 - lref0) * T(k) / (lnum * T(4)));
-    const Vec3 l1(lref1 + (lref2 - lref1) * T(k) / (lnum * T(4)));
-    for(int i = 0; i <= int(abs(l0[idxM] - l1[idxM])) + 1; i ++) {
-      const auto gidx(l0 + (l1 - l0) * T(i) / T(int(abs(l0[idxM] - l1[idxM])) + 1));
-      map(max(0, min(int(gidx[0]), int(map.rows() - 1))),
-          max(0, min(int(gidx[1]), int(map.cols() - 1)))) = gidx[2];
-    }
-  }
+  const auto d20(lref2 - lref0);
+  const auto d21(lref2 - lref1);
+  for(int k = 0; k < int(lnum); k ++)
+    drawMatchLine(map, lref0 + d20 * T(k) / lnum,
+                       lref1 + d21 * T(k) / lnum, c);
   return;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::showMatch(const Mat& dstimg, const vector<Vec3>& dst, const vector<Veci3>& hull, const T& emph) {
+template <typename T> typename reDig<T>::Mat reDig<T>::showMatch(const Mat& dstimg, const vector<Vec>& dst, const vector<Veci>& hull, const T& emph) {
   Mat map(dstimg);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -306,9 +307,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
   return result;
 }
 
-template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vector<Vec3>& p, const vector<int>& pp) const {
-  vector<pair<Vec3, int> > sp;
-  vector<pair<Vec3, int> > sp2;
+template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
+  vector<pair<Vec, int> > sp;
+  vector<pair<Vec, int> > sp2;
   T m0(0);
   T m1(0);
   T M0(0);
@@ -324,10 +325,10 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
   m1 -= T(1);
   M0 += T(1);
   M1 += T(1);
-  sp.emplace_back(make_pair(Vec3(3), p.size()));
-  sp.emplace_back(make_pair(Vec3(3), p.size() + 1));
-  sp.emplace_back(make_pair(Vec3(3), p.size() + 2));
-  sp.emplace_back(make_pair(Vec3(3), p.size() + 3));
+  sp.emplace_back(make_pair(Vec(3), p.size()));
+  sp.emplace_back(make_pair(Vec(3), p.size() + 1));
+  sp.emplace_back(make_pair(Vec(3), p.size() + 2));
+  sp.emplace_back(make_pair(Vec(3), p.size() + 3));
   sp[sp.size() - 4].first[0] = m0;
   sp[sp.size() - 4].first[1] = m1;
   sp[sp.size() - 4].first[2] = T(0);
@@ -339,13 +340,13 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
   sp[sp.size() - 1].first[1] = M1;
   sp[sp.size() - 4].first[0] -= T(1);
   sp[sp.size() - 3].first[0] += T(1);
-  sort(sp.begin(), sp.end(), less0<pair<Vec3, int> >);
+  sort(sp.begin(), sp.end(), less0<pair<Vec, int> >);
   sp2.reserve(sp.size());
   for(int i = 0; i < sp.size(); i ++)
     sp2.emplace_back(sp[sp.size() - i - 1]);
-  vector<Veci3> res0;
+  vector<Veci> res0;
   for(int i = 2; i < sp.size(); i ++) {
-    Veci3 lres(3);
+    Veci lres(3);
     lres[0] = lres[1] = lres[2] = i;
     for(int j = i - 1; 0 <= j; j --)
       if(sp[j].first[1] <= sp[i].first[1] &&
@@ -383,10 +384,10 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
         lres[2] = j;
     for(int j = 0; j < lres.size(); j ++)
       lres[j] = sp.size() - 1 - lres[j];
-    std::swap(lres[0], lres[2]);
+    swap(lres[0], lres[2]);
     res0.emplace_back(lres);
   }
-  vector<Veci3> res;
+  vector<Veci> res;
   for(int i = 0; i < res0.size(); i ++)
     if(sp[res0[i][0]].second < p.size() &&
        sp[res0[i][1]].second < p.size() &&
@@ -403,8 +404,8 @@ template <typename T> vector<typename reDig<T>::Veci3> reDig<T>::mesh2(const vec
   return res;
 }
 
-template <typename T> inline bool reDig<T>::isClockwise(const Vec3 p[3]) const {
-  Mat3x3 dc(3, 3);
+template <typename T> inline bool reDig<T>::isClockwise(const Vec p[3]) const {
+  Mat dc(3, 3);
   for(int i = 0; i < 3; i ++) {
     dc(i, 0) = T(1);
     dc(i, 1) = p[i][0];
@@ -413,16 +414,16 @@ template <typename T> inline bool reDig<T>::isClockwise(const Vec3 p[3]) const {
   return dc.determinant() <= T(0);
 }
 
-template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, const vector<Veci3>& polys, const Mat& mask) {
-  vector<Veci3> tpoly(polys);
+template <typename T> void reDig<T>::maskVectors(vector<Vec>& points, const vector<Veci>& polys, const Mat& mask) {
+  vector<Veci> tpoly(polys);
   return maskVectors(points, tpoly, mask);
 }
 
-template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Veci3>& polys, const Mat& mask) {
+template <typename T> void reDig<T>::maskVectors(vector<Vec>& points, vector<Veci>& polys, const Mat& mask) {
   vector<int> elim, elimp, after;
   for(int i = 0, ii = 0; i < points.size(); i ++) {
-    const int y(std::max(std::min(int(points[i][0]), int(mask.rows() - 1)), 0));
-    const int x(std::max(std::min(int(points[i][1]), int(mask.cols() - 1)), 0));
+    const int y(max(min(int(points[i][0]), int(mask.rows() - 1)), 0));
+    const int x(max(min(int(points[i][1]), int(mask.cols() - 1)), 0));
     if(mask(y, x) > T(1) / T(2)) {
       elim.emplace_back(i);
       after.emplace_back(- 1);
@@ -430,9 +431,9 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec3>& points, vector<Ve
       after.emplace_back(ii ++);
   }
   for(int i = 0; i < polys.size(); i ++)
-    if(std::binary_search(elim.begin(), elim.end(), polys[i][0]) ||
-       std::binary_search(elim.begin(), elim.end(), polys[i][1]) ||
-       std::binary_search(elim.begin(), elim.end(), polys[i][2]))
+    if(binary_search(elim.begin(), elim.end(), polys[i][0]) ||
+       binary_search(elim.begin(), elim.end(), polys[i][1]) ||
+       binary_search(elim.begin(), elim.end(), polys[i][2]))
       elimp.emplace_back(i);
   for(int i = 0; i < elim.size(); i ++)
     points.erase(points.begin() + (elim[i] - i));
@@ -614,8 +615,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
 }
 
 template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask) {
-  vector<Vec3>  pdst;
-  vector<Veci3> facets;
+  vector<Vec>  pdst;
+  vector<Veci> facets;
   getTileVec(mask, pdst, facets);
   const auto idsts(getEdges(mask, pdst));
   assert(idsts.size());
@@ -679,8 +680,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::applyTrace(const pair<Vec
 #pragma omp for schedule(static, 1)
 #endif
   for(int i = 0; i < vy.size(); i ++) {
-    Vec3 v0(3);
-    Vec3 v1(3);
+    Vec v0(3);
+    Vec v1(3);
     v0[2] = v1[2] = T(0);
     v0[0] = (vy[i] - T(mm.first))  / T(yyy) * T(yy);
     v0[1] = (vx[i] - T(mm.second)) / T(xxx) * T(xx);
@@ -816,7 +817,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
 #endif
     for(int j = 0; j < result.cols(); j ++) {
       for(int zi = 0; zi < dratio; zi ++) {
-        Vec2 cpoint(2);
+        Vec cpoint(2);
         cpoint[0] = T(1) / T(2 * dratio);
         cpoint[1] = T(zi) / T(dratio);
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
@@ -850,13 +851,13 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
   }
   static const auto Pi(atan2(T(1), T(1)) * T(4));
   Filter<T> filter;
-  auto res(bump(color, bumpm, psi));
+  Mat res(color * T(0));
   for(int i = 0; i < rot; i ++) {
     const auto theta((T(i) - T(rot - 1) / T(2)) * atan(T(1)) / (T(rot) / T(2)));
     res += filter.getCenter(filter.rot(bump(filter.rot(color, theta),
              filter.rot(bumpm, theta), psi), - theta), color);
   }
-  return res /= T(rot + 1);
+  return res /= T(rot);
 }
 
 template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, int> >& store, const Mat& mask, const int& y, const int& x) {
@@ -887,7 +888,7 @@ template <typename T> void reDig<T>::floodfill(Mat& checked, vector<pair<int, in
   return;
 }
 
-template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, const vector<Vec3>& points) {
+template <typename T> vector<vector<int> > reDig<T>::getEdges(const Mat& mask, const vector<Vec>& points) {
   cerr << "getEdges" << flush;
   vector<vector<int> > result;
   if(mask.rows() <= 0 || mask.cols() <= 0)
@@ -972,7 +973,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::rgb2d(const Mat rgb[3]) {
 
 template <typename T> void reDig<T>::rgb2xyz(Mat xyz[3], const Mat rgb[3]) {
   // CIE 1931 XYZ from wikipedia.org
-  Mat3x3 mRGB2XYZ(3, 3);
+  Mat mRGB2XYZ(3, 3);
   mRGB2XYZ(0, 0) = T(49000);
   mRGB2XYZ(0, 1) = T(31000);
   mRGB2XYZ(0, 2) = T(20000);
@@ -991,7 +992,7 @@ template <typename T> void reDig<T>::rgb2xyz(Mat xyz[3], const Mat rgb[3]) {
 
 template <typename T> void reDig<T>::xyz2rgb(Mat rgb[3], const Mat xyz[3]) {
   // CIE 1931 XYZ from wikipedia.org
-  Mat3x3 mRGB2XYZ(3, 3);
+  Mat mRGB2XYZ(3, 3);
   mRGB2XYZ(0, 0) = T(49000);
   mRGB2XYZ(0, 1) = T(31000);
   mRGB2XYZ(0, 2) = T(20000);
@@ -1002,7 +1003,7 @@ template <typename T> void reDig<T>::xyz2rgb(Mat rgb[3], const Mat xyz[3]) {
   mRGB2XYZ(2, 1) = T( 1000);
   mRGB2XYZ(2, 2) = T(99000);
   mRGB2XYZ /= T(17697);
-  Mat3x3 mXYZ2RGB(3, 3);
+  Mat mXYZ2RGB(3, 3);
   // XXX: very slow with simplelin.hh
   mXYZ2RGB = mRGB2XYZ.inverse();
   rgb[0] = xyz[0] * mXYZ2RGB(0, 0) + xyz[1] * mXYZ2RGB(0, 1) + xyz[2] * mXYZ2RGB(0, 2);
@@ -1117,9 +1118,9 @@ template <typename T> void reDig<T>::autoLevel(Mat data[3], const int& count) {
 }
 
 // get bump with multiple scale and vectorized result.
-template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geoms, vector<Veci3>& delaunay) {
+template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) {
   // get vectorize.
-  geoms = vector<Vec3>();
+  geoms = vector<Vec>();
   T aavg(0);
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
@@ -1129,7 +1130,7 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
          in.cols() < (j + 1) * vbox) {
-        Vec3 gbuf(3);
+        Vec gbuf(3);
         gbuf[0] = T(i * vbox);
         gbuf[1] = T(j * vbox);
         gbuf[2] = geoms[geoms.size() - 1][2];
@@ -1139,24 +1140,24 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec3>& geo
         for(int ii = i * vbox; ii < (i + 1) * vbox; ii ++)
           for(int jj = j * vbox; jj < (j + 1) * vbox; jj ++)
             avg += in(ii, jj);
-        Vec3 work(3);
+        Vec work(3);
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
         work[2] = sqrt(T(in.rows() * in.cols())) * rz * abs(avg / T(vbox) / T(vbox) - aavg);
         geoms.emplace_back(work);
       }
     }
-  Vec3 avg(3);
+  Vec avg(3);
   avg[0] = avg[1] = avg[2] = T(0);
   for(int i = 0; i < geoms.size(); i ++)
     avg += geoms[i];
   avg /= geoms.size();
   for(int i = 0; i < geoms.size(); i ++)
     geoms[i][2] -= avg[2];
-  delaunay = vector<Veci3>();
+  delaunay = vector<Veci>();
   for(int i = 1; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox; j ++) {
-      Veci3 work(3), work2(3);
+      Veci work(3), work2(3);
       work[0]  = T((i - 1) * (in.cols() / vbox + 1) + j);
       work[1]  = T( i      * (in.cols() / vbox + 1) + j);
       work[2]  = T( i      * (in.cols() / vbox + 1) + j + 1);
@@ -1209,7 +1210,7 @@ template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle
   return work.solveN();
 }
 
-template <typename T> inline bool reDig<T>::sameSide3(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& q, const T& err) const {
+template <typename T> inline bool reDig<T>::sameSide3(const Vec& p0, const Vec& p1, const Vec& p2, const Vec& q, const T& err) const {
   auto dlt(p1 - p0);
   auto dp(p2 - p0);
   dlt[2] = dp[2] = T(0);
@@ -1219,30 +1220,11 @@ template <typename T> inline bool reDig<T>::sameSide3(const Vec3& p0, const Vec3
   return dp.dot(q - p0) >= (abs(dp[0]) + abs(dp[1])) * err;
 }
 
-// <[x, y, t], triangle.n> == triangle.z
-template <typename T> inline bool reDig<T>::onTriangle(T& z, const Triangles& tri, const Vec2& geom) const {
-  Vec3 v0(3);
-  Vec3 camera(3);
-  v0[0] = 0;
-  v0[1] = 0;
-  v0[2] = 1;
-  camera[0] = geom[0];
-  camera[1] = geom[1];
-  camera[2] = 0;
-  // <v0 t + camera, tri.n> = tri.z
-  const T t((tri.z - tri.n.dot(camera)) / (tri.n.dot(v0)));
-  z = camera[2] + v0[2] * t;
-  static const auto err(- T(0125) / T(1000));
-  return sameSide3(tri.p.col(0), tri.p.col(1), tri.p.col(2), camera, err) &&
-         sameSide3(tri.p.col(1), tri.p.col(2), tri.p.col(0), camera, err) &&
-         sameSide3(tri.p.col(2), tri.p.col(0), tri.p.col(1), camera, err);
-}
-
 template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const {
   const T theta(T(2) * Pi * T(idx) / T(samples));
   const T lpsi(Pi * psi);
-  Mat3x3 R0(3, 3);
-  Mat3x3 R1(3, 3);
+  Mat R0(3, 3);
+  Mat R1(3, 3);
   R0(0, 0) =   cos(theta);
   R0(0, 1) =   sin(theta);
   R0(0, 2) = 0.;
@@ -1265,7 +1247,7 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   R1(0, 2) = - sin(lpsi);
   R1(2, 0) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
-  Vec3 pcenter(3);
+  Vec pcenter(3);
   pcenter[0] = T(in.rows() - 1) / T(2);
   pcenter[1] = T(in.cols() - 1) / T(2);
   pcenter[2] = T(0);
@@ -1279,7 +1261,7 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   return m;
 }
 
-template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(const vector<Vec3>& points, const vector<Veci3>& polys, const Mat& in, const match_t<T>& m) {
+template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m) {
   vector<Triangles> result;
   for(int i = 0; i < polys.size(); i ++) {
     Triangles work;
@@ -1296,7 +1278,7 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& z0) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth) const {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
   vector<Triangles> triangles;
   triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
@@ -1305,59 +1287,55 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
       triangles.emplace_back(makeTriangle(i, j, in, bump, false));
       triangles.emplace_back(makeTriangle(i, j, in, bump, true));
     }
-  return tilt(in, triangles, m, z0);
+  return tilt(in, triangles, m, depth);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vector<Triangles>& triangles0, const match_t<T>& m, const T& z0) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles0, const match_t<T>& m, const T& depth) const {
   vector<Triangles> triangles(triangles0);
   for(int j = 0; j < triangles.size(); j ++) {
     for(int k = 0; k < 3; k ++)
       triangles[j].p.setCol(k, m.transform(triangles[j].p.col(k)));
     triangles[j].solveN();
   }
-  return tilt(in, triangles, z0);
+  return tilt(in, triangles, depth);
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vector<Triangles>& triangles, const T& z0) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth) const {
+  cerr << "t" << flush;
   Mat result(in.rows(), in.cols());
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
       result(i, j) = 0.;
-  cerr << "t" << flush;
-  Mat zb(in.rows(), in.cols());
-  for(int j = 0; j < zb.rows(); j ++)
-    for(int k = 0; k < zb.cols(); k ++)
-      zb(j, k) = z0;
-  std::random_device seed;
-  std::mt19937 engine(seed());
-  std::shuffle(triangles.begin(), triangles.end(), engine);
+  Vec vz(3);
+  vz[0] = vz[1] = T(0);
+  vz[2] = T(1);
+  // XXX: patent???
+  vector<pair<T, Triangles> > zbuf;
+  zbuf.reserve(triangles.size());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < triangles.size(); j ++) {
     const Triangles& tri(triangles[j]);
-    int ll = int( min(min(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2)));
-    int rr = int(ceil(max(max(tri.p(0, 0), tri.p(0, 1)), tri.p(0, 2)))) + 1;
-    int bb = int( min(min(tri.p(1, 0), tri.p(1, 1)), tri.p(1, 2)));
-    int tt = int(ceil(max(max(tri.p(1, 0), tri.p(1, 1)), tri.p(1, 2)))) + 1;
-    for(int y = max(0, ll); y < min(rr, int(in.rows())); y ++)
-      for(int x = max(0, bb); x < min(tt, int(in.cols())); x ++) {
-        T z;
-        Vec2 midgeom(2);
-        midgeom[0] = y;
-        midgeom[1] = x;
-        if(onTriangle(z, tri, midgeom) && isfinite(z)) {
+    const auto p0(tri.p.col(0));
+    const auto p1(tri.p.col(1));
+    const auto p2(tri.p.col(2));
+          auto camera((p0 + p1 + p2) / T(3));
+    camera[2] = T(0);
+    const auto t((tri.z - tri.n.dot(camera)) / (tri.n.dot(vz)));
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-          {
-            if(zb(y, x) < z) {
-              result(y, x) = tri.c;
-              zb(y, x)     = z;
-            }
-          }
-        }
-      }
+    {
+      zbuf.emplace_back(camera[2] + vz[2] * t, tri);
+    }
+  }
+  std::sort(zbuf.begin(), zbuf.end(), lessf<pair<T, Triangles> >);
+  int i;
+  for(i = 0; i < zbuf.size() && zbuf[i].first < depth; i ++) ;
+  for( ; i < zbuf.size(); i ++) {
+    const auto& zbi(zbuf[i].second);
+    drawMatchTriangle(result, zbi.p.col(0), zbi.p.col(1), zbi.p.col(2), zbi.c);
   }
   return result;
 }

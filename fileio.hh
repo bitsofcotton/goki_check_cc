@@ -29,12 +29,9 @@ using std::make_pair;
 
 template <typename T> class simpleFile {
 public:
-  typedef SimpleMatrix<T> Mat;
-  typedef SimpleMatrix<T> Mat3x3;
-  typedef SimpleVector<T> Vec3;
-  typedef SimpleVector<T> Vec;
-  typedef SimpleVector<int> Veci3;
-  typedef SimpleVector<int> Veci4;
+  typedef SimpleMatrix<T>   Mat;
+  typedef SimpleVector<T>   Vec;
+  typedef SimpleVector<int> Veci;
   
   inline bool whiteline(const string& s) {
     for(auto ss(s.begin()); ss < s.end(); ++ ss)
@@ -163,7 +160,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec3>& data, const T& Mw0, const T& Mh0, const vector<Veci3>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0)) {
+  bool saveobj(const vector<Vec>& data, const T& Mw0, const T& Mh0, const vector<Veci>& polys, const char* filename, const vector<vector<int> >& edges = vector<vector<int> >(), const T& addstand = T(0)) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -246,7 +243,7 @@ public:
     return true;
   }
 
-  bool loadobj(vector<Vec3>& data, vector<Veci3>& polys, const char* filename) {
+  bool loadobj(vector<Vec>& data, vector<Veci>& polys, const char* filename) {
     ifstream input;
     input.open(filename);
     if(input.is_open()) {
@@ -256,7 +253,7 @@ public:
         for( ; i < work.size() && work[i] == ' '; i ++);
         if(i + 1 < work.size() && work[i] == 'v' && work[i + 1] == ' ') {
           stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
-          Vec3 buf(3);
+          Vec buf(3);
           sub >> buf[1];
           sub >> buf[0];
           sub >> buf[2];
@@ -264,7 +261,7 @@ public:
           data.emplace_back(buf);
         } else if(i + 1 < work.size() && work[i] == 'f' && work[i + 1] == ' ') {
           stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
-          Veci3 wbuf(3);
+          Veci wbuf(3);
           int  widx(0);
           bool flag(false);
           while(!sub.eof() && !sub.bad()) {
@@ -368,8 +365,8 @@ public:
     return true;
   }
   
-  bool loadcenterr(vector<Vec3>& center, vector<T>& r, const char* filename) {
-    center = vector<Vec3>();
+  bool loadcenterr(vector<Vec>& center, vector<T>& r, const char* filename) {
+    center = vector<Vec>();
     r      = vector<T>();
     std::ifstream input;
     try {
@@ -377,7 +374,7 @@ public:
       string buf;
       while(getline(input, buf) && !input.eof() && !input.bad()) {
         std::stringstream sbuf(buf);
-        typename simpleFile<num_t>::Vec3 work(3);
+        typename simpleFile<num_t>::Vec work(3);
         sbuf >> work[0];
         sbuf >> work[1];
         sbuf >> work[2];
@@ -394,7 +391,7 @@ public:
     return center.size() == r.size();
   }
   
-  bool savecenterr(const char* filename, const vector<Vec3>& center, const vector<T>& r) {
+  bool savecenterr(const char* filename, const vector<Vec>& center, const vector<T>& r) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {

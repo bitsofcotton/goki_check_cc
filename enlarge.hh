@@ -55,11 +55,8 @@ public:
     REPRESENT,
     CLIP,
     ABS } direction_t;
-  typedef complex<T> U;
   typedef SimpleMatrix<T> Mat;
-  typedef SimpleMatrix<U> MatU;
   typedef SimpleVector<T> Vec;
-  typedef SimpleVector<U> VecU;
   Filter(const int& recur = 2);
   ~Filter();
   Mat compute(const Mat& data, const direction_t& dir, const int& n = 0);
@@ -149,7 +146,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
           int cnt(1);
           for(int ss = 2; ss <= data.rows(); ss *= 2, cnt ++) {
             auto DFTS(dft<T>(ss));
-            DFTS.row(0) *= U(T(0));
+            DFTS.row(0) *= complex<T>(T(0));
             for(int i = 1; i < DFTS.rows(); i ++) {
               // N.B. d/dt((d^(t)/dy^(t)) f), differential-integral space tilt on f.
               // DFTH.row(i) *= log(phase);
@@ -157,7 +154,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
               //   -> This is sharpen operation at all because this is same as original
               //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
               //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
-              DFTS.row(i) /= exp(U(T(0), T(1)) * Pi * U(T(i)) / T(DFTS.rows())) - U(T(1));
+              DFTS.row(i) /= exp(complex<T>(T(0), T(1)) * Pi * complex<T>(T(i)) / T(DFTS.rows())) - complex<T>(T(1));
             }
             DFTS /= T(DFTS.rows() - 1);
             Mat lSop(- (dft<T>(- ss) * DFTS).template real<T>());
@@ -296,7 +293,7 @@ template <typename T> typename Filter<T>::Mat Filter<T>::compute(const Mat& data
         for(int i = 0; i < data.rows(); i ++)
           result.row(i + recur) = data.row(i);
         for(int i = 0; i < recur; i ++) {
-          const auto& next(nextP0<T>(int(data.rows()) / (i + 1)));
+          const auto& next(nextP0<T, true>(min(80, int(data.rows()) / (i + 1))));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif

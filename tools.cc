@@ -213,8 +213,8 @@ int main(int argc, const char* argv[]) {
       sidx ++;
     } else
       mask[0] = mask[1] = mask[2] = data[0] * num_t(0);
-    std::vector<typename simpleFile<num_t>::Vec3>  points;
-    std::vector<typename simpleFile<num_t>::Veci3> facets;
+    std::vector<typename simpleFile<num_t>::Vec>  points;
+    std::vector<typename simpleFile<num_t>::Veci> facets;
     redig.initialize(vbox, zratio);
     redig.getTileVec(data[0], points, facets);
           auto edges(redig.getEdges(mask[0], points));
@@ -251,8 +251,8 @@ int main(int argc, const char* argv[]) {
     else
       zratio = std::atof(argv[4]);
     typename simpleFile<num_t>::Mat data[3], bump[3];
-    std::vector<typename simpleFile<num_t>::Vec3>  points;
-    std::vector<typename simpleFile<num_t>::Veci3> polys;
+    std::vector<typename simpleFile<num_t>::Vec>  points;
+    std::vector<typename simpleFile<num_t>::Veci> polys;
     if(!file.loadp2or3(data, argv[5]))
       return - 2;
     const std::string fn(argv[6]);
@@ -322,8 +322,8 @@ int main(int argc, const char* argv[]) {
     const auto  vboxsrc(std::atoi(argv[5]));
     const num_t zratio(std::atof(argv[6]));
     typename simpleFile<num_t>::Mat in0[3], in1[3], bump0orig[3], bump1orig[3], mask0orig[3], mask1orig[3];
-    std::vector<typename simpleFile<num_t>::Veci3> delau0, delau1;
-    std::vector<typename simpleFile<num_t>::Vec3>  shape0, shape1;
+    std::vector<typename simpleFile<num_t>::Veci> delau0, delau1;
+    std::vector<typename simpleFile<num_t>::Vec>  shape0, shape1;
     if(!file.loadp2or3(in0, argv[7]))
       return - 2;
     if(!file.loadp2or3(in1, argv[8]))
@@ -367,21 +367,20 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "rmatch") == 0 || strcmp(argv[1], "rmatch0") == 0 ||
        strcmp(argv[1], "matcho") == 0) {
       std::vector<match_t<num_t> > mm;
-      std::vector<std::vector<typename simpleFile<num_t>::Veci3> > sdelau0, sdelau1;
-      std::vector<std::vector<typename simpleFile<num_t>::Vec3>  > sshape0, sshape1;
+      std::vector<std::vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
+      std::vector<std::vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
       if(strcmp(argv[1], "rmatch")  == 0 || strcmp(argv[1], "rmatch0") == 0) {
-        matchPartial<num_t> statmatch;
         sdelau0.emplace_back(delau0);
         sdelau1.emplace_back(delau1);
         sshape0.emplace_back(shape0);
         sshape1.emplace_back(shape1);
         for(int i = 1; i < nhid; i ++) {
-          const auto mmm(statmatch.match(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0));
-          // const auto mmm(statmatch.elim(statmatch.match(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0), in0, in1, bump1, sshape1[i - 1]));
+          const auto mmm(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0));
+          // const auto mmm(elimMatch<num_t>(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0), in0, in1, bump1, sshape1[i - 1]));
 /*
-          auto mmm(statmatch.match(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0));
+          auto mmm(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0));
           if(nhid < mmm.size()) mmm.resize(nhid);
-          mmm = statmatch.elim(mmm, in0, in1, bump1, sshape1[i - 1]);
+          mmm = elimMatch<num_t>(mmm, in0, in1, bump1, sshape1[i - 1]);
 */
           if(! mmm.size()) break;
           mm.emplace_back(mmm[0]);
@@ -389,10 +388,10 @@ int main(int argc, const char* argv[]) {
           auto srcsort(mm[i - 1].srcpoints);
           std::sort(dstsort.begin(), dstsort.end());
           std::sort(srcsort.begin(), srcsort.end());
-          sdelau0.emplace_back(std::vector<typename simpleFile<num_t>::Veci3>());
-          sdelau1.emplace_back(std::vector<typename simpleFile<num_t>::Veci3>());
-          sshape0.emplace_back(std::vector<typename simpleFile<num_t>::Vec3>());
-          sshape1.emplace_back(std::vector<typename simpleFile<num_t>::Vec3>());
+          sdelau0.emplace_back(std::vector<typename simpleFile<num_t>::Veci>());
+          sdelau1.emplace_back(std::vector<typename simpleFile<num_t>::Veci>());
+          sshape0.emplace_back(std::vector<typename simpleFile<num_t>::Vec>());
+          sshape1.emplace_back(std::vector<typename simpleFile<num_t>::Vec>());
           std::vector<int> revdst;
           std::vector<int> revsrc;
           for(int j = 0; j < sshape0[i - 1].size(); j ++) {
@@ -444,8 +443,8 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<num_t>::Mat outs[3];
       const auto rin0(redig.makeRefMatrix(in0[0], 1));
       const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
-      std::vector<std::vector<typename simpleFile<num_t>::Veci3> > mhull0;
-      std::vector<std::vector<typename simpleFile<num_t>::Veci3> > mhull1;
+      std::vector<std::vector<typename simpleFile<num_t>::Veci> > mhull0;
+      std::vector<std::vector<typename simpleFile<num_t>::Veci> > mhull1;
       for(int i = 0; i < mm.size(); i ++) {
         mhull0.emplace_back(redig.mesh2(sshape0[i], mm[i].dstpoints));
         mhull1.emplace_back((~ mm[i]).hullConv(mhull0[i]));
@@ -526,12 +525,11 @@ int main(int argc, const char* argv[]) {
 */
       }
     } else { 
-      matchPartial<num_t> statmatch;
-      auto matches(statmatch.match(shape0, shape1, strcmp(argv[1], "match0") == 0));
+      auto matches(matchPartial<num_t>(shape0, shape1, strcmp(argv[1], "match0") == 0));
       matches.resize(min(int(matches.size()), nhid));
 /*
       if(fn[fn.size() - 1] == 'm')
-        matches = statmatch.elim(matches, in0, in1, bump1, shape1);
+        matches = elimMatch<num_t>(matches, in0, in1, bump1, shape1);
 */
       std::cerr << matches.size() << "pending" << std::endl;
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
@@ -630,8 +628,8 @@ int main(int argc, const char* argv[]) {
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {
-    std::vector<typename simpleFile<num_t>::Vec3>  pdst,   psrc;
-    std::vector<typename simpleFile<num_t>::Veci3> poldst, polsrc;
+    std::vector<typename simpleFile<num_t>::Vec>  pdst,   psrc;
+    std::vector<typename simpleFile<num_t>::Veci> poldst, polsrc;
     if(argc < 5 || !file.loadobj(pdst, poldst, argv[2]) ||
                    !file.loadobj(psrc, polsrc, argv[3])) {
       usage();
@@ -651,8 +649,7 @@ int main(int argc, const char* argv[]) {
       file.saveobj(redig.takeShape(pdst, psrc, m, num_t(1) / num_t(2)),
                    My, Mx, poldst, argv[7]);
     } else {
-      matchPartial<num_t> statmatch;
-      const auto m(statmatch.match(pdst, psrc)[0]);
+      const auto m(matchPartial<num_t>(pdst, psrc)[0]);
       file.saveobj(redig.takeShape(pdst, psrc, m, num_t(1) / num_t(2)),
                    My, Mx, poldst, argv[4]);
     }
