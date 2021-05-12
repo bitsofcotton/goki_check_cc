@@ -823,7 +823,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         cpoint[1] = T(zi) / T(dratio);
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(result.cols() <= abs(x0)) continue;
+        if(T(result.cols()) <= abs(x0)) continue;
         Vec work(result.rows());
         for(int i = 0; i < work.size(); i ++)
           work[i] = T(0);
@@ -874,8 +874,8 @@ template <typename T> vector<vector<int> > reDig<T>::floodfill(const Mat& mask, 
        0 <= x0 && x0 < mask.cols() &&
        mask(y0, x0) < T(1) / T(2)) {
       vector<pair<T, T> > tries;
-      tries.emplace_back(make_pair(+ T(vbox),         0));
-      tries.emplace_back(make_pair(        0, + T(vbox)));
+      tries.emplace_back(make_pair(  T(vbox),         0));
+      tries.emplace_back(make_pair(        0,   T(vbox)));
       tries.emplace_back(make_pair(- T(vbox),         0));
       tries.emplace_back(make_pair(        0, - T(vbox)));
       vector<pair<int, int> > stack;
@@ -896,8 +896,8 @@ template <typename T> vector<vector<int> > reDig<T>::floodfill(const Mat& mask, 
         else if(!checked(yy, xx)) {
           checked(yy, xx) = true;
           for(int ii = 0; ii < tries.size(); ii ++) {
-            const auto ny(yy + tries[ii].first);
-            const auto nx(xx + tries[ii].second);
+            const auto ny(T(yy) + tries[ii].first);
+            const auto nx(T(xx) + tries[ii].second);
             for(int k = 0; k < points.size(); k ++)
               if(abs(points[k][0] - ny) < T(1) / T(2) &&
                  abs(points[k][1] - nx) < T(1) / T(2)) {

@@ -251,7 +251,7 @@ template <typename T> static inline pair<pair<T, T>, pair<SimpleVector<T>, vecto
 }
 
 template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebase0, const vector<SimpleVector<T> >& points0, vector<match_t<T> >& result, const bool& norot = false, const int& ndiv = 40, const T& threshr = T(2), const T& threshp = T(1) / T(1000), const T& threshs = T(1) / T(10)) {
-  static const auto Pi(atan(1) * T(4));
+  static const auto Pi(atan(T(1)) * T(4));
   static const auto I(complex<T>(T(0), T(1)));
          const auto thresh(sin(T(2) * Pi / T(ndiv)) / T(2) * threshr);
   assert(thresh < T(1));
