@@ -220,7 +220,7 @@ int main(int argc, const char* argv[]) {
     const auto ff(redig.floodfill(redig.rgb2d(mask), points)[0]);
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
-                 redig.mesh2(points, ff), argv[sidx],
+                 facets, argv[sidx],
                  redig.edge(points, ff), thin);
     file.saveMTL(argv[sidx], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||

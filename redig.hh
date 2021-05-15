@@ -376,6 +376,10 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
        sp[res0[i][2]].second < p.size()) {
       for(int j = 0; j < res0[i].size(); j ++)
         res0[i][j] = sp[res0[i][j]].second;
+      for(int j = 0; j < res0[i].size(); j ++)
+        for(int k = j + 1; k < res0[i].size(); k ++)
+          if(res0[i][j] == res0[i][k])
+            goto nofix;
       for(int j = 0; j < res.size(); j ++)
         if(res[j] == res0[i])
           goto nofix;
@@ -384,13 +388,15 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
       ;
     }
   for(int i = 0; i < res.size(); i ++) {
-    SimpleMatrix<T> d(3, 3);
+    Mat d(3, 3);
     for(int j = 0; j < 3; j ++) {
       d(j, 0) = T(1);
       d(j, 1) = p[res[i][j]][0];
       d(j, 2) = p[res[i][j]][1];
     }
-    if(T(0) < d.determinant())
+    const auto det(d.determinant());
+    assert(det != T(0));
+    if(det < T(0))
       swap(res[i][0], res[i][1]);
   }
   return res;
