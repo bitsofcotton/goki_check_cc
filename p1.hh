@@ -35,38 +35,53 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // \[- &alpha, &alpha;\[ register computer with deterministic calculation
 // Please refer bitsofcotton/randtools .
 // with noised ones, we can use catgp instead of this.
-template <typename T> class P1I {
+template <typename T, bool tanspace = true> class P1I {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline P1I();
-  inline P1I(const int& stat, const int& var);
+  inline P1I(const int& stat, const int& var, const int& comp);
   inline ~P1I();
   inline T next(const T& in);
 private:
   Vec buf;
+  Mat pp;
   int statlen;
   int varlen;
   int t;
 };
 
-template <typename T> inline P1I<T>::P1I() {
+template <typename T, bool tanspace> inline P1I<T,tanspace>::P1I() {
   varlen = t = 0;
 }
 
-template <typename T> inline P1I<T>::P1I(const int& stat, const int& var) {
+template <typename T, bool tanspace> inline P1I<T,tanspace>::P1I(const int& stat, const int& var, const int& comp) {
   assert(0 <= stat && 1 <= var);
   buf.resize((statlen = stat + var + 2) + (varlen = var) - 1);
   for(int i = 0; i < buf.size(); i ++)
     buf[i] = T(0);
-  t = 0;
+  pp = Mat(comp, var);
+  for(int i = 0; i < pp.rows() - 1; i ++) {
+    const auto work(taylor(pp.cols() - 1, T(1) / T(pp.rows() - 2) * T(pp.cols() - 2)));
+    for(int j = 0; j < work.size(); j ++)
+      pp(i, j) = work[j];
+    pp(i, work.size()) = T(0);
+  }
+  for(int i = 0; i < pp.cols(); i ++)
+    pp(pp.rows() - 1, i) = T(i == pp.cols() - 1 ? 1 : 0);
+  T M(0);
+  for(int i = 0; i < pp.rows(); i ++)
+    for(int j = 0; j < pp.cols(); j ++)
+      M = max(M, abs(pp(i, j)));
+  pp /= M * T(4);
+  t   = 0;
 }
 
-template <typename T> inline P1I<T>::~P1I() {
+template <typename T, bool tanspace> inline P1I<T,tanspace>::~P1I() {
   ;
 }
 
-template <typename T> T P1I<T>::next(const T& in) {
+template <typename T, bool tanspace> T P1I<T,tanspace>::next(const T& in) {
   for(int i = 0; i < buf.size() - 1; i ++)
     buf[i]  = buf[i + 1];
   buf[buf.size() - 1] = in;
@@ -80,15 +95,22 @@ template <typename T> T P1I<T>::next(const T& in) {
     SimpleVector<T> work(varlen);
     for(int j = 0; j < varlen; j ++)
       work[j] = buf[i + j] / nin;
-    toeplitz.emplace_back(makeProgramInvariant<T>(work, T(i + 1) / T(statlen + 1)));
+    toeplitz.emplace_back(tanspace
+      ? makeProgramInvariant<T>(pp * work, T(i + 1) / T(statlen + 1))
+      : pp * work);
   }
   const auto invariant(linearInvariant<T>(toeplitz));
   SimpleVector<T> work(varlen);
   for(int i = 1; i < varlen; i ++)
     work[i - 1] = buf[i - varlen + buf.size()] / nin;
   work[work.size() - 1] = work[work.size() - 2];
-  work = makeProgramInvariant<T>(work, T(1));
-  return (atan((invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1]) * T(4) / atan2(T(1), T(1)) - T(1)) * nin;
+  work = pp * work;
+  if(invariant[varlen - 1] == T(0)) return T(0);
+  if(tanspace)
+    work = makeProgramInvariant<T>(work, T(1));
+  const auto p0((invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1]);
+  return tanspace ? (atan(p0) * T(4) / atan(T(1)) - T(1)) * nin
+                  : p0 * nin;
 }
 
 #define _P1_

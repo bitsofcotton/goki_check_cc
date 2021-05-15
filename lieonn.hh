@@ -609,6 +609,7 @@ private:
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>::SimpleFloat() {
   assert(0 < bits && ! (bits & 1));
+  s |= (1 << NaN) | (1 << INF);
 }
 
 template <typename T, typename W, int bits, typename U> template <typename V> inline SimpleFloat<T,W,bits,U>::SimpleFloat(const V& src) {
@@ -2733,8 +2734,7 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::innerFix(const Sim
     ffidx.emplace_back(fidx[i].second);
   sort(ffidx.begin(), ffidx.end());
   for(int i = 0; i < one.size(); i ++)
-    if(! binary_search(ffidx.begin(), ffidx.end(), i))
-      one[i] = T(1);
+    one[i] = T(binary_search(ffidx.begin(), ffidx.end(), i) ? 0 : 1);
   // we now have: Q [R [x t] ] <= {0, 1}^m cond.
   const auto on(projectionPt(one));
   fidx.reserve(fidx.size() + this->cols());

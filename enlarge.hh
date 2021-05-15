@@ -337,21 +337,43 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         for(int i = 0; i < data.rows(); i ++)
           result.row(i + recur) = data.row(i);
         for(int i = 0; i < recur; i ++) {
-          const auto& next(nextP0<T, true>(min(80, int(data.rows()) / (i + 1))));
+          const auto& next(nextP0<T, true>(min(80, int(data.rows()) / (i + 1) - n)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
           for(int j = 0; j < data.cols(); j ++) {
-            result(data.rows() + recur + i, j) =
-              result(recur - i - 1, j) = T(0);
-            for(int k = 0; k < next.size(); k ++) {
-              result(data.rows() + recur + i, j) +=
-                atan(result(recur + (k - next.size() + 1) * (i + 1) + data.rows() - 1, j)) * next[k];
-              result(recur - i - 1, j) +=
-                atan(result(recur - (k - next.size() + 1) * (i + 1), j)) * next[k];
+            for(int k = 0; k < data.rows(); k ++) {
+              SimpleMatrix<complex<T> > dpf(n * 2 + 1, n * 2 + 1);
+              auto dpm(dpf);
+              for(int kk = 0; kk < next.size(); kk ++) {
+                auto ldpf(dpf * complex<T>(T(0)));
+                auto ldpm(dpm * complex<T>(T(0)));
+                for(int ii = 0; ii < dpf.rows(); ii ++)
+                  for(int jj = 0; jj < dpf.cols(); jj ++) {
+                    const auto kl((ii - dpf.rows() + 1 + kk - next.size() + 1) * (i + 1));
+                    ldpf(ii, jj) = complex<T>(
+                      data(getImgPt<int>(kl + data.rows() - 1, data.rows()),
+                        getImgPt<int>(j + jj - n, data.cols())) );
+                    ldpm(ldpm.rows() - ii - 1, jj) = complex<T>(
+                      data(getImgPt<int>(- kl, data.rows()),
+                        getImgPt<int>(j + jj - n, data.cols())) );
+                  }
+                auto bpf(dft<T>(ldpf.rows()) * ldpf * dft<T>(ldpf.cols()) * complex<T>(next[kk]));
+                auto bpm(dft<T>(ldpm.rows()) * ldpm * dft<T>(ldpm.cols()) * complex<T>(next[kk]));
+ 
+                if(kk) {
+                  dpf += std::move(bpf);
+                  dpm += std::move(bpm);
+                } else {
+                  dpf  = std::move(bpf);
+                  dpm  = std::move(bpm);
+                }
+              }
+              result(data.rows() + recur + i, j) =
+               ((dpf * dft<T>(- dpf.cols()).col(n)).dot(dft<T>(- dpf.rows()).row(dpf.rows() - 1))).real();
+              result(recur - i - 1, j) =
+               ((dpm * dft<T>(- dpm.cols()).col(n)).dot(dft<T>(- dpm.rows()).row(dpm.rows() - 1))).real();
             }
-            result(data.rows() + recur + i, j) = tan(result(data.rows() + recur + i, j));
-            result(recur - i - 1, j) = tan(result(recur - i - 1, j));
           }
         }
         return result;

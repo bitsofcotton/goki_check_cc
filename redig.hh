@@ -383,6 +383,16 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
      nofix:
       ;
     }
+  for(int i = 0; i < res.size(); i ++) {
+    SimpleMatrix<T> d(3, 3);
+    for(int j = 0; j < 3; j ++) {
+      d(j, 0) = T(1);
+      d(j, 1) = p[res[i][j]][0];
+      d(j, 2) = p[res[i][j]][1];
+    }
+    if(T(0) < d.determinant())
+      swap(res[i][0], res[i][1]);
+  }
   return res;
 }
 
