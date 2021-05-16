@@ -23,7 +23,15 @@ typedef myfloat num_t;
 #include "redig.hh"
 
 using std::cout;
+using std::cerr;
 using std::endl;
+using std::atoi;
+using std::string;
+using std::to_string;
+using std::vector;
+using std::sort;
+using std::binary_search;
+using std::make_pair;
 
 #include <stdlib.h>
 
@@ -75,8 +83,8 @@ int main(int argc, const char* argv[]) {
       usage();
       return 0;
     }
-    const auto recur(4 < argc ? std::atoi(argv[4]) : 1);
-    const auto n(5 < argc ? std::atoi(argv[5]) : 1);
+    const auto recur(4 < argc ? atoi(argv[4]) : 1);
+    const auto n(5 < argc ? atoi(argv[5]) : 1);
     typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[2]))
       return - 1;
@@ -151,7 +159,7 @@ int main(int argc, const char* argv[]) {
       return -1;
     if(!file.loadp2or3(bump, argv[5]))
       return -1;
-    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]), std::atoi(argv[3]));
+    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]), atoi(argv[3]));
     redig.normalize(bump, num_t(1));
     if(!file.savep2or3(argv[6], bump, !true) )
       return - 2;
@@ -163,7 +171,7 @@ int main(int argc, const char* argv[]) {
       usage();
       return 0;
     }
-    const auto count(std::atoi(argv[2]));
+    const auto count(atoi(argv[2]));
     typename simpleFile<num_t>::Mat datac[3], datas[3];
     if(!file.loadp2or3(datac, argv[3]))
       return - 1;
@@ -198,7 +206,7 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    const auto  vbox(std::atoi(argv[2]));
+    const auto  vbox(atoi(argv[2]));
     const num_t ratio(std::atof(argv[3]));
     const num_t zratio(std::atof(argv[4]));
     const num_t thin(std::atof(argv[5]));
@@ -211,8 +219,8 @@ int main(int argc, const char* argv[]) {
       sidx ++;
     } else
       mask[0] = mask[1] = mask[2] = data[0] * num_t(0);
-    std::vector<typename simpleFile<num_t>::Vec>  points;
-    std::vector<typename simpleFile<num_t>::Veci> facets;
+    vector<typename simpleFile<num_t>::Vec>  points;
+    vector<typename simpleFile<num_t>::Veci> facets;
     redig.initialize(vbox, zratio);
     redig.getTileVec(data[0], points, facets);
     for(int i = 0; i < points.size(); i ++)
@@ -222,15 +230,15 @@ int main(int argc, const char* argv[]) {
                          ratio * num_t(data[0].cols()),
                  facets, argv[sidx],
                  redig.edge(points, ff), thin);
-    file.saveMTL(argv[sidx], (std::string(argv[sidx]) + std::string(".mtl")).c_str());
+    file.saveMTL(argv[sidx], (string(argv[sidx]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
       usage();
       return - 1;
     }
-    const auto index(std::atoi(argv[2]));
-    const auto Mindex(std::atoi(argv[3]));
+    const auto index(atoi(argv[2]));
+    const auto Mindex(atoi(argv[3]));
     num_t psi(0);
     num_t zratio(1);
     if(strcmp(argv[1], "tilt") == 0)
@@ -238,11 +246,11 @@ int main(int argc, const char* argv[]) {
     else
       zratio = std::atof(argv[4]);
     typename simpleFile<num_t>::Mat data[3], bump[3];
-    std::vector<typename simpleFile<num_t>::Vec>  points;
-    std::vector<typename simpleFile<num_t>::Veci> polys;
+    vector<typename simpleFile<num_t>::Vec>  points;
+    vector<typename simpleFile<num_t>::Veci> polys;
     if(!file.loadp2or3(data, argv[5]))
       return - 2;
-    const std::string fn(argv[6]);
+    const string fn(argv[6]);
     bool is_obj(false);
     if(fn[fn.size() - 1] == 'm') {
       if(!file.loadp2or3(bump, argv[6]))
@@ -284,12 +292,12 @@ int main(int argc, const char* argv[]) {
     int nemph(0);
     match_t<num_t> m;
     if(strcmp(argv[1], "match") == 0 || strcmp(argv[1], "match0") == 0) {
-      nshow = std::atoi(argv[2]);
-      nhid = std::atoi(argv[3]);
+      nshow = atoi(argv[2]);
+      nhid = atoi(argv[3]);
     } else if(strcmp(argv[1], "rmatch") == 0 ||
               strcmp(argv[1], "rmatch0") == 0) {
-      nemph = std::atoi(argv[2]);
-      nhid  = std::atoi(argv[3]);
+      nemph = atoi(argv[2]);
+      nhid  = atoi(argv[3]);
     } else {
       std::ifstream input;
       input.open(argv[2]);
@@ -303,21 +311,21 @@ int main(int argc, const char* argv[]) {
         }
       }
       input.close();
-      nemph = std::atoi(argv[3]);
+      nemph = atoi(argv[3]);
     }
-    const auto  vboxdst(std::atoi(argv[4]));
-    const auto  vboxsrc(std::atoi(argv[5]));
+    const auto  vboxdst(atoi(argv[4]));
+    const auto  vboxsrc(atoi(argv[5]));
     const num_t zratio(std::atof(argv[6]));
     typename simpleFile<num_t>::Mat in0[3], in1[3], bump0orig[3], bump1orig[3], mask0orig[3], mask1orig[3];
-    std::vector<typename simpleFile<num_t>::Veci> delau0, delau1;
-    std::vector<typename simpleFile<num_t>::Vec>  shape0, shape1;
+    vector<typename simpleFile<num_t>::Veci> delau0, delau1;
+    vector<typename simpleFile<num_t>::Vec>  shape0, shape1;
     if(!file.loadp2or3(in0, argv[7]))
       return - 2;
     if(!file.loadp2or3(in1, argv[8]))
       return - 2;
     if(!file.loadp2or3(bump0orig, argv[9]))
       return - 2;
-    const std::string fn(argv[10]);
+    const string fn(argv[10]);
     if(fn[fn.size() - 1] == 'j') {
       if(!file.loadobj(shape1, delau1, argv[10]))
         return - 2;
@@ -353,9 +361,9 @@ int main(int argc, const char* argv[]) {
     }
     if(strcmp(argv[1], "rmatch") == 0 || strcmp(argv[1], "rmatch0") == 0 ||
        strcmp(argv[1], "matcho") == 0) {
-      std::vector<match_t<num_t> > mm;
-      std::vector<std::vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
-      std::vector<std::vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
+      vector<match_t<num_t> > mm;
+      vector<vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
+      vector<vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
       if(strcmp(argv[1], "rmatch")  == 0 || strcmp(argv[1], "rmatch0") == 0) {
         sdelau0.emplace_back(delau0);
         sdelau1.emplace_back(delau1);
@@ -373,16 +381,16 @@ int main(int argc, const char* argv[]) {
           mm.emplace_back(mmm[0]);
           auto dstsort(mm[i - 1].dstpoints);
           auto srcsort(mm[i - 1].srcpoints);
-          std::sort(dstsort.begin(), dstsort.end());
-          std::sort(srcsort.begin(), srcsort.end());
-          sdelau0.emplace_back(std::vector<typename simpleFile<num_t>::Veci>());
-          sdelau1.emplace_back(std::vector<typename simpleFile<num_t>::Veci>());
-          sshape0.emplace_back(std::vector<typename simpleFile<num_t>::Vec>());
-          sshape1.emplace_back(std::vector<typename simpleFile<num_t>::Vec>());
-          std::vector<int> revdst;
-          std::vector<int> revsrc;
+          sort(dstsort.begin(), dstsort.end());
+          sort(srcsort.begin(), srcsort.end());
+          sdelau0.emplace_back(vector<typename simpleFile<num_t>::Veci>());
+          sdelau1.emplace_back(vector<typename simpleFile<num_t>::Veci>());
+          sshape0.emplace_back(vector<typename simpleFile<num_t>::Vec>());
+          sshape1.emplace_back(vector<typename simpleFile<num_t>::Vec>());
+          vector<int> revdst;
+          vector<int> revsrc;
           for(int j = 0; j < sshape0[i - 1].size(); j ++) {
-            if(std::binary_search(dstsort.begin(), dstsort.end(), j)) {
+            if(binary_search(dstsort.begin(), dstsort.end(), j)) {
               revdst.emplace_back(- 1);
               continue;
             }
@@ -390,7 +398,7 @@ int main(int argc, const char* argv[]) {
             revdst.emplace_back(sshape0[i].size() - 1);
           }
           for(int j = 0; j < sshape1[i - 1].size(); j ++) {
-            if(std::binary_search(srcsort.begin(), srcsort.end(), j)) {
+            if(binary_search(srcsort.begin(), srcsort.end(), j)) {
               revsrc.emplace_back(- 1);
               continue;
             }
@@ -430,13 +438,13 @@ int main(int argc, const char* argv[]) {
       typename simpleFile<num_t>::Mat outs[3];
       const auto rin0(redig.makeRefMatrix(in0[0], 1));
       const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
-      std::vector<std::vector<typename simpleFile<num_t>::Veci> > mhull0;
-      std::vector<std::vector<typename simpleFile<num_t>::Veci> > mhull1;
+      vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
+      vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
       for(int i = 0; i < mm.size(); i ++) {
         mhull0.emplace_back(redig.mesh2(sshape0[i], mm[i].dstpoints));
         mhull1.emplace_back((~ mm[i]).hullConv(mhull0[i]));
       }
-      const std::string outbase(argv[fnout]);
+      const string outbase(argv[fnout]);
       for(int idx = 0; idx < 3; idx ++) {
         for(int i = 0; i < mm.size(); i ++)
           if(i)
@@ -449,7 +457,7 @@ int main(int argc, const char* argv[]) {
                            sshape0[i], sdelau0[i]);
       }
       redig.normalize(outs, 1.);
-      file.savep2or3((outbase + std::string("-repl0.ppm")).c_str(), outs, false);
+      file.savep2or3((outbase + string("-repl0.ppm")).c_str(), outs, false);
       for(int idx = 0; idx < 3; idx ++) {
         for(int i = 0; i < mm.size(); i ++)
           if(i)
@@ -462,7 +470,7 @@ int main(int argc, const char* argv[]) {
                                        mm[i].transform(sshape1[i]), mhull1[i]);
       }
       redig.normalize(outs, 1.);
-      file.savep2or3((outbase + std::string("-repl1.ppm")).c_str(), outs, false);
+      file.savep2or3((outbase + string("-repl1.ppm")).c_str(), outs, false);
       for(int idx = 0; idx < 3; idx ++) {
         for(int i = 0; i < mm.size(); i ++)
           if(i)
@@ -471,7 +479,7 @@ int main(int argc, const char* argv[]) {
             outs[idx]  = redig.showMatch(in0[idx], sshape0[i], sdelau0[i]);
       }
       redig.normalize(outs, 1.);
-      file.savep2or3((outbase + std::string(".ppm")).c_str(), outs, false);
+      file.savep2or3((outbase + string(".ppm")).c_str(), outs, false);
       for(int i = 0; i < nemph; i ++) {
         const auto iemph(num_t(i) / num_t(nemph));
         simpleFile<num_t>::Mat reref;
@@ -490,25 +498,25 @@ int main(int argc, const char* argv[]) {
         for(int idx = 0; idx < 3; idx ++)
           outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
           // outs[idx] = redig.draw(in1[idx] * num_t(0), shape, delau1);
-        file.savep2or3((outbase + std::string("-") +
-                                  std::to_string(i) +
-                                  std::string("-") +
-                                  std::to_string(nemph) +
-                                  std::string(".ppm")).c_str(), outs, false);
+        file.savep2or3((outbase + string("-") +
+                                  to_string(i) +
+                                  string("-") +
+                                  to_string(nemph) +
+                                  string(".ppm")).c_str(), outs, false);
 /*
         file.saveobj(redig.takeShape(shape0, shape1, m,   iemph),
                      outs[0].rows(), outs[0].cols(), delau0,
-                     (outbase + std::string("-emph0-") +
-                                std::to_string(i) +
-                                std::string("-") +
-                                std::to_string(nemph) +
-                                std::string(".obj")).c_str());
+                     (outbase + string("-emph0-") +
+                                to_string(i) +
+                                string("-") +
+                                to_string(nemph) +
+                                string(".obj")).c_str());
         file.saveobj(shape, outs[0].rows(), outs[0].cols(), delau1,
-                     (outbase + std::string("-emph1-") +
-                                std::to_string(i) +
-                                std::string("-") +
-                                std::to_string(nemph) +
-                                std::string(".obj")).c_str());
+                     (outbase + string("-emph1-") +
+                                to_string(i) +
+                                string("-") +
+                                to_string(nemph) +
+                                string(".obj")).c_str());
 */
       }
     } else { 
@@ -518,11 +526,11 @@ int main(int argc, const char* argv[]) {
       if(fn[fn.size() - 1] == 'm')
         matches = elimMatch<num_t>(matches, in0, in1, bump1, shape1);
 */
-      std::cerr << matches.size() << "pending" << std::endl;
+      cerr << matches.size() << "pending" << endl;
       for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
         std::ofstream output;
-        output.open((std::string(argv[fnout]) + std::to_string(n + 1) +
-                     std::string(".txt")).c_str());
+        output.open((string(argv[fnout]) + to_string(n + 1) +
+                     string(".txt")).c_str());
         if(output.is_open()) {
           try {
             output << matches[n];
@@ -540,7 +548,7 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    std::vector<std::vector<typename simpleFile<num_t>::Mat> > in;
+    vector<vector<typename simpleFile<num_t>::Mat> > in;
     in.resize(argc - 3);
     for(int i = 3; i < argc; i ++) {
       typename simpleFile<num_t>::Mat ibuf[3];
@@ -575,8 +583,8 @@ int main(int argc, const char* argv[]) {
         out[i] = filter<num_t>(out[i], CLIP);
       file.savep2or3(argv[2], out, ! true);
     } else if(strcmp(argv[1], "cat") == 0) {
-      std::vector<typename simpleFile<num_t>::Mat> rep;
-      std::vector<typename simpleFile<num_t>::Mat> glay;
+      vector<typename simpleFile<num_t>::Mat> rep;
+      vector<typename simpleFile<num_t>::Mat> glay;
       glay.reserve(in.size());
       for(int i = 0; i < in.size(); i ++) {
         typename simpleFile<num_t>::Mat inn[3];
@@ -592,10 +600,10 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < cat.size(); i ++) {
         out[0] = out[1] = out[2] = cat[i];
         redig.normalize(out, 1.);
-        file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true);
+        file.savep2or3((string(argv[2]) + string("-") + to_string(i) + string(".ppm")).c_str(), out, ! true);
       }
     } else if(strcmp(argv[1], "composite") == 0) {
-      std::vector<typename simpleFile<num_t>::Mat> glay;
+      vector<typename simpleFile<num_t>::Mat> glay;
       glay.reserve(in.size());
       for(int i = 0; i < in.size(); i ++) {
         typename simpleFile<num_t>::Mat inn[3];
@@ -611,12 +619,12 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < composite.size(); i ++) {
         out[0] = out[1] = out[2] = composite[i];
         redig.normalize(out, 1.);
-        file.savep2or3((std::string(argv[2]) + std::string("-") + std::to_string(i) + std::string(".ppm")).c_str(), out, ! true);
+        file.savep2or3((string(argv[2]) + string("-") + to_string(i) + string(".ppm")).c_str(), out, ! true);
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {
-    std::vector<typename simpleFile<num_t>::Vec>  pdst,   psrc;
-    std::vector<typename simpleFile<num_t>::Veci> poldst, polsrc;
+    vector<typename simpleFile<num_t>::Vec>  pdst,   psrc;
+    vector<typename simpleFile<num_t>::Veci> poldst, polsrc;
     if(argc < 5 || !file.loadobj(pdst, poldst, argv[2]) ||
                    !file.loadobj(psrc, polsrc, argv[3])) {
       usage();
@@ -632,7 +640,7 @@ int main(int argc, const char* argv[]) {
       Mx = max(num_t(Mx), abs(psrc[i][1]));
     }
     if(argc > 7) {
-      const auto m(redig.tiltprep(typename simpleFile<num_t>::Mat(int(My), int(Mx)), - std::atoi(argv[4]), std::atoi(argv[5]), std::atof(argv[6])));
+      const auto m(redig.tiltprep(typename simpleFile<num_t>::Mat(int(My), int(Mx)), - atoi(argv[4]), atoi(argv[5]), std::atof(argv[6])));
       file.saveobj(redig.takeShape(pdst, psrc, m, num_t(1) / num_t(2)),
                    My, Mx, poldst, argv[7]);
     } else {
@@ -656,11 +664,11 @@ int main(int argc, const char* argv[]) {
       out[0] = out[1] = out[2] =
         redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
           redig.normalize(redig.rgb2d(src), num_t(1)),
-          num_t(std::atof(argv[6])), std::atoi(argv[2]));
+          num_t(std::atof(argv[6])), atoi(argv[2]));
     else
       for(int i = 0; i < 3; i ++)
         out[i] = redig.reImage(dst[i], src[i],
-          num_t(std::atof(argv[6])), std::atoi(argv[2]));
+          num_t(std::atof(argv[6])), atoi(argv[2]));
     redig.normalize(out, 1.);
     if(!file.savep2or3(argv[5], out, ! true, 255))
       return - 3;
@@ -677,11 +685,11 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "retrace2") == 0)
       out[0] = out[1] = out[2] =
         redig.reTrace(redig.normalize(redig.rgb2d(dst), num_t(1)),
-          num_t(std::atof(argv[5])), std::atoi(argv[2]));
+          num_t(std::atof(argv[5])), atoi(argv[2]));
     else {
       for(int i = 0; i < 3; i ++)
         out[i] = redig.reImage(dst[i],
-          num_t(std::atof(argv[5])), std::atoi(argv[2]));
+          num_t(std::atof(argv[5])), atoi(argv[2]));
       redig.autoLevel(out, 4 * (out[0].rows() + out[0].cols()));
     }
     redig.normalize(out, 1.);
@@ -692,11 +700,11 @@ int main(int argc, const char* argv[]) {
       usage();
       return -1;
     }
-    SimpleVector<num_t> m(std::atoi(argv[2]));
+    SimpleVector<num_t> m(atoi(argv[2]));
     Decompose<num_t> dec(m.size());
     auto n(m);
     auto f(m);
-    m[0] = n[0] = num_t(std::atoi(argv[2]) * 2);
+    m[0] = n[0] = num_t(atoi(argv[2]) * 2);
     // XXX (f[0] := 1 causes flat result.):
     f[0] = num_t(0);
     for(int i = 1; i < m.size(); i ++) {
@@ -705,18 +713,18 @@ int main(int argc, const char* argv[]) {
       f[i] = num_t(1);
     }
     f /= sqrt(f.dot(f));
-    const auto pp(std::make_pair(std::make_pair(std::atoi(argv[3]),
-      std::atoi(argv[3])), std::make_pair(0, 0)));
+    const auto pp(make_pair(make_pair(atoi(argv[3]),
+      atoi(argv[3])), make_pair(0, 0)));
     typename simpleFile<num_t>::Mat M[3];
     M[0] = M[1] = M[2] = redig.normalize(redig.applyTrace(
-      std::make_pair(dec.synth(m, f), dec.synth(n, f)),
-      std::make_pair(pp, pp)), num_t(1));
+      make_pair(dec.synth(m, f), dec.synth(n, f)),
+      make_pair(pp, pp)), num_t(1));
     file.savep2or3(argv[4], M, true, 255);
   } else if(strcmp(argv[1], "omake") == 0) {
-    std::vector<std::vector<num_t> > data;
-    std::string header;
+    vector<vector<num_t> > data;
+    string header;
     file.loaddat(argv[3], header, data);
-    simpleFile<num_t>::Mat buf(std::atoi(argv[4]), std::atoi(argv[4]));
+    simpleFile<num_t>::Mat buf(atoi(argv[4]), atoi(argv[4]));
     const auto& mdft(dft<num_t>(buf.rows()));
     const auto& midft(dft<num_t>(- buf.rows()));
     for(int i0 = 1; i0 < data.size(); i0 ++) {
@@ -754,15 +762,15 @@ int main(int argc, const char* argv[]) {
       auto sdata(data[i]);
       for(int i = 0; i < sdata.size(); i ++)
         sdata[i] = abs(sdata[i]);
-      std::sort(sdata.begin(), sdata.end());
+      sort(sdata.begin(), sdata.end());
       M = max(M, sdata[sdata.size() * 7 / 8] * num_t(4));
     }
-    std::cout << header;
+    cout << header;
     for(int i = 0; i < data[0].size(); i ++) {
-      std::cout << data[0][i] << " ";
+      cout << data[0][i] << " ";
       for(int j = 1; j < data.size(); j ++)
-        std::cout << (i < data[j].size() ? data[j][i] / M : num_t(0)) << " ";
-      std::cout << std::endl;
+        cout << (i < data[j].size() ? data[j][i] / M : num_t(0)) << " ";
+      cout << endl;
     }
   } else {
     usage();

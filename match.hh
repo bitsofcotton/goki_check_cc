@@ -316,7 +316,7 @@ template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebas
         }
       }
       sort(msub.begin(), msub.end());
-      cerr << msub.size() << ":" << flush;
+      cerr << "." << flush;
       if(T(msub.size()) /
            T(min(shapebase.size(), points.size())) < threshp)
         continue;
