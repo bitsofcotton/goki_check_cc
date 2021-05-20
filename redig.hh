@@ -841,7 +841,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         cpoint[1] = T(zi) / T(dratio);
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(T(result.rows()) / T(2) <= abs(x0)) continue;
+        if(int(x0) < 3 || rxy < abs(x0) * T(2)) continue;
         Vec work(result.cols());
         for(int i = 0; i < work.size(); i ++)
           work[i] = T(0);
@@ -1246,6 +1246,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vector<Triangles>& triangles, const match_t<T>& m, const T& depth) const {
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int j = 0; j < triangles.size(); j ++) {
     for(int k = 0; k < 3; k ++)
       triangles[j].p.setCol(k, m.transform(triangles[j].p.col(k)));

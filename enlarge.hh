@@ -166,6 +166,28 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return diff<T>(  data.rows()) * data;
     case INTEG_Y:
       return diff<T>(- data.rows()) * data;
+/*
+      {
+        // instead of integrate, we can use normalize:
+        // N.B. d^exp(t)/dx^exp(t) f(x) == f(x + t), t != 0.
+        //   so d^exp(- t)/dx^exp(- t)
+        //   == d^(- exp(t))/dx^(- exp(t)) == f(x - t).
+        //   we normalize with f(x - 1) + f(x + 1) in weak differential meaning.
+        // Cor: d/dt d^t/d(x^t) f(x)
+        //   == d/dt f(x + log(t)) == f'(x + log(t)) / t.
+        // N.B. d^0/dx^0 f(x) == f(x)
+        //   == d^exp(- inf)/dx^exp(- inf) f(x) == f(x - inf)
+        //   == d^(- exp(- inf))/dx^(- exp(- inf))
+        //   == d^(exp(inf))/dx^exp(inf) == f(x + inf)
+        auto normalize(dft<T>(data.rows()) * data.template cast<complex<T> >());
+        for(int i = 0; i < normalize.rows(); i ++) {
+          const auto n(complex<T>(T(0), - T(2) * Pi * T(i) / T(normalize.rows())));
+          normalize.row(i) *= exp(n) + exp(- n);
+        }
+        return (dft<T>(- data.rows()) * normalize).template real<T>();
+      }
+      break;
+*/
     case COLLECT_Y:
       return filter<T>(filter<T>(data, DETECT_Y), ABS);
     case SHARPEN_Y:
@@ -300,9 +322,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-          if(abs(int(y0 * T(2))) < 3 || data.rows() / 2 < int(y0 * T(2)))
-            continue;
-          assert(int(y0) * 2 <= data.rows());
+          if(abs(int(y0)) < 3 || rxy < abs(y0) * T(2)) continue;
           const auto& Dop(diff<T>(abs(int(y0 * T(2))) & ~ int(1)));
           const auto& Dop0(Dop.row(Dop.rows() / 2));
           //  N.B. dC_k/dy on zi.

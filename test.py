@@ -107,10 +107,7 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], "integ", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm", "-average", "-compress", "none", root + "-" + argv[2] + "2.ppm"])
-      subprocess.call([argv[1], "bumpc", str(zratio / 2.), str(rot), root + ".ppm", root + "-" + argv[2] + "2.ppm", root + "-" + argv[2] + "3.ppm"])
-      subprocess.call(["convert", root + "-" + argv[2] + "3.ppm", "-blur", "3x3", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      subprocess.call([argv[1], "bumpc", str(zratio / 2.), str(rot), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "-global.ppm", str(pixels), str(rot)])
       subprocess.call(["convert", root + "-" + argv[2] + "-global.ppm", "-blur", str(int(pow(pixels, .5))), "-compress", "none", root + "-" + argv[2] + "-global-blur.ppm"])
@@ -136,11 +133,11 @@ else:
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-jps-%d.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-LR.mp4"])
     elif(argv[2] == "tilt"):
       for s in range(0, pixels):
-        subprocess.call([argv[1], "tilt", str(s), str(pixels), str(psi), root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
+        subprocess.call([argv[1], "tilt", str(s), str(pixels), str(psi * 2.), root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
     elif(argv[2] == "btilt"):
       for s in range(0, pixels * 2):
-        subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
+        subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi * 2.), root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
     elif(argv[2] == "flicker"):

@@ -228,7 +228,7 @@ int main(int argc, const char* argv[]) {
     const auto ff(redig.floodfill(redig.rgb2d(mask), points)[0]);
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
-                 facets, argv[sidx],
+                 8 < argc ? redig.mesh2(points, ff) : facets, argv[sidx],
                  redig.edge(points, ff), thin);
     file.saveMTL(argv[sidx], (string(argv[sidx]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||

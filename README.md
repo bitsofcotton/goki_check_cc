@@ -67,6 +67,9 @@ ongoing deep learning methods.
 reDig::edge returns relaxed edges, this can be fixed with multiple on counting
 +/- on same scan line.
 
+reDig::mesh2 returns non clockwise nor non counter clockwise tiles.
+We don't use masks, so this is abandoned.
+
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
 * https://drive.google.com/drive/folders/1B71X1BMttL6yyi76REeOTNRrpopO8EAR?usp=sharing

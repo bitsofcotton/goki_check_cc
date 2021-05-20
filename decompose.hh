@@ -214,15 +214,19 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::represent(const M
               r < min(min(i, j),
                     min(img.rows() - i - 1, img.cols() - j - 1));
               r += max(1, min(img.rows() / size, img.cols() / size))) {
-        const auto part(subImage(img, i, j, r));
+        // integrate 4th times because we svd 4 times.
+        // svd takes bothside transform, we suppose them as differential op.
+        const auto part(diff<T>(- size) * diff<T>(- size) * diff<T>(- size) * diff<T>(- size) * subImage(img, i, j, r) * diff<T>(- size) * diff<T>(- size) * diff<T>(- size) * diff<T>(- size));
         const auto left(part.SVD() * part);
               Vec  work(left.rows());
         for(int k = 0; k < work.size(); k ++)
           work[k] = sqrt(left.row(k).dot(left.row(k))) + T(1);
         // N.B. normalized singular values on the image with circle region.
-        //      permutation matrix describes each line when original is
-        //      symmetric. when so, singular value describes each line
-        //      intensity.
+        //      If this is flat, the data we have is flat.
+        //      If this is edged, the data we have has some data.
+        work = mother(work);
+        // N.B. enlarging specific bias.
+        //      recursive on them.
         w1.emplace_back(std::move(work /= sqrt(work.dot(work))));
       }
       if(! w1.size())
@@ -239,17 +243,8 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::represent(const M
         const auto left(w1m.SVD() * w1m);
         for(int k = 0; k < left.rows(); k ++)
           w0(j - size, k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
-        // N.B. we have now each line intensity differ quantities when
-        //      r increases.
-        w0.row(j - size)  = diff<T>(- w0.cols()) * mother(w0.row(j - size));
-        // N.B. integrate the mother wavelet (specific quantities on
-        //      differ quantities of each line intensity) on them.
-        //      mother wavelet is needed because we need specific value
-        //      to compare with other images.
-        //      integrate is needed because each loop, we make differs.
+        w0.row(j - size)  = mother(w0.row(j - size));
         w0.row(j - size) /= sqrt(w0.row(j - size).dot(w0.row(j - size)));
-        // N.B. we have obscure but normalized each line intensity
-        //      representation.
       }
     }
     // N.B. do same on x axis:
@@ -260,7 +255,7 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::represent(const M
     const auto left(w0.SVD() * w0);
     for(int k = 0; k < left.rows(); k ++)
       w00(i - size, k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
-    w00.row(i - size)  = diff<T>(- w00.cols()) * mother(w00.row(i - size));
+    w00.row(i - size)  = mother(w00.row(i - size));
     w00.row(i - size) /= sqrt(w00.row(i - size).dot(w00.row(i - size)));
   }
   // N.B. do same on whole image:
@@ -268,7 +263,7 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::represent(const M
   const auto left(w00.SVD() * w00);
   for(int k = 0; k < left.rows(); k ++)
     res0(0, k) = sqrt(left.row(k).dot(left.row(k))) + T(1);
-  res0.row(0)  = diff<T>(- res0.cols()) * mother(res0.row(0));
+  res0.row(0)  = mother(res0.row(0));
   res0.row(0) /= sqrt(res0.row(0).dot(res0.row(0)));
   // N.B. recursive on them.
   if(0 < depth && size * 4 <= min(img.rows(), img.cols()) / 2) {
