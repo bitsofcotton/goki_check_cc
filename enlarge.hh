@@ -169,16 +169,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 /*
       {
         // instead of integrate, we can use normalize:
-        // N.B. d^exp(t)/dx^exp(t) f(x) == f(x + t), t != 0.
+        // N.B. d^exp(t)/dx^exp(t) f(x) == f(x + t dx), t != 0.
         //   so d^exp(- t)/dx^exp(- t)
-        //   == d^(- exp(t))/dx^(- exp(t)) == f(x - t).
-        //   we normalize with f(x - 1) + f(x + 1) in weak differential meaning.
+        //   == d^(- exp(t))/dx^(- exp(t)) == f(x - t dx).
+        //   we normalize with f(x - dx) + f(x + dx) in weak differential meaning.
         // Cor: d/dt d^t/d(x^t) f(x)
-        //   == d/dt f(x + log(t)) == f'(x + log(t)) / t.
+        //   == d/dt f(x + log(t) dx) == f'(x + log(t) dx) / g(x, t).
         // N.B. d^0/dx^0 f(x) == f(x)
-        //   == d^exp(- inf)/dx^exp(- inf) f(x) == f(x - inf)
-        //   == d^(- exp(- inf))/dx^(- exp(- inf))
-        //   == d^(exp(inf))/dx^exp(inf) == f(x + inf)
+        //   == d^exp(- inf)/dx^exp(- inf) f(x) == f(x - inf dx)
+        //   == d^(- exp(- inf))/dx^(- exp(- inf dx))
+        //   == d^(exp(inf))/dx^exp(inf) == f(x + inf dx)
         auto normalize(dft<T>(data.rows()) * data.template cast<complex<T> >());
         for(int i = 0; i < normalize.rows(); i ++) {
           const auto n(complex<T>(T(0), - T(2) * Pi * T(i) / T(normalize.rows())));
