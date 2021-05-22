@@ -294,15 +294,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       {
         SimpleMatrix<T> result(data.rows(), data.cols());
         SimpleMatrix<T> zscore(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-        for(int i = 0; i < result.rows(); i ++)
-          for(int j = 0; j < result.cols(); j ++) {
-            result(i, j) = T(0);
-            zscore(i, j) = - T(1);
-          }
+        result.O();
+        zscore.I(- T(1));
         const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
         const int  dratio(sqrt(sqrt(rxy)));
               SimpleVector<T> camera(2);

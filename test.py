@@ -115,10 +115,6 @@ else:
       subprocess.call(["convert", root + "-" + argv[2] + "-global-blur-sharpen.ppm", "-equalize", root + "-" + argv[2] + "-gbse.png"])
       subprocess.call(["convert", root + ".ppm", "-resize", str(pixels * 100) + "%", "-equalize", root + "-" + argv[2] + "-local.png"])
       subprocess.call(["convert", root + "-" + argv[2] + "-gbse.png", root + "-" + argv[2] + "-local.png", "-average", "-equalize", root + "-" + argv[2] + ".png"])
-    elif(argv[2] == "pextend"):
-      subprocess.call(["cp", root + ".ppm", root + "-" + argv[2] + ".ppm"])
-      for t in range(0, pixels):
-        subprocess.call([argv[1], argv[2], root + "-" + argv[2] + ".ppm", root + "-" + argv[2] + ".ppm", str(1), str(rot)])
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "flarge" or argv[2] == "pextend" or argv[2] == "blink" or argv[2] == "represent"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):

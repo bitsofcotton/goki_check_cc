@@ -815,15 +815,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
     const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi))));
           Mat  result(color.rows(), color.cols());
           auto zscore(result);
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-    for(int i = 0; i < result.rows(); i ++)
-      for(int j = 0; j < result.cols(); j ++) {
-        result(i, j) = T(0);
-        zscore(i, j) = - T(1);
-      }
+    result.O();
+    zscore.I(- T(1));
     const T   rxy(color0.rows());
     const int dratio(sqrt(sqrt(rxy)));
           Vec camera(2);
@@ -843,8 +836,14 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         Vec work(result.cols());
         for(int i = 0; i < work.size(); i ++)
           work[i] = T(0);
-        const auto  Dop(diff<T>(abs(int(x0 * T(2))) & ~ int(1)));
-        const auto& Dop0(Dop.row(Dop.rows() / 2));
+        SimpleVector<T> Dop0;
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+        {
+          const auto Dop(diff<T>(abs(int(x0 * T(2))) & ~ int(1)));
+          Dop0 = Dop.row(Dop.rows() / 2);
+        }
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.
           cpoint[0] = (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / (T(result.rows() - 1) / T(2));

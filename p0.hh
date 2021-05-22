@@ -54,7 +54,7 @@ template <typename T, bool walk = false> const SimpleVector<T>& nextP0(const int
   return p;
 }
 
-template <typename T, bool walk = false> class P0 {
+template <typename T, typename feeder, bool walk = false> class P0 {
 public:
   typedef SimpleVector<T> Vec;
   inline P0();
@@ -62,29 +62,25 @@ public:
   inline ~P0();
   inline T next(const T& in);
 private:
-  Vec buf;
+  feeder f;
 };
 
-template <typename T, bool walk> inline P0<T, walk>::P0() {
+template <typename T, typename feeder, bool walk> inline P0<T, feeder, walk>::P0() {
   ;
 }
 
-template <typename T, bool walk> inline P0<T, walk>::P0(const int& size) {
+template <typename T, typename feeder, bool walk> inline P0<T, feeder, walk>::P0(const int& size) {
   assert(0 < size);
-  buf.resize(size);
-  for(int i = 0; i < buf.size(); i ++)
-    buf[i] = T(0);
+  f = feeder(size);
 }
 
-template <typename T, bool walk> inline P0<T, walk>::~P0() {
+template <typename T, typename feeder, bool walk> inline P0<T, feeder, walk>::~P0() {
   ;
 }
 
-template <typename T, bool walk> inline T P0<T, walk>::next(const T& in) {
-  for(int i = 0; i < buf.size() - 1; i ++)
-    buf[i]  = buf[i + 1];
-  buf[buf.size() - 1] = atan(in);
-  return tan(nextP0<T, walk>(buf.size()).dot(buf));
+template <typename T, typename feeder, bool walk> inline T P0<T, feeder, walk>::next(const T& in) {
+  const auto& ff(f.next(atan(in)));
+  return f.full ? tan(nextP0<T, walk>(f.res.size()).dot(ff)) : T(0);
 }
 
 #define _P0_
