@@ -843,7 +843,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         Vec work(result.cols());
         for(int i = 0; i < work.size(); i ++)
           work[i] = T(0);
-        const auto& Dop(diff<T>(abs(int(x0 * T(2))) & ~ int(1)));
+        const auto  Dop(diff<T>(abs(int(x0 * T(2))) & ~ int(1)));
         const auto& Dop0(Dop.row(Dop.rows() / 2));
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.

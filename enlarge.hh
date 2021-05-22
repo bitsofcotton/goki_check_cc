@@ -126,42 +126,42 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH) {
     switch(dir) {
     case SHARPEN_BOTH:
-      return filter<T>(filter<T>(data, SHARPEN_X), SHARPEN_Y);
+      return filter<T>(filter<T>(data, SHARPEN_X, n, recur), SHARPEN_Y, n, recur);
     case ENLARGE_BOTH:
-      return filter<T>(filter<T>(data, ENLARGE_X), ENLARGE_Y);
+      return filter<T>(filter<T>(data, ENLARGE_X, n, recur), ENLARGE_Y, n, recur);
     case FLARGE_BOTH:
-      return filter<T>(filter<T>(data, FLARGE_X), FLARGE_Y);
+      return filter<T>(filter<T>(data, FLARGE_X, n, recur), FLARGE_Y, n, recur);
     case DETECT_BOTH:
-      return (filter<T>(data, DETECT_X) + filter<T>(data, DETECT_Y)) / T(2);
+      return (filter<T>(data, DETECT_X, n, recur) + filter<T>(data, DETECT_Y, n, recur)) / T(2);
     case INTEG_BOTH:
-      return (filter<T>(data, INTEG_X) + filter<T>(data, INTEG_Y)) / T(2);
+      return (filter<T>(data, INTEG_X, n, recur) + filter<T>(data, INTEG_Y, n, recur)) / T(2);
     case COLLECT_BOTH:
-      return (filter<T>(data, COLLECT_X) + filter<T>(data, COLLECT_Y)) / T(2);
+      return (filter<T>(data, COLLECT_X, n, recur) + filter<T>(data, COLLECT_Y, n, recur)) / T(2);
     case BUMP_BOTH:
       // eigen sum on curvature.
-      return (filter<T>(data, BUMP_X) + filter<T>(data, BUMP_Y)) / T(2);
+      return (filter<T>(data, BUMP_X, n, recur) + filter<T>(data, BUMP_Y, n, recur)) / T(2);
     case EXTEND_BOTH:
-      return filter<T>(filter<T>(data, EXTEND_X), EXTEND_Y);
+      return filter<T>(filter<T>(data, EXTEND_X, n, recur), EXTEND_Y, n, recur);
     case BLINK_BOTH:
-      return filter<T>(filter<T>(data, BLINK_X), BLINK_Y);
+      return filter<T>(filter<T>(data, BLINK_X, n, recur), BLINK_Y, n, recur);
     case SHARPEN_X:
-      return filter<T>(data.transpose(), SHARPEN_Y).transpose();
+      return filter<T>(data.transpose(), SHARPEN_Y, n, recur).transpose();
     case ENLARGE_X:
-      return filter<T>(data.transpose(), ENLARGE_Y).transpose();
+      return filter<T>(data.transpose(), ENLARGE_Y, n, recur).transpose();
     case FLARGE_X:
-      return filter<T>(data.transpose(), FLARGE_Y).transpose();
+      return filter<T>(data.transpose(), FLARGE_Y, n, recur).transpose();
     case DETECT_X:
-      return filter<T>(data.transpose(), DETECT_Y).transpose();
+      return filter<T>(data.transpose(), DETECT_Y, n, recur).transpose();
     case INTEG_X:
-      return filter<T>(data.transpose(), INTEG_Y).transpose();
+      return filter<T>(data.transpose(), INTEG_Y, n, recur).transpose();
     case COLLECT_X:
-      return filter<T>(data.transpose(), COLLECT_Y).transpose();
+      return filter<T>(data.transpose(), COLLECT_Y, n, recur).transpose();
     case BUMP_X:
-      return filter<T>(data.transpose(), BUMP_Y).transpose();
+      return filter<T>(data.transpose(), BUMP_Y, n, recur).transpose();
     case EXTEND_X:
-      return filter<T>(data.transpose(), EXTEND_Y).transpose();
+      return filter<T>(data.transpose(), EXTEND_Y, n, recur).transpose();
     case BLINK_X:
-      return filter<T>(data.transpose(), BLINK_Y).transpose();
+      return filter<T>(data.transpose(), BLINK_Y, n, recur).transpose();
     case DETECT_Y:
       return diff<T>(  data.rows()) * data;
     case INTEG_Y:
@@ -189,7 +189,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       break;
 */
     case COLLECT_Y:
-      return filter<T>(filter<T>(data, DETECT_Y), ABS);
+      return filter<T>(filter<T>(data, DETECT_Y, n, recur), ABS);
     case SHARPEN_Y:
       {
         assert(2 <= data.rows());
@@ -323,7 +323,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
           if(abs(int(y0)) < 3 || rxy < abs(y0) * T(2)) continue;
-          const auto& Dop(diff<T>(abs(int(y0 * T(2))) & ~ int(1)));
+          const auto  Dop(diff<T>(abs(int(y0 * T(2))) & ~ int(1)));
           const auto& Dop0(Dop.row(Dop.rows() / 2));
           //  N.B. dC_k/dy on zi.
 #if defined(_OPENMP)
@@ -356,8 +356,12 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
         for(int i = 0; i < data.rows(); i ++)
           result.row(i + recur) = data.row(i);
+        const auto ldft(dft<T>(n * 2 + 1));
+        const auto lidft(dft<T>(- (n * 2 + 1)));
+        const auto rdft(ldft.transpose());
+        const auto ridft(lidft.transpose());
         for(int i = 0; i < recur; i ++) {
-          const auto& next(nextP0<T, true>(min(80, int(data.rows()) / (i + 1) - n)));
+          const auto next(nextP0<T, true>(min(80, int(data.rows()) / (i + 1) - n)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -378,8 +382,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                       data(getImgPt<int>(- kl, data.rows()),
                         getImgPt<int>(j + jj - n, data.cols())) );
                   }
-                auto bpf(dft<T>(ldpf.rows()) * ldpf * dft<T>(ldpf.cols()) * complex<T>(next[kk]));
-                auto bpm(dft<T>(ldpm.rows()) * ldpm * dft<T>(ldpm.cols()) * complex<T>(next[kk]));
+                auto bpf(ldft * ldpf * rdft * complex<T>(next[kk]));
+                auto bpm(ldft * ldpm * rdft * complex<T>(next[kk]));
  
                 if(kk) {
                   dpf += std::move(bpf);
@@ -390,9 +394,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                 }
               }
               result(data.rows() + recur + i, j) =
-               ((dpf * dft<T>(- dpf.cols()).col(n)).dot(dft<T>(- dpf.rows()).row(dpf.rows() - 1))).real();
+               (dpf * ridft.col(n)).dot(lidft.row(dpf.rows() - 1)).real();
               result(recur - i - 1, j) =
-               ((dpm * dft<T>(- dpm.cols()).col(n)).dot(dft<T>(- dpm.rows()).row(dpm.rows() - 1))).real();
+               (dpm * ridft.col(n)).dot(lidft.row(dpm.rows() - 1)).real();
             }
           }
         }

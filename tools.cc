@@ -727,8 +727,8 @@ int main(int argc, const char* argv[]) {
     string header;
     file.loaddat(argv[3], header, data);
     simpleFile<num_t>::Mat buf(atoi(argv[4]), atoi(argv[4]));
-    const auto& mdft(dft<num_t>(buf.rows()));
-    const auto& midft(dft<num_t>(- buf.rows()));
+    const auto mdft(dft<num_t>(buf.rows()));
+    const auto midft(dft<num_t>(- buf.rows()));
     for(int i0 = 1; i0 < data.size(); i0 ++) {
       for(int i = 0; i <= data[i0].size() / buf.rows() / buf.rows(); i ++) {
         for(int k = 0; k < buf.cols(); k ++)
