@@ -111,20 +111,18 @@ public:
   void normalize(Mat data[3], const T& upper);
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
-  void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay);
+  void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) const;
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const;
-  vector<Triangles> tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m);
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth = - T(1000)) const;
-  Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& depth = - T(1000)) const;
+  vector<Triangles> tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m) const;
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
+  Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& depth = - T(1000)) const;
+  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth = - T(1000)) const;
   Mat  applyTrace(const pair<Vec, Vec>& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw);
 
 private:
   void drawMatchLine(Mat& map, const Vec& lref0, const Vec& lref1, const T& c) const;
   void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
   inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const;
-  Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const match_t<T>& m, const T& depth = - T(1000)) const;
-  Mat  tilt(const Mat& in, vector<Triangles>& triangles, const match_t<T>& m, const T& depth = - T(1000)) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
   
   T   Pi;
@@ -841,7 +839,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         cpoint[1] = T(zi) / T(dratio);
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(int(x0) < 3 || rxy < abs(x0) * T(2)) continue;
+        if(int(x0) < 3 * vbox || rxy < abs(x0) * T(2)) continue;
         Vec work(result.cols());
         for(int i = 0; i < work.size(); i ++)
           work[i] = T(0);
@@ -1095,7 +1093,7 @@ template <typename T> void reDig<T>::autoLevel(Mat data[3], const int& count) {
 }
 
 // get bump with multiple scale and vectorized result.
-template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) {
+template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) const {
   // get vectorize.
   geoms = vector<Vec>();
   T aavg(0);
@@ -1211,7 +1209,7 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   return m;
 }
 
-template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m) {
+template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m) const {
   vector<Triangles> result;
   for(int i = 0; i < polys.size(); i ++) {
     Triangles work;
@@ -1230,31 +1228,10 @@ template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(co
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth) const {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
-  vector<Triangles> triangles;
-  triangles.reserve((in.rows() - 1) * (in.cols() - 1) * 2);
-  for(int i = 0; i < in.rows() - 1; i ++)
-    for(int j = 0; j < in.cols() - 1; j ++) {
-      triangles.emplace_back(makeTriangle(i, j, in, bump, false));
-      triangles.emplace_back(makeTriangle(i, j, in, bump, true));
-    }
-  return tilt(in, triangles, m, depth);
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles, const match_t<T>& m, const T& depth) const {
-  auto tris(triangles);
-  return tilt(in, tris, m, depth);
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vector<Triangles>& triangles, const match_t<T>& m, const T& depth) const {
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int j = 0; j < triangles.size(); j ++) {
-    for(int k = 0; k < 3; k ++)
-      triangles[j].p.setCol(k, m.transform(triangles[j].p.col(k)));
-    triangles[j].solveN();
-  }
-  return tilt(in, triangles, depth);
+  vector<Vec>  points;
+  vector<Veci> facets;
+  getTileVec(bump, points, facets);
+  return tilt(in, tiltprep(points, facets, in, m), depth);
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth) const {
@@ -1265,12 +1242,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vector<Triangles>& triangles, const T& depth) const {
   cerr << "t" << flush;
   Mat result(in.rows(), in.cols());
-  for(int i = 0; i < in.rows(); i ++)
-    for(int j = 0; j < in.cols(); j ++)
-      result(i, j) = T(0);
   Vec vz(3);
-  vz[0] = vz[1] = T(0);
-  vz[2] = T(1);
+  result.O();
+  vz.ek(2);
   // XXX: patent???
   vector<pair<T, Triangles> > zbuf;
   zbuf.resize(triangles.size(), make_pair(T(0), Triangles()));
