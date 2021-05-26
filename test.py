@@ -107,7 +107,8 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], "bumpc", str(zratio / 2.), str(rot), str(pixels), str(zratio), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + ".ppm"])
+      subprocess.call([argv[1], "bumpc", str(psi), str(1), str(pixels), str(zratio), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + ".ppm"])
+      #subprocess.call([argv[1], "bumpc", str(psi), str(rot), str(pixels), str(zratio), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "-global.ppm", str(pixels), str(rot)])
       subprocess.call(["convert", root + "-" + argv[2] + "-global.ppm", "-blur", str(int(pow(pixels, .5))), "-compress", "none", root + "-" + argv[2] + "-global-blur.ppm"])
