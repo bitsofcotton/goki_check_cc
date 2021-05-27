@@ -813,6 +813,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
   if(n == 0) {
     const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi))));
     const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi))));
+    const auto rr(tiltprep(bumpm, 1, 2, abs(psi)).transform(SimpleVector<T>(3).ek(0, T(color.rows())))[0] / T(color.rows()));
           Mat  result(color.rows(), color.cols());
           auto zscore(result);
     result.O();
@@ -828,7 +829,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
     for(int j = 0; j < result.rows(); j ++) {
       for(int zi = 0; zi < dratio; zi ++) {
         Vec cpoint(2);
-        cpoint[0] = T(1) / T(2 * dratio);
+        cpoint[0] = rr / T(2 * dratio);
         cpoint[1] = T(zi) / T(dratio);
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
@@ -846,7 +847,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         }
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.
-          cpoint[0] = (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / (T(result.rows() - 1) / T(2));
+          cpoint[0] = rr * (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / (T(result.rows() - 1) / T(2));
           // x-z plane projection of point p with camera geometry c to z=0.
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
