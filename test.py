@@ -6,8 +6,8 @@ import subprocess
 
 argv    = sys.argv
 pixels  = 4
-zratio  = .25
-psi     = .1
+zratio  = .5
+psi     = 1. / 3.
 rot     = 7
 
 if(len(argv) < 4):
@@ -106,8 +106,8 @@ else:
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], "bumpc", str(psi * 4.), str(1), str(pixels), str(zratio / 4.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(0)])
+      subprocess.call([argv[1], "bumpc", str(psi / 2.), str(1), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
       subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + ".ppm"])
       #subprocess.call([argv[1], "bumpc", str(psi), str(rot), str(pixels), str(zratio), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "enlarge"):
@@ -120,8 +120,8 @@ else:
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "flarge" or argv[2] == "pextend" or argv[2] == "blink" or argv[2] == "represent"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
-      subprocess.call([argv[1], "obj", str(pixels * 4), "1",  str(zratio * 4), "0", root + "-bump.ppm", root + ".obj"])
-      #subprocess.call([argv[1], "obj", str(pixels * 4), ".1", str(zratio * 4), ".4", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
+      subprocess.call([argv[1], "obj", str(pixels * 4), "1",  str(zratio), "0", root + "-bump.ppm", root + ".obj"])
+      #subprocess.call([argv[1], "obj", str(pixels * 4), ".1", str(zratio), ".4", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
       #subprocess.call(["xcrun", "scntool", "--convert", root + ".obj", "--format", "scn", "--output", root + ".scn"])
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + ".obj", root + "-L.ppm"])
@@ -135,11 +135,11 @@ else:
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-jps-%d.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-LR.mp4"])
     elif(argv[2] == "tilt"):
       for s in range(0, pixels):
-        subprocess.call([argv[1], "tilt", str(s), str(pixels), str(psi * 2.), root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
+        subprocess.call([argv[1], "tilt", str(s), str(pixels), str(psi), root + ".ppm", root + ".obj", root + "-tilt-base-" + str(s) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
     elif(argv[2] == "btilt"):
       for s in range(0, pixels * 2):
-        subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi * 2.), root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
+        subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + ".obj", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
     elif(argv[2] == "flicker"):

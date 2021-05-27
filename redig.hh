@@ -813,7 +813,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
   if(n == 0) {
     const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi))));
     const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi))));
-    const auto rr(tiltprep(bumpm, 1, 2, abs(psi)).transform(SimpleVector<T>(3).ek(0, T(color.rows())))[0] / T(color.rows()));
+    const auto rr(sqrt(tiltprep(bumpm, 1, 2, abs(psi)).transform(SimpleVector<T>(3).ek(0, T(color.rows())))[0] * tiltprep(bumpm, 1, 4, abs(psi)).transform(SimpleVector<T>(3).ek(1, T(color.cols())))[1] / T(color.rows() * color.cols())));
           Mat  result(color.rows(), color.cols());
           auto zscore(result);
     result.O();
