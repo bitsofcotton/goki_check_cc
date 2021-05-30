@@ -43,7 +43,7 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline CatG();
-  inline CatG(const int& size, const vector<Vec>& in, const bool& recur = false);
+  inline CatG(const int& size0, const vector<Vec>& in, const bool& recur = false);
   inline ~CatG();
   inline pair<T, int> score(const Vec& in);
   Vec  cut;
@@ -57,7 +57,8 @@ template <typename T> inline CatG<T>::CatG() {
   recur = false;
 }
 
-template <typename T> inline CatG<T>::CatG(const int& size, const vector<Vec>& in, const bool& recur) {
+template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& in, const bool& recur) {
+  const auto size(abs(size0));
   this->recur = recur;
   const auto block(recur ? size : 1);
   SimpleMatrix<T> A(in.size() * block, size + 1);
@@ -79,9 +80,25 @@ template <typename T> inline CatG<T>::CatG(const int& size, const vector<Vec>& i
   fix.I(false);
   const auto on(Pt.projectionPt(one));
   vector<pair<T, int> > fidx;
+  vector<int> pidx;
   fidx.reserve(on.size());
-  for(int i = 0; i < on.size(); i ++)
-    fidx.emplace_back(make_pair(abs(on[i]), i));
+  pidx.resize(on.size(), 0);
+  if(0 < size0) {
+    for(int i = 0; i < on.size(); i ++)
+      fidx.emplace_back(make_pair(abs(on[i]), i));
+  } else {
+    for(int i = 0; i < on.size(); i ++) {
+      T score(0);
+      for(int j = 0; j < in.size(); j ++) {
+        const auto lscore(abs(on[i] + on[j * block + i % block]));
+        if(score == T(0) || lscore < score) {
+          score = lscore;
+          pidx[i] = j;
+        }
+      }
+      fidx.emplace_back(make_pair(score, i));
+    }
+  }
   sort(fidx.begin(), fidx.end());
   for(int n_fixed = 0, idx = 0;
           n_fixed < Pt.rows() - 1 && idx < fidx.size();
@@ -107,6 +124,8 @@ template <typename T> inline CatG<T>::CatG(const int& size, const vector<Vec>& i
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
     fix[iidx] = true;
+    if(size0 < 0)
+      fix[pidx[iidx]] = true;
   }
   cut = R.solve(Pt * one);
   std::vector<T> s;
@@ -181,7 +200,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
     int iidx(sidx.size() - 1);
     for( ; - 1 <= iidx; iidx --)
       if(iidx < 0 || (! sidx[iidx].second.second &&
-        cs + 1 < result[sidx[iidx].second.first].first.size()) )
+        abs(cs) + 1 < result[sidx[iidx].second.first].first.size()) )
         break;
     if(iidx < 0) break;
     const auto& t(sidx[iidx].second.first);
@@ -196,7 +215,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
         (score.first < T(0) ? left : right).emplace_back(move(result[t].first[i]));
         (score.first < T(0) ? lidx : ridx).emplace_back(make_pair(score.second, result[t].second[i].second));
       }
-      if((cs + 1 < left.size() || cs + 1 < right.size()) && left.size() && right.size()) {
+      if((abs(cs) + 1 < left.size() || abs(cs) + 1 < right.size()) && left.size() && right.size()) {
         result[t].first  = move(left);
         result[t].second = move(lidx);
         sidx[iidx].first  = catg.distance;
@@ -242,7 +261,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
     for(int j = 0; j <= v.size() - i; j ++) {
       for(int k = j; k < j + i; k ++)
         buf[k - j] = v[k];
-      if(cs < 0) {
+      if(count < 0) {
         vector<T> wbuf;
         wbuf.reserve(buf.size());
         for(int k = 0; k < buf.size(); k ++)
@@ -255,7 +274,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
     }
     edge.emplace_back(work.size());
   }
-  auto whole_crush(crush<T>(work, abs(cs), false, count));
+  auto whole_crush(crush<T>(work, cs, false, count == - 1 ? 0 : abs(count)));
   vector<pair<vector<SimpleVector<T> >, vector<int> > > res;
   res.reserve(whole_crush.size());
   for(int i = 0; i < whole_crush.size(); i ++) {
