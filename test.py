@@ -76,13 +76,18 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
         if(e.lower() == "." + s.lower()):
           files.append(os.path.join(root, f))
           break
-  ex = len(str(len(files)))
-  pixels = int(pow(float(len(files)), .5) / 2.)
+  ex0 = len(files)
+  try:
+    ex0 = min(ex0, int(argv[- 1]))
+  except:
+    pass
+  ex = len(str(ex0))
+  pixels = int(pow(float(ex0), .5) / 2.)
   if(argv[2] == "seinsq"):
-    for t in range(0, len(files)):
+    for t in range(0, ex0):
       subprocess.call(["convert", files[t], "-resize", str(pixels) + "x" + str(pixels) + "!", "-compress", "none", "sein-" + str(t).zfill(ex) + ".ppm"])
   else:
-    for t in range(0, len(files)):
+    for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2] == "tile"):
   idx = 3

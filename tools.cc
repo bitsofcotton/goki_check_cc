@@ -559,7 +559,7 @@ int main(int argc, const char* argv[]) {
       const auto ii(i - 3);
       in[ii].resize(3);
       for(int j = 0; j < 3; j ++)
-        in[ii][j] = const_cast<typename simpleFile<num_t>::Mat &&>(ibuf[j]);
+        in[ii][j] = std::move(ibuf[j]);
       if(strcmp(argv[1], "cat") == 0 && ! (ii & 1)) {
         assert(in[ii][0].rows() == in[0][0].rows());
         assert(in[ii][0].cols() == in[0][0].cols());
@@ -593,10 +593,6 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < 3; j ++)
           inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
         (i & 1 ? rep : glay).emplace_back(redig.rgb2d(inn));
-        if(i & 1)
-          for(int ii = 0; ii < rep[rep.size() - 1].rows(); ii ++)
-            for(int jj = 0; jj < rep[rep.size() - 1].cols(); jj ++)
-              rep[rep.size() - 1](ii, jj) += num_t(1) / num_t(65536);
       }
       const auto cat(redig.catImage(rep, glay));
       for(int i = 0; i < cat.size(); i ++) {
@@ -610,12 +606,8 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < in.size(); i ++) {
         typename simpleFile<num_t>::Mat inn[3];
         for(int j = 0; j < 3; j ++)
-          inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
+          inn[j] = std::move(in[i][j]);
         glay.emplace_back(redig.rgb2d(inn));
-        for(int ii = 0; ii < glay[glay.size() - 1].rows(); ii ++)
-          for(int jj = 0; jj < glay[glay.size() - 1].cols(); jj ++)
-            glay[glay.size() - 1](ii, jj) += num_t(1) / num_t(65536);
-        glay[glay.size() - 1] /= num_t(2);
       }
       const auto composite(redig.compositeImage(glay));
       for(int i = 0; i < composite.size(); i ++) {
