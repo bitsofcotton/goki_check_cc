@@ -841,7 +841,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         Vec work(result.cols());
         for(int i = 0; i < work.size(); i ++)
           work[i] = T(0);
-        cpoint[0] = rr / T(2) / T(2 * dratio);
+        cpoint[0] = rr * T(color.rows()) / T(2) / T(2 * dratio);
         const auto tt(- camera[1] / (cpoint[1] - camera[1]));
         const auto xx0((camera + (cpoint - camera) * t)[0] * rxy);
         SimpleVector<T> Dop0;
