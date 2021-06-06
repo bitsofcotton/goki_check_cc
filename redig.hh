@@ -811,18 +811,13 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
 template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
   if(n == 0) {
-          auto tp(tiltprep(bumpm, 1, 2, - abs(psi)));
-    tp.offset *= T(0);
-    const auto color0(tilt(color, bumpm, tp));
-    tp = tiltprep(bumpm, 1, 2,   abs(psi));
-    tp.offset *= T(0);
-    const auto color1(tilt(color, bumpm, tp));
-    const auto rr(tp.transform(SimpleVector<T>(3).ek(0, T(color.rows() * 2)))[0] / T(color.rows() * 2));
+    const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi))));
+    const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi))));
           Mat  result(color.rows(), color.cols());
           auto zscore(result);
     result.O();
     zscore.I(- T(1));
-    const T   rxy(color0.rows());
+    const T   rxy(T(color0.rows() - 1) / T(2));
     const int dratio(sqrt(sqrt(rxy)));
           Vec camera(2);
     camera[0] = T(0);
@@ -833,17 +828,13 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
     for(int j = 0; j < result.rows(); j ++) {
       for(int zi = 0; zi < dratio; zi ++) {
         Vec cpoint(2);
-        cpoint[0] = rr / T(2 * dratio);
+        cpoint[0] = T(1) / T(2 * dratio);
         cpoint[1] = T(zi) / T(dratio);
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
         if(int(x0) < 3 * vbox || rxy * T(2) < abs(x0) * T(2)) continue;
         Vec work(result.cols());
-        for(int i = 0; i < work.size(); i ++)
-          work[i] = T(0);
-        cpoint[0] = rr * T(color.rows()) / T(2) / T(2 * dratio);
-        const auto tt(- camera[1] / (cpoint[1] - camera[1]));
-        const auto xx0((camera + (cpoint - camera) * t)[0] * rxy);
+        work.O();
         SimpleVector<T> Dop0;
 #if defined(_OPENMP)
 #pragma omp critical
@@ -854,13 +845,12 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         }
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.
-          //cpoint[0] = rr * (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / (T(result.rows() - 1) / T(2));
-          cpoint[0] = rr * (T(j + k + color.rows()) - T(Dop0.size()) / T(2)) / T(2 * dratio) / (T(result.rows() - 1) / T(2));
+          cpoint[0] = (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / rxy;
           // x-z plane projection of point p with camera geometry c to z=0.
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
-          const auto x0(getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy - xx0), result.rows()));
+          const auto x0(getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy), result.rows()));
           work += (k < Dop0.size() / 2 ? color0.row(x0) : color1.row(x0)) * Dop0[k];
         }
         for(int i = 0; i < work.size(); i ++)
