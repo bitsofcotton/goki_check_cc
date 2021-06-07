@@ -143,8 +143,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::prepare(const Vec
   assert(0 < cnt);
   Vec res(size);
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < size; i ++) {
     res[i] = T(0);
@@ -162,7 +161,7 @@ template <typename T> void Decompose<T>::apply(Vec& v, const Vec& dst, const Vec
   const auto cnt(v.size() / size);
   assert(0 < cnt);
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < size; i ++) {
     const auto ratio(dst[i] - src[i]);

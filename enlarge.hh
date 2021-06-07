@@ -72,12 +72,7 @@ template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& 
                         abs(int(c * T(d.rows()))) * 2);
   const T offy(abs(int(s * T(d.cols()))));
   const T offx(abs(int(c * T(d.rows()))));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int j = 0; j < res.rows(); j ++)
-    for(int k = 0; k < res.cols(); k ++)
-      res(j, k) = T(0);
+  res.O();
   const auto diag(int(sqrt(res.rows() * res.rows() +
                            res.cols() * res.cols())) + 1);
 #if defined(_OPENMP)
@@ -320,15 +315,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           const auto& Dop0(Dop.row(Dop.rows() / 2));
           //  N.B. dC_k/dy on zi.
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
           for(int i = 0; i < A.rows(); i ++) {
             for(int j = 0; j < Dop0.size(); j ++)
               A.row(i) += data.row(getImgPt<int>(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
           }
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
           for(int i = 0; i < A.rows(); i ++) {
             for(int j = 0; j < A.cols(); j ++)
@@ -428,8 +422,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       {
         SimpleMatrix<T> result(data.rows(), data.cols());
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
@@ -441,8 +434,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       {
         SimpleMatrix<T> result(data.rows(), data.cols());
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)

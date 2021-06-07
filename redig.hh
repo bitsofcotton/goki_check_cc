@@ -197,8 +197,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
 template <typename T> vector<typename reDig<T>::Vec> reDig<T>::takeShape(const vector<Vec>& dst, const vector<Vec>& src, const match_t<T>& match, const T& ratio) {
   vector<Vec> result(dst);
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < match.srcpoints.size(); i ++)
     result[match.dstpoints[i]] += (match.transform(src[match.srcpoints[i]]) - dst[match.dstpoints[i]]) * ratio;
@@ -657,8 +656,7 @@ template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int,
   v.first.resize(idst.size());
   v.second.resize(idst.size());
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < idst.size(); i ++) {
     v.first[ i] = pdst[idst[i]][0];
@@ -687,14 +685,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::applyTrace(const pair<Vec
   const auto yyy(MM.first - mm.first + 1);
   const auto xxx(MM.second - mm.second + 1);
   Mat res(yy, xx);
+  res.O();
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < res.rows(); i ++)
-    for(int j = 0; j < res.cols(); j ++)
-      res(i, j) = T(0);
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < vy.size(); i ++) {
     Vec v0(3);
@@ -823,7 +816,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
     camera[0] = T(0);
     camera[1] = T(1);
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int j = 0; j < result.rows(); j ++) {
       for(int zi = 0; zi < dratio; zi ++) {

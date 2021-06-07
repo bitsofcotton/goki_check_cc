@@ -2710,12 +2710,12 @@ template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, Simpl
   SimpleMatrix<T> P1(this->rows(), d.size());
   SimpleMatrix<T> P2(src.rows(), d.size());
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < P1.rows(); i ++)
     P1.row(i) = P.col(i);
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < P2.rows(); i ++)
     P2.row(i) = P.col(i + P1.rows());
@@ -3039,13 +3039,12 @@ template <typename T> const SimpleMatrix<T>& diff(const int& size0) {
     auto II(dft<T>(size));
     static const auto Pi(T(4) * atan2(T(1), T(1)));
 #if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 0; i < DD.rows(); i ++)
       DD.row(i) *=   complex<T>(T(0), - T(2) * Pi * T(i) / T(DD.rows()));
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 1; i < II.rows(); i ++)
       II.row(i) /= - complex<T>(T(0), - T(2) * Pi * T(i) / T(DD.rows()));

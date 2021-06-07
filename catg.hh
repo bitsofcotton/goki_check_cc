@@ -65,7 +65,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
   for(int i = 0; i < in.size(); i ++)
     tayl(size, in[i].size());
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < in.size(); i ++)
     if(recur) {
@@ -124,7 +124,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     const auto  n2(orth.dot(orth));
     if(n2 <= Pt.epsilon) continue;
 #if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
+#pragma omp parallel for schedule(static, 1)
 #endif
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
@@ -354,8 +354,8 @@ template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::~P0
 
 template <typename T, typename feeder, bool dec> inline T P012L<T,feeder,dec>::next(const T& in) {
   if(f.res[f.res.size() - 1] == in) return T(0);
-  if(M < abs(in) * T(2)) M = abs(in) * T(4);
-  const auto& d(f.next(in));
+  if(M < abs(in) * T(4) * T(pc.rows()) * atan(1) * T(pc.cols() + 2)) M = abs(in) * T(8 * pc.rows()) * atan(1) * T(pc.cols() + 2);
+  const auto d(f.next(in));
   if(! f.full) return T(0);
   vector<SimpleVector<T> > cache;
   cache.reserve(d.size() - pc.cols() + 1);
