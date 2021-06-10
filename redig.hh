@@ -269,9 +269,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::makeRefMatrix(const Mat& 
 template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const {
   assert(orig.rows() == ref.rows() && orig.cols() == ref.cols());
   Mat result(ref.rows(), ref.cols());
-  for(int i = 0; i < result.rows(); i ++)
-    for(int j = 0; j < result.cols(); j ++)
-      result(i, j) = T(0);
+  result.O();
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif

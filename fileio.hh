@@ -96,18 +96,12 @@ public:
         iline3 >> nmax;
         if(line[0] == 'P') {
           if(line[1] == '2') {
-            data[0] = Mat(h, w);
-            for(int i = 0; i < h; i ++)
-              for(int j = 0; j < w; j ++)
-                data[0](i, j) = T(0);
+            data[0] = Mat(h, w).O();
             loadstub(input, nmax, 1, data);
             data[1] = data[2] = data[0];
           } else if(line[1] == '3') {
             for(int i = 0; i < 3; i ++)
-              data[i] = Mat(h, w);
-            for(int i = 0; i < h; i ++)
-              for(int j = 0; j < w; j ++)
-                data[0](i, j) = data[1](i, j) = data[2](i, j) = T(0);
+              data[i] = Mat(h, w).O();
             loadstub(input, nmax, 3, data);
           } else {
             cerr << "unknown file type." << endl;

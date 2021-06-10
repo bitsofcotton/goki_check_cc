@@ -157,7 +157,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::prepare(const Vec
 }
 
 template <typename T> void Decompose<T>::apply(Vec& v, const Vec& dst, const Vec& src, const int& idx) const {
-  assert(dst.size() == size && src.size() == size);
+  assert(size && dst.size() == size && src.size() == size);
   const auto cnt(v.size() / size);
   assert(0 < cnt);
 #if defined(_OPENMP)

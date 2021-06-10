@@ -201,9 +201,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         Sop[idx].emplace_back(SimpleMatrix<T>(data.rows(), data.rows()));
         {
           auto& sop(Sop[idx][0]);
-          for(int i = 0; i < sop.rows(); i ++)
-            for(int j = 0; j < sop.cols(); j ++)
-              sop(i, j) = T(0);
+          sop.O();
           int cnt(1);
           for(int ss = 2; ss <= data.rows(); ss *= 2, cnt ++) {
             auto DFTS(dft<T>(ss));
@@ -300,9 +298,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         cpoint[0] = T(1) / T(2 * dratio);
         for(int zi = 0; zi < dratio; zi ++) {
           SimpleMatrix<T> A(data.rows(), data.cols());
-          for(int i = 0; i < A.rows(); i ++)
-            for(int j = 0; j < A.cols(); j ++)
-              A(i, j) = T(0);
+          A.O();
           // N.B. projection scale is linear.
           cpoint[1] = T(zi) / T(dratio);
           // x-z plane projection of point p with camera geometry c to z=0.
@@ -311,8 +307,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
           if(abs(int(y0)) < 3 || rxy < abs(y0) * T(2)) continue;
-          const auto  Dop(diff<T>(abs(int(y0 * T(2))) & ~ int(1)));
-          const auto& Dop0(Dop.row(Dop.rows() / 2));
+          const auto Dop(diff<T>(abs(int(y0 * T(2))) & ~ int(1)));
+          const auto Dop0(Dop.row(Dop.rows() / 2) + Dop.row(Dop.rows() / 2 + 1));
           //  N.B. dC_k/dy on zi.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
