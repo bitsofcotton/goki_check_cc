@@ -101,6 +101,19 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels+ idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
+elif(argv[2] == "i2i"):
+  idx = 3
+  try:
+    pixels = int(argv[3])
+    idx += 1
+  except:
+    pass
+  subprocess.call([argv[1], "recolor3", str(pixels), argv[idx], argv[idx + 1], argv[idx] + "-" + argv[idx + 1] + "-i2i0.ppm"])
+  subprocess.call([argv[1], "recolor",  str(pixels), argv[idx + 1], argv[idx], argv[idx] + "-" + argv[idx + 1] + "-i2i1.ppm", ".5"])
+  subprocess.call([argv[1], "recolor3", str(pixels), argv[idx] + "-" + argv[idx + 1] + "-i2i1.ppm", argv[idx], argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm"])
+  subprocess.call([argv[1], "collect", argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i3.ppm", "1", str(rot)])
+  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i3.ppm", "-type", "GrayScale", "-negate", "-compress", "none", argv[idx] + "-" + argv[idx + 1] + "-i2i4.ppm"])
+  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i4.ppm", "-compose", "multiply", "-composite", argv[idx] + "-" + argv[idx + 1] + "-i2i.png"])
 else:
   for line in argv[3:]:
     try:
@@ -178,5 +191,13 @@ else:
     elif(argv[2] == "nurie"):
       subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):
-      subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(1. / pow(pixels, .5))])
-
+      cmd = ["convert"]
+      for t in range(0, int(pixels / 4)):
+        subprocess.call([argv[1], "reshape", str((t + 1) * 4), root + ".ppm", root + "-bump0.ppm", root + "-illust-" + str(t) + ".ppm", str(1. / pow(pixels, .5))])
+        cmd.append(root + "-illust-" + str(t) + ".ppm")
+      cmd.extend(["-average", root + "-illust.png"])
+      subprocess.call(cmd)
+    elif(argv[2] == "edge"):
+      subprocess.call(["convert", root + "-collect.ppm", "-type", "GrayScale", "-negate", "-compress", "none", root + "-collect-negate.ppm"])
+      subprocess.call(["convert", line, root + "-collect-negate.ppm", "-compose", "multiply", "-composite", root + "-edge.png"])
+      

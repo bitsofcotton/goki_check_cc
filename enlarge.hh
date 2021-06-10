@@ -118,7 +118,7 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& n = 0, const int& recur = 2) {
   assert(0 <= n && 0 < recur);
   static const auto Pi(atan2(T(1), T(1)) * T(4));
-  if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH) {
+  if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == ABS) {
     switch(dir) {
     case SHARPEN_BOTH:
       return filter<T>(filter<T>(data, SHARPEN_X, n, recur), SHARPEN_Y, n, recur);
@@ -184,7 +184,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       break;
 */
     case COLLECT_Y:
-      return filter<T>(filter<T>(data, DETECT_Y, n, recur), ABS);
+      return filter<T>(filter<T>(data, DETECT_Y, n, recur), ABS, n, recur);
     case SHARPEN_Y:
       {
         assert(2 <= data.rows());
