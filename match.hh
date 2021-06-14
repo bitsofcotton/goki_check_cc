@@ -338,7 +338,7 @@ template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebas
           } else
             break;
         // N.B. rough match.
-        t0 += max(1, (tt - t0) / 2);
+        t0 += max(int(1), (tt - t0) / 2);
         // if it's good:
         if(threshp <= T(work.dstpoints.size()) /
                         T(min(shapebase.size(), points.size()))) {

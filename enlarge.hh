@@ -344,7 +344,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         const auto rdft(ldft.transpose());
         const auto ridft(lidft.transpose());
         for(int i = 0; i < recur; i ++) {
-          const auto next(nextP0<T, true>(min(80, int(data.rows()) / (i + 1) - n)));
+          const auto next(nextP0<T, true>(min(int(80), int(data.rows()) / (i + 1) - n)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif

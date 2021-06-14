@@ -161,9 +161,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::draw(const Mat& img, cons
     Triangles work;
     for(int j = 0; j < 3; j ++)
       work.p.setCol(j, emph[hull[i][j]]);
-    work.c = img(max(0, min(int(img.rows() - 1),
+    work.c = img(max(int(0), min(int(img.rows() - 1),
                    int(shape[hull[i][0]][0]))),
-                 max(0, min(int(img.cols() - 1),
+                 max(int(0), min(int(img.cols() - 1),
                    int(shape[hull[i][0]][1]))));
     tris.emplace_back(work.solveN());
   }
@@ -216,8 +216,8 @@ template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec& lref0, c
   const auto denom(T(1) / dlt);
   for(int i = 0; i <= int(dlt); i ++) {
     const auto gidx(lref0 + d10 * T(i) * denom);
-    map(max(0, min(int(gidx[0]), int(map.rows() - 1))),
-        max(0, min(int(gidx[1]), int(map.cols() - 1)))) = c;
+    map(max(int(0), min(int(gidx[0]), int(map.rows() - 1))),
+        max(int(0), min(int(gidx[1]), int(map.cols() - 1)))) = c;
   }
   return;
 }
@@ -438,8 +438,8 @@ template <typename T> void reDig<T>::maskVectors(vector<Vec>& points, const vect
 template <typename T> void reDig<T>::maskVectors(vector<Vec>& points, vector<Veci>& polys, const Mat& mask) {
   vector<int> elim, elimp, after;
   for(int i = 0, ii = 0; i < points.size(); i ++) {
-    const int y(max(min(int(points[i][0]), int(mask.rows() - 1)), 0));
-    const int x(max(min(int(points[i][1]), int(mask.cols() - 1)), 0));
+    const int y(max(min(int(points[i][0]), int(mask.rows() - 1)), int(0)));
+    const int x(max(min(int(points[i][1]), int(mask.cols() - 1)), int(0)));
     if(mask(y, x) > T(1) / T(2)) {
       elim.emplace_back(i);
       after.emplace_back(- 1);
@@ -734,7 +734,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
   vector<int> workidx2;
   work.reserve(imgs.size());
   for(int i = 0; i < rep.size(); i ++)
-    for(int j = 0; j < min(rep[i].rows(), 1 + 5 + 1); j ++) {
+    for(int j = 0; j < min(rep[i].rows(), int(1 + 5 + 1)); j ++) {
       work.emplace_back(rep[i].row(j));
       workidx.emplace_back(i);
       workidx2.emplace_back(j);

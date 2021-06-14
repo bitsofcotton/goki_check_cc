@@ -255,7 +255,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
 }
 
 template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector<pair<int, int> > > > crush(const vector<SimpleVector<T> >& v, const int& cs, const bool& recur) {
-  return crush<T>(v, cs, recur, max(2, int(sqrt(int(v.size())))));
+  return crush<T>(v, cs, recur, max(int(2), int(sqrt(int(v.size())))));
 }
 
 template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs, const int& count) {
@@ -298,7 +298,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
 }
 
 template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs) {
-  return crushWithOrder<T>(v, cs, max(2, int(sqrt(int(v.size())))));
+  return crushWithOrder<T>(v, cs, max(int(2), int(sqrt(int(v.size())))));
 }
 
 template <typename T, typename feeder, bool dec = true> class P012L {
@@ -354,7 +354,7 @@ template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::~P0
 
 template <typename T, typename feeder, bool dec> inline T P012L<T,feeder,dec>::next(const T& in) {
   if(f.res[f.res.size() - 1] == in) return T(0);
-  if(M < abs(in) * T(4) * T(pc.rows()) * atan(1) * T(pc.cols() + 2)) M = abs(in) * T(8 * pc.rows()) * atan(1) * T(pc.cols() + 2);
+  if(M < abs(in) * T(4) * T(pc.rows()) * atan(T(1)) * T(pc.cols() + 2)) M = abs(in) * T(8 * pc.rows()) * atan(T(1)) * T(pc.cols() + 2);
   const auto d(f.next(in));
   if(! f.full) return T(0);
   vector<SimpleVector<T> > cache;

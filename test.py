@@ -110,10 +110,15 @@ elif(argv[2] == "i2i"):
     pass
   subprocess.call([argv[1], "recolor3", str(pixels), argv[idx], argv[idx + 1], argv[idx] + "-" + argv[idx + 1] + "-i2i0.ppm"])
   subprocess.call([argv[1], "recolor",  str(pixels), argv[idx + 1], argv[idx], argv[idx] + "-" + argv[idx + 1] + "-i2i1.ppm", ".5"])
+  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i1.ppm", "-negate", "-compress", "none", argv[idx] + "-" + argv[idx + 1] + "-i2i1n.ppm"])
   subprocess.call([argv[1], "recolor3", str(pixels), argv[idx] + "-" + argv[idx + 1] + "-i2i1.ppm", argv[idx], argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm"])
-  subprocess.call([argv[1], "collect", argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i3.ppm", "1", str(rot)])
+  subprocess.call([argv[1], "recolor3", str(pixels), argv[idx] + "-" + argv[idx + 1] + "-i2i1n.ppm", argv[idx], argv[idx] + "-" + argv[idx + 1] + "-i2i2n.ppm"])
+  subprocess.call([argv[1], "collect", argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i3.ppm", "1", "1"])
+  subprocess.call([argv[1], "collect", argv[idx] + "-" + argv[idx + 1] + "-i2i2n.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i3n.ppm", "1", "1"])
   subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i3.ppm", "-type", "GrayScale", "-negate", "-compress", "none", argv[idx] + "-" + argv[idx + 1] + "-i2i4.ppm"])
+  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i3n.ppm", "-type", "GrayScale", "-negate", "-compress", "none", argv[idx] + "-" + argv[idx + 1] + "-i2i4n.ppm"])
   subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i4.ppm", "-compose", "multiply", "-composite", argv[idx] + "-" + argv[idx + 1] + "-i2i.png"])
+  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i2n.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i4n.ppm", "-compose", "multiply", "-composite", argv[idx] + "-" + argv[idx + 1] + "-i2in.png"])
 else:
   for line in argv[3:]:
     try:
@@ -144,8 +149,10 @@ else:
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + ".obj", root + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + ".obj", root + "-R.ppm"])
-      subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
-      subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereoR.jps"])
+      subprocess.call(["convert", root + "-R.ppm", "-trim", root + "-R.png"])
+      subprocess.call(["convert", root + "-L.ppm", "-trim", root + "-L.png"])
+      subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])
+      subprocess.call(["montage", root + "-L.png", root + "-R.png", "-geometry", "100%x100%", root + "-stereoR.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
       subprocess.call(["montage", root + "-stereoR.jps", "-geometry", "100%x100%", root + "-stereoR.png"])
       subprocess.call(["cp", root + "-L.ppm", root + "-jps-0.ppm"])
