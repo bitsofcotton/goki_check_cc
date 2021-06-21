@@ -844,9 +844,11 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         }
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.
+          T xorigin(0);
           switch(origin) {
           case 0:
             cpoint[0] = (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / rxy;
+            xorigin   = T(result.rows() - 1) / T(2);
             break;
           case 1:
           case 3:
@@ -855,6 +857,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
           case 2:
           case 4:
             cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
+            xorigin   = T(result.rows() - 1);
             break;
           default:
             assert(0 && "Should not be reached in redig::bump");
@@ -863,7 +866,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
-          const auto x0(getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy), result.rows()));
+          const auto x0(getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy + xorigin), result.rows()));
           work += (k < Dop0.size() / 2 ? color0.row(x0) : color1.row(x0)) * Dop0[k];
         }
         for(int i = 0; i < work.size(); i ++)
