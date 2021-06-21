@@ -854,7 +854,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
             break;
           case 2:
           case 4:
-            cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2) + T(result.rows() - 1)) / T(2 * dratio) / rxy;
+            cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
             break;
           default:
             assert(0 && "Should not be reached in redig::bump");
