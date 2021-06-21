@@ -197,7 +197,7 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::synth(const Vec& 
 template <typename T> typename Decompose<T>::Mat Decompose<T>::represent(const Mat& img, const int& depth) {
   Mat res0(1, size);
   Mat w00(img.rows() - size * 2, size);
-  const auto int4(diff<T>(- size));
+  const auto int4(diff<T>(- size) * diff<T>(- size) * diff<T>(- size) * diff<T>(- size));
   const auto int4t(int4.transpose());
   for(int i = size; i < img.rows() - size; i ++) {
     Mat w0(img.cols() - size * 2, size);

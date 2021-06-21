@@ -101,7 +101,7 @@ public:
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
-  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0) const;
+  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = - 1) const;
   vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -112,7 +112,7 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) const;
-  match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const;
+  match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const int& origin = 0) const;
   vector<Triangles> tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m) const;
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
   Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& depth = - T(1000)) const;
@@ -799,11 +799,19 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n, const int& origin) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
   if(n == 0) {
-    const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi))));
-    const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi))));
+    if(origin < 0) {
+      // N.B. 0 is optional.
+      auto res(bump(color, bumpm, psi, n, 1));
+      for(int i = 2; i < 5; i ++)
+        res += bump(color, bumpm, psi, n, i);
+      return res /= T(4);
+    }
+    assert(0 <= origin && origin < 5);
+    const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
+    const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
           Mat  result(color.rows(), color.cols());
           auto zscore(result);
     result.O();
@@ -823,7 +831,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         cpoint[1] = T(zi) / T(dratio);
         const auto t(- camera[1] / (cpoint[1] - camera[1]));
         const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(int(x0) < 3 * vbox || rxy * T(2) < abs(x0) * T(2)) continue;
+        if(int(x0) < 3 * vbox || rxy < abs(x0) * T(2)) continue;
         Vec work(result.cols());
         work.O();
         SimpleVector<T> Dop0;
@@ -836,7 +844,21 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         }
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.
-          cpoint[0] = (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / rxy;
+          switch(origin) {
+          case 0:
+            cpoint[0] = (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / rxy;
+            break;
+          case 1:
+          case 3:
+            cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
+            break;
+          case 2:
+          case 4:
+            cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2) + T(result.rows() - 1)) / T(2 * dratio) / rxy;
+            break;
+          default:
+            assert(0 && "Should not be reached in redig::bump");
+          }
           // x-z plane projection of point p with camera geometry c to z=0.
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
@@ -1157,7 +1179,7 @@ template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle
   return work.solveN();
 }
 
-template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi) const {
+template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const int& origin) const {
   const T theta(T(2) * Pi * T(idx) / T(samples));
   const T lpsi(Pi * psi);
   Mat R0(3, 3);
@@ -1185,8 +1207,29 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   R1(2, 0) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
   Vec pcenter(3);
-  pcenter[0] = T(in.rows() - 1) / T(2);
-  pcenter[1] = T(in.cols() - 1) / T(2);
+  switch(origin) {
+  case 0:
+    pcenter[0] = T(in.rows() - 1) / T(2);
+    pcenter[1] = T(in.cols() - 1) / T(2);
+    break;
+  case 1:
+    pcenter[0] = pcenter[1] = T(0);
+    break;
+  case 2:
+    pcenter[0] = T(in.rows() - 1);
+    pcenter[1] = T(0);
+    break;
+  case 3:
+    pcenter[0] = T(0);
+    pcenter[1] = T(in.cols() - 1);
+    break;
+  case 4:
+    pcenter[0] = T(in.rows() - 1);
+    pcenter[1] = T(in.cols() - 1);
+    break;
+  default:
+    assert(0 && "Should not be reached in tiltprep.");
+  }
   pcenter[2] = T(0);
   match_t<T> m;
   m.rot    = R0.transpose() * R1 * R0;

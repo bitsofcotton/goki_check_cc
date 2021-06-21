@@ -255,7 +255,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
 }
 
 template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector<pair<int, int> > > > crush(const vector<SimpleVector<T> >& v, const int& cs, const bool& recur) {
-  return crush<T>(v, cs, recur, max(int(2), int(sqrt(int(v.size())))));
+  return crush<T>(v, cs, recur, max(int(2), int(sqrt(T(v.size())))));
 }
 
 template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs, const int& count) {
@@ -298,7 +298,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
 }
 
 template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs) {
-  return crushWithOrder<T>(v, cs, max(int(2), int(sqrt(int(v.size())))));
+  return crushWithOrder<T>(v, cs, max(int(2), int(sqrt(T(v.size())))));
 }
 
 template <typename T, typename feeder, bool dec = true> class P012L {
