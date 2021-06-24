@@ -35,6 +35,7 @@ using std::move;
 using std::vector;
 using std::pair;
 using std::make_pair;
+using std::swap;
 using std::cerr;
 using std::flush;
 
@@ -225,6 +226,10 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
         (score.first < T(0) ? lidx : ridx).emplace_back(make_pair(score.second, result[t].second[i].second));
       }
       if((abs(cs) + 1 < left.size() || abs(cs) + 1 < right.size()) && left.size() && right.size()) {
+        if(left.size() < right.size()) {
+          swap(left, right);
+          swap(lidx, ridx);
+        }
         result[t].first  = move(left);
         result[t].second = move(lidx);
         sidx[iidx].first  = catg.distance;

@@ -99,7 +99,7 @@ elif(argv[2] == "tile"):
   for t in range(0, int((pow(len(argv) - idx, .5) + pixels) / pixels)):
     cmd = ["montage"]
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels+ idx, len(argv))])
-    cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "tile-" + str(t) + ".png"])
+    cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
 elif(argv[2] == "i2i"):
   idx = 3
