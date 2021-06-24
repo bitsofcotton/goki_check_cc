@@ -40,7 +40,7 @@ void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck bumpc <psi> <rot> <gather_pixels> <zratio> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
-  cout << "gokicheck pred <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck (pred|lenl) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
@@ -57,6 +57,7 @@ void usage() {
   cout << "gokicheck newtrace <num_shape_per_point> <size> <output.ppm>" << endl;
   cout << "gokicheck reimage <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck reimage2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokicheck penl <opt.ppm> <in.ppm> <output.ppm>" << endl;
   return;
 }
 
@@ -151,6 +152,22 @@ int main(int argc, const char* argv[]) {
        strcmp(argv[1], "b2wd") != 0)
       redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
+      return - 1;
+  } else if(strcmp(argv[1], "penl") == 0) {
+    if(argc < 4) {
+      usage();
+      return 0;
+    }
+    typename simpleFile<num_t>::Mat opt[3];
+    typename simpleFile<num_t>::Mat data[3];
+    if(!file.loadp2or3(opt, argv[2]))
+      return - 1;
+    if(!file.loadp2or3(data, argv[3]))
+      return - 1;
+    // XXX:
+    for(int i = 0; i < 3; i ++)
+      data[i] = redig.compImage(data[i], opt[0], 8);
+    if(!file.savep2or3(argv[3], data, ! true, 255))
       return - 1;
   } else if(strcmp(argv[1], "bumpc") == 0) {
     if(argc < 8) {
@@ -547,6 +564,7 @@ int main(int argc, const char* argv[]) {
       }
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
+            strcmp(argv[1], "lenl") == 0 ||
             strcmp(argv[1], "cat") == 0 ||
             strcmp(argv[1], "composite") == 0) {
     if(argc < 4) {
@@ -587,6 +605,20 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         out[i] = filter<num_t>(out[i], CLIP);
       file.savep2or3(argv[2], out, ! true);
+    } else if(strcmp(argv[1], "lenl") == 0) {
+      std::vector<std::pair<typename simpleFile<num_t>::Mat, typename simpleFile<num_t>::Mat> > pair;
+      typename simpleFile<num_t>::Mat tayl(7, 8);
+      for(int i = 0; i < tayl.rows(); i ++)
+        tayl.row(i) = taylor<num_t>(8, num_t(i) / num_t(tayl.rows() - 1) * num_t(8 - 1));
+      for(int i = 0; i < in.size(); i ++)
+        for(int j = 0; j < 3; j ++)
+          for(int k = 0; k < in[i][j].rows() - 9; k ++)
+            for(int kk = 0; kk < in[i][j].cols() - 9; kk ++) {
+              const auto work(redig.normalize(in[i][j].subMatrix(k, kk, 8, 8), num_t(1) / num_t(2)));
+              pair.emplace_back(std::make_pair(work, redig.normalize(tayl * work * tayl.transpose(), num_t(1) / num_t(2))));
+            }
+      out[0] = out[1] = out[2] = redig.optImage(pair, 8);
+      file.savep2or3(argv[2], out, ! true, 65535);
     } else if(strcmp(argv[1], "cat") == 0) {
       vector<typename simpleFile<num_t>::Mat> rep;
       vector<typename simpleFile<num_t>::Mat> glay;

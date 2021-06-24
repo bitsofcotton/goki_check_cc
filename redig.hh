@@ -99,6 +99,8 @@ public:
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
+  Mat  optImage(const vector<pair<Mat, Mat> >& img, const int& comp) const;
+  Mat  compImage(const Mat& in, const Mat& opt, const int& comp) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
   Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = - 1) const;
@@ -722,6 +724,70 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, c
   return res;
 }
 
+template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pair<Mat, Mat> >& img, const int& comp) const {
+  assert(0 <= comp && 0 < img.size());
+  const auto ss0(img[0].first.rows() * img[0].first.cols());
+  const auto ss1(img[0].second.rows() * img[0].second.cols());
+        Mat  tayl0(ss0 + comp, ss0);
+        Mat  tayl1(ss1 + comp, ss1);
+  for(int i = 0; i < tayl0.rows(); i ++)
+    tayl0.row(i) = taylor<T>(ss0, T(i) / T(tayl0.rows() - 1) * T(ss0 - 1));
+  for(int i = 0; i < tayl1.rows(); i ++)
+    tayl1.row(i) = taylor<T>(ss1, T(i) / T(tayl1.rows() - 1) * T(ss1 - 1));
+  vector<Vec> serialize;
+  serialize.reserve(img.size());
+  for(int i = 0; i < img.size(); i ++) {
+    assert(img[i].first.rows() == img[0].first.rows());
+    assert(img[i].first.cols() == img[0].first.cols());
+    assert(img[i].second.rows() == img[0].second.rows());
+    assert(img[i].second.cols() == img[0].second.cols());
+    Vec lseri0(tayl0.cols());
+    Vec lseri1(tayl1.cols());
+    for(int j = 0; j < img[i].first.rows(); j ++)
+      for(int k = 0; k < img[i].first.cols(); k ++)
+        lseri0[j * img[i].first.cols() + k] = img[i].first(j, k);
+    for(int j = 0; j < img[i].second.rows(); j ++)
+      for(int k = 0; k < img[i].second.cols(); k ++)
+        lseri1[j * img[i].second.cols() + k] = img[i].second(j, k);
+    serialize.emplace_back(makeProgramInvariant<T>(Vec(tayl0.rows() + tayl1.rows()).O().setVector(0, tayl0 * lseri0).setVector(tayl0.rows(), tayl1 * lseri1)));
+  }
+  Mat res(serialize[0].size(), serialize[0].size());
+  for(int i = 0; i < res.rows(); i ++) {
+    res.row(i) = linearInvariant(serialize);
+    if(res.row(i).dot(res.row(i)) <= T(1) / T(10000)) {
+      vector<int> idx;
+      idx.reserve(res.rows() - i + 1);
+      for(int j = i; j < res.rows(); j ++) {
+        idx.emplace_back(j);
+        for(int k = 0; k < res.cols(); k ++)
+          res(j, k) = T(0);
+      }
+      return res.fillP(idx);
+    }
+    res.row(i) /= sqrt(res.row(i).dot(res.row(i)));
+    for(int j = 0; j < serialize.size(); j ++)
+      serialize[j] -= res.row(i) * serialize[j].dot(res.row(i));
+  }
+  return res;
+}
+
+template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, const Mat& opt, const int& comp) const {
+  const auto ss(in.rows() * in.cols());
+        Mat  tayl(ss + comp, ss);
+  for(int i = 0; i < tayl.rows(); i ++)
+    tayl.row(i) = taylor<T>(ss, T(i) / T(tayl.rows() - 1) * T(ss - 1));
+  Vec work(ss);
+  for(int j = 0; j < in.rows(); j ++)
+    for(int k = 0; k < in.cols(); k ++)
+      work[j * in.cols() + k] = in(j, k);
+  const auto res0(opt.solve(Vec(opt.cols()).O().setVector(0, tayl * work)));
+  Mat res(opt.rows() - ss - comp * 2, opt.rows() - ss - comp * 2);
+  for(int j = 0; j < res.rows(); j ++)
+    for(int k = 0; k < res.cols(); k ++)
+      res(j, k) = res0[j * res.cols() + k];
+  return res;
+}
+
 template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs) {
   assert(imgs.size() && rep.size() == imgs.size());
   for(int i = 1; i < rep.size(); i ++) {
@@ -794,7 +860,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
     for(int ii = 0; ii < res[i].rows(); ii ++)
       for(int jj = 0; jj < res[i].cols(); jj ++)
         res[i](ii, ii & 1 ? res[i].cols() - 1 - jj : jj) =
-          work[ii * res[i].cols() + jj];
+          atan(work[ii * res[i].cols() + jj]);
   }
   return res;
 }
