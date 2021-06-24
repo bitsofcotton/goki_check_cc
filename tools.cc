@@ -154,7 +154,7 @@ int main(int argc, const char* argv[]) {
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
       return - 1;
   } else if(strcmp(argv[1], "penl") == 0) {
-    if(argc < 4) {
+    if(argc < 5) {
       usage();
       return 0;
     }
@@ -164,10 +164,24 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(!file.loadp2or3(data, argv[3]))
       return - 1;
-    // XXX:
+    typename simpleFile<num_t>::Mat out[3], cnt;
+    out[0] = out[1] = out[2] = cnt = typename simpleFile<num_t>::Mat(data[0].rows() * 5 / 4 + 1, data[0].cols() * 5 / 4 + 1).O();
+    typename simpleFile<num_t>::Mat cr(5, 5);
+    for(int i = 0; i < cr.rows(); i ++)
+      for(int j = 0; j < cr.cols(); j ++)
+        cr(i, j) = num_t(1);
     for(int i = 0; i < 3; i ++)
-      data[i] = redig.compImage(data[i], opt[0], 8);
-    if(!file.savep2or3(argv[3], data, ! true, 255))
+      for(int j = 0; j < data[i].rows() - 5; j += 2)
+        for(int k = 0; k < data[i].cols() - 5; k += 2) {
+          out[i].setMatrix(j * 5 / 4, k * 5 / 4, out[i].subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) + redig.compImage(data[i].subMatrix(j, k, 4, 4), opt[0], 4));
+          cnt.setMatrix(j * 5 / 4, k * 5 / 4, cnt.subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) + cr);
+        }
+    for(int i = 0; i < 3; i ++)
+      for(int j = 0; j < data[i].rows(); j ++)
+        for(int k = 0; k < data[i].cols(); k ++)
+          out[i](j, k) /= max(num_t(1), cnt(j, k));
+    redig.normalize(out, num_t(1));
+    if(!file.savep2or3(argv[4], out, ! true, 255))
       return - 1;
   } else if(strcmp(argv[1], "bumpc") == 0) {
     if(argc < 8) {
@@ -607,17 +621,17 @@ int main(int argc, const char* argv[]) {
       file.savep2or3(argv[2], out, ! true);
     } else if(strcmp(argv[1], "lenl") == 0) {
       std::vector<std::pair<typename simpleFile<num_t>::Mat, typename simpleFile<num_t>::Mat> > pair;
-      typename simpleFile<num_t>::Mat tayl(7, 8);
+      typename simpleFile<num_t>::Mat tayl(4, 5);
       for(int i = 0; i < tayl.rows(); i ++)
-        tayl.row(i) = taylor<num_t>(8, num_t(i) / num_t(tayl.rows() - 1) * num_t(8 - 1));
+        tayl.row(i) = taylor<num_t>(5, num_t(i) / num_t(tayl.rows() - 1) * num_t(5 - 1));
       for(int i = 0; i < in.size(); i ++)
         for(int j = 0; j < 3; j ++)
-          for(int k = 0; k < in[i][j].rows() - 9; k ++)
-            for(int kk = 0; kk < in[i][j].cols() - 9; kk ++) {
-              const auto work(redig.normalize(in[i][j].subMatrix(k, kk, 8, 8), num_t(1) / num_t(2)));
-              pair.emplace_back(std::make_pair(work, redig.normalize(tayl * work * tayl.transpose(), num_t(1) / num_t(2))));
+          for(int k = 0; k < in[i][j].rows() - 5; k += 2)
+            for(int kk = 0; kk < in[i][j].cols() - 5; kk += 2) {
+              const auto work(redig.normalize(in[i][j].subMatrix(k, kk, 5, 5), num_t(1) / num_t(2)));
+              pair.emplace_back(std::make_pair(redig.normalize(tayl * work * tayl.transpose(), num_t(1) / num_t(2)), work));
             }
-      out[0] = out[1] = out[2] = redig.optImage(pair, 8);
+      out[0] = out[1] = out[2] = redig.optImage(pair, 4);
       file.savep2or3(argv[2], out, ! true, 65535);
     } else if(strcmp(argv[1], "cat") == 0) {
       vector<typename simpleFile<num_t>::Mat> rep;

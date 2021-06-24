@@ -147,7 +147,7 @@ else:
       #subprocess.call([argv[1], "obj", str(pixels * 4), ".1", str(zratio), ".4", root + "-bump.ppm", root + "-mask.ppm", root + "-stand.obj"])
       #subprocess.call(["xcrun", "scntool", "--convert", root + ".obj", "--format", "scn", "--output", root + ".scn"])
     elif(argv[2] == "penl"):
-      subprocess.call([argv[1], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
+      subprocess.call([argv[1], argv[2], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + ".obj", root + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + ".obj", root + "-R.ppm"])

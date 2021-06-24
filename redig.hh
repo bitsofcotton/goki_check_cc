@@ -100,7 +100,7 @@ public:
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  optImage(const vector<pair<Mat, Mat> >& img, const int& comp) const;
-  Mat  compImage(const Mat& in, const Mat& opt, const int& comp) const;
+  Mat  compImage(const Mat& in0, const Mat& opt, const int& comp) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
   Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = - 1) const;
@@ -109,8 +109,8 @@ public:
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
   void xyz2rgb(Mat rgb[3], const Mat xyz[3]);
   Mat  contrast(const Mat& in, const T& intensity, const T& thresh = T(1) / T(2));
-  Mat  normalize(const Mat& data, const T& upper);
-  void normalize(Mat data[3], const T& upper);
+  Mat  normalize(const Mat& data, const T& upper) const;
+  void normalize(Mat data[3], const T& upper) const;
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) const;
@@ -771,20 +771,28 @@ template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pai
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, const Mat& opt, const int& comp) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in0, const Mat& opt, const int& comp) const {
+  const auto in(normalize(in0, T(1) / T(2)));
   const auto ss(in.rows() * in.cols());
         Mat  tayl(ss + comp, ss);
+        Mat  taylr((in.rows() + 1) * (in.cols() + 1), opt.cols() - tayl.rows() - 1);
   for(int i = 0; i < tayl.rows(); i ++)
     tayl.row(i) = taylor<T>(ss, T(i) / T(tayl.rows() - 1) * T(ss - 1));
+  for(int i = 0; i < taylr.rows(); i ++)
+    taylr.row(i) = taylor<T>(taylr.cols(), T(i) / T(taylr.rows() - 1) * T(taylr.cols() - 1));
   Vec work(ss);
   for(int j = 0; j < in.rows(); j ++)
     for(int k = 0; k < in.cols(); k ++)
       work[j * in.cols() + k] = in(j, k);
-  const auto res0(opt.solve(Vec(opt.cols()).O().setVector(0, tayl * work)));
-  Mat res(opt.rows() - ss - comp * 2, opt.rows() - ss - comp * 2);
+  work = makeProgramInvariant<T>(tayl * work);
+  work = opt.subMatrix(0, 0, opt.cols() - work.size(), opt.cols() - work.size()).solve(opt.subMatrix(0, opt.cols() - work.size(), opt.cols() - work.size(), work.size()) * work);
+  for(int i = 0; i < work.size(); i ++)
+    work[i] = atan(work[i]);
+  work = taylr * work;
+  Mat res(sqrt(work.size()), sqrt(work.size()));
   for(int j = 0; j < res.rows(); j ++)
     for(int k = 0; k < res.cols(); k ++)
-      res(j, k) = res0[j * res.cols() + k];
+      res(j, k) = work[(j * res.cols() + k) % work.size()];
   return res;
 }
 
@@ -1078,7 +1086,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::contrast(const Mat& in, c
   return result;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data, const T& upper) {
+template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data, const T& upper) const {
   T MM(0), mm(0);
   bool fixed(false);
   for(int i = 0; i < data.rows(); i ++)
@@ -1106,7 +1114,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::normalize(const Mat& data
   return result * upper / (MM - mm);
 }
 
-template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) {
+template <typename T> void reDig<T>::normalize(Mat data[3], const T& upper) const {
   T MM(0), mm(0);
   bool fixed(false);
   for(int k = 0; k < 3; k ++)
