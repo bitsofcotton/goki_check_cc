@@ -173,8 +173,21 @@ int main(int argc, const char* argv[]) {
     for(int i = 0; i < 3; i ++)
       for(int j = 0; j < data[i].rows() - 5; j += 2)
         for(int k = 0; k < data[i].cols() - 5; k += 2) {
-          out[i].setMatrix(j * 5 / 4, k * 5 / 4, out[i].subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) + redig.compImage(data[i].subMatrix(j, k, 4, 4), opt[0], 4));
-          cnt.setMatrix(j * 5 / 4, k * 5 / 4, cnt.subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) + cr);
+          num_t m(data[i](j, k));
+          num_t M(data[i](j, k));
+          for(int ii = 0; ii < 4; ii ++)
+            for(int jj = 0; jj < 4; jj ++) {
+              m = min(m, data[i](ii, jj));
+              M = max(M, data[i](ii, jj));
+            }
+          out[i].setMatrix(j * 5 / 4, k * 5 / 4,
+            out[i].subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) +
+             redig.compImage(redig.normalize(
+              data[i].subMatrix(j, k, 4, 4), num_t(1) / num_t(2)), opt[0], 4) *
+             (M == m ? num_t(1) : M - m)
+          );
+          cnt.setMatrix(j * 5 / 4, k * 5 / 4,
+            cnt.subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) + cr);
         }
     for(int i = 0; i < 3; i ++)
       for(int j = 0; j < data[i].rows(); j ++)
@@ -629,7 +642,7 @@ int main(int argc, const char* argv[]) {
           for(int k = 0; k < in[i][j].rows() - 5; k += 2)
             for(int kk = 0; kk < in[i][j].cols() - 5; kk += 2) {
               const auto work(redig.normalize(in[i][j].subMatrix(k, kk, 5, 5), num_t(1) / num_t(2)));
-              pair.emplace_back(std::make_pair(redig.normalize(tayl * work * tayl.transpose(), num_t(1) / num_t(2)), work));
+              pair.emplace_back(std::make_pair(work, redig.normalize(tayl * work * tayl.transpose(), num_t(1) / num_t(2))));
             }
       out[0] = out[1] = out[2] = redig.optImage(pair, 4);
       file.savep2or3(argv[2], out, ! true, 65535);

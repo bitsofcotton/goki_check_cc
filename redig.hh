@@ -100,7 +100,7 @@ public:
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  optImage(const vector<pair<Mat, Mat> >& img, const int& comp) const;
-  Mat  compImage(const Mat& in0, const Mat& opt, const int& comp) const;
+  Mat  compImage(const Mat& in, const Mat& opt, const int& comp) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
   Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = - 1) const;
@@ -771,8 +771,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pai
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in0, const Mat& opt, const int& comp) const {
-  const auto in(normalize(in0, T(1) / T(2)));
+template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, const Mat& opt, const int& comp) const {
   const auto ss(in.rows() * in.cols());
         Mat  tayl(ss + comp, ss);
         Mat  taylr((in.rows() + 1) * (in.cols() + 1), opt.cols() - tayl.rows() - 1);
@@ -785,7 +784,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in0,
     for(int k = 0; k < in.cols(); k ++)
       work[j * in.cols() + k] = in(j, k);
   work = makeProgramInvariant<T>(tayl * work);
-  work = opt.subMatrix(0, 0, opt.cols() - work.size(), opt.cols() - work.size()).solve(opt.subMatrix(0, opt.cols() - work.size(), opt.cols() - work.size(), work.size()) * work);
+  work = opt.subMatrix(0, 0, opt.cols(), opt.cols()).solve(opt.subMatrix(0, opt.cols()- work.size(), opt.cols(), work.size()) * work).subVector(0, taylr.cols());
   for(int i = 0; i < work.size(); i ++)
     work[i] = atan(work[i]);
   work = taylr * work;
