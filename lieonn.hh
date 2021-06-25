@@ -72,9 +72,9 @@ public:
   inline ~DUInt();
   
   inline DUInt<T,bits>& operator ++ ();
-  inline DUInt<T,bits>  operator ++ (int);
+  inline DUInt<T,bits>  operator ++ (int32_t);
   inline DUInt<T,bits>& operator -- ();
-  inline DUInt<T,bits>  operator -- (int);
+  inline DUInt<T,bits>  operator -- (int32_t);
   inline DUInt<T,bits>  operator -  () const;
   inline DUInt<T,bits>  operator +  (const DUInt<T,bits>& src) const;
   inline DUInt<T,bits>& operator += (const DUInt<T,bits>& src);
@@ -163,7 +163,7 @@ template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator ++
   return *this;
 }
 
-template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator ++ (int) {
+template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator ++ (int32_t) {
   const auto work(*this);
   ++ *this;
   return work;
@@ -176,7 +176,7 @@ template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator --
   return *this;
 }
 
-template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator -- (int) {
+template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator -- (int32_t) {
   const auto work(*this);
   -- *this;
   return work;

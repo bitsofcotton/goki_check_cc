@@ -189,11 +189,12 @@ int main(int argc, const char* argv[]) {
           cnt.setMatrix(j * 5 / 4, k * 5 / 4,
             cnt.subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) + cr);
         }
-    for(int i = 0; i < 3; i ++)
+    for(int i = 0; i < 3; i ++) {
       for(int j = 0; j < data[i].rows(); j ++)
         for(int k = 0; k < data[i].cols(); k ++)
           out[i](j, k) /= max(num_t(1), cnt(j, k));
-    redig.normalize(out, num_t(1));
+      out[i] = filter<num_t>(out[i], CLIP, 1, 1);
+    }
     if(!file.savep2or3(argv[4], out, ! true, 255))
       return - 1;
   } else if(strcmp(argv[1], "bumpc") == 0) {
@@ -634,9 +635,10 @@ int main(int argc, const char* argv[]) {
       file.savep2or3(argv[2], out, ! true);
     } else if(strcmp(argv[1], "lenl") == 0) {
       std::vector<std::pair<typename simpleFile<num_t>::Mat, typename simpleFile<num_t>::Mat> > pair;
-      typename simpleFile<num_t>::Mat tayl(4, 5);
-      for(int i = 0; i < tayl.rows(); i ++)
-        tayl.row(i) = taylor<num_t>(5, num_t(i) / num_t(tayl.rows() - 1) * num_t(5 - 1));
+      const auto d5(dft<num_t>(5).subMatrix(0, 0, 4, 5));
+      const auto d4(dft<num_t>(- 4));
+      const auto taylc(d4 * d5);
+      const auto tayl(taylc.template real<num_t>());
       for(int i = 0; i < in.size(); i ++)
         for(int j = 0; j < 3; j ++)
           for(int k = 0; k < in[i][j].rows() - 5; k += 2)
