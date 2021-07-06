@@ -876,11 +876,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
   if(n == 0) {
     if(origin < 0) {
-      // N.B. 0 is optional.
-      auto res(bump(color, bumpm, psi, n, 1));
-      for(int i = 2; i < 5; i ++)
+      auto res(bump(color, bumpm, psi, n, 0));
+      for(int i = 1; i < 5; i ++)
         res += bump(color, bumpm, psi, n, i);
-      return res /= T(4);
+      return res /= T(5);
     }
     assert(0 <= origin && origin < 5);
     const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));

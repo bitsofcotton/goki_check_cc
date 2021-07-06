@@ -11,7 +11,8 @@
 #include <random>
 #include <assert.h>
 
-#define int int64_t
+//#define int int64_t
+#define int int32_t
 #include "lieonn.hh"
 typedef myfloat num_t;
 #include "p0.hh"
@@ -63,7 +64,8 @@ void usage() {
 
 #undef int
 int main(int argc, const char* argv[]) {
-#define int int64_t
+//#define int int64_t
+#define int int32_t
   if(argc < 2) {
     usage();
     return 0;
