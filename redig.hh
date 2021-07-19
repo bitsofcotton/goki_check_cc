@@ -103,7 +103,8 @@ public:
   Mat  compImage(const Mat& in, const Mat& opt, const int& comp) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
-  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = - 1) const;
+  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = 0) const;
+  //Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = - 1) const;
   vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -874,7 +875,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
 
 template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n, const int& origin) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
-  if(n == 0) {
+  if(true || n == 0) {
     if(origin < 0) {
       auto res(bump(color, bumpm, psi, n, 0));
       for(int i = 1; i < 5; i ++)
@@ -939,8 +940,15 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
           const auto x0(getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy + xorigin), result.rows()));
-          work += (k < Dop0.size() / 2 ? color0.row(x0) : color1.row(x0)) * Dop0[k];
+          //work += (k < Dop0.size() / 2 ? color0.row(x0) : color1.row(x0)) * Dop0[k];
+          for(int kk = 0; kk <= 2 * n; kk ++)
+            work += (k + kk - n < Dop0.size() / 2 ? color0.row(getImgPt<int>(x0 + kk - n, color0.rows())) : color1.row(getImgPt<int>(x0 + kk - n, color1.rows()))) * Dop0[k];
         }
+        auto work0(work);
+        for(int i = 0; i < work.size(); i ++)
+          for(int kk = 0; kk <= 2 * n; kk ++)
+            if(kk != n)
+              work[i] += work0[getImgPt<int>(i + kk - n, work.size())];
         for(int i = 0; i < work.size(); i ++)
           if(zscore(j, i) < abs(work[i])) {
             result(j, i) = T(zi + 1);

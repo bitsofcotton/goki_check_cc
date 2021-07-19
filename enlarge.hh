@@ -315,8 +315,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
           for(int i = 0; i < A.rows(); i ++) {
             for(int j = 0; j < Dop0.size(); j ++)
-              A.row(i) += data.row(getImgPt<int>(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
+              for(int k = 0; k <= 2 * n; k ++)
+                A.row(i) += data.row(getImgPt<int>(k - n + i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
           }
+          const auto A0(A);
+          for(int i = 0; i < A.cols(); i ++)
+            for(int k = 0; k <= 2 * n; k ++)
+              if(k != n)
+                A.setCol(i, A.col(i) + A0.col(getImgPt<int>(k - n + i, data.cols())));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -379,7 +385,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
               result(data.rows() + recur + i, j) =
                (dpf * ridft.col(n)).dot(lidft.row(dpf.rows() - 1)).real();
               result(recur - i - 1, j) =
-               (dpm * ridft.col(n)).dot(lidft.row(dpm.rows() - 1)).real();
+               (dpm * ridft.col(n)).dot(lidft.row(0)).real();
             }
           }
         }

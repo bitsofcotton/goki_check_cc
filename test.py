@@ -129,9 +129,8 @@ else:
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
-      rot = 1
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], "bumpc", str(psi / 2.), str(rot), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(0)])
+      subprocess.call([argv[1], "bumpc", str(psi / 2.), str(0), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
       subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + ".ppm"])
       #subprocess.call([argv[1], "bumpc", str(psi), str(rot), str(pixels), str(zratio), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "enlarge"):
