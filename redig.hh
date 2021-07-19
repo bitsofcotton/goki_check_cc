@@ -875,7 +875,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
 
 template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n, const int& origin) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
-  if(true || n == 0) {
+  if(n == 0) {
     if(origin < 0) {
       auto res(bump(color, bumpm, psi, n, 0));
       for(int i = 1; i < 5; i ++)
