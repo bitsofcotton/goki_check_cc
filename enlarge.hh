@@ -66,10 +66,14 @@ template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& 
   assert(abs(theta) < atan(T(1)));
   const auto c(cos(theta));
   const auto s(sin(theta));
-  SimpleMatrix<T> res(abs(int(c * T(d.rows()) - s * T(d.cols()))) +
-                        abs(int(s * T(d.cols()))) * 2,
-                      abs(int(s * T(d.rows()) + c * T(d.cols()))) +
-                        abs(int(c * T(d.rows()))) * 2);
+  const auto h0(abs(int(c * T(d.rows()) - s * T(d.cols()))));
+  const auto h1(abs(int(c * T(d.rows()) - s * T(d.cols()))) +
+                abs(int(s * T(d.cols()))) * 2);
+  const auto w0(abs(int(s * T(d.rows()) + c * T(d.cols()))));
+  const auto w1(abs(int(s * T(d.rows()) + c * T(d.cols()))) +
+                abs(int(c * T(d.rows()))) * 2);
+  SimpleMatrix<T> res(h0 < d.rows() ? h1 : h0,
+                      w0 < d.cols() ? w1 : w0);
   const T offy(abs(int(s * T(d.cols()))));
   const T offx(abs(int(c * T(d.rows()))));
   res.O();

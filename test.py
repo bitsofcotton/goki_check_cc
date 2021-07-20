@@ -8,7 +8,7 @@ argv    = sys.argv
 pixels  = 4
 zratio  = .5
 psi     = 1. / 3.
-rot     = 7
+rot     = 3
 
 if(len(argv) < 4):
   print("no much argments.")
