@@ -74,10 +74,10 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
       for(int k = 0; k < size; k ++) {
         for(int j = 0; j < inn.size(); j ++)
           inn[j] = in[i][(j + k * in[i].size() / size) % in[i].size()];
-        A.row(i * size + k) = makeProgramInvariant(inn.size() == size ? inn : tayl(size, inn.size()) * inn);
+        A.row(i * size + k) = makeProgramInvariant(inn.size() == size ? inn : tayl(size, inn.size()) * inn).first;
       }
     } else
-      A.row(i) = makeProgramInvariant(in[i].size() == size ? in[i] : tayl(size, in[i].size()) * in[i]);
+      A.row(i) = makeProgramInvariant(in[i].size() == size ? in[i] : tayl(size, in[i].size()) * in[i]).first;
         auto Pt(A.QR());
   const auto R(Pt * A);
         Vec  one(Pt.cols());
@@ -137,7 +137,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
   std::vector<T> s;
   s.reserve(in.size());
   for(int i = 0; i < in.size(); i ++)
-    s.emplace_back(makeProgramInvariant(in[i].size() == size ? in[i] : tayl(size, in[i].size()) * in[i]).dot(cut));
+    s.emplace_back(makeProgramInvariant(in[i].size() == size ? in[i] : tayl(size, in[i].size()) * in[i]).first.dot(cut));
   std::sort(s.begin(), s.end());
   distance = origin = T(0);
   for(int i = 0; i < s.size() - 1; i ++)
@@ -169,13 +169,13 @@ template <typename T> inline pair<T, int> CatG<T>::score(const Vec& in) {
   const auto size(cut.size() - 1);
   assert(0 < size);
   if(! recur)
-    return make_pair(makeProgramInvariant<T>(in.size() == size ? in : tayl(size, in.size()) * in).dot(cut) - origin, 0);
+    return make_pair(makeProgramInvariant<T>(in.size() == size ? in : tayl(size, in.size()) * in).first.dot(cut) - origin, 0);
   pair<T, int> res(make_pair(0, 0));
   for(int i = 0; i < size; i ++) {
     Vec inn(in.size());
     for(int j = 0; j < inn.size(); j ++)
       inn[j] = in[(j + i * in.size() / size) % in.size()];
-    const auto score(makeProgramInvariant<T>(inn.size() == size ? inn : tayl(size, inn.size()) * inn).dot(cut) - origin);
+    const auto score(makeProgramInvariant<T>(inn.size() == size ? inn : tayl(size, inn.size()) * inn).first.dot(cut) - origin);
     if(abs(res.first) < abs(score))
       res = make_pair(score, i);
   }
@@ -311,46 +311,24 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline P012L();
-  inline P012L(const int& stat, const int& d, const int& comp0 = 0);
+  inline P012L(const int& stat, const int& d);
   inline ~P012L();
   T next(const T& in);
 private:
   vector<Vec> pp;
   feeder f;
-  Mat pc;
+  int varlen;
   T   M;
 };
 
 template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::P012L() {
-  M = T(0);
+  M = T(varlen = 0);
 }
 
-template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::P012L(const int& stat, const int& d, const int& comp0) {
+template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::P012L(const int& stat, const int& var) {
   M = T(0);
-  assert(0 <= comp0);
-  auto comp(comp0);
-  T    tmp(d + 1);
-  while(true) {
-    tmp  /= T(2);
-    if(tmp < T(1)) break;
-    tmp   = ceil(tmp);
-    comp += int(tmp);
-  }
-  pc = Mat(comp, d);
-  for(int i = 0; i < pc.rows() - 1; i ++) {
-    const auto work(taylor(pc.cols() - 1, T(1) / T(pc.rows() - 2) * T(pc.cols() - 2)));
-    for(int j = 0; j < work.size(); j ++)
-      pc(i, j) = work[j];
-    pc(i, work.size()) = T(0);
-  }
-  for(int i = 0; i < pc.cols(); i ++)
-    pc(pc.rows() - 1, i) = T(i == pc.cols() - 1 ? 1 : 0);
-  T MM(0);
-  for(int i = 0; i < pc.rows(); i ++)
-    for(int j = 0; j < pc.cols(); j ++)
-      MM = max(MM, abs(pc(i, j)));
-  pc /= MM * T(4);
-  f = feeder(stat + comp);
+  assert(0 < stat && 1 < var);
+  f = feeder(stat + (varlen = var) - 1);
 }
 
 template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::~P012L() {
@@ -359,42 +337,42 @@ template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::~P0
 
 template <typename T, typename feeder, bool dec> inline T P012L<T,feeder,dec>::next(const T& in) {
   if(f.res[f.res.size() - 1] == in) return T(0);
-  if(M < abs(in) * T(4) * T(pc.rows()) * atan(T(1)) * T(pc.cols() + 2)) M = abs(in) * T(8 * pc.rows()) * atan(T(1)) * T(pc.cols() + 2);
+  if(M < abs(in) * T(4) * T(varlen) * atan(T(1)) * T(varlen + 2)) M = abs(in) * T(8 * varlen) * atan(T(1)) * T(varlen + 2);
   const auto d(f.next(in));
   if(! f.full) return T(0);
   vector<SimpleVector<T> > cache;
-  cache.reserve(d.size() - pc.cols() + 1);
-  Decompose<T> decompose(pc.cols());
-  for(int i = 0; i < d.size() - pc.cols() + 1; i ++) {
-    auto w(d.subVector(i, pc.cols()) / M);
-    cache.emplace_back(pc * (dec ? decompose.mother(move(w)) : move(w)));
+  cache.reserve(d.size() - varlen + 1);
+  Decompose<T> decompose(varlen);
+  for(int i = 0; i <= d.size() - varlen; i ++) {
+    auto w(d.subVector(i, varlen) / M);
+    cache.emplace_back(dec ? decompose.mother(move(w)) : move(w));
   }
   const auto cat(crush<T>(cache, cache[0].size(), false, 0));
   pp = vector<Vec>();
   pp.reserve(cat.size());
   for(int i = 0; i < cat.size(); i ++) {
-    if(cat[i].first.size() <= pc.rows()) continue;
+    if(cat[i].first.size() <= varlen) continue;
     vector<Vec> pw;
     pw.reserve(cat[i].first.size());
     for(int j = 0; j < cat[i].first.size(); j ++)
-      pw.emplace_back(makeProgramInvariant<T>(cat[i].first[j]));
+      pw.emplace_back(makeProgramInvariant<T>(cat[i].first[j]).first);
     pp.emplace_back(linearInvariant<T>(pw));
   }
-  SimpleVector<T> work(pc.cols());
+  SimpleVector<T> work(varlen);
   for(int i = 0; i < work.size() - 1; i ++)
     work[i] = d[i - work.size() + d.size() + 1] / M;
   work[work.size() - 1] = work[work.size() - 2];
   T MM(0);
   T res(0);
   const auto vdp(makeProgramInvariant<T>(
-    pc * (dec ? decompose.mother(work) : work)));
+    dec ? decompose.mother(work) : work));
   for(int i = 0; i < pp.size(); i ++) {
     const auto& p(pp[i]);
     if(! p.size()) continue;
-    const auto vdps((vdp.dot(p) - vdp[pc.rows() - 1] * p[pc.rows() - 1]) / sqrt(vdp.dot(vdp) * p.dot(p)));
+    const auto vdps((vdp.first.dot(p) - vdp.first[varlen - 1] * p[varlen - 1]) / sqrt(vdp.first.dot(vdp.first) * p.dot(p)));
     if(! isfinite(vdps)) continue;
     if(MM < abs(vdps) && p[work.size()] != T(0)) {
-      const auto v(revertProgramInvariant<T>((p.dot(vdp) - p[pc.rows() - 1] * vdp[pc.rows() - 1]) / p[pc.rows() - 1]));
+      const auto v((p.dot(vdp.first) - p[varlen - 1] * vdp.first[varlen - 1]) / p[varlen - 1] * vdp.second - T(1));
       if(v != T(0)) {
         MM  = abs(vdps);
         res = v;
