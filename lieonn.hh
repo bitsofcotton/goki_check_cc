@@ -3238,17 +3238,13 @@ template <typename T> inline pair<SimpleVector<T>, T> makeProgramInvariant(const
   if(T(0) <= index)
     res[in.size() + 1] = T(index);
   T   lsum(0);
-  int cnt(0);
   for(int i = 0; i < res.size(); i ++) {
     assert(- T(1) <= res[i] && res[i] <= T(1));
     res[i] += T(1);
-    if(res[i] != T(0)) {
-      lsum += log(res[i]);
-      cnt ++;
-    }
+    if(res[i] != T(0)) lsum += log(res[i]);
   }
   T ratio(1);
-  if(cnt) res /= ratio = exp(lsum / T(cnt));
+  if(lsum != T(0)) res /= ratio = exp(lsum);
   return make_pair(res, ratio);
 }
 
