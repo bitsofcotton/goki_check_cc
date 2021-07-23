@@ -73,7 +73,7 @@ template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& 
   SimpleMatrix<T> res(h0 < d.rows() ? h1 : h0,
                       w0 < d.cols() ? w1 : w0);
   const T offy(abs(int(s * T(d.cols()))));
-  const T offx(abs(int(c * T(d.rows()))));
+  const T offx(abs(int(s * T(d.rows()))));
   res.O();
   const auto diag(int(sqrt(res.rows() * res.rows() +
                            res.cols() * res.cols())) + 1);
