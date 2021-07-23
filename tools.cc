@@ -119,7 +119,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], SHARPEN_BOTH, n, recur), CLIP);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = redig.autoLevel(filter<num_t>(filter<num_t>(redig.rgb2d(data), BUMP_BOTH, n, recur), INTEG_BOTH, n, recur), 4 * (data[0].rows() + data[0].cols()));
+      data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), BUMP_BOTH, n, recur);
     else if(strcmp(argv[1], "represent") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), REPRESENT, n, recur);
     else if(strcmp(argv[1], "w2b") == 0) {
@@ -210,7 +210,7 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(bump, argv[7]))
       return -1;
     redig.initialize(atoi(argv[4]), std::atof(argv[5]));
-    bump[0] = bump[1] = bump[2] = redig.autoLevel(filter<num_t>(redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]), atoi(argv[3])), INTEG_BOTH), 4 * (datac[0].rows() + datac[0].cols()));
+    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]), std::atoi(argv[3]));
     redig.normalize(bump, num_t(1));
     if(!file.savep2or3(argv[8], bump, !true) )
       return - 2;

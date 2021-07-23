@@ -67,11 +67,9 @@ template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& 
   const auto c(cos(theta));
   const auto s(sin(theta));
   const auto h0(abs(int(c * T(d.rows()) - s * T(d.cols()))));
-  const auto h1(abs(int(c * T(d.rows()) - s * T(d.cols()))) +
-                abs(int(s * T(d.cols()))) * 2);
+  const auto h1(h0 + abs(int(s * T(d.cols()))) * 2);
   const auto w0(abs(int(s * T(d.rows()) + c * T(d.cols()))));
-  const auto w1(abs(int(s * T(d.rows()) + c * T(d.cols()))) +
-                abs(int(c * T(d.rows()))) * 2);
+  const auto w1(w0 + abs(int(s * T(d.rows()))) * 2);
   SimpleMatrix<T> res(h0 < d.rows() ? h1 : h0,
                       w0 < d.cols() ? w1 : w0);
   const T offy(abs(int(s * T(d.cols()))));
@@ -164,8 +162,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     case DETECT_Y:
       return diff<T>(  data.rows()) * data;
     case INTEG_Y:
-      return diff<T>(- data.rows()) * data;
-/*
+      // return diff<T>(- data.rows()) * data;
       {
         // instead of integrate, we can use normalize:
         // N.B. d^exp(t)/dx^exp(t) f(x) == f(x + t dx), t != 0.
@@ -186,7 +183,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         return (dft<T>(- data.rows()) * normalize).template real<T>();
       }
       break;
-*/
     case COLLECT_Y:
       return filter<T>(filter<T>(data, DETECT_Y, n, recur), ABS, n, recur);
     case SHARPEN_Y:
@@ -293,7 +289,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         SimpleMatrix<T> zscore(data.rows(), data.cols());
         result.O();
         zscore.I(- T(1));
-        const auto rxy(sqrt(T(data.rows()) * T(data.cols())));
+        const auto rxy(T(min(data.rows(), data.cols())));
         const int  dratio(sqrt(sqrt(rxy)));
               SimpleVector<T> camera(2);
               SimpleVector<T> cpoint(2);
@@ -311,7 +307,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
           if(abs(int(y0)) < 3 || rxy < abs(y0) * T(2)) continue;
-          const auto Dop(diff<T>(abs(int(y0 * T(2))) & ~ int(1)));
+          const auto Dop(diff<T>(abs(int(y0)) & ~ int(1)));
           const auto Dop0(Dop.row(Dop.rows() / 2) + Dop.row(Dop.rows() / 2 + 1));
           //  N.B. dC_k/dy on zi.
 #if defined(_OPENMP)

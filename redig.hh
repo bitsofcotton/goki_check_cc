@@ -750,7 +750,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pai
     for(int j = 0; j < img[i].second.rows(); j ++)
       for(int k = 0; k < img[i].second.cols(); k ++)
         lseri1[j * img[i].second.cols() + k] = img[i].second(j, k);
-    serialize.emplace_back(makeProgramInvariant<T>(Vec(tayl0.rows() + tayl1.rows()).O().setVector(0, tayl0 * lseri0).setVector(tayl0.rows(), tayl1 * lseri1)));
+    serialize.emplace_back(makeProgramInvariant<T>(Vec(tayl0.rows() + tayl1.rows()).O().setVector(0, tayl0 * lseri0).setVector(tayl0.rows(), tayl1 * lseri1)).first);
   }
   Mat res(serialize[0].size(), serialize[0].size());
   for(int i = 0; i < res.rows(); i ++) {
@@ -784,7 +784,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, 
   for(int j = 0; j < in.rows(); j ++)
     for(int k = 0; k < in.cols(); k ++)
       work[j * in.cols() + k] = in(j, k);
-  work = makeProgramInvariant<T>(tayl * work);
+  work = makeProgramInvariant<T>(tayl * work).first;
   work = opt.subMatrix(0, 0, opt.cols(), opt.cols()).solve(opt.subMatrix(0, opt.cols()- work.size(), opt.cols(), work.size()) * work).subVector(0, taylr.cols());
   for(int i = 0; i < work.size(); i ++)
     work[i] = atan(work[i]);
@@ -912,7 +912,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
 #pragma omp critical
 #endif
         {
-          const auto Dop(diff<T>(abs(int(x0 * T(2))) & ~ int(1)));
+          const auto Dop(diff<T>(abs(int(x0)) & ~ int(1)));
           Dop0 = Dop.row(Dop.rows() / 2) + Dop.row(Dop.rows() / 2 + 1);
         }
         for(int k = 0; k < Dop0.size(); k ++) {
