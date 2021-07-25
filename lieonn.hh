@@ -3237,8 +3237,9 @@ template <typename T> inline pair<SimpleVector<T>, T> makeProgramInvariant(const
   res[in.size()] = T(1);
   if(T(0) <= index)
     res[in.size() + 1] = T(index);
+  res[res.size() - 1] = T(0);
   T   lsum(0);
-  for(int i = 0; i < res.size(); i ++) {
+  for(int i = 0; i < res.size() - 1; i ++) {
     assert(- T(1) <= res[i] && res[i] <= T(1));
     res[i] += T(1);
     if(res[i] != T(0)) lsum += log(res[i]);

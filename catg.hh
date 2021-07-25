@@ -62,7 +62,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
   const auto size(abs(size0));
   this->recur = recur;
   const auto block(recur ? size : 1);
-  SimpleMatrix<T> A(in.size() * block, size + 1);
+  SimpleMatrix<T> A(in.size() * block, size + 2);
   for(int i = 0; i < in.size(); i ++)
     tayl(size, in[i].size());
 #if defined(_OPENMP)
@@ -166,7 +166,7 @@ template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& size
 }
 
 template <typename T> inline pair<T, int> CatG<T>::score(const Vec& in) {
-  const auto size(cut.size() - 1);
+  const auto size(cut.size() - 2);
   assert(0 < size);
   if(! recur)
     return make_pair(makeProgramInvariant<T>(in.size() == size ? in : tayl(size, in.size()) * in).first.dot(cut) - origin, 0);
