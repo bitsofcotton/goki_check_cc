@@ -334,11 +334,13 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       {
         SimpleMatrix<T> result(data.rows() + 2 * recur, data.cols());
         SimpleMatrix<complex<T> > ddft(data.rows(), data.cols());
+        const auto cdft(dft<T>(   data.cols()).transpose());
+        const auto cidft(dft<T>(- data.cols()).transpose());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int i = 0; i < data.rows(); i ++) {
-          ddft.row(i) = dft<T>(data.cols()).transpose() * data.row(i).template cast<complex<T> >();
+          ddft.row(i) = cdft * data.row(i).template cast<complex<T> >();
           result.row(i + recur) = data.row(i);
         }
         for(int i = 0; i < recur; i ++) {
@@ -351,8 +353,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             bwd += ddft.row(- (j - next.size() + 1) * (i + 1)) * next[j];
             fwd += ddft.row(  (j - next.size() + 1) * (i + 1) + ddft.rows() - 1) * next[j];
           }
-          result.row(recur - i - 1) = (dft<T>(- result.cols()) * bwd).template real<T>();
-          result.row(data.rows() + recur + i) = (dft<T>(- result.cols()) * fwd).template real<T>();
+          result.row(recur - i - 1) = (cidft * bwd).template real<T>();
+          result.row(data.rows() + recur + i) = (cidft * fwd).template real<T>();
         }
         return result;
       }
