@@ -333,54 +333,26 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     case EXTEND_Y:
       {
         SimpleMatrix<T> result(data.rows() + 2 * recur, data.cols());
+        SimpleMatrix<complex<T> > ddft(data.rows(), data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-        for(int i = 0; i < data.rows(); i ++)
+        for(int i = 0; i < data.rows(); i ++) {
+          ddft.row(i) = dft<T>(data.cols()).transpose() * data.row(i).template cast<complex<T> >();
           result.row(i + recur) = data.row(i);
-        const auto ldft(dft<T>(n * 2 + 1));
-        const auto lidft(dft<T>(- (n * 2 + 1)));
-        const auto rdft(ldft.transpose());
-        const auto ridft(lidft.transpose());
+        }
         for(int i = 0; i < recur; i ++) {
-          const auto next(nextP0<T, true>(min(int(80), int(data.rows()) / (i + 1) - n)));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-          for(int j = 0; j < data.cols(); j ++) {
-            for(int k = 0; k < data.rows(); k ++) {
-              SimpleMatrix<complex<T> > dpf(n * 2 + 1, n * 2 + 1);
-              auto dpm(dpf);
-              for(int kk = 0; kk < next.size(); kk ++) {
-                auto ldpf(dpf * complex<T>(T(0)));
-                auto ldpm(dpm * complex<T>(T(0)));
-                for(int ii = 0; ii < dpf.rows(); ii ++)
-                  for(int jj = 0; jj < dpf.cols(); jj ++) {
-                    const auto kl((ii - dpf.rows() + 1 + kk - next.size() + 1) * (i + 1));
-                    ldpf(ii, jj) = complex<T>(
-                      data(getImgPt<int>(kl + data.rows() - 1, data.rows()),
-                        getImgPt<int>(j + jj - n, data.cols())) );
-                    ldpm(ldpm.rows() - ii - 1, jj) = complex<T>(
-                      data(getImgPt<int>(- kl, data.rows()),
-                        getImgPt<int>(j + jj - n, data.cols())) );
-                  }
-                auto bpf(ldft * ldpf * rdft * complex<T>(next[kk]));
-                auto bpm(ldft * ldpm * rdft * complex<T>(next[kk]));
- 
-                if(kk) {
-                  dpf += std::move(bpf);
-                  dpm += std::move(bpm);
-                } else {
-                  dpf  = std::move(bpf);
-                  dpm  = std::move(bpm);
-                }
-              }
-              result(data.rows() + recur + i, j) =
-               (dpf * ridft.col(n)).dot(lidft.row(dpf.rows() - 1)).real();
-              result(recur - i - 1, j) =
-               (dpm * ridft.col(n)).dot(lidft.row(0)).real();
-            }
+          const auto next(nextP0<T, true>(int(ddft.rows()) / (i + 1)));
+          SimpleVector<complex<T> > bwd(data.cols());
+          for(int j = 0; j < bwd.size(); j ++)
+            bwd[j] = complex<T>(T(0));
+          auto fwd(bwd);
+          for(int j = 0; j < next.size(); j ++) {
+            bwd += ddft.row(- (j - ddft.rows() / (i + 1) + 1) * (i + 1)) * next[j];
+            fwd += ddft.row((j - ddft.rows() / (i + 1) + 1) * (i + 1) + ddft.rows() - 1);
           }
+          result.row(recur - i - 1) = (dft<T>(- result.cols()) * bwd).template real<T>();
+          result.row(data.rows() + recur + i) = (dft<T>(- result.cols()) * fwd).template real<T>();
         }
         return result;
       }

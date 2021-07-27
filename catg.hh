@@ -351,7 +351,7 @@ template <typename T, typename feeder, bool dec> inline T P012L<T,feeder,dec>::n
   pp = vector<Vec>();
   pp.reserve(cat.size());
   for(int i = 0; i < cat.size(); i ++) {
-    if(cat[i].first.size() <= varlen) continue;
+    if(cat[i].first.size() <= varlen + 1) continue;
     vector<Vec> pw;
     pw.reserve(cat[i].first.size());
     for(int j = 0; j < cat[i].first.size(); j ++)

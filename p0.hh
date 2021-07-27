@@ -40,6 +40,11 @@ template <typename T, bool walk = false> const SimpleVector<T>& nextP0(const int
     if(size <= 1) {
       p    = SimpleVector<T>(1);
       p[0] = T(1);
+    } else if(size == 2) {
+      const auto q((taylor<T>(4, T(4)) + taylor<T>(4, T(5))) / T(2));
+      p = SimpleVector<T>(2).O();
+      p[0] = (q[0] + q[1]) / T(2);
+      p[1] = (q[2] + q[3]) / T(2);
     } else {
       p = taylor<T>(size, T(size));
       if(walk) {
