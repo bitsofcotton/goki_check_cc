@@ -917,7 +917,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.
           T yorigin(0);
-          if(j < result.rows() / 2 || true) {
+          if(j < result.rows() / 2) {
             cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
             yorigin   = T(result.rows() - 1);
           } else
@@ -926,7 +926,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
-          work += (j < result.rows() / 2 || true ?
+          work += (j < result.rows() / 2 ?
             (k < Dop0.size() / 2 ? color2 : color3) :
             (k < Dop0.size() / 2 ? color0 : color1)).row(
               getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy +
