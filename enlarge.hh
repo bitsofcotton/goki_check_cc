@@ -104,15 +104,14 @@ template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& 
 }
 
 template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>& dr, const SimpleMatrix<T>& d) {
-  assert(d.rows() <= dr.rows() && d.cols() <= dr.cols());
   SimpleMatrix<T> res(d.rows(), d.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < d.rows(); i ++)
-    for(int j = 0; j < d.cols(); j ++)
-      res(i, j) = dr(min(i + (dr.rows() - d.rows()) / 2, dr.rows() - 1),
-                     min(j + (dr.cols() - d.cols()) / 2, dr.cols() - 1));
+  for(int i = 0; i < res.rows(); i ++)
+    for(int j = 0; j < res.cols(); j ++)
+      res(i, j) = dr(max(0, min(i + (dr.rows() - d.rows()) / 2, dr.rows() - 1)),
+                     max(0, min(j + (dr.cols() - d.cols()) / 2, dr.cols() - 1)));
   return res;
 }
 
@@ -315,14 +314,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
           for(int i = 0; i < A.rows(); i ++) {
             for(int j = 0; j < Dop0.size(); j ++)
-              for(int k = 0; k <= 2 * n; k ++)
-                A.row(i) += data.row(getImgPt<int>(k - n + i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
+              A.row(i) += data.row(getImgPt<int>(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
           }
-          const auto A0(A);
-          for(int i = 0; i < A.cols(); i ++)
-            for(int k = 0; k <= 2 * n; k ++)
-              if(k != n)
-                A.setCol(i, A.col(i) + A0.col(getImgPt<int>(k - n + i, data.cols())));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif

@@ -103,8 +103,7 @@ public:
   Mat  compImage(const Mat& in, const Mat& opt, const int& comp) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
-  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = 0) const;
-  //Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0, const int& origin = - 1) const;
+  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0) const;
   vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -873,18 +872,13 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n, const int& origin) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
   if(n == 0) {
-    if(origin < 0) {
-      auto res(bump(color, bumpm, psi, n, 0));
-      for(int i = 1; i < 5; i ++)
-        res += bump(color, bumpm, psi, n, i);
-      return res /= T(5);
-    }
-    assert(0 <= origin && origin < 5);
-    const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
-    const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
+    const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), 1)));
+    const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), 1)));
+    const auto color2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), 4)));
+    const auto color3(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), 4)));
           Mat  result(color.rows(), color.cols());
           auto zscore(result);
     result.O();
@@ -917,38 +911,20 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         }
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.
-          T xorigin(0);
-          switch(origin) {
-          case 0:
-            cpoint[0] = (T(j + k) - T(Dop0.size() + result.rows() - 2) / T(2)) / T(2 * dratio) / rxy;
-            xorigin   = T(result.rows() - 1) / T(2);
-            break;
-          case 1:
-          case 3:
-            cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
-            break;
-          case 2:
-          case 4:
+          T yorigin(0);
+          if(j < result.rows() / 2) {
             cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
-            xorigin   = T(result.rows() - 1);
-            break;
-          default:
-            assert(0 && "Should not be reached in redig::bump");
-          }
+            yorigin   = T(result.rows() - 1);
+          } else
+            cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
           // x-z plane projection of point p with camera geometry c to z=0.
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
-          const auto x0(getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy + xorigin), result.rows()));
-          //work += (k < Dop0.size() / 2 ? color0.row(x0) : color1.row(x0)) * Dop0[k];
+          const auto x0(getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy + yorigin), result.rows()));
           for(int kk = 0; kk <= 2 * n; kk ++)
-            work += (k + kk - n < Dop0.size() / 2 ? color0.row(getImgPt<int>(x0 + kk - n, color0.rows())) : color1.row(getImgPt<int>(x0 + kk - n, color1.rows()))) * Dop0[k];
+            work += (j < result.rows() / 2 ? (k + kk - n < Dop0.size() / 2 ? color2 : color3) : (k + kk - n < Dop0.size() / 2 ? color0 : color1)).row(getImgPt<int>(x0 + kk - n, color.rows())) * Dop0[k];
         }
-        auto work0(work);
-        for(int i = 0; i < work.size(); i ++)
-          for(int kk = 0; kk <= 2 * n; kk ++)
-            if(kk != n)
-              work[i] += work0[getImgPt<int>(i + kk - n, work.size())];
         for(int i = 0; i < work.size(); i ++)
           if(zscore(j, i) < abs(work[i])) {
             result(j, i) = T(zi + 1);

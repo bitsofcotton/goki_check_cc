@@ -8,7 +8,7 @@ argv    = sys.argv
 pixels  = 4
 zratio  = .5
 psi     = 1. / 3.
-rot     = 3
+rot     = 5
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -130,11 +130,8 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      #subprocess.call([argv[1], "integ", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm", str(pixels), str(rot)])
-      #subprocess.call([argv[1], "bumpc", str(psi / 2.), str(rot), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "1.ppm", root + "-" + argv[2] + "2.ppm"])
-      subprocess.call([argv[1], "bumpc", str(psi / 2.), str(rot), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "3.ppm"])
-      #subprocess.call([argv[1], "integ", root + "-" + argv[2] + "2.ppm", root + "-" + argv[2] + "3.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "3.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      subprocess.call([argv[1], "bumpc", str(rot), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
+      subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "flarge" or argv[2] == "pextend" or argv[2] == "blink" or argv[2] == "represent"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
