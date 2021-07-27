@@ -334,8 +334,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       {
         SimpleMatrix<T> result(data.rows() + 2 * recur, data.cols());
         SimpleMatrix<complex<T> > ddft(data.rows(), data.cols());
-        const auto cdft(dft<T>(   data.cols()).transpose());
-        const auto cidft(dft<T>(- data.cols()).transpose());
+        const auto cdft(dft<T>(   data.cols()));
+        const auto cidft(dft<T>(- data.cols()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
