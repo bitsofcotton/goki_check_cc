@@ -348,8 +348,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             bwd[j] = complex<T>(T(0));
           auto fwd(bwd);
           for(int j = 0; j < next.size(); j ++) {
-            bwd += ddft.row(- (j - ddft.rows() / (i + 1) + 1) * (i + 1)) * next[j];
-            fwd += ddft.row((j - ddft.rows() / (i + 1) + 1) * (i + 1) + ddft.rows() - 1);
+            bwd += ddft.row(- (j - next.size() + 1) * (i + 1)) * next[j];
+            fwd += ddft.row(  (j - next.size() + 1) * (i + 1) + ddft.rows() - 1) * next[j];
           }
           result.row(recur - i - 1) = (dft<T>(- result.cols()) * bwd).template real<T>();
           result.row(data.rows() + recur + i) = (dft<T>(- result.cols()) * fwd).template real<T>();
