@@ -205,14 +205,14 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     typename simpleFile<num_t>::Mat datac[3], bump[3];
-    if(!file.loadp2or3(datac, argv[5]))
+    if(!file.loadp2or3(datac, argv[6]))
       return -1;
-    if(!file.loadp2or3(bump, argv[6]))
+    if(!file.loadp2or3(bump, argv[7]))
       return -1;
-    redig.initialize(atoi(argv[3]), std::atof(argv[4]));
-    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]));
+    redig.initialize(atoi(argv[4]), std::atof(argv[5]));
+    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]), std::atoi(argv[3]));
     redig.normalize(bump, num_t(1));
-    if(!file.savep2or3(argv[7], bump, ! true) )
+    if(!file.savep2or3(argv[8], bump, ! true) )
       return - 2;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||

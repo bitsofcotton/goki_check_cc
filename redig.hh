@@ -879,6 +879,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
     origin[1] = T(color.cols() - 1) / T(2);
     origin[2] = T(0);
     const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
+    return color0;
     const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
     origin[0] = T(color.rows() - 1);
     const auto color2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
@@ -916,7 +917,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         for(int k = 0; k < Dop0.size(); k ++) {
           // N.B. projection scale is linear.
           T yorigin(0);
-          if(j < result.rows() / 2) {
+          if(j < result.rows() / 2 || true) {
             cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
             yorigin   = T(result.rows() - 1);
           } else
@@ -925,7 +926,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
-          work += (j < result.rows() / 2 ?
+          work += (j < result.rows() / 2 || true ?
             (k < Dop0.size() / 2 ? color2 : color3) :
             (k < Dop0.size() / 2 ? color0 : color1)).row(
               getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy +
@@ -1283,7 +1284,7 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   // x -> m.rot * x, same center
   // x - origin -> m.rot * (x - origin)
   // x -> m.rot * x - m.rot * origin + origin.
-  m.offset = origin - m.rot * origin;
+  m.offset = pcenter - m.rot * pcenter;
   m.ratio  = T(1);
   return m;
 }
@@ -1294,6 +1295,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   vector<Veci> facets;
   getTileVec(bump, points, facets);
   vector<Triangles> triangles;
+  triangles.reserve(facets.size());
   for(int i = 0; i < facets.size(); i ++) {
     Triangles work;
     for(int j = 0; j < 3; j ++)
