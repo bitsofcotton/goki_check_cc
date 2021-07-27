@@ -302,15 +302,7 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(data, argv[5]))
       return - 2;
     const string fn(argv[6]);
-    bool is_obj(false);
-    if(fn[fn.size() - 1] == 'm') {
-      if(!file.loadp2or3(bump, argv[6]))
-        return - 2;
-    } else if(fn[fn.size() - 1] == 'j') {
-      if(!file.loadobj(points, polys, argv[6]))
-        return - 2;
-      is_obj = true;
-    } else
+    if(!file.loadp2or3(bump, argv[6]))
       return - 2;
     typename simpleFile<num_t>::Mat tilt0;
     const auto mtilt(strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
@@ -319,12 +311,7 @@ int main(int argc, const char* argv[]) {
                      num_t(index) / num_t(Mindex) * zratio *
                        sqrt(num_t(data[0].rows() * data[0].cols())) :
                      - num_t(1000000));
-    if(is_obj) {
-      tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1),
-                redig.tiltprep(points, polys, redig.makeRefMatrix(data[0], 1),
-                  mtilt), depth);
-    } else
-      tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, depth);
+    tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, depth);
     for(int j = 0; j < 3; j ++)
       data[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
     if(!file.savep2or3(argv[7], data, ! true))

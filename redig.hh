@@ -114,8 +114,7 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) const;
-  match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const int& origin = 0) const;
-  vector<Triangles> tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m) const;
+  match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const Vec& origin = Vec()) const;
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
   Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& depth = - T(1000)) const;
   Mat  tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth = - T(1000)) const;
@@ -875,10 +874,15 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
 template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
   if(n == 0) {
-    const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), 1)));
-    const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), 1)));
-    const auto color2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), 4)));
-    const auto color3(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), 4)));
+          Vec  origin(3);
+    origin[0] = T(0);
+    origin[1] = T(color.cols() - 1) / T(2);
+    origin[2] = T(0);
+    const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
+    const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
+    origin[0] = T(color.rows() - 1);
+    const auto color2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
+    const auto color3(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
           Mat  result(color.rows(), color.cols());
           auto zscore(result);
     result.O();
@@ -921,9 +925,11 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
           // c := camera, p := cpoint.
           // <c + (p - c) * t, [0, 1]> = 0
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
-          const auto x0(getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy + yorigin), result.rows()));
-          for(int kk = 0; kk <= 2 * n; kk ++)
-            work += (j < result.rows() / 2 ? (k + kk - n < Dop0.size() / 2 ? color2 : color3) : (k + kk - n < Dop0.size() / 2 ? color0 : color1)).row(getImgPt<int>(x0 + kk - n, color.rows())) * Dop0[k];
+          work += (j < result.rows() / 2 ?
+            (k < Dop0.size() / 2 ? color2 : color3) :
+            (k < Dop0.size() / 2 ? color0 : color1)).row(
+              getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy +
+                yorigin), color.rows())) * Dop0[k];
         }
         for(int i = 0; i < work.size(); i ++)
           if(zscore(j, i) < abs(work[i])) {
@@ -1238,7 +1244,7 @@ template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle
   return work.solveN();
 }
 
-template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const int& origin) const {
+template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const Vec& origin) const {
   const T theta(T(2) * Pi * T(idx) / T(samples));
   const T lpsi(Pi * psi);
   Mat R0(3, 3);
@@ -1265,56 +1271,21 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
   R1(0, 2) = - sin(lpsi);
   R1(2, 0) =   sin(lpsi);
   R1(2, 2) =   cos(lpsi);
-  Vec pcenter(3);
-  switch(origin) {
-  case 0:
-    pcenter[0] = T(in.rows() - 1) / T(2);
-    pcenter[1] = T(in.cols() - 1) / T(2);
-    break;
-  case 1:
-    pcenter[0] = pcenter[1] = T(0);
-    break;
-  case 2:
-    pcenter[0] = T(in.rows() - 1);
-    pcenter[1] = T(0);
-    break;
-  case 3:
-    pcenter[0] = T(0);
-    pcenter[1] = T(in.cols() - 1);
-    break;
-  case 4:
-    pcenter[0] = T(in.rows() - 1);
-    pcenter[1] = T(in.cols() - 1);
-    break;
-  default:
-    assert(0 && "Should not be reached in tiltprep.");
-  }
-  pcenter[2] = T(0);
   match_t<T> m;
   m.rot    = R0.transpose() * R1 * R0;
+  Vec pcenter(3);
+  if(origin.size() != 3) {
+     pcenter[0] = T(in.rows() - 1) / T(2);
+     pcenter[1] = T(in.cols() - 1) / T(2);
+     pcenter[2] = T(0);
+  } else
+    pcenter = origin;
   // x -> m.rot * x, same center
-  // x - pcenter -> m.rot * (x - pcenter)
-  // x -> m.rot * x - m.rot * pcenter + pcenter.
-  m.offset = pcenter - m.rot * pcenter;
+  // x - origin -> m.rot * (x - origin)
+  // x -> m.rot * x - m.rot * origin + origin.
+  m.offset = origin - m.rot * origin;
   m.ratio  = T(1);
   return m;
-}
-
-template <typename T> vector<typename reDig<T>::Triangles> reDig<T>::tiltprep(const vector<Vec>& points, const vector<Veci>& polys, const Mat& in, const match_t<T>& m) const {
-  vector<Triangles> result;
-  for(int i = 0; i < polys.size(); i ++) {
-    Triangles work;
-    for(int j = 0; j < 3; j ++)
-      work.p.setCol(j, m.transform(points[polys[i][j]]));
-    if(T(0) <= points[polys[i][0]][0] && points[polys[i][0]][0] < T(in.rows()) &&
-       T(0) <= points[polys[i][0]][1] && points[polys[i][0]][1] < T(in.cols()))
-      work.c = in(int(points[polys[i][0]][0]),
-                  int(points[polys[i][0]][1]));
-    else
-      work.c = T(0);
-    result.emplace_back(work.solveN());
-  }
-  return result;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth) const {
@@ -1322,7 +1293,20 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   vector<Vec>  points;
   vector<Veci> facets;
   getTileVec(bump, points, facets);
-  return tilt(in, tiltprep(points, facets, in, m), depth);
+  vector<Triangles> triangles;
+  for(int i = 0; i < facets.size(); i ++) {
+    Triangles work;
+    for(int j = 0; j < 3; j ++)
+      work.p.setCol(j, m.transform(points[facets[i][j]]));
+    if(T(0) <= points[facets[i][0]][0] && points[facets[i][0]][0] < T(in.rows()) &&
+       T(0) <= points[facets[i][0]][1] && points[facets[i][0]][1] < T(in.cols()))
+      work.c = in(int(points[facets[i][0]][0]),
+                  int(points[facets[i][0]][1]));
+    else
+      work.c = T(0);
+    triangles.emplace_back(work.solveN());
+  }
+  return tilt(in, triangles, depth);
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const vector<Triangles>& triangles, const T& depth) const {
