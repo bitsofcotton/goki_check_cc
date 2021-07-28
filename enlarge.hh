@@ -344,7 +344,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           result.row(i + recur) = data.row(i);
         }
         for(int i = 0; i < recur; i ++) {
-          const auto next(nextP0<T, true>(int(ddft.rows()) / (i + 1)));
+          const auto next(nextP0<T>(int(ddft.rows()) / (i + 1)));
           SimpleVector<complex<T> > bwd(data.cols());
           for(int j = 0; j < bwd.size(); j ++)
             bwd[j] = complex<T>(T(0));

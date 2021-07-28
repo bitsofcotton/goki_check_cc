@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P0_)
 
-template <typename T, bool walk = false> const SimpleVector<T>& nextP0(const int& size) {
+template <typename T> const SimpleVector<T>& nextP0(const int& size) {
   static vector<SimpleVector<T> > P;
   if(P.size() <= size)
     P.resize(size + 1, SimpleVector<T>());
@@ -43,23 +43,15 @@ template <typename T, bool walk = false> const SimpleVector<T>& nextP0(const int
     } else if(size == 2) {
       const auto q((taylor<T>(4, T(4)) + taylor<T>(4, T(5))) / T(2));
       p = SimpleVector<T>(2).O();
-      p[0] = (q[0] + q[1]) / T(2);
-      p[1] = (q[2] + q[3]) / T(2);
-    } else {
+      p[0] = q[0] + q[1];
+      p[1] = q[2] + q[3];
+    } else
       p = taylor<T>(size, T(size));
-      if(walk) {
-        std::cerr << "." << std::flush;
-        const auto& pp(nextP0<T, walk>(size - 1));
-        for(int i = 0; i < pp.size(); i ++)
-          p[i - pp.size() + p.size()] += pp[i] * T(size - 1);
-        p /= T(size);
-      }
-    }
   }
   return p;
 }
 
-template <typename T, typename feeder, bool walk = false> class P0 {
+template <typename T, typename feeder> class P0 {
 public:
   typedef SimpleVector<T> Vec;
   inline P0();
@@ -70,22 +62,22 @@ private:
   feeder f;
 };
 
-template <typename T, typename feeder, bool walk> inline P0<T, feeder, walk>::P0() {
+template <typename T, typename feeder> inline P0<T, feeder>::P0() {
   ;
 }
 
-template <typename T, typename feeder, bool walk> inline P0<T, feeder, walk>::P0(const int& size) {
+template <typename T, typename feeder> inline P0<T, feeder>::P0(const int& size) {
   assert(0 < size);
   f = feeder(size);
 }
 
-template <typename T, typename feeder, bool walk> inline P0<T, feeder, walk>::~P0() {
+template <typename T, typename feeder> inline P0<T, feeder>::~P0() {
   ;
 }
 
-template <typename T, typename feeder, bool walk> inline T P0<T, feeder, walk>::next(const T& in) {
+template <typename T, typename feeder> inline T P0<T, feeder>::next(const T& in) {
   const auto& ff(f.next(atan(in)));
-  return f.full ? tan(nextP0<T, walk>(f.res.size()).dot(ff)) : T(0);
+  return f.full ? tan(nextP0<T>(f.res.size()).dot(ff)) : T(0);
 }
 
 #define _P0_

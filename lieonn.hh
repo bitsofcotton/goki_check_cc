@@ -3171,7 +3171,7 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     //      it causes constant 0 vector.
     dd += (dft<T>(- size) * DD).template real<T>();
     ii += (dft<T>(- size) * II).template real<T>();
-    if(2 < size) {
+    if(3 < size) {
       dd /= T(size);
       ii /= T(size);
     }
@@ -3193,7 +3193,7 @@ template <typename T> inline SimpleVector<T> taylor(const int& size, const T& st
   res.ek(step0);
   if(residue == T(0)) return res;
   const auto Dt(diff<T>(size).transpose());
-        auto dt(Dt.row(step0) * residue);
+        auto dt(Dt.col(step0) * residue);
   // N.B.
   // if we deal with (D *= r, residue /= r), it is identical with (D, residue)
   // So ||D^n * residue^n|| / T(n!) < 1 case, this loop converges.
