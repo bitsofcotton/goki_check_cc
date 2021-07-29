@@ -879,7 +879,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
     origin[1] = T(color.cols() - 1) / T(2);
     origin[2] = T(0);
     const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
-    return color0;
     const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
     origin[0] = T(color.rows() - 1);
     const auto color2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
