@@ -3169,7 +3169,7 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     //      it causes constant 0 vector.
     dd += (dft<T>(- size) * DD).template real<T>();
     ii += (dft<T>(- size) * II).template real<T>();
-    if(3 < size) {
+    if(2 < size) {
       dd /= T(size);
       ii /= T(size);
     }

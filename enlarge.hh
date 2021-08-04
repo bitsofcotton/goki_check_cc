@@ -153,7 +153,8 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
     }
     dfts /= T(dfts.rows() - 1);
     s += (dft<T>(- size) * dfts).template real<T>();
-    s /= T(size);
+    if(2 < size)
+      s /= T(size);
     ofstream ocache(file.c_str());
     ocache << s;
     ocache.close();
