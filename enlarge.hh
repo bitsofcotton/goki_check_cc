@@ -151,7 +151,6 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
       //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
       dfts.row(i) /= exp(complex<T>(T(0), T(1)) * Pi * complex<T>(T(i)) / T(dfts.rows())) - complex<T>(T(1));
     }
-    dfts /= T(dfts.rows() - 1);
     s += (dft<T>(- size) * dfts).template real<T>();
     if(2 < size)
       s /= T(size);
@@ -165,7 +164,7 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
 
 // N.B. this function is NOT thread safe.
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& n = 0, const int& recur = 2) {
-  assert(0 <= n && 0 < recur);
+  assert(0 <= n && (dir == BLINK_Y || dir == BLINK_X || dir == BLINK_BOTH || 0 < recur));
   static const auto Pi(atan2(T(1), T(1)) * T(4));
   if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == ABS) {
     switch(dir) {
@@ -235,9 +234,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     case SHARPEN_Y:
       {
         auto shp(sharpen<T>(int(data.rows())));
-        for(int i = 0; i < recur; i ++)
+        for(int i = 1; i < recur; i ++)
           shp = shp * shp;
-        return shp * data;
+        return shp * data + data;
       }
       break;
     case ENLARGE_Y:

@@ -117,7 +117,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter<num_t>(data[i], BLINK_BOTH, n, recur);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(filter<num_t>(data[i], SHARPEN_BOTH, n, recur), CLIP);
+        data[i] = filter<num_t>(data[i], SHARPEN_BOTH, n, recur);
     else if(strcmp(argv[1], "bump") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), BUMP_BOTH, n, recur);
     else if(strcmp(argv[1], "represent") == 0)
@@ -150,7 +150,7 @@ int main(int argc, const char* argv[]) {
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
     }
-    if(strcmp(argv[1], "sharpen") != 0 && strcmp(argv[1], "b2w") != 0 &&
+    if(strcmp(argv[1], "b2w") != 0 &&
        strcmp(argv[1], "b2wd") != 0)
       redig.normalize(data, num_t(1));
     if(!file.savep2or3(argv[3], data, ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
