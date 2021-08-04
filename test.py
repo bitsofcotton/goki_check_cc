@@ -170,7 +170,7 @@ else:
         subprocess.call([argv[1], "b2wd", root + "-sbox-" + str(s + 1) + ".ppm", root + "-sbox-bw-" + str(s + 1) + ".ppm", root + "-sbox-" + str(s) + ".ppm"])
     elif(argv[2] == "demosaic"):
       subprocess.call(["convert", line, "-resize", str(int(10000. / pixels) / 100.) + "%", "-compress", "none", root + "-demosaic.ppm"])
-      subprocess.call(["python2", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic.ppm"])
+      subprocess.call(["python3", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic.ppm"])
     elif(argv[2] == "prep"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])
     elif(argv[2] == "prepsq"):

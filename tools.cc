@@ -111,7 +111,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, n, recur);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(filter<num_t>(data[i], EXTEND_BOTH, n, recur), CLIP);
+        data[i] = filter<num_t>(data[i], EXTEND_BOTH, n, recur);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, n, recur);

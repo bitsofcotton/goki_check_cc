@@ -115,6 +115,53 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
   return res;
 }
 
+template <typename T> SimpleMatrix<T> sharpen(const int& size) {
+  assert(0 < size);
+  SimpleMatrix<T> s;
+  const auto file(std::string("./.cache/lieonn/sharpen-") + std::to_string(size) +
+#if defined(_FLOAT_BITS_)
+    std:string("-") + std::to_string(_FLOAT_BITS_)
+#else
+    std::string("-ld")
+#endif
+  );
+  ifstream cache(file.c_str());
+  if(cache.is_open()) {
+    cache >> s;
+    cache.close();
+  } else {
+    if(2 < size) {
+      const auto s0(sharpen<T>(size - 1) * T(size - 1));
+      s = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, s0);
+      s.setMatrix(1, 1, s.subMatrix(1, 1, size - 1, size - 1) + s0);
+      s.row(0) *= T(2);
+      s.row(s.rows() - 1) *= T(2);
+      s /= T(2);
+    } else
+      s  = SimpleMatrix<T>(size, size).O();
+    auto dfts(dft<T>(size));
+    dfts.row(0) *= complex<T>(T(0));
+    static const auto Pi(atan(T(1)) * T(4));
+    for(int i = 1; i < dfts.rows(); i ++) {
+      // N.B. d/dt((d^(t)/dy^(t)) f), differential-integral space tilt on f.
+      // DFTH.row(i) *= log(phase);
+      // N.B. please refer enlarge.wxm, half freq space refer and uses each.
+      //   -> This is sharpen operation at all because this is same as original
+      //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
+      //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
+      dfts.row(i) /= exp(complex<T>(T(0), T(1)) * Pi * complex<T>(T(i)) / T(dfts.rows())) - complex<T>(T(1));
+    }
+    dfts /= T(dfts.rows() - 1);
+    s += (dft<T>(- size) * dfts).template real<T>();
+    s /= T(size);
+    ofstream ocache(file.c_str());
+    ocache << s;
+    ocache.close();
+    cerr << "." << flush;
+  }
+  return s;
+}
+
 // N.B. this function is NOT thread safe.
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& n = 0, const int& recur = 2) {
   assert(0 <= n && 0 < recur);
@@ -137,7 +184,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       // eigen sum on curvature.
       return (filter<T>(data, BUMP_X, n, recur) + filter<T>(data, BUMP_Y, n, recur)) / T(2);
     case EXTEND_BOTH:
-      return filter<T>(filter<T>(data, EXTEND_X, n, recur), EXTEND_Y, n, recur);
+      return filter<T>(filter<T>(filter<T>(filter<T>(data, EXTEND_X, n, recur), CLIP, n, recur), EXTEND_Y, n, recur), CLIP, n, recur);
     case BLINK_BOTH:
       return filter<T>(filter<T>(data, BLINK_X, n, recur), BLINK_Y, n, recur);
     case SHARPEN_X:
@@ -186,63 +233,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(filter<T>(data, DETECT_Y, n, recur), ABS, n, recur);
     case SHARPEN_Y:
       {
-        assert(2 <= data.rows());
-        static vector<vector<SimpleMatrix<T> > > Sop;
-        int idx(0);
-        for(int i = 0; i < Sop.size(); i ++)
-          if(Sop[i][0].rows() == data.rows()) {
-            idx = i;
-            goto sopi;
-          }
-        cerr << "s" << flush;
-        idx = Sop.size();
-        Sop.emplace_back(vector<SimpleMatrix<T> >());
-        Sop[idx].emplace_back(SimpleMatrix<T>(data.rows(), data.rows()));
-        {
-          auto& sop(Sop[idx][0]);
-          sop.O();
-          int cnt(1);
-          for(int ss = 2; ss <= data.rows(); ss *= 2, cnt ++) {
-            auto DFTS(dft<T>(ss));
-            DFTS.row(0) *= complex<T>(T(0));
-            for(int i = 1; i < DFTS.rows(); i ++) {
-              // N.B. d/dt((d^(t)/dy^(t)) f), differential-integral space tilt on f.
-              // DFTH.row(i) *= log(phase);
-              // N.B. please refer enlarge.wxm, half freq space refer and uses each.
-              //   -> This is sharpen operation at all because this is same as original
-              //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
-              //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
-              DFTS.row(i) /= exp(complex<T>(T(0), T(1)) * Pi * complex<T>(T(i)) / T(DFTS.rows())) - complex<T>(T(1));
-            }
-            DFTS /= T(DFTS.rows() - 1);
-            SimpleMatrix<T> lSop(- (dft<T>(- ss) * DFTS).template real<T>());
-            for(int i = 0; i < lSop.rows(); i ++)
-              lSop(i, i) += T(1);
-            for(int i = 0; i < sop.rows(); i ++)
-              for(int j = 0; j < lSop.rows(); j ++) {
-                int ij(i - lSop.rows() / 2 + j);
-                int jj(lSop.rows() / 2);
-                if(i < lSop.rows() / 2) {
-                  ij = j;
-                  jj = i;
-                } else if(sop.rows() - i < (lSop.rows() + 1) / 2) {
-                  ij = j - lSop.rows() + sop.rows();
-                  jj = i - sop.rows() + lSop.rows();
-                }
-                sop(i, ij) += lSop(jj, j);
-              }
-          }
-          sop /= T(cnt);
-          const SimpleMatrix<T> SS(sop);
-          for(int i = 0; i < SS.rows(); i ++)
-            for(int j = 0; j < SS.cols(); j ++)
-              sop(SS.rows() - i - 1, SS.cols() - j - 1) += SS(i, j);
-          sop /= T(2);
-        }
-       sopi:
-        for( ; Sop[idx].size() <= recur; )
-          Sop[idx].emplace_back(Sop[idx][Sop[idx].size() - 1] * Sop[idx][Sop[idx].size() - 1]);
-        return Sop[idx][recur] * data;
+        auto shp(sharpen<T>(int(data.rows())));
+        for(int i = 0; i < recur; i ++)
+          shp = shp * shp;
+        return shp * data;
       }
       break;
     case ENLARGE_Y:

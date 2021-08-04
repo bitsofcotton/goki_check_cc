@@ -3131,18 +3131,16 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     if(2 < size) {
       const auto dd0(diff<T>(  (size - 1)) * T(size - 1));
       const auto ii0(diff<T>(- (size - 1)) * T(size - 1));
-      dd = SimpleMatrix<T>(size, size).O();
-      ii = SimpleMatrix<T>(size, size).O();
-            auto ddo(SimpleMatrix<T>(size, size).O().setMatrix(0, 0, dd0));
-            auto iio(SimpleMatrix<T>(size, size).O().setMatrix(0, 0, ii0));
-      ddo.setMatrix(1, 1, dd.subMatrix(1, 1, size - 1, size - 1) + dd0);
-      iio.setMatrix(1, 1, ii.subMatrix(1, 1, size - 1, size - 1) + ii0);
-      ddo.row(0) *= T(2);
-      ddo.row(ddo.rows() - 1) *= T(2);
-      iio.row(0) *= T(2);
-      iio.row(iio.rows() - 1) *= T(2);
-      dd = ddo / T(2);
-      ii = iio / T(2);
+      dd = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, dd0);
+      ii = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, ii0);
+      dd.setMatrix(1, 1, dd.subMatrix(1, 1, size - 1, size - 1) + dd0);
+      ii.setMatrix(1, 1, ii.subMatrix(1, 1, size - 1, size - 1) + ii0);
+      dd.row(0) *= T(2);
+      dd.row(dd.rows() - 1) *= T(2);
+      ii.row(0) *= T(2);
+      ii.row(ii.rows() - 1) *= T(2);
+      dd /= T(2);
+      ii /= T(2);
     } else {
       dd = SimpleMatrix<T>(size, size).O();
       ii = SimpleMatrix<T>(size, size).O();
