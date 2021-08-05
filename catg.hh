@@ -141,7 +141,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
   std::sort(s.begin(), s.end());
   distance = origin = T(0);
   for(int i = 0; i < s.size() - 1; i ++)
-    if(distance >= s[i + 1] - s[i]) {
+    if(distance <= s[i + 1] - s[i]) {
       distance =  s[i + 1] - s[i];
       origin   = (s[i + 1] + s[i]) / T(2);
     }
