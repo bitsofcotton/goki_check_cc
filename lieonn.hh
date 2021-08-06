@@ -3152,20 +3152,21 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     auto DD(dft<T>(size));
     auto II(dft<T>(size));
     static const auto Pi(T(4) * atan2(T(1), T(1)));
-    // N.B. if we apply DD onto 1 / (1 / f(x)) graph, it's reverse order.
-    //      so we average them.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 0; i < DD.rows(); i ++)
-      DD.row(i) *= (   complex<T>(T(0), - T(2) * Pi * T(i) / T(DD.rows())) +
-        complex<T>(T(0), - T(2) * Pi * T(DD.rows() - i - 1) / T(DD.rows()))) / complex<T>(T(2));
+      DD.row(i) *=    complex<T>(T(0), - T(2) * Pi * T(i) / T(DD.rows()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 1; i < II.rows(); i ++)
-      II.row(i) /= (- complex<T>(T(0), - T(2) * Pi * T(i) / T(DD.rows())) -
-        complex<T>(T(0), - T(2) * Pi * T(DD.rows() - i - 1) / T(DD.rows()))) / complex<T>(T(2));
+      II.row(i) /= - complex<T>(T(0), - T(2) * Pi * T(i) / T(DD.rows()));
+    // N.B. if we apply DD onto 1 / (1 / f(x)) graph, it's reverse order.
+    //      if we average them, it's the only 0 vector.
+    // XXX: there exists also completely correct differential matrix,
+    //      but it's also be only 0 vector.
+    //      (because it's a imaginary part on originals.)
     // N.B. in continuous function, we don't divide dd by &pi;.
     //      (d/dx sum exp(2 Pi i x theta / N) exp(- 2 Pi i y theta / N) f(y)).
     // XXX: from some numerical test, sign on DD, II is reverse side.
