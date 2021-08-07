@@ -47,6 +47,9 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
       cmd.append(r + "-represent.ppm")
     elif(argv[2] == "catr"):
       cmd.append(r + ".ppm")
+    elif(argv[2] == "pred"):
+      subprocess.call(["convert", s, "-blur", "12x12+6", "-compress", "none", r + "-blur.ppm"])
+      cmd[- 1] = r + "-blur.ppm"
   if(argv[2] == "catr"):
     cmd[1] = "cat"
   subprocess.call(cmd)
@@ -132,6 +135,9 @@ else:
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call([argv[1], "bumpc", str(psi), str(rot), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
       subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "32x32+32", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "pextend"):
+      subprocess.call(["convert", line, "-blur", "12x12+6", "-compress", "none", root + "-blur.ppm"])
+      subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "flarge" or argv[2] == "pextend" or argv[2] == "blink" or argv[2] == "represent"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
