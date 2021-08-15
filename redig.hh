@@ -733,8 +733,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pai
     tayl0.row(i) = taylor<T>(ss0, T(i) / T(tayl0.rows() - 1) * T(ss0 - 1));
   for(int i = 0; i < tayl1.rows(); i ++)
     tayl1.row(i) = taylor<T>(ss1, T(i) / T(tayl1.rows() - 1) * T(ss1 - 1));
-  vector<Vec> serialize;
-  serialize.reserve(img.size());
+  Mat serialize(img.size(), tayl0.rows() + tayl1.rows() + 2);
   for(int i = 0; i < img.size(); i ++) {
     assert(img[i].first.rows() == img[0].first.rows());
     assert(img[i].first.cols() == img[0].first.cols());
@@ -748,9 +747,9 @@ template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pai
     for(int j = 0; j < img[i].second.rows(); j ++)
       for(int k = 0; k < img[i].second.cols(); k ++)
         lseri1[j * img[i].second.cols() + k] = img[i].second(j, k);
-    serialize.emplace_back(makeProgramInvariant<T>(Vec(tayl0.rows() + tayl1.rows()).O().setVector(0, tayl0 * lseri0).setVector(tayl0.rows(), tayl1 * lseri1)).first);
+    serialize.row(i) = makeProgramInvariant<T>(Vec(tayl0.rows() + tayl1.rows()).O().setVector(0, tayl0 * lseri0).setVector(tayl0.rows(), tayl1 * lseri1)).first;
   }
-  Mat res(serialize[0].size(), serialize[0].size());
+  Mat res(serialize.rows(), serialize.cols());
   for(int i = 0; i < res.rows(); i ++) {
     res.row(i) = linearInvariant(serialize);
     if(res.row(i).dot(res.row(i)) <= T(1) / T(10000)) {
@@ -764,8 +763,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pai
       return res.fillP(idx);
     }
     res.row(i) /= sqrt(res.row(i).dot(res.row(i)));
-    for(int j = 0; j < serialize.size(); j ++)
-      serialize[j] -= res.row(i) * serialize[j].dot(res.row(i));
+    for(int j = 0; j < serialize.rows(); j ++)
+      serialize.row(j) -= res.row(i) * serialize.row(j).dot(res.row(i));
   }
   return res;
 }
@@ -811,7 +810,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
       workidx.emplace_back(i);
       workidx2.emplace_back(j);
     }
-  const auto cg(crush<T>(work, cs, false, 0));
+  const auto cg(crush<T>(work, cs, 0));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
@@ -819,8 +818,8 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const ve
     res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
     for(int j = 0; j < cg[i].first.size(); j ++) {
       for(int k = 0; k < imgs[0].rows(); k ++)
-        res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].second[j].second]].row(k);
-      const auto widx2(workidx2[cg[i].second[j].second]);
+        res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].second[j]]].row(k);
+      const auto widx2(workidx2[cg[i].second[j]]);
       if(!widx2)
         for(int k = 0; k < imgs[0].rows(); k ++)
           res[i].row(j * imgs[0].rows() + k) = - res[i].row(j * imgs[0].rows() + k);
@@ -854,7 +853,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
           imgs[i](ii, ii & 1 ? imgs[i].cols() - 1 - jj : jj);
     assert(imgs[i].rows() * imgs[i].cols() == work[i].size());
   }
-  const auto cg(crush<T>(work, work[0].size(), false, 0));
+  const auto cg(crush<T>(work, work[0].size(), 0));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {

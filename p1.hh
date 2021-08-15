@@ -67,20 +67,21 @@ template <typename T, typename feeder> T P1I<T,feeder>::next(const T& in) {
   // N.B. to compete with noise, we calculate each.
   //      we can use catgp on worse noised ones.
   const auto nin(sqrt(buf.dot(buf)));
-  vector<SimpleVector<T>> toeplitz;
-  toeplitz.reserve(buf.size() - varlen + 1);
-  for(int i = 0; i <= buf.size() - varlen; i ++)
-    toeplitz.emplace_back(
+  if(nin == T(0)) return T(0);
+  SimpleMatrix<T> toeplitz(buf.size() - varlen + 1, varlen + 3);
+  for(int i = 0; i < toeplitz.rows(); i ++)
+    toeplitz.row(i) =
       makeProgramInvariant<T>(
-        buf.subVector(i, varlen) / nin, T(i + 1) / T(buf.size() - varlen + 2)).first );
+        buf.subVector(i, varlen) / nin, T(i + 1) / T(buf.size() - varlen + 2)
+      ).first;
   const auto invariant(linearInvariant<T>(toeplitz));
+  if(invariant[varlen - 1] == T(0)) return T(0);
   SimpleVector<T> work(varlen);
   for(int i = 1; i < work.size(); i ++)
     work[i - 1] = buf[i - work.size() + buf.size()] / nin;
   work[work.size() - 1] = work[work.size() - 2];
   auto work2(makeProgramInvariant<T>(work, T(1)));
   work = move(work2.first);
-  if(invariant[varlen - 1] == T(0)) return T(0);
   return revertProgramInvariant<T>(make_pair((invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1], work2.second)) * nin;
 }
 

@@ -43,41 +43,26 @@ template <typename T> class CatG {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
-  inline CatG();
-  inline CatG(const int& size0, const vector<Vec>& in, const bool& recur = false);
-  inline ~CatG();
-  inline pair<T, int> score(const Vec& in);
+  inline CatG() { ; }
+  inline CatG(const int& size0, const vector<Vec>& in);
+  inline ~CatG() { ; }
+  inline T score(const Vec& in);
   Vec  cut;
   T    distance;
   T    origin;
   const Mat& tayl(const int& size, const int& in);
-  bool recur;
 };
 
-template <typename T> inline CatG<T>::CatG() {
-  recur = false;
-}
-
-template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& in, const bool& recur) {
+template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& in) {
   const auto size(abs(size0));
-  this->recur = recur;
-  const auto block(recur ? size : 1);
-  SimpleMatrix<T> A(in.size() * block, size + 2);
+  SimpleMatrix<T> A(in.size(), size + 2);
   for(int i = 0; i < in.size(); i ++)
     tayl(size, in[i].size());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < in.size(); i ++)
-    if(recur) {
-      Vec inn(in[i].size());
-      for(int k = 0; k < size; k ++) {
-        for(int j = 0; j < inn.size(); j ++)
-          inn[j] = in[i][(j + k * in[i].size() / size) % in[i].size()];
-        A.row(i * size + k) = makeProgramInvariant(inn.size() == size ? inn : tayl(size, inn.size()) * inn).first;
-      }
-    } else
-      A.row(i) = makeProgramInvariant(in[i].size() == size ? in[i] : tayl(size, in[i].size()) * in[i]).first;
+    A.row(i) = makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first;
         auto Pt(A.QR());
   const auto R(Pt * A);
         Vec  one(Pt.cols());
@@ -96,7 +81,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     for(int i = 0; i < on.size(); i ++) {
       T score(0);
       for(int j = 0; j < in.size(); j ++) {
-        const auto lscore(abs(on[i] + on[j * block + i % block]));
+        const auto lscore(abs(on[i] + on[j]));
         if(score == T(0) || lscore < score) {
           score = lscore;
           pidx[i] = j;
@@ -110,16 +95,6 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
           n_fixed < Pt.rows() - 1 && idx < fidx.size();
           n_fixed ++, idx ++) {
     const auto& iidx(fidx[idx].second);
-    for(int j = iidx - iidx % block;
-            j < min((iidx - iidx % block) + block, fix.size());
-            j ++)
-      if(fix[j]) {
-        for(int k = iidx - iidx % block;
-                k < min((iidx - iidx % block) + block, fix.size());
-                k ++)
-          fix[k] = true;
-        break;
-      }
     if(fix[iidx]) continue;
     const auto  orth(Pt.col(iidx));
     const auto  n2(orth.dot(orth));
@@ -129,15 +104,13 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
 #endif
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
-    fix[iidx] = true;
-    if(size0 < 0)
-      fix[pidx[iidx]] = true;
+    fix[size0 < 0 ? pidx[iidx] : iidx] = true;
   }
   cut = R.solve(Pt * one);
   std::vector<T> s;
   s.reserve(in.size());
   for(int i = 0; i < in.size(); i ++)
-    s.emplace_back(makeProgramInvariant(in[i].size() == size ? in[i] : tayl(size, in[i].size()) * in[i]).first.dot(cut));
+    s.emplace_back(makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first.dot(cut));
   std::sort(s.begin(), s.end());
   distance = origin = T(0);
   for(int i = 0; i < s.size() - 1; i ++)
@@ -146,10 +119,6 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
       origin   = (s[i + 1] + s[i]) / T(2);
     }
   return;
-}
-
-template <typename T> inline CatG<T>::~CatG() {
-  ;
 }
 
 template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& size, const int& in) {
@@ -165,39 +134,28 @@ template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& size
   return t[in];
 }
 
-template <typename T> inline pair<T, int> CatG<T>::score(const Vec& in) {
+template <typename T> inline T CatG<T>::score(const Vec& in) {
   const auto size(cut.size() - 2);
   assert(0 < size);
-  if(! recur)
-    return make_pair(makeProgramInvariant<T>(in.size() == size ? in : tayl(size, in.size()) * in).first.dot(cut) - origin, 0);
-  pair<T, int> res(make_pair(0, 0));
-  for(int i = 0; i < size; i ++) {
-    Vec inn(in.size());
-    for(int j = 0; j < inn.size(); j ++)
-      inn[j] = in[(j + i * in.size() / size) % in.size()];
-    const auto score(makeProgramInvariant<T>(inn.size() == size ? inn : tayl(size, inn.size()) * inn).first.dot(cut) - origin);
-    if(abs(res.first) < abs(score))
-      res = make_pair(score, i);
-  }
-  return res;
+  return makeProgramInvariant<T>(tayl(size, in.size()) * in).first.dot(cut) - origin;
 }
 
 
-template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int> > > > crush(const vector<SimpleVector<T> >& v, const int& cs, const bool& recur, const int& count) {
+template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crush(const vector<SimpleVector<T> >& v, const int& cs, const int& count) {
   assert(0 <= count);
-  vector<pair<vector<SimpleVector<T> >, vector<pair<int, int> > > > result;
+  vector<pair<vector<SimpleVector<T> >, vector<int> > > result;
   if(! v.size() || !v[0].size()) return result;
   auto MM(v[0].dot(v[0]));
   for(int i = 1; i < v.size(); i ++)
     MM = max(MM, v[i].dot(v[i]));
   MM = sqrt(MM) * T(2);
   int t(0);
-  result.emplace_back(pair<vector<SimpleVector<T> >, vector<pair<int, int> > >());
+  result.emplace_back(pair<vector<SimpleVector<T> >, vector<int> >());
   result[0].first.reserve(v.size());
   result[0].second.reserve(v.size());
   for(int i = 0; i < v.size(); i ++) {
     result[0].first.emplace_back(v[i] / MM);
-    result[0].second.emplace_back(make_pair(0, i));
+    result[0].second.emplace_back(i);
   }
   vector<pair<T, pair<int, bool> > > sidx;
   sidx.emplace_back(make_pair(T(0), make_pair(0, false)));
@@ -210,20 +168,20 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
         break;
     if(iidx < 0) break;
     const auto& t(sidx[iidx].second.first);
-    CatG<T> catg(cs, result[t].first, recur);
+    CatG<T> catg(cs, result[t].first);
     if(catg.cut.size()) {
       vector<SimpleVector<T> > left;
       vector<SimpleVector<T> > right;
-      vector<pair<int, int> >  lidx;
-      vector<pair<int, int> >  ridx;
+      vector<int> lidx;
+      vector<int> ridx;
       left.reserve(result[t].first.size());
       right.reserve(result[t].first.size());
       lidx.reserve(result[t].first.size());
       ridx.reserve(result[t].first.size());
       for(int i = 0; i < result[t].first.size(); i ++) {
         const auto score(catg.score(result[t].first[i]));
-        (score.first < T(0) ? left : right).emplace_back(move(result[t].first[i]));
-        (score.first < T(0) ? lidx : ridx).emplace_back(make_pair(score.second, result[t].second[i].second));
+        (score < T(0) ? left : right).emplace_back(move(result[t].first[i]));
+        (score < T(0) ? lidx : ridx).emplace_back(result[t].second[i]);
       }
       if((abs(cs) + 1 < left.size() || abs(cs) + 1 < right.size()) && left.size() && right.size()) {
         if(left.size() < right.size()) {
@@ -259,8 +217,8 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<pair<int, int
   return result;
 }
 
-template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector<pair<int, int> > > > crush(const vector<SimpleVector<T> >& v, const int& cs, const bool& recur) {
-  return crush<T>(v, cs, recur, max(int(2), int(sqrt(T(v.size())))));
+template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector<int> > > crush(const vector<SimpleVector<T> >& v, const int& cs) {
+  return crush<T>(v, cs, max(int(2), int(sqrt(T(v.size())))));
 }
 
 template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs, const int& count) {
@@ -288,7 +246,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
     }
     edge.emplace_back(work.size());
   }
-  auto whole_crush(crush<T>(work, cs, false, count == - 1 ? 0 : abs(count)));
+  auto whole_crush(crush<T>(work, cs, count == - 1 ? 0 : abs(count)));
   vector<pair<vector<SimpleVector<T> >, vector<int> > > res;
   res.reserve(whole_crush.size());
   for(int i = 0; i < whole_crush.size(); i ++) {
@@ -296,7 +254,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
     const auto& sec(whole_crush[i].second);
     idx.reserve(sec.size());
     for(int j = 0; j < sec.size(); j ++)
-      idx.emplace_back(sec[j].second - *std::lower_bound(edge.begin(), edge.end(), sec[j].second));
+      idx.emplace_back(sec[j] - *std::lower_bound(edge.begin(), edge.end(), sec[j]));
     res.emplace_back(make_pair(move(whole_crush[i].first), move(idx)));
   }
   return res;
@@ -347,15 +305,14 @@ template <typename T, typename feeder, bool dec> inline T P012L<T,feeder,dec>::n
     auto w(d.subVector(i, varlen) / M);
     cache.emplace_back(dec ? decompose.mother(move(w)) : move(w));
   }
-  const auto cat(crush<T>(cache, cache[0].size(), false, 0));
+  const auto cat(crush<T>(cache, cache[0].size(), 0));
   pp = vector<Vec>();
   pp.reserve(cat.size());
   for(int i = 0; i < cat.size(); i ++) {
     if(cat[i].first.size() <= varlen + 1) continue;
-    vector<Vec> pw;
-    pw.reserve(cat[i].first.size());
+    Mat pw(cat[i].first.size(), cat[i].first[0].size() + 2);
     for(int j = 0; j < cat[i].first.size(); j ++)
-      pw.emplace_back(makeProgramInvariant<T>(cat[i].first[j]).first);
+      pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first;
     pp.emplace_back(linearInvariant<T>(pw));
   }
   SimpleVector<T> work(varlen);

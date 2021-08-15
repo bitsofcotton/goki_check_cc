@@ -3217,24 +3217,9 @@ template <typename T> inline SimpleVector<T> taylor(const int& size, const T& st
   return res;
 }
 
-template <typename T> SimpleVector<T> linearInvariant(const vector<SimpleVector<T> >& in, const bool& nonzero = false) {
-  SimpleMatrix<T> A(in.size(), in[0].size());
-  assert(in[0].size() <= in.size());
-  SimpleVector<T> fvec(A.cols());
-  SimpleVector<T> one(A.rows());
-  fvec.O();
-  one.I();
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < in.size(); i ++) {
-    assert(in[i].size() == in[0].size());
-    for(int j = 0; j < in[0].size(); j ++)
-      A(i, j) = in[i][j];
-    assert(isfinite(A.row(i).dot(A.row(i))));
-  }
+template <typename T> SimpleVector<T> linearInvariant(const SimpleMatrix<T>& in) {
   vector<pair<T, int> > sute;
-  return A.QR().innerFix(A, sute);
+  return in.QR().innerFix(in, sute);
 }
 
 // N.B. please refer bitsofcotton/randtools.
