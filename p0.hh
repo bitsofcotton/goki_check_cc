@@ -58,7 +58,6 @@ public:
   inline P0(const int& size);
   inline ~P0();
   inline T next(const T& in);
-private:
   feeder f;
 };
 
@@ -76,8 +75,8 @@ template <typename T, typename feeder> inline P0<T, feeder>::~P0() {
 }
 
 template <typename T, typename feeder> inline T P0<T, feeder>::next(const T& in) {
-  const auto& ff(f.next(atan(in)));
-  return f.full ? tan(nextP0<T>(f.res.size()).dot(ff)) : T(0);
+  const auto& ff(f.next(in));
+  return f.full ? nextP0<T>(ff.size()).dot(ff) - ff[ff.size() - 1] : T(0);
 }
 
 #define _P0_

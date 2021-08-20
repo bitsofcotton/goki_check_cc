@@ -1,12 +1,12 @@
 CXX=	clang++
 
 # compiler flags.
-#CXXFLAGS+=	-Ofast -mtune=native -gfull
-CXXFLAGS+=	-Oz -mtune=native -gfull
+CXXFLAGS+=	-Ofast -mtune=native -gfull
+#CXXFLAGS+=	-Oz -mtune=native -gfull
 #CXXFLAGS+=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
 CXXFLAGS+=	-std=c++11
 LDFLAGS+=	-lc++ -L/usr/local/lib
-#LDFLAGS+=	-static
+LDFLAGS+=	-static
 
 #CXXFLAGS+=	-D_FLOAT_BITS_=32
 #CXXFLAGS+=	-D_FLOAT_BITS_=64

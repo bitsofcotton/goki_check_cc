@@ -77,9 +77,6 @@ template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& 
   res.O();
   const auto diag(int(sqrt(res.rows() * res.rows() +
                            res.cols() * res.cols())) + 1);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
   for(int j = - diag; j < diag; j ++)
     for(int k = - diag; k < diag; k ++) {
       const int yy(c * T(j) - s * T(k) + offy);
@@ -88,9 +85,6 @@ template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& 
          0 <= xx && xx < res.cols()) {
         const auto dyy(getImgPt<int>(j, d.rows()));
         const auto dxx(getImgPt<int>(k, d.cols()));
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
         {
           res(yy, xx) = res(min(yy + 1, int(res.rows()) - 1), xx) =
             res(yy, min(xx + 1, int(res.cols()) - 1)) =
@@ -105,9 +99,6 @@ template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& 
 
 template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>& dr, const SimpleMatrix<T>& d) {
   SimpleMatrix<T> res(d.rows(), d.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
   for(int i = 0; i < res.rows(); i ++)
     for(int j = 0; j < res.cols(); j ++)
       res(i, j) = dr(max(0, min(i + (dr.rows() - d.rows()) / 2, dr.rows() - 1)),
@@ -303,16 +294,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           const auto Dop(diff<T>(abs(int(y0)) & ~ int(1)));
           const auto Dop0(Dop.row(Dop.rows() / 2) + Dop.row(Dop.rows() / 2 + 1));
           //  N.B. dC_k/dy on zi.
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
           for(int i = 0; i < A.rows(); i ++) {
             for(int j = 0; j < Dop0.size(); j ++)
               A.row(i) += data.row(getImgPt<int>(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
           }
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
           for(int i = 0; i < A.rows(); i ++) {
             for(int j = 0; j < A.cols(); j ++)
               if(zscore(i, j) < abs(A(i, j))) {
@@ -347,23 +332,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     case BLINK_Y:
       {
         auto dif(dft<T>(data.rows()) * data.template cast<complex<T> >());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
         for(int i = 1; i < data.rows(); i ++) {
           dif.row(i) *= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
         }
         dif = dft<T>(- data.rows()) * dif;
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
         for(int i = 1; i < recur - 1; i ++) {
           dif.row(i) += (dif.row(i - 1) + dif.row(i + 1)) * complex<T>(T(recur) / T(256));
         }
         dif = dft<T>(data.rows()) * dif;
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
         for(int i = 1; i < data.rows(); i ++) {
           dif.row(i) /= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
         }
@@ -375,9 +351,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     case CLIP:
       {
         SimpleMatrix<T> result(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
             result(i, j) = max(T(0), min(T(1), data(i, j)));
@@ -387,9 +360,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     case ABS:
       {
         SimpleMatrix<T> result(data.rows(), data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
         for(int i = 0; i < result.rows(); i ++)
           for(int j = 0; j < result.cols(); j ++)
             result(i, j) = abs(data(i, j));
@@ -401,10 +371,19 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     return SimpleMatrix<T>();
   }
   auto res(filter<T>(data, dir, 0, recur));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < n; i ++) {
     cerr << "r" << flush;
     const auto theta((T(i) - T(n - 1) / T(2)) * atan(T(1)) / (T(n) / T(2)));
-    res += center<T>(rotate<T>(filter<T>(rotate<T>(data, theta), dir, 0, recur), - theta), res);
+          auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta), dir, 0, recur), - theta), res));
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+    {
+      res += move(work);
+    }
   }
   return res /= T(n + 1);
 }

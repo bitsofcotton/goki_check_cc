@@ -241,7 +241,7 @@ template <typename T, int bits> inline DUInt<T,bits>  DUInt<T,bits>::operator / 
 }
 
 template <typename T, int bits> inline DUInt<T,bits>& DUInt<T,bits>::operator /= (const DUInt<T,bits>& src) {
-  const static DUInt<T,bits> one(1);
+  const static DUInt<T,bits> one(int(1));
   if(! src)
     throw "Zero division";
   if(! *this)
@@ -893,7 +893,7 @@ template <typename T, typename W, int bits, typename U> inline                  
 }
 
 template <typename T, typename W, int bits, typename U> template <typename V> inline U SimpleFloat<T,W,bits,U>::normalize(V& src) const {
-  V   bt(1);
+  V   bt(int(1));
   int b(0);
   int tb(0);
   for( ; bt; tb ++) {

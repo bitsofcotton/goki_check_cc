@@ -43,8 +43,8 @@ public:
   inline P1I(const int& stat, const int& var);
   inline ~P1I();
   inline T next(const T& in);
-private:
   feeder f;
+private:
   int varlen;
 };
 
@@ -63,11 +63,11 @@ template <typename T, typename feeder> inline P1I<T,feeder>::~P1I() {
 
 template <typename T, typename feeder> T P1I<T,feeder>::next(const T& in) {
   const auto& buf(f.next(in));
-  if(! f.full) return T(0);
+  if(! f.full) return in;
   // N.B. to compete with noise, we calculate each.
   //      we can use catgp on worse noised ones.
   const auto nin(sqrt(buf.dot(buf)));
-  if(nin == T(0)) return T(0);
+  if(nin == T(0)) return in;
   SimpleMatrix<T> toeplitz(buf.size() - varlen + 1, varlen + 3);
   for(int i = 0; i < toeplitz.rows(); i ++)
     toeplitz.row(i) =
@@ -75,7 +75,7 @@ template <typename T, typename feeder> T P1I<T,feeder>::next(const T& in) {
         buf.subVector(i, varlen) / nin, T(i + 1) / T(buf.size() - varlen + 2)
       ).first;
   const auto invariant(linearInvariant<T>(toeplitz));
-  if(invariant[varlen - 1] == T(0)) return T(0);
+  if(invariant[varlen - 1] == T(0)) return in;
   SimpleVector<T> work(varlen);
   for(int i = 1; i < work.size(); i ++)
     work[i - 1] = buf[i - work.size() + buf.size()] / nin;

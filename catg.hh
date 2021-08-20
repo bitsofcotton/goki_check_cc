@@ -104,7 +104,9 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
 #endif
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
-    fix[size0 < 0 ? pidx[iidx] : iidx] = true;
+    fix[iidx] = true;
+    if(size0 < 0)
+      fix[pidx[iidx]] = true;
   }
   cut = R.solve(Pt * one);
   std::vector<T> s;
@@ -264,7 +266,7 @@ template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector
   return crushWithOrder<T>(v, cs, max(int(2), int(sqrt(T(v.size())))));
 }
 
-template <typename T, typename feeder, bool dec = true> class P012L {
+template <typename T, typename feeder> class P012L {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
@@ -272,38 +274,39 @@ public:
   inline P012L(const int& stat, const int& d);
   inline ~P012L();
   T next(const T& in);
+  feeder f;
 private:
   vector<Vec> pp;
-  feeder f;
   int varlen;
-  T   M;
 };
 
-template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::P012L() {
-  M = T(varlen = 0);
+template <typename T, typename feeder> inline P012L<T,feeder>::P012L() {
+  T(varlen = 0);
 }
 
-template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::P012L(const int& stat, const int& var) {
-  M = T(0);
+template <typename T, typename feeder> inline P012L<T,feeder>::P012L(const int& stat, const int& var) {
   assert(0 < stat && 1 < var);
   f = feeder(stat + (varlen = var) - 1);
 }
 
-template <typename T, typename feeder, bool dec> inline P012L<T,feeder,dec>::~P012L() {
+template <typename T, typename feeder> inline P012L<T,feeder>::~P012L() {
   ;
 }
 
-template <typename T, typename feeder, bool dec> inline T P012L<T,feeder,dec>::next(const T& in) {
-  if(f.res[f.res.size() - 1] == in) return T(0);
-  if(M < abs(in) * T(4) * T(varlen) * atan(T(1)) * T(varlen + 2)) M = abs(in) * T(8 * varlen) * atan(T(1)) * T(varlen + 2);
+template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& in) {
   const auto d(f.next(in));
-  if(! f.full) return T(0);
+        T    M(0);
+  for(int i = 0; i < d.size(); i ++)
+    M = max(M, abs(d[i]));
+  M *= T(2);
+  if(! f.full || M <= T(0)) return in;
+  for(int i = 0; i < d.size(); i ++)
+    if(! isfinite(d[i])) return in;
   vector<SimpleVector<T> > cache;
   cache.reserve(d.size() - varlen + 1);
-  Decompose<T> decompose(varlen);
   for(int i = 0; i <= d.size() - varlen; i ++) {
     auto w(d.subVector(i, varlen) / M);
-    cache.emplace_back(dec ? decompose.mother(move(w)) : move(w));
+    cache.emplace_back(move(w));
   }
   const auto cat(crush<T>(cache, cache[0].size(), 0));
   pp = vector<Vec>();
@@ -321,8 +324,7 @@ template <typename T, typename feeder, bool dec> inline T P012L<T,feeder,dec>::n
   work[work.size() - 1] = work[work.size() - 2];
   T MM(0);
   T res(0);
-  const auto vdp(makeProgramInvariant<T>(
-    dec ? decompose.mother(work) : work));
+  const auto vdp(makeProgramInvariant<T>(work));
   for(int i = 0; i < pp.size(); i ++) {
     const auto& p(pp[i]);
     if(! p.size()) continue;

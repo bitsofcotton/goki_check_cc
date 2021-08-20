@@ -891,9 +891,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
           Vec camera(2);
     camera[0] = T(0);
     camera[1] = T(1);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
     for(int j = 0; j < result.rows(); j ++) {
       for(int zi = 0; zi < dratio; zi ++) {
         Vec cpoint(2);
@@ -905,9 +902,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
         Vec work(result.cols());
         work.O();
         SimpleVector<T> Dop0;
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
         {
           const auto Dop(diff<T>(abs(int(x0)) & ~ int(1)));
           Dop0 = Dop.row(Dop.rows() / 2) + Dop.row(Dop.rows() / 2 + 1);
@@ -943,12 +937,34 @@ template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, co
   Mat res(color * T(0));
   const auto ct(color.transpose());
   const auto bt(bumpm.transpose());
+#if defined(_OPENMP)
+#pragma omp parallel
+#pragma omp for schedule(static, 1)
+#endif
   for(int i = 0; i < n; i ++) {
     const auto theta((T(i) - T(n - 1) / T(2)) * atan(T(1)) / (T(n) / T(2)));
-    res += center<T>(rotate<T>(bump(rotate<T>(color, theta),
-             rotate<T>(bumpm, theta), psi), - theta), color);
-    res += center<T>(rotate<T>(bump(rotate<T>(ct, theta),
-             rotate<T>(bt, theta), psi), - theta).transpose(), color);
+          auto work(center<T>(rotate<T>(bump(rotate<T>(color, theta),
+                      rotate<T>(bumpm, theta), psi), - theta), color));
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+    {
+      res += move(work);
+    }
+  }
+#if defined(_OPENMP)
+#pragma omp for schedule(static, 1)
+#endif
+  for(int i = 0; i < n; i ++) {
+    const auto theta((T(i) - T(n - 1) / T(2)) * atan(T(1)) / (T(n) / T(2)));
+          auto work(center<T>(rotate<T>(bump(rotate<T>(ct, theta),
+                      rotate<T>(bt, theta), psi), - theta).transpose(), color));
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+    {
+      res += move(work);
+    }
   }
   return res /= T(n * 2);
 }
