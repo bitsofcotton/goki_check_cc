@@ -185,7 +185,7 @@ int main(int argc, const char* argv[]) {
           out[i].setMatrix(j * 5 / 4, k * 5 / 4,
             out[i].subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) +
              redig.compImage(redig.normalize(
-              data[i].subMatrix(j, k, 4, 4), num_t(1) / num_t(2)), opt[0], 4) *
+              data[i].subMatrix(j, k, 4, 4), num_t(1) / num_t(2)), opt[0]) *
              (M == m ? num_t(1) : M - m)
           );
           cnt.setMatrix(j * 5 / 4, k * 5 / 4,
@@ -639,7 +639,7 @@ int main(int argc, const char* argv[]) {
               const auto work(redig.normalize(in[i][j].subMatrix(k, kk, 5, 5), num_t(1) / num_t(2)));
               pair.emplace_back(std::make_pair(work, redig.normalize(tayl * work * tayl.transpose(), num_t(1) / num_t(2))));
             }
-      out[0] = out[1] = out[2] = redig.optImage(pair, 4);
+      out[0] = out[1] = out[2] = redig.optImage(pair);
       file.savep2or3(argv[2], out, ! true, 65535);
     } else if(strcmp(argv[1], "cat") == 0) {
       vector<typename simpleFile<num_t>::Mat> rep;

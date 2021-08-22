@@ -99,8 +99,8 @@ public:
   Mat  reTrace(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const Mat& src, const T& intensity, const int& count = 20);
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
-  Mat  optImage(const vector<pair<Mat, Mat> >& img, const int& comp) const;
-  Mat  compImage(const Mat& in, const Mat& opt, const int& comp) const;
+  Mat  optImage(const vector<pair<Mat, Mat> >& img) const;
+  Mat  compImage(const Mat& in, const Mat& opt) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
   Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0) const;
@@ -723,31 +723,22 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reImage(const Mat& dst, c
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pair<Mat, Mat> >& img, const int& comp) const {
-  assert(0 <= comp && 0 < img.size());
+template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pair<Mat, Mat> >& img) const {
+  assert(0 < img.size());
   const auto ss0(img[0].first.rows() * img[0].first.cols());
   const auto ss1(img[0].second.rows() * img[0].second.cols());
-        Mat  tayl0(ss0 + comp, ss0);
-        Mat  tayl1(ss1 + comp, ss1);
-  for(int i = 0; i < tayl0.rows(); i ++)
-    tayl0.row(i) = taylor<T>(ss0, T(i) / T(tayl0.rows() - 1) * T(ss0 - 1));
-  for(int i = 0; i < tayl1.rows(); i ++)
-    tayl1.row(i) = taylor<T>(ss1, T(i) / T(tayl1.rows() - 1) * T(ss1 - 1));
-  Mat serialize(img.size(), tayl0.rows() + tayl1.rows() + 2);
+  Mat serialize(img.size(), ss0 + ss1 + 2);
   for(int i = 0; i < img.size(); i ++) {
     assert(img[i].first.rows() == img[0].first.rows());
     assert(img[i].first.cols() == img[0].first.cols());
     assert(img[i].second.rows() == img[0].second.rows());
     assert(img[i].second.cols() == img[0].second.cols());
-    Vec lseri0(tayl0.cols());
-    Vec lseri1(tayl1.cols());
+    SimpleVector<T> buf(ss0 + ss1);
     for(int j = 0; j < img[i].first.rows(); j ++)
-      for(int k = 0; k < img[i].first.cols(); k ++)
-        lseri0[j * img[i].first.cols() + k] = img[i].first(j, k);
+      buf.setVector(j * img[i].first.cols(), img[i].first.row(j));
     for(int j = 0; j < img[i].second.rows(); j ++)
-      for(int k = 0; k < img[i].second.cols(); k ++)
-        lseri1[j * img[i].second.cols() + k] = img[i].second(j, k);
-    serialize.row(i) = makeProgramInvariant<T>(Vec(tayl0.rows() + tayl1.rows()).O().setVector(0, tayl0 * lseri0).setVector(tayl0.rows(), tayl1 * lseri1)).first;
+      buf.setVector(ss0 + j * img[i].second.cols(), img[i].second.row(j));
+    serialize.row(i) = makeProgramInvariant<T>(buf).first;
   }
   Mat res(serialize.rows(), serialize.cols());
   for(int i = 0; i < res.rows(); i ++) {
@@ -762,34 +753,26 @@ template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pai
       }
       return res.fillP(idx);
     }
-    res.row(i) /= sqrt(res.row(i).dot(res.row(i)));
+    const auto orth(res.row(i) /= sqrt(res.row(i).dot(res.row(i))));
     for(int j = 0; j < serialize.rows(); j ++)
-      serialize.row(j) -= res.row(i) * serialize.row(j).dot(res.row(i));
+      serialize.row(j) -= orth * orth.dot(serialize.row(j));
   }
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, const Mat& opt, const int& comp) const {
-  const auto ss(in.rows() * in.cols());
-        Mat  tayl(ss + comp, ss);
-        Mat  taylr((in.rows() + 1) * (in.cols() + 1), opt.cols() - tayl.rows() - 1);
-  for(int i = 0; i < tayl.rows(); i ++)
-    tayl.row(i) = taylor<T>(ss, T(i) / T(tayl.rows() - 1) * T(ss - 1));
-  for(int i = 0; i < taylr.rows(); i ++)
-    taylr.row(i) = taylor<T>(taylr.cols(), T(i) / T(taylr.rows() - 1) * T(taylr.cols() - 1));
+template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, const Mat& opt) const {
+  const auto ss(opt.cols() - 2);
   Vec work(ss);
+  work.O();
   for(int j = 0; j < in.rows(); j ++)
-    for(int k = 0; k < in.cols(); k ++)
-      work[j * in.cols() + k] = in(j, k);
-  work = makeProgramInvariant<T>(tayl * work).first;
-  work = opt.subMatrix(0, 0, opt.cols(), opt.cols()).solve(opt.subMatrix(0, opt.cols()- work.size(), opt.cols(), work.size()) * work).subVector(0, taylr.cols());
-  for(int i = 0; i < work.size(); i ++)
-    work[i] = atan(work[i]);
-  work = taylr * work;
+    work.setVector(j * in.cols(), in.row(j));
+  auto work2(makeProgramInvariant<T>(work));
+  work = move(work2.first);
+  work = opt.solve(work);
   Mat res(sqrt(work.size()), sqrt(work.size()));
   for(int j = 0; j < res.rows(); j ++)
     for(int k = 0; k < res.cols(); k ++)
-      res(j, k) = work[(j * res.cols() + k) % work.size()];
+      res(j, k) = revertProgramInvariant<T>(make_pair(work[(j * res.cols() + k) % work.size()], work2.second));
   return res;
 }
 

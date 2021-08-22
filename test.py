@@ -22,20 +22,16 @@ elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho" or argv[2]
     pixels = int(argv[6])
     if(len(argv) > 7):
       nemph = int(argv[7])
-  if(ext1 == ".obj" and (argv[2] == "match" or argv[2] == "match0")):
-    subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], "match-" + root0 + "-" + argv[4]])
-  elif(ext1 == ".obj" and (argv[2] == "rmatch" or argv[2] == "rmatch0")):
-    subprocess.call([argv[1], argv[2], str(nemph), "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], argv[5]])
-  elif(ext1 == ".obj"):
-    subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", argv[4], argv[5]])
-  elif(argv[2] == "match" or argv[2] == "match0"):
+  if(argv[2] == "match" or argv[2] == "match0"):
     subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   elif(argv[2] == "rmatch" or argv[2] == "rmatch0"):
-    subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", argv[5]])
+    subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "rmatch-" + root0 + "-" + root1])
   else:
     subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
-  if(argv[2] == "matcho" or argv[2] == "rmatch" or argv[2] == "rmatch0"):
+  if(argv[2] == "matcho"):
     subprocess.call(["ffmpeg", "-loop", "1", "-i", argv[5] + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", argv[5] + ".mp4"])
+  elif(argv[2] == "rmatch" or argv[2] == "rmatch0"):
+    subprocess.call(["ffmpeg", "-loop", "1", "-i", "rmatch-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", argv[5] + ".mp4"])
 elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "composite"):
   cmd = [argv[1], argv[2], argv[2] + ".ppm"]
   for s in argv[3:]:
@@ -138,6 +134,11 @@ else:
     elif(argv[2] == "pextend"):
       subprocess.call(["convert", line, "-blur", "12x12+6", "-compress", "none", root + "-blur.ppm"])
       subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
+    elif(argv[2] == "sharpen"):
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
+      for s in range(1, pixels):
+        subprocess.call(["convert", root + "-" + argv[2] + ".ppm", "-resize", "50%", "-compress", "none", root + "-" + argv[2] + "-shrink.ppm"])
+        subprocess.call([argv[1], argv[2], root + "-" + argv[2] + "-shrink.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "flarge" or argv[2] == "pextend" or argv[2] == "blink" or argv[2] == "represent"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
@@ -199,4 +200,4 @@ else:
     elif(argv[2] == "edge"):
       subprocess.call(["convert", root + "-collect.ppm", "-type", "GrayScale", "-negate", "-compress", "none", root + "-collect-negate.ppm"])
       subprocess.call(["convert", line, root + "-collect-negate.ppm", "-compose", "multiply", "-composite", root + "-edge.png"])
-      
+

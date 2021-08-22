@@ -32,58 +32,45 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if !defined(_P1_)
 
 // Get invariant structure that
-// \[- &alpha, &alpha;\[ register computer with deterministic calculation
-// Please refer bitsofcotton/randtools .
-// with noised ones, we can use catgp instead of this.
+// \[- &alpha, &alpha;\[ register computer with deterministic calculation.
+// cf. bitsofcotton/randtools .
 template <typename T, typename feeder> class P1I {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
-  inline P1I();
-  inline P1I(const int& stat, const int& var);
-  inline ~P1I();
-  inline T next(const T& in);
+  inline P1I() { varlen = 0; }
+  inline P1I(const int& stat, const int& var) {
+    assert(0 < stat && 1 < var);
+    f = feeder(stat + (varlen = var) - 1);
+  }
+  inline ~P1I() { ; }
+  inline T next(const T& in) {
+    const auto& buf(f.next(in));
+    if(! f.full) return in;
+    // N.B. please use catgp to compete with over learning.
+    const auto nin(sqrt(buf.dot(buf)));
+    if(nin == T(0)) return in;
+    SimpleMatrix<T> toeplitz(buf.size() - varlen + 1, varlen + 3);
+    for(int i = 0; i < toeplitz.rows(); i ++)
+      toeplitz.row(i) =
+        makeProgramInvariant<T>(buf.subVector(i, varlen) / nin,
+          T(i + 1) / T(toeplitz.rows() + 1)).first;
+    const auto invariant(linearInvariant<T>(toeplitz));
+    if(invariant[varlen - 1] == T(0)) return in;
+    SimpleVector<T> work(varlen);
+    for(int i = 1; i < work.size(); i ++)
+      work[i - 1] = buf[i - work.size() + buf.size()] / nin;
+    work[work.size() - 1] = work[work.size() - 2];
+    auto work2(makeProgramInvariant<T>(work, T(1)));
+    work = move(work2.first);
+    return revertProgramInvariant<T>(make_pair(
+      (invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) /
+        invariant[varlen - 1], work2.second)) * nin;
+  }
   feeder f;
 private:
   int varlen;
 };
-
-template <typename T, typename feeder> inline P1I<T,feeder>::P1I() {
-  varlen = 0;
-}
-
-template <typename T, typename feeder> inline P1I<T,feeder>::P1I(const int& stat, const int& var) {
-  assert(0 <= stat && 1 <= var);
-  f = feeder(stat + (varlen = var) - 1);
-}
-
-template <typename T, typename feeder> inline P1I<T,feeder>::~P1I() {
-  ;
-}
-
-template <typename T, typename feeder> T P1I<T,feeder>::next(const T& in) {
-  const auto& buf(f.next(in));
-  if(! f.full) return in;
-  // N.B. to compete with noise, we calculate each.
-  //      we can use catgp on worse noised ones.
-  const auto nin(sqrt(buf.dot(buf)));
-  if(nin == T(0)) return in;
-  SimpleMatrix<T> toeplitz(buf.size() - varlen + 1, varlen + 3);
-  for(int i = 0; i < toeplitz.rows(); i ++)
-    toeplitz.row(i) =
-      makeProgramInvariant<T>(
-        buf.subVector(i, varlen) / nin, T(i + 1) / T(buf.size() - varlen + 2)
-      ).first;
-  const auto invariant(linearInvariant<T>(toeplitz));
-  if(invariant[varlen - 1] == T(0)) return in;
-  SimpleVector<T> work(varlen);
-  for(int i = 1; i < work.size(); i ++)
-    work[i - 1] = buf[i - work.size() + buf.size()] / nin;
-  work[work.size() - 1] = work[work.size() - 2];
-  auto work2(makeProgramInvariant<T>(work, T(1)));
-  work = move(work2.first);
-  return revertProgramInvariant<T>(make_pair((invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) / invariant[varlen - 1], work2.second)) * nin;
-}
 
 #define _P1_
 #endif

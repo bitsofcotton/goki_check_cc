@@ -54,30 +54,15 @@ template <typename T> const SimpleVector<T>& nextP0(const int& size) {
 template <typename T, typename feeder> class P0 {
 public:
   typedef SimpleVector<T> Vec;
-  inline P0();
-  inline P0(const int& size);
-  inline ~P0();
-  inline T next(const T& in);
+  inline P0() { ; }
+  inline P0(const int& size) { f = feeder(size); }
+  inline ~P0() { ; };
+  inline T next(const T& in) {
+    const auto& ff(f.next(in));
+    return f.full ? nextP0<T>(ff.size()).dot(ff) : in;
+  }
   feeder f;
 };
-
-template <typename T, typename feeder> inline P0<T, feeder>::P0() {
-  ;
-}
-
-template <typename T, typename feeder> inline P0<T, feeder>::P0(const int& size) {
-  assert(0 < size);
-  f = feeder(size);
-}
-
-template <typename T, typename feeder> inline P0<T, feeder>::~P0() {
-  ;
-}
-
-template <typename T, typename feeder> inline T P0<T, feeder>::next(const T& in) {
-  const auto& ff(f.next(in));
-  return f.full ? nextP0<T>(ff.size()).dot(ff) - ff[ff.size() - 1] : T(0);
-}
 
 #define _P0_
 #endif

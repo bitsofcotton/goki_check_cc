@@ -131,8 +131,8 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
     } else
       s  = SimpleMatrix<T>(size, size).O();
     auto dfts(dft<T>(size));
-    dfts.row(0) *= complex<T>(T(0));
     static const auto Pi(atan(T(1)) * T(4));
+    dfts.row(0) *= complex<T>(T(0));
     for(int i = 1; i < dfts.rows(); i ++) {
       // N.B. d/dt((d^(t)/dy^(t)) f), differential-integral space tilt on f.
       // DFTH.row(i) *= log(phase);
@@ -140,9 +140,9 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
       //   -> This is sharpen operation at all because this is same as original
       //      picture when {x0 + x0.5, x0.5 + x1, x1 + x1.5, x1.5 + x2, ...}
       //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
-      dfts.row(i) /= exp(complex<T>(T(0), T(1)) * Pi * complex<T>(T(i)) / T(dfts.rows())) - complex<T>(T(1));
+      dfts.row(i) /= exp(complex<T>(T(0), Pi * T(i) / T(dfts.rows()))) - complex<T>(T(1));
     }
-    s += (dft<T>(- size) * dfts).template real<T>();
+    s += (dft<T>(- size) * dfts).template real<T>() / T(size - 1);
     if(2 < size)
       s /= T(size);
     ofstream ocache(file.c_str());
@@ -224,10 +224,13 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(filter<T>(data, DETECT_Y, n, recur), ABS, n, recur);
     case SHARPEN_Y:
       {
-        auto shp(sharpen<T>(int(data.rows())));
-        for(int i = 1; i < recur; i ++)
-          shp = shp * shp;
-        return shp * data + data;
+        const auto      shp(sharpen<T>(int(data.rows())) * data);
+        SimpleMatrix<T> res(data.rows() * 2, data.cols());
+        for(int i = 0; i < data.rows(); i ++) {
+          res.row(2 * i)     = data.row(i) - shp.row(i);
+          res.row(2 * i + 1) = data.row(i) + shp.row(i);
+        }
+        return res;
       }
       break;
     case ENLARGE_Y:
@@ -336,7 +339,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           dif.row(i) *= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
         }
         dif = dft<T>(- data.rows()) * dif;
-        for(int i = 1; i < recur - 1; i ++) {
+        for(int i = 1; i < dif.rows() - 1; i ++) {
           dif.row(i) += (dif.row(i - 1) + dif.row(i + 1)) * complex<T>(T(recur) / T(256));
         }
         dif = dft<T>(data.rows()) * dif;

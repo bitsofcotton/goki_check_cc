@@ -270,9 +270,12 @@ template <typename T, typename feeder> class P012L {
 public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
-  inline P012L();
-  inline P012L(const int& stat, const int& d);
-  inline ~P012L();
+  inline P012L() { varlen = 0; }
+  inline P012L(const int& stat, const int& var) {
+    assert(0 < stat && 1 < var);
+    f = feeder(stat + (varlen = var) - 1);
+  }
+  inline ~P012L() { ; }
   T next(const T& in);
   feeder f;
 private:
@@ -280,34 +283,19 @@ private:
   int varlen;
 };
 
-template <typename T, typename feeder> inline P012L<T,feeder>::P012L() {
-  T(varlen = 0);
-}
-
-template <typename T, typename feeder> inline P012L<T,feeder>::P012L(const int& stat, const int& var) {
-  assert(0 < stat && 1 < var);
-  f = feeder(stat + (varlen = var) - 1);
-}
-
-template <typename T, typename feeder> inline P012L<T,feeder>::~P012L() {
-  ;
-}
-
 template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& in) {
   const auto d(f.next(in));
         T    M(0);
-  for(int i = 0; i < d.size(); i ++)
+  for(int i = 0; i < d.size(); i ++) {
     M = max(M, abs(d[i]));
+    if(! isfinite(d[i])) return in;
+  }
   M *= T(2);
   if(! f.full || M <= T(0)) return in;
-  for(int i = 0; i < d.size(); i ++)
-    if(! isfinite(d[i])) return in;
   vector<SimpleVector<T> > cache;
   cache.reserve(d.size() - varlen + 1);
-  for(int i = 0; i <= d.size() - varlen; i ++) {
-    auto w(d.subVector(i, varlen) / M);
-    cache.emplace_back(move(w));
-  }
+  for(int i = 0; i <= d.size() - varlen; i ++)
+    cache.emplace_back(d.subVector(i, varlen) / M);
   const auto cat(crush<T>(cache, cache[0].size(), 0));
   pp = vector<Vec>();
   pp.reserve(cat.size());
@@ -331,11 +319,10 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
     const auto vdps((vdp.first.dot(p) - vdp.first[varlen - 1] * p[varlen - 1]) / sqrt(vdp.first.dot(vdp.first) * p.dot(p)));
     if(! isfinite(vdps)) continue;
     if(MM < abs(vdps) && p[work.size()] != T(0)) {
-      const auto v((p.dot(vdp.first) - p[varlen - 1] * vdp.first[varlen - 1]) / p[varlen - 1] * vdp.second - T(1));
-      if(v != T(0)) {
-        MM  = abs(vdps);
-        res = v;
-      }
+      MM  = abs(vdps);
+      res = revertProgramInvariant<T>(make_pair(
+        (p.dot(vdp.first) - p[varlen - 1] * vdp.first[varlen - 1]) /
+          p[varlen - 1], vdp.second));
     }
   }
   return res * M;

@@ -1,0 +1,7 @@
+f0(t,th):=((f(t)-d0(t))+(f(t)+d0(t))*%e^(-%pi*%i*th/N))*%e^(-2*%pi*%i*t*th/N);
+f1(t,th):=f(t)*%e^(-2*%pi*%i*t*th/N);
+integrate(solve(f0(t,th)=f1(t,th)*a,d0(t)),a);
+
+base(x,th):=sum(sum(f(L*x+l)*%e^(-2*%pi*%i*(L*x+l)*th/N),x,0,N/L),l,0,L-1)-2*sum(g(L*x)*%e^(-2*%pi*%i*(L*x)*th/N),x,0,N/L);
+base(x,th)=0,L=2;
+diff(base(x,th),th)=0,L=2;
