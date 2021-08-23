@@ -130,7 +130,7 @@ else:
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call([argv[1], "bumpc", str(psi), str(rot), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
-      subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "32x32+32", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      subprocess.call([argv[1], "lpf", root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels * 4), str(1)])
     elif(argv[2] == "pextend"):
       subprocess.call(["convert", line, "-blur", "12x12+6", "-compress", "none", root + "-blur.ppm"])
       subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
@@ -139,7 +139,7 @@ else:
       for s in range(1, pixels):
         subprocess.call(["convert", root + "-" + argv[2] + ".ppm", "-resize", "50%", "-compress", "none", root + "-" + argv[2] + "-shrink.ppm"])
         subprocess.call([argv[1], argv[2], root + "-" + argv[2] + "-shrink.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "flarge" or argv[2] == "pextend" or argv[2] == "blink" or argv[2] == "represent"):
+    elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "bump" or argv[2] == "enlarge" or argv[2] == "flarge" or argv[2] == "pextend" or argv[2] == "blink" or argv[2] == "lpf" or argv[2] == "represent"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels * 4), "1",  str(zratio), "0", root + "-bump.ppm", root + ".obj"])

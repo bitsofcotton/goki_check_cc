@@ -39,7 +39,7 @@ using std::make_pair;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|lpf|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << "gokicheck bumpc <psi> <rot> <gather_pixels> <zratio> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
   cout << "gokicheck (pred|lenl) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
@@ -79,6 +79,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
+     strcmp(argv[1], "lpf") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "represent") == 0 ||
@@ -115,6 +116,9 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, n, recur);
+    else if(strcmp(argv[1], "lpf") == 0)
+      for(int i = 0; i < 3; i ++)
+        data[i] = filter<num_t>(data[i], LPF_BOTH, n, recur);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter<num_t>(data[i], SHARPEN_BOTH, n, recur);

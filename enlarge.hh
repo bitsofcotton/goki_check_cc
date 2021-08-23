@@ -49,6 +49,9 @@ typedef enum {
   BLINK_X,
   BLINK_Y,
   BLINK_BOTH,
+  LPF_X,
+  LPF_Y,
+  LPF_BOTH,
   REPRESENT,
   CLIP,
   ABS } direction_t;
@@ -178,6 +181,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(filter<T>(filter<T>(filter<T>(data, EXTEND_X, n, recur), CLIP, n, recur), EXTEND_Y, n, recur), CLIP, n, recur);
     case BLINK_BOTH:
       return filter<T>(filter<T>(data, BLINK_X, n, recur), BLINK_Y, n, recur);
+    case LPF_BOTH:
+      return filter<T>(filter<T>(data, LPF_X, n, recur), LPF_Y, n, recur);
     case SHARPEN_X:
       return filter<T>(data.transpose(), SHARPEN_Y, n, recur).transpose();
     case ENLARGE_X:
@@ -196,6 +201,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(data.transpose(), EXTEND_Y, n, recur).transpose();
     case BLINK_X:
       return filter<T>(data.transpose(), BLINK_Y, n, recur).transpose();
+    case LPF_X:
+      return filter<T>(data.transpose(), LPF_Y, n, recur).transpose();
     case DETECT_Y:
       return diff<T>(  data.rows()) * data;
     case INTEG_Y:
@@ -347,6 +354,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           dif.row(i) /= - complex<T>(T(0), T(2)) * T(i) / T(data.rows());
         }
         return (dft<T>(- data.rows()) * dif).template real<T>();
+      }
+      break;
+    case LPF_Y:
+      {
+        auto lpf(dft<T>(data.rows()) * data.template cast<complex<T> >());
+        for(int i = recur; i < lpf.rows(); i ++)
+          lpf.row(i).O();
+        return (dft<T>(- data.rows()) * lpf).template real<T>();
       }
       break;
     case REPRESENT:
