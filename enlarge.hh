@@ -357,7 +357,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       }
       break;
     case LPF_Y:
-      return (dft<T>(- data.rows()).subMatrix(0, 0, data.rows(), recur) * dft<T>(data.rows()).subMatrix(0, 0, recur, data.rows())).template real<T>() * data;
+      return (dft<T>(- data.rows()).subMatrix(0, 0, data.rows(), recur) * (dft<T>(data.rows()).subMatrix(0, 0, recur, data.rows()) * data.template cast<complex<T> >())).template real<T>();
     case REPRESENT:
       return Decompose<T>(recur).represent(data, n);
     case CLIP:
