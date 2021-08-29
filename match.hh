@@ -32,43 +32,6 @@ using std::unique;
 using std::istream;
 using std::ostream;
 
-template <typename T> class reDig;
-template <typename T> class msub_t;
-template <typename T> bool lmsublt(const msub_t<T>& x, const msub_t<T>& y) {
-  return x.err < y.err;
-}
-
-template <typename T> class msub_t {
-public:
-  T   t;
-  int j;
-  int k;
-  T   err;
-  inline msub_t() {
-    t = err = T(0);
-    j = k = 0;
-  }
-  inline msub_t(const msub_t<T>& x) {
-    *this = x;
-  }
-  inline ~msub_t() {
-    ;
-  }
-  inline msub_t<T>& operator = (const msub_t<T>& x) {
-    t   = T(x.t);
-    j   = x.j;
-    k   = x.k;
-    err = T(x.err);
-    return *this;
-  }
-  inline bool operator < (const msub_t<T>& x) const {
-    return  t >  x.t ||
-           (t == x.t && err <  x.err) ||
-           (t == x.t && err == x.err && j <  x.j) ||
-           (t == x.t && err == x.err && j == x.j && k < x.k);
-  }
-};
-
 template <typename T> class match_t {
 public:
   typedef SimpleMatrix<T>   Mat;
@@ -236,248 +199,149 @@ public:
   }
 };
 
-template <typename T> static inline pair<pair<T, T>, pair<SimpleVector<T>, vector<SimpleVector<T> > > > makeG(const vector<SimpleVector<T> >& in) {
-  pair<pair<T, T>, pair<SimpleVector<T>, vector<SimpleVector<T> > > > res;
-  res.first.first = res.first.second = T(0);
-  res.second.second.reserve(in.size());
+template <typename T> static inline pair<SimpleVector<T>, vector<SimpleVector<T> > > makeG(const vector<SimpleVector<T> >& in) {
+  pair<SimpleVector<T>, vector<SimpleVector<T> > > res;
+  res.second.reserve(in.size());
   assert(in.size() && in[0].size() == 3);
-  res.second.first = in[0];
+  res.first = in[0];
   for(int i = 1; i < in.size(); i ++)
-    res.second.first += in[i];
-  res.second.first /= T(in.size());
-  for(int i = 0; i < in.size(); i ++) {
-    res.second.second.emplace_back(in[i] - res.second.first);
-    res.first.first  = max(res.first.first,  abs(res.second.second[i][0]));
-    res.first.second = max(res.first.second, abs(res.second.second[i][0]));
-  }
-  return res;
+    res.first += in[i];
+  res.first /= T(in.size());
+  for(int i = 0; i < in.size(); i ++)
+    res.second.emplace_back(in[i] - res.first);
+  return move(res);
 }
 
-template <typename T> void matchPartial(const vector<SimpleVector<T> >& shapebase0, const vector<SimpleVector<T> >& points0, vector<match_t<T> >& result, const bool& norot = false, const int& ndiv = 40, const T& threshr = T(2), const T& threshp = T(1) / T(1000), const T& threshs = T(1) / T(10)) {
-  static const auto Pi(atan(T(1)) * T(4));
-  static const auto I(complex<T>(T(0), T(1)));
-         const auto thresh(sin(T(2) * Pi / T(ndiv)) / T(2) * threshr);
-  assert(thresh < T(1));
-  const auto  gs0(makeG(shapebase0));
-  const auto  gp0(makeG(points0));
-  const auto& gs(gs0.second.first);
-  const auto& gp(gp0.second.first);
-  const auto& shapebase(gs0.second.second);
-  const auto& points(gp0.second.second);
-  const auto  gd(sqrt(max(gs0.first.first * gs0.first.second,
-                          gp0.first.first * gp0.first.second)));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int nd = 0; nd < ndiv; nd ++) {
-    vector<T> ddiv(4);
-    ddiv[0] = cos(T(2) * Pi * T(nd) / T(ndiv));
-    ddiv[1] = sin(T(2) * Pi * T(nd) / T(ndiv));
-    for(int nd2 = 0; nd2 < (norot ? 1 : ndiv); nd2 ++) {
-      ddiv[2] = cos(T(2) * Pi * T(nd2) / T(ndiv));
-      ddiv[3] = sin(T(2) * Pi * T(nd2) / T(ndiv));
-      match_t<T> work0(threshs, gd);
-      for(int k = 0; k < ddiv.size() / 2; k ++) {
-        SimpleMatrix<T> lrot(3, 3);
-        lrot((k    ) % 3, (k    ) % 3) =   ddiv[k * 2 + 0];
-        lrot((k + 1) % 3, (k    ) % 3) =   ddiv[k * 2 + 1];
-        lrot((k + 2) % 3, (k    ) % 3) = T(0);
-        lrot((k    ) % 3, (k + 1) % 3) = - ddiv[k * 2 + 1];
-        lrot((k + 1) % 3, (k + 1) % 3) =   ddiv[k * 2 + 0];
-        lrot((k + 2) % 3, (k + 1) % 3) = T(0);
-        lrot((k    ) % 3, (k + 2) % 3) = T(0);
-        lrot((k + 1) % 3, (k + 2) % 3) = T(0);
-        lrot((k + 2) % 3, (k + 2) % 3) = T(1);
-        work0.rot = lrot * work0.rot;
+template <typename T> static inline pair<T, vector<SimpleVector<T> > > normalizeG(const vector<SimpleVector<T> >& s) {
+  pair<T, vector<SimpleVector<T> > > res;
+  res.first = T(0);
+  res.second.reserve(s.size());
+  for(int i = 0; i < s.size(); i ++)
+    res.first = max(max(res.first, abs(s[i][0])), max(abs(s[i][1]), abs(s[i][2])));
+  for(int i = 0; i < s.size(); i ++)
+    res.second.emplace_back(s[i] / res.first);
+  return move(res);
+}
+
+template <typename T> pair<vector<pair<T, int> >, vector<int> > makeMatchPrep(const SimpleVector<T>& on, const int& rows, const int& rowcut) {
+  vector<int> pidx;
+  vector<pair<T, int> > fidx;
+  pidx.resize(rows, - 1);
+  for(int i = 0; i < rowcut; i ++) {
+    T score(0);
+    for(int j = rowcut; j < rows; j ++) {
+      const auto lscore(abs(on[i] - on[j]));
+      if(score == T(int(0)) || lscore < score) {
+        score   = lscore;
+        pidx[i] = j;
       }
-      // for each near matches:
-      vector<msub_t<T> > msub;
-      msub.reserve(points.size());
-      for(int k = 0; k < points.size(); k ++) {
-        const auto bk(work0.transform(points[k]));
-        vector<msub_t<T> > lmsub;
-        lmsub.reserve(shapebase.size());
-        for(int j = 0; j < shapebase.size(); j ++) {
-          const auto& aj(shapebase[j]);
-          const auto  t(aj.dot(bk) / bk.dot(bk));
-          const auto  lerr(aj - bk * t);
-          const auto  err(lerr.dot(lerr) / sqrt(aj.dot(aj) * bk.dot(bk) * t * t));
-          // if t <= T(0), it's mirrored and this should not match.
-          if(T(0) <= t && err <= thresh * thresh &&
-             isfinite(t) && isfinite(err)) {
-            msub_t<T> work;
-            work.t   = t;
-            work.j   = j;
-            work.k   = k;
-            work.err = err;
-            lmsub.emplace_back(work);
-          }
-        }
-        if(lmsub.size()) {
-          sort(lmsub.begin(), lmsub.end(), lmsublt<T>);
-          msub.emplace_back(lmsub[0]);
-        }
-      }
-      sort(msub.begin(), msub.end());
-      cerr << "." << flush;
-      if(T(msub.size()) /
-           T(min(shapebase.size(), points.size())) < threshp)
-        continue;
-      // get nearer matches:
-      int t0(0);
-      for( ; t0 < msub.size(); t0 ++) {
-        auto work(work0);
-        int tt(t0);
-        const auto tr0(msub[t0].t);
-        for(int t1 = t0; t1 < msub.size(); t1 ++)
-          // N.B. abar:=sum(aj)/n, bbar:=P*sum(bk)/n,
-          //   get condition sum||aj-abar||, sum||P*bk-bbar|| -> 0
-          //   with this imcomplete set.
-          // N.B. t >= 0 and msub is sorted by t0 > t1.
-          if((msub[t0].t - msub[t1].t) / msub[t0].t <= thresh) {
-            work.dstpoints.emplace_back(msub[t1].j);
-            work.srcpoints.emplace_back(msub[t1].k);
-            tt = t1;
-          } else
-            break;
-        // N.B. rough match.
-        t0 += max(int(1), (tt - t0) / 2);
-        // if it's good:
-        if(threshp <= T(work.dstpoints.size()) /
-                        T(min(shapebase.size(), points.size()))) {
-          work.ratio  = sqrt(tr0 * msub[tt].t);
-          work.rdepth = T(0);
-          for(int k = 0; k < work.dstpoints.size(); k ++) {
-            const auto& shapek(shapebase[work.dstpoints[k]]);
-            const auto  pointk(work.transform(points[work.srcpoints[k]]));
-            const auto  err(shapek - pointk);
-            work.rdepth += sqrt(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk)));
-          }
-          work.rdepth /= work.dstpoints.size() * work.dstpoints.size();
-          work.offset += gs - work.rot * gp * work.ratio;
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-          {
-            int idx(- 1);
-            int k0(distance(result.begin(), lower_bound(result.begin(), result.end(), work)));
-            for(int k = k0; k < result.size(); k ++)
-              if(work < result[k]) {
-                if(result[k] == work) {
-                  idx = k;
-                  break;
-                }
-              } else if(k - k0)
-                break;
-            if(idx >= 0)
-              result[idx] = work;
-            else {
-              result.emplace_back(work);
-              cerr << "*" << flush;
-            }
-            sort(result.begin(), result.end());
-          }
-        }
+    }
+    fidx.emplace_back(make_pair(score, i));
+  }
+  for(int i = rowcut; i < rows; i ++) {
+    T score(0);
+    for(int j = 0; j < rowcut; j ++) {
+      const auto lscore(abs(on[i] - on[j]));
+      if(score == T(int(0)) || lscore < score) {
+        score   = lscore;
+        pidx[i] = j;
       }
     }
   }
-  return;
+  sort(fidx.begin(), fidx.end());
+  return make_pair(move(fidx), move(pidx));
 }
 
-template <typename T> static inline vector<match_t<T> > matchPartial(const vector<SimpleVector<T> >& shapebase, const vector<SimpleVector<T> >& points, const bool& norot = false, const int& ndiv = 40, const T& threshr = T(2), const T& threshp = T(1) / T(1000), const T& threshs = T(1) / T(10)) {
-  vector<match_t<T> > result;
-  matchPartial<T>(shapebase, points, result, norot, ndiv, threshr, threshp, threshs);
-  return result;
-}
-
-template <typename T> vector<match_t<T> > elimMatch(const vector<match_t<T> >& m, const SimpleMatrix<T> dst[3], const SimpleMatrix<T> src[3], const SimpleMatrix<T>& srcbump, const vector<SimpleVector<T> >& srcpts, const T& thresh) {
-  vector<match_t<T> > res(m);
-  reDig<T> redig;
-  for(int i = 0; i < m.size(); i ++) {
-    SimpleMatrix<T> tsrc[3];
-    const auto ref(redig.tilt(redig.makeRefMatrix(src[0], 1), srcbump, m[i]));
-    for(int j = 0; j < 3; j ++)
-      tsrc[j] = redig.pullRefMatrix(ref, 1, src[j]);
-    vector<T> diffs;
-    diffs.reserve(m[i].srcpoints.size());
-    for(int j = 0; j < m[i].srcpoints.size(); j ++) {
-      const auto  g(m.transform(srcpts[m[i].srcpoints[j]]));
-      const auto& y(g[0]);
-      const auto& x(g[1]);
-      if(T(0) <= y && y < T(tsrc[0].rows()) &&
-         T(0) <= x && x < T(tsrc[0].cols())) {
-        if(tsrc[0](y, x) == T(0) &&
-           tsrc[1](y, x) == T(0) &&
-           tsrc[2](y, x) == T(0))
-          continue;
-        T diff(0);
-        for(int k = 0; k < 3; j ++)
-          diff += pow(tsrc[k](y, x) - dst[k](y, x), T(2));
-        diffs.emplace_back(sqrt(diff));
-      }
-    }
-    sort(diffs.begin(), diffs.end());
-    vector<T> ddiffs;
-    ddiffs.reserve(diffs.size() - 1);
-    for(int i = 1; i < diffs.size(); i ++)
-      ddiffs.emplace_back(diffs[i] - diffs[i - 1]);
-    sort(ddiffs.begin(), ddiffs.end());
-    res[i].rdepth *= ddiffs.size() ? T(1) - T(distance(ddiffs.begin(), upper_bound(ddiffs.begin(), ddiffs.end(), thresh))) / T(ddiffs.size()) : T(0);
-  }
-  sort(res.begin(), res.end());
-  return res;
-}
-
-template <typename T> vector<vector<match_t<T> > > matchWhole(const vector<SimpleVector<T> >& shapebase, const vector<vector<SimpleVector<T> > >& points, const vector<SimpleVector<T> >& origins, const vector<vector<SimpleVector<int> > >& bones, const int& ntry = 6, const int& ndiv = 40, const T& threshr = T(2), const T& threshp = T(5) / T(100), const T& threshs = T(1) / T(10)) {
-  assert(points.size() == origins.size());
-  vector<vector<match_t<T> > > pmatches;
-  pmatches.reserve(points.size());
+template <typename T> vector<match_t<T> > matchPartial(const vector<SimpleVector<T> >& shapebase0, const vector<SimpleVector<T> >& points0, const T& thresh = T(1) / T(100)) {
+  const auto  gs(makeG(shapebase0));
+  const auto  gp(makeG(points0));
+  const auto  ggs(normalizeG(gs.second));
+  const auto  ggp(normalizeG(gp.second));
+  const auto& shapebase(ggs.second);
+  const auto& points(ggs.second);
+  std::cerr << "match(" << shapebase.size() << ", " << points.size() << ")" << std::endl;
+  SimpleMatrix<T> test(shapebase.size() + points.size(), 3 + 2);
+  for(int i = 0; i < shapebase.size(); i ++)
+    test.row(i) = makeProgramInvariant<T>(shapebase[i]).first;
   for(int i = 0; i < points.size(); i ++)
-    pmatches.emplace_back(matchPartial<T>(shapebase, points[i], false, ndiv, threshr, threshp, threshs));
-  int i0idx(0);
-  for(int i = 1; i < pmatches.size(); i ++)
-    if(pmatches[i0idx].size() < pmatches[i].size())
-      i0idx = i;
-  vector<vector<match_t<T> > > result;
-  for(int i0 = 0; i0 < min(ntry, int(pmatches[i0idx].size())); i0 ++) {
-    vector<match_t<T> > lmatch;
-    lmatch.resize(pmatches.size(), match_t<T>());
-    lmatch[i0idx] = pmatches[i0idx][i0];
-    int mcount(1);
-    for(int i = 0; i < pmatches.size(); i ++)
-      if(i != i0idx && pmatches[i].size()) {
-        int idx(0);
-        T   m(0);
-        T   lratio(1);
-        for(int k = 0; k < pmatches[i].size(); k ++) {
-          T lm(0);
-          T llratio(1);
-          vector<int> boneidxs;
-          for(int j = 0; j < pmatches[i][k].srcpoints.size(); j ++) {
-            const auto& work(bones[i][pmatches[i][k].srcpoints[j]]);
-            for(int kk = 0; kk < work.size(); kk ++)
-              if(0 <= work[kk])
-                boneidxs.emplace_back(work[kk]);
-          }
-          sort(boneidxs.begin(), boneidxs.end());
-          boneidxs.erase(unique(boneidxs.begin(), boneidxs.end()), boneidxs.end());
-          for(int j = 0; j < boneidxs.size(); j ++) {
-            lm      += lmatch[boneidxs[j]].distance(pmatches[i][k], origins[i]);
-            llratio *= max(abs(pmatches[i][k].ratio) / abs(lmatch[boneidxs[j]].ratio), abs(lmatch[boneidxs[j]].ratio) / abs(pmatches[i][k].ratio));
-          }
-          if(!k || (m < lm && (llratio <= lratio || llratio < T(1) + threshs))) {
-            m      = lm;
-            lratio = llratio;
-            idx    = k;
-          }
-        }
-        lmatch[i] = pmatches[i][idx];
-        mcount ++;
-      }
-    if(threshp <= mcount / T(pmatches.size()))
-      result.emplace_back(lmatch);
+    test.row(shapebase.size() + i) = makeProgramInvariant<T>(points[i]).first;
+        auto Pt(test.QR());
+  const auto R(Pt * test);
+  SimpleVector<T>    one(Pt.cols());
+  SimpleVector<bool> fix(one.size());
+  one.I(T(int(1)));
+  fix.I(false);
+  const auto on(Pt.projectionPt(one));
+  vector<int> pidx;
+  vector<pair<T, int> > fidx;
+  const auto fpidx(makeMatchPrep(on, test.rows(), shapebase.size()));
+  for(int n_fixed = 0, idx = 0;
+          n_fixed < Pt.rows() - 1 && idx < fpidx.first.size();
+          n_fixed ++, idx ++) {
+    const auto& iidx(fpidx.first[idx].second);
+    if(fix[iidx]) continue;
+    const auto  orth(Pt.col(iidx));
+    const auto  n2(orth.dot(orth));
+    if(n2 <= Pt.epsilon) continue;
+    for(int j = 0; j < Pt.cols(); j ++)
+      Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
+    fix[iidx] = fix[fpidx.second[iidx]] = true;
   }
-  return result;
+  const auto cut(R.solve(Pt * one));
+  const auto ffpidx(makeMatchPrep(Pt.projectionPt(one), test.rows(), shapebase.size()));
+  match_t<T> m(thresh, max(ggs.first, ggp.first));
+  vector<SimpleVector<T> > left, right;
+  for(int i = 0;
+          i < ffpidx.first.size() && ffpidx.first[i].first < thresh;
+          i ++) {
+    if(ffpidx.second[ffpidx.first[i].second] < 0) continue;
+    if(ffpidx.first[i].second < shapebase.size()) {
+      m.dstpoints.emplace_back(ffpidx.first[i].second);
+      m.srcpoints.emplace_back(ffpidx.second[ffpidx.first[i].second] - shapebase.size());
+    } else {
+      m.srcpoints.emplace_back(ffpidx.first[i].second - shapebase.size());
+      m.dstpoints.emplace_back(ffpidx.second[ffpidx.first[i].second]);
+    }
+    assert(0 <= m.dstpoints[m.dstpoints.size() - 1] &&
+                m.dstpoints[m.dstpoints.size() - 1] < shapebase.size() &&
+           0 <= m.srcpoints[m.srcpoints.size() - 1] &&
+                m.srcpoints[m.srcpoints.size() - 1] < points.size());
+  }
+  assert(m.dstpoints.size() == m.srcpoints.size());
+  if(m.dstpoints.size() < 4) return vector<match_t<T> >();
+  m.rdepth = T(0);
+  SimpleMatrix<T> rot(3, 3);
+  rot.O();
+  for(int k = 0; k < m.dstpoints.size() - 3; k ++) {
+    SimpleMatrix<T> rotl(3, 3);
+    SimpleMatrix<T> rotr(3, 3);
+    rotl.O();
+    rotr.O();
+    for(int kk = 0; kk < 3; kk ++) {
+      rotl.row(kk) = shapebase[m.dstpoints[k + kk]];
+      rotr.row(kk) = m.transform(points[m.srcpoints[k + kk]]);
+    }
+    rot += rotr.QR() * rotl.QR().transpose();
+  }
+  m.rot = (rot /= T(m.dstpoints.size() - 3));
+  T r0(0);
+  for(int k = 0; k < m.dstpoints.size(); k ++) {
+    const auto& shapek(shapebase[m.dstpoints[k]]);
+    const auto  pointk(m.transform(points[m.srcpoints[k]]));
+    r0 += shapek.dot(pointk) / sqrt(shapek.dot(shapek) * pointk.dot(pointk));
+  }
+  m.ratio = r0 / T(m.dstpoints.size());
+  for(int k = 0; k < m.dstpoints.size(); k ++) {
+    const auto& shapek(shapebase[m.dstpoints[k]]);
+    const auto  pointk(m.transform(points[m.srcpoints[k]]));
+    const auto  err(shapek - pointk);
+    m.rdepth += sqrt(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk)));
+  }
+  m.rdepth /= m.dstpoints.size() * m.dstpoints.size();
+  m.offset += gs.first - m.rot * gp.first * m.ratio;
+  vector<match_t<T> > mm;
+  mm.emplace_back(m);
+  return mm;
 }
 
 #define _MATCH_

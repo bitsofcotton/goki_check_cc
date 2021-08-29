@@ -55,12 +55,13 @@ template <typename T, typename feeder> class P0 {
 public:
   typedef SimpleVector<T> Vec;
   inline P0() { ; }
-  inline P0(const int& size) { f = feeder(size); }
+  inline P0(const int& size, const int& step = 1) { f = feeder(size); p = taylor(size, T(size + step - 1)); }
   inline ~P0() { ; };
   inline T next(const T& in) {
     const auto& ff(f.next(in));
-    return f.full ? nextP0<T>(ff.size()).dot(ff) : in;
+    return f.full ? p.dot(ff) - ff[ff.size() - 1] : T(0);
   }
+  Vec p;
   feeder f;
 };
 

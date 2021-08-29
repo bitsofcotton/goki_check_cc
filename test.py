@@ -16,16 +16,18 @@ elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho" or argv[2]
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
   nemph       = 4
-  if((argv[2] == "match" or argv[2] == "match0") and len(argv) > 5):
+  if((argv[2] == "match" or argv[2] == "match0" or argv[2] == "rmatch" or argv[2] == "rmatch0") and len(argv) > 5):
     pixels = int(argv[5])
-  elif((argv[2] == "matcho" or argv[2] == "rmatch" or argv[2] == "rmatch0") and len(argv) > 6):
+    if(len(argv) > 6):
+      nemph = int(argv[6])
+  elif(argv[2] == "matcho" and len(argv) > 6):
     pixels = int(argv[6])
     if(len(argv) > 7):
       nemph = int(argv[7])
   if(argv[2] == "match" or argv[2] == "match0"):
     subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
   elif(argv[2] == "rmatch" or argv[2] == "rmatch0"):
-    subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "rmatch-" + root0 + "-" + root1])
+    subprocess.call([argv[1], argv[2], str(nemph), "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "rmatch-" + root0 + "-" + root1])
   else:
     subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
   if(argv[2] == "matcho"):
@@ -130,7 +132,7 @@ else:
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call([argv[1], "bumpc", str(psi), str(rot), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
-      subprocess.call([argv[1], "lpf", root + "-" + argv[2] + "1.ppm", root + "-" + argv[2] + ".ppm", str(pixels * 4), str(1)])
+      subprocess.call([argv[1], "lpf", root + "-" + argv[2] + "1.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(1)])
     elif(argv[2] == "pextend"):
       subprocess.call(["convert", line, "-blur", "12x12+6", "-compress", "none", root + "-blur.ppm"])
       subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])

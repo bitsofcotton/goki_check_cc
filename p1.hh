@@ -39,24 +39,28 @@ public:
   typedef SimpleVector<T> Vec;
   typedef SimpleMatrix<T> Mat;
   inline P1I() { varlen = 0; }
-  inline P1I(const int& stat, const int& var) {
+  inline P1I(const int& stat, const int& var, const int& step = 1) {
     assert(0 < stat && 1 < var);
     f = feeder(stat + (varlen = var) - 1);
+    this->step = step;
   }
   inline ~P1I() { ; }
   inline T next(const T& in) {
     const auto& buf(f.next(in));
-    if(! f.full) return in;
+    if(! f.full) return T(0);
     // N.B. please use catgp to compete with over learning.
     const auto nin(sqrt(buf.dot(buf)));
-    if(nin == T(0)) return in;
-    SimpleMatrix<T> toeplitz(buf.size() - varlen + 1, varlen + 3);
-    for(int i = 0; i < toeplitz.rows(); i ++)
+    if(nin == T(0)) return T(0);
+    SimpleMatrix<T> toeplitz(buf.size() - varlen - step + 1, varlen + 3);
+    for(int i = 0; i < toeplitz.rows(); i ++) {
+      auto work(buf.subVector(i, varlen) / nin);
+      work[work.size() - 1] = buf[i + varlen + step - 1] / nin;
       toeplitz.row(i) =
-        makeProgramInvariant<T>(buf.subVector(i, varlen) / nin,
+        makeProgramInvariant<T>(move(work),
           T(i + 1) / T(toeplitz.rows() + 1)).first;
+    }
     const auto invariant(linearInvariant<T>(toeplitz));
-    if(invariant[varlen - 1] == T(0)) return in;
+    if(invariant[varlen - 1] == T(0)) return T(0);
     SimpleVector<T> work(varlen);
     for(int i = 1; i < work.size(); i ++)
       work[i - 1] = buf[i - work.size() + buf.size()] / nin;
@@ -64,12 +68,13 @@ public:
     auto work2(makeProgramInvariant<T>(work, T(1)));
     work = move(work2.first);
     return revertProgramInvariant<T>(make_pair(
-      (invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) /
-        invariant[varlen - 1], work2.second)) * nin;
+      - (invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) /
+          invariant[varlen - 1], work2.second)) * nin - buf[buf.size() - 1];
   }
   feeder f;
 private:
   int varlen;
+  int step;
 };
 
 #define _P1_

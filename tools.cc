@@ -413,9 +413,10 @@ int main(int argc, const char* argv[]) {
         sshape0.emplace_back(shape0);
         sshape1.emplace_back(shape1);
         for(int i = 1; i < nhid; i ++) {
-          const auto mmm(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0));
-          // const auto mmm(elimMatch<num_t>(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0), in0, in1, bump1, sshape1[i - 1]));
+          const auto mmm(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1]));
+//, strcmp(argv[1], "rmatch0") == 0));
 /*
+          // const auto mmm(elimMatch<num_t>(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0), in0, in1, bump1, sshape1[i - 1]));
           auto mmm(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0));
           if(nhid < mmm.size()) mmm.resize(nhid);
           mmm = elimMatch<num_t>(mmm, in0, in1, bump1, sshape1[i - 1]);
@@ -563,7 +564,8 @@ int main(int argc, const char* argv[]) {
 */
       }
     } else { 
-      auto matches(matchPartial<num_t>(shape0, shape1, strcmp(argv[1], "match0") == 0));
+      auto matches(matchPartial<num_t>(shape0, shape1));
+      // auto matches(matchPartial<num_t>(shape0, shape1, strcmp(argv[1], "match0") == 0));
       matches.resize(min(int(matches.size()), nhid));
 /*
       if(fn[fn.size() - 1] == 'm')
