@@ -3068,6 +3068,37 @@ template <typename T> std::istream& operator >> (std::istream& is, SimpleMatrix<
   return is;
 }
 
+template <typename T> static inline SimpleMatrix<T> log(const SimpleMatrix<T>& m, const int& cut = 200) {
+  SimpleMatrix<T> res(m.rows(), m.cols());
+  const auto c(m.determinant() * T(20));
+  const auto residue(SimpleMatrix<T>(m.rows(), m.cols()).I() - m / c);
+        auto buf(residue);
+  res.I(c);
+  for(int i = 1; 0 < i && i < cut; i ++) {
+    const auto before(res);
+    res -= buf / T(i);
+    if(before == res) break;
+    buf *= residue;
+  }
+  return res;
+}
+
+template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m) {
+  SimpleMatrix<T> res(m.rows(), m.cols());
+  auto buf(m);
+  res.I();
+  for(int i = 1; 0 < i ; i ++) {
+    const auto before(res);
+    res += buf / T(i);
+    if(before == res) break;
+    buf *= m;
+  }
+  return res;
+}
+
+template <typename T> static inline SimpleMatrix<T> pow(const SimpleMatrix<T>& m, const T& p) {
+  return exp(log(m) * p);
+}
 
 template <typename T> SimpleMatrix<complex<T> > dft(const int& size0) {
   const auto size(abs(size0));
@@ -3191,7 +3222,7 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
   return size0 < 0 ? ii : dd;
 }
 
-template <typename T> inline SimpleVector<T> taylor(const int& size, const T& step) {
+template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step) {
   const int  step00(max(int(0), min(size - 1, int(floor(step)))));
   const auto residue0(step - T(step00));
   const auto step0(step00 == size - 1 || abs(residue0) <= T(int(1)) / T(int(2)) ? step00 : step00 + 1);
@@ -3217,13 +3248,13 @@ template <typename T> inline SimpleVector<T> taylor(const int& size, const T& st
   return res;
 }
 
-template <typename T> SimpleVector<T> linearInvariant(const SimpleMatrix<T>& in) {
+template <typename T> static inline SimpleVector<T> linearInvariant(const SimpleMatrix<T>& in) {
   vector<pair<T, int> > sute;
   return in.QR().innerFix(in, sute);
 }
 
 // N.B. please refer bitsofcotton/randtools.
-template <typename T> inline pair<SimpleVector<T>, T> makeProgramInvariant(const SimpleVector<T>& in, const T& index = - T(int(1))) {
+template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvariant(const SimpleVector<T>& in, const T& index = - T(int(1))) {
   SimpleVector<T> res(in.size() + (T(int(0)) <= index ? 3 : 2));
   res.setVector(0, in);
   res[in.size()] = T(int(1));
@@ -3244,7 +3275,7 @@ template <typename T> inline pair<SimpleVector<T>, T> makeProgramInvariant(const
   return make_pair(res, ratio);
 }
 
-template <typename T> inline T revertProgramInvariant(const pair<T, T>& in) {
+template <typename T> static inline T revertProgramInvariant(const pair<T, T>& in) {
   return max(- T(int(1)), min(T(int(1)), in.first * in.second - T(int(1))));
 }
 

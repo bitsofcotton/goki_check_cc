@@ -12,28 +12,19 @@ rot     = 5
 
 if(len(argv) < 4):
   print("no much argments.")
-elif(argv[2] == "match" or argv[2] == "match0" or argv[2] == "matcho" or argv[2] == "rmatch" or argv[2] == "rmatch0"):
+elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
-  nemph       = 4
-  if((argv[2] == "match" or argv[2] == "match0" or argv[2] == "rmatch" or argv[2] == "rmatch0") and len(argv) > 5):
+  nsub  = 4
+  nemph = 4
+  if(len(argv) > 5):
     pixels = int(argv[5])
     if(len(argv) > 6):
-      nemph = int(argv[6])
-  elif(argv[2] == "matcho" and len(argv) > 6):
-    pixels = int(argv[6])
+      nsub = int(argv[6])
     if(len(argv) > 7):
       nemph = int(argv[7])
-  if(argv[2] == "match" or argv[2] == "match0"):
-    subprocess.call([argv[1], argv[2], "16", "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
-  elif(argv[2] == "rmatch" or argv[2] == "rmatch0"):
-    subprocess.call([argv[1], argv[2], str(nemph), "40", str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "rmatch-" + root0 + "-" + root1])
-  else:
-    subprocess.call([argv[1], argv[2], argv[5], str(nemph), str(pixels), str(pixels), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", argv[5]])
-  if(argv[2] == "matcho"):
-    subprocess.call(["ffmpeg", "-loop", "1", "-i", argv[5] + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", argv[5] + ".mp4"])
-  elif(argv[2] == "rmatch" or argv[2] == "rmatch0"):
-    subprocess.call(["ffmpeg", "-loop", "1", "-i", "rmatch-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", argv[5] + ".mp4"])
+  subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(pixels), str(pixels), str(zratio), root0 + ".ppm", root0 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", root0 + "-mask.ppm", root1 + "-mask.ppm", "match-" + root0 + "-" + root1])
+  subprocess.call(["ffmpeg", "-loop", "1", "-i", "match-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-" + root1 + ".mp4"])
 elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "composite"):
   cmd = [argv[1], argv[2], argv[2] + ".ppm"]
   for s in argv[3:]:

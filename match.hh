@@ -11,9 +11,6 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * XXX: this could be rewrited by catg.hh .
- */
 #if !defined(_MATCH_)
 
 using std::min;
@@ -247,12 +244,13 @@ template <typename T> pair<vector<pair<T, int> >, vector<int> > makeMatchPrep(co
         pidx[i] = j;
       }
     }
+    fidx.emplace_back(make_pair(score, i));
   }
   sort(fidx.begin(), fidx.end());
   return make_pair(move(fidx), move(pidx));
 }
 
-template <typename T> vector<match_t<T> > matchPartial(const vector<SimpleVector<T> >& shapebase0, const vector<SimpleVector<T> >& points0, const T& thresh = T(1) / T(100)) {
+template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& shapebase0, const vector<SimpleVector<T> >& points0, const T& thresh = T(1) / T(10)) {
   const auto  gs(makeG(shapebase0));
   const auto  gp(makeG(points0));
   const auto  ggs(normalizeG(gs.second));
@@ -308,40 +306,42 @@ template <typename T> vector<match_t<T> > matchPartial(const vector<SimpleVector
                 m.srcpoints[m.srcpoints.size() - 1] < points.size());
   }
   assert(m.dstpoints.size() == m.srcpoints.size());
-  if(m.dstpoints.size() < 4) return vector<match_t<T> >();
-  m.rdepth = T(0);
+  SimpleVector<T> off(3);
+  off.O();
+  for(int k = 0; k < m.dstpoints.size(); k ++)
+    off += m.transform(points0[m.srcpoints[k]]) - shapebase0[m.dstpoints[k]];
+  if(m.dstpoints.size() < 4) return m;
+  m.offset += (off /= T(m.dstpoints.size()));
   SimpleMatrix<T> rot(3, 3);
-  rot.O();
+  rot.I();
   for(int k = 0; k < m.dstpoints.size() - 3; k ++) {
     SimpleMatrix<T> rotl(3, 3);
     SimpleMatrix<T> rotr(3, 3);
     rotl.O();
     rotr.O();
     for(int kk = 0; kk < 3; kk ++) {
-      rotl.row(kk) = shapebase[m.dstpoints[k + kk]];
-      rotr.row(kk) = m.transform(points[m.srcpoints[k + kk]]);
+      rotl.setCol(kk, shapebase0[m.dstpoints[k + kk]]);
+      rotr.setCol(kk, m.transform(points0[m.srcpoints[k + kk]]));
     }
-    rot += rotr.QR() * rotl.QR().transpose();
+    rot *= rotr.QR() * rotl.QR().transpose();
   }
-  m.rot = (rot /= T(m.dstpoints.size() - 3));
+  // rot^(1/n).
+  m.rot = pow(rot, T(1) / T(m.dstpoints.size()));
   T r0(0);
   for(int k = 0; k < m.dstpoints.size(); k ++) {
-    const auto& shapek(shapebase[m.dstpoints[k]]);
-    const auto  pointk(m.transform(points[m.srcpoints[k]]));
-    r0 += shapek.dot(pointk) / sqrt(shapek.dot(shapek) * pointk.dot(pointk));
+    const auto& shapek(shapebase0[m.dstpoints[k]]);
+    const auto  pointk(m.transform(points0[m.srcpoints[k]]));
+    r0 += shapek.dot(pointk) / shapek.dot(shapek);
   }
-  m.ratio = r0 / T(m.dstpoints.size());
+  m.ratio = (r0 /= T(m.dstpoints.size()));
   for(int k = 0; k < m.dstpoints.size(); k ++) {
-    const auto& shapek(shapebase[m.dstpoints[k]]);
-    const auto  pointk(m.transform(points[m.srcpoints[k]]));
+    const auto& shapek(shapebase0[m.dstpoints[k]]);
+    const auto  pointk(m.transform(points0[m.srcpoints[k]]));
     const auto  err(shapek - pointk);
     m.rdepth += sqrt(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk)));
   }
   m.rdepth /= m.dstpoints.size() * m.dstpoints.size();
-  m.offset += gs.first - m.rot * gp.first * m.ratio;
-  vector<match_t<T> > mm;
-  mm.emplace_back(m);
-  return mm;
+  return m;
 }
 
 #define _MATCH_

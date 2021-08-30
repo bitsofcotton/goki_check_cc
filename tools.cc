@@ -45,9 +45,7 @@ void usage() {
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "gokicheck (match0|match) <num_of_res_shown> <num_of_hidden_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck (rmatch0|rmatch) <num_of_res_shown> <num_of_sub_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
+  cout << "gokicheck match <nsub> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
@@ -320,44 +318,16 @@ int main(int argc, const char* argv[]) {
       data[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
     if(!file.savep2or3(argv[7], data, ! true))
       return - 1;
-  } else if(strcmp(argv[1], "matcho") == 0 ||
-            strcmp(argv[1], "match")  == 0 ||
-            strcmp(argv[1], "match0") == 0 ||
-            strcmp(argv[1], "rmatch") == 0 ||
-            strcmp(argv[1], "rmatch0") == 0) {
+  } else if(strcmp(argv[1], "match") == 0) {
     if(argc < 11) {
       usage();
       return - 1;
     }
-    int fnout(11);
-    int nshow(0);
-    int nhid(0);
-    int nemph(0);
-    match_t<num_t> m;
-    if(strcmp(argv[1], "match") == 0 || strcmp(argv[1], "match0") == 0) {
-      nshow = atoi(argv[2]);
-      nhid = atoi(argv[3]);
-    } else if(strcmp(argv[1], "rmatch") == 0 ||
-              strcmp(argv[1], "rmatch0") == 0) {
-      nemph = atoi(argv[2]);
-      nhid  = atoi(argv[3]);
-    } else {
-      std::ifstream input;
-      input.open(argv[2]);
-      if(input.is_open()) {
-        try {
-          input >> m;
-          cerr << m;
-        } catch(...) {
-          usage();
-          return - 2;
-        }
-      }
-      input.close();
-      nemph = atoi(argv[3]);
-    }
-    const auto  vboxdst(atoi(argv[4]));
-    const auto  vboxsrc(atoi(argv[5]));
+          int  fnout(11);
+    const auto nsub(atoi(argv[2]));
+    const auto nemph(atoi(argv[3]));
+    const auto vboxdst(atoi(argv[4]));
+    const auto vboxsrc(atoi(argv[5]));
     const num_t zratio(std::atof(argv[6]));
     typename simpleFile<num_t>::Mat in0[3], in1[3], bump0orig[3], bump1orig[3], mask0orig[3], mask1orig[3];
     vector<typename simpleFile<num_t>::Veci> delau0, delau1;
@@ -397,194 +367,147 @@ int main(int argc, const char* argv[]) {
     redig.initialize(vboxdst, zratio);
     redig.getTileVec(bump0, shape0, delau0);
     redig.maskVectors(shape0, delau0, mask0);
-    if(fn[fn.size() - 1] == 'm') {
-      redig.initialize(vboxsrc, zratio);
-      redig.getTileVec(bump1, shape1, delau1);
-      redig.maskVectors(shape1, delau1, mask1);
+    redig.initialize(vboxsrc, zratio);
+    redig.getTileVec(bump1, shape1, delau1);
+    redig.maskVectors(shape1, delau1, mask1);
+    vector<vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
+    vector<vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
+    sdelau0.emplace_back(delau0);
+    sdelau1.emplace_back(delau1);
+    sshape0.emplace_back(shape0);
+    sshape1.emplace_back(shape1);
+    vector<match_t<num_t> > mm;
+    for(int i = 1; i <= nsub; i ++) {
+      const auto m(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1]));
+      mm.emplace_back(m);
+      sdelau0.emplace_back(vector<typename simpleFile<num_t>::Veci>());
+      sdelau1.emplace_back(vector<typename simpleFile<num_t>::Veci>());
+      sshape0.emplace_back(vector<typename simpleFile<num_t>::Vec>());
+      sshape1.emplace_back(vector<typename simpleFile<num_t>::Vec>());
+      auto dstsort(m.dstpoints);
+      auto srcsort(m.srcpoints);
+      std::sort(dstsort.begin(), dstsort.end());
+      std::sort(srcsort.begin(), srcsort.end());
+      vector<int> ds0;
+      vector<int> ds1;
+      ds0.resize(sshape0[i - 1].size(), - 1);
+      ds1.resize(sshape1[i - 1].size(), - 1);
+      for(int j = 0, jj = 0; j < sshape0[i - 1].size(); j ++) {
+        if(binary_search(dstsort.begin(), dstsort.end(), j))
+          continue;
+        sshape0[i].emplace_back(sshape0[i - 1][j]);
+        ds0[j] = jj ++;
+      }
+      for(int j = 0, jj = 0; j < sshape1[i - 1].size(); j ++) {
+        if(binary_search(srcsort.begin(), srcsort.end(), j))
+          continue;
+        sshape1[i].emplace_back(sshape1[i - 1][j]);
+        ds1[j] = jj ++;
+      }
+      sdelau0[i].reserve(sdelau0[i - 1].size());
+      sdelau1[i].reserve(sdelau1[i - 1].size());
+      for(int j = 0; j < sdelau0[i - 1].size(); j ++) {
+        auto sd0(sdelau0[i - 1][j]);
+        for(int k = 0; k < sd0.size(); k ++)
+          if((sd0[k] = ds0[sd0[k]]) < 0) goto nxtsd0;
+        sdelau0[i].emplace_back(move(sd0));
+       nxtsd0:
+        ;
+      }
+      for(int j = 0; j < sdelau1[i - 1].size(); j ++) {
+        auto sd1(sdelau1[i - 1][j]);
+        for(int k = 0; k < sd1.size(); k ++)
+          if((sd1[k] = ds1[sd1[k]]) < 0) goto nxtsd1;
+        sdelau1[i].emplace_back(move(sd1));
+       nxtsd1:
+        ;
+      }
+      if(! sdelau0[i].size() || ! sdelau1[i].size() || ! sshape0[i].size() || ! sshape1[i].size())
+        break;
     }
-    if(strcmp(argv[1], "rmatch") == 0 || strcmp(argv[1], "rmatch0") == 0 ||
-       strcmp(argv[1], "matcho") == 0) {
-      vector<match_t<num_t> > mm;
-      vector<vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
-      vector<vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
-      if(strcmp(argv[1], "rmatch")  == 0 || strcmp(argv[1], "rmatch0") == 0) {
-        sdelau0.emplace_back(delau0);
-        sdelau1.emplace_back(delau1);
-        sshape0.emplace_back(shape0);
-        sshape1.emplace_back(shape1);
-        for(int i = 1; i < nhid; i ++) {
-          const auto mmm(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1]));
-//, strcmp(argv[1], "rmatch0") == 0));
-/*
-          // const auto mmm(elimMatch<num_t>(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0), in0, in1, bump1, sshape1[i - 1]));
-          auto mmm(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1], strcmp(argv[1], "rmatch0") == 0));
-          if(nhid < mmm.size()) mmm.resize(nhid);
-          mmm = elimMatch<num_t>(mmm, in0, in1, bump1, sshape1[i - 1]);
-*/
-          if(! mmm.size()) break;
-          mm.emplace_back(mmm[0]);
-          auto dstsort(mm[i - 1].dstpoints);
-          auto srcsort(mm[i - 1].srcpoints);
-          sort(dstsort.begin(), dstsort.end());
-          sort(srcsort.begin(), srcsort.end());
-          sdelau0.emplace_back(vector<typename simpleFile<num_t>::Veci>());
-          sdelau1.emplace_back(vector<typename simpleFile<num_t>::Veci>());
-          sshape0.emplace_back(vector<typename simpleFile<num_t>::Vec>());
-          sshape1.emplace_back(vector<typename simpleFile<num_t>::Vec>());
-          vector<int> revdst;
-          vector<int> revsrc;
-          for(int j = 0; j < sshape0[i - 1].size(); j ++) {
-            if(binary_search(dstsort.begin(), dstsort.end(), j)) {
-              revdst.emplace_back(- 1);
-              continue;
-            }
-            sshape0[i].emplace_back(sshape0[i - 1][j]);
-            revdst.emplace_back(sshape0[i].size() - 1);
-          }
-          for(int j = 0; j < sshape1[i - 1].size(); j ++) {
-            if(binary_search(srcsort.begin(), srcsort.end(), j)) {
-              revsrc.emplace_back(- 1);
-              continue;
-            }
-            sshape1[i].emplace_back(sshape1[i - 1][j]);
-            revsrc.emplace_back(sshape1[i].size() - 1);
-          }
-          for(int j = 0; j < sdelau0[i - 1].size(); j ++) {
-            auto sd0(sdelau0[i - 1][j]);
-            for(int k = 0; k < sd0.size(); k ++) {
-              sd0[k] = revdst[sd0[k]];
-              if(sd0[k] < 0) goto nsd0;
-            }
-            sdelau0[i].emplace_back(sd0);
-           nsd0:
-            ;
-          }
-          for(int j = 0; j < sdelau1[i - 1].size(); j ++) {
-            auto sd1(sdelau1[i - 1][j]);
-            for(int k = 0; k < sd1.size(); k ++) {
-              sd1[k] = revsrc[sd1[k]];
-              if(sd1[k] < 0) goto nsd1;
-            }
-            sdelau1[i].emplace_back(sd1);
-           nsd1:
-            ;
-          }
-          if(! sdelau0[i].size() || ! sdelau1[i].size() || ! sshape0[i].size() || ! sshape1[i].size())
-            break;
-        }
-      } else {
-        mm.emplace_back(m);
-        sshape0.emplace_back(shape0);
-        sshape1.emplace_back(shape1);
-        sdelau0.emplace_back(delau0);
-        sdelau1.emplace_back(delau1);
-      }
-      typename simpleFile<num_t>::Mat outs[3];
-      const auto rin0(redig.makeRefMatrix(in0[0], 1));
-      const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
-      vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
-      vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
+    typename simpleFile<num_t>::Mat outs[3];
+    const auto rin0(redig.makeRefMatrix(in0[0], 1));
+    const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
+    vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
+    vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
+    for(int i = 0; i < mm.size(); i ++) {
+      mhull0.emplace_back(redig.mesh2(sshape0[i], mm[i].dstpoints));
+      mhull1.emplace_back((~ mm[i]).hullConv(mhull0[i]));
+    }
+    const string outbase(argv[fnout]);
+    for(int idx = 0; idx < 3; idx ++)
       for(int i = 0; i < mm.size(); i ++) {
-        mhull0.emplace_back(redig.mesh2(sshape0[i], mm[i].dstpoints));
-        mhull1.emplace_back((~ mm[i]).hullConv(mhull0[i]));
+        if(i)
+          outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
+                                       sshape0[i], sdelau0[i]),
+                         sshape0[i], sdelau0[i]);
+        else
+          outs[idx]  = redig.showMatch(redig.draw(in0[idx] * num_t(0),
+                                       sshape0[i], sdelau0[i]),
+                         sshape0[i], sdelau0[i]);
       }
-      const string outbase(argv[fnout]);
-      for(int idx = 0; idx < 3; idx ++) {
-        for(int i = 0; i < mm.size(); i ++)
-          if(i)
-            outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                                         sshape0[i], sdelau0[i]),
-                           sshape0[i], sdelau0[i]);
-          else
-            outs[idx]  = redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                                         sshape0[i], sdelau0[i]),
-                           sshape0[i], sdelau0[i]);
+    redig.normalize(outs, 1.);
+    file.savep2or3((outbase + string("-repl0.ppm")).c_str(), outs, false);
+    for(int idx = 0; idx < 3; idx ++)
+      for(int i = 0; i < mm.size(); i ++) {
+        if(i)
+          outs[idx] += redig.showMatch(redig.draw(in1[idx] * num_t(0),
+                                     mm[i].transform(sshape1[i]), sdelau1[i]),
+                                     mm[i].transform(sshape1[i]), mhull1[i]);
+        else
+          outs[idx]  = redig.showMatch(redig.draw(in1[idx] * num_t(0),
+                                     mm[i].transform(sshape1[i]), sdelau1[i]),
+                                     mm[i].transform(sshape1[i]), mhull1[i]);
       }
-      redig.normalize(outs, 1.);
-      file.savep2or3((outbase + string("-repl0.ppm")).c_str(), outs, false);
-      for(int idx = 0; idx < 3; idx ++) {
-        for(int i = 0; i < mm.size(); i ++)
-          if(i)
-            outs[idx] += redig.showMatch(redig.draw(in1[idx] * num_t(0),
-                                       mm[i].transform(sshape1[i]), sdelau1[i]),
-                                       mm[i].transform(sshape1[i]), mhull1[i]);
-          else
-            outs[idx]  = redig.showMatch(redig.draw(in1[idx] * num_t(0),
-                                       mm[i].transform(sshape1[i]), sdelau1[i]),
-                                       mm[i].transform(sshape1[i]), mhull1[i]);
+    redig.normalize(outs, 1.);
+    file.savep2or3((outbase + string("-repl1.ppm")).c_str(), outs, false);
+    for(int idx = 0; idx < 3; idx ++) {
+      for(int i = 0; i < mm.size(); i ++)
+        if(i)
+          outs[idx] += redig.showMatch(in0[idx], sshape0[i], sdelau0[i]);
+        else
+          outs[idx]  = redig.showMatch(in0[idx], sshape0[i], sdelau0[i]);
+    }
+    redig.normalize(outs, 1.);
+    file.savep2or3((outbase + string(".ppm")).c_str(), outs, false);
+    for(int i = 0; i < nemph; i ++) {
+      const auto iemph(num_t(i) / num_t(nemph));
+      simpleFile<num_t>::Mat reref;
+      for(int i = 0; i < mm.size(); i ++) {
+        const auto rd(redig.draw(rin1, sshape1[i],
+                        redig.takeShape(sshape1[i], sshape0[i],
+                          ~ mm[i], iemph), sdelau1[i]));
+        if(i)
+          for(int j = 0; j < reref.rows(); j ++)
+            for(int k = 0; k < reref.cols(); k ++) {
+              if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);
+            }
+        else
+          reref = rd;
       }
-      redig.normalize(outs, 1.);
-      file.savep2or3((outbase + string("-repl1.ppm")).c_str(), outs, false);
-      for(int idx = 0; idx < 3; idx ++) {
-        for(int i = 0; i < mm.size(); i ++)
-          if(i)
-            outs[idx] += redig.showMatch(in0[idx], sshape0[i], sdelau0[i]);
-          else
-            outs[idx]  = redig.showMatch(in0[idx], sshape0[i], sdelau0[i]);
-      }
-      redig.normalize(outs, 1.);
-      file.savep2or3((outbase + string(".ppm")).c_str(), outs, false);
-      for(int i = 0; i < nemph; i ++) {
-        const auto iemph(num_t(i) / num_t(nemph));
-        simpleFile<num_t>::Mat reref;
-        for(int i = 0; i < mm.size(); i ++) {
-          const auto rd(redig.draw(rin1, sshape1[i],
-                          redig.takeShape(sshape1[i], sshape0[i],
-                            ~ mm[i], iemph), sdelau1[i]));
-          if(i)
-            for(int j = 0; j < reref.rows(); j ++)
-              for(int k = 0; k < reref.cols(); k ++) {
-                if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);
-              }
-          else
-            reref = rd;
-        }
-        for(int idx = 0; idx < 3; idx ++)
-          outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
-          // outs[idx] = redig.draw(in1[idx] * num_t(0), shape, delau1);
-        file.savep2or3((outbase + string("-") +
-                                  to_string(i) +
-                                  string("-") +
-                                  to_string(nemph) +
-                                  string(".ppm")).c_str(), outs, false);
-/*
-        file.saveobj(redig.takeShape(shape0, shape1, m,   iemph),
-                     outs[0].rows(), outs[0].cols(), delau0,
-                     (outbase + string("-emph0-") +
+      for(int idx = 0; idx < 3; idx ++)
+        outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
+        // outs[idx] = redig.draw(in1[idx] * num_t(0), shape, delau1);
+      file.savep2or3((outbase + string("-") +
                                 to_string(i) +
                                 string("-") +
                                 to_string(nemph) +
-                                string(".obj")).c_str());
-        file.saveobj(shape, outs[0].rows(), outs[0].cols(), delau1,
-                     (outbase + string("-emph1-") +
-                                to_string(i) +
-                                string("-") +
-                                to_string(nemph) +
-                                string(".obj")).c_str());
-*/
-      }
-    } else { 
-      auto matches(matchPartial<num_t>(shape0, shape1));
-      // auto matches(matchPartial<num_t>(shape0, shape1, strcmp(argv[1], "match0") == 0));
-      matches.resize(min(int(matches.size()), nhid));
+                                string(".ppm")).c_str(), outs, false);
 /*
-      if(fn[fn.size() - 1] == 'm')
-        matches = elimMatch<num_t>(matches, in0, in1, bump1, shape1);
+      file.saveobj(redig.takeShape(shape0, shape1, m,   iemph),
+                   outs[0].rows(), outs[0].cols(), delau0,
+                   (outbase + string("-emph0-") +
+                              to_string(i) +
+                              string("-") +
+                              to_string(nemph) +
+                              string(".obj")).c_str());
+      file.saveobj(shape, outs[0].rows(), outs[0].cols(), delau1,
+                   (outbase + string("-emph1-") +
+                              to_string(i) +
+                              string("-") +
+                              to_string(nemph) +
+                              string(".obj")).c_str());
 */
-      cerr << matches.size() << "pending" << endl;
-      for(int n = 0; n < min(int(matches.size()), nshow); n ++) {
-        std::ofstream output;
-        output.open((string(argv[fnout]) + to_string(n + 1) +
-                     string(".txt")).c_str());
-        if(output.is_open()) {
-          try {
-            output << matches[n];
-          } catch(...) {
-            ;
-          }
-        }
-        output.close();
-      }
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
             strcmp(argv[1], "lenl") == 0 ||
@@ -701,7 +624,7 @@ int main(int argc, const char* argv[]) {
       file.saveobj(redig.takeShape(pdst, psrc, m, num_t(1) / num_t(2)),
                    My, Mx, poldst, argv[7]);
     } else {
-      const auto m(matchPartial<num_t>(pdst, psrc)[0]);
+      const auto m(matchPartial<num_t>(pdst, psrc));
       file.saveobj(redig.takeShape(pdst, psrc, m, num_t(1) / num_t(2)),
                    My, Mx, poldst, argv[4]);
     }
