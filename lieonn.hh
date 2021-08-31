@@ -3089,9 +3089,9 @@ template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m
   res.I();
   for(int i = 1; 0 < i ; i ++) {
     const auto before(res);
-    res += buf / T(i);
+    res += buf;
     if(before == res) break;
-    buf *= m;
+    buf *= m / T(i + 1);
   }
   return res;
 }
