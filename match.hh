@@ -206,6 +206,7 @@ template <typename T> static inline pair<SimpleVector<T>, vector<SimpleVector<T>
   res.first /= T(in.size());
   for(int i = 0; i < in.size(); i ++)
     res.second.emplace_back(in[i] - res.first);
+  assert(res.second.size() == in.size());
   return move(res);
 }
 
@@ -217,6 +218,7 @@ template <typename T> static inline pair<T, vector<SimpleVector<T> > > normalize
     res.first = max(max(res.first, abs(s[i][0])), max(abs(s[i][1]), abs(s[i][2])));
   for(int i = 0; i < s.size(); i ++)
     res.second.emplace_back(s[i] / res.first);
+  assert(res.second.size() == s.size());
   return move(res);
 }
 
@@ -256,7 +258,9 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
   const auto  ggs(normalizeG(gs.second));
   const auto  ggp(normalizeG(gp.second));
   const auto& shapebase(ggs.second);
-  const auto& points(ggs.second);
+  const auto& points(ggp.second);
+  assert(shapebase.size() == shapebase0.size());
+  assert(points.size() == points0.size());
   std::cerr << "match(" << shapebase.size() << ", " << points.size() << ")" << std::endl;
   SimpleMatrix<T> test(shapebase.size() + points.size(), 3 + 2);
   for(int i = 0; i < shapebase.size(); i ++)
@@ -270,20 +274,44 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
   one.I(T(int(1)));
   fix.I(false);
   const auto on(Pt.projectionPt(one));
-  vector<int> pidx;
   vector<pair<T, int> > fidx;
-  const auto fpidx(makeMatchPrep(on, test.rows(), shapebase.size()));
+  auto fpidx(makeMatchPrep(on, test.rows(), shapebase.size()));
   for(int n_fixed = 0, idx = 0;
           n_fixed < Pt.rows() - 1 && idx < fpidx.first.size();
           n_fixed ++, idx ++) {
     const auto& iidx(fpidx.first[idx].second);
-    if(fix[iidx]) continue;
+    if(fix[iidx] || fpidx.second[iidx] < 0) continue;
     const auto  orth(Pt.col(iidx));
     const auto  n2(orth.dot(orth));
     if(n2 <= Pt.epsilon) continue;
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
     fix[iidx] = fix[fpidx.second[iidx]] = true;
+    for(int j = 0; j < shapebase.size(); j ++) {
+      if(fix[j]) continue;
+      fpidx.second[j] = - 1;
+      T score(0);
+      for(int jj = shapebase.size(); jj < Pt.cols(); jj ++) {
+        if(fix[jj]) continue;
+        const auto lscore(abs(on[j] - on[jj]));
+        score   = lscore;
+        fpidx.second[j] = jj;
+      }
+      fpidx.first[j].first = score;
+    }
+    for(int j = shapebase.size(); j < Pt.cols(); j ++) {
+      if(fix[j]) continue;
+      fpidx.second[j] = - 1;
+      T score(0);
+      for(int jj = 0; jj < shapebase.size(); jj ++) {
+        if(fix[jj]) continue;
+        const auto lscore(abs(on[j] - on[jj]));
+        score   = lscore;
+        fpidx.second[j] = jj;
+      }
+      fpidx.first[j].first = score;
+    }
+    sort(fpidx.first.begin(), fpidx.first.end());
   }
   const auto cut(R.solve(Pt * one));
   const auto ffpidx(makeMatchPrep(Pt.projectionPt(one), test.rows(), shapebase.size()));
@@ -301,9 +329,11 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
       m.dstpoints.emplace_back(ffpidx.second[ffpidx.first[i].second]);
     }
     assert(0 <= m.dstpoints[m.dstpoints.size() - 1] &&
-                m.dstpoints[m.dstpoints.size() - 1] < shapebase.size() &&
+                m.dstpoints[m.dstpoints.size() - 1] < shapebase0.size() &&
            0 <= m.srcpoints[m.srcpoints.size() - 1] &&
-                m.srcpoints[m.srcpoints.size() - 1] < points.size());
+                m.srcpoints[m.srcpoints.size() - 1] < points0.size());
+    assert(points0[m.srcpoints[m.srcpoints.size() - 1]].size() == 3 &&
+           shapebase0[m.dstpoints[m.dstpoints.size() - 1]].size() == 3);
   }
   assert(m.dstpoints.size() == m.srcpoints.size());
   SimpleVector<T> off(3);
