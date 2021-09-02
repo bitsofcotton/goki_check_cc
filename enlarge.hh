@@ -40,8 +40,6 @@ typedef enum {
   COLLECT_X,
   COLLECT_Y,
   COLLECT_BOTH,
-  BUMP_X,
-  BUMP_Y,
   BUMP_BOTH,
   EXTEND_X,
   EXTEND_Y,
@@ -114,7 +112,7 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
   SimpleMatrix<T> s;
   const auto file(std::string("./.cache/lieonn/sharpen-") + std::to_string(size) +
 #if defined(_FLOAT_BITS_)
-    std:string("-") + std::to_string(_FLOAT_BITS_)
+    std::string("-") + std::to_string(_FLOAT_BITS_)
 #else
     std::string("-ld")
 #endif
@@ -160,7 +158,7 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& n = 0, const int& recur = 2) {
   assert(0 <= n && (dir == BLINK_Y || dir == BLINK_X || dir == BLINK_BOTH || 0 < recur));
   static const auto Pi(atan2(T(1), T(1)) * T(4));
-  if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == ABS) {
+  if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == BUMP_BOTH || dir == CLIP || dir == ABS) {
     switch(dir) {
     case SHARPEN_BOTH:
       return filter<T>(filter<T>(data, SHARPEN_X, n, recur), SHARPEN_Y, n, recur);
@@ -174,9 +172,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return (filter<T>(data, INTEG_X, n, recur) + filter<T>(data, INTEG_Y, n, recur)) / T(2);
     case COLLECT_BOTH:
       return (filter<T>(data, COLLECT_X, n, recur) + filter<T>(data, COLLECT_Y, n, recur)) / T(2);
-    case BUMP_BOTH:
-      // eigen sum on curvature.
-      return (filter<T>(data, BUMP_X, n, recur) + filter<T>(data, BUMP_Y, n, recur)) / T(2);
     case EXTEND_BOTH:
       return filter<T>(filter<T>(filter<T>(filter<T>(data, EXTEND_X, n, recur), CLIP, n, recur), EXTEND_Y, n, recur), CLIP, n, recur);
     case BLINK_BOTH:
@@ -195,8 +190,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(data.transpose(), INTEG_Y, n, recur).transpose();
     case COLLECT_X:
       return filter<T>(data.transpose(), COLLECT_Y, n, recur).transpose();
-    case BUMP_X:
-      return filter<T>(data.transpose(), BUMP_Y, n, recur).transpose();
     case EXTEND_X:
       return filter<T>(data.transpose(), EXTEND_Y, n, recur).transpose();
     case BLINK_X:
@@ -277,12 +270,12 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         return result;
       }
       break;
-    case BUMP_Y:
+    case BUMP_BOTH:
       {
         SimpleMatrix<T> result(data.rows(), data.cols());
         SimpleMatrix<T> zscore(data.rows(), data.cols());
         result.O();
-        zscore.I(- T(1));
+        zscore.O(- T(1));
         const auto rxy(T(min(data.rows(), data.cols())));
         const int  dratio(sqrt(sqrt(rxy)));
               SimpleVector<T> camera(2);
@@ -291,8 +284,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         camera[1] = T(1);
         cpoint[0] = T(1) / T(2 * dratio);
         for(int zi = 0; zi < dratio; zi ++) {
-          SimpleMatrix<T> A(data.rows(), data.cols());
-          A.O();
           // N.B. projection scale is linear.
           cpoint[1] = T(zi) / T(dratio);
           // x-z plane projection of point p with camera geometry c to z=0.
@@ -301,19 +292,27 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           const auto t(- camera[1] / (cpoint[1] - camera[1]));
           const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
           if(abs(int(y0)) < 3 || rxy < abs(y0) * T(2)) continue;
-          const auto Dop(diff<T>(abs(int(y0)) & ~ int(1)));
-          const auto Dop0(Dop.row(Dop.rows() / 2) + Dop.row(Dop.rows() / 2 + 1));
-          //  N.B. dC_k/dy on zi.
-          for(int i = 0; i < A.rows(); i ++) {
-            for(int j = 0; j < Dop0.size(); j ++)
-              A.row(i) += data.row(getImgPt<int>(i + j - Dop0.size() / 2, data.rows())) * Dop0[j];
-          }
-          for(int i = 0; i < A.rows(); i ++) {
-            for(int j = 0; j < A.cols(); j ++)
-              if(zscore(i, j) < abs(A(i, j))) {
-                result(i, j) = T(zi + 1);
-                zscore(i, j) = abs(A(i, j));
+          const auto Dop(diff<T>(abs(int(y0) & ~ int(1))));
+          const auto Dop0((Dop.row(y0 / 2) + Dop.row(y0 / 2 + 1)) / T(2));
+          // N.B. curvature matrix det == EG - F^2, we see only \< relation.
+          for(int i = 0; i < data.rows(); i ++) {
+            for(int j = 0; j < data.cols(); j ++) {
+              T zy(0), zx(0);
+              for(int kk = 0; kk < Dop0.size(); kk ++) {
+                zy += data(getImgPt<int>(i + kk - Dop0.size() / 2,
+                  data.rows()), j) * Dop0[kk];
+                zx += data(i, getImgPt<int>(j + kk - Dop0.size() / 2,
+                  data.cols()) ) * Dop0[kk];
               }
+              const auto E(T(1) + zy * zy);
+              const auto F(       zy * zx);
+              const auto G(T(1) + zx * zx);
+              const auto lscore(abs(E * G - F * F));
+              if(zscore(i, j) < lscore) {
+                result(i, j) = T(zi + 1);
+                zscore(i, j) = lscore;
+              }
+            }
           }
         }
         return result;

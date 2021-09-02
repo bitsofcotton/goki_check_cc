@@ -103,7 +103,7 @@ public:
   Mat  compImage(const Mat& in, const Mat& opt) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
-  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n = 0) const;
+  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi) const;
   vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -214,6 +214,7 @@ template <typename T> void reDig<T>::drawMatchLine(Mat& map, const Vec& lref0, c
   }
   const auto d10(lref1 - lref0);
   const auto dlt(abs(lref0[idxM] - lref1[idxM]));
+  if(dlt == T(0)) return;
   const auto denom(T(1) / dlt);
   for(int i = 0; i <= int(dlt); i ++) {
     const auto gidx(lref0 + d10 * T(i) * denom);
@@ -853,103 +854,87 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& n) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
-  if(n == 0) {
-          Vec  origin(3);
-    origin[0] = T(0);
-    origin[1] = T(color.cols() - 1) / T(2);
-    origin[2] = T(0);
-    const auto color0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
-    const auto color1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
-    origin[0] = T(color.rows() - 1);
-    const auto color2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
-    const auto color3(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
-          Mat  result(color.rows(), color.cols());
-          auto zscore(result);
-    result.O();
-    zscore.I(- T(1));
-    const T   rxy(T(color0.rows() - 1) / T(2));
-    const int dratio(sqrt(sqrt(rxy)));
-          Vec camera(2);
-    camera[0] = T(0);
-    camera[1] = T(1);
-    for(int j = 0; j < result.rows(); j ++) {
-      for(int zi = 0; zi < dratio; zi ++) {
-        Vec cpoint(2);
-        cpoint[0] = T(1) / T(2 * dratio);
-        cpoint[1] = T(zi) / T(dratio);
-        const auto t(- camera[1] / (cpoint[1] - camera[1]));
-        const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
-        if(int(x0) < 3 * vbox || rxy < abs(x0) * T(2)) continue;
-        Vec work(result.cols());
-        work.O();
-        SimpleVector<T> Dop0;
-        {
-          const auto Dop(diff<T>(abs(int(x0)) & ~ int(1)));
-          Dop0 = Dop.row(Dop.rows() / 2) + Dop.row(Dop.rows() / 2 + 1);
-        }
-        for(int k = 0; k < Dop0.size(); k ++) {
-          // N.B. projection scale is linear.
-          T yorigin(0);
-          if(j < result.rows() / 2) {
-            cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
+        Vec  origin(3);
+  origin[0] = T(0);
+  origin[1] = T(color.cols() - 1) / T(2);
+  origin[2] = T(0);
+  const auto colory0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
+  const auto colory1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
+  origin[0] = T(color.rows() - 1);
+  const auto colory2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
+  const auto colory3(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
+  origin[0] = T(color.rows() - 1) / T(2);
+  origin[1] = T(0);
+  const auto colorx0(tilt(color, bumpm, tiltprep(bumpm, 3, 4, - abs(psi), origin)));
+  const auto colorx1(tilt(color, bumpm, tiltprep(bumpm, 3, 4,   abs(psi), origin)));
+  origin[1] = T(color.cols() - 1);
+  const auto colorx2(tilt(color, bumpm, tiltprep(bumpm, 3, 4, - abs(psi), origin)));
+  const auto colorx3(tilt(color, bumpm, tiltprep(bumpm, 3, 4,   abs(psi), origin)));
+        Mat  result(color.rows(), color.cols());
+        auto zscore(result);
+  result.O();
+  zscore.O(- T(1));
+  const T   rxy(T(min(color.rows(), color.cols())));
+  const int dratio(sqrt(sqrt(rxy)));
+        Vec camera(2);
+  camera[0] = T(0);
+  camera[1] = T(1);
+  for(int zi = 0; zi < dratio; zi ++) {
+    Vec cpoint(2);
+    cpoint[0] = T(1) / T(2 * dratio);
+    cpoint[1] = T(zi) / T(dratio);
+    const auto t(- camera[1] / (cpoint[1] - camera[1]));
+    const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
+    if(int(y0) < 3 || rxy < abs(y0) * T(2)) continue;
+    const auto Dop(diff<T>(abs(int(y0) & ~ int(1))));
+    const auto Dop0((Dop.row(y0 / 2) + Dop.row(y0 / 2 + 1)) / T(2));
+    for(int i = 0; i < result.rows(); i ++) {
+      for(int j = 0; j < result.cols(); j ++) {
+        T zy(0), zx(0);
+        // N.B. projection scale is linear.
+        T yorigin(0);
+        T xorigin(0);
+        // x-z plane projection of point p with camera geometry c to z=0.
+        // c := camera, p := cpoint.
+        // <c + (p - c) * t, [0, 1]> = 0
+        for(int kk = 0; kk < Dop0.size(); kk ++) {
+          if(i < result.rows() / 2) {
+            cpoint[0] = (T(i + kk) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
             yorigin   = T(result.rows() - 1);
           } else
-            cpoint[0] = (T(j + k) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
-          // x-z plane projection of point p with camera geometry c to z=0.
-          // c := camera, p := cpoint.
-          // <c + (p - c) * t, [0, 1]> = 0
-          const auto t(- camera[1] / (cpoint[1] - camera[1]));
-          work += (j < result.rows() / 2 ?
-            (k < Dop0.size() / 2 ? color2 : color3) :
-            (k < Dop0.size() / 2 ? color0 : color1)).row(
-              getImgPt<int>(int((camera + (cpoint - camera) * t)[0] * rxy +
-                yorigin), color.rows())) * Dop0[k];
+            cpoint[0] = (T(i + kk) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
+          const auto ty(- camera[1] / (cpoint[1] - camera[1]));
+          zy += (i < result.rows() / 2 ?
+            (kk < Dop0.size() / 2 ? colory2 : colory3) :
+            (kk < Dop0.size() / 2 ? colory0 : colory1))(
+              getImgPt<int>(int((camera + (cpoint - camera) * ty)[0] * rxy +
+                yorigin), color.rows()), j) * Dop0[kk];
+          if(j < result.cols() / 2) {
+            cpoint[0] = (T(j + kk) - T(Dop0.size() - 1) / T(2) - T(result.cols() - 1)) / T(2 * dratio) / rxy;
+            xorigin   = T(result.cols() - 1);
+          } else
+            cpoint[0] = (T(j + kk) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
+          const auto tx(- camera[1] / (cpoint[1] - camera[1]));
+          zx += (j < result.cols() / 2 ?
+            (kk < Dop0.size() / 2 ? colorx2 : colorx3) :
+            (kk < Dop0.size() / 2 ? colorx0 : colorx1))(i, 
+              getImgPt<int>(int((camera + (cpoint - camera) * tx)[0] * rxy +
+                xorigin), color.cols())) * Dop0[kk];
         }
-        for(int i = 0; i < work.size(); i ++)
-          if(zscore(j, i) < abs(work[i])) {
-            result(j, i) = T(zi + 1);
-            zscore(j, i) = abs(work[i]);
-          }
+        const auto E(T(1) + zy * zy);
+        const auto F(       zy * zx);
+        const auto G(T(1) + zx * zx);
+        const auto lscore(abs(E * G - F * F));
+        if(zscore(i, j) < lscore) {
+          result(i, j) = T(zi + 1);
+          zscore(i, j) = lscore;
+        }
       }
     }
-    return result;
   }
-  static const auto Pi(atan2(T(1), T(1)) * T(4));
-  Mat res(color * T(0));
-  const auto ct(color.transpose());
-  const auto bt(bumpm.transpose());
-#if defined(_OPENMP)
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < n; i ++) {
-    const auto theta((T(i) - T(n - 1) / T(2)) * atan(T(1)) / (T(n) / T(2)));
-          auto work(center<T>(rotate<T>(bump(rotate<T>(color, theta),
-                      rotate<T>(bumpm, theta), psi), - theta), color));
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-    {
-      res += move(work);
-    }
-  }
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i < n; i ++) {
-    const auto theta((T(i) - T(n - 1) / T(2)) * atan(T(1)) / (T(n) / T(2)));
-          auto work(center<T>(rotate<T>(bump(rotate<T>(ct, theta),
-                      rotate<T>(bt, theta), psi), - theta).transpose(), color));
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-    {
-      res += move(work);
-    }
-  }
-  return res /= T(n * 2);
+  return result;
 }
 
 template <typename T> vector<vector<int> > reDig<T>::floodfill(const Mat& mask, const vector<Vec>& points) {

@@ -25,14 +25,13 @@ Searching the Internet more...
 # Usage
     make gokicheck
     
-    gokicheck (collect|intg|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
+    gokicheck (collect|intg|sharpen|bump|enlarge|flarge|lpf|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
     gokicheck bumpc <psi> <rot> <gather_pixels> <zratio> <color.ppm< <bump.ppm> <output.ppm>
     gokicheck pred  <output.ppm> <input0.ppm> ...
     gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
     gokicheck (tilt|sbox)    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
-    gokicheck (match0|match|rmatch0|rmatch) <num_of_res_shown> <num_of_hidden_match|num_of_recursive_match> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
-    gokicheck matcho  <match> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
+    gokicheck match <num_of_hidden_match> <num_of_emph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
     gokicheck habit    <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
     gokicheck recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokicheck recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
@@ -42,7 +41,7 @@ Searching the Internet more...
     gokicheck newtrace <dimension> <size> <output.ppm>
     gokicheck reimage  <dimension> <input.ppm> <input-src.ppm> <output.ppm> <intensity>
     gokicheck reimage2 <dimension> <input.ppm> <output.ppm> <intensity>
-    python2 test.py ./gokicheck (match|match0|rmatch|rmatch0) input0.png input1.(png|obj)
+    python2 test.py ./gokicheck match input0.png input1.png
     python2 test.py ./gokicheck (cat|pred|composite) input0.png input1.png ...
     python2 test.py ./gokicheck newtrace dimension size
     python2 test.py ./gokicheck retrace  dimension input.ppm intensity

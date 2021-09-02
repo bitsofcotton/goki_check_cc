@@ -40,7 +40,7 @@ using std::make_pair;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|lpf|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
-  cout << "gokicheck bumpc <psi> <rot> <gather_pixels> <zratio> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
+  cout << "gokicheck bumpc <psi> <gather_pixels> <zratio> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
   cout << "gokicheck (pred|lenl) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
@@ -207,14 +207,14 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     typename simpleFile<num_t>::Mat datac[3], bump[3];
-    if(!file.loadp2or3(datac, argv[6]))
+    if(!file.loadp2or3(datac, argv[5]))
       return -1;
-    if(!file.loadp2or3(bump, argv[7]))
+    if(!file.loadp2or3(bump, argv[6]))
       return -1;
-    redig.initialize(atoi(argv[4]), std::atof(argv[5]));
-    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]), std::atoi(argv[3]));
+    redig.initialize(atoi(argv[3]), std::atof(argv[4]));
+    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]));
     redig.normalize(bump, num_t(1));
-    if(!file.savep2or3(argv[8], bump, ! true) )
+    if(!file.savep2or3(argv[7], bump, ! true) )
       return - 2;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
@@ -725,8 +725,8 @@ int main(int argc, const char* argv[]) {
             filter<num_t>(mdft.template imag<num_t>() * buf, SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "bump") == 0)
           buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, BUMP_X).template cast<complex<num_t> >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, BUMP_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, BUMP_BOTH).template cast<complex<num_t> >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, BUMP_BOTH).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
         for(int k = 0; k < buf2.cols(); k ++)
           for(int j = 0; j < buf2.rows(); j ++) {
             const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);

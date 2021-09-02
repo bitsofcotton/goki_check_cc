@@ -122,7 +122,7 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], "bumpc", str(psi), str(rot), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
+      subprocess.call([argv[1], "bumpc", str(psi / 2.), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
       subprocess.call([argv[1], "lpf", root + "-" + argv[2] + "1.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(1)])
     elif(argv[2] == "pextend"):
       subprocess.call(["convert", line, "-blur", "12x12+6", "-compress", "none", root + "-blur.ppm"])
