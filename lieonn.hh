@@ -3276,7 +3276,7 @@ template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvarian
 }
 
 template <typename T> static inline T revertProgramInvariant(const pair<T, T>& in) {
-  return max(- T(int(1)), min(T(int(1)), in.first * in.second - T(int(1))));
+  return max(T(int(0)), min(T(int(2)), abs(in.first * in.second))) - T(int(1));
 }
 
 template <typename T> class idFeeder {

@@ -6,7 +6,7 @@ import subprocess
 
 argv    = sys.argv
 pixels  = 4
-zratio  = .5
+zratio  = .15
 psi     = 1. / 3.
 rot     = 5
 
@@ -122,8 +122,8 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], "bumpc", str(psi / 2.), str(pixels), str(zratio / 8.), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
-      subprocess.call([argv[1], "lpf", root + "-" + argv[2] + "1.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(1)])
+      subprocess.call([argv[1], "bumpc", str(psi / 3.), str(1), str(zratio), root + ".ppm", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm"])
+      subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "pextend"):
       subprocess.call(["convert", line, "-blur", "12x12+6", "-compress", "none", root + "-blur.ppm"])
       subprocess.call([argv[1], argv[2], root + "-blur.ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
