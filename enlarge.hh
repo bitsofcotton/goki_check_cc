@@ -327,7 +327,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         for(int i = 0; i < data.rows(); i ++)
           result.row(i + recur) = data.row(i);
         for(int i = 0; i < recur; i ++) {
-          const auto next(nextP0<T>(int(data.rows()) / (i + 1)));
+          P0<num_t, idFeeder<num_t> > nextp(int(data.rows()) / (i + 1));
+          const auto& next(nextp.p);
           result.row(recur - i - 1).O();
           result.row(data.rows() + recur + i).O();
           for(int j = 0; j < next.size(); j ++) {

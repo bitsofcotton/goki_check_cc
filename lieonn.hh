@@ -3163,23 +3163,8 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     cache >> ii;
     cache.close();
   } else {
-    if(2 < size) {
-      const auto dd0(diff<T>(  (size - 1)) * T(size - 1));
-      const auto ii0(diff<T>(- (size - 1)) * T(size - 1));
-      dd = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, dd0);
-      ii = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, ii0);
-      dd.setMatrix(1, 1, dd.subMatrix(1, 1, size - 1, size - 1) + dd0);
-      ii.setMatrix(1, 1, ii.subMatrix(1, 1, size - 1, size - 1) + ii0);
-      dd.row(0) *= T(int(2));
-      dd.row(dd.rows() - 1) *= T(int(2));
-      ii.row(0) *= T(int(2));
-      ii.row(ii.rows() - 1) *= T(int(2));
-      dd /= T(int(2));
-      ii /= T(int(2));
-    } else {
-      dd = SimpleMatrix<T>(size, size).O();
-      ii = SimpleMatrix<T>(size, size).O();
-    }
+    // XXX: if we return recursive each size diff,
+    //      taylor series should be broken.
     auto DD(dft<T>(size));
     auto II(dft<T>(size));
     static const auto Pi(T(int(4)) * atan2(T(int(1)), T(int(1))));
@@ -3207,12 +3192,8 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     //       sum_0^1 - 2 Pi i (theta/n)^2/2 -&gt; Pi)
     // XXX: if we make plain differential with no error on cosine curve,
     //      it causes constant 0 vector.
-    dd += (dft<T>(- size) * DD).template real<T>();
-    ii += (dft<T>(- size) * II).template real<T>();
-    if(2 < size) {
-      dd /= T(size);
-      ii /= T(size);
-    }
+    dd = (dft<T>(- size) * DD).template real<T>();
+    ii = (dft<T>(- size) * II).template real<T>();
     ofstream ocache(file.c_str());
     ocache << dd;
     ocache << ii;
