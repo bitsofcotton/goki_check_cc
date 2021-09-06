@@ -537,8 +537,7 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "pred") == 0) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      P0<num_t, idFeeder<num_t> > compp(in.size() * 2 + 1);
-      const auto& comp(compp.p);
+      const auto& comp(pnext<num_t>(in.size() * 2 + 1));
       for(int y = 0; y < out[0].rows(); y ++) {
         for(int x = 0; x < out[0].cols(); x ++) {
           out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);

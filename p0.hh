@@ -31,20 +31,58 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #if !defined(_P0_)
 
+using std::ifstream;
+using std::ofstream;
+using std::cerr;
+using std::flush;
+using std::endl;
+
+template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1) {
+  SimpleVector<T> p;
+  if(size <= 1) {
+    p.resize(1);
+    p[0] = T(1);
+  } else if(size <= 2) {
+    p.resize(2);
+    p[0] = T(1) / T(2);
+    p[1] = T(1) / T(2) + T(1);
+    p   /= T(2);
+  } else {
+    const auto file(std::string("./.cache/lieonn/next-") +
+      std::to_string(size) + std::string("-") + std::to_string(step) +
+#if defined(_FLOAT_BITS_)
+      std::string("-") + std::to_string(_FLOAT_BITS_)
+#else
+      std::string("-ld")
+#endif
+    );
+    ifstream cache(file.c_str());
+    if(cache.is_open()) {
+      cache >> p;
+      cache.close();
+    } else {
+      p = taylor(size, T(size + step - 1));
+      cerr << "." << flush;
+      const auto pp(pnext<T>(size - 1, step));
+      for(int j = 0; j < pp.size(); j ++)
+        p[j - pp.size() + p.size()] += pp[j] * T(size - 1);
+      p /= T(size);
+      ofstream ocache(file.c_str());
+      ocache << p << endl;
+      ocache.close();
+    }
+  }
+  assert(p.size() == size);
+  return p;
+}
+
 template <typename T, typename feeder> class P0 {
 public:
   typedef SimpleVector<T> Vec;
   inline P0() { ; }
   inline P0(const int& size, const int& step = 1) {
-    assert(2 < size);
     f = feeder(size);
-    p = taylor(size, T(size + step - 1));
-    for(int i = 3; i < p.size(); i ++) {
-      const auto pp(taylor(i, T(i + step - 1)));
-      for(int j = 0; j < pp.size(); j ++)
-        p[j - pp.size() + p.size()] += pp[j];
-    }
-    p /= T(p.size() + 1 - 3);
+    p = pnext<T>(size, step);
   }
   inline ~P0() { ; };
   inline T next(const T& in) {
