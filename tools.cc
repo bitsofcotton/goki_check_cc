@@ -535,25 +535,21 @@ int main(int argc, const char* argv[]) {
     const auto idx(in.size() - 1);
     typename simpleFile<num_t>::Mat out[3];
     if(strcmp(argv[1], "pred") == 0) {
-      for(int i = 0; i < 3; i ++)
+      for(int i = 0; i < 3; i ++) {
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
+        out[i].O();
+      }
       const auto& comp(pnext<num_t>(in.size() * 2 + 1));
-      for(int y = 0; y < out[0].rows(); y ++) {
-        for(int x = 0; x < out[0].cols(); x ++) {
-          out[0](y, x) = out[1](y, x) = out[2](y, x) = num_t(0);
+      for(int y = 0; y < out[0].rows(); y ++)
+        for(int x = 0; x < out[0].cols(); x ++)
           for(int k = 0; k < in.size(); k ++)
             for(int m = 0; m < 3; m ++) {
-              out[m](y, x) += atan(in[k][m](y, x)) * comp[2 * k];
+              out[m](y, x) += in[k][m](y, x) * comp[2 * k];
               if(k < in.size() - 1)
-                out[m](y, x) += (atan(in[k][m](y, x)) +
-                  atan(in[k + 1][m](y, x))) / num_t(2) * comp[2 * k + 1];
+                out[m](y, x) += (in[k][m](y, x) +
+                  in[k + 1][m](y, x)) / num_t(2) * comp[2 * k + 1];
             }
-          for(int m = 0; m < 3; m ++)
-            out[m](y, x) = tan(out[m](y, x));
-        }
-      }
-      for(int i = 0; i < 3; i ++)
-        out[i] = filter<num_t>(out[i], CLIP);
+      redig.normalize(out, num_t(1));
       file.savep2or3(argv[2], out, ! true);
     } else if(strcmp(argv[1], "lenl") == 0) {
       std::vector<std::pair<typename simpleFile<num_t>::Mat, typename simpleFile<num_t>::Mat> > pair;

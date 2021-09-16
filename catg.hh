@@ -284,7 +284,6 @@ public:
   T next(const T& in);
   feeder f;
 private:
-  vector<pair<Vec, Vec> > pp;
   int varlen;
   int step;
 };
@@ -304,40 +303,36 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
     cache.emplace_back(d.subVector(i, varlen) / M);
     cache[cache.size() - 1][cache[cache.size() - 1].size() - 1] = d[i + varlen + step - 1] / M;
   }
-  const auto cat(crush<T>(cache, cache[0].size()));
-  pp = vector<pair<Vec, Vec> >();
-  pp.reserve(cat.size());
-  for(int i = 0; i < cat.size(); i ++) {
-    if(! cat[i].first.size()) continue;
-    Mat pw(cat[i].first.size(), cat[i].first[0].size() + 2);
-    for(int j = 0; j < cat[i].first.size(); j ++)
-      pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first;
-    auto avg(pw.row(0));
-    for(int i = 1; i < pw.rows(); i ++)
-      avg += pw.row(i);
-    avg /= T(pw.rows());
-    pp.emplace_back(make_pair(cat[i].first.size() < cat[i].first[0].size() + 2
-      ? Vec() : linearInvariant<T>(pw), avg));
-  }
+  const auto cat(crush<T>(cache, cache[0].size(), cache.size() / min(int(sqrt(T(int(cache.size())))), cache[0].size() * cache[0].size())));
   SimpleVector<T> work(varlen);
   for(int i = 0; i < work.size() - 1; i ++)
     work[i] = d[i - work.size() + d.size() + 1] / M;
   work[work.size() - 1] = work[work.size() - 2];
-  T MM(0);
-  T res(0);
   const auto vdp(makeProgramInvariant<T>(work));
-  for(int i = 0; i < pp.size(); i ++) {
-    const auto& p(pp[i].second);
-    const auto  orth(vdp.first.dot(p) / sqrt(vdp.first.dot(vdp.first) * p.dot(p)));
-    if(MM < orth) {
-      const auto& q(pp[i].first);
-      res = q.size() ? revertProgramInvariant<T>(make_pair(
-          - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1]) /
-              q[varlen - 1], vdp.second))
-        : work[work.size() - 1];
+        T    res(0);
+        T    sscore(0);
+  for(int i = 0; i < cat.size(); i ++) {
+    // XXX: how to handle the illegal value.
+    if(! cat[i].first.size()) continue;
+    Mat pw(cat[i].first.size(), cat[i].first[0].size() + 2);
+    Vec avg(Vec(pw.row(0) = makeProgramInvariant<T>(cat[i].first[0]).first));
+    for(int j = 1; j < pw.rows(); j ++)
+      avg += (pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first);
+    auto score(vdp.first.dot(avg) / T(cat[i].first.size()));
+    if(pw.rows() <= pw.cols() || ! pw.rows())
+      res += (revertProgramInvariant<T>(make_pair(
+                avg[work.size() - 1], vdp.second)) -
+              revertProgramInvariant<T>(make_pair(
+                avg[work.size() - 2], vdp.second)) ) * score;
+    else {
+      const auto q(linearInvariant<T>(pw));
+      res += revertProgramInvariant<T>(make_pair(
+              - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1]) /
+               q[varlen - 1], vdp.second)) * score;
     }
+    sscore += abs(score);
   }
-  return (res - work[work.size() - 1]) * M;
+  return res * M / sscore;
 }
 
 #define _CATG_

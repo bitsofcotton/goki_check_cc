@@ -294,8 +294,10 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
       for(int jj = shapebase.size(); jj < Pt.cols(); jj ++) {
         if(fix[jj]) continue;
         const auto lscore(abs(on[j] - on[jj]));
-        score   = lscore;
-        fpidx.second[j] = jj;
+        if(score == T(int(0)) || lscore < score) {
+          score   = lscore;
+          fpidx.second[j] = jj;
+        }
       }
       fpidx.first[j].first = score;
     }
@@ -306,8 +308,10 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
       for(int jj = 0; jj < shapebase.size(); jj ++) {
         if(fix[jj]) continue;
         const auto lscore(abs(on[j] - on[jj]));
-        score   = lscore;
-        fpidx.second[j] = jj;
+        if(score == T(int(0)) || lscore < score) {
+          score   = lscore;
+          fpidx.second[j] = jj;
+        }
       }
       fpidx.first[j].first = score;
     }
@@ -355,7 +359,6 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
     }
     rot *= rotr.QR() * rotl.QR().transpose();
   }
-  // rot^(1/n).
   m.rot = pow(rot, T(1) / T(m.dstpoints.size()));
   T r0(0);
   for(int k = 0; k < m.dstpoints.size(); k ++) {
