@@ -114,6 +114,7 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) const;
+  void getHesseVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay, const T& thresh = T(1) / T(20)) const;
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const Vec& origin = Vec()) const;
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
   Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& depth = - T(1000)) const;
@@ -1201,6 +1202,45 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec>& geom
       delaunay.emplace_back(work);
       delaunay.emplace_back(work2);
     }
+  return;
+}
+
+template <typename T> void reDig<T>::getHesseVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay, const T& thresh) const {
+  const auto xx(in * diff<T>(in.cols()) * diff<T>(in.cols()));
+  const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()));
+  const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
+  geoms.resize(0);
+  Vec g(3);
+  g[0] = T(int(0));
+  g[1] = T(int(0));
+  g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(0, 0);
+  geoms.emplace_back(g);
+  g    = Vec(3);
+  g[0] = T(int(in.rows() - 1));
+  g[1] = T(int(0));
+  g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(in.rows() - 1, 0);
+  for(int i = 0; i < in.rows(); i ++)
+    for(int j = 0; j < in.cols(); j ++)
+      if(abs(xx(i, j) * yy(i, j) - xy(i, j) * xy(i, j)) <= thresh) {
+        Vec g(3);
+        g[0] = T(int(i));
+        g[1] = T(int(j));
+        g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(i, j);
+        geoms.emplace_back(move(g));
+      }
+  g    = Vec(3);
+  g[0] = T(int(0));
+  g[1] = T(int(in.cols() - 1));
+  g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(0, in.cols() - 1);
+  g    = Vec(3);
+  g[0] = T(int(in.rows() - 1));
+  g[1] = T(int(in.cols() - 1));
+  g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(in.rows() - 1, in.cols() - 1);
+  vector<int> vv;
+  vv.reserve(geoms.size());
+  for(int i = 0; i < geoms.size(); i ++)
+    vv.emplace_back(i);
+  delaunay = mesh2(geoms, vv);
   return;
 }
 
