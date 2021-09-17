@@ -200,8 +200,8 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::takeShape(const v
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < match.srcpoints.size(); i ++)
-    result[match.dstpoints[i]] += (match.transform(src[match.srcpoints[i]]) - dst[match.dstpoints[i]]) * ratio;
+  for(int i = 0; i < match.src.size(); i ++)
+    result[match.dst[i]] += ((~ match).transform(src[match.src[i]]) - dst[match.dst[i]]) * ratio;
   return result;
 }
 

@@ -384,8 +384,8 @@ int main(int argc, const char* argv[]) {
       sdelau1.emplace_back(vector<typename simpleFile<num_t>::Veci>());
       sshape0.emplace_back(vector<typename simpleFile<num_t>::Vec>());
       sshape1.emplace_back(vector<typename simpleFile<num_t>::Vec>());
-      auto dstsort(m.dstpoints);
-      auto srcsort(m.srcpoints);
+      auto dstsort(m.dst);
+      auto srcsort(m.src);
       std::sort(dstsort.begin(), dstsort.end());
       std::sort(srcsort.begin(), srcsort.end());
       vector<int> ds0;
@@ -431,42 +431,34 @@ int main(int argc, const char* argv[]) {
     vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
     vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
     for(int i = 0; i < mm.size(); i ++) {
-      mhull0.emplace_back(redig.mesh2(sshape0[i], mm[i].dstpoints));
+      mhull0.emplace_back(redig.mesh2(sshape0[i], mm[i].dst));
       mhull1.emplace_back((~ mm[i]).hullConv(mhull0[i]));
     }
     const string outbase(argv[fnout]);
-    for(int idx = 0; idx < 3; idx ++)
-      for(int i = 0; i < mm.size(); i ++) {
-        if(i)
-          outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                                       sshape0[i], sdelau0[i]),
-                         sshape0[i], sdelau0[i]);
-        else
-          outs[idx]  = redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                                       sshape0[i], sdelau0[i]),
-                         sshape0[i], sdelau0[i]);
-      }
+    for(int idx = 0; idx < 3; idx ++) {
+      outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in0[idx].cols()).O();
+      for(int i = 0; i < mm.size(); i ++)
+        outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
+                                     sshape0[i], mhull0[i]),
+                       sshape0[i], sdelau0[i]);
+    }
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl0.ppm")).c_str(), outs, false);
-    for(int idx = 0; idx < 3; idx ++)
-      for(int i = 0; i < mm.size(); i ++) {
-        if(i)
-          outs[idx] += redig.showMatch(redig.draw(in1[idx] * num_t(0),
-                                     mm[i].transform(sshape1[i]), sdelau1[i]),
-                                     mm[i].transform(sshape1[i]), mhull1[i]);
-        else
-          outs[idx]  = redig.showMatch(redig.draw(in1[idx] * num_t(0),
-                                     mm[i].transform(sshape1[i]), sdelau1[i]),
-                                     mm[i].transform(sshape1[i]), mhull1[i]);
-      }
+    for(int idx = 0; idx < 3; idx ++) {
+      outs[idx] = SimpleMatrix<num_t>(in1[idx].rows(), in1[idx].cols()).O();
+      for(int i = 0; i < mm.size(); i ++)
+        outs[idx] += redig.showMatch(redig.draw(in1[idx] * num_t(0),
+                                 mm[i].transform(sshape1[i]), sdelau1[i]),
+                                 mm[i].transform(sshape1[i]), mhull1[i]);
+    }
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl1.ppm")).c_str(), outs, false);
     for(int idx = 0; idx < 3; idx ++) {
       for(int i = 0; i < mm.size(); i ++)
         if(i)
-          outs[idx] += redig.showMatch(in0[idx], sshape0[i], sdelau0[i]);
+          outs[idx] += redig.showMatch(in0[idx], sshape0[i], mhull0[i]);
         else
-          outs[idx]  = redig.showMatch(in0[idx], sshape0[i], sdelau0[i]);
+          outs[idx]  = redig.showMatch(in0[idx], sshape0[i], mhull0[i]);
     }
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string(".ppm")).c_str(), outs, false);
@@ -476,7 +468,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < mm.size(); i ++) {
         const auto rd(redig.draw(rin1, sshape1[i],
                         redig.takeShape(sshape1[i], sshape0[i],
-                          ~ mm[i], iemph), sdelau1[i]));
+                          mm[i], iemph), sdelau1[i]));
         if(i)
           for(int j = 0; j < reref.rows(); j ++)
             for(int k = 0; k < reref.cols(); k ++) {
@@ -487,7 +479,6 @@ int main(int argc, const char* argv[]) {
       }
       for(int idx = 0; idx < 3; idx ++)
         outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
-        // outs[idx] = redig.draw(in1[idx] * num_t(0), shape, delau1);
       file.savep2or3((outbase + string("-") +
                                 to_string(i) +
                                 string("-") +
@@ -497,12 +488,6 @@ int main(int argc, const char* argv[]) {
       file.saveobj(redig.takeShape(shape0, shape1, m,   iemph),
                    outs[0].rows(), outs[0].cols(), delau0,
                    (outbase + string("-emph0-") +
-                              to_string(i) +
-                              string("-") +
-                              to_string(nemph) +
-                              string(".obj")).c_str());
-      file.saveobj(shape, outs[0].rows(), outs[0].cols(), delau1,
-                   (outbase + string("-emph1-") +
                               to_string(i) +
                               string("-") +
                               to_string(nemph) +

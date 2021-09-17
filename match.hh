@@ -38,8 +38,8 @@ public:
   Vec         offset;
   T           ratio;
   T           rdepth;
-  vector<int> dstpoints;
-  vector<int> srcpoints;
+  vector<int> dst;
+  vector<int> src;
   T           thresh;
   T           othresh;
   inline match_t() {
@@ -52,8 +52,8 @@ public:
     this->othresh = thresh * d;
     initId();
   }
-  inline match_t(const match_t<T>& src) {
-    *this = src;
+  inline match_t(const match_t<T>& s) {
+    *this = s;
   }
   inline void initId() {
     rot       = Mat(3, 3);
@@ -70,22 +70,22 @@ public:
     result.rot    = rot.transpose();
     result.ratio  = T(1) / ratio;
     result.offset = - result.rot * offset * result.ratio;
-    std::swap(result.srcpoints, result.dstpoints);
+    std::swap(result.src, result.dst);
     return result;
   }
-  inline match_t<T>  operator / (const match_t<T>& src) const {
+  inline match_t<T>  operator / (const match_t<T>& s) const {
     match_t<T> result;
-    result.rot    = rot   * src.rot.transpose();
-    result.ratio  = ratio / src.ratio;
-    result.offset = offset - result.rot * src.offset * result.ratio;
-    result.rdepth = rdepth + src.rdepth;
-    result.dstpoints = vector<int>();
-    result.srcpoints = vector<int>();
-    for(int i = 0; i < srcpoints.size(); i ++)
-      for(int j = 0; j < src.srcpoints.size(); j ++)
-        if(srcpoints[i] == src.srcpoints[j]) {
-          result.dstpoints.emplace_back(    dstpoints[i]);
-          result.srcpoints.emplace_back(src.dstpoints[j]);
+    result.rot    = rot   * s.rot.transpose();
+    result.ratio  = ratio / s.ratio;
+    result.offset = offset - result.rot * s.offset * result.ratio;
+    result.rdepth = rdepth + s.rdepth;
+    result.dst = vector<int>();
+    result.src = vector<int>();
+    for(int i = 0; i < src.size(); i ++)
+      for(int j = 0; j < s.src.size(); j ++)
+        if(src[i] == s.src[j]) {
+          result.dst.emplace_back(  dst[i]);
+          result.src.emplace_back(s.dst[j]);
         }
     return result;
   }
@@ -94,8 +94,8 @@ public:
     offset     = other.offset;
     ratio      = other.ratio;
     rdepth     = other.rdepth;
-    dstpoints  = other.dstpoints;
-    srcpoints  = other.srcpoints;
+    dst  = other.dst;
+    src  = other.src;
     thresh     = other.thresh;
     othresh    = other.othresh;
     return *this;
@@ -105,19 +105,20 @@ public:
     return sqrt(d.dot(d));
   }
   inline vector<Veci> hullConv(const vector<Veci>& srchull) const {
-    assert(srcpoints.size() == dstpoints.size());
+    assert(src.size() == dst.size());
     vector<Veci> res;
     res.reserve(srchull.size());
     for(int i = 0; i < srchull.size(); i ++) {
       Veci tmp(3);
       tmp[0] = tmp[1] = tmp[2] = - 1;
       for(int j = 0; j < srchull[i].size(); j ++)
-        for(int k = 0; k < srcpoints.size(); k ++)
-          if(srcpoints[k] == srchull[i][j]) {
-            tmp[j] = dstpoints[k];
+        for(int k = 0; k < src.size(); k ++)
+          if(src[k] == srchull[i][j]) {
+            tmp[j] = dst[k];
             break;
           }
-      res.emplace_back(tmp);
+      if(0 <= tmp[0] && 0 <= tmp[1] && 0 <= tmp[2])
+        res.emplace_back(tmp);
     }
     return res;
   }
@@ -159,13 +160,13 @@ public:
       os << x.offset[i] << endl;
     os << x.ratio  << endl;
     os << x.rdepth << endl;
-    assert(x.dstpoints.size() == x.srcpoints.size());
-    os << x.dstpoints.size() << endl;
-    for(int i = 0; i < x.dstpoints.size(); i ++)
-      os << x.dstpoints[i] << " ";
+    assert(x.dst.size() == x.src.size());
+    os << x.dst.size() << endl;
+    for(int i = 0; i < x.dst.size(); i ++)
+      os << x.dst[i] << " ";
     os << endl;
-    for(int i = 0; i < x.srcpoints.size(); i ++)
-      os << x.srcpoints[i] << " ";
+    for(int i = 0; i < x.src.size(); i ++)
+      os << x.src[i] << " ";
     os << endl;
     os << x.thresh  << endl;
     return os;
@@ -182,12 +183,12 @@ public:
       int size(0);
       is >> size;
       assert(size > 0);
-      x.dstpoints.resize(size);
-      x.srcpoints.resize(size);
+      x.dst.resize(size);
+      x.src.resize(size);
       for(int i = 0; i < size; i ++)
-        is >> x.dstpoints[i];
+        is >> x.dst[i];
       for(int i = 0; i < size; i ++)
-        is >> x.srcpoints[i];
+        is >> x.src[i];
       is >> x.thresh;
     } catch(...) {
       assert(0 && "match_t input failed.");
@@ -248,25 +249,51 @@ template <typename T> pair<vector<pair<T, int> >, vector<int> > makeMatchPrep(co
     }
     fidx.emplace_back(make_pair(score, i));
   }
+  for(int i = rows; i < rows + 4; i ++)
+    fidx.emplace_back(make_pair(on[i] < T(0) ? - T(on.size() * 2) : T(on.size() * 2), pidx[i] = i));
   sort(fidx.begin(), fidx.end());
   return make_pair(move(fidx), move(pidx));
 }
 
-template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& shapebase0, const vector<SimpleVector<T> >& points0, const T& thresh = T(1) / T(10)) {
-  const auto  gs(makeG(shapebase0));
-  const auto  gp(makeG(points0));
+template <typename T> SimpleVector<T> toQuarterNormalize(const SimpleVector<T>& xyz) {
+  assert(xyz.size() == 3);
+  static const auto Pi(atan(T(int(1))) * T(int(4)));
+  SimpleVector<T> quat(4);
+  // XXX: order is broken:
+  quat[0] = sqrt(xyz.dot(xyz)) / sqrt(T(int(3)));
+  // y-z plane normal vector. <=> xyz.dot(n == [0 y z]) / quat[0] / sqrt(y * y + z * z) == cos theta.
+  quat[1] = acos(xyz[1] / sqrt(xyz[1] * xyz[1] + xyz[2] * xyz[2])) / Pi;
+  // same for z-x.
+  quat[2] = acos(xyz[2] / sqrt(xyz[2] * xyz[2] + xyz[0] * xyz[0])) / Pi;
+  // same for x-y.
+  quat[3] = acos(xyz[0] / sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1])) / Pi;
+  T slog(int(0));
+  for(int i = 0; i < quat.size(); i ++) {
+    assert(- T(int(1)) <= quat[i] && quat[i] <= T(int(1)));
+    quat[i] += T(int(1));
+    if(quat[i] != T(int(0)))
+      slog += log(quat[i]);
+  }
+  return quat /= exp(slog / T(quat.size()));
+}
+
+template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0, const T& thresh = T(1) / T(10)) {
+  const auto  gs(makeG(dst0));
+  const auto  gp(makeG(src0));
   const auto  ggs(normalizeG(gs.second));
   const auto  ggp(normalizeG(gp.second));
-  const auto& shapebase(ggs.second);
-  const auto& points(ggp.second);
-  assert(shapebase.size() == shapebase0.size());
-  assert(points.size() == points0.size());
-  std::cerr << "match(" << shapebase.size() << ", " << points.size() << ")" << std::endl;
-  SimpleMatrix<T> test(shapebase.size() + points.size(), 3 + 2);
-  for(int i = 0; i < shapebase.size(); i ++)
-    test.row(i) = makeProgramInvariant<T>(shapebase[i]).first;
-  for(int i = 0; i < points.size(); i ++)
-    test.row(shapebase.size() + i) = makeProgramInvariant<T>(points[i]).first;
+  const auto& dst(ggs.second);
+  const auto& src(ggp.second);
+  assert(dst.size() == dst0.size());
+  assert(src.size() == src0.size());
+  std::cerr << "match(" << dst.size() << ", " << src.size() << ")" << std::endl;
+  SimpleMatrix<T> test(dst.size() + src.size() + 4, 4);
+  for(int i = 0; i < dst.size(); i ++)
+    test.row(i) = toQuarterNormalize<T>(dst[i]);
+  for(int i = 0; i < src.size(); i ++)
+    test.row(dst.size() + i) = toQuarterNormalize<T>(src[i]);
+  for(int i = 0; i < 4; i ++)
+    test.row(i + dst.size() + src.size()).ek(i, thresh);
         auto Pt(test.QR());
   const auto R(Pt * test);
   SimpleVector<T>    one(Pt.cols());
@@ -275,7 +302,7 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
   fix.I(false);
   const auto on(Pt.projectionPt(one));
   vector<pair<T, int> > fidx;
-  auto fpidx(makeMatchPrep(on, test.rows(), shapebase.size()));
+  auto fpidx(makeMatchPrep(on, dst.size() + src.size(), dst.size()));
   for(int n_fixed = 0, idx = 0;
           n_fixed < Pt.rows() - 1 && idx < fpidx.first.size();
           n_fixed ++, idx ++) {
@@ -287,11 +314,11 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
     fix[iidx] = fix[fpidx.second[iidx]] = true;
-    for(int j = 0; j < shapebase.size(); j ++) {
+    for(int j = 0; j < dst.size(); j ++) {
       if(fix[j]) continue;
       fpidx.second[j] = - 1;
       T score(0);
-      for(int jj = shapebase.size(); jj < Pt.cols(); jj ++) {
+      for(int jj = dst.size(); jj < dst.size() + src.size(); jj ++) {
         if(fix[jj]) continue;
         const auto lscore(abs(on[j] - on[jj]));
         if(score == T(int(0)) || lscore < score) {
@@ -301,11 +328,11 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
       }
       fpidx.first[j].first = score;
     }
-    for(int j = shapebase.size(); j < Pt.cols(); j ++) {
+    for(int j = dst.size(); j < dst.size() + src.size(); j ++) {
       if(fix[j]) continue;
       fpidx.second[j] = - 1;
       T score(0);
-      for(int jj = 0; jj < shapebase.size(); jj ++) {
+      for(int jj = 0; jj < dst.size(); jj ++) {
         if(fix[jj]) continue;
         const auto lscore(abs(on[j] - on[jj]));
         if(score == T(int(0)) || lscore < score) {
@@ -315,65 +342,69 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& sh
       }
       fpidx.first[j].first = score;
     }
+    for(int j = dst.size() + src.size(); j < Pt.cols(); j ++)
+      fpidx.first[j] = make_pair(on[j] < T(0) ? - T(on.size() * 2) : T(on.size() * 2), j);
     sort(fpidx.first.begin(), fpidx.first.end());
   }
   const auto cut(R.solve(Pt * one));
-  const auto ffpidx(makeMatchPrep(Pt.projectionPt(one), test.rows(), shapebase.size()));
+  const auto ffpidx(makeMatchPrep(Pt.projectionPt(one), dst.size() + src.size(), dst.size()));
+  // N.B. what we got: <a, [q0 q1 q2 q3] - [q0' q1' q2' q3']> == 0, a != 0.
+  //      and 0 <= a condition makes this valid.
   match_t<T> m(thresh, max(ggs.first, ggp.first));
   vector<SimpleVector<T> > left, right;
   for(int i = 0;
           i < ffpidx.first.size() && ffpidx.first[i].first < thresh;
           i ++) {
     if(ffpidx.second[ffpidx.first[i].second] < 0) continue;
-    if(ffpidx.first[i].second < shapebase.size()) {
-      m.dstpoints.emplace_back(ffpidx.first[i].second);
-      m.srcpoints.emplace_back(ffpidx.second[ffpidx.first[i].second] - shapebase.size());
-    } else {
-      m.srcpoints.emplace_back(ffpidx.first[i].second - shapebase.size());
-      m.dstpoints.emplace_back(ffpidx.second[ffpidx.first[i].second]);
-    }
-    assert(0 <= m.dstpoints[m.dstpoints.size() - 1] &&
-                m.dstpoints[m.dstpoints.size() - 1] < shapebase0.size() &&
-           0 <= m.srcpoints[m.srcpoints.size() - 1] &&
-                m.srcpoints[m.srcpoints.size() - 1] < points0.size());
-    assert(points0[m.srcpoints[m.srcpoints.size() - 1]].size() == 3 &&
-           shapebase0[m.dstpoints[m.dstpoints.size() - 1]].size() == 3);
+    if(ffpidx.first[i].second < dst.size()) {
+      m.dst.emplace_back(ffpidx.first[i].second);
+      m.src.emplace_back(ffpidx.second[ffpidx.first[i].second] - dst.size());
+    } else if(ffpidx.first[i].second < dst.size() + src.size()) {
+      m.src.emplace_back(ffpidx.first[i].second - dst.size());
+      m.dst.emplace_back(ffpidx.second[ffpidx.first[i].second]);
+    } else continue;
+    assert(0 <= m.dst[m.dst.size() - 1] &&
+                m.dst[m.dst.size() - 1] < dst0.size() &&
+           0 <= m.src[m.src.size() - 1] &&
+                m.src[m.src.size() - 1] < src0.size());
+    assert(src0[m.src[m.src.size() - 1]].size() == 3 &&
+           dst0[m.dst[m.dst.size() - 1]].size() == 3);
   }
-  assert(m.dstpoints.size() == m.srcpoints.size());
+  assert(m.dst.size() == m.src.size());
   SimpleVector<T> off(3);
   off.O();
-  for(int k = 0; k < m.dstpoints.size(); k ++)
-    off += m.transform(points0[m.srcpoints[k]]) - shapebase0[m.dstpoints[k]];
-  if(m.dstpoints.size() < 4) return m;
-  m.offset += (off /= T(m.dstpoints.size()));
+  for(int k = 0; k < m.dst.size(); k ++)
+    off += dst0[m.src[k]] - m.transform(src0[m.src[k]]);
+  if(m.dst.size() < 4) return m;
+  m.offset += (off /= T(m.dst.size()));
   SimpleMatrix<T> rot(3, 3);
   rot.I();
-  for(int k = 0; k < m.dstpoints.size() - 3; k ++) {
+  for(int k = 0; k < m.dst.size() - 3; k ++) {
     SimpleMatrix<T> rotl(3, 3);
     SimpleMatrix<T> rotr(3, 3);
     rotl.O();
     rotr.O();
     for(int kk = 0; kk < 3; kk ++) {
-      rotl.setCol(kk, shapebase0[m.dstpoints[k + kk]]);
-      rotr.setCol(kk, m.transform(points0[m.srcpoints[k + kk]]));
+      rotl.setCol(kk, dst0[m.dst[k + kk]]);
+      rotr.setCol(kk, m.transform(src0[m.src[k + kk]]));
     }
-    rot *= rotr.QR() * rotl.QR().transpose();
+    rot *= rotl.QR() * rotr.QR().transpose();
   }
-  m.rot = pow(rot, T(1) / T(m.dstpoints.size()));
+  m.rot = pow(rot, T(1) / T(m.dst.size()));
   T r0(0);
-  for(int k = 0; k < m.dstpoints.size(); k ++) {
-    const auto& shapek(shapebase0[m.dstpoints[k]]);
-    const auto  pointk(m.transform(points0[m.srcpoints[k]]));
-    r0 += shapek.dot(pointk) / shapek.dot(shapek);
+  for(int k = 0; k < m.dst.size(); k ++) {
+    const auto& dstk(dst0[m.dst[k]]);
+    const auto  srck(m.transform(src0[m.src[k]]));
+    r0 += dstk.dot(srck) / srck.dot(srck);
   }
-  m.ratio = (r0 /= T(m.dstpoints.size()));
-  for(int k = 0; k < m.dstpoints.size(); k ++) {
-    const auto& shapek(shapebase0[m.dstpoints[k]]);
-    const auto  pointk(m.transform(points0[m.srcpoints[k]]));
-    const auto  err(shapek - pointk);
-    m.rdepth += sqrt(err.dot(err) / sqrt(shapek.dot(shapek) * pointk.dot(pointk)));
+  m.ratio = (r0 /= T(m.dst.size()));
+  for(int k = 0; k < m.dst.size(); k ++) {
+    const auto& dstk(dst0[m.dst[k]]);
+    const auto  srck(m.transform(src0[m.src[k]]));
+    const auto  err(dstk - srck);
+    m.rdepth += sqrt(err.dot(err) / sqrt(dstk.dot(dstk) * srck.dot(srck)));
   }
-  m.rdepth /= m.dstpoints.size() * m.dstpoints.size();
+  m.rdepth /= m.dst.size() * m.dst.size();
   return m;
 }
 
