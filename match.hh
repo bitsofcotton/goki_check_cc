@@ -390,10 +390,10 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
       rotl.setCol(kk, dst0[m.dst[k + kk]]);
       rotr.setCol(kk, m.transform(src0[m.src[k + kk]]));
     }
-    // dst == Q R == P R' == src, dst !~ avg(Q^t P)^t src'.
-    rot *= rotl.QR() * rotr.QR().transpose();
+    // dst == Q R == P R' == src, dst !~ avg(Q P^t) src'.
+    rot *= rotl.QR().transpose() * rotr.QR();
   }
-  m.rot = pow(rot, T(1) / T(int(m.dst.size() - 3))).transpose();
+  m.rot = pow(rot, T(1) / T(int(m.dst.size() - 3)));
   off.O();
   for(int k = 0; k < m.dst.size(); k ++)
     off += dst0[m.dst[k]] - m.transform(src0[m.src[k]]);
