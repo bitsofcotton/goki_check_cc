@@ -45,8 +45,8 @@ void usage() {
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "gokicheck match <nsub> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>" << endl;
-  cout << "gokicheck habit   <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>" << endl;
+  cout << "gokicheck match <nsub> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> <output-basename>" << endl;
+  cout << "gokicheck habit   <in0.obj> <in1.obj> <out.obj>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
@@ -338,38 +338,15 @@ int main(int argc, const char* argv[]) {
       return - 2;
     if(!file.loadp2or3(bump0orig, argv[9]))
       return - 2;
-    const string fn(argv[10]);
-    if(fn[fn.size() - 1] == 'j') {
-      if(!file.loadobj(shape1, delau1, argv[10]))
-        return - 2;
-      bump1orig[0] = bump1orig[1] = bump1orig[2] = in1[0] * num_t(0);
-    } else if(fn[fn.size() - 1] == 'm') {
-      if(!file.loadp2or3(bump1orig, argv[10]))
-        return - 2;
-    } else {
-      usage();
-      return - 1;
-    }
-    if(13 < argc) {
-      if(!file.loadp2or3(mask0orig, argv[11]))
-        return - 2;
-      if(!file.loadp2or3(mask1orig, argv[12]))
-        return - 2;
-      fnout = 13;
-    } else {
-      mask0orig[0] = mask0orig[1] = mask0orig[2] = in0[0] * num_t(0);
-      mask1orig[0] = mask1orig[1] = mask1orig[2] = in1[0] * num_t(0);
-    }
+    if(!file.loadp2or3(bump1orig, argv[10]))
+      return - 2;
+    const string outbase(argv[11]);
     const auto& bump0(bump0orig[0]);
     const auto& bump1(bump1orig[0]);
-    const auto& mask0(mask0orig[0]);
-    const auto& mask1(mask1orig[0]);
     redig.initialize(vboxdst, zratio);
     redig.getTileVec(bump0, shape0, delau0);
-    redig.maskVectors(shape0, delau0, mask0);
     redig.initialize(vboxsrc, zratio);
     redig.getTileVec(bump1, shape1, delau1);
-    redig.maskVectors(shape1, delau1, mask1);
     vector<vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
     vector<vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
     sdelau0.emplace_back(delau0);
@@ -434,65 +411,40 @@ int main(int argc, const char* argv[]) {
       mhull0.emplace_back(redig.mesh2(sshape0[i], mm[i].dst));
       mhull1.emplace_back((~ mm[i]).hullConv(mhull0[i]));
     }
-    const string outbase(argv[fnout]);
     for(int idx = 0; idx < 3; idx ++) {
       outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in0[idx].cols()).O();
       for(int i = 0; i < mm.size(); i ++)
         outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                                     sshape0[i], mhull0[i]),
-                       sshape0[i], sdelau0[i]);
+                                     sshape0[i], sdelau0[i]),
+                       sshape0[i], mhull0[i]);
     }
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl0.ppm")).c_str(), outs, false);
     for(int idx = 0; idx < 3; idx ++) {
-      outs[idx] = SimpleMatrix<num_t>(in1[idx].rows(), in1[idx].cols()).O();
+      outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in0[idx].cols()).O();
       for(int i = 0; i < mm.size(); i ++)
-        outs[idx] += redig.showMatch(redig.draw(in1[idx] * num_t(0),
+        outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
                                  mm[i].transform(sshape1[i]), sdelau1[i]),
                                  mm[i].transform(sshape1[i]), mhull1[i]);
     }
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl1.ppm")).c_str(), outs, false);
-    for(int idx = 0; idx < 3; idx ++) {
-      for(int i = 0; i < mm.size(); i ++)
-        if(i)
-          outs[idx] += redig.showMatch(in0[idx], sshape0[i], mhull0[i]);
-        else
-          outs[idx]  = redig.showMatch(in0[idx], sshape0[i], mhull0[i]);
-    }
-    redig.normalize(outs, 1.);
-    file.savep2or3((outbase + string(".ppm")).c_str(), outs, false);
     for(int i = 0; i < nemph; i ++) {
       const auto iemph(num_t(i) / num_t(nemph));
-      simpleFile<num_t>::Mat reref;
+      simpleFile<num_t>::Mat reref(rin0.rows(), rin0.cols());
+      reref.O();
       for(int i = 0; i < mm.size(); i ++) {
         const auto rd(redig.draw(rin1, sshape1[i],
                         redig.takeShape(sshape1[i], sshape0[i],
-                          mm[i], iemph), sdelau1[i]));
-        if(i)
-          for(int j = 0; j < reref.rows(); j ++)
-            for(int k = 0; k < reref.cols(); k ++) {
-              if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);
-            }
-        else
-          reref = rd;
+                          ~ mm[i], iemph), sdelau1[i]));
+        for(int j = 0; j < min(reref.rows(), rd.rows()); j ++)
+          for(int k = 0; k < min(reref.cols(), rd.cols()); k ++)
+            if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);
       }
       for(int idx = 0; idx < 3; idx ++)
         outs[idx] = redig.pullRefMatrix(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
-      file.savep2or3((outbase + string("-") +
-                                to_string(i) +
-                                string("-") +
-                                to_string(nemph) +
-                                string(".ppm")).c_str(), outs, false);
-/*
-      file.saveobj(redig.takeShape(shape0, shape1, m,   iemph),
-                   outs[0].rows(), outs[0].cols(), delau0,
-                   (outbase + string("-emph0-") +
-                              to_string(i) +
-                              string("-") +
-                              to_string(nemph) +
-                              string(".obj")).c_str());
-*/
+      file.savep2or3((outbase + string("-") + to_string(i) + string("-") +
+                      to_string(nemph) + string(".ppm")).c_str(), outs, false);
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
             strcmp(argv[1], "lenl") == 0 ||
@@ -600,15 +552,9 @@ int main(int argc, const char* argv[]) {
       My = max(num_t(My), abs(psrc[i][0]));
       Mx = max(num_t(Mx), abs(psrc[i][1]));
     }
-    if(argc > 7) {
-      const auto m(redig.tiltprep(typename simpleFile<num_t>::Mat(int(My), int(Mx)), - atoi(argv[4]), atoi(argv[5]), std::atof(argv[6])));
-      file.saveobj(redig.takeShape(pdst, psrc, m, num_t(1) / num_t(2)),
-                   My, Mx, poldst, argv[7]);
-    } else {
-      const auto m(matchPartial<num_t>(pdst, psrc));
-      file.saveobj(redig.takeShape(pdst, psrc, m, num_t(1) / num_t(2)),
-                   My, Mx, poldst, argv[4]);
-    }
+    file.saveobj(redig.takeShape(pdst, psrc,
+      matchPartial<num_t>(pdst, psrc),
+      num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
   } else if(strcmp(argv[1], "retrace") == 0 ||
             strcmp(argv[1], "reimage") == 0) {
     if(argc < 7) {

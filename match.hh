@@ -117,8 +117,8 @@ public:
             tmp[j] = dst[k];
             break;
           }
-      if(0 <= tmp[0] && 0 <= tmp[1] && 0 <= tmp[2])
-        res.emplace_back(tmp);
+      assert(0 <= tmp[0] && 0 <= tmp[1] && 0 <= tmp[2]);
+      res.emplace_back(tmp);
     }
     return res;
   }
@@ -257,17 +257,19 @@ template <typename T> pair<vector<pair<T, int> >, vector<int> > makeMatchPrep(co
 
 template <typename T> SimpleVector<T> toQuarterNormalize(const SimpleVector<T>& xyz) {
   assert(xyz.size() == 3);
-  static const auto Pi(atan(T(int(1))) * T(int(4)));
+  static const auto twoPi(atan(T(int(1))) * T(int(4)));
   SimpleVector<T> quat(4);
   // XXX: order is broken:
-  quat[0] = sqrt(xyz.dot(xyz)) / sqrt(T(int(3)));
+  quat[0] = sqrt(xyz.dot(xyz) / T(int(6)));
   // y-z plane normal vector. <=> xyz.dot(n == [0 y z]) / quat[0] / sqrt(y * y + z * z) == cos theta.
-  quat[1] = acos(xyz[1] / sqrt(xyz[1] * xyz[1] + xyz[2] * xyz[2])) / Pi;
+  quat[1] = acos(xyz[1] / sqrt(xyz[1] * xyz[1] + xyz[2] * xyz[2])) / twoPi;
   // same for z-x.
-  quat[2] = acos(xyz[2] / sqrt(xyz[2] * xyz[2] + xyz[0] * xyz[0])) / Pi;
+  quat[2] = acos(xyz[2] / sqrt(xyz[2] * xyz[2] + xyz[0] * xyz[0])) / twoPi;
   // same for x-y.
-  quat[3] = acos(xyz[0] / sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1])) / Pi;
+  quat[3] = acos(xyz[0] / sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1])) / twoPi;
   T slog(int(0));
+  // XXX : without this, assertion crash.
+  /* XXX */ std::cerr << quat;
   for(int i = 0; i < quat.size(); i ++) {
     assert(- T(int(1)) <= quat[i] && quat[i] <= T(int(1)));
     quat[i] += T(int(1));
@@ -351,7 +353,6 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
   // N.B. what we got: <a, [q0 q1 q2 q3] - [q0' q1' q2' q3']> == 0, a != 0.
   //      and 0 <= a condition makes this valid.
   match_t<T> m(thresh, max(ggs.first, ggp.first));
-  vector<SimpleVector<T> > left, right;
   for(int i = 0;
           i < ffpidx.first.size() && ffpidx.first[i].first < thresh;
           i ++) {
@@ -374,11 +375,13 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
   SimpleVector<T> off(3);
   off.O();
   for(int k = 0; k < m.dst.size(); k ++)
-    off += dst0[m.src[k]] - m.transform(src0[m.src[k]]);
+    off += dst0[m.dst[k]] - m.transform(src0[m.src[k]]);
+  m.offset += (off /= T(int(m.dst.size())));
   if(m.dst.size() < 4) return m;
-  m.offset += (off /= T(m.dst.size()));
   SimpleMatrix<T> rot(3, 3);
+  SimpleMatrix<T> rot2(3, 3);
   rot.I();
+  rot2.I();
   for(int k = 0; k < m.dst.size() - 3; k ++) {
     SimpleMatrix<T> rotl(3, 3);
     SimpleMatrix<T> rotr(3, 3);
@@ -388,16 +391,18 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
       rotl.setCol(kk, dst0[m.dst[k + kk]]);
       rotr.setCol(kk, m.transform(src0[m.src[k + kk]]));
     }
-    rot *= rotl.QR() * rotr.QR().transpose();
+    // Q R dst == P R' src', avg(Q) * avg(Q^t P) !~ avg(P).
+    rot  *= rotl.QR() * rotr.QR().transpose();
+    rot2 *= rotl.QR().transpose();
   }
-  m.rot = pow(rot, T(1) / T(m.dst.size()));
-  T r0(0);
+  m.rot = pow(rot2, T(1) / T(int(m.dst.size() - 3))) * pow(rot, T(1) / T(int(m.dst.size() - 3)));
+  T r0(int(1));
   for(int k = 0; k < m.dst.size(); k ++) {
     const auto& dstk(dst0[m.dst[k]]);
     const auto  srck(m.transform(src0[m.src[k]]));
-    r0 += dstk.dot(srck) / srck.dot(srck);
+    r0 *= dstk.dot(srck) / srck.dot(srck);
   }
-  m.ratio = (r0 /= T(m.dst.size()));
+  m.ratio *= (r0 < T(int(0)) ? - T(int(1)) : T(int(1))) * pow(abs(r0), T(int(1)) / T(int(m.dst.size())));
   for(int k = 0; k < m.dst.size(); k ++) {
     const auto& dstk(dst0[m.dst[k]]);
     const auto  srck(m.transform(src0[m.src[k]]));
@@ -405,7 +410,7 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
     m.rdepth += sqrt(err.dot(err) / sqrt(dstk.dot(dstk) * srck.dot(srck)));
   }
   m.rdepth /= m.dst.size() * m.dst.size();
-  return m;
+  return move(m);
 }
 
 #define _MATCH_
