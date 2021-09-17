@@ -4,11 +4,11 @@ import os
 import sys
 import subprocess
 
-argv    = sys.argv
-pixels  = 4
-zratio  = .15
-psi     = 1. / 3.
-rot     = 5
+argv   = sys.argv
+pixels = 4
+zratio = .15
+psi    = 1. / 3.
+rot    = 5
 
 if(len(argv) < 4):
   print("no much argments.")

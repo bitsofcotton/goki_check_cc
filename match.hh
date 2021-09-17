@@ -307,9 +307,10 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
   auto fpidx(makeMatchPrep(on, dst.size() + src.size(), dst.size()));
   for(int n_fixed = 0, idx = 0;
           n_fixed < Pt.rows() - 1 && idx < fpidx.first.size();
-          n_fixed ++, idx ++) {
+          n_fixed ++) {
+    for(idx = 0; (fix[fpidx.first[idx].second] || fpidx.second[fpidx.first[idx].second] < 0) && idx < fpidx.first.size(); idx ++) ;
+    if(idx < 0 || fpidx.first.size() <= idx) break;
     const auto& iidx(fpidx.first[idx].second);
-    if(fix[iidx] || fpidx.second[iidx] < 0) continue;
     const auto  orth(Pt.col(iidx));
     const auto  n2(orth.dot(orth));
     if(n2 <= Pt.epsilon) continue;
@@ -379,9 +380,7 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
   m.offset += (off /= T(int(m.dst.size())));
   if(m.dst.size() < 4) return m;
   SimpleMatrix<T> rot(3, 3);
-  SimpleMatrix<T> rot2(3, 3);
   rot.I();
-  rot2.I();
   for(int k = 0; k < m.dst.size() - 3; k ++) {
     SimpleMatrix<T> rotl(3, 3);
     SimpleMatrix<T> rotr(3, 3);
@@ -391,11 +390,14 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
       rotl.setCol(kk, dst0[m.dst[k + kk]]);
       rotr.setCol(kk, m.transform(src0[m.src[k + kk]]));
     }
-    // Q R dst == P R' src', avg(Q) * avg(Q^t P) !~ avg(P).
-    rot  *= rotl.QR() * rotr.QR().transpose();
-    rot2 *= rotl.QR().transpose();
+    // dst == Q R == P R' == src, dst !~ avg(Q^t P)^t src'.
+    rot *= rotl.QR() * rotr.QR().transpose();
   }
-  m.rot = pow(rot2, T(1) / T(int(m.dst.size() - 3))) * pow(rot, T(1) / T(int(m.dst.size() - 3)));
+  m.rot = pow(rot, T(1) / T(int(m.dst.size() - 3))).transpose();
+  off.O();
+  for(int k = 0; k < m.dst.size(); k ++)
+    off += dst0[m.dst[k]] - m.transform(src0[m.src[k]]);
+  m.offset += (off /= T(int(m.dst.size())));
   T r0(int(1));
   for(int k = 0; k < m.dst.size(); k ++) {
     const auto& dstk(dst0[m.dst[k]]);
@@ -403,6 +405,10 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
     r0 *= dstk.dot(srck) / srck.dot(srck);
   }
   m.ratio *= (r0 < T(int(0)) ? - T(int(1)) : T(int(1))) * pow(abs(r0), T(int(1)) / T(int(m.dst.size())));
+  off.O();
+  for(int k = 0; k < m.dst.size(); k ++)
+    off += dst0[m.dst[k]] - m.transform(src0[m.src[k]]);
+  m.offset += (off /= T(int(m.dst.size())));
   for(int k = 0; k < m.dst.size(); k ++) {
     const auto& dstk(dst0[m.dst[k]]);
     const auto  srck(m.transform(src0[m.src[k]]));
