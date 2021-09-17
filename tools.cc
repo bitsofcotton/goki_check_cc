@@ -323,13 +323,12 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-          int  fnout(11);
     const auto nsub(atoi(argv[2]));
     const auto nemph(atoi(argv[3]));
     const auto vboxdst(atoi(argv[4]));
     const auto vboxsrc(atoi(argv[5]));
     const num_t zratio(std::atof(argv[6]));
-    typename simpleFile<num_t>::Mat in0[3], in1[3], bump0orig[3], bump1orig[3], mask0orig[3], mask1orig[3];
+    typename simpleFile<num_t>::Mat in0[3], in1[3], bump0orig[3], bump1orig[3];
     vector<typename simpleFile<num_t>::Veci> delau0, delau1;
     vector<typename simpleFile<num_t>::Vec>  shape0, shape1;
     if(!file.loadp2or3(in0, argv[7]))
@@ -341,18 +340,18 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(bump1orig, argv[10]))
       return - 2;
     const string outbase(argv[11]);
-    const auto& bump0(bump0orig[0]);
-    const auto& bump1(bump1orig[0]);
+    const auto bump0(redig.rgb2d(bump0orig));
+    const auto bump1(redig.rgb2d(bump1orig));
     redig.initialize(vboxdst, zratio);
     redig.getTileVec(bump0, shape0, delau0);
     redig.initialize(vboxsrc, zratio);
     redig.getTileVec(bump1, shape1, delau1);
     vector<vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
     vector<vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
-    sdelau0.emplace_back(delau0);
-    sdelau1.emplace_back(delau1);
-    sshape0.emplace_back(shape0);
-    sshape1.emplace_back(shape1);
+    sdelau0.emplace_back(std::move(delau0));
+    sdelau1.emplace_back(std::move(delau1));
+    sshape0.emplace_back(std::move(shape0));
+    sshape1.emplace_back(std::move(shape1));
     vector<match_t<num_t> > mm;
     for(int i = 1; i <= nsub; i ++) {
       const auto m(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1]));

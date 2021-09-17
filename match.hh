@@ -223,7 +223,7 @@ template <typename T> static inline pair<T, vector<SimpleVector<T> > > normalize
   return move(res);
 }
 
-template <typename T> SimpleVector<T> toQuarterNormalize(const SimpleVector<T>& xyz) {
+template <typename T> static inline SimpleVector<T> toQuarterNormalize(const SimpleVector<T>& xyz) {
   assert(xyz.size() == 3);
   static const auto twoPi(atan(T(int(1))) * T(int(4)));
   SimpleVector<T> quat(4);
@@ -263,7 +263,7 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
   for(int i = 0; i < src.size(); i ++)
     test.row(dst.size() + i) = toQuarterNormalize<T>(src[i]);
   for(int i = 0; i < 4; i ++)
-    test.row(i + dst.size() + src.size()).ek(i, thresh);
+    test.row(i + dst.size() + src.size()).ek(i);
         auto Pt(test.QR());
   const auto R(Pt * test);
   SimpleVector<T>    one(Pt.cols());
@@ -273,7 +273,8 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
   pair<vector<pair<T, int> >, vector<int> > fpidx;
   fpidx.first.resize(Pt.cols(), make_pair(T(0), - 1));
   fpidx.second.resize(Pt.cols(), - 1);
-  for(int n_fixed = 0; n_fixed < Pt.rows() - 1; n_fixed ++) {
+  int n_fixed;
+  for(n_fixed = 0; n_fixed < Pt.rows() - 1; n_fixed ++) {
     const auto on(Pt.projectionPt(one));
     for(int j = 0; j < dst.size(); j ++) {
       if(fix[j]) continue;
@@ -307,15 +308,23 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
       fpidx.first[j] = make_pair(on[j] < T(0) ? - T(on.size() * 2) : T(on.size() * 2), j);
     sort(fpidx.first.begin(), fpidx.first.end());
     int idx;
-    for(idx = 0; (fix[fpidx.first[idx].second] || fpidx.second[fpidx.first[idx].second] < 0) && idx < fpidx.first.size(); idx ++) ;
+    for(idx = 0;
+        idx < fpidx.first.size() &&
+          (fix[fpidx.first[idx].second] ||
+           fpidx.second[fpidx.first[idx].second] < 0);
+        idx ++) ;
     if(idx < 0 || fpidx.first.size() <= idx) break;
     const auto& iidx(fpidx.first[idx].second);
     const auto  orth(Pt.col(iidx));
     const auto  n2(orth.dot(orth));
-    if(n2 <= Pt.epsilon) continue;
+    fix[iidx] = true;
+    if(n2 <= Pt.epsilon) {
+      n_fixed --;
+      continue;
+    }
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
-    fix[iidx] = fix[fpidx.second[iidx]] = true;
+    fix[fpidx.second[iidx]] = true;
   }
   const auto on(Pt.projectionPt(one));
   fix.I(false);
@@ -327,7 +336,6 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
   pidx.resize(dst.size(), - 1);
   match_t<T> m(thresh, max(ggs.first, ggp.first));
   for(int i = 0; i < dst.size(); i ++) {
-    //      i < ffpidx.first.size() && ffpidx.first[i].first < thresh;
     fidx.resize(0);
     fidx.reserve(dst.size());
     for(int j = 0; j < dst.size(); j ++) {
@@ -337,7 +345,7 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
       for(int jj = dst.size(); jj < dst.size() + src.size(); jj ++) {
         if(fix[jj]) continue;
         const auto lscore(abs(on[j] - on[jj]));
-        if(pidx[j] < 0 || lscore < fidx[j].first) {
+        if(pidx[j] < 0 || lscore < min(fidx[j].first, thresh)) {
           fidx[j].first = lscore;
           pidx[j] = jj;
         }
@@ -345,18 +353,17 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
     }
     sort(fidx.begin(), fidx.end());
     int idx;
-    for(idx = 0; idx < fidx.size() && (fidx[idx].second < 0 || pidx[fidx[idx].second] < 0); idx ++) ;
+    for(idx = 0;
+        idx < fidx.size() &&
+          (fidx[idx].second < 0 || pidx[fidx[idx].second] < 0);
+        idx ++) ;
     if(idx < 0 || fidx.size() <= idx) continue;
     assert(0 <= fidx[idx].second && fidx[idx].second < dst.size() &&
-           0 <= pidx[fidx[idx].second] &&
-                pidx[fidx[idx].second] < dst.size() + src.size());
+           dst.size() <= pidx[fidx[idx].second] &&
+                         pidx[fidx[idx].second] < dst.size() + src.size());
     m.dst.emplace_back(fidx[idx].second);
     m.src.emplace_back(pidx[fidx[idx].second] - dst.size());
     fix[fidx[idx].second] = fix[pidx[fidx[idx].second]] = true;
-    assert(0 <= m.dst[m.dst.size() - 1] &&
-                m.dst[m.dst.size() - 1] < dst0.size() &&
-           0 <= m.src[m.src.size() - 1] &&
-                m.src[m.src.size() - 1] < src0.size());
     assert(src0[m.src[m.src.size() - 1]].size() == 3 &&
            dst0[m.dst[m.dst.size() - 1]].size() == 3);
   }
