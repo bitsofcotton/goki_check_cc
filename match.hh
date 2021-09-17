@@ -223,38 +223,6 @@ template <typename T> static inline pair<T, vector<SimpleVector<T> > > normalize
   return move(res);
 }
 
-template <typename T> pair<vector<pair<T, int> >, vector<int> > makeMatchPrep(const SimpleVector<T>& on, const int& rows, const int& rowcut) {
-  vector<int> pidx;
-  vector<pair<T, int> > fidx;
-  pidx.resize(rows, - 1);
-  for(int i = 0; i < rowcut; i ++) {
-    T score(0);
-    for(int j = rowcut; j < rows; j ++) {
-      const auto lscore(abs(on[i] - on[j]));
-      if(score == T(int(0)) || lscore < score) {
-        score   = lscore;
-        pidx[i] = j;
-      }
-    }
-    fidx.emplace_back(make_pair(score, i));
-  }
-  for(int i = rowcut; i < rows; i ++) {
-    T score(0);
-    for(int j = 0; j < rowcut; j ++) {
-      const auto lscore(abs(on[i] - on[j]));
-      if(score == T(int(0)) || lscore < score) {
-        score   = lscore;
-        pidx[i] = j;
-      }
-    }
-    fidx.emplace_back(make_pair(score, i));
-  }
-  for(int i = rows; i < rows + 4; i ++)
-    fidx.emplace_back(make_pair(on[i] < T(0) ? - T(on.size() * 2) : T(on.size() * 2), pidx[i] = i));
-  sort(fidx.begin(), fidx.end());
-  return make_pair(move(fidx), move(pidx));
-}
-
 template <typename T> SimpleVector<T> toQuarterNormalize(const SimpleVector<T>& xyz) {
   assert(xyz.size() == 3);
   static const auto twoPi(atan(T(int(1))) * T(int(4)));
@@ -302,12 +270,43 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
   SimpleVector<bool> fix(one.size());
   one.I(T(int(1)));
   fix.I(false);
-  const auto on(Pt.projectionPt(one));
-  vector<pair<T, int> > fidx;
-  auto fpidx(makeMatchPrep(on, dst.size() + src.size(), dst.size()));
-  for(int n_fixed = 0, idx = 0;
-          n_fixed < Pt.rows() - 1 && idx < fpidx.first.size();
-          n_fixed ++) {
+  pair<vector<pair<T, int> >, vector<int> > fpidx;
+  fpidx.first.resize(Pt.cols(), make_pair(T(0), - 1));
+  fpidx.second.resize(Pt.cols(), - 1);
+  for(int n_fixed = 0; n_fixed < Pt.rows() - 1; n_fixed ++) {
+    const auto on(Pt.projectionPt(one));
+    for(int j = 0; j < dst.size(); j ++) {
+      if(fix[j]) continue;
+      fpidx.first[j].first = T(0);
+      fpidx.first[j].second = j;
+      fpidx.second[j] = - 1;
+      for(int jj = dst.size(); jj < dst.size() + src.size(); jj ++) {
+        if(fix[jj]) continue;
+        const auto lscore(abs(on[j] - on[jj]));
+        if(fpidx.second[j] < 0 || lscore < fpidx.first[j].first) {
+          fpidx.first[j].first = lscore;
+          fpidx.second[j] = jj;
+        }
+      }
+    }
+    for(int j = dst.size(); j < dst.size() + src.size(); j ++) {
+      if(fix[j]) continue;
+      fpidx.first[j].first = T(0);
+      fpidx.first[j].second = j;
+      fpidx.second[j] = - 1;
+      for(int jj = 0; jj < dst.size(); jj ++) {
+        if(fix[jj]) continue;
+        const auto lscore(abs(on[j] - on[jj]));
+        if(fpidx.second[j] < 0 || lscore < fpidx.first[j].first) {
+          fpidx.first[j].first = lscore;
+          fpidx.second[j] = jj;
+        }
+      }
+    }
+    for(int j = dst.size() + src.size(); j < Pt.cols(); j ++)
+      fpidx.first[j] = make_pair(on[j] < T(0) ? - T(on.size() * 2) : T(on.size() * 2), j);
+    sort(fpidx.first.begin(), fpidx.first.end());
+    int idx;
     for(idx = 0; (fix[fpidx.first[idx].second] || fpidx.second[fpidx.first[idx].second] < 0) && idx < fpidx.first.size(); idx ++) ;
     if(idx < 0 || fpidx.first.size() <= idx) break;
     const auto& iidx(fpidx.first[idx].second);
@@ -317,54 +316,43 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
     for(int j = 0; j < Pt.cols(); j ++)
       Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
     fix[iidx] = fix[fpidx.second[iidx]] = true;
+  }
+  const auto on(Pt.projectionPt(one));
+  fix.I(false);
+  // const auto cut(R.solve(Pt * one));
+  // N.B. what we got: <a, [q0 q1 q2 q3] - [q0' q1' q2' q3']> == 0, a != 0.
+  //      and 0 <= a condition makes this valid.
+  vector<pair<T, int> > fidx;
+  vector<int> pidx;
+  pidx.resize(dst.size(), - 1);
+  match_t<T> m(thresh, max(ggs.first, ggp.first));
+  for(int i = 0; i < dst.size(); i ++) {
+    //      i < ffpidx.first.size() && ffpidx.first[i].first < thresh;
+    fidx.resize(0);
+    fidx.reserve(dst.size());
     for(int j = 0; j < dst.size(); j ++) {
       if(fix[j]) continue;
-      fpidx.second[j] = - 1;
-      T score(0);
+      fidx.emplace_back(make_pair(T(0), j));
+      pidx[j] = - 1;
       for(int jj = dst.size(); jj < dst.size() + src.size(); jj ++) {
         if(fix[jj]) continue;
         const auto lscore(abs(on[j] - on[jj]));
-        if(score == T(int(0)) || lscore < score) {
-          score   = lscore;
-          fpidx.second[j] = jj;
+        if(pidx[j] < 0 || lscore < fidx[j].first) {
+          fidx[j].first = lscore;
+          pidx[j] = jj;
         }
       }
-      fpidx.first[j].first = score;
     }
-    for(int j = dst.size(); j < dst.size() + src.size(); j ++) {
-      if(fix[j]) continue;
-      fpidx.second[j] = - 1;
-      T score(0);
-      for(int jj = 0; jj < dst.size(); jj ++) {
-        if(fix[jj]) continue;
-        const auto lscore(abs(on[j] - on[jj]));
-        if(score == T(int(0)) || lscore < score) {
-          score   = lscore;
-          fpidx.second[j] = jj;
-        }
-      }
-      fpidx.first[j].first = score;
-    }
-    for(int j = dst.size() + src.size(); j < Pt.cols(); j ++)
-      fpidx.first[j] = make_pair(on[j] < T(0) ? - T(on.size() * 2) : T(on.size() * 2), j);
-    sort(fpidx.first.begin(), fpidx.first.end());
-  }
-  const auto cut(R.solve(Pt * one));
-  const auto ffpidx(makeMatchPrep(Pt.projectionPt(one), dst.size() + src.size(), dst.size()));
-  // N.B. what we got: <a, [q0 q1 q2 q3] - [q0' q1' q2' q3']> == 0, a != 0.
-  //      and 0 <= a condition makes this valid.
-  match_t<T> m(thresh, max(ggs.first, ggp.first));
-  for(int i = 0;
-          i < ffpidx.first.size() && ffpidx.first[i].first < thresh;
-          i ++) {
-    if(ffpidx.second[ffpidx.first[i].second] < 0) continue;
-    if(ffpidx.first[i].second < dst.size()) {
-      m.dst.emplace_back(ffpidx.first[i].second);
-      m.src.emplace_back(ffpidx.second[ffpidx.first[i].second] - dst.size());
-    } else if(ffpidx.first[i].second < dst.size() + src.size()) {
-      m.src.emplace_back(ffpidx.first[i].second - dst.size());
-      m.dst.emplace_back(ffpidx.second[ffpidx.first[i].second]);
-    } else continue;
+    sort(fidx.begin(), fidx.end());
+    int idx;
+    for(idx = 0; idx < fidx.size() && (fidx[idx].second < 0 || pidx[fidx[idx].second] < 0); idx ++) ;
+    if(idx < 0 || fidx.size() <= idx) continue;
+    assert(0 <= fidx[idx].second && fidx[idx].second < dst.size() &&
+           0 <= pidx[fidx[idx].second] &&
+                pidx[fidx[idx].second] < dst.size() + src.size());
+    m.dst.emplace_back(fidx[idx].second);
+    m.src.emplace_back(pidx[fidx[idx].second] - dst.size());
+    fix[fidx[idx].second] = fix[pidx[fidx[idx].second]] = true;
     assert(0 <= m.dst[m.dst.size() - 1] &&
                 m.dst[m.dst.size() - 1] < dst0.size() &&
            0 <= m.src[m.src.size() - 1] &&
