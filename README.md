@@ -29,10 +29,10 @@ Searching the Internet more...
     gokicheck bumpc <psi> <rot> <gather_pixels> <zratio> <color.ppm< <bump.ppm> <output.ppm>
     gokicheck pred  <output.ppm> <input0.ppm> ...
     gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ...
-    gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>
-    gokicheck (tilt|sbox)    <index> <max_index> <psi> <input.ppm> <input-bump.(ppm|obj)> <output.ppm>
-    gokicheck match <num_of_hidden_match> <num_of_emph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> (<dst-mask.ppm> <src-mask.ppm>)? <output-basename>
-    gokicheck habit    <in0.obj> <in1.obj> (<index> <max_index> <psi>)? <out.obj>
+    gokicheck obj   <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>
+    gokicheck (tilt|sbox)    <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
+    gokicheck match <num_of_hidden_match> <num_of_emph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
+    gokicheck habit    <in0.obj> <in1.obj> <out.obj>
     gokicheck recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokicheck recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokicheck recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
