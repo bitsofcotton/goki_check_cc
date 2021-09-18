@@ -40,10 +40,10 @@ using std::make_pair;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|lpf|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
-  cout << "gokicheck bumpc <psi> <gather_pixels> <zratio> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
+  cout << "gokicheck bumpc <psi> <rot> <gather_pixels> <zratio> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
   cout << "gokicheck (pred|lenl) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
-  cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <thin> <input.ppm> <mask.ppm>? <output.obj>" << endl;
+  cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>" << endl;
   cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
   cout << "gokicheck match <nsub> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> <out.obj>" << endl;
@@ -207,14 +207,14 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     typename simpleFile<num_t>::Mat datac[3], bump[3];
-    if(!file.loadp2or3(datac, argv[5]))
+    if(!file.loadp2or3(datac, argv[6]))
       return -1;
-    if(!file.loadp2or3(bump, argv[6]))
+    if(!file.loadp2or3(bump, argv[7]))
       return -1;
-    redig.initialize(atoi(argv[3]), std::atof(argv[4]));
-    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]));
+    redig.initialize(atoi(argv[4]), std::atof(argv[5]));
+    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]), atoi(argv[3]));
     redig.normalize(bump, num_t(1));
-    if(!file.savep2or3(argv[7], bump, ! true) )
+    if(!file.savep2or3(argv[8], bump, ! true) )
       return - 2;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
@@ -262,28 +262,18 @@ int main(int argc, const char* argv[]) {
     const auto  vbox(atoi(argv[2]));
     const num_t ratio(std::atof(argv[3]));
     const num_t zratio(std::atof(argv[4]));
-    const num_t thin(std::atof(argv[5]));
-    if(!file.loadp2or3(data, argv[6]))
+    if(!file.loadp2or3(data, argv[5]))
       return - 1;
-    int sidx(7);
-    if(8 < argc) {
-      if(!file.loadp2or3(mask, argv[7]))
-        return - 1;
-      sidx ++;
-    } else
-      mask[0] = mask[1] = mask[2] = data[0] * num_t(0);
-    vector<typename simpleFile<num_t>::Vec>  points;
-    vector<typename simpleFile<num_t>::Veci> facets;
     redig.initialize(vbox, zratio);
-    redig.getTileVec(data[0], points, facets);
+          auto points(redig.getTileVec(redig.rgb2d(data)));
+    //      auto points(redig.getHesseVec(redig.rgb2d(data)));
+    const auto facets(redig.mesh2(points));
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
-    const auto ff(redig.floodfill(redig.rgb2d(mask), points)[0]);
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
-                 8 < argc ? redig.mesh2(points, ff) : facets, argv[sidx],
-                 redig.edge(points, ff), thin);
-    file.saveMTL(argv[sidx], (string(argv[sidx]) + string(".mtl")).c_str());
+                 facets, argv[6]);
+    file.saveMTL(argv[6], (string(argv[6]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
@@ -328,34 +318,28 @@ int main(int argc, const char* argv[]) {
     const auto vboxdst(atoi(argv[4]));
     const auto vboxsrc(atoi(argv[5]));
     const num_t zratio(std::atof(argv[6]));
-    typename simpleFile<num_t>::Mat in0[3], in1[3], bump0orig[3], bump1orig[3];
-    vector<typename simpleFile<num_t>::Veci> delau0, delau1;
-    vector<typename simpleFile<num_t>::Vec>  shape0, shape1;
+    typename simpleFile<num_t>::Mat in0[3], in1[3], bump0[3], bump1[3];
     if(!file.loadp2or3(in0, argv[7]))
       return - 2;
     if(!file.loadp2or3(in1, argv[8]))
       return - 2;
-    if(!file.loadp2or3(bump0orig, argv[9]))
+    if(!file.loadp2or3(bump0, argv[9]))
       return - 2;
-    if(!file.loadp2or3(bump1orig, argv[10]))
+    if(!file.loadp2or3(bump1, argv[10]))
       return - 2;
     const string outbase(argv[11]);
-    const auto bump0(redig.rgb2d(bump0orig));
-    const auto bump1(redig.rgb2d(bump1orig));
-    redig.initialize(vboxdst, zratio);
-    redig.getTileVec(bump0, shape0, delau0);
-    redig.initialize(vboxsrc, zratio);
-    redig.getTileVec(bump1, shape1, delau1);
     vector<vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
     vector<vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
-    sdelau0.emplace_back(std::move(delau0));
-    sdelau1.emplace_back(std::move(delau1));
-    sshape0.emplace_back(std::move(shape0));
-    sshape1.emplace_back(std::move(shape1));
+    redig.initialize(vboxdst, zratio);
+    sshape0.emplace_back(redig.getTileVec(redig.rgb2d(bump0)));
+    // sshape0.emplace_back(redig.getHesseVec(redig.rgb2d(bump0)));
+    redig.initialize(vboxsrc, zratio);
+    sshape1.emplace_back(redig.getTileVec(redig.rgb2d(bump1)));
+    sdelau0.emplace_back(redig.mesh2(sshape0[0]));
+    sdelau1.emplace_back(redig.mesh2(sshape1[0]));
     vector<match_t<num_t> > mm;
     for(int i = 1; i <= nsub; i ++) {
-      const auto m(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1]));
-      mm.emplace_back(m);
+      auto m(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1]));
       sdelau0.emplace_back(vector<typename simpleFile<num_t>::Veci>());
       sdelau1.emplace_back(vector<typename simpleFile<num_t>::Veci>());
       sshape0.emplace_back(vector<typename simpleFile<num_t>::Vec>());
@@ -398,6 +382,7 @@ int main(int argc, const char* argv[]) {
        nxtsd1:
         ;
       }
+      mm.emplace_back(std::move(m));
       if(! sdelau0[i].size() || ! sdelau1[i].size() || ! sshape0[i].size() || ! sshape1[i].size())
         break;
     }
@@ -643,8 +628,8 @@ int main(int argc, const char* argv[]) {
         typename simpleFile<num_t>::Mat buf2;
         if(strcmp(argv[2], "diff") == 0)
           buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, DETECT_X).template cast<complex<num_t> >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, DETECT_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, DETECT_BOTH).template cast<complex<num_t> >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, DETECT_BOTH).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "sharpen") == 0)
           buf2 = (midft * (
             filter<num_t>(mdft.template real<num_t>() * buf, SHARPEN_X).template cast<complex<num_t> >() +

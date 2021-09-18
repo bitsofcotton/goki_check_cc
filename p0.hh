@@ -86,8 +86,11 @@ public:
   }
   inline ~P0() { ; };
   inline T next(const T& in) {
-    const auto& ff(f.next(in));
-    return f.full ? p.dot(ff) - ff[ff.size() - 1] : T(0);
+          auto ff(f.next(in));
+    const auto nff(sqrt(ff.dot(ff)));
+    for(int i = 0; i < ff.size(); i ++)
+      ff[i] = T(1) / (T(2) * nff + ff[i]);
+    return f.full ? T(1) / p.dot(ff) - T(1) / ff[ff.size() - 1] : T(0);
   }
   Vec p;
   feeder f;

@@ -31,14 +31,10 @@ typedef enum {
   FLARGE_X,
   FLARGE_Y,
   FLARGE_BOTH,
-  DETECT_X,
-  DETECT_Y,
-  DETECT_BOTH,
   INTEG_X,
   INTEG_Y,
   INTEG_BOTH,
-  COLLECT_X,
-  COLLECT_Y,
+  DETECT_BOTH,
   COLLECT_BOTH,
   BUMP_BOTH,
   EXTEND_X,
@@ -158,7 +154,7 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& n = 0, const int& recur = 2) {
   assert(0 <= n && (dir == BLINK_Y || dir == BLINK_X || dir == BLINK_BOTH || 0 < recur));
   static const auto Pi(atan2(T(1), T(1)) * T(4));
-  if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == BUMP_BOTH || dir == CLIP || dir == ABS) {
+  if(n <= 1 || dir == REPRESENT || dir == EXTEND_Y || dir == EXTEND_X || dir == EXTEND_BOTH || dir == CLIP || dir == ABS) {
     switch(dir) {
     case SHARPEN_BOTH:
       return filter<T>(filter<T>(data, SHARPEN_X, n, recur), SHARPEN_Y, n, recur);
@@ -166,12 +162,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(filter<T>(data, ENLARGE_X, n, recur), ENLARGE_Y, n, recur);
     case FLARGE_BOTH:
       return filter<T>(filter<T>(data, FLARGE_X, n, recur), FLARGE_Y, n, recur);
-    case DETECT_BOTH:
-      return (filter<T>(data, DETECT_X, n, recur) + filter<T>(data, DETECT_Y, n, recur)) / T(2);
     case INTEG_BOTH:
       return (filter<T>(data, INTEG_X, n, recur) + filter<T>(data, INTEG_Y, n, recur)) / T(2);
-    case COLLECT_BOTH:
-      return (filter<T>(data, COLLECT_X, n, recur) + filter<T>(data, COLLECT_Y, n, recur)) / T(2);
     case EXTEND_BOTH:
       return filter<T>(filter<T>(filter<T>(filter<T>(data, EXTEND_X, n, recur), CLIP, n, recur), EXTEND_Y, n, recur), CLIP, n, recur);
     case BLINK_BOTH:
@@ -184,20 +176,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(data.transpose(), ENLARGE_Y, n, recur).transpose();
     case FLARGE_X:
       return filter<T>(data.transpose(), FLARGE_Y, n, recur).transpose();
-    case DETECT_X:
-      return filter<T>(data.transpose(), DETECT_Y, n, recur).transpose();
     case INTEG_X:
       return filter<T>(data.transpose(), INTEG_Y, n, recur).transpose();
-    case COLLECT_X:
-      return filter<T>(data.transpose(), COLLECT_Y, n, recur).transpose();
     case EXTEND_X:
       return filter<T>(data.transpose(), EXTEND_Y, n, recur).transpose();
     case BLINK_X:
       return filter<T>(data.transpose(), BLINK_Y, n, recur).transpose();
     case LPF_X:
       return filter<T>(data.transpose(), LPF_Y, n, recur).transpose();
-    case DETECT_Y:
-      return diff<T>(  data.rows()) * data;
     case INTEG_Y:
       // return diff<T>(- data.rows()) * data;
       {
@@ -220,8 +206,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         return (dft<T>(- data.rows()) * normalize).template real<T>();
       }
       break;
-    case COLLECT_Y:
-      return filter<T>(filter<T>(data, DETECT_Y, n, recur), ABS, n, recur);
     case SHARPEN_Y:
       {
         const auto      shp(sharpen<T>(int(data.rows())) * data);
@@ -270,6 +254,24 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         return result;
       }
       break;
+    case DETECT_BOTH:
+      {
+        const auto zy(diff<T>(data.rows()) * data);
+        const auto zx(data * diff<T>(data.cols()).transpose());
+              auto res(data);
+        res.O();
+        for(int i = 0; i < res.rows(); i ++)
+          for(int j = 0; j < res.cols(); j ++) {
+            const auto E(T(1) + zy(i, j) * zy(i, j));
+            const auto F(       zy(i, j) * zx(i, j));
+            const auto G(T(1) + zx(i, j) * zx(i, j));
+            res(i, j) = E * G - F * F;
+          }
+        return res;
+      }
+      break;
+    case COLLECT_BOTH:
+      return filter<T>(filter<T>(data, DETECT_BOTH, n, recur), ABS, n, recur);
     case BUMP_BOTH:
       {
         SimpleMatrix<T> result(data.rows(), data.cols());

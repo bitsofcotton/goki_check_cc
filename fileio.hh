@@ -154,7 +154,7 @@ public:
     return true;
   }
 
-  bool saveobj(const vector<Vec>& data, const T& Mw0, const T& Mh0, const vector<Veci>& polys, const char* filename, const vector<int>& edges = vector<int>(), const T& addstand = T(0)) {
+  bool saveobj(const vector<Vec>& data, const T& Mw0, const T& Mh0, const vector<Veci>& polys, const char* filename) {
     ofstream output;
     output.open(filename, std::ios::out);
     if(output.is_open()) {
@@ -170,20 +170,10 @@ public:
       T lz(1);
       for(int i = 0; i < data.size(); i ++)
         lz = min(data[i][2], lz);
-      if(addstand != T(0)) {
-        for(int i = 0; i < data.size(); i ++)
-          output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << data[i][2] + addstand - lz << endl;
-        for(int i = 0; i < data.size(); i ++)
-          output << "v " << data[i][1] << " " << Mw - data[i][0] << " " << 0 << endl;
-      } else {
-        for(int i = 0; i < data.size(); i ++)
-          output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] << endl;
-      }
+      for(int i = 0; i < data.size(); i ++)
+        output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] << endl;
       for(int i = 0; i < data.size(); i ++)
         output << "vt " << data[i][1] / T(Mh) / T(2) << " " << T(1) - data[i][0] / T(Mw) / T(2) << endl;
-      if(addstand != T(0))
-        for(int i = 0; i < data.size(); i ++)
-          output << "vt " << 0 <<" " << 0 << endl;
       // xchg with clockwise/counter clockwise.
       for(int i = 0; i < polys.size(); i ++) {
         const int i0(polys[i][0] + 1);
@@ -193,39 +183,6 @@ public:
           output << "f " << i0 << "/" << i0 << "/" << i0;
           output << " "  << i1 << "/" << i1 << "/" << i1;
           output << " "  << i2 << "/" << i2 << "/" << i2 << endl;
-        }
-      }
-      if(addstand != T(0)) {
-        for(int i = 0; i < polys.size(); i ++) {
-          const int i0(data.size() + polys[i][0] + 1);
-          const int i1(data.size() + polys[i][2] + 1);
-          const int i2(data.size() + polys[i][1] + 1);
-          if(i0 != i1 && i1 != i2 && i2 != i0) {
-            output << "f " << i0 << "/" << i0 << "/" << i0;
-            output << " "  << i1 << "/" << i1 << "/" << i1;
-            output << " "  << i2 << "/" << i2 << "/" << i2 << endl;
-          }
-        }
-        assert(0 < edges.size());
-        for(int i0 = 0; i0 < edges.size(); i0 ++) {
-          const auto& outer(edges);
-          const int   i1((i0 + 1) % edges.size());
-          const int   ii0(data.size() + outer[i0] + 1);
-          const int   ii1(outer[i1] + 1);
-          const int   ii2(data.size() + outer[i1] + 1);
-          const int   ii3(outer[i0] + 1);
-          assert(0 <= outer[i0] && outer[i0] < data.size());
-          assert(0 <= outer[i1] && outer[i1] < data.size());
-          if(ii0 != ii1 && ii1 != ii2 && ii2 != ii0) {
-            output << "f " << ii0 << "/" << ii0 << "/" << ii0;
-            output << " "  << ii1 << "/" << ii1 << "/" << ii1;
-            output << " "  << ii2 << "/" << ii2 << "/" << ii2 << endl;
-          }
-          if(ii0 != ii3 && ii3 != ii1 && ii1 != ii0) {
-            output << "f " << ii0 << "/" << ii0 << "/" << ii0;
-            output << " "  << ii3 << "/" << ii3 << "/" << ii3;
-            output << " "  << ii1 << "/" << ii1 << "/" << ii1 << endl;
-          }
         }
       }
       output.close();

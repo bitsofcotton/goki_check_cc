@@ -87,10 +87,9 @@ public:
   Mat  showMatch(const Mat& dstimg, const vector<Vec>& dst, const vector<Veci>& hull, const T& emph = T(1));
   Mat  makeRefMatrix(const Mat& orig, const int& start) const;
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
+  vector<Veci> mesh2(const vector<Vec>& p) const;
   vector<Veci> mesh2(const vector<Vec>& p, const vector<int>& pp) const;
   vector<int>  edge(const vector<Vec>& p, const vector<int>& pp) const;
-  void maskVectors(vector<Vec>& points, const vector<Veci>& polys, const Mat& mask);
-  void maskVectors(vector<Vec>& points, vector<Veci>& polys, const Mat& mask);
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& thresh = T(1) / T(128));
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& intensity = T(1));
   Mat  reColor3(const Mat& cbase, const Mat& vbase, const int& count = 20);
@@ -103,7 +102,7 @@ public:
   Mat  compImage(const Mat& in, const Mat& opt) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
-  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi) const;
+  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& rot = 0) const;
   vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -113,8 +112,8 @@ public:
   void normalize(Mat data[3], const T& upper) const;
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
-  void getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) const;
-  void getHesseVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay, const T& thresh = T(1) / T(20)) const;
+  vector<Vec> getTileVec(const Mat& in) const;
+  vector<Vec> getHesseVec(const Mat& in, const int& guard = 5) const;
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const Vec& origin = Vec()) const;
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
   Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& depth = - T(1000)) const;
@@ -124,7 +123,6 @@ public:
 private:
   void drawMatchLine(Mat& map, const Vec& lref0, const Vec& lref1, const T& c) const;
   void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
-  inline Triangles makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
   
   T   Pi;
@@ -288,6 +286,13 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
   return result;
 }
 
+template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p) const {
+  vector<int> pp;
+  pp.reserve(p.size());
+  for(int i = 0; i < p.size(); i ++) pp.emplace_back(i);
+  return mesh2(p, pp);
+}
+
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
   vector<pair<Vec, int> > sp;
   vector<pair<Vec, int> > sp2;
@@ -396,7 +401,7 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     }
     const auto det(d.determinant());
     assert(det != T(0));
-    if(det < T(0))
+    if(T(0) < det)
       swap(res[i][0], res[i][1]);
   }
   return res;
@@ -431,37 +436,6 @@ template <typename T> vector<int> reDig<T>::edge(const vector<Vec>& p, const vec
   for(int i = 0; i < resr.size(); i ++)
     res.emplace_back(std::move(resr[resr.size() - i - 1]));
   return res;
-}
-
-template <typename T> void reDig<T>::maskVectors(vector<Vec>& points, const vector<Veci>& polys, const Mat& mask) {
-  vector<Veci> tpoly(polys);
-  return maskVectors(points, tpoly, mask);
-}
-
-template <typename T> void reDig<T>::maskVectors(vector<Vec>& points, vector<Veci>& polys, const Mat& mask) {
-  vector<int> elim, elimp, after;
-  for(int i = 0, ii = 0; i < points.size(); i ++) {
-    const int y(max(min(int(points[i][0]), int(mask.rows() - 1)), int(0)));
-    const int x(max(min(int(points[i][1]), int(mask.cols() - 1)), int(0)));
-    if(mask(y, x) > T(1) / T(2)) {
-      elim.emplace_back(i);
-      after.emplace_back(- 1);
-    } else
-      after.emplace_back(ii ++);
-  }
-  for(int i = 0; i < polys.size(); i ++)
-    if(binary_search(elim.begin(), elim.end(), polys[i][0]) ||
-       binary_search(elim.begin(), elim.end(), polys[i][1]) ||
-       binary_search(elim.begin(), elim.end(), polys[i][2]))
-      elimp.emplace_back(i);
-  for(int i = 0; i < elim.size(); i ++)
-    points.erase(points.begin() + (elim[i] - i));
-  for(int i = 0; i < elimp.size(); i ++)
-    polys.erase(polys.begin() + (elimp[i] - i));
-  for(int i = 0; i < polys.size(); i ++)
-    for(int j = 0; j < polys[i].size(); j ++)
-      polys[i][j] = after[polys[i][j]];
-  return;
 }
 
 template <typename T> typename reDig<T>::Mat reDig<T>::reShape(const Mat& cbase, const Mat& vbase, const int& count, const T& thresh) {
@@ -634,9 +608,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
 }
 
 template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask) {
-  vector<Vec>  pdst;
-  vector<Veci> facets;
-  getTileVec(mask, pdst, facets);
+  vector<Vec>  pdst(getTileVec(mask));
+  vector<Veci> facets(mesh2(pdst));
   const auto idsts(floodfill(mask, pdst));
   assert(idsts.size());
   int iidst(0);
@@ -855,87 +828,96 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
   return res;
 }
 
-template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi) const {
+template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& rot) const {
   assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
-        Vec  origin(3);
-  origin[0] = T(0);
-  origin[1] = T(color.cols() - 1) / T(2);
-  origin[2] = T(0);
-  const auto colory0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
-  const auto colory1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
-  origin[0] = T(color.rows() - 1);
-  const auto colory2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
-  const auto colory3(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
-  origin[0] = T(color.rows() - 1) / T(2);
-  origin[1] = T(0);
-  const auto colorx0(tilt(color, bumpm, tiltprep(bumpm, 3, 4, - abs(psi), origin)));
-  const auto colorx1(tilt(color, bumpm, tiltprep(bumpm, 3, 4,   abs(psi), origin)));
-  origin[1] = T(color.cols() - 1);
-  const auto colorx2(tilt(color, bumpm, tiltprep(bumpm, 3, 4, - abs(psi), origin)));
-  const auto colorx3(tilt(color, bumpm, tiltprep(bumpm, 3, 4,   abs(psi), origin)));
-        Mat  result(color.rows(), color.cols());
-        auto zscore(result);
-  result.O();
-  zscore.O(- T(1));
-  const T   rxy(T(min(color.rows(), color.cols())));
-  const int dratio(sqrt(sqrt(rxy)));
-        Vec camera(2);
-  camera[0] = T(0);
-  camera[1] = T(1);
-  for(int zi = 0; zi < dratio; zi ++) {
-    Vec cpoint(2);
-    cpoint[0] = T(1) / T(2 * dratio);
-    cpoint[1] = T(zi) / T(dratio);
-    const auto t(- camera[1] / (cpoint[1] - camera[1]));
-    const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-    if(int(y0) < 3 || rxy < abs(y0) * T(2)) continue;
-    const auto Dop(diff<T>(abs(int(y0) & ~ int(1))));
-    const auto Dop0((Dop.row(y0 / 2) + Dop.row(y0 / 2 + 1)) / T(2));
-    for(int i = 0; i < result.rows(); i ++) {
-      for(int j = 0; j < result.cols(); j ++) {
-        T zy(0), zx(0);
-        // N.B. projection scale is linear.
-        T yorigin(0);
-        T xorigin(0);
-        // x-z plane projection of point p with camera geometry c to z=0.
-        // c := camera, p := cpoint.
-        // <c + (p - c) * t, [0, 1]> = 0
-        for(int kk = 0; kk < Dop0.size(); kk ++) {
-          if(i < result.rows() / 2) {
-            cpoint[0] = (T(i + kk) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
-            yorigin   = T(result.rows() - 1);
-          } else
-            cpoint[0] = (T(i + kk) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
-          const auto ty(- camera[1] / (cpoint[1] - camera[1]));
-          zy += (i < result.rows() / 2 ?
-            (kk < Dop0.size() / 2 ? colory2 : colory3) :
-            (kk < Dop0.size() / 2 ? colory0 : colory1))(
-              getImgPt<int>(int((camera + (cpoint - camera) * ty)[0] * rxy +
-                yorigin), color.rows()), j) * Dop0[kk];
-          if(j < result.cols() / 2) {
-            cpoint[0] = (T(j + kk) - T(Dop0.size() - 1) / T(2) - T(result.cols() - 1)) / T(2 * dratio) / rxy;
-            xorigin   = T(result.cols() - 1);
-          } else
-            cpoint[0] = (T(j + kk) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
-          const auto tx(- camera[1] / (cpoint[1] - camera[1]));
-          zx += (j < result.cols() / 2 ?
-            (kk < Dop0.size() / 2 ? colorx2 : colorx3) :
-            (kk < Dop0.size() / 2 ? colorx0 : colorx1))(i, 
-              getImgPt<int>(int((camera + (cpoint - camera) * tx)[0] * rxy +
-                xorigin), color.cols())) * Dop0[kk];
-        }
-        const auto E(T(1) + zy * zy);
-        const auto F(       zy * zx);
-        const auto G(T(1) + zx * zx);
-        const auto lscore(abs(E * G - F * F));
-        if(zscore(i, j) < lscore) {
-          result(i, j) = T(zi + 1);
-          zscore(i, j) = lscore;
+  if(! rot) {
+          Vec  origin(3);
+    origin[0] = T(0);
+    origin[1] = T(color.cols() - 1) / T(2);
+    origin[2] = T(0);
+    const auto colory0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
+    const auto colory1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
+    origin[0] = T(color.rows() - 1);
+    const auto colory2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
+    const auto colory3(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
+    origin[0] = T(color.rows() - 1) / T(2);
+    origin[1] = T(0);
+    const auto colorx0(tilt(color, bumpm, tiltprep(bumpm, 3, 4, - abs(psi), origin)));
+    const auto colorx1(tilt(color, bumpm, tiltprep(bumpm, 3, 4,   abs(psi), origin)));
+    origin[1] = T(color.cols() - 1);
+    const auto colorx2(tilt(color, bumpm, tiltprep(bumpm, 3, 4, - abs(psi), origin)));
+    const auto colorx3(tilt(color, bumpm, tiltprep(bumpm, 3, 4,   abs(psi), origin)));
+          Mat  result(color.rows(), color.cols());
+          auto zscore(result);
+    result.O();
+    zscore.O(- T(1));
+    const T   rxy(T(min(color.rows(), color.cols())));
+    const int dratio(sqrt(sqrt(rxy)));
+          Vec camera(2);
+    camera[0] = T(0);
+    camera[1] = T(1);
+    for(int zi = 0; zi < dratio; zi ++) {
+      Vec cpoint(2);
+      cpoint[0] = T(1) / T(2 * dratio);
+      cpoint[1] = T(zi) / T(dratio);
+      const auto t(- camera[1] / (cpoint[1] - camera[1]));
+      const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
+      if(int(y0) < 3 || rxy < abs(y0) * T(2)) continue;
+      const auto Dop(diff<T>(abs(int(y0) & ~ int(1))));
+      const auto Dop0((Dop.row(y0 / 2) + Dop.row(y0 / 2 + 1)) / T(2));
+      for(int i = 0; i < result.rows(); i ++) {
+        for(int j = 0; j < result.cols(); j ++) {
+          T zy(0), zx(0);
+          // N.B. projection scale is linear.
+          T yorigin(0);
+          T xorigin(0);
+          // x-z plane projection of point p with camera geometry c to z=0.
+          // c := camera, p := cpoint.
+          // <c + (p - c) * t, [0, 1]> = 0
+          for(int kk = 0; kk < Dop0.size(); kk ++) {
+            if(i < result.rows() / 2) {
+              cpoint[0] = (T(i + kk) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
+              yorigin   = T(result.rows() - 1);
+            } else
+              cpoint[0] = (T(i + kk) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
+            const auto ty(- camera[1] / (cpoint[1] - camera[1]));
+            zy += (i < result.rows() / 2 ?
+              (kk < Dop0.size() / 2 ? colory2 : colory3) :
+              (kk < Dop0.size() / 2 ? colory0 : colory1))(
+                getImgPt<int>(int((camera + (cpoint - camera) * ty)[0] * rxy +
+                  yorigin), color.rows()), j) * Dop0[kk];
+            if(j < result.cols() / 2) {
+              cpoint[0] = (T(j + kk) - T(Dop0.size() - 1) / T(2) - T(result.cols() - 1)) / T(2 * dratio) / rxy;
+              xorigin   = T(result.cols() - 1);
+            } else
+              cpoint[0] = (T(j + kk) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
+            const auto tx(- camera[1] / (cpoint[1] - camera[1]));
+            zx += (j < result.cols() / 2 ?
+              (kk < Dop0.size() / 2 ? colorx2 : colorx3) :
+              (kk < Dop0.size() / 2 ? colorx0 : colorx1))(i, 
+                getImgPt<int>(int((camera + (cpoint - camera) * tx)[0] * rxy +
+                  xorigin), color.cols())) * Dop0[kk];
+          }
+          const auto E(T(1) + zy * zy);
+          const auto F(       zy * zx);
+          const auto G(T(1) + zx * zx);
+          const auto lscore(abs(E * G - F * F));
+          if(zscore(i, j) < lscore) {
+            result(i, j) = T(zi + 1);
+            zscore(i, j) = lscore;
+          }
         }
       }
     }
+    return result;
   }
-  return result;
+  auto res(bump(color, bumpm, psi, 0));
+  for(int i = 1; i <= rot; i ++) {
+    cerr << "r" << flush;
+    const auto theta(T(i) * atan(T(int(1))) / T(rot + 1));
+    res += center<T>(rotate<T>(bump(rotate<T>(color, theta), rotate<T>(bumpm, theta), psi, 0), - theta), res);
+  }
+  return res /= T(rot + 1);
 }
 
 template <typename T> vector<vector<int> > reDig<T>::floodfill(const Mat& mask, const vector<Vec>& points) {
@@ -1153,9 +1135,8 @@ template <typename T> void reDig<T>::autoLevel(Mat data[3], const int& count) {
 }
 
 // get bump with multiple scale and vectorized result.
-template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay) const {
-  // get vectorize.
-  geoms = vector<Vec>();
+template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getTileVec(const Mat& in) const {
+  vector<Vec> geoms;
   T aavg(0);
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
@@ -1189,82 +1170,56 @@ template <typename T> void reDig<T>::getTileVec(const Mat& in, vector<Vec>& geom
   avg /= geoms.size();
   for(int i = 0; i < geoms.size(); i ++)
     geoms[i][2] -= avg[2];
-  delaunay = vector<Veci>();
-  for(int i = 1; i < in.rows() / vbox + 1; i ++)
-    for(int j = 0; j < in.cols() / vbox; j ++) {
-      Veci work(3), work2(3);
-      work[0]  = T((i - 1) * (in.cols() / vbox + 1) + j);
-      work[1]  = T( i      * (in.cols() / vbox + 1) + j);
-      work[2]  = T( i      * (in.cols() / vbox + 1) + j + 1);
-      work2[0] = T((i - 1) * (in.cols() / vbox + 1) + j);
-      work2[2] = T((i - 1) * (in.cols() / vbox + 1) + j + 1);
-      work2[1] = T( i      * (in.cols() / vbox + 1) + j + 1);
-      delaunay.emplace_back(work);
-      delaunay.emplace_back(work2);
-    }
-  return;
+  return geoms;
 }
 
-template <typename T> void reDig<T>::getHesseVec(const Mat& in, vector<Vec>& geoms, vector<Veci>& delaunay, const T& thresh) const {
+template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const Mat& in, const int& guard) const {
+  vector<Vec> geoms;
+  geoms.reserve(vbox);
   const auto xx(in * diff<T>(in.cols()) * diff<T>(in.cols()));
   const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()));
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
-  geoms.resize(0);
+  vector<pair<T, pair<int, int> > > score;
+  score.reserve(in.rows() * in.cols());
+  for(int i = 0; i < in.rows(); i ++)
+    for(int j = 0; j < in.cols(); j ++)
+      score.emplace_back(make_pair(abs(xx(i, j) * yy(i, j) - xy(i, j) * xy(i, j)), make_pair(i, j)));
+  sort(score.begin(), score.end());
+  vector<pair<int, int> > geom;
+  geom.reserve(vbox);
+  for(int i = 0; i < score.size(); i ++)
+    geom.emplace_back(move(score[i].second));
+  sort(geom.begin(), geom.end());
+  vector<pair<int, int> > cache;
+  cache.reserve(geom.size());
+  for(int i = 0; i < geom.size() && geoms.size() < vbox; i ++)
+    if(! binary_search(cache.begin(), cache.end(), make_pair(geom[i].first / guard, geom[i].second / guard)) ) {
+      Vec g(3);
+      g[0] = T(int(geom[i].first));
+      g[1] = T(int(geom[i].second));
+      g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(geom[i].first, geom[i].second);
+      geoms.emplace_back(move(g));
+      cache.emplace_back(make_pair(geom[i].first / guard, geom[i].second / guard));
+      sort(cache.begin(), cache.end());
+    }
   Vec g(3);
   g[0] = T(int(0));
   g[1] = T(int(0));
   g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(0, 0);
   geoms.emplace_back(g);
-  g    = Vec(3);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(0));
   g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(in.rows() - 1, 0);
-  for(int i = 0; i < in.rows(); i ++)
-    for(int j = 0; j < in.cols(); j ++)
-      if(abs(xx(i, j) * yy(i, j) - xy(i, j) * xy(i, j)) <= thresh) {
-        Vec g(3);
-        g[0] = T(int(i));
-        g[1] = T(int(j));
-        g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(i, j);
-        geoms.emplace_back(move(g));
-      }
-  g    = Vec(3);
+  geoms.emplace_back(g);
   g[0] = T(int(0));
   g[1] = T(int(in.cols() - 1));
   g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(0, in.cols() - 1);
-  g    = Vec(3);
+  geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(in.cols() - 1));
   g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(in.rows() - 1, in.cols() - 1);
-  vector<int> vv;
-  vv.reserve(geoms.size());
-  for(int i = 0; i < geoms.size(); i ++)
-    vv.emplace_back(i);
-  delaunay = mesh2(geoms, vv);
-  return;
-}
-
-template <typename T> inline typename reDig<T>::Triangles reDig<T>::makeTriangle(const int& u, const int& v, const Mat& in, const Mat& bump, const int& flg) const {
-  Triangles work;
-  if(flg) {
-    work.p(0, 0) = u;
-    work.p(1, 0) = v;
-    work.p(0, 1) = u + 1;
-    work.p(1, 1) = v;
-    work.p(0, 2) = u + 1;
-    work.p(1, 2) = v + 1;
-  } else {
-    work.p(0, 0) = u;
-    work.p(1, 0) = v;
-    work.p(0, 1) = u;
-    work.p(1, 1) = v + 1;
-    work.p(0, 2) = u + 1;
-    work.p(1, 2) = v + 1;
-  }
-  work.c = in(u, v);
-  for(int i = 0; i < 3;  i ++)
-    work.p(2, i) = bump(int(work.p(0, i)), int(work.p(1, i))) * sqrt(T(bump.rows() * bump.cols())) * rz;
-  return work.solveN();
+  geoms.emplace_back(g);
+  return geoms;
 }
 
 template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const Vec& origin) const {
@@ -1313,9 +1268,8 @@ template <typename T> match_t<T> reDig<T>::tiltprep(const Mat& in, const int& id
 
 template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth) const {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
-  vector<Vec>  points;
-  vector<Veci> facets;
-  getTileVec(bump, points, facets);
+  vector<Vec>  points(getTileVec(bump));
+  vector<Veci> facets(mesh2(points));
   vector<Triangles> triangles;
   triangles.reserve(facets.size());
   for(int i = 0; i < facets.size(); i ++) {
