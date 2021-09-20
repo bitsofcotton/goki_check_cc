@@ -2250,7 +2250,7 @@ public:
   inline       SimpleMatrix<T>  QR() const;
   inline       SimpleMatrix<T>  SVD() const;
   inline       pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, SimpleMatrix<T> > SVD(const SimpleMatrix<T>& src) const;
-  inline       SimpleVector<T>  innerFix(const SimpleMatrix<T>& A, vector<pair<T, int> >& fidx);
+  inline       SimpleVector<T>  zeroFix(const SimpleMatrix<T>& A, vector<pair<T, int> > fidx);
   inline       SimpleVector<T>  inner(const SimpleVector<T>& bl, const SimpleVector<T>& bu) const;
   template <typename U> inline SimpleMatrix<U> real() const;
   template <typename U> inline SimpleMatrix<U> imag() const;
@@ -2863,7 +2863,7 @@ template <typename T> inline void SimpleMatrix<T>::resize(const int& rows, const
   return;
 }
 
-template <typename T> inline SimpleVector<T> SimpleMatrix<T>::innerFix(const SimpleMatrix<T>& A, vector<pair<T, int> >& fidx) {
+template <typename T> inline SimpleVector<T> SimpleMatrix<T>::zeroFix(const SimpleMatrix<T>& A, vector<pair<T, int> > fidx) {
   // N.B. we now have |[A -bb] [x t]| <= 1 condition.
   // N.B. there's no difference |[A - bb] [x t]|^2 <= 1 condition in this.
   //      but not with mixed condition.
@@ -2873,8 +2873,10 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::innerFix(const Sim
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < fidx.size(); i ++)
-    one[fidx[i].second] = T(int(0));
+  for(int i = 0; i < fidx.size(); i ++) {
+    one[fidx[i].second] = - fidx[i].first;
+    fidx[i].first = - T(int(1));
+  }
   // we now have: Q [R [x t] ] <= {0, 1}^m cond.
   const auto on(projectionPt(one));
   fidx.reserve(fidx.size() + this->cols());
@@ -2904,30 +2906,25 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::innerFix(const Sim
 template <typename T> inline SimpleVector<T> SimpleMatrix<T>::inner(const SimpleVector<T>& bl, const SimpleVector<T>& bu) const {
   assert(this->rows() == bl.size() && this->rows() == bu.size() &&
          0 < this->cols() && 0 < this->rows() && this->cols() < this->rows());
-  // bu - bb == A, bl - bb == - A <=> bu - bl == 2 A. 
-  const auto bb((bu + bl) / T(int(2)));
-  const auto upper(bu - bb);
+  // |(2 / bu) A x - 1 - bl / bu| <= |1 - bl / bu|
+  // <=> with (-A, -bu, -bl), |bl| <= |bu|, |(2 / bu) A x - 2| <= 2(1 - bl / bu)
+  auto bU(bu);
+  auto bL(bl);
   SimpleMatrix<T> A(*this);
   vector<pair<T, int> > fidx;
-  fidx.reserve(this->rows());
-  for(int i = 0; i < this->rows(); i ++) {
-    assert(T(int(0)) <= upper[i]);
-    if(upper[i] == T(int(0))) {
-      const auto n2(A.row(i).dot(A.row(i)));
-      if(n2 != T(int(0))) {
-        fidx.emplace_back(make_pair(- T(int(1)), i));
-        A.row(i) /= sqrt(n2);
-      } else
-        A.row(i) *= n2;
-    } else
-      A.row(i) /= upper[i];
+  for(int i = 0; i < bU.size(); i ++) {
+    if(abs(bu[i]) < abs(bl[i])) {
+      bU[i] = - bl[i];
+      bL[i] = - bu[i];
+      A.row(i) = - this->row(i);
+    } else if(bu[i] == bl[i])
+      fidx.emplace_back(make_pair(- T(int(bu[i] == T(0) ? 0 : 1)), i));
+    assert(bL[i] <= bU[i] && abs(bL[i]) <= abs(bU[i]));
+    A.row(i) /= T(2) * bU[i] - bL[i];
     assert(isfinite(A.row(i).dot(A.row(i))));
   }
-  // N.B. we now have |[A -bb] [x t]| <= 1 condition.
-  // N.B. there's no difference |[A -bb] [x t]|^2 <= 1 condition in this.
-  //      but not with mixed condition.
-  // N.B. we don't matter signs on [A -bb] [x t].
-  return A.QR().innerFix(A, fidx);
+  // N.B. in zeroFix, we get linear Invariant s.t. |Ax| <= 1 possible enough.
+  return A.QR().zeroFix(A, fidx);
 }
 
 template <typename T> std::ostream& operator << (std::ostream& os, const SimpleMatrix<T>& v) {
@@ -3231,7 +3228,7 @@ template <typename T> static inline SimpleVector<T> taylor(const int& size, cons
 
 template <typename T> static inline SimpleVector<T> linearInvariant(const SimpleMatrix<T>& in) {
   vector<pair<T, int> > sute;
-  return in.QR().innerFix(in, sute);
+  return in.QR().zeroFix(in, sute);
 }
 
 // N.B. please refer bitsofcotton/randtools.

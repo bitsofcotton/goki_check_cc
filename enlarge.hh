@@ -185,7 +185,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     case LPF_X:
       return filter<T>(data.transpose(), LPF_Y, n, recur).transpose();
     case INTEG_Y:
-      // return diff<T>(- data.rows()) * data;
+      return diff<T>(- data.rows()) * data;
+/*
       {
         // instead of integrate, we can use normalize:
         // N.B. d^exp(t)/dx^exp(t) f(x) == f(x + t dx), t != 0.
@@ -205,6 +206,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         }
         return (dft<T>(- data.rows()) * normalize).template real<T>();
       }
+*/
       break;
     case SHARPEN_Y:
       {

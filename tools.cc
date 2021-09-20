@@ -255,7 +255,7 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
     typename simpleFile<num_t>::Mat data[3], mask[3];
-    if(argc < 8) {
+    if(argc < 7) {
       usage();
       return - 1;
     }
@@ -264,9 +264,9 @@ int main(int argc, const char* argv[]) {
     const num_t zratio(std::atof(argv[4]));
     if(!file.loadp2or3(data, argv[5]))
       return - 1;
-    redig.initialize(vbox, zratio);
-          auto points(redig.getTileVec(redig.rgb2d(data)));
-    //      auto points(redig.getHesseVec(redig.rgb2d(data)));
+    redig.initialize(abs(vbox), zratio);
+          auto points(vbox < 0 ? redig.getHesseVec(redig.rgb2d(data))
+                               : redig.getTileVec(redig.rgb2d(data)));
     const auto facets(redig.mesh2(points));
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
@@ -330,11 +330,14 @@ int main(int argc, const char* argv[]) {
     const string outbase(argv[11]);
     vector<vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
     vector<vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
-    redig.initialize(vboxdst, zratio);
-    sshape0.emplace_back(redig.getTileVec(redig.rgb2d(bump0)));
-    // sshape0.emplace_back(redig.getHesseVec(redig.rgb2d(bump0)));
-    redig.initialize(vboxsrc, zratio);
-    sshape1.emplace_back(redig.getTileVec(redig.rgb2d(bump1)));
+    redig.initialize(abs(vboxdst), zratio);
+    sshape0.emplace_back(vboxdst < 0
+      ? redig.getHesseVec(redig.rgb2d(bump0))
+      : redig.getTileVec(redig.rgb2d(bump0)));
+    redig.initialize(abs(vboxsrc), zratio);
+    sshape1.emplace_back(vboxsrc < 0
+      ? redig.getHesseVec(redig.rgb2d(bump1))
+      : redig.getTileVec(redig.rgb2d(bump1)));
     sdelau0.emplace_back(redig.mesh2(sshape0[0]));
     sdelau1.emplace_back(redig.mesh2(sshape1[0]));
     vector<match_t<num_t> > mm;

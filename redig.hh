@@ -399,9 +399,10 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
       d(j, 1) = p[res[i][j]][0];
       d(j, 2) = p[res[i][j]][1];
     }
-    const auto det(d.determinant());
+    const auto det(d(0, 0) * d(1, 1) * d(2, 2) + d(0, 1) * d(1, 2) * d(2, 0) + d(0, 2) * d(1, 0) * d(2, 1) - d(2, 0) * d(1, 1) * d(0, 2) - d(2, 1) * d(1, 2) * d(0, 0) - d(2, 2) * d(1, 0) * d(0, 1));
+//d.determinant());
     assert(det != T(0));
-    if(T(0) < det)
+    if(det < T(0))
       swap(res[i][0], res[i][1]);
   }
   return res;
