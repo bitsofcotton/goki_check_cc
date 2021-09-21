@@ -31,8 +31,9 @@ typedef enum {
   FLARGE_X,
   FLARGE_Y,
   FLARGE_BOTH,
-  INTEG_X,
-  INTEG_Y,
+  BLUR_X,
+  BLUR_Y,
+  BLUR_BOTH,
   INTEG_BOTH,
   DETECT_BOTH,
   COLLECT_BOTH,
@@ -162,8 +163,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(filter<T>(data, ENLARGE_X, n, recur), ENLARGE_Y, n, recur);
     case FLARGE_BOTH:
       return filter<T>(filter<T>(data, FLARGE_X, n, recur), FLARGE_Y, n, recur);
-    case INTEG_BOTH:
-      return (filter<T>(data, INTEG_X, n, recur) + filter<T>(data, INTEG_Y, n, recur)) / T(2);
+    case BLUR_BOTH:
+      return filter<T>(filter<T>(data, BLUR_Y, n, recur), BLUR_X, n, recur);
     case EXTEND_BOTH:
       return filter<T>(filter<T>(filter<T>(filter<T>(data, EXTEND_X, n, recur), CLIP, n, recur), EXTEND_Y, n, recur), CLIP, n, recur);
     case BLINK_BOTH:
@@ -176,19 +177,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       return filter<T>(data.transpose(), ENLARGE_Y, n, recur).transpose();
     case FLARGE_X:
       return filter<T>(data.transpose(), FLARGE_Y, n, recur).transpose();
-    case INTEG_X:
-      return filter<T>(data.transpose(), INTEG_Y, n, recur).transpose();
+    case BLUR_X:
+      return filter<T>(data.transpose(), BLUR_Y, n, recur).transpose();
     case EXTEND_X:
       return filter<T>(data.transpose(), EXTEND_Y, n, recur).transpose();
     case BLINK_X:
       return filter<T>(data.transpose(), BLINK_Y, n, recur).transpose();
     case LPF_X:
       return filter<T>(data.transpose(), LPF_Y, n, recur).transpose();
-    case INTEG_Y:
-      return diff<T>(- data.rows()) * data;
-/*
+    case BLUR_Y:
       {
-        // instead of integrate, we can use normalize:
         // N.B. d^exp(t)/dx^exp(t) f(x) == f(x + t dx), t != 0.
         //   so d^exp(- t)/dx^exp(- t)
         //   == d^(- exp(t))/dx^(- exp(t)) == f(x - t dx).
@@ -206,7 +204,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         }
         return (dft<T>(- data.rows()) * normalize).template real<T>();
       }
-*/
       break;
     case SHARPEN_Y:
       {
@@ -258,8 +255,24 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       break;
     case DETECT_BOTH:
       {
-        const auto zy(diff<T>(data.rows()) * data);
-        const auto zx(data * diff<T>(data.cols()).transpose());
+        const auto zy(diffRecur<T>(data.rows()) * data);
+        const auto zx(data * diffRecur<T>(data.cols()).transpose());
+              auto res(data);
+        res.O();
+        for(int i = 0; i < res.rows(); i ++)
+          for(int j = 0; j < res.cols(); j ++) {
+            const auto E(T(1) + zy(i, j) * zy(i, j));
+            const auto F(       zy(i, j) * zx(i, j));
+            const auto G(T(1) + zx(i, j) * zx(i, j));
+            res(i, j) = E * G - F * F;
+          }
+        return res;
+      }
+      break;
+    case INTEG_BOTH:
+      {
+        const auto zy(diffRecur<T>(- data.rows()) * data);
+        const auto zx(data * diffRecur<T>(- data.cols()).transpose());
               auto res(data);
         res.O();
         for(int i = 0; i < res.rows(); i ++)

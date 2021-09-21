@@ -40,7 +40,6 @@ using std::make_pair;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|lpf|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
-  cout << "gokicheck bumpc <psi> <rot> <gather_pixels> <zratio> <color.ppm> <bump0.ppm> <output.ppm>" << endl;
   cout << "gokicheck (pred|lenl) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
   cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>" << endl;
@@ -201,21 +200,6 @@ int main(int argc, const char* argv[]) {
     }
     if(!file.savep2or3(argv[4], out, ! true, 255))
       return - 1;
-  } else if(strcmp(argv[1], "bumpc") == 0) {
-    if(argc < 8) {
-      usage();
-      return 0;
-    }
-    typename simpleFile<num_t>::Mat datac[3], bump[3];
-    if(!file.loadp2or3(datac, argv[6]))
-      return -1;
-    if(!file.loadp2or3(bump, argv[7]))
-      return -1;
-    redig.initialize(atoi(argv[4]), std::atof(argv[5]));
-    bump[0] = bump[1] = bump[2] = redig.bump(redig.rgb2d(datac), redig.rgb2d(bump), std::atof(argv[2]), atoi(argv[3]));
-    redig.normalize(bump, num_t(1));
-    if(!file.savep2or3(argv[8], bump, ! true) )
-      return - 2;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
             strcmp(argv[1], "recolor2") == 0 ||

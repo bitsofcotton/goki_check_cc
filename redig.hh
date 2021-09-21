@@ -102,7 +102,6 @@ public:
   Mat  compImage(const Mat& in, const Mat& opt) const;
   vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
-  Mat  bump(const Mat& color, const Mat& bumpm, const T& psi, const int& rot = 0) const;
   vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -113,7 +112,7 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   vector<Vec> getTileVec(const Mat& in) const;
-  vector<Vec> getHesseVec(const Mat& in, const int& guard = 5) const;
+  vector<Vec> getHesseVec(const Mat& in, const int& guard = 8) const;
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const Vec& origin = Vec()) const;
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
   Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& depth = - T(1000)) const;
@@ -379,6 +378,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     if(sp[res0[i][0]].second < p.size() &&
        sp[res0[i][1]].second < p.size() &&
        sp[res0[i][2]].second < p.size()) {
+      Mat d(3, 3);
+      T   det(0);
       for(int j = 0; j < res0[i].size(); j ++)
         res0[i][j] = sp[res0[i][j]].second;
       for(int j = 0; j < res0[i].size(); j ++)
@@ -388,23 +389,20 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
       for(int j = 0; j < res.size(); j ++)
         if(res[j] == res0[i])
           goto nofix;
+      for(int j = 0; j < 3; j ++) {
+        d(j, 0) = T(1);
+        d(j, 1) = p[res0[i][j]][0];
+        d(j, 2) = p[res0[i][j]][1];
+      }
+      det = d(0, 0) * d(1, 1) * d(2, 2) + d(0, 1) * d(1, 2) * d(2, 0) + d(0, 2) * d(1, 0) * d(2, 1) - d(2, 0) * d(1, 1) * d(0, 2) - d(2, 1) * d(1, 2) * d(0, 0) - d(2, 2) * d(1, 0) * d(0, 1);
+      //d.determinant());
+      if(det == T(0)) goto nofix;
+      if(det < T(0))
+        swap(res0[i][0], res0[i][1]);
       res.emplace_back(res0[i]);
      nofix:
       ;
     }
-  for(int i = 0; i < res.size(); i ++) {
-    Mat d(3, 3);
-    for(int j = 0; j < 3; j ++) {
-      d(j, 0) = T(1);
-      d(j, 1) = p[res[i][j]][0];
-      d(j, 2) = p[res[i][j]][1];
-    }
-    const auto det(d(0, 0) * d(1, 1) * d(2, 2) + d(0, 1) * d(1, 2) * d(2, 0) + d(0, 2) * d(1, 0) * d(2, 1) - d(2, 0) * d(1, 1) * d(0, 2) - d(2, 1) * d(1, 2) * d(0, 0) - d(2, 2) * d(1, 0) * d(0, 1));
-//d.determinant());
-    assert(det != T(0));
-    if(det < T(0))
-      swap(res[i][0], res[i][1]);
-  }
   return res;
 }
 
@@ -827,98 +825,6 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
           atan(work[ii * res[i].cols() + jj]);
   }
   return res;
-}
-
-template <typename T> typename reDig<T>::Mat reDig<T>::bump(const Mat& color, const Mat& bumpm, const T& psi, const int& rot) const {
-  assert(color.rows() == bumpm.rows() && color.cols() == bumpm.cols());
-  if(! rot) {
-          Vec  origin(3);
-    origin[0] = T(0);
-    origin[1] = T(color.cols() - 1) / T(2);
-    origin[2] = T(0);
-    const auto colory0(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
-    const auto colory1(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
-    origin[0] = T(color.rows() - 1);
-    const auto colory2(tilt(color, bumpm, tiltprep(bumpm, 1, 2, - abs(psi), origin)));
-    const auto colory3(tilt(color, bumpm, tiltprep(bumpm, 1, 2,   abs(psi), origin)));
-    origin[0] = T(color.rows() - 1) / T(2);
-    origin[1] = T(0);
-    const auto colorx0(tilt(color, bumpm, tiltprep(bumpm, 3, 4, - abs(psi), origin)));
-    const auto colorx1(tilt(color, bumpm, tiltprep(bumpm, 3, 4,   abs(psi), origin)));
-    origin[1] = T(color.cols() - 1);
-    const auto colorx2(tilt(color, bumpm, tiltprep(bumpm, 3, 4, - abs(psi), origin)));
-    const auto colorx3(tilt(color, bumpm, tiltprep(bumpm, 3, 4,   abs(psi), origin)));
-          Mat  result(color.rows(), color.cols());
-          auto zscore(result);
-    result.O();
-    zscore.O(- T(1));
-    const T   rxy(T(min(color.rows(), color.cols())));
-    const int dratio(sqrt(sqrt(rxy)));
-          Vec camera(2);
-    camera[0] = T(0);
-    camera[1] = T(1);
-    for(int zi = 0; zi < dratio; zi ++) {
-      Vec cpoint(2);
-      cpoint[0] = T(1) / T(2 * dratio);
-      cpoint[1] = T(zi) / T(dratio);
-      const auto t(- camera[1] / (cpoint[1] - camera[1]));
-      const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
-      if(int(y0) < 3 || rxy < abs(y0) * T(2)) continue;
-      const auto Dop(diff<T>(abs(int(y0) & ~ int(1))));
-      const auto Dop0((Dop.row(y0 / 2) + Dop.row(y0 / 2 + 1)) / T(2));
-      for(int i = 0; i < result.rows(); i ++) {
-        for(int j = 0; j < result.cols(); j ++) {
-          T zy(0), zx(0);
-          // N.B. projection scale is linear.
-          T yorigin(0);
-          T xorigin(0);
-          // x-z plane projection of point p with camera geometry c to z=0.
-          // c := camera, p := cpoint.
-          // <c + (p - c) * t, [0, 1]> = 0
-          for(int kk = 0; kk < Dop0.size(); kk ++) {
-            if(i < result.rows() / 2) {
-              cpoint[0] = (T(i + kk) - T(Dop0.size() - 1) / T(2) - T(result.rows() - 1)) / T(2 * dratio) / rxy;
-              yorigin   = T(result.rows() - 1);
-            } else
-              cpoint[0] = (T(i + kk) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
-            const auto ty(- camera[1] / (cpoint[1] - camera[1]));
-            zy += (i < result.rows() / 2 ?
-              (kk < Dop0.size() / 2 ? colory2 : colory3) :
-              (kk < Dop0.size() / 2 ? colory0 : colory1))(
-                getImgPt<int>(int((camera + (cpoint - camera) * ty)[0] * rxy +
-                  yorigin), color.rows()), j) * Dop0[kk];
-            if(j < result.cols() / 2) {
-              cpoint[0] = (T(j + kk) - T(Dop0.size() - 1) / T(2) - T(result.cols() - 1)) / T(2 * dratio) / rxy;
-              xorigin   = T(result.cols() - 1);
-            } else
-              cpoint[0] = (T(j + kk) - T(Dop0.size() - 1) / T(2)) / T(2 * dratio) / rxy;
-            const auto tx(- camera[1] / (cpoint[1] - camera[1]));
-            zx += (j < result.cols() / 2 ?
-              (kk < Dop0.size() / 2 ? colorx2 : colorx3) :
-              (kk < Dop0.size() / 2 ? colorx0 : colorx1))(i, 
-                getImgPt<int>(int((camera + (cpoint - camera) * tx)[0] * rxy +
-                  xorigin), color.cols())) * Dop0[kk];
-          }
-          const auto E(T(1) + zy * zy);
-          const auto F(       zy * zx);
-          const auto G(T(1) + zx * zx);
-          const auto lscore(abs(E * G - F * F));
-          if(zscore(i, j) < lscore) {
-            result(i, j) = T(zi + 1);
-            zscore(i, j) = lscore;
-          }
-        }
-      }
-    }
-    return result;
-  }
-  auto res(bump(color, bumpm, psi, 0));
-  for(int i = 1; i <= rot; i ++) {
-    cerr << "r" << flush;
-    const auto theta(T(i) * atan(T(int(1))) / T(rot + 1));
-    res += center<T>(rotate<T>(bump(rotate<T>(color, theta), rotate<T>(bumpm, theta), psi, 0), - theta), res);
-  }
-  return res /= T(rot + 1);
 }
 
 template <typename T> vector<vector<int> > reDig<T>::floodfill(const Mat& mask, const vector<Vec>& points) {

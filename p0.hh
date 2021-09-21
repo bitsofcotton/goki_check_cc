@@ -90,7 +90,8 @@ public:
     const auto nff(sqrt(ff.dot(ff)));
     for(int i = 0; i < ff.size(); i ++)
       ff[i] = T(1) / (T(2) * nff + ff[i]);
-    return f.full ? T(1) / p.dot(ff) - T(1) / ff[ff.size() - 1] : T(0);
+    auto res(f.full ? T(1) / p.dot(ff) - T(1) / ff[ff.size() - 1] : T(0));
+    return isfinite(res) ? res : T(0);
   }
   Vec p;
   feeder f;
