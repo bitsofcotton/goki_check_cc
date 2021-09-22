@@ -2591,6 +2591,7 @@ template <typename T> inline T SimpleMatrix<T>::determinant() const {
     swap(work.entity[i], work.entity[xchg]);
     const auto& ei(work.entity[i]);
     const auto& eii(ei[i]);
+    det *= eii;
     if(epsilon * ei.dot(ei) < eii * eii) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -2600,7 +2601,6 @@ template <typename T> inline T SimpleMatrix<T>::determinant() const {
         work.entity[j] -= ei * ratio;
       }
     }
-    det *= eii;
   }
   return det;
 }

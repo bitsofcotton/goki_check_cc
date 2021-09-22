@@ -351,7 +351,13 @@ int main(int argc, const char* argv[]) {
     sdelau0.emplace_back(redig.mesh2(sshape0[0]));
     sdelau1.emplace_back(redig.mesh2(sshape1[0]));
     vector<match_t<num_t> > mm;
-    for(int i = 1; i <= nsub; i ++) {
+    for(int i = 1;
+            i <= nsub &&
+            sdelau0[sdelau0.size() - 1].size() &&
+            sdelau1[sdelau1.size() - 1].size() &&
+            sshape0[sshape0.size() - 1].size() &&
+            sshape1[sshape1.size() - 1],size();
+            i ++) {
       auto m(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1]));
       sdelau0.emplace_back(vector<typename simpleFile<num_t>::Veci>());
       sdelau1.emplace_back(vector<typename simpleFile<num_t>::Veci>());
@@ -396,8 +402,6 @@ int main(int argc, const char* argv[]) {
         ;
       }
       mm.emplace_back(std::move(m));
-      if(! sdelau0[i].size() || ! sdelau1[i].size() || ! sshape0[i].size() || ! sshape1[i].size())
-        break;
     }
     typename simpleFile<num_t>::Mat outs[3];
     const auto rin0(redig.makeRefMatrix(in0[0], 1));

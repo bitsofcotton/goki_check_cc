@@ -326,14 +326,14 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
     for(int i = 0; i < 40; i ++) {
 #endif
       const auto vvdp(makeProgramInvariant<T>(work));
-      work[work.size() - 1] = ! q.size()
+      work[work.size() - 1] = max(- T(1), min(T(1), ! q.size()
         ? (revertProgramInvariant<T>(make_pair(
              avg[work.size() - 1], vvdp.second)) -
            revertProgramInvariant<T>(make_pair(
              avg[work.size() - 2], vvdp.second)) )
         : revertProgramInvariant<T>(make_pair(
             - (q.dot(vvdp.first) - q[varlen - 1] * vvdp.first[varlen - 1]) /
-               q[varlen - 1], vvdp.second));
+               q[varlen - 1], vvdp.second)) ));
     }
     res += work[work.size() - 1] * score;
     sscore += abs(score);

@@ -71,11 +71,11 @@ public:
     for(int i = 0; i < 40; i ++) {
 #endif
       const auto work2(makeProgramInvariant<T>(work, T(1)));
-      work[work.size() - 1] =
+      work[work.size() - 1] = max(- T(1), min(T(1), 
         revertProgramInvariant<T>(make_pair(
           - (invariant.dot(work2.first) -
                invariant[varlen - 1] * work2.first[varlen - 1]) /
-            invariant[varlen - 1], work2.second));
+            invariant[varlen - 1], work2.second)) ));
     }
     return work[work.size() - 1] * nin;
   }

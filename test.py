@@ -15,15 +15,16 @@ if(len(argv) < 4):
 elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
-  nsub  = 4
-  nemph = 4
+  vboxd = vboxs = nsub = nemph = 4
   if(len(argv) > 5):
-    pixels = int(argv[5])
-    if(len(argv) > 6):
-      nsub = int(argv[6])
-    if(len(argv) > 7):
-      nemph = int(argv[7])
-  subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(pixels), str(pixels), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
+    vboxd = int(argv[5])
+  if(len(argv) > 6):
+    vboxs = int(argv[6])
+  if(len(argv) > 7):
+    nsub = int(argv[7])
+  if(len(argv) > 8):
+    nemph = int(argv[8])
+  subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(vboxd), str(vboxs), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "match-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-" + root1 + ".mp4"])
 elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "composite"):
   cmd = [argv[1], argv[2], argv[2] + ".ppm"]
