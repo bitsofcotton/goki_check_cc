@@ -112,7 +112,7 @@ public:
   Mat  autoLevel(const Mat& data, const int& count = 0);
   void autoLevel(Mat data[3], const int& count = 0);
   vector<Vec> getTileVec(const Mat& in) const;
-  vector<Vec> getHesseVec(const Mat& in, const int& guard = 8) const;
+  vector<Vec> getHesseVec(const Mat& in) const;
   match_t<T> tiltprep(const Mat& in, const int& idx, const int& samples, const T& psi, const Vec& origin = Vec()) const;
   Mat  tilt(const Mat& in, const Mat& bump, const match_t<T>& m, const T& depth = - T(1000)) const;
   Mat  tilt(const Mat& in, vector<Triangles>& triangles, const T& depth = - T(1000)) const;
@@ -1080,12 +1080,13 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getTileVec(const 
   return geoms;
 }
 
-template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const Mat& in, const int& guard) const {
+template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const Mat& in) const {
+  const auto guard(int(sqrt(sqrt(T(in.rows() * in.cols() / vbox)))));
   vector<Vec> geoms;
   geoms.reserve(vbox);
-  const auto xx(in * diff<T>(in.cols()) * diff<T>(in.cols()));
-  const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()));
-  const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
+  const auto xx(in * diffRecur<T>(in.cols()) * diffRecur<T>(in.cols()));
+  const auto xy(diffRecur<T>(in.rows()) * in * diffRecur<T>(in.cols()));
+  const auto yy(diffRecur<T>(in.rows()) * diffRecur<T>(in.rows()) * in);
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)
@@ -1099,7 +1100,7 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const
   sort(geom.begin(), geom.end());
   vector<pair<int, int> > cache;
   cache.reserve(geom.size());
-  for(int i = 0; i < geom.size() && geoms.size() < vbox; i ++)
+  for(int i = geom.size() - 1; 0 <= i; i --)
     if(! binary_search(cache.begin(), cache.end(), make_pair(geom[i].first / guard, geom[i].second / guard)) ) {
       Vec g(3);
       g[0] = T(int(geom[i].first));
