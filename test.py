@@ -173,7 +173,7 @@ else:
       subprocess.call(["convert", line, "-resize", str(int(10000. / pow(2., pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic.ppm"])
       subprocess.call(["python3", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic.ppm"])
     elif(argv[2] == "prep"):
-      subprocess.call(["convert", line, "-resize", str(pixels) + "@>", root + "-prep.png"])
+      subprocess.call(["convert", line, "-resize", str(pixels) + "x>", "-resize", "x" + str(pixels) + ">", root + "-prep.png"])
     elif(argv[2] == "prepsq"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "x" + str(pixels) + "!", root + "-prepsq.png"])
     elif(argv[2] == "rot"):
@@ -181,12 +181,7 @@ else:
     elif(argv[2] == "nurie"):
       subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):
-      cmd = ["convert"]
-      for t in range(0, int(pixels / 4)):
-        subprocess.call([argv[1], "reshape", str((t + 1) * 4), root + ".ppm", root + "-bump0.ppm", root + "-illust-" + str(t) + ".ppm", str(1. / pow(pixels, .5))])
-        cmd.append(root + "-illust-" + str(t) + ".ppm")
-      cmd.extend(["-average", root + "-illust.png"])
-      subprocess.call(cmd)
+      subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "edge"):
       subprocess.call(["convert", root + "-collect.ppm", "-type", "GrayScale", "-negate", "-compress", "none", root + "-collect-negate.ppm"])
       subprocess.call(["convert", line, root + "-collect-negate.ppm", "-compose", "multiply", "-composite", root + "-edge.png"])
