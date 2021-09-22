@@ -123,7 +123,8 @@ else:
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call([argv[1], "integ", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + "2.ppm"])
+      subprocess.call([argv[1], "flatten", root + "-" + argv[2] + "2.ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "12x12+6", "-compress", "none", root + "-" + argv[2] + ".ppm"])
@@ -176,10 +177,6 @@ else:
       subprocess.call(["convert", line, "-resize", str(pixels) + "x" + str(pixels) + "!", root + "-prepsq.png"])
     elif(argv[2] == "rot"):
       subprocess.call(["convert", line, "-rotate", "90", root + "-rot.png"])
-    elif(argv[2] == "mask"):
-      subprocess.call(["convert", root + "-mask.png", "-compress", "none", root + "-mask.ppm"])
-    elif(argv[2] == "mask0"):
-      subprocess.call(["convert", root + ".ppm", "-fill", "black", "-colorize", "100", root + "-mask.png"])
     elif(argv[2] == "nurie"):
       subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):

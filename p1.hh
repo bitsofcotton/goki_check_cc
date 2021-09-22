@@ -65,11 +65,19 @@ public:
     for(int i = 1; i < work.size(); i ++)
       work[i - 1] = buf[i - work.size() + buf.size()] / nin;
     work[work.size() - 1] = work[work.size() - 2];
-    auto work2(makeProgramInvariant<T>(work, T(1)));
-    work = move(work2.first);
-    return revertProgramInvariant<T>(make_pair(
-      - (invariant.dot(work) - invariant[varlen - 1] * work[varlen - 1]) /
-          invariant[varlen - 1], work2.second)) * nin;
+#if defined(_FLOAT_BITS_)
+    for(int i = 0; i < _FLOAT_BITS_ / 2; i ++) {
+#else
+    for(int i = 0; i < 40; i ++) {
+#endif
+      const auto work2(makeProgramInvariant<T>(work, T(1)));
+      work[work.size() - 1] =
+        revertProgramInvariant<T>(make_pair(
+          - (invariant.dot(work2.first) -
+               invariant[varlen - 1] * work2.first[varlen - 1]) /
+            invariant[varlen - 1], work2.second));
+    }
+    return work[work.size() - 1] * nin;
   }
   feeder f;
 private:

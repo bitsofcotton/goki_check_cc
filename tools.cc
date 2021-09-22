@@ -82,7 +82,8 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "represent") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
-     strcmp(argv[1], "b2wd")    == 0) {
+     strcmp(argv[1], "b2wd")    == 0 ||
+     strcmp(argv[1], "flatten") == 0) {
     if(argc < 3) {
       usage();
       return 0;
@@ -150,6 +151,31 @@ int main(int argc, const char* argv[]) {
               data[1](i, j) == ddata[1](i, j) &&
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
+    } else if(strcmp(argv[1], "flatten") == 0) {
+            auto row(data[0].row(0));
+            auto col(data[0].col(0));
+      for(int k = 0; k < 3; k ++)
+        for(int i = 1; i < data[k].rows(); i ++)
+          row += data[k].row(i);
+      for(int k = 0; k < 3; k ++)
+        for(int i = 1; i < data[k].cols(); i ++)
+          col += data[k].col(i);
+      row /= num_t(3 * data[0].rows());
+      col /= num_t(3 * data[0].cols());
+      // Sum(f(x) + t * x) == 0. <=> Sum(f(x)) + t * x(x + 1) / 2 == 0
+      // t = - 2 * Sum(f(x)) / x / (x + 1)
+      num_t rt(0);
+      num_t ct(0);
+      for(int i = 0; i < row.size(); i ++)
+        rt += row[i];
+      for(int i = 0; i < col.size(); i ++)
+        ct += col[i];
+      rt = num_t(2) * rt / num_t(row.size() * (row.size() - 1));
+      ct = num_t(2) * ct / num_t(col.size() * (col.size() - 1));
+      for(int i = 0; i < data[0].rows(); i ++)
+        for(int j = 0; j < data[0].cols(); j ++)
+          for(int k = 0; k < 3; k ++)
+            data[k](i, j) += ct * num_t(i) + rt * num_t(j);
     }
     if(strcmp(argv[1], "b2w") != 0 &&
        strcmp(argv[1], "b2wd") != 0)

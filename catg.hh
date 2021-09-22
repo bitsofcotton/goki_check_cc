@@ -318,18 +318,24 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
     Vec avg(Vec(pw.row(0) = makeProgramInvariant<T>(cat[i].first[0]).first));
     for(int j = 1; j < pw.rows(); j ++)
       avg += (pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first);
-    auto score(vdp.first.dot(avg) / T(cat[i].first.size()));
-    if(pw.rows() <= pw.cols() || ! pw.rows())
-      res += (revertProgramInvariant<T>(make_pair(
-                avg[work.size() - 1], vdp.second)) -
-              revertProgramInvariant<T>(make_pair(
-                avg[work.size() - 2], vdp.second)) ) * score;
-    else {
-      const auto q(linearInvariant<T>(pw));
-      res += revertProgramInvariant<T>(make_pair(
-              - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1]) /
-               q[varlen - 1], vdp.second)) * score;
+          auto score(vdp.first.dot(avg) / T(cat[i].first.size()));
+    const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? Vec() : linearInvariant<T>(pw));
+#if defined(_FLOAT_BITS_)
+    for(int i = 0; i < _FLOAT_BITS_ / 2; i ++) {
+#else
+    for(int i = 0; i < 40; i ++) {
+#endif
+      const auto vvdp(makeProgramInvariant<T>(work));
+      work[work.size() - 1] = ! q.size()
+        ? (revertProgramInvariant<T>(make_pair(
+             avg[work.size() - 1], vvdp.second)) -
+           revertProgramInvariant<T>(make_pair(
+             avg[work.size() - 2], vvdp.second)) )
+        : revertProgramInvariant<T>(make_pair(
+            - (q.dot(vvdp.first) - q[varlen - 1] * vvdp.first[varlen - 1]) /
+               q[varlen - 1], vvdp.second));
     }
+    res += work[work.size() - 1] * score;
     sscore += abs(score);
   }
   return res * M / sscore;
