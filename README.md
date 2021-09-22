@@ -66,8 +66,7 @@ ongoing deep learning methods.
 reDig::edge returns relaxed edges, this can be fixed with multiple on counting
 +/- on same scan line.
 
-reDig::mesh2 returns non clockwise nor non counter clockwise tiles.
-We don't use masks, so this is abandoned.
+The test.py bump command returns tilt ignored result. This is because we integrate local focuses and integration itself ignores differential offset part.
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
