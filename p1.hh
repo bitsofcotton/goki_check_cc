@@ -40,44 +40,37 @@ public:
   typedef SimpleMatrix<T> Mat;
   inline P1I() { varlen = 0; }
   inline P1I(const int& stat, const int& var, const int& step = 1) {
-    assert(0 < stat && 1 < var);
-    f = feeder(stat + (varlen = var) - 1);
-    this->step = step;
+    assert(0 < stat && 1 < var && 0 < step);
+    f = feeder(stat + (this->step = step) - 1 + (varlen = var) - 1);
   }
   inline ~P1I() { ; }
   inline T next(const T& in) {
+    static const T zero(0);
     const auto& buf(f.next(in));
     if(! f.full) return T(0);
     // N.B. please use catgp to compete with over learning.
     const auto nin(sqrt(buf.dot(buf)));
-    if(nin == T(0)) return T(0);
-    SimpleMatrix<T> toeplitz(buf.size() - varlen - step + 1, varlen + 3);
+    if(nin == zero) return zero;
+    SimpleMatrix<T> toeplitz(buf.size() - varlen - step + 2, varlen + 3);
     for(int i = 0; i < toeplitz.rows(); i ++) {
       auto work(buf.subVector(i, varlen) / nin);
-      work[work.size() - 1] = buf[i + varlen + step - 1] / nin;
+      work[work.size() - 1] = buf[i + varlen + step - 2] / nin;
       toeplitz.row(i) =
         makeProgramInvariant<T>(move(work),
           T(i + 1) / T(toeplitz.rows() + 1)).first;
     }
     const auto invariant(linearInvariant<T>(toeplitz));
-    if(invariant[varlen - 1] == T(0)) return T(0);
+    if(invariant[varlen - 1] == zero) return zero;
     SimpleVector<T> work(varlen);
     for(int i = 1; i < work.size(); i ++)
       work[i - 1] = buf[i - work.size() + buf.size()] / nin;
-    work[work.size() - 1] = work[work.size() - 2];
-#if defined(_FLOAT_BITS_)
-    for(int i = 0; i < _FLOAT_BITS_ / 2; i ++) {
-#else
-    for(int i = 0; i < 40; i ++) {
-#endif
-      const auto work2(makeProgramInvariant<T>(work, T(1)));
-      work[work.size() - 1] = max(- T(1), min(T(1), 
-        revertProgramInvariant<T>(make_pair(
-          - (invariant.dot(work2.first) -
-               invariant[varlen - 1] * work2.first[varlen - 1]) /
-            invariant[varlen - 1], work2.second)) ));
-    }
-    return work[work.size() - 1] * nin;
+    work[work.size() - 1] = zero;
+    const auto work2(makeProgramInvariant<T>(work, T(1)));
+    return revertProgramInvariant<T>(make_pair(
+        - (invariant.dot(work2.first) -
+             invariant[varlen - 1] * work2.first[varlen - 1]) /
+          invariant[varlen - 1], work2.second)) *
+      nin;
   }
   feeder f;
 private:

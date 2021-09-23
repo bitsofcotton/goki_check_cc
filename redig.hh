@@ -374,35 +374,29 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     res0.emplace_back(lres);
   }
   vector<Veci> res;
+  res.reserve(res0.size());
   for(int i = 0; i < res0.size(); i ++)
     if(sp[res0[i][0]].second < p.size() &&
        sp[res0[i][1]].second < p.size() &&
        sp[res0[i][2]].second < p.size()) {
       Mat d(3, 3);
-      T   det(0);
       for(int j = 0; j < res0[i].size(); j ++)
         res0[i][j] = sp[res0[i][j]].second;
-      for(int j = 0; j < res0[i].size(); j ++)
-        for(int k = j + 1; k < res0[i].size(); k ++)
-          if(res0[i][j] == res0[i][k])
-            goto nofix;
-      for(int j = 0; j < res.size(); j ++)
-        if(res[j] == res0[i])
-          goto nofix;
       for(int j = 0; j < 3; j ++) {
         d(j, 0) = T(1);
         d(j, 1) = p[res0[i][j]][0];
         d(j, 2) = p[res0[i][j]][1];
       }
-      det = d(0, 0) * d(1, 1) * d(2, 2) + d(0, 1) * d(1, 2) * d(2, 0) + d(0, 2) * d(1, 0) * d(2, 1) - d(2, 0) * d(1, 1) * d(0, 2) - d(2, 1) * d(1, 2) * d(0, 0) - d(2, 2) * d(1, 0) * d(0, 1);
-      //d.determinant());
-      if(det == T(0)) goto nofix;
-      if(det < T(0))
-        swap(res0[i][0], res0[i][1]);
+      const auto det(d.determinant());
+      if(det == T(0)) continue;
+      if(det <  T(0)) swap(res0[i][0], res0[i][1]);
+      for(int j = 0; j < res.size(); j ++)
+        if(res[j] == res0[i]) goto nofix;
       res.emplace_back(res0[i]);
      nofix:
       ;
     }
+  res.reserve(res.size());
   return res;
 }
 
@@ -1081,7 +1075,7 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getTileVec(const 
 }
 
 template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const Mat& in) const {
-  const auto guard(int(sqrt(sqrt(T(in.rows() * in.cols() / vbox)))));
+  const auto guard(8);
   vector<Vec> geoms;
   geoms.reserve(vbox);
   const auto xx(in * diffRecur<T>(in.cols()) * diffRecur<T>(in.cols()));
@@ -1093,21 +1087,20 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const
     for(int j = 0; j < in.cols(); j ++)
       score.emplace_back(make_pair(abs(xx(i, j) * yy(i, j) - xy(i, j) * xy(i, j)), make_pair(i, j)));
   sort(score.begin(), score.end());
-  vector<pair<int, int> > geom;
-  geom.reserve(vbox);
-  for(int i = 0; i < score.size(); i ++)
-    geom.emplace_back(move(score[i].second));
-  sort(geom.begin(), geom.end());
   vector<pair<int, int> > cache;
-  cache.reserve(geom.size());
-  for(int i = geom.size() - 1; 0 <= i; i --)
-    if(! binary_search(cache.begin(), cache.end(), make_pair(geom[i].first / guard, geom[i].second / guard)) ) {
+  cache.reserve(score.size());
+  for(int i = 0; i < score.size() && geoms.size() < abs(vbox); i ++)
+    if(! binary_search(cache.begin(), cache.end(),
+           make_pair(score[i].second.first / guard,
+                     score[i].second.second / guard)) ) {
       Vec g(3);
-      g[0] = T(int(geom[i].first));
-      g[1] = T(int(geom[i].second));
-      g[2] = sqrt(T(in.rows() * in.cols())) * rz * in(geom[i].first, geom[i].second);
+      g[0] = T(int(score[i].second.first));
+      g[1] = T(int(score[i].second.second));
+      g[2] = sqrt(T(in.rows() * in.cols())) * rz *
+        in(score[i].second.first, score[i].second.second);
       geoms.emplace_back(move(g));
-      cache.emplace_back(make_pair(geom[i].first / guard, geom[i].second / guard));
+      cache.emplace_back(make_pair(score[i].second.first / guard,
+                                   score[i].second.second / guard));
       sort(cache.begin(), cache.end());
     }
   Vec g(3);

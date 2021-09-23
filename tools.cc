@@ -338,106 +338,59 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(bump1, argv[10]))
       return - 2;
     const string outbase(argv[11]);
-    vector<vector<typename simpleFile<num_t>::Veci> > sdelau0, sdelau1;
-    vector<vector<typename simpleFile<num_t>::Vec>  > sshape0, sshape1;
     redig.initialize(abs(vboxdst), zratio);
-    sshape0.emplace_back(vboxdst < 0
+    const auto sshape0(vboxdst < 0
       ? redig.getHesseVec(redig.rgb2d(bump0))
       : redig.getTileVec(redig.rgb2d(bump0)));
     redig.initialize(abs(vboxsrc), zratio);
-    sshape1.emplace_back(vboxsrc < 0
+    const auto sshape1(vboxsrc < 0
       ? redig.getHesseVec(redig.rgb2d(bump1))
       : redig.getTileVec(redig.rgb2d(bump1)));
-    sdelau0.emplace_back(redig.mesh2(sshape0[0]));
-    sdelau1.emplace_back(redig.mesh2(sshape1[0]));
-    vector<match_t<num_t> > mm;
-    for(int i = 1;
-            i <= nsub &&
-            sdelau0[sdelau0.size() - 1].size() &&
-            sdelau1[sdelau1.size() - 1].size() &&
-            sshape0[sshape0.size() - 1].size() &&
-            sshape1[sshape1.size() - 1],size();
-            i ++) {
-      auto m(matchPartial<num_t>(sshape0[i - 1], sshape1[i - 1]));
-      sdelau0.emplace_back(vector<typename simpleFile<num_t>::Veci>());
-      sdelau1.emplace_back(vector<typename simpleFile<num_t>::Veci>());
-      sshape0.emplace_back(vector<typename simpleFile<num_t>::Vec>());
-      sshape1.emplace_back(vector<typename simpleFile<num_t>::Vec>());
-      auto dstsort(m.dst);
-      auto srcsort(m.src);
-      std::sort(dstsort.begin(), dstsort.end());
-      std::sort(srcsort.begin(), srcsort.end());
-      vector<int> ds0;
-      vector<int> ds1;
-      ds0.resize(sshape0[i - 1].size(), - 1);
-      ds1.resize(sshape1[i - 1].size(), - 1);
-      for(int j = 0, jj = 0; j < sshape0[i - 1].size(); j ++) {
-        if(binary_search(dstsort.begin(), dstsort.end(), j))
-          continue;
-        sshape0[i].emplace_back(sshape0[i - 1][j]);
-        ds0[j] = jj ++;
-      }
-      for(int j = 0, jj = 0; j < sshape1[i - 1].size(); j ++) {
-        if(binary_search(srcsort.begin(), srcsort.end(), j))
-          continue;
-        sshape1[i].emplace_back(sshape1[i - 1][j]);
-        ds1[j] = jj ++;
-      }
-      sdelau0[i].reserve(sdelau0[i - 1].size());
-      sdelau1[i].reserve(sdelau1[i - 1].size());
-      for(int j = 0; j < sdelau0[i - 1].size(); j ++) {
-        auto sd0(sdelau0[i - 1][j]);
-        for(int k = 0; k < sd0.size(); k ++)
-          if((sd0[k] = ds0[sd0[k]]) < 0) goto nxtsd0;
-        sdelau0[i].emplace_back(move(sd0));
-       nxtsd0:
-        ;
-      }
-      for(int j = 0; j < sdelau1[i - 1].size(); j ++) {
-        auto sd1(sdelau1[i - 1][j]);
-        for(int k = 0; k < sd1.size(); k ++)
-          if((sd1[k] = ds1[sd1[k]]) < 0) goto nxtsd1;
-        sdelau1[i].emplace_back(move(sd1));
-       nxtsd1:
-        ;
-      }
-      mm.emplace_back(std::move(m));
-    }
+    auto m(matchPartial<num_t>(sshape0, sshape1));
+    if(nsub < m.size()) m.resize(nsub);
     typename simpleFile<num_t>::Mat outs[3];
     const auto rin0(redig.makeRefMatrix(in0[0], 1));
     const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));
     vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
     vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
-    for(int i = 0; i < mm.size(); i ++) {
-      mhull0.emplace_back(redig.mesh2(sshape0[i], mm[i].dst));
-      mhull1.emplace_back((~ mm[i]).hullConv(mhull0[i]));
+    for(int i = 0; i < m.size(); i ++) {
+      mhull0.emplace_back(redig.mesh2(sshape0, m[i].dst));
+      mhull1.emplace_back((~ m[i]).hullConv(mhull0[i]));
     }
     for(int idx = 0; idx < 3; idx ++) {
       outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in0[idx].cols()).O();
-      for(int i = 0; i < mm.size(); i ++)
+      for(int i = 0; i < m.size(); i ++)
         outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                                     sshape0[i], sdelau0[i]),
-                       sshape0[i], mhull0[i]);
+                       sshape0, mhull0[i]), sshape0, mhull0[i]);
     }
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl0.ppm")).c_str(), outs, false);
     for(int idx = 0; idx < 3; idx ++) {
-      outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in0[idx].cols()).O();
-      for(int i = 0; i < mm.size(); i ++)
-        outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                                 mm[i].transform(sshape1[i]), sdelau1[i]),
-                                 mm[i].transform(sshape1[i]), mhull1[i]);
+      outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in1[idx].cols()).O();
+      for(int i = 0; i < m.size(); i ++)
+        outs[idx] += redig.showMatch(redig.draw(in1[idx] * num_t(0),
+                       sshape1, mhull1[i]), sshape1, mhull1[i]);
     }
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl1.ppm")).c_str(), outs, false);
+    for(int idx = 0; idx < 3; idx ++) {
+      outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in0[idx].cols()).O();
+      for(int i = 0; i < m.size(); i ++)
+        outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
+                       m[i].transform(sshape1), mhull1[i]),
+                       m[i].transform(sshape1), mhull1[i]);
+    }
+    redig.normalize(outs, 1.);
+    file.savep2or3((outbase + string("-repl2.ppm")).c_str(), outs, false);
     for(int i = 0; i < nemph; i ++) {
       const auto iemph(num_t(i) / num_t(nemph));
       simpleFile<num_t>::Mat reref(rin1.rows(), rin1.cols());
       reref.O();
-      for(int i = 0; i < mm.size(); i ++) {
-        const auto rd(redig.draw(rin1, sshape1[i],
-                        redig.takeShape(sshape1[i], sshape0[i],
-                          ~ mm[i], iemph), sdelau1[i]));
+      for(int i = 0; i < m.size(); i ++) {
+        if(! m[i].dst.size() || ! m[i].src.size()) continue;
+        const auto rd(redig.draw(rin1, sshape1,
+                        redig.takeShape(sshape1, sshape0,
+                          ~ m[i], iemph), mhull1[i]));
         for(int j = 0; j < min(reref.rows(), rd.rows()); j ++)
           for(int k = 0; k < min(reref.cols(), rd.cols()); k ++)
             if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);
@@ -554,7 +507,7 @@ int main(int argc, const char* argv[]) {
       Mx = max(num_t(Mx), abs(psrc[i][1]));
     }
     file.saveobj(redig.takeShape(pdst, psrc,
-      matchPartial<num_t>(pdst, psrc),
+      matchPartial<num_t>(pdst, psrc)[0],
       num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
   } else if(strcmp(argv[1], "retrace") == 0 ||
             strcmp(argv[1], "reimage") == 0) {

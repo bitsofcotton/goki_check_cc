@@ -227,147 +227,17 @@ template <typename T> static inline SimpleVector<T> toQuarterNormalize(const Sim
   assert(xyz.size() == 3);
   static const auto twoPi(atan(T(int(1))) * T(int(4)));
   SimpleVector<T> quat(4);
-  // XXX: order is broken:
   quat[0] = sqrt(xyz.dot(xyz) / T(int(6)));
-  // y-z plane normal vector. <=> xyz.dot(n == [0 y z]) / quat[0] / sqrt(y * y + z * z) == cos theta.
-  quat[1] = acos(xyz[1] / sqrt(xyz[1] * xyz[1] + xyz[2] * xyz[2])) / twoPi;
+  // y-z plane
+  quat[1] = atan2(xyz[1], xyz[2]) / twoPi;
   // same for z-x.
-  quat[2] = acos(xyz[2] / sqrt(xyz[2] * xyz[2] + xyz[0] * xyz[0])) / twoPi;
+  quat[2] = atan2(xyz[2], xyz[0]) / twoPi;
   // same for x-y.
-  quat[3] = acos(xyz[0] / sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1])) / twoPi;
-  T slog(int(0));
-  // XXX : without this, assertion crash.
-  /* XXX */ std::cerr << quat;
-  for(int i = 0; i < quat.size(); i ++) {
-    assert(- T(int(1)) <= quat[i] && quat[i] <= T(int(1)));
-    quat[i] += T(int(1));
-    if(quat[i] != T(int(0)))
-      slog += log(quat[i]);
-  }
-  return quat /= exp(slog / T(quat.size()));
+  quat[3] = atan2(xyz[0], xyz[1]) / twoPi;
+  return quat;
 }
 
-template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0, const T& thresh = T(1) / T(10)) {
-  const auto  gs(makeG(dst0));
-  const auto  gp(makeG(src0));
-  const auto  ggs(normalizeG(gs.second));
-  const auto  ggp(normalizeG(gp.second));
-  const auto& dst(ggs.second);
-  const auto& src(ggp.second);
-  assert(dst.size() == dst0.size());
-  assert(src.size() == src0.size());
-  std::cerr << "match(" << dst.size() << ", " << src.size() << ")" << std::endl;
-  SimpleMatrix<T> test(dst.size() + src.size() + 4, 4);
-  for(int i = 0; i < dst.size(); i ++)
-    test.row(i) = toQuarterNormalize<T>(dst[i]);
-  for(int i = 0; i < src.size(); i ++)
-    test.row(dst.size() + i) = toQuarterNormalize<T>(src[i]);
-  for(int i = 0; i < 4; i ++)
-    test.row(i + dst.size() + src.size()).ek(i);
-        auto Pt(test.QR());
-  const auto R(Pt * test);
-  SimpleVector<T>    one(Pt.cols());
-  SimpleVector<bool> fix(one.size());
-  one.I(T(int(1)));
-  fix.I(false);
-  pair<vector<pair<T, int> >, vector<int> > fpidx;
-  fpidx.first.resize(Pt.cols(), make_pair(T(0), - 1));
-  fpidx.second.resize(Pt.cols(), - 1);
-  int n_fixed;
-  for(n_fixed = 0; n_fixed < Pt.rows() - 1; n_fixed ++) {
-    const auto on(Pt.projectionPt(one));
-    for(int j = 0; j < dst.size(); j ++) {
-      if(fix[j]) continue;
-      fpidx.first[j].first = T(0);
-      fpidx.first[j].second = j;
-      fpidx.second[j] = - 1;
-      for(int jj = dst.size(); jj < dst.size() + src.size(); jj ++) {
-        if(fix[jj]) continue;
-        const auto lscore(abs(on[j] - on[jj]));
-        if(fpidx.second[j] < 0 || lscore < fpidx.first[j].first) {
-          fpidx.first[j].first = lscore;
-          fpidx.second[j] = jj;
-        }
-      }
-    }
-    for(int j = dst.size(); j < dst.size() + src.size(); j ++) {
-      if(fix[j]) continue;
-      fpidx.first[j].first = T(0);
-      fpidx.first[j].second = j;
-      fpidx.second[j] = - 1;
-      for(int jj = 0; jj < dst.size(); jj ++) {
-        if(fix[jj]) continue;
-        const auto lscore(abs(on[j] - on[jj]));
-        if(fpidx.second[j] < 0 || lscore < fpidx.first[j].first) {
-          fpidx.first[j].first = lscore;
-          fpidx.second[j] = jj;
-        }
-      }
-    }
-    for(int j = dst.size() + src.size(); j < Pt.cols(); j ++)
-      fpidx.first[j] = make_pair(on[j] < T(0) ? - T(on.size() * 2) : T(on.size() * 2), j);
-    sort(fpidx.first.begin(), fpidx.first.end());
-    int idx;
-    for(idx = 0;
-        idx < fpidx.first.size() &&
-          (fix[fpidx.first[idx].second] ||
-           fpidx.second[fpidx.first[idx].second] < 0);
-        idx ++) ;
-    if(idx < 0 || fpidx.first.size() <= idx) break;
-    const auto& iidx(fpidx.first[idx].second);
-    const auto  orth(Pt.col(iidx));
-    const auto  n2(orth.dot(orth));
-    fix[iidx] = true;
-    if(n2 <= Pt.epsilon) {
-      n_fixed --;
-      continue;
-    }
-    for(int j = 0; j < Pt.cols(); j ++)
-      Pt.setCol(j, Pt.col(j) - orth * Pt.col(j).dot(orth) / n2);
-    fix[fpidx.second[iidx]] = true;
-  }
-  const auto on(Pt.projectionPt(one));
-  fix.I(false);
-  // const auto cut(R.solve(Pt * one));
-  // N.B. what we got: <a, [q0 q1 q2 q3] - [q0' q1' q2' q3']> == 0, a != 0.
-  //      and 0 <= a condition makes this valid.
-  vector<pair<T, int> > fidx;
-  vector<int> pidx;
-  pidx.resize(dst.size(), - 1);
-  match_t<T> m(thresh, max(ggs.first, ggp.first));
-  for(int i = 0; i < dst.size(); i ++) {
-    fidx.resize(0);
-    fidx.reserve(dst.size());
-    for(int j = 0; j < dst.size(); j ++) {
-      if(fix[j]) continue;
-      fidx.emplace_back(make_pair(T(0), j));
-      pidx[j] = - 1;
-      for(int jj = dst.size(); jj < dst.size() + src.size(); jj ++) {
-        if(fix[jj]) continue;
-        const auto lscore(abs(on[j] - on[jj]));
-        if(pidx[j] < 0 || lscore < min(fidx[j].first, thresh)) {
-          fidx[j].first = lscore;
-          pidx[j] = jj;
-        }
-      }
-    }
-    sort(fidx.begin(), fidx.end());
-    int idx;
-    for(idx = 0;
-        idx < fidx.size() &&
-          (fidx[idx].second < 0 || pidx[fidx[idx].second] < 0);
-        idx ++) ;
-    if(idx < 0 || fidx.size() <= idx) continue;
-    assert(0 <= fidx[idx].second && fidx[idx].second < dst.size() &&
-           dst.size() <= pidx[fidx[idx].second] &&
-                         pidx[fidx[idx].second] < dst.size() + src.size());
-    m.dst.emplace_back(fidx[idx].second);
-    m.src.emplace_back(pidx[fidx[idx].second] - dst.size());
-    fix[fidx[idx].second] = fix[pidx[fidx[idx].second]] = true;
-    assert(src0[m.src[m.src.size() - 1]].size() == 3 &&
-           dst0[m.dst[m.dst.size() - 1]].size() == 3);
-  }
-  assert(m.dst.size() == m.src.size());
+template <typename T> match_t<T> reconfigureMatch(match_t<T>& m, const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0) {
   SimpleVector<T> off(3);
   off.O();
   for(int k = 0; k < m.dst.size(); k ++)
@@ -411,7 +281,63 @@ template <typename T> match_t<T> matchPartial(const vector<SimpleVector<T> >& ds
     m.rdepth += sqrt(err.dot(err) / sqrt(dstk.dot(dstk) * srck.dot(srck)));
   }
   m.rdepth /= m.dst.size() * m.dst.size();
-  return move(m);
+  return m;
+}
+
+template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0, const T& thresh = T(1) / T(10)) {
+  const auto  gs(normalizeG((makeG(dst0).second)));
+  const auto  gp(normalizeG((makeG(src0).second)));
+  const auto& dst(gs.second);
+  const auto& src(gp.second);
+  assert(dst.size() == dst0.size());
+  assert(src.size() == src0.size());
+  std::cerr << "match(" << dst.size() << ", " << src.size() << ")" << std::endl;
+  SimpleMatrix<T> qdst(dst.size(), 4);
+  SimpleMatrix<T> qsrc(src.size(), 4);
+  for(int i = 0; i < qdst.rows(); i ++)
+    qdst.row(i) = toQuarterNormalize<T>(dst[i]);
+  for(int i = 0; i < qsrc.rows(); i ++)
+    qsrc.row(i) = toQuarterNormalize<T>(src[i]);
+  vector<SimpleVector<T> > test;
+  vector<pair<int, int> > idx;
+  test.reserve(qdst.rows() * qsrc.rows());
+  idx.reserve(qdst.rows() * qsrc.rows());
+  for(int i = 0; i < qdst.rows(); i ++)
+    for(int j = 0; j < qsrc.rows(); j ++) {
+      idx.emplace_back(make_pair(i, j));
+      test.emplace_back(qdst.row(i) - qsrc.row(j));
+    }
+  const auto cr(crush<T>(test));
+  vector<match_t<T> > mm;
+  mm.reserve(cr.size());
+  for(int i = 0; i < cr.size(); i ++) {
+    match_t<T> m(thresh, max(gs.first, gp.first));
+    SimpleVector<bool> dfix, sfix;
+    dfix.resize(dst.size());
+    sfix.resize(src.size());
+    dfix.I(false);
+    sfix.I(false);
+    m.dst.reserve(min(dst.size(), src.size()));
+    m.src.reserve(min(dst.size(), src.size()));
+    for(int j = 0; j < cr[i].second.size(); j ++) {
+      const auto& lidx(idx[cr[i].second[j]]);
+      if(dfix[lidx.first] || sfix[lidx.second]) continue;
+      dfix[lidx.first] = sfix[lidx.second] = true;
+      m.dst.emplace_back(lidx.first);
+      m.src.emplace_back(lidx.second);
+    }
+    m.dst.reserve(m.dst.size());
+    m.src.reserve(m.src.size());
+    mm.emplace_back(move(reconfigureMatch<T>(m, dst0, src0)));
+  }
+  return mm;
+}
+
+template <typename T> vector<match_t<T> > matchPartial(const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0, const T& thresh = T(1) / T(10)) {
+  auto m(matchPartialR<T>(src0, dst0, thresh));
+  for(int i = 0; i < m.size(); i ++)
+    m[i] = ~ m[i];
+  return m;
 }
 
 #define _MATCH_

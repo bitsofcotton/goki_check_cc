@@ -276,9 +276,8 @@ public:
   typedef SimpleMatrix<T> Mat;
   inline P012L() { varlen = 0; }
   inline P012L(const int& stat, const int& var, const int& step = 1) {
-    assert(0 < stat && 1 < var);
-    f = feeder(stat + (varlen = var) - 1);
-    this->step = step;
+    assert(0 < stat && 1 < var && 0 < step);
+    f = feeder(stat + (this->step = step) - 1 + (varlen = var) - 1);
   }
   inline ~P012L() { ; }
   T next(const T& in);
@@ -289,28 +288,29 @@ private:
 };
 
 template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& in) {
+  static const T zero(int(0));
   const auto d(f.next(in));
-        T    M(0);
+        auto M(zero);
   for(int i = 0; i < d.size(); i ++) {
     M = max(M, abs(d[i]));
-    if(! isfinite(d[i])) return T(0);
+    if(! isfinite(d[i])) return zero;
   }
   M *= T(int(2));
-  if(! f.full || M <= T(int(0))) return T(0);
+  if(! f.full || M <= zero) return zero;
   vector<SimpleVector<T> > cache;
-  cache.reserve(d.size() - varlen + 1);
-  for(int i = 0; i < d.size() - varlen - step + 1; i ++) {
+  cache.reserve(d.size() - varlen + 2);
+  for(int i = 0; i < d.size() - varlen - step + 2; i ++) {
     cache.emplace_back(d.subVector(i, varlen) / M);
-    cache[cache.size() - 1][cache[cache.size() - 1].size() - 1] = d[i + varlen + step - 1] / M;
+    cache[cache.size() - 1][cache[cache.size() - 1].size() - 1] = d[i + varlen + step - 2] / M;
   }
   const auto cat(crush<T>(cache, cache[0].size(), cache.size() / min(int(sqrt(T(int(cache.size())))), cache[0].size() * cache[0].size())));
   SimpleVector<T> work(varlen);
-  for(int i = 0; i < work.size() - 1; i ++)
-    work[i] = d[i - work.size() + d.size() + 1] / M;
-  work[work.size() - 1] = work[work.size() - 2];
+  for(int i = 1; i < work.size(); i ++)
+    work[i - 1] = d[i - work.size() + d.size()] / M;
+  work[work.size() - 1] = zero;
   const auto vdp(makeProgramInvariant<T>(work));
-        T    res(0);
-        T    sscore(0);
+        auto res(zero);
+        auto sscore(zero);
   for(int i = 0; i < cat.size(); i ++) {
     // XXX: how to handle the illegal value.
     if(! cat[i].first.size()) continue;
@@ -320,22 +320,11 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
       avg += (pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first);
           auto score(vdp.first.dot(avg) / T(cat[i].first.size()));
     const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? Vec() : linearInvariant<T>(pw));
-#if defined(_FLOAT_BITS_)
-    for(int i = 0; i < _FLOAT_BITS_ / 2; i ++) {
-#else
-    for(int i = 0; i < 40; i ++) {
-#endif
-      const auto vvdp(makeProgramInvariant<T>(work));
-      work[work.size() - 1] = max(- T(1), min(T(1), ! q.size()
-        ? (revertProgramInvariant<T>(make_pair(
-             avg[work.size() - 1], vvdp.second)) -
-           revertProgramInvariant<T>(make_pair(
-             avg[work.size() - 2], vvdp.second)) )
-        : revertProgramInvariant<T>(make_pair(
-            - (q.dot(vvdp.first) - q[varlen - 1] * vvdp.first[varlen - 1]) /
-               q[varlen - 1], vvdp.second)) ));
-    }
-    res += work[work.size() - 1] * score;
+    work[work.size() - 1] = zero;
+    res += work[work.size() - 1] = score * (q.size()
+      ? revertProgramInvariant<T>(make_pair(
+          - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1])
+          / q[varlen - 1], vdp.second)) : T(0));
     sscore += abs(score);
   }
   return res * M / sscore;

@@ -6,7 +6,7 @@ import subprocess
 
 argv   = sys.argv
 pixels = 4
-zratio = .15
+zratio = .0825
 psi    = 1. / 3.
 rot    = 5
 
