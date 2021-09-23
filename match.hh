@@ -134,7 +134,7 @@ public:
   inline bool operator < (const match_t<T>& x1) const {
     const T rratio(max(abs(   ratio), T(1) / abs(   ratio)));
     const T xratio(max(abs(x1.ratio), T(1) / abs(x1.ratio)));
-    return rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio);
+    return dst.size() > x1.dst.size() || (dst.size() == x1.dst.size() && (rdepth < x1.rdepth || (rdepth == x1.rdepth && rratio < xratio)));
   }
   inline bool operator != (const match_t<T>& x) const {
     const auto test(offset - x.offset);
@@ -304,6 +304,7 @@ template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVecto
   vector<match_t<T> > mm;
   mm.reserve(cr.size());
   for(int i = 0; i < cr.size(); i ++) {
+    if(! cr[i].first.size()) continue;
     match_t<T> m(thresh, max(gs.first, gp.first));
     SimpleVector<bool> dfix, sfix;
     dfix.resize(dst.size());
@@ -312,8 +313,18 @@ template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVecto
     sfix.I(false);
     m.dst.reserve(min(dst.size(), src.size()));
     m.src.reserve(min(dst.size(), src.size()));
-    for(int j = 0; j < cr[i].second.size(); j ++) {
-      const auto& lidx(idx[cr[i].second[j]]);
+    SimpleMatrix<T> test2(cr[i].second.size(), 4);
+    SimpleVector<T> avg(test2.row(0) = cr[i].first[0]);
+    for(int j = 1; j < cr[i].first.size(); j ++)
+      avg += (test2.row(j) = cr[i].first[j]);
+    const auto on(test2 * avg);
+    const auto oavg(avg.dot(avg) / T(test2.rows()));
+    vector<pair<T, int> > pp;
+    pp.reserve(test2.rows());
+    for(int j = 0; j < on.size(); j ++) pp.emplace_back(make_pair(abs(on[j] - oavg), j));
+    sort(pp.begin(), pp.end());
+    for(int j = 0; j < pp.size(); j ++) {
+      const auto& lidx(idx[cr[i].second[pp[j].second]]);
       if(dfix[lidx.first] || sfix[lidx.second]) continue;
       dfix[lidx.first] = sfix[lidx.second] = true;
       m.dst.emplace_back(lidx.first);
@@ -334,6 +345,7 @@ template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVecto
    nofix:
     ;
   }
+  sort(mm.begin(), mm.end());
   return mm;
 }
 
