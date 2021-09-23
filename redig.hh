@@ -816,7 +816,7 @@ template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(co
     for(int ii = 0; ii < res[i].rows(); ii ++)
       for(int jj = 0; jj < res[i].cols(); jj ++)
         res[i](ii, ii & 1 ? res[i].cols() - 1 - jj : jj) =
-          atan(work[ii * res[i].cols() + jj]);
+          work[ii * res[i].cols() + jj];
   }
   return res;
 }
