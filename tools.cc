@@ -339,14 +339,16 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const string outbase(argv[11]);
     redig.initialize(abs(vboxdst), zratio);
-    const auto sshape0(vboxdst < 0
+    const auto shape0(vboxdst < 0
       ? redig.getHesseVec(redig.rgb2d(bump0))
       : redig.getTileVec(redig.rgb2d(bump0)));
     redig.initialize(abs(vboxsrc), zratio);
-    const auto sshape1(vboxsrc < 0
+    const auto shape1(vboxsrc < 0
       ? redig.getHesseVec(redig.rgb2d(bump1))
       : redig.getTileVec(redig.rgb2d(bump1)));
-    auto m(matchPartial<num_t>(sshape0, sshape1));
+    auto m(shape0.size() < shape1.size()
+      ? matchPartial<num_t>(shape0, shape1)
+      : matchPartialR<num_t>(shape0, shape1));
     if(nsub < m.size()) m.resize(nsub);
     typename simpleFile<num_t>::Mat outs[3];
     const auto rin0(redig.makeRefMatrix(in0[0], 1));
@@ -354,32 +356,29 @@ int main(int argc, const char* argv[]) {
     vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
     vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
     for(int i = 0; i < m.size(); i ++) {
-      mhull0.emplace_back(redig.mesh2(sshape0, m[i].dst));
+      mhull0.emplace_back(redig.mesh2(shape0, m[i].dst));
       mhull1.emplace_back((~ m[i]).hullConv(mhull0[i]));
     }
-    for(int idx = 0; idx < 3; idx ++) {
-      outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in0[idx].cols()).O();
-      for(int i = 0; i < m.size(); i ++)
-        outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                       sshape0, mhull0[i]), sshape0, mhull0[i]);
-    }
+    outs[0] = SimpleMatrix<num_t>(in0[0].rows(), in0[0].cols()).O();
+    for(int i = 0; i < m.size(); i ++)
+      outs[0] += redig.showMatch(redig.draw(in0[0] * num_t(0),
+                     shape0, mhull0[i]), shape0, mhull0[i]);
+    outs[1] = outs[2] = outs[0];
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl0.ppm")).c_str(), outs, false);
-    for(int idx = 0; idx < 3; idx ++) {
-      outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in1[idx].cols()).O();
-      for(int i = 0; i < m.size(); i ++)
-        outs[idx] += redig.showMatch(redig.draw(in1[idx] * num_t(0),
-                       sshape1, mhull1[i]), sshape1, mhull1[i]);
-    }
+    outs[0] = SimpleMatrix<num_t>(in1[0].rows(), in1[0].cols()).O();
+    for(int i = 0; i < m.size(); i ++)
+      outs[0] += redig.showMatch(redig.draw(in1[0] * num_t(0),
+                   shape1, mhull1[i]), shape1, mhull1[i]);
+    outs[1] = outs[2] = outs[0];
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl1.ppm")).c_str(), outs, false);
-    for(int idx = 0; idx < 3; idx ++) {
-      outs[idx] = SimpleMatrix<num_t>(in0[idx].rows(), in0[idx].cols()).O();
-      for(int i = 0; i < m.size(); i ++)
-        outs[idx] += redig.showMatch(redig.draw(in0[idx] * num_t(0),
-                       m[i].transform(sshape1), mhull1[i]),
-                       m[i].transform(sshape1), mhull1[i]);
-    }
+    outs[0] = SimpleMatrix<num_t>(in0[0].rows(), in0[0].cols()).O();
+    for(int i = 0; i < m.size(); i ++)
+      outs[0] += redig.showMatch(redig.draw(in0[0] * num_t(0),
+                   m[i].transform(shape1), mhull1[i]),
+                   m[i].transform(shape1), mhull1[i]);
+    outs[1] = outs[2] = outs[0];
     redig.normalize(outs, 1.);
     file.savep2or3((outbase + string("-repl2.ppm")).c_str(), outs, false);
     for(int i = 0; i < nemph; i ++) {
@@ -387,10 +386,8 @@ int main(int argc, const char* argv[]) {
       simpleFile<num_t>::Mat reref(rin1.rows(), rin1.cols());
       reref.O();
       for(int i = 0; i < m.size(); i ++) {
-        if(! m[i].dst.size() || ! m[i].src.size()) continue;
-        const auto rd(redig.draw(rin1, sshape1,
-                        redig.takeShape(sshape1, sshape0,
-                          ~ m[i], iemph), mhull1[i]));
+        const auto rd(redig.draw(rin1, shape1,
+          redig.takeShape(shape1, shape0, ~ m[i], iemph), mhull1[i]));
         for(int j = 0; j < min(reref.rows(), rd.rows()); j ++)
           for(int k = 0; k < min(reref.cols(), rd.cols()); k ++)
             if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);

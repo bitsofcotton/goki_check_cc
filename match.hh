@@ -151,13 +151,8 @@ public:
     return ! (*this != x);
   }
   friend ostream& operator << (ostream& os, const match_t<T>& x) {
-    for(int i = 0; i < x.rot.rows(); i ++) {
-      for(int j = 0; j < x.rot.cols(); j ++)
-        os << x.rot(i, j) << " ";
-      os << endl;
-    }
-    for(int i = 0; i < x.offset.size(); i ++)
-      os << x.offset[i] << endl;
+    os << x.rot;
+    os << x.offset;
     os << x.ratio  << endl;
     os << x.rdepth << endl;
     assert(x.dst.size() == x.src.size());
@@ -173,11 +168,8 @@ public:
   }
   friend istream& operator >> (istream& is, match_t<T>& x) {
     try {
-      for(int i = 0; i < x.rot.rows(); i ++)
-        for(int j = 0; j < x.rot.cols(); j ++)
-          is >> x.rot(i, j);
-      for(int i = 0; i < x.offset.size(); i ++)
-        is >> x.offset[i];
+      is >> x.rot;
+      is >> x.offset;
       is >> x.ratio;
       is >> x.rdepth;
       int size(0);
@@ -263,13 +255,14 @@ template <typename T> match_t<T> reconfigureMatch(match_t<T>& m, const vector<Si
   for(int k = 0; k < m.dst.size(); k ++)
     off += dst0[m.dst[k]] - m.transform(src0[m.src[k]]);
   m.offset += (off /= T(int(m.dst.size())));
-  T r0(int(1));
+  T rlog0(int(0));
   for(int k = 0; k < m.dst.size(); k ++) {
     const auto& dstk(dst0[m.dst[k]]);
     const auto  srck(m.transform(src0[m.src[k]]));
-    r0 *= dstk.dot(srck) / srck.dot(srck);
+    const auto  r(abs(dstk.dot(srck) / srck.dot(srck)));
+    if(r != T(0)) rlog0 += log(r);
   }
-  m.ratio *= (r0 < T(int(0)) ? - T(int(1)) : T(int(1))) * pow(abs(r0), T(int(1)) / T(int(m.dst.size())));
+  m.ratio *= exp(rlog0 / T(int(m.dst.size())));
   off.O();
   for(int k = 0; k < m.dst.size(); k ++)
     off += dst0[m.dst[k]] - m.transform(src0[m.src[k]]);
@@ -326,9 +319,20 @@ template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVecto
       m.dst.emplace_back(lidx.first);
       m.src.emplace_back(lidx.second);
     }
+    if(m.dst.size() < 4) continue;
     m.dst.reserve(m.dst.size());
     m.src.reserve(m.src.size());
-    mm.emplace_back(move(reconfigureMatch<T>(m, dst0, src0)));
+    m = reconfigureMatch<T>(m, dst0, src0);
+    for(int i = 0; i < m.rot.rows(); i ++)
+      for(int j = 0; j < m.rot.cols(); j ++)
+        if(! isfinite(m.rot(i, j))) goto nofix;
+    for(int i = 0; i < m.offset.size(); i ++)
+      if(! isfinite(m.offset[i])) goto nofix;
+    if(! isfinite(m.ratio)) goto nofix;
+    mm.emplace_back(move(m));
+    cerr << mm[mm.size() - 1] << endl;
+   nofix:
+    ;
   }
   return mm;
 }
