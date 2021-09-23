@@ -250,7 +250,8 @@ template <typename T> match_t<T> reconfigureMatch(match_t<T>& m, const vector<Si
     // dst == Q R == P R' == src, dst !~ avg(Q P^t) src'.
     rot *= rotl.QR().transpose() * rotr.QR();
   }
-  m.rot = pow(rot, T(1) / T(int(m.dst.size() - 3)));
+  m.rot  = pow(rot, T(1) / T(int(m.dst.size() - 3)));
+  m.rot /= pow(abs(m.rot.determinant()), T(1) / T(3));
   off.O();
   for(int k = 0; k < m.dst.size(); k ++)
     off += dst0[m.dst[k]] - m.transform(src0[m.src[k]]);
