@@ -123,6 +123,7 @@ private:
   void drawMatchLine(Mat& map, const Vec& lref0, const Vec& lref1, const T& c) const;
   void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
+  pair<bool, T> crossy(const Vec& p0, const Vec& p1, const Vec& p2, const Vec& p3) const;
   
   T   Pi;
   int vbox;
@@ -292,16 +293,27 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   return mesh2(p, pp);
 }
 
+template <typename T> pair<bool, T> reDig<T>::crossy(const Vec& p0, const Vec& p1, const Vec& p2, const Vec& p3) const {
+  static const SimpleMatrix<T> refeps;
+  // from en.wikipedia.org/wiki/Line-line_intersection.
+  const auto D((p0[0] - p1[0]) * (p2[1] - p3[1]) - (p0[1] - p1[1]) * (p2[0] - p3[0]));
+  if(abs(D) <= refeps.epsilon) return make_pair(true, T(0));
+  const auto Py(((p0[0] * p1[1] - p0[1] * p1[0]) * (p2[0] - p3[0]) - (p0[0] - p1[0]) * (p2[0] * p3[1] - p2[1] * p3[0])) / D);
+  // const auto Px(((p0[0] * p1[1] - p0[1] * p1[0]) * (p2[1] - p3[1]) - (p0[1] - p1[1]) * (p2[0] * p3[1] - p2[1] * p3[0])) / D);
+  return make_pair(false, Py);
+}
+
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
   vector<pair<Vec, int> > sp;
-  vector<pair<Vec, int> > sp2;
-  sp.reserve(pp.size());
+  sp.reserve(pp.size() + 4);
   T m0(0);
   T m1(0);
   T M0(0);
   T M1(0);
+  // N.B. if it's on lattice, this is enough:
   for(int i = 0; i < pp.size(); i ++) {
     sp.emplace_back(make_pair(p[pp[i]], pp[i]));
+    sp[i].first[2] = T(0);
     m0 = min(m0, sp[i].first[0]);
     m1 = min(m1, sp[i].first[1]);
     M0 = max(M0, sp[i].first[0]);
@@ -327,75 +339,63 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   sp[sp.size() - 4].first[0] -= T(1);
   sp[sp.size() - 3].first[0] += T(1);
   sort(sp.begin(), sp.end(), less0<pair<Vec, int> >);
-  sp2.reserve(sp.size());
-  for(int i = 0; i < sp.size(); i ++)
-    sp2.emplace_back(sp[sp.size() - i - 1]);
-  vector<Veci> res0;
-  for(int i = 2; i < sp.size(); i ++) {
+  vector<Veci> res;
+  vector<int> fixed;
+  res.reserve(sp.size() - 1);
+  fixed.reserve(sp.size() - 1);
+  int last(- 1);
+  int i;
+  for(i = 2; i < sp.size(); ) {
     Veci lres(3);
-    lres[0] = lres[1] = lres[2] = i;
+    Mat  d(3, 3);
+    T    det;
+    lres.I(i);
     for(int j = i - 1; 0 <= j; j --)
       if(sp[j].first[1] <= sp[i].first[1] &&
-         (lres[1] == i ||
-          abs(sp[j].first[1] - sp[i].first[1]) <
-            abs(sp[lres[1]].first[1] - sp[i].first[1]) ) )
-        lres[1] = j;
-    for(int j = i - 1; 0 <= j; j --)
-      if(sp[j].first[1] >= sp[i].first[1] &&
-         ! (sp[j].first[0] == sp[lres[0]].first[0] &&
-            sp[j].first[0] == sp[lres[1]].first[0]) &&
-         ! (sp[j].first[1] == sp[lres[0]].first[1] &&
-            sp[j].first[1] == sp[lres[1]].first[1]) &&
-         (lres[2] == i ||
-          abs(sp[j].first[1] - sp[i].first[1]) <
-            abs(sp[lres[2]].first[1] - sp[i].first[1]) ) )
-        lres[2] = j;
-    res0.emplace_back(lres);
-    lres[0] = lres[1] = lres[2] = i;
-    for(int j = i - 1; 0 <= j; j --)
-      if(sp2[j].first[1] >= sp2[i].first[1] &&
-         (lres[1] == i ||
-          abs(sp2[j].first[1] - sp2[i].first[1]) <
-            abs(sp2[lres[1]].first[1] - sp2[i].first[1]) ) )
-        lres[1] = j;
-    for(int j = i - 1; 0 <= j; j --)
-      if(sp2[j].first[1] <= sp2[i].first[1] &&
-         ! (sp2[j].first[0] == sp2[lres[0]].first[0] &&
-            sp2[j].first[0] == sp2[lres[1]].first[0]) &&
-         ! (sp2[j].first[1] == sp2[lres[0]].first[1] &&
-            sp2[j].first[1] == sp2[lres[1]].first[1]) &&
-         (lres[2] == i ||
-          abs(sp2[j].first[1] - sp2[i].first[1]) <
-            abs(sp2[lres[2]].first[1] - sp2[i].first[1]) ) )
-        lres[2] = j;
-    for(int j = 0; j < lres.size(); j ++)
-      lres[j] = sp.size() - 1 - lres[j];
-    swap(lres[0], lres[2]);
-    res0.emplace_back(lres);
-  }
-  vector<Veci> res;
-  res.reserve(res0.size());
-  for(int i = 0; i < res0.size(); i ++)
-    if(sp[res0[i][0]].second < p.size() &&
-       sp[res0[i][1]].second < p.size() &&
-       sp[res0[i][2]].second < p.size()) {
-      Mat d(3, 3);
-      for(int j = 0; j < res0[i].size(); j ++)
-        res0[i][j] = sp[res0[i][j]].second;
-      for(int j = 0; j < 3; j ++) {
-        d(j, 0) = T(1);
-        d(j, 1) = p[res0[i][j]][0];
-        d(j, 2) = p[res0[i][j]][1];
-      }
-      const auto det(d.determinant());
-      if(det == T(0)) continue;
-      if(det <  T(0)) swap(res0[i][0], res0[i][1]);
-      for(int j = 0; j < res.size(); j ++)
-        if(res[j] == res0[i]) goto nofix;
-      res.emplace_back(res0[i]);
-     nofix:
-      ;
+         ! binary_search(fixed.begin(), fixed.end(), sp[j].second)) {
+        const auto err(sp[j].first - sp[i].first);
+        const auto err0(sp[lres[1]].first - sp[i].first);
+        if(lres[1] == i || err.dot(err) < err0.dot(err0)) lres[1] = j;
+      } else if(! j) goto next;
+    if(0 <= last) {
+      const auto py(crossy(sp[i].first, sp[last].first,
+                           sp[i].first, sp[lres[1]].first));
+      if(! py.first && py.second < sp[i].first[0]) goto next;
     }
+    for(int j = lres[1] - 1; 0 <= j; j --)
+      if(sp[j].first != sp[lres[0]].first &&
+         sp[j].first != sp[lres[1]].first) {
+        const auto err(sp[j].first - sp[i].first);
+        const auto err0(sp[lres[2]].first - sp[i].first);
+        if(lres[2] == i || err.dot(err) < err0.dot(err0)) lres[2] = j;
+      } else if(! j) goto next;
+    for(int k = 0; k < lres.size(); k ++)
+      lres[k] = sp[lres[k]].second;
+    if(last < 0) last = lres[1];
+    fixed.emplace_back(lres[1]);
+    sort(fixed.begin(), fixed.end());
+    if(p.size() <= lres[0] ||
+       p.size() <= lres[1] ||
+       p.size() <= lres[2]) goto next;
+    for(int j = 0; j < 3; j ++) {
+      d(j, 0) = T(1);
+      d(j, 1) = p[lres[j]][0];
+      d(j, 2) = p[lres[j]][1];
+    }
+    det = d(0, 0) * d(1, 1) * d(2, 2) + d(0, 1) * d(1, 2) * d(2, 0) + d(0, 2) * d(1, 0) * d(2, 1) - d(2, 0) * d(1, 1) * d(0, 2) - d(2, 1) * d(1, 2) * d(0, 0) - d(2, 2) * d(1, 0) * d(0, 1);
+    if(det == T(0)) continue;
+    if(det <  T(0)) swap(lres[0], lres[1]);
+    if(res.size() && res[res.size() - 1] == lres)
+      goto next;
+    else
+      res.emplace_back(lres);
+    continue;
+   next:
+     i ++;
+     last = - 1;
+     fixed.resize(0);
+     fixed.reserve(sp.size() - 1);
+  }
   res.reserve(res.size());
   return res;
 }
