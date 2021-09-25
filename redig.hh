@@ -89,6 +89,7 @@ public:
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
   vector<Veci> mesh2(const vector<Vec>& p) const;
   vector<Veci> mesh2(const vector<Vec>& p, const vector<int>& pp) const;
+  vector<Veci> mesh2half(const vector<Vec>& p, const vector<int>& pp) const;
   vector<int>  edge(const vector<Vec>& p, const vector<int>& pp) const;
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& thresh = T(1) / T(128));
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& intensity = T(1));
@@ -286,13 +287,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
   return result;
 }
 
-template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p) const {
-  vector<int> pp;
-  pp.reserve(p.size());
-  for(int i = 0; i < p.size(); i ++) pp.emplace_back(i);
-  return mesh2(p, pp);
-}
-
 template <typename T> pair<bool, T> reDig<T>::crossy(const Vec& p0, const Vec& p1, const Vec& p2, const Vec& p3) const {
   static const SimpleMatrix<T> refeps;
   // from en.wikipedia.org/wiki/Line-line_intersection.
@@ -303,16 +297,63 @@ template <typename T> pair<bool, T> reDig<T>::crossy(const Vec& p0, const Vec& p
   return make_pair(false, Py);
 }
 
+template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p) const {
+  vector<int> pp;
+  pp.reserve(p.size());
+  for(int i = 0; i < p.size(); i ++) pp.emplace_back(i);
+  return mesh2(p, pp);
+}
+
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
+  auto res0(mesh2half(p, pp));
+  auto mp(p);
+  for(int i = 0; i < mp.size(); i ++) mp[i] = - mp[i];
+  auto res1(mesh2half(mp, pp));
+  res0.insert(res0.end(), res1.begin(), res1.end());
+  vector<Veci> res;
+  vector<vector<int> > sres0;
+  res.reserve(res0.size());
+  sres0.reserve(res0.size());
+  for(int i = 0; i < res0.size(); i ++) {
+    vector<int> m;
+    m.reserve(res0[i].size());
+    for(int j = 0; j < res0[i].size(); j ++)
+      m.emplace_back(res0[i][j]);
+    sort(m.begin(), m.end());
+    for(int j = 0; j < sres0.size(); j ++)
+      if(sres0[j] == m) goto nofix;
+    res.emplace_back(move(res0[i]));
+    sres0.emplace_back(move(m));
+   nofix:
+    ;
+  }
+  res.reserve(res.size());
+  return res;
+}
+
+template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2half(const vector<Vec>& p, const vector<int>& pp) const {
   vector<pair<Vec, int> > sp;
   sp.reserve(pp.size() + 4);
   T m0(0);
   T m1(0);
   T M0(0);
   T M1(0);
-  // N.B. if it's on lattice, this is enough:
   for(int i = 0; i < pp.size(); i ++) {
-    sp.emplace_back(make_pair(p[pp[i]], pp[i]));
+    m0 = min(m0, p[pp[i]][0]);
+    m1 = min(m1, p[pp[i]][1]);
+    M0 = max(M0, p[pp[i]][0]);
+    M1 = max(M1, p[pp[i]][1]);
+  }
+  // N.B. if it's on lattice, this is enough:
+  Mat lrot(3, 3);
+  lrot.I();
+  lrot(0, 0) = cos(T(int(1)) / sqrt(T(int(4)) * (M1 - m0) * (M0 - m0)));
+  lrot(1, 0) = sin(T(int(1)) / sqrt(T(int(4)) * (M1 - m0) * (M0 - m0)));
+  lrot(0, 1) = - lrot(1, 0);
+  lrot(1, 1) =   lrot(0, 0);
+  m0 = m1 = M0 = M1 = T(int(0));
+  for(int i = 0; i < pp.size(); i ++) {
+    sp.emplace_back(make_pair(lrot * p[pp[i]], pp[i]));
     sp[i].first[2] = T(0);
     m0 = min(m0, sp[i].first[0]);
     m1 = min(m1, sp[i].first[1]);
@@ -336,54 +377,63 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   sp[sp.size() - 2].first[1] = M1;
   sp[sp.size() - 1].first    = sp[sp.size() - 3].first;
   sp[sp.size() - 1].first[1] = M1;
-  sp[sp.size() - 4].first[0] -= T(1);
-  sp[sp.size() - 3].first[0] += T(1);
   sort(sp.begin(), sp.end(), less0<pair<Vec, int> >);
   vector<Veci> res;
   vector<int> fixed;
   res.reserve(sp.size() - 1);
-  fixed.reserve(sp.size() - 1);
   int last(- 1);
+  int last2(- 1);
   int i;
   for(i = 2; i < sp.size(); ) {
     Veci lres(3);
     Mat  d(3, 3);
     T    det;
     lres.I(i);
-    for(int j = i - 1; 0 <= j; j --)
-      if(sp[j].first[1] <= sp[i].first[1] &&
-         ! binary_search(fixed.begin(), fixed.end(), sp[j].second)) {
+    for(int j = 0 <= last ? last - 1 : i - 1; 0 <= j; j --)
+      if(sp[i].first[1] < sp[j].first[1] &&
+         sp[i].first != sp[j].first) {
         const auto err(sp[j].first - sp[i].first);
         const auto err0(sp[lres[1]].first - sp[i].first);
         if(lres[1] == i || err.dot(err) < err0.dot(err0)) lres[1] = j;
-      } else if(! j) goto next;
-    if(0 <= last) {
-      const auto py(crossy(sp[i].first, sp[last].first,
-                           sp[i].first, sp[lres[1]].first));
-      if(! py.first && py.second < sp[i].first[0]) goto next;
-    }
-    for(int j = lres[1] - 1; 0 <= j; j --)
-      if(sp[j].first != sp[lres[0]].first &&
+      }
+    for(int j = i - 1; 0 <= j; j --)
+      if(sp[j].first[1] < sp[lres[1]].first[1] &&
+         sp[j].first != sp[i].first &&
          sp[j].first != sp[lres[1]].first) {
         const auto err(sp[j].first - sp[i].first);
         const auto err0(sp[lres[2]].first - sp[i].first);
         if(lres[2] == i || err.dot(err) < err0.dot(err0)) lres[2] = j;
-      } else if(! j) goto next;
+      }
+    // N.B. last fixed non same i triangle edge doesn't corss.
+    if(0 <= last2) {
+      const auto py(crossy(sp[i - 1].first, sp[last2].first,
+                           sp[i].first, sp[lres[2]].first));
+      if(! py.first && py.second > sp[i].first[0]) goto next;
+    }
+    // N.B. last fixed same i triangle shouldn't corss:
+    if(0 <= last) {
+      const auto py(crossy(sp[i].first, sp[last].first,
+                           sp[i].first, sp[lres[2]].first));
+      if(! py.first && py.second < sp[i].first[0]) goto next;
+    }
+    if(last < 0) last = lres[1];
+    if(lres[1] == i || lres[2] == i) goto next;
     for(int k = 0; k < lres.size(); k ++)
       lres[k] = sp[lres[k]].second;
-    if(last < 0) last = lres[1];
-    fixed.emplace_back(lres[1]);
-    sort(fixed.begin(), fixed.end());
     if(p.size() <= lres[0] ||
        p.size() <= lres[1] ||
        p.size() <= lres[2]) goto next;
     for(int j = 0; j < 3; j ++) {
+      const auto q(lrot * p[lres[j]]);
       d(j, 0) = T(1);
-      d(j, 1) = p[lres[j]][0];
-      d(j, 2) = p[lres[j]][1];
+      d(j, 1) = q[0];
+      d(j, 2) = q[1];
     }
     det = d(0, 0) * d(1, 1) * d(2, 2) + d(0, 1) * d(1, 2) * d(2, 0) + d(0, 2) * d(1, 0) * d(2, 1) - d(2, 0) * d(1, 1) * d(0, 2) - d(2, 1) * d(1, 2) * d(0, 0) - d(2, 2) * d(1, 0) * d(0, 1);
-    if(det == T(0)) continue;
+    if(det == T(0)) {
+      last --;
+      continue;
+    }
     if(det <  T(0)) swap(lres[0], lres[1]);
     if(res.size() && res[res.size() - 1] == lres)
       goto next;
@@ -391,10 +441,12 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
       res.emplace_back(lres);
     continue;
    next:
-     i ++;
-     last = - 1;
-     fixed.resize(0);
-     fixed.reserve(sp.size() - 1);
+    i ++;
+    last2 = last;
+    last  = - 1;
+    if(i < sp.size() - 1 &&
+       sp[i + 1].first[1] < sp[i].first[1])
+      last2 = - 1;
   }
   res.reserve(res.size());
   return res;
