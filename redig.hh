@@ -289,7 +289,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
 template <typename T> T reDig<T>::detCW(const Vec& p0, const Vec& p1, const Vec& p2) const {
   return p0[0] * p1[1]
        + p1[0] * p2[1]
-       + p2[0] * p0[0]
+       + p2[0] * p0[1]
        - p0[1] * p1[0]
        - p1[1] * p2[0]
        - p2[1] * p0[0];
