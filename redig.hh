@@ -311,8 +311,10 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   T M1(0);
   Mat lrot(3, 3);
   lrot.I();
-  lrot(0, 0) =    lrot(1, 1) = cos(T(1));
-  lrot(0, 1) = - (lrot(1, 0) = sin(T(1)));
+/*
+  lrot(0, 0) =    lrot(1, 1) = cos(T(1) / T(20));
+  lrot(0, 1) = - (lrot(1, 0) = sin(T(1) / T(20)));
+*/
   for(int i = 0; i < pp.size(); i ++) {
     sp.emplace_back(make_pair(lrot * p[pp[i]], pp[i]));
     sp[i].first[2] = T(0);
