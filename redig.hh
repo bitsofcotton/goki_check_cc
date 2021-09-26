@@ -323,6 +323,14 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     M1 = max(M1, sp[i].first[1]);
   }
   assert(m0 < M0 && m1 < M1);
+  auto msp(sp);
+  for(int i = 0; i < msp.size(); i ++) msp[i].first[0] = - msp[i].first[0];
+  sort( sp.begin(),  sp.end(), less0<pair<Vec, int> >);
+  sort(msp.begin(), msp.end(), less0<pair<Vec, int> >);
+  const auto q0(sp[0].second);
+  const auto q1(msp[msp.size() - 1].second);
+  const auto q2(msp[0].second);
+  const auto q3(sp[sp.size() - 1].second);
   m0 -= T(1);
   m1 -= T(1);
   M0 += T(1);
@@ -369,10 +377,13 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     lres[1] = scan[idx].second;
     lres[2] = scan[idx + 2].second;
     // if out of edge, continue.
-    bool psize(false);
-    for(int k = 0; k < 3; k ++)
-      psize = psize || ! (0 <= lres[k] && lres[k] < p.size());
-    if(psize) continue;
+    for(int k = 0; k < 3; k ++) {
+      if(p.size()          == lres[k]) lres[k] = q0;
+      else if(p.size() + 1 == lres[k]) lres[k] = q1;
+      else if(p.size() + 2 == lres[k]) lres[k] = q2;
+      else if(p.size() + 3 == lres[k]) lres[k] = q3;
+      assert(0 <= lres[k] && lres[k] < p.size());
+    }
     if(detCW(p[lres[0]], p[lres[1]], p[lres[2]]) < T(0))
       swap(lres[0], lres[1]);
     res.emplace_back(move(lres));
@@ -385,10 +396,13 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     lres[1] = scan[i + 1].second;
     lres[2] = scan[i + 2].second;
     // if out of edge, continue.
-    bool psize(false);
-    for(int k = 0; k < 3; k ++)
-      psize = psize || ! (0 <= lres[k] && lres[k] < p.size());
-    if(psize) continue;
+    for(int k = 0; k < 3; k ++) {
+      if(p.size()          == lres[k]) lres[k] = q0;
+      else if(p.size() + 1 == lres[k]) lres[k] = q1;
+      else if(p.size() + 2 == lres[k]) lres[k] = q2;
+      else if(p.size() + 3 == lres[k]) lres[k] = q3;
+      assert(0 <= lres[k] && lres[k] < p.size());
+    }
     if(detCW(p[lres[0]], p[lres[1]], p[lres[2]]) < T(0))
       swap(lres[0], lres[1]);
     res.emplace_back(move(lres));
@@ -423,10 +437,10 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
       const auto id(res[edges[j].second.first][(edges[j].second.second + 1) % 3]);
       Mat d(3, 3);
       d(0, 0) = (p[ia] - p[id])[0];
-      d(0, 1) = (p[ia] - p[id])[1];
       d(1, 0) = (p[ib] - p[id])[0];
-      d(1, 1) = (p[ib] - p[id])[1];
       d(2, 0) = (p[ic] - p[id])[0];
+      d(0, 1) = (p[ia] - p[id])[1];
+      d(1, 1) = (p[ib] - p[id])[1];
       d(2, 1) = (p[ic] - p[id])[1];
       d(0, 2) = (p[ia][0] * p[ia][0] - p[id][0] * p[id][0]) +
                 (p[ia][1] * p[ia][1] - p[id][1] * p[id][1]);
