@@ -145,7 +145,9 @@ else:
       for t in range(0, pixels):
         subprocess.call(["cp", root + "-sharpen.ppm", root + "-sharpen0.ppm"])
         subprocess.call([argv[1], "sharpen", root + "-sharpen0.ppm", root + "-sharpen.ppm", str(pixels), str(rot)])
-    elif(argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "lpf" or argv[2] == "represent"):
+    elif(argv[2] == "represent"):
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(2)])
+    elif(argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "lpf"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels), "1",  str(zratio), root + "-bump.ppm", root + ".obj"])
