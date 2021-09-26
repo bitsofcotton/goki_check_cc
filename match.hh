@@ -278,7 +278,7 @@ template <typename T> match_t<T> reconfigureMatch(match_t<T>& m, const vector<Si
   return m;
 }
 
-template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0, const T& thresh = T(1) / T(10)) {
+template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0, const int& n = 1) {
   const auto  gs(normalizeG((makeG(dst0).second)));
   const auto  gp(normalizeG((makeG(src0).second)));
   const auto& dst(gs.second);
@@ -301,12 +301,12 @@ template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVecto
       idx.emplace_back(make_pair(i, j));
       test.emplace_back(qdst.row(i) - qsrc.row(j));
     }
-  const auto cr(crush<T>(test));
+  const auto cr(crush<T>(test, test[0].size(), n));
   vector<match_t<T> > mm;
   mm.reserve(cr.size());
   for(int i = 0; i < cr.size(); i ++) {
     if(! cr[i].first.size()) continue;
-    match_t<T> m(thresh, max(gs.first, gp.first));
+    match_t<T> m(T(int(1)) / T(int(100)), max(gs.first, gp.first));
     SimpleVector<bool> dfix, sfix;
     dfix.resize(dst.size());
     sfix.resize(src.size());
@@ -350,8 +350,8 @@ template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVecto
   return mm;
 }
 
-template <typename T> vector<match_t<T> > matchPartial(const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0, const T& thresh = T(1) / T(10)) {
-  auto m(matchPartialR<T>(src0, dst0, thresh));
+template <typename T> vector<match_t<T> > matchPartial(const vector<SimpleVector<T> >& dst0, const vector<SimpleVector<T> >& src0, const int& n = 1) {
+  auto m(matchPartialR<T>(src0, dst0, n));
   for(int i = 0; i < m.size(); i ++)
     m[i] = ~ m[i];
   return m;

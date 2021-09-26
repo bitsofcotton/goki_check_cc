@@ -347,9 +347,8 @@ int main(int argc, const char* argv[]) {
       ? redig.getHesseVec(redig.rgb2d(bump1))
       : redig.getTileVec(redig.rgb2d(bump1)));
     auto m(shape0.size() < shape1.size()
-      ? matchPartial<num_t>(shape0, shape1)
-      : matchPartialR<num_t>(shape0, shape1));
-    if(nsub < m.size()) m.resize(nsub);
+      ? matchPartial< num_t>(shape0, shape1, nsub)
+      : matchPartialR<num_t>(shape0, shape1, nsub));
     typename simpleFile<num_t>::Mat outs[3];
     const auto rin0(redig.makeRefMatrix(in0[0], 1));
     const auto rin1(redig.makeRefMatrix(in1[0], 1 + rin0.rows() * rin0.cols()));

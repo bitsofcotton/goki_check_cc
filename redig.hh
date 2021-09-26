@@ -731,7 +731,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, 
   auto work2(makeProgramInvariant<T>(work));
   work = move(work2.first);
   work = opt.solve(work);
-  Mat res(sqrt(work.size()), sqrt(work.size()));
+  Mat res(sqrt(work.size()) - in.rows() * in.cols(),
+          sqrt(work.size()) - in.rows() * in.cols());
   for(int j = 0; j < res.rows(); j ++)
     for(int k = 0; k < res.cols(); k ++)
       res(j, k) = revertProgramInvariant<T>(make_pair(work[(j * res.cols() + k) % work.size()], work2.second));
