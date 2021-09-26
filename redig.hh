@@ -702,18 +702,14 @@ template <typename T> typename reDig<T>::Mat reDig<T>::optImage(const vector<pai
       buf.setVector(ss0 + j * img[i].second.cols(), img[i].second.row(j));
     serialize.row(i) = makeProgramInvariant<T>(buf).first;
   }
-  Mat res(serialize.rows(), serialize.cols());
+  Mat res(serialize.rows() - 1, serialize.cols());
   for(int i = 0; i < res.rows(); i ++) {
     res.row(i) = linearInvariant(serialize);
     if(res.row(i).dot(res.row(i)) <= T(1) / T(10000)) {
-      vector<int> idx;
-      idx.reserve(res.rows() - i + 1);
-      for(int j = i; j < res.rows(); j ++) {
-        idx.emplace_back(j);
-        for(int k = 0; k < res.cols(); k ++)
-          res(j, k) = T(0);
-      }
-      return res.fillP(idx);
+      Mat ares(i, res.cols());
+      for(int j = 0; j < ares.rows(); j ++)
+        ares.row(j) = move(res.row(j));
+      return ares;
     }
     const auto orth(res.row(i) /= sqrt(res.row(i).dot(res.row(i))));
     for(int j = 0; j < serialize.rows(); j ++)
