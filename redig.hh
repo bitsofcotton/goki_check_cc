@@ -725,8 +725,8 @@ template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, 
   for(int j = 0; j < in.rows(); j ++)
     work.setVector(j * in.cols(), in.row(j));
   auto work2(makeProgramInvariant<T>(work));
-  work = move(work2.first);
-  work = opt.solve(work);
+  work  = move(work2.first);
+  work -= opt.projectionPt(work);
   Mat res(sqrt(work.size()) - in.rows() * in.cols(),
           sqrt(work.size()) - in.rows() * in.cols());
   for(int j = 0; j < res.rows(); j ++)

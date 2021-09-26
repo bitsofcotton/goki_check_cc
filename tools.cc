@@ -449,7 +449,7 @@ int main(int argc, const char* argv[]) {
           for(int k = 0; k < in[i][j].rows() - 5; k += 2)
             for(int kk = 0; kk < in[i][j].cols() - 5; kk += 2) {
               const auto work(redig.normalize(in[i][j].subMatrix(k, kk, 5, 5), num_t(1) / num_t(2)));
-              pair.emplace_back(std::make_pair(work, redig.normalize(tayl * work * tayl.transpose(), num_t(1) / num_t(2))));
+              pair.emplace_back(std::make_pair(redig.normalize(tayl * work * tayl.transpose(), num_t(1) / num_t(2)), work));
             }
       out[0] = out[1] = out[2] = redig.optImage(pair);
       file.savep2or3(argv[2], out, ! true, 65535);
