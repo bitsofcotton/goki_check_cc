@@ -373,14 +373,13 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     for(int k = 0; k < 3; k ++)
       psize = psize || ! (0 <= lres[k] && lres[k] < p.size());
     if(psize) continue;
-    const auto det(detCW(p[lres[0]], p[lres[1]], p[lres[2]]));
-    if(det == T(0)) continue;
-    if(det <  T(0)) swap(lres[0], lres[1]);
+    if(detCW(p[lres[0]], p[lres[1]], p[lres[2]]) < T(0))
+      swap(lres[0], lres[1]);
     res.emplace_back(move(lres));
   }
   // close last edges:
   res.reserve(res.size() + scan.size());
-  for(int i = 1; i < scan.size() - 3; i += 1) {
+  for(int i = 1; i < scan.size() - 3; i ++) {
     Veci lres(3);
     lres[0] = scan[i].second;
     lres[1] = scan[i + 1].second;
@@ -390,9 +389,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     for(int k = 0; k < 3; k ++)
       psize = psize || ! (0 <= lres[k] && lres[k] < p.size());
     if(psize) continue;
-    const auto det(detCW(p[lres[0]], p[lres[1]], p[lres[2]]));
-    if(det == T(0)) continue;
-    if(det <  T(0)) swap(lres[0], lres[1]);
+    if(detCW(p[lres[0]], p[lres[1]], p[lres[2]]) < T(0))
+      swap(lres[0], lres[1]);
     res.emplace_back(move(lres));
   }
   res.reserve(res.size());
