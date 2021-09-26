@@ -379,7 +379,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     res.emplace_back(move(lres));
   }
   // close last edges:
-  for(int i = 0; i < scan.size() - 2; i ++) {
+  res.reserve(res.size() + scan.size());
+  for(int i = 1; i < scan.size() - 3; i += 1) {
     Veci lres(3);
     lres[0] = scan[i].second;
     lres[1] = scan[i + 1].second;
