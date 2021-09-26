@@ -421,7 +421,7 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
       const auto ia(res[edges[j].first.first][edges[j].first.second]);
       const auto ib(res[edges[j].first.first][(edges[j].first.second + 2) % 3]);
       const auto ic(res[edges[j].first.first][(edges[j].first.second + 1) % 3]);
-      const auto id(res[edges[j].second.first][(edges[j].second.second + 2) % 3]);
+      const auto id(res[edges[j].second.first][(edges[j].second.second + 1) % 3]);
       Mat d(3, 3);
       d(0, 0) = (p[ia] - p[id])[0];
       d(0, 1) = (p[ia] - p[id])[1];
