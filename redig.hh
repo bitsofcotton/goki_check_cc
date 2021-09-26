@@ -384,8 +384,9 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
       else if(p.size() + 3 == lres[k]) lres[k] = q3;
       assert(0 <= lres[k] && lres[k] < p.size());
     }
-    if(detCW(p[lres[0]], p[lres[1]], p[lres[2]]) < T(0))
-      swap(lres[0], lres[1]);
+    const auto det(detCW(p[lres[0]], p[lres[1]], p[lres[2]]));
+    if(det == T(0)) continue;
+    if(det <  T(0)) swap(lres[0], lres[1]);
     res.emplace_back(move(lres));
   }
   // close last edges:
@@ -403,8 +404,9 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
       else if(p.size() + 3 == lres[k]) lres[k] = q3;
       assert(0 <= lres[k] && lres[k] < p.size());
     }
-    if(detCW(p[lres[0]], p[lres[1]], p[lres[2]]) < T(0))
-      swap(lres[0], lres[1]);
+    const auto det(detCW(p[lres[0]], p[lres[1]], p[lres[2]]));
+    if(det == T(0)) continue;
+    if(det <  T(0)) swap(lres[0], lres[1]);
     res.emplace_back(move(lres));
   }
   res.reserve(res.size());
