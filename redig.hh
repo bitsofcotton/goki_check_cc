@@ -89,6 +89,7 @@ public:
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
   vector<Veci> mesh2(const vector<Vec>& p) const;
   vector<Veci> mesh2(const vector<Vec>& p, const vector<int>& pp) const;
+  vector<Veci> mesh2half(const vector<Vec>& p, const vector<int>& pp) const;
   vector<int>  edge(const vector<Vec>& p, const vector<int>& pp) const;
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& thresh = T(1) / T(128));
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& intensity = T(1));
@@ -303,6 +304,16 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
 }
 
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
+  auto res(mesh2half(p, pp));
+  auto mp(p);
+  for(int i = 0; i < mp.size(); i ++) mp[i] = - mp[i];
+  auto res2(mesh2half(mp, pp));
+  res.insert(res.end(), res2.begin(), res2.end());
+  return res;
+}
+
+// N.B.: non optimal condition (non delaunay).
+template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2half(const vector<Vec>& p, const vector<int>& pp) const {
   vector<pair<Vec, int> > sp;
   sp.reserve(pp.size() + 4);
   T m0(0);
@@ -311,10 +322,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   T M1(0);
   Mat lrot(3, 3);
   lrot.I();
-/*
-  lrot(0, 0) =    lrot(1, 1) = cos(T(1) / T(20));
-  lrot(0, 1) = - (lrot(1, 0) = sin(T(1) / T(20)));
-*/
+  lrot(0, 0) =    lrot(1, 1) = cos(T(1));
+  lrot(0, 1) = - (lrot(1, 0) = sin(T(1)));
   for(int i = 0; i < pp.size(); i ++) {
     sp.emplace_back(make_pair(lrot * p[pp[i]], pp[i]));
     sp[i].first[2] = T(0);
@@ -349,31 +358,33 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   res.reserve(sp.size() - 4);
   int i;
   for(i = 2; i < sp.size() - 2; i ++) {
+    // N.B. lrot support this on lattice.
+    assert(sp[i].first[0] != sp[i - 1].first[0] &&
+           sp[i].first[1] != sp[i - 1].first[1]);
     int idx;
     for(idx = 0; idx < scan.size(); idx ++)
       if(sp[i].first[1] < scan[idx].first[1]) break;
     idx = max(0, min(int(scan.size()) - 2, idx - 1));
+    assert(scan[idx].first[1] < sp[i].first[1] &&
+           sp[i].first[1] < scan[idx + 1].first[1] &&
+           scan[idx].first[0] < sp[i].first[0] &&
+           scan[idx + 1].first[0] < sp[i].first[0]);
     Veci lres(3);
     lres[0] = sp[i].second;
     lres[1] = scan[idx].second;
     lres[2] = scan[idx + 1].second;
+    // scanline update
+    // (we don't need to delete older points because of the conddition.):
     scan.insert(scan.begin() + idx + 1, pair<Vec, int>(sp[i]));
-    vector<int> elim;
-    for(int j = idx; 0 < j; j --)
-      if(detCW(scan[j - 1].first, scan[j].first, scan[idx + 1].first) < T(0))
-        elim.emplace_back(j);
-      else break;
-    for(int j = idx + 2; j < scan.size() - 1; j ++)
-      if(detCW(scan[idx + 1].first, scan[j].first, scan[j + 1].first) < T(0))
-        elim.emplace_back(j);
-      else break;
-    sort(elim.begin(), elim.end());
-    for(int j = 0; j < elim.size(); j ++)
-      scan.erase(scan.begin() + elim[j] - j);
+    assert(scan[idx].first[1] < scan[idx + 1].first[1] &&
+           scan[idx + 1].first[1] < scan[idx + 2].first[1]);
+    // if out of edge, continue.
     bool psize(false);
     for(int k = 0; k < 3; k ++)
       psize = psize || ! (0 <= lres[k] && lres[k] < p.size());
     if(psize) continue;
+    // if it's on the sameline, continue.
+    // if it's non clockwise condition, make it them.
     const auto det(detCW(p[lres[0]], p[lres[1]], p[lres[2]]));
     if(det == T(0)) continue;
     if(det <  T(0)) swap(lres[0], lres[1]);
