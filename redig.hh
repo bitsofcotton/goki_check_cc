@@ -89,7 +89,7 @@ public:
   Mat  pullRefMatrix(const Mat& ref, const int& start, const Mat& orig) const;
   vector<Veci> mesh2(const vector<Vec>& p) const;
   vector<Veci> mesh2(const vector<Vec>& p, const vector<int>& pp) const;
-  vector<Veci> mesh2half(const vector<Vec>& p, const vector<int>& pp) const;
+  vector<Veci> nondelaunay(const vector<Vec>& p, const vector<Veci>& mesh) const;
   vector<int>  edge(const vector<Vec>& p, const vector<int>& pp) const;
   Mat  reShape(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& thresh = T(1) / T(128));
   Mat  reColor(const Mat& cbase, const Mat& vbase, const int& count = 20, const T& intensity = T(1));
@@ -294,7 +294,7 @@ template <typename T> T reDig<T>::detCW(const Vec& p0, const Vec& p1, const Vec&
        - p0[1] * p1[0]
        - p1[1] * p2[0]
        - p2[1] * p0[0];
-}
+} 
 
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p) const {
   vector<int> pp;
@@ -304,16 +304,6 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
 }
 
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
-  auto res(mesh2half(p, pp));
-  auto mp(p);
-  for(int i = 0; i < mp.size(); i ++) mp[i] = - mp[i];
-  auto res2(mesh2half(mp, pp));
-  res.insert(res.end(), res2.begin(), res2.end());
-  return res;
-}
-
-// N.B.: non optimal condition (non delaunay).
-template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2half(const vector<Vec>& p, const vector<int>& pp) const {
   vector<pair<Vec, int> > sp;
   sp.reserve(pp.size() + 4);
   T m0(0);
@@ -369,28 +359,108 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2half(const 
            sp[i].first[1] < scan[idx + 1].first[1] &&
            scan[idx].first[0] < sp[i].first[0] &&
            scan[idx + 1].first[0] < sp[i].first[0]);
-    Veci lres(3);
-    lres[0] = sp[i].second;
-    lres[1] = scan[idx].second;
-    lres[2] = scan[idx + 1].second;
     // scanline update
     // (we don't need to delete older points because of the conddition.):
     scan.insert(scan.begin() + idx + 1, pair<Vec, int>(sp[i]));
     assert(scan[idx].first[1] < scan[idx + 1].first[1] &&
            scan[idx + 1].first[1] < scan[idx + 2].first[1]);
+    Veci lres(3);
+    lres[0] = sp[i].second;
+    lres[1] = scan[idx].second;
+    lres[2] = scan[idx + 2].second;
     // if out of edge, continue.
     bool psize(false);
     for(int k = 0; k < 3; k ++)
       psize = psize || ! (0 <= lres[k] && lres[k] < p.size());
     if(psize) continue;
-    // if it's on the sameline, continue.
-    // if it's non clockwise condition, make it them.
+    const auto det(detCW(p[lres[0]], p[lres[1]], p[lres[2]]));
+    if(det == T(0)) continue;
+    if(det <  T(0)) swap(lres[0], lres[1]);
+    res.emplace_back(move(lres));
+  }
+  // close last edges:
+  for(int i = 0; i < scan.size() - 2; i ++) {
+    Veci lres(3);
+    lres[0] = scan[i].second;
+    lres[1] = scan[i + 1].second;
+    lres[2] = scan[i + 2].second;
+    // if out of edge, continue.
+    bool psize(false);
+    for(int k = 0; k < 3; k ++)
+      psize = psize || ! (0 <= lres[k] && lres[k] < p.size());
+    if(psize) continue;
     const auto det(detCW(p[lres[0]], p[lres[1]], p[lres[2]]));
     if(det == T(0)) continue;
     if(det <  T(0)) swap(lres[0], lres[1]);
     res.emplace_back(move(lres));
   }
   res.reserve(res.size());
+  return res;
+}
+
+template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(const vector<Vec>& p, const vector<Veci>& mesh) const {
+  auto res(mesh);
+  vector<pair<pair<int, int>, pair<int, int> > > edges;
+  edges.reserve(mesh.size() + 3);
+  for(int i = 0; i < mesh.size(); i ++)
+    for(int j = i + 1; j < mesh.size(); j ++) {
+      for(int ii = 0; ii < 3; ii ++)
+        for(int jj = 0; jj < 3; jj ++)
+          if(res[i][ii] == res[j][jj] &&
+             res[i][(ii + 1) % 3] == res[j][(jj + 2) % 3]) {
+            edges.emplace_back(make_pair(make_pair(i, ii), make_pair(j, jj)));
+            goto next;
+          }
+     next:
+     ;
+    }
+  edges.reserve(edges.size());
+  for(int i = 0; i < edges.size(); i ++) {
+    bool exchg(false);
+    for(int j = 0; j < edges.size(); j ++) {
+      const auto ia(res[edges[j].first.first][edges[j].first.second]);
+      const auto ib(res[edges[j].first.first][(edges[j].first.second + 2) % 3]);
+      const auto ic(res[edges[j].first.first][(edges[j].first.second + 1) % 3]);
+      const auto id(res[edges[j].second.first][(edges[j].second.second + 2) % 3]);
+      Mat d(3, 3);
+      d(0, 0) = (p[ia] - p[id])[0];
+      d(0, 1) = (p[ia] - p[id])[1];
+      d(1, 0) = (p[ib] - p[id])[0];
+      d(1, 1) = (p[ib] - p[id])[1];
+      d(2, 0) = (p[ic] - p[id])[0];
+      d(2, 1) = (p[ic] - p[id])[1];
+      d(0, 2) = (p[ia][0] * p[ia][0] - p[id][0] * p[id][0]) +
+                (p[ia][1] * p[ia][1] - p[id][1] * p[id][1]);
+      d(1, 2) = (p[ib][0] * p[ib][0] - p[id][0] * p[id][0]) +
+                (p[ib][1] * p[ib][1] - p[id][1] * p[id][1]);
+      d(2, 2) = (p[ic][0] * p[ic][0] - p[id][0] * p[id][0]) +
+                (p[ic][1] * p[ic][1] - p[id][1] * p[id][1]);
+      const auto detDelaunay(d(0, 0) * d(1, 1) * d(2, 2) +
+                             d(0, 1) * d(1, 2) * d(2, 0) +
+                             d(0, 2) * d(1, 0) * d(2, 1) -
+                             d(2, 2) * d(1, 1) * d(0, 0) -
+                             d(2, 1) * d(1, 0) * d(0, 2) -
+                             d(2, 0) * d(1, 2) * d(0, 1));
+      if(T(0) <= detDelaunay) {
+        res[edges[j].first.first][(edges[j].first.second + 1) % 3] = id;
+        res[edges[j].second.first][edges[j].second.second] = ib;
+        auto& r0(res[edges[j].first.first]);
+        auto& r1(res[edges[j].second.first]);
+        if(detCW(p[r0[0]], p[r0[1]], p[r0[2]]) < T(0)) swap(r0[0], r0[1]);
+        if(detCW(p[r1[0]], p[r1[1]], p[r1[2]]) < T(0)) swap(r1[0], r1[1]);
+        for(int ii = 0; ii < 3; ii ++)
+          for(int jj = 0; jj < 3; jj ++)
+            if(r0[ii] == r1[jj] && r0[(ii + 1) % 3] == r1[(jj + 2) % 3]) {
+              edges[j].first.second  = ii;
+              edges[j].second.second = jj;
+              goto next2;
+            }
+       next2:
+        exchg = true;
+      }
+    }
+    if(! exchg) break;
+  }
   return res;
 }
 
