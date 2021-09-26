@@ -101,7 +101,7 @@ public:
   Mat  reImage(const Mat& dst, const T& intensity, const int& count = 20);
   Mat  optImage(const vector<pair<Mat, Mat> >& img) const;
   Mat  compImage(const Mat& in, const Mat& opt) const;
-  vector<Mat> catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs = 40);
+  vector<vector<int> > catImage(const vector<Mat>& imgs, const int& cs = 40);
   vector<Mat> compositeImage(const vector<Mat>& imgs);
   vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
@@ -735,50 +735,23 @@ template <typename T> typename reDig<T>::Mat reDig<T>::compImage(const Mat& in, 
   return res;
 }
 
-template <typename T> vector<typename reDig<T>::Mat> reDig<T>::catImage(const vector<Mat>& rep, const vector<Mat>& imgs, const int& cs) {
-  assert(imgs.size() && rep.size() == imgs.size());
-  for(int i = 1; i < rep.size(); i ++) {
-    assert(rep[i].cols() == rep[0].cols());
+template <typename T> vector<vector<int> > reDig<T>::catImage(const vector<Mat>& imgs, const int& cs) {
+  for(int i = 1; i < imgs.size(); i ++) {
     assert(imgs[i].rows() == imgs[0].rows());
     assert(imgs[i].cols() == imgs[0].cols());
   }
   vector<Vec> work;
-  vector<int> workidx;
-  vector<int> workidx2;
   work.reserve(imgs.size());
-  for(int i = 0; i < rep.size(); i ++)
-    for(int j = 0; j < min(rep[i].rows(), int(1 + 5 + 1)); j ++) {
-      work.emplace_back(rep[i].row(j));
-      workidx.emplace_back(i);
-      workidx2.emplace_back(j);
-    }
-  const auto cg(crush<T>(work, cs, 0));
-  vector<Mat> res;
-  res.reserve(cg.size());
-  for(int i = 0; i < cg.size(); i ++) {
-    if(! cg[i].first.size()) continue;
-    res.emplace_back(Mat(cg[i].first.size() * imgs[0].rows(), imgs[0].cols()));
-    for(int j = 0; j < cg[i].first.size(); j ++) {
-      for(int k = 0; k < imgs[0].rows(); k ++)
-        res[i].row(j * imgs[0].rows() + k) = imgs[workidx[cg[i].second[j]]].row(k);
-      const auto widx2(workidx2[cg[i].second[j]]);
-      if(!widx2)
-        for(int k = 0; k < imgs[0].rows(); k ++)
-          res[i].row(j * imgs[0].rows() + k) = - res[i].row(j * imgs[0].rows() + k);
-      else if(widx2 < 1 + 5 + 1)
-        for(int k = 0; k < imgs[0].rows() / 2; k ++)
-          for(int kk = 0; kk < imgs[0].cols() / 2; kk ++) {
-            auto& rr(res[i](j * imgs[0].rows() + k +
-              (widx2 == 2 || widx2 == 4 ? imgs[0].rows() / 2 :
-                (widx2 == 5 ? imgs[0].rows() / 4 : 0)), kk +
-              (widx2 == 3 || widx2 == 4 ? imgs[0].cols() / 2 :
-                (widx2 == 5 ? imgs[0].cols() / 4 : 0)) ) );
-            rr = - rr;
-          }
-      else
-        assert(0 && "Should not be reached.");
-    }
+  for(int i = 0; i < imgs.size(); i ++) {
+    work.emplace_back(Vec(imgs[i].rows() * imgs[i].cols()).O());
+    for(int j = 0; j < imgs[i].rows(); j ++)
+      work[i].setVector(imgs[i].cols() * j, imgs[i].row(j));
   }
+  auto cg(crush<T>(work, cs, 0));
+  vector<vector<int> > res;
+  res.reserve(cg.size());
+  for(int i = 0; i < cg.size(); i ++)
+    res.emplace_back(std::move(cg[i].second));
   return res;
 }
 

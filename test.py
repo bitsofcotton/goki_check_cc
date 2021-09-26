@@ -32,16 +32,13 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
     r, e = os.path.splitext(s)
     if(e != ".ppm"):
       subprocess.call(["convert", s, "-compress", "none", r + ".ppm"])
-    cmd.append(r + ".ppm")
     if(argv[2] == "cat"):
       cmd.append(r + "-represent.ppm")
-    elif(argv[2] == "catr"):
-      cmd.append(r + ".ppm")
     elif(argv[2] == "pred"):
       subprocess.call(["convert", s, "-blur", "12x12+6", "-compress", "none", r + "-blur.ppm"])
       cmd[- 1] = r + "-blur.ppm"
-  if(argv[2] == "catr"):
-    cmd[1] = "cat"
+    else:
+      cmd.append(r + ".ppm")
   subprocess.call(cmd)
 elif(argv[2] == "retrace" or argv[2] == "newtrace" or argv[2] == "retrace2"):
   idx = 3
@@ -82,6 +79,20 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
+elif(argv[2] == "tilecat"):
+  pixels = int(argv[3])
+  cmd = ["montage"]
+  t   = 0
+  for line in sys.stdin:
+    if(len(line) <= 2):
+      cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tilecat-" + str(t) + ".png"])
+      subprocess.call(cmd)
+      cmd = ["montage"]
+      t  += 1
+    else:
+      cmd.append(line[:- 1])
+  cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tilecat-" + str(t) + ".png"])
+  subprocess.call(cmd)
 elif(argv[2] == "tile"):
   idx = 3
   try:
@@ -91,7 +102,7 @@ elif(argv[2] == "tile"):
     pass
   for t in range(0, int((pow(len(argv) - idx, .5) + pixels) / pixels)):
     cmd = ["montage"]
-    cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels+ idx, len(argv))])
+    cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
 elif(argv[2] == "i2i"):

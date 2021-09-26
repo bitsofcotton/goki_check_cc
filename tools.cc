@@ -40,11 +40,11 @@ using std::make_pair;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|lpf|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
-  cout << "gokicheck (pred|lenl) <output.ppm> <input0.ppm> ..." << endl;
-  cout << "gokicheck (cat|composite) <output.ppm> <input0.ppm> <input0-represent.ppm> ..." << endl;
-  cout << "gokicheck obj   <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>" << endl;
-  cout << "gokicheck (tilt|sbox)    <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.(ppm|obj)> <output.ppm>" << endl;
-  cout << "gokicheck match <nsub> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.(ppm|obj)> <src-bump.(ppm|obj)> <output-basename>" << endl;
+  cout << "gokicheck (pred|lenl|composite) <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokicheck (cat|catr) <input0.ppm> ..." << endl;
+  cout << "gokicheck obj <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>" << endl;
+  cout << "gokicheck (tilt|sbox) <index> <max_index> (<psi>|<zratio>) <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
+  cout << "gokicheck match <nsub> <nemph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << "gokicheck habit   <in0.obj> <in1.obj> <out.obj>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
@@ -399,6 +399,7 @@ int main(int argc, const char* argv[]) {
   } else if(strcmp(argv[1], "pred") == 0 ||
             strcmp(argv[1], "lenl") == 0 ||
             strcmp(argv[1], "cat") == 0 ||
+            strcmp(argv[1], "catr") == 0 ||
             strcmp(argv[1], "composite") == 0) {
     if(argc < 4) {
       usage();
@@ -414,10 +415,6 @@ int main(int argc, const char* argv[]) {
       in[ii].resize(3);
       for(int j = 0; j < 3; j ++)
         in[ii][j] = std::move(ibuf[j]);
-      if(strcmp(argv[1], "cat") == 0 && ! (ii & 1)) {
-        assert(in[ii][0].rows() == in[0][0].rows());
-        assert(in[ii][0].cols() == in[0][0].cols());
-      }
     }
     const auto idx(in.size() - 1);
     typename simpleFile<num_t>::Mat out[3];
@@ -453,21 +450,33 @@ int main(int argc, const char* argv[]) {
             }
       out[0] = out[1] = out[2] = redig.optImage(pair);
       file.savep2or3(argv[2], out, ! true, 65535);
-    } else if(strcmp(argv[1], "cat") == 0) {
-      vector<typename simpleFile<num_t>::Mat> rep;
+    } else if(strcmp(argv[1], "cat") == 0 ||
+              strcmp(argv[1], "catr") == 0) {
       vector<typename simpleFile<num_t>::Mat> glay;
-      glay.reserve(in.size());
+      glay.reserve(strcmp(argv[1], "catr") == 0 ? in.size()
+                    : in.size() * (1 + 5 + 1));
       for(int i = 0; i < in.size(); i ++) {
         typename simpleFile<num_t>::Mat inn[3];
         for(int j = 0; j < 3; j ++)
-          inn[j] = const_cast<typename simpleFile<num_t>::Mat &&>(in[i][j]);
-        (i & 1 ? rep : glay).emplace_back(redig.rgb2d(inn));
+          inn[j] = std::move(in[i][j]);
+        if(strcmp(argv[1], "catr") == 0)
+          glay.emplace_back(redig.rgb2d(inn));
+        else {
+          auto work(redig.rgb2d(inn));
+          assert(1 + 5 + 1 <= work.rows());
+          for(int j = 0; j < 1 + 5 + 1; j ++) {
+            SimpleMatrix<num_t> rr(1, work.cols());
+            rr.row(0) = std::move(work.row(j));
+            glay.emplace_back(rr);
+          }
+        }
       }
-      const auto cat(redig.catImage(rep, glay));
+      const auto cat(redig.catImage(glay));
       for(int i = 0; i < cat.size(); i ++) {
-        out[0] = out[1] = out[2] = cat[i];
-        redig.normalize(out, 1.);
-        file.savep2or3((string(argv[2]) + string("-") + to_string(i) + string(".ppm")).c_str(), out, ! true);
+        for(int j = 0; j < cat[i].size(); j ++)
+          std::cout << argv[3 + (strcmp(argv[1], "catr") == 0 ? cat[i][j]
+                         : cat[i][j] / (1 + 5 + 1)) ] << std::endl;
+        std::cout << std::endl;
       }
     } else if(strcmp(argv[1], "composite") == 0) {
       vector<typename simpleFile<num_t>::Mat> glay;
