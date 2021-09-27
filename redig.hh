@@ -126,6 +126,8 @@ private:
   void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
   T    detCW(const Vec& p0, const Vec& p1, const Vec& p2) const;
+  bool assertTri(const vector<vector<vector<pair<int, int> > > >& edgeidx1, const vector<vector<vector<pair<int, int> > > >& edgeidx2, const int& ei, const int& ej) const;
+  void exchangeTri(vector<pair<int, int> >& edges, vector<vector<vector<pair<int, int> > > >& edgeidx1, vector<vector<vector<pair<int, int> > > >& edgeidx2, const int& ei, const int& ej, const int& dst, const int& src, const int& tri, const int& j, const vector<Veci>& res) const;
   
   T   Pi;
   int vbox;
@@ -305,6 +307,7 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
 }
 
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
+  return mesh2half(p, pp);
   auto res(mesh2half(p, pp));
   auto mp(p);
   for(int i = 0; i < mp.size(); i ++) mp[i] = - mp[i];
@@ -316,10 +319,6 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2half(const vector<Vec>& p, const vector<int>& pp) const {
   vector<pair<Vec, int> > sp;
   sp.reserve(pp.size() + 4);
-  T m0(0);
-  T m1(0);
-  T M0(0);
-  T M1(0);
   Mat lrot(3, 3);
   lrot.I();
   lrot(0, 0) =    lrot(1, 1) = cos(T(1));
@@ -327,61 +326,16 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2half(const 
   for(int i = 0; i < pp.size(); i ++) {
     sp.emplace_back(make_pair(lrot * p[pp[i]], pp[i]));
     sp[i].first[2] = T(0);
-    m0 = min(m0, sp[i].first[0]);
-    m1 = min(m1, sp[i].first[1]);
-    M0 = max(M0, sp[i].first[0]);
-    M1 = max(M1, sp[i].first[1]);
   }
-  assert(m0 < M0 && m1 < M1);
-  m0 -= T(1);
-  m1 -= T(1);
-  M0 += T(1);
-  M1 += T(1);
-  sp.emplace_back(make_pair(Vec(3), p.size()));
-  sp.emplace_back(make_pair(Vec(3), p.size() + 1));
-  sp.emplace_back(make_pair(Vec(3), p.size() + 2));
-  sp.emplace_back(make_pair(Vec(3), p.size() + 3));
-  sp[sp.size() - 4].first[0] = m0;
-  sp[sp.size() - 4].first[1] = m1;
-  sp[sp.size() - 4].first[2] = T(0);
-  sp[sp.size() - 3].first    = sp[sp.size() - 4].first;
-  sp[sp.size() - 3].first[0] = M0;
-  sp[sp.size() - 2].first    = sp[sp.size() - 4].first;
-  sp[sp.size() - 2].first[1] = M1;
-  sp[sp.size() - 1].first    = sp[sp.size() - 3].first;
-  sp[sp.size() - 1].first[1] = M1;
-  vector<pair<Vec, int> > scan;
-  scan.emplace_back(sp[sp.size() - 4]);
-  scan.emplace_back(sp[sp.size() - 2]);
   sort(sp.begin(), sp.end(), less0<pair<Vec, int> >);
   vector<Veci> res;
-  res.reserve(sp.size() - 4);
+  res.reserve(sp.size() - 2);
   int i;
-  for(i = 2; i < sp.size() - 2; i ++) {
-    // N.B. lrot support this on lattice.
-    assert(sp[i].first[0] != sp[i - 1].first[0] &&
-           sp[i].first[1] != sp[i - 1].first[1]);
-    int idx;
-    for(idx = 0; idx < scan.size(); idx ++)
-      if(sp[i].first[1] < scan[idx].first[1]) break;
-    idx = max(0, min(int(scan.size()) - 2, idx - 1));
-    assert(scan[idx].first[1] < sp[i].first[1] &&
-           sp[i].first[1] < scan[idx + 1].first[1] &&
-           scan[idx].first[0] < sp[i].first[0] &&
-           scan[idx + 1].first[0] < sp[i].first[0]);
-    // scanline update
-    // (we don't need to delete older points because of the conddition.):
-    scan.insert(scan.begin() + idx + 1, pair<Vec, int>(sp[i]));
-    assert(scan[idx].first[1] < scan[idx + 1].first[1] &&
-           scan[idx + 1].first[1] < scan[idx + 2].first[1]);
+  for(i = 0; i < sp.size() - 2; i ++) {
     Veci lres(3);
     lres[0] = sp[i].second;
-    lres[1] = scan[idx].second;
-    lres[2] = scan[idx + 2].second;
-    bool psize(false);
-    for(int k = 0; k < 3; k ++)
-      psize = psize || p.size() <= lres[k];
-    if(psize) continue;
+    lres[1] = sp[i + 1].second;
+    lres[2] = sp[i + 2].second;
     const auto det(detCW(p[lres[0]], p[lres[1]], p[lres[2]]));
     if(det == T(0)) continue;
     if(det <  T(0)) swap(lres[0], lres[1]);
@@ -389,6 +343,46 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2half(const 
   }
   res.reserve(res.size());
   return res;
+}
+
+template <typename T> bool reDig<T>::assertTri(const vector<vector<vector<pair<int, int> > > >& edgeidx1, const vector<vector<vector<pair<int, int> > > >& edgeidx2, const int& ei, const int& ej) const {
+  const auto& ei1(edgeidx1[min(ei, ej)][max(ei, ej)]);
+  const auto& ei2(edgeidx2[min(ei, ej)][max(ei, ej)]);
+  bool res(false);
+  for(int ii = 0; ii < ei1.size(); ii ++) {
+    const auto& ci(ei1[ii].first);
+    const auto& cj(ei2[ii].first);
+    res = res || edgeidx1[min(ci, cj)][max(ci, cj)].size() ||
+                 edgeidx2[min(ci, cj)][max(ci, cj)].size();
+  }
+  return ! res;
+}
+
+template <typename T> void reDig<T>::exchangeTri(vector<pair<int, int> >& edges, vector<vector<vector<pair<int, int> > > >& edgeidx1, vector<vector<vector<pair<int, int> > > >& edgeidx2, const int& ei, const int& ej, const int& dst, const int& src, const int& tri, const int& j, const vector<Veci>& res) const {
+  auto& ei1(edgeidx1[min(ei, ej)][max(ei, ej)]);
+  auto& ei2(edgeidx2[min(ei, ej)][max(ei, ej)]);
+  assert(ei1.size() == ei2.size());
+  int chg(0);
+  for(int idx = 0; idx < 2; idx ++)
+    for(int ii = 0; ii < ei1.size(); ii ++)
+      if((idx ? ei2 : ei1)[ii].first == src &&
+         (idx ? ei2 : ei1)[ii].second != j) {
+        (idx ? ei2 : ei1)[ii].first = dst;
+        (idx ? edges[ei2[ii].second].second
+             : edges[ei1[ii].second].first) = tri;
+        assert(res[tri][0] == dst ||
+               res[tri][1] == dst ||
+               res[tri][2] == dst);
+        assert(res[tri][0] == ei ||
+               res[tri][1] == ei ||
+               res[tri][2] == ei);
+        assert(res[tri][0] == ej ||
+               res[tri][1] == ej ||
+               res[tri][2] == ej);
+        chg ++;
+      }
+  assert(0 <= chg && chg <= 1);
+  return;
 }
 
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(const vector<Vec>& p, const vector<Veci>& mesh) const {
@@ -409,44 +403,76 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
         for(int jj = 0; jj < 3; jj ++)
           if(res[i][ii] == res[j][jj] &&
              res[i][(ii + 1) % 3] == res[j][(jj + 2) % 3]) {
+            const auto& eii(res[i][ii]);
+            const auto& ejj(res[i][(ii + 1) % 3]);
+            edgeidx1[min(eii, ejj)][max(eii, ejj)].emplace_back(
+              make_pair(res[i][(ii + 2) % 3], edges.size()));
+            edgeidx2[min(eii, ejj)][max(eii, ejj)].emplace_back(
+              make_pair(res[j][(jj + 1) % 3], edges.size()));
             edges.emplace_back(make_pair(i, j));
-            edgeidx1[min(res[i][ii], res[i][(ii + 1) % 3])]
-                    [max(res[i][ii], res[i][(ii + 1) % 3])].emplace_back(
-              make_pair(res[i][(ii + 2) % 3], edges.size() - 1));
-            edgeidx2[min(res[i][ii], res[i][(ii + 1) % 3])]
-                    [max(res[i][ii], res[i][(ii + 1) % 3])].emplace_back(
-              make_pair(res[j][(jj + 1) % 3], edges.size() - 1));
-            assert(edgeidx1[min(res[i][ii], res[i][(ii + 1) % 3])]
-                           [max(res[i][ii], res[i][(ii + 1) % 3])].size() <= 2);
-            assert(edgeidx2[min(res[i][ii], res[i][(ii + 1) % 3])]
-                           [max(res[i][ii], res[i][(ii + 1) % 3])].size() <= 2);
-            const auto ci(res[i][(ii + 2) % 3]);
-            const auto cj(res[j][(jj + 1) % 3]);
-            assert(! edgeidx1[min(ci, cj)][max(ci, cj)].size() &&
-                   ! edgeidx2[min(ci, cj)][max(ci, cj)].size() );
+            assert(edgeidx1[min(eii, ejj)][max(eii, ejj)].size() <= 2);
+            assert(edgeidx2[min(eii, ejj)][max(eii, ejj)].size() <= 2);
+            assert(res[i][ii] == res[j][jj] &&
+                   res[i][(ii + 1) % 3] == res[j][(jj + 2) % 3]);
+            assert(assertTri(edgeidx1, edgeidx2,
+                             res[i][ii], res[i][(ii + 1) % 3]));
             goto next;
           }
      next:
       ;
     }
   for(int i = 0; i < mesh.size(); i ++) {
-    for(int j = 0; j < edges.size(); j ++) {
+    bool fixed(false);
+    int j;
+    for(j = 0; j < edges.size(); j ++) {
       int iia(- 1), iib(- 1), iic(- 1), jja(- 1), jjd(- 1);
+      bool iicf(false);
       for(int ii = 0; ii < 3; ii ++)
         for(int jj = 0; jj < 3; jj ++)
           if(res[edges[j].first][ii] == res[edges[j].second][jj]) {
+            // assert(iic < 0);
+            iicf = iicf || 0 <= iic;
             (iia < 0 ? iia : iic) = ii;
             break;
           }
+      if(iicf) {
+        edges.erase(edges.begin() + j);
+        edgeidx1.erase(edgeidx1.begin() + j);
+        edgeidx2.erase(edgeidx2.begin() + j);
+        for(int ii = 0; ii < edgeidx1.size(); ii ++)
+          edgeidx1[ii].erase(edgeidx1[ii].begin() + j);
+        for(int ii = 0; ii < edgeidx2.size(); ii ++)
+          edgeidx2[ii].erase(edgeidx2[ii].begin() + j);
+        for(int ii = 0; ii < edgeidx1.size(); ii ++)
+          for(int jj = 0; jj < edgeidx1[ii].size(); jj ++)
+            for(int kk = 0; kk < edgeidx1[ii][jj].size(); kk ++)
+              if(j == edgeidx1[ii][jj][kk].second) {
+                edgeidx1[ii][jj].erase(edgeidx1[ii][jj].begin() + kk);
+                edgeidx2[ii][jj].erase(edgeidx2[ii][jj].begin() + kk);
+                kk --;
+              } else if(j < edgeidx1[ii][jj][kk].second)
+                edgeidx1[ii][jj][kk].second --;
+        for(int ii = 0; ii < edgeidx2.size(); ii ++)
+          for(int jj = 0; jj < edgeidx2[ii].size(); jj ++)
+            for(int kk = 0; kk < edgeidx2[ii][jj].size(); kk ++)
+              if(j == edgeidx2[ii][jj][kk].second) {
+                edgeidx1[ii][jj].erase(edgeidx1[ii][jj].begin() + kk);
+                edgeidx2[ii][jj].erase(edgeidx2[ii][jj].begin() + kk);
+                kk --;
+              } else if(j < edgeidx2[ii][jj][kk].second)
+                edgeidx2[ii][jj][kk].second --;
+        j --;
+        continue;
+      }
       for(int ii = 0; ii < 3; ii ++)
         if(ii != iia && ii != iic) {
           iib = ii;
           break;
         }
       assert(0 <= iia && 0 <= iib && 0 <= iic);
-      if(detCW(p[res[edges[j].first][iia]],
-               p[res[edges[j].first][iic]],
-               p[res[edges[j].first][iib]]) < T(0)) swap(iia, iic);
+      if(T(0) < detCW(p[res[edges[j].first][iia]],
+                      p[res[edges[j].first][iic]],
+                      p[res[edges[j].first][iib]]) ) swap(iia, iic);
       for(int ii = 0; ii < 3; ii ++)
         if(res[edges[j].second][ii] == res[edges[j].first][iia]) {
           jja = ii;
@@ -481,114 +507,56 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
       const auto detDelaunay(d(0, 0) * d(1, 1) * d(2, 2) +
                              d(0, 1) * d(1, 2) * d(2, 0) +
                              d(0, 2) * d(1, 0) * d(2, 1) -
-                             d(2, 2) * d(1, 1) * d(0, 0) -
+                             d(2, 0) * d(1, 2) * d(0, 1) -
                              d(2, 1) * d(1, 0) * d(0, 2) -
-                             d(2, 0) * d(1, 2) * d(0, 1));
-      if(T(0) <= detDelaunay) {
+                             d(2, 2) * d(1, 1) * d(0, 0));
+      if(detDelaunay <= T(0)) {
         // first  : a b c -> a b d.
         // second : a c d -> b c d
         res[edges[j].first][iic]  = id;
         res[edges[j].second][jja] = ib;
-        swap(edgeidx1[min(ia, ic)][max(ia, ic)],
-             edgeidx1[min(ib, id)][max(ib, id)]);
-        swap(edgeidx2[min(ia, ic)][max(ia, ic)],
-             edgeidx2[min(ib, id)][max(ib, id)]);
-        assert(! edgeidx1[min(ia, ic)][max(ia, ic)].size());
-        assert(! edgeidx2[min(ia, ic)][max(ia, ic)].size());
-        {
-          // first  : a b c -> a b d.
-          // second : a c d -> b c d
-          auto& ei1(edgeidx1[min(ia, id)][max(ia, id)]);
-          auto& ei2(edgeidx2[min(ia, id)][max(ia, id)]);
-          for(int idx = 0; idx < 2; idx ++)
-            for(int ii = 0; ii < (idx ? ei2 : ei1).size(); ii ++)
-              if((idx ? ei2 : ei1)[ii].first == ic) {
-                (idx ? ei2 : ei1)[ii].first = ib;
-                (idx ? edges[ei2[ii].second].second
-                     : edges[ei1[ii].second].first) = edges[j].first;
-              }
+        assert(res[edges[j].first][iia] == ia &&
+               res[edges[j].first][iib] == ib &&
+               res[edges[j].first][iic] == id);
+        assert(res[edges[j].second][jja] == ib &&
+               res[edges[j].second][jjd] == id);
+        assert(res[edges[j].second][0] == ic ||
+               res[edges[j].second][1] == ic ||
+               res[edges[j].second][2] == ic);
+        exchangeTri(edges, edgeidx1, edgeidx2, ia, ib, id, ic, edges[j].first, j, res);
+        exchangeTri(edges, edgeidx1, edgeidx2, ib, ic, id, ia, edges[j].second, j, res);
+        exchangeTri(edges, edgeidx1, edgeidx2, ic, id, ib, ia, edges[j].second, j, res);
+        exchangeTri(edges, edgeidx1, edgeidx2, id, ia, ib, ic, edges[j].first, j, res);
+        auto& ac1(edgeidx1[min(ia, ic)][max(ia, ic)]);
+        auto& ac2(edgeidx2[min(ia, ic)][max(ia, ic)]);
+        auto& bd1(edgeidx1[min(ib, id)][max(ib, id)]);
+        auto& bd2(edgeidx2[min(ib, id)][max(ib, id)]);
+        assert(ac1.size() == ac2.size() && bd1.size() == bd2.size());
+        for(int ii = 0; ii < ac1.size(); ii ++) {
+          if(ac1[ii].first == ib || ac1[ii].first == id)
+            bd1.emplace_back(ac1[ii].first == ib
+              ? make_pair(ia, edges[j].first)
+              : make_pair(ic, edges[j].second));
+          else assert(0 && "Should not be reached.");
+          if(ac2[ii].first == ib || ac2[ii].first == id)
+            bd2.emplace_back(ac2[ii].first == ib
+              ? make_pair(ia, edges[j].first)
+              : make_pair(ic, edges[j].second));
+          else assert(0 && "Should not be reached.");
         }
-        {
-          // first  : a b c -> a b d.
-          // second : a c d -> b c d
-          auto& ei1(edgeidx1[min(ib, ic)][max(ib, ic)]);
-          auto& ei2(edgeidx2[min(ib, ic)][max(ib, ic)]);
-          for(int idx = 0; idx < 2; idx ++)
-            for(int ii = 0; ii < (idx ? ei2 : ei1).size(); ii ++)
-              if((idx ? ei2 : ei1)[ii].first == ia) {
-                (idx ? ei2 : ei1)[ii].first = id;
-                (idx ? edges[ei2[ii].second].second
-                     : edges[ei1[ii].second].first) = edges[j].second;
-              }
-        }
-        {
-          // first  : a b c -> a b d.
-          // second : a c d -> b c d
-          auto& ei1(edgeidx1[min(ia, ib)][max(ia, ib)]);
-          auto& ei2(edgeidx2[min(ia, ib)][max(ia, ib)]);
-          for(int idx = 0; idx < 2; idx ++)
-            for(int ii = 0; ii < (idx ? ei2 : ei1).size(); ii ++)
-              if((idx ? ei2 : ei1)[ii].first == ic)
-                (idx ? ei2 : ei1)[ii].first = id;
-        }
-        {
-          // first  : a b c -> a b d.
-          // second : a c d -> b c d
-          auto& ei1(edgeidx1[min(ic, id)][max(ic, id)]);
-          auto& ei2(edgeidx2[min(ic, id)][max(ic, id)]);
-          for(int idx = 0; idx < 2; idx ++)
-            for(int ii = 0; ii < (idx ? ei2 : ei1).size(); ii ++)
-              if((idx ? ei2 : ei1)[ii].first == ia)
-                (idx ? ei2 : ei1)[ii].first = ib;
-        }
-        {
-          // first  : a b c -> a b d.
-          // second : a c d -> b c d
-          auto& ei1(edgeidx1[min(ib, id)][max(ib, id)]);
-          auto& ei2(edgeidx2[min(ib, id)][max(ib, id)]);
-          int nxt(ic);
-          int nxte(edges[j].first);
-          for(int ii = 0; ii < ei1.size(); ii ++)
-            if(ei1[ii].first == ib || ei1[ii].first == id) {
-              const auto& tri2(edges[ei1[ii].second].second);
-              for(int jj = 0; jj < 3; jj ++)
-                if(res[tri2][jj] == ia) {
-                  ei1[ii].first = ia;
-                  edges[ei1[ii].second].first = edges[j].first;
-                  nxte = edges[j].second;
-                  break;
-                } else if(res[tri2][jj] == ic) {
-                  ei1[ii].first = ic;
-                  edges[ei1[ii].second].first = edges[j].second;
-                  nxt = ia;
-                  break;
-                }
-              assert(ei1[ii].first == ia || ei1[ii].first == ic);
-              assert(nxt == ia || nxt == ic);
-              break;
-            }
-          for(int ii = 0; ii < ei2.size(); ii ++)
-            if(ei2[ii].first == ib || ei2[ii].first == id) {
-              ei2[ii].first = nxt;
-              edges[ei2[ii].second].second = nxte;
-            }
-        }
-        for(int ii = 0; ii < edgeidx1.size(); ii ++)
-          for(int jj = 0; jj < edgeidx1[ii].size(); jj ++) {
-            assert(edgeidx1[ii].size() == edgeidx2[ii].size());
-            assert(edgeidx1[ii][jj].size() == edgeidx2[ii][jj].size());
-            for(int k = 0; k < edgeidx1[ii][jj].size(); k ++) {
-              const auto& ci(edgeidx1[ii][jj][k].first);
-              const auto& cj(edgeidx2[ii][jj][k].first);
-              assert(! edgeidx1[min(ci, cj)][max(ci, cj)].size() &&
-                     ! edgeidx2[min(ci, cj)][max(ci, cj)].size());
-            }
-          }
+        ac1.resize(0);
+        ac2.resize(0);
+        assert(assertTri(edgeidx1, edgeidx2, ia, ib));
+        assert(assertTri(edgeidx1, edgeidx2, ic, ib));
+        assert(assertTri(edgeidx1, edgeidx2, ia, id));
+        assert(assertTri(edgeidx1, edgeidx2, ia, ic));
+        assert(assertTri(edgeidx1, edgeidx2, id, ib));
+        assert(res[edges[j].first][iic] == id);
+        assert(res[edges[j].second][jja] == ib);
+        fixed = true;
       }
     }
-    break;
-   next2:
-    ;
+    if(! fixed) break;
   }
   for(int i = 0; i < res.size(); i ++)
     if(detCW(p[res[i][0]], p[res[i][1]], p[res[i][2]]) < T(0))

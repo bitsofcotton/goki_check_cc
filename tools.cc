@@ -277,7 +277,8 @@ int main(int argc, const char* argv[]) {
     redig.initialize(abs(vbox), zratio);
           auto points(vbox < 0 ? redig.getHesseVec(redig.rgb2d(data))
                                : redig.getTileVec(redig.rgb2d(data)));
-    const auto facets(redig.nondelaunay(points, redig.mesh2(points)));
+    //const auto facets(redig.nondelaunay(points, redig.mesh2(points)));
+    const auto facets(redig.mesh2(points));
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
     file.saveobj(points, ratio * num_t(data[0].rows()),
@@ -355,7 +356,8 @@ int main(int argc, const char* argv[]) {
     vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
     vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
     for(int i = 0; i < m.size(); i ++) {
-      mhull0.emplace_back(redig.nondelaunay(shape0, redig.mesh2(shape0, m[i].dst)));
+      // mhull0.emplace_back(redig.nondelaunay(shape0, redig.mesh2(shape0, m[i].dst)));
+      mhull0.emplace_back(redig.mesh2(shape0, m[i].dst));
       mhull1.emplace_back((~ m[i]).hullConv(mhull0[i]));
     }
     outs[0] = SimpleMatrix<num_t>(in0[0].rows(), in0[0].cols()).O();
