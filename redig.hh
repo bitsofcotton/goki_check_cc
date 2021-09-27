@@ -420,6 +420,10 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
                            [max(res[i][ii], res[i][(ii + 1) % 3])].size() <= 2);
             assert(edgeidx2[min(res[i][ii], res[i][(ii + 1) % 3])]
                            [max(res[i][ii], res[i][(ii + 1) % 3])].size() <= 2);
+            const auto ci(res[i][(ii + 2) % 3]);
+            const auto cj(res[j][(jj + 1) % 3]);
+            assert(! edgeidx1[min(ci, cj)][max(ci, cj)].size() &&
+                   ! edgeidx2[min(ci, cj)][max(ci, cj)].size() );
             goto next;
           }
      next:
@@ -461,8 +465,6 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
       const auto id(res[edges[j].second][jjd]);
       assert(ia != ib && ib != ic && ic != id && id != ia &&
                          ib != id && ic != ia);
-      if(edgeidx1[min(ia, ic)][max(ia, ic)].size() &&
-         edgeidx2[min(ia, ic)][max(ia, ic)].size()) continue;
       Mat d(3, 3);
       d(0, 0) = (p[ia] - p[id])[0];
       d(1, 0) = (p[ib] - p[id])[0];
@@ -502,7 +504,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
             for(int ii = 0; ii < (idx ? ei2 : ei1).size(); ii ++)
               if((idx ? ei2 : ei1)[ii].first == ic) {
                 (idx ? ei2 : ei1)[ii].first = ib;
-                edges[(idx ? ei2 : ei1)[ii].second].first = edges[j].first;
+                (idx ? edges[ei2[ii].second].second
+                     : edges[ei1[ii].second].first) = edges[j].first;
               }
         }
         {
@@ -514,7 +517,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
             for(int ii = 0; ii < (idx ? ei2 : ei1).size(); ii ++)
               if((idx ? ei2 : ei1)[ii].first == ia) {
                 (idx ? ei2 : ei1)[ii].first = id;
-                edges[(idx ?ei2 : ei1)[ii].second].first = edges[j].second;
+                (idx ? edges[ei2[ii].second].second
+                     : edges[ei1[ii].second].first) = edges[j].second;
               }
         }
         {
@@ -566,9 +570,20 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::nondelaunay(cons
           for(int ii = 0; ii < ei2.size(); ii ++)
             if(ei2[ii].first == ib || ei2[ii].first == id) {
               ei2[ii].first = nxt;
-              edges[ei2[ii].second].first = nxte;
+              edges[ei2[ii].second].second = nxte;
             }
         }
+        for(int ii = 0; ii < edgeidx1.size(); ii ++)
+          for(int jj = 0; jj < edgeidx1[ii].size(); jj ++) {
+            assert(edgeidx1[ii].size() == edgeidx2[ii].size());
+            assert(edgeidx1[ii][jj].size() == edgeidx2[ii][jj].size());
+            for(int k = 0; k < edgeidx1[ii][jj].size(); k ++) {
+              const auto& ci(edgeidx1[ii][jj][k].first);
+              const auto& cj(edgeidx2[ii][jj][k].first);
+              assert(! edgeidx1[min(ci, cj)][max(ci, cj)].size() &&
+                     ! edgeidx2[min(ci, cj)][max(ci, cj)].size());
+            }
+          }
       }
     }
     break;
