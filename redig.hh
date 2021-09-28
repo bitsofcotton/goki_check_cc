@@ -123,8 +123,7 @@ private:
   void drawMatchLine(Mat& map, const Vec& lref0, const Vec& lref1, const T& c) const;
   void drawMatchTriangle(Mat& map, Vec lref0, Vec lref1, Vec lref2, const T& c) const;
   void prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask);
-  bool isCrossAndNonparallel(const Vec& p0, const Vec& p1, const Vec& q0, const Vec& q1) const;
-  T    detCW(const Vec& p0, const Vec& p1, const Vec& p2) const;
+  void addMeshTri(vector<Veci>& res, vector<pair<Vec, int> >& scan, const vector<Vec>& p, const int& idx) const;
   
   T   Pi;
   int vbox;
@@ -287,42 +286,59 @@ template <typename T> typename reDig<T>::Mat reDig<T>::pullRefMatrix(const Mat& 
   return result;
 }
 
-template <typename T> bool reDig<T>::isCrossAndNonparallel(const Vec& p0, const Vec& p1, const Vec& q0, const Vec& q1) const {
-  // cf. https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
-  const auto& x1(p0[0]);
-  const auto& x2(p1[0]);
-  const auto& x3(q0[0]);
-  const auto& x4(q1[0]);
-  const auto& y1(p0[1]);
-  const auto& y2(p1[1]);
-  const auto& y3(q0[1]);
-  const auto& y4(q1[1]);
-  const auto D((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4));
-  if(D == T(int(0))) return false;
-  const auto xD(            (x1 * y2 - y1 * x2) * (x3 - x4) -
-                (x1 - x2) * (x3 * y4 - y3 * x4));
-  const auto yD(            (x1 * y2 - y1 * x2) * (y3 - y4) -
-                (y1 - y2) * (x3 * y4 - y3 * x4));
-  return       max(min(x1, x2), min(x3, x4)) * D <= xD &&
-         xD <= min(max(x1, x2), max(x3, x4)) * D &&
-               max(min(y1, y2), min(y3, y4)) * D <= yD &&
-         yD <= min(max(y1, y2), max(y3, y4)) * D;
-}
-
-template <typename T> T reDig<T>::detCW(const Vec& p0, const Vec& p1, const Vec& p2) const {
-  return p0[0] * p1[1]
-       + p1[0] * p2[1]
-       + p2[0] * p0[1]
-       - p0[1] * p1[0]
-       - p1[1] * p2[0]
-       - p2[1] * p0[0];
-} 
-
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p) const {
   vector<int> pp;
   pp.reserve(p.size());
   for(int i = 0; i < p.size(); i ++) pp.emplace_back(i);
   return mesh2(p, pp);
+}
+
+template <typename T> void reDig<T>::addMeshTri(vector<Veci>& res, vector<pair<Vec, int> >& scan, const vector<Vec>& p, const int& idx) const {
+  assert(0 <= idx && idx < scan.size());
+  vector<int> elim;
+  if(0 <= idx - 1 &&
+     scan[idx].first[0] < scan[idx - 1].first[0] &&
+     scan[idx].first[0] < scan[idx + 1].first[0]) {
+    elim.emplace_back(idx);
+    Veci lres(3);
+    lres[0] = scan[idx - 1].second;
+    lres[1] = scan[idx].second;
+    lres[2] = scan[idx + 1].second;
+    bool psize(false);
+    for(int k = 0; k < 3; k ++)
+      psize = psize || p.size() <= lres[k];
+    if(! psize)
+      res.emplace_back(move(lres));
+  }
+  if(idx + 3 < scan.size() &&
+     scan[idx + 2].first[0] < scan[idx + 1].first[0] &&
+     scan[idx + 2].first[0] < scan[idx + 3].first[0]) {
+    elim.emplace_back(idx + 2);
+    Veci lres(3);
+    lres[0] = scan[idx + 1].second;
+    lres[1] = scan[idx + 2].second;
+    lres[2] = scan[idx + 3].second;
+    bool psize(false);
+    for(int k = 0; k < 3; k ++)
+      psize = psize || p.size() <= lres[k];
+    if(! psize)
+      res.emplace_back(move(lres));
+  }
+  {
+    Veci lres(3);
+    lres[0] = scan[idx].second;
+    lres[1] = scan[idx + 1].second;
+    lres[2] = scan[idx + 2].second;
+    bool psize(false);
+    for(int k = 0; k < 3; k ++)
+      psize = psize || p.size() <= lres[k];
+    if(! psize)
+      res.emplace_back(move(lres));
+  }
+  sort(elim.begin(), elim.end());
+  for(int j = 0; j < elim.size(); j ++)
+    scan.erase(scan.begin() + elim[j] - j);
+  return;
 }
 
 template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vector<Vec>& p, const vector<int>& pp) const {
@@ -367,54 +383,19 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     scan.insert(scan.begin() + idx + 1, pair<Vec, int>(sp[i]));
     assert(scan[idx].first[1] < scan[idx + 1].first[1] &&
            scan[idx + 1].first[1] < scan[idx + 2].first[1]);
-    // we need to eliminate and triangulization on scan here.
-    vector<int> elim;
-    if(0 <= idx - 1 &&
-       scan[idx].first[0] < scan[idx - 1].first[0] &&
-       scan[idx].first[0] < scan[idx + 1].first[0]) {
-      elim.emplace_back(idx);
-      Veci lres(3);
-      lres[0] = scan[idx - 1].second;
-      lres[1] = scan[idx].second;
-      lres[2] = scan[idx + 1].second;
-      bool psize(false);
-      for(int k = 0; k < 3; k ++)
-        psize = psize || p.size() <= lres[k];
-      if(! psize)
-        res.emplace_back(move(lres));
-    }
-    if(idx + 3 < scan.size() &&
-       scan[idx + 2].first[0] < scan[idx + 1].first[0] &&
-       scan[idx + 2].first[0] < scan[idx + 3].first[0]) {
-      elim.emplace_back(idx + 2);
-      Veci lres(3);
-      lres[0] = scan[idx + 1].second;
-      lres[1] = scan[idx + 2].second;
-      lres[2] = scan[idx + 3].second;
-      bool psize(false);
-      for(int k = 0; k < 3; k ++)
-        psize = psize || p.size() <= lres[k];
-      if(! psize)
-        res.emplace_back(move(lres));
-    }
-    {
-      Veci lres(3);
-      lres[0] = scan[idx].second;
-      lres[1] = scan[idx + 1].second;
-      lres[2] = scan[idx + 2].second;
-      bool psize(false);
-      for(int k = 0; k < 3; k ++)
-        psize = psize || p.size() <= lres[k];
-      if(! psize)
-        res.emplace_back(move(lres));
-    }
-    sort(elim.begin(), elim.end());
-    for(int j = 0; j < elim.size(); j ++)
-      scan.erase(scan.begin() + elim[j] - j);
+    addMeshTri(res, scan, p, idx + 1);
   }
+  while(2 < scan.size())
+    for(int i = 1; i < scan.size() - 1; i ++)
+      addMeshTri(res, scan, p, i);
   res.reserve(res.size());
   for(int i = 0; i < res.size(); i ++)
-    if(detCW(p[res[i][0]], p[res[i][1]], p[res[i][2]]) < T(0))
+    if(p[res[i][0]][0] * p[res[i][1]][1]
+     + p[res[i][1]][0] * p[res[i][2]][1]
+     + p[res[i][2]][0] * p[res[i][0]][1]
+     - p[res[i][0]][1] * p[res[i][1]][0]
+     - p[res[i][1]][1] * p[res[i][1]][1]
+     - p[res[i][2]][1] * p[res[i][1]][2] < T(0))
       swap(res[i][0], res[i][1]);
   return res;
 }
