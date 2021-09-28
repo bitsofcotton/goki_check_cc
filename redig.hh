@@ -383,11 +383,16 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
     scan.insert(scan.begin() + idx + 1, pair<Vec, int>(sp[i]));
     assert(scan[idx].first[1] < scan[idx + 1].first[1] &&
            scan[idx + 1].first[1] < scan[idx + 2].first[1]);
-    addMeshTri(res, scan, p, idx + 1);
+    addMeshTri(res, scan, p, idx);
   }
-  while(2 < scan.size())
+/*
+  while(4 < scan.size()) {
+    const auto before(scan.size());
     for(int i = 1; i < scan.size() - 1; i ++)
       addMeshTri(res, scan, p, i);
+    if(before == scan.size()) break;
+  }
+*/
   res.reserve(res.size());
   for(int i = 0; i < res.size(); i ++)
     if(p[res[i][0]][0] * p[res[i][1]][1]
