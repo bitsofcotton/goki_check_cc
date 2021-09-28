@@ -101,7 +101,7 @@ public:
   Mat  optImage(const vector<pair<Mat, Mat> >& img) const;
   Mat  compImage(const Mat& in, const Mat& opt) const;
   vector<vector<int> > catImage(const vector<Mat>& imgs, const int& cs = 40);
-  vector<Mat> compositeImage(const vector<Mat>& imgs);
+  vector<Mat> compositeImage(const vector<Mat>& imgs, const int& cs = 40);
   vector<vector<int> > floodfill(const Mat& mask, const vector<Vec>& points);
   Mat  rgb2d(const Mat rgb[3]);
   void rgb2xyz(Mat xyz[3], const Mat rgb[3]);
@@ -764,32 +764,26 @@ template <typename T> vector<vector<int> > reDig<T>::catImage(const vector<Mat>&
   return res;
 }
 
-template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(const vector<Mat>& imgs) {
+template <typename T> vector<typename reDig<T>::Mat> reDig<T>::compositeImage(const vector<Mat>& imgs, const int& cs) {
   assert(imgs.size());
-  vector<SimpleVector<T> > work;
+  vector<Vec> work;
+  work.reserve(imgs.size());
   for(int i = 0; i < imgs.size(); i ++) {
-    assert(imgs[i].rows() == imgs[0].rows());
-    assert(imgs[i].cols() == imgs[0].cols());
-    work.emplace_back(SimpleVector<T>(imgs[i].rows() * imgs[i].cols()));
-    for(int ii = 0; ii < imgs[i].rows(); ii ++)
-      for(int jj = 0; jj < imgs[i].cols(); jj ++)
-        work[i][ii * imgs[i].cols() + jj] =
-          imgs[i](ii, ii & 1 ? imgs[i].cols() - 1 - jj : jj);
-    assert(imgs[i].rows() * imgs[i].cols() == work[i].size());
+    work.emplace_back(Vec(imgs[i].rows() * imgs[i].cols()).O());
+    for(int j = 0; j < imgs[i].rows(); j ++)
+      work[i].setVector(imgs[i].cols() * j, imgs[i].row(j));
   }
-  const auto cg(crush<T>(work, work[0].size(), 0));
+  auto cg(crush<T>(work, cs, 0));
   vector<Mat> res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++) {
-    res.emplace_back(SimpleMatrix<T>(imgs[0].rows(), imgs[0].cols()));
+    res.emplace_back(Mat(imgs[0].rows(), imgs[0].cols()).O());
     auto work(cg[i].first[0]);
     for(int j = 1; j < cg[i].first.size(); j ++)
       work += cg[i].first[j];
     assert(res[i].rows() * res[i].cols() == work.size());
-    for(int ii = 0; ii < res[i].rows(); ii ++)
-      for(int jj = 0; jj < res[i].cols(); jj ++)
-        res[i](ii, ii & 1 ? res[i].cols() - 1 - jj : jj) =
-          work[ii * res[i].cols() + jj];
+    for(int j = 0; j < res[i].rows(); j ++)
+      res[i].row(j) = work.subVector(res[i].cols() * j, res[i].cols());
   }
   return res;
 }

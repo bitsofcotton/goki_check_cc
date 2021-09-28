@@ -72,7 +72,7 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   except:
     pass
   ex = len(str(ex0))
-  pixels = int(pow(float(ex0), .5) / 2.)
+  pixels = int(pow(float(ex0), 2. / 3.))
   if(argv[2] == "seinsq"):
     for t in range(0, ex0):
       subprocess.call(["convert", files[t], "-resize", str(pixels) + "x" + str(pixels) + "!", "-compress", "none", "sein-" + str(t).zfill(ex) + ".ppm"])
