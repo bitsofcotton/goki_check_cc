@@ -277,13 +277,11 @@ int main(int argc, const char* argv[]) {
     redig.initialize(abs(vbox), zratio);
           auto points(vbox < 0 ? redig.getHesseVec(redig.rgb2d(data))
                                : redig.getTileVec(redig.rgb2d(data)));
-    //const auto facets(redig.nondelaunay(points, redig.mesh2(points)));
-    const auto facets(redig.mesh2(points));
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
     file.saveobj(points, ratio * num_t(data[0].rows()),
                          ratio * num_t(data[0].cols()),
-                 facets, argv[6]);
+                 redig.mesh2(points), argv[6]);
     file.saveMTL(argv[6], (string(argv[6]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
@@ -356,7 +354,6 @@ int main(int argc, const char* argv[]) {
     vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
     vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
     for(int i = 0; i < m.size(); i ++) {
-      // mhull0.emplace_back(redig.nondelaunay(shape0, redig.mesh2(shape0, m[i].dst)));
       mhull0.emplace_back(redig.mesh2(shape0, m[i].dst));
       mhull1.emplace_back((~ m[i]).hullConv(mhull0[i]));
     }
