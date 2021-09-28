@@ -399,8 +399,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
      + p[res[i][1]][0] * p[res[i][2]][1]
      + p[res[i][2]][0] * p[res[i][0]][1]
      - p[res[i][0]][1] * p[res[i][1]][0]
-     - p[res[i][1]][1] * p[res[i][2]][1]
-     - p[res[i][2]][1] * p[res[i][0]][2] < T(0))
+     - p[res[i][1]][1] * p[res[i][2]][0]
+     - p[res[i][2]][1] * p[res[i][0]][0] < T(0))
       swap(res[i][0], res[i][1]);
   return res;
 }
