@@ -3286,12 +3286,11 @@ template <typename T> static inline SimpleVector<T> linearInvariant(const Simple
 
 // N.B. please refer bitsofcotton/randtools.
 template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvariant(const SimpleVector<T>& in, const T& index = - T(int(1))) {
-  SimpleVector<T> res(in.size() + (T(int(0)) <= index ? 3 : 2));
+  SimpleVector<T> res(in.size() + (T(int(0)) <= index ? 2 : 1));
   res.setVector(0, in);
   res[in.size()] = T(int(1));
   if(T(int(0)) <= index)
     res[in.size() + 1] = T(index);
-  res[res.size() - 1] = T(int(0));
   T   lsum(0);
   for(int i = 0; i < res.size() - 1; i ++) {
     assert(- T(int(1)) <= res[i] && res[i] <= T(int(1)));
@@ -3302,7 +3301,6 @@ template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvarian
   // N.B. x_1 ... x_n == 1.
   // <=> x_1 / (x_1 ... x_n)^(1/n) ... == 1.
   if(lsum != T(int(0))) res /= ratio = exp(lsum / T(res.size() - 1));
-  res[res.size() - 1] = T(int(1));
   return make_pair(res, ratio);
 }
 
@@ -3344,6 +3342,31 @@ public:
     res[0] = buf[0];
     for(int i = 1; i < res.size(); i ++)
       res[i] = res[i - 1] + buf[i];
+    return res;
+  }
+  SimpleVector<T> res;
+  bool full;
+private:
+  feeder f;
+};
+
+template <typename T, typename feeder> class deltaFeeder {
+public:
+  inline deltaFeeder() { full = false; }
+  inline deltaFeeder(const int& size) {
+    f = feeder(size);
+    res.resize(size);
+    res.O();
+    full = false;
+  }
+  inline ~deltaFeeder() { ; }
+  inline const SimpleVector<T>& next(const T& in) {
+    const auto& buf(f.next(in));
+    assert(buf.size() == res.size());
+    full = f.full;
+    res[0] = T(int(0));
+    for(int i = 1; i < res.size(); i ++)
+      res[i] = buf[i] - buf[i - 1];
     return res;
   }
   SimpleVector<T> res;
@@ -3413,7 +3436,7 @@ public:
     if(t <= d.size() + m.size()) return res;
     for(int i = 0; i < m.size(); i ++)
       res += m[i] * T(i + 1);
-    return res /= T(m.size());
+    return res /= (T(m.size()) * T(m.size()) * T(m.size() + 1) * T(m.size() + 1) / T(4));
   }
 private:
   int t;

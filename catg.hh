@@ -61,8 +61,10 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < in.size(); i ++)
-    A.row(i) = makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first;
+  for(int i = 0; i < in.size(); i ++) {
+    A.row(i).setVector(0, makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first);
+    A(i, A.cols() - 1) = T(int(1));
+  }
         auto Pt(A.QR());
   const auto R(Pt * A);
         Vec  one(Pt.cols());
@@ -111,8 +113,9 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
   cut = R.solve(Pt * one);
   std::vector<T> s;
   s.reserve(in.size());
-  for(int i = 0; i < in.size(); i ++)
-    s.emplace_back(makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first.dot(cut));
+  assert(in.size() == A.rows());
+  for(int i = 0; i < A.rows(); i ++)
+    s.emplace_back(A.row(i).dot(cut));
   std::sort(s.begin(), s.end());
   distance = origin = T(int(0));
   for(int i = 0; i < s.size() - 1; i ++)
@@ -139,7 +142,10 @@ template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& size
 template <typename T> inline T CatG<T>::score(const Vec& in) {
   const auto size(cut.size() - 2);
   assert(0 < size);
-  return makeProgramInvariant<T>(tayl(size, in.size()) * in).first.dot(cut) - origin;
+  SimpleVector<T> sv(cut.size());
+  sv.setVector(0, makeProgramInvariant<T>(tayl(size, in.size()) * in).first);
+  sv[sv.size() - 1] = T(int(1));
+  return sv.dot(cut) - origin;
 }
 
 
@@ -292,8 +298,8 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
   const auto d(f.next(in));
         auto M(zero);
   for(int i = 0; i < d.size(); i ++) {
-    M = max(M, abs(d[i]));
     if(! isfinite(d[i])) return zero;
+    M = max(M, abs(d[i]));
   }
   M *= T(int(2));
   if(! f.full || M <= zero) return zero;
@@ -303,7 +309,7 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
     cache.emplace_back(d.subVector(i, varlen) / M);
     cache[cache.size() - 1][cache[cache.size() - 1].size() - 1] = d[i + varlen + step - 2] / M;
   }
-  const auto cat(crush<T>(cache, cache[0].size(), cache.size() / min(int(sqrt(T(int(cache.size())))), cache[0].size() * cache[0].size())));
+  const auto cat(crush<T>(cache, cache[0].size(), cache[0].size()));
   SimpleVector<T> work(varlen);
   for(int i = 1; i < work.size(); i ++)
     work[i - 1] = d[i - work.size() + d.size()] / M;
@@ -314,17 +320,18 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
   for(int i = 0; i < cat.size(); i ++) {
     // XXX: how to handle the illegal value.
     if(! cat[i].first.size()) continue;
-    Mat pw(cat[i].first.size(), cat[i].first[0].size() + 2);
+    Mat pw(cat[i].first.size(), cat[i].first[0].size() + 1);
     Vec avg(Vec(pw.row(0) = makeProgramInvariant<T>(cat[i].first[0]).first));
     for(int j = 1; j < pw.rows(); j ++)
       avg += (pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first);
           auto score(vdp.first.dot(avg) / T(cat[i].first.size()));
     const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? Vec() : linearInvariant<T>(pw));
     work[work.size() - 1] = zero;
-    res += work[work.size() - 1] = score * (q.size()
-      ? revertProgramInvariant<T>(make_pair(
-          - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1])
-          / q[varlen - 1], vdp.second)) : T(0));
+    res += work[work.size() - 1] = q.size() ? abs(score) *
+      revertProgramInvariant<T>(make_pair(
+        - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1])
+        / q[varlen - 1], vdp.second) ) :
+      score * revertProgramInvariant<T>(make_pair(avg[varlen - 1], vdp.second));
     sscore += abs(score);
   }
   return res * M / sscore;

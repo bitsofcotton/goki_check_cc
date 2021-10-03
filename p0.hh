@@ -88,7 +88,7 @@ public:
   inline T next(const T& in) {
     const auto& ff(f.next(in));
     static const T zero(int(0));
-    return f.full ? p.dot(ff) - ff[ff.size() - 1] : zero;
+    return f.full ? p.dot(ff) : zero;
   }
   Vec p;
   feeder f;
