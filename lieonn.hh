@@ -3200,7 +3200,7 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
   return size0 < 0 ? ii : dd;
 }
 
-template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
+template <typename T> SimpleMatrix<T> diffRecur0(const int& size0) {
   const auto size(abs(size0));
   if(! size) {
     static const SimpleMatrix<T> m0;
@@ -3222,8 +3222,8 @@ template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
     cache.close();
   } else {
     if(2 < size) {
-      const auto d0(diffRecur<T>(   size - 1 ) * T(size - 1));
-      const auto i0(diffRecur<T>(- (size - 1)) * T(size - 1));
+      const auto d0(diffRecur0<T>(   size - 1 ) * T(size - 1));
+      const auto i0(diffRecur0<T>(- (size - 1)) * T(size - 1));
       dd = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, d0);
       ii = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, i0);
       dd.setMatrix(1, 1, dd.subMatrix(1, 1, size - 1, size - 1) + d0);
@@ -3251,6 +3251,16 @@ template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
     cerr << "." << flush;
   }
   return size0 < 0 ? ii : dd;
+}
+
+template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
+  const auto size(abs(size0));
+  auto ii(diffRecur0<T>(- size));
+  const auto ii0(ii);
+  for(int i = 0; i < ii.rows(); i ++)
+    for(int j = 0; j < ii.cols(); j ++)
+      ii(i, j) += ii0(ii0.rows() - i - 1, ii0.cols() - j - 1);
+  return size0 < 0 ? ii : diffRecur0<T>(size);
 }
 
 template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step) {
@@ -3429,8 +3439,8 @@ public:
     for(int i = 1; i < d.size(); i ++) d[i - 1] = move(d[i]);
     d[d.size() - 1] = in;
     if(t ++ < d.size()) return res;
-    auto D(d[0]);
-    for(int i = 1; i < d.size(); i ++) D += d[i] * T(i + 1);
+    auto D(d[0] * T(d.size()));
+    for(int i = 1; i < d.size(); i ++) D += d[i] * T(d.size() - i);
     for(int i = 1; i < m.size(); i ++) m[i - 1] = move(m[i]);
     m[m.size() - 1] = p.next(D /= T(d.size()));
     if(t <= d.size() + m.size()) return res;

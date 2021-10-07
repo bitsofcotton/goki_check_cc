@@ -8,7 +8,7 @@ argv   = sys.argv
 pixels = 4
 zratio = .0825
 psi    = 1. / 3.
-rot    = 5
+rot    = 8
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -135,7 +135,7 @@ else:
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call([argv[1], "integ", root + "-" + argv[2] + "0.ppm", root + "-" + argv[2] + "1.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + "2.ppm"])
+      subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "8x8+8", "-compress", "none", root + "-" + argv[2] + "2.ppm"])
       subprocess.call([argv[1], "flatten", root + "-" + argv[2] + "2.ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])

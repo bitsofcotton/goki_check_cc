@@ -271,8 +271,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       break;
     case INTEG_BOTH:
       {
-        const auto zy(diffRecur<T>(- data.rows()) * data);
-        const auto zx(data * diffRecur<T>(- data.cols()).transpose());
+        const auto zx(diffRecur<T>(- data.rows()) * data);
+        const auto zy(data * diffRecur<T>(- data.cols()).transpose());
               auto res(data);
         res.O();
         for(int i = 0; i < res.rows(); i ++)
