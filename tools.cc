@@ -306,13 +306,14 @@ int main(int argc, const char* argv[]) {
     if(!file.loadp2or3(bump, argv[6]))
       return - 2;
     typename simpleFile<num_t>::Mat tilt0;
-    const auto mtilt(strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
-                     redig.tiltprep(data[0], index, Mindex, psi));
-    const auto depth(strcmp(argv[1], "sbox") == 0 ?
-                     num_t(index) / num_t(Mindex) * zratio *
-                       sqrt(num_t(data[0].rows() * data[0].cols())) :
-                     - num_t(1000000));
-    tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0], mtilt, depth);
+    tilt0 = redig.tilt(redig.makeRefMatrix(data[0], 1), bump[0],
+      strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
+        redig.tiltprep(data[0], index, Mindex, psi),
+      strcmp(argv[1], "sbox") == 0 ?
+        num_t(index) / num_t(Mindex) * zratio *
+          sqrt(num_t(data[0].rows() * data[0].cols())) :
+        - num_t(1000000)
+      );
     for(int j = 0; j < 3; j ++)
       data[j] = redig.pullRefMatrix(tilt0, 1, data[j]);
     if(!file.savep2or3(argv[7], data, ! true))

@@ -605,7 +605,6 @@ template <typename T> typename reDig<T>::Mat reDig<T>::reTrace(const Mat& dst, c
 
 template <typename T> void reDig<T>::prepTrace(pair<Vec, Vec>& v, pair<pair<int, int>, pair<int, int> >& hw, const Mat& mask) {
   vector<Vec>  pdst(getTileVec(mask));
-  vector<Veci> facets(mesh2(pdst));
   const auto idsts(floodfill(mask, pdst));
   assert(idsts.size());
   int iidst(0);
@@ -1141,8 +1140,10 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, const
   triangles.reserve(facets.size());
   for(int i = 0; i < facets.size(); i ++) {
     Triangles work;
-    for(int j = 0; j < 3; j ++)
+    for(int j = 0; j < 3; j ++) {
+      assert(0 <= facets[i][j] && facets[i][j] < points.size());
       work.p.setCol(j, m.transform(points[facets[i][j]]));
+    }
     if(T(0) <= points[facets[i][0]][0] && points[facets[i][0]][0] < T(in.rows()) &&
        T(0) <= points[facets[i][0]][1] && points[facets[i][0]][1] < T(in.cols()))
       work.c = in(int(points[facets[i][0]][0]),
@@ -1168,6 +1169,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vecto
   // XXX: patent???
   vector<pair<T, Triangles> > zbuf;
   zbuf.resize(triangles.size(), make_pair(T(0), Triangles()));
+  assert(zbuf.size() == triangles.size());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -1180,6 +1182,7 @@ template <typename T> typename reDig<T>::Mat reDig<T>::tilt(const Mat& in, vecto
     camera[2] = T(0);
     const auto t((tri.z - tri.n.dot(camera)) / (tri.n.dot(vz)));
     zbuf[j].first  = camera[2] + vz[2] * t;
+    if(! isfinite(zbuf[j].first)) zbuf[j].first = depth;
     zbuf[j].second = move(tri);
   }
   sort(zbuf.begin(), zbuf.end(), lessf<pair<T, Triangles> >);
