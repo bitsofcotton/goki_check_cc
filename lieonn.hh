@@ -3255,12 +3255,16 @@ template <typename T> SimpleMatrix<T> diffRecur0(const int& size0) {
 
 template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
   const auto size(abs(size0));
+  auto dd(diffRecur0<T>(  size));
   auto ii(diffRecur0<T>(- size));
+  const auto dd0(dd);
   const auto ii0(ii);
-  for(int i = 0; i < ii.rows(); i ++)
-    for(int j = 0; j < ii.cols(); j ++)
+  for(int i = 0; i < dd.rows(); i ++)
+    for(int j = 0; j < dd.cols(); j ++) {
+      dd(i, j) += dd0(dd0.rows() - i - 1, dd0.cols() - j - 1);
       ii(i, j) += ii0(ii0.rows() - i - 1, ii0.cols() - j - 1);
-  return size0 < 0 ? ii : diffRecur0<T>(size);
+    }
+  return size0 < 0 ? ii : dd;
 }
 
 template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step) {
@@ -3442,11 +3446,11 @@ public:
     auto D(d[0] * T(d.size()));
     for(int i = 1; i < d.size(); i ++) D += d[i] * T(d.size() - i);
     for(int i = 1; i < m.size(); i ++) m[i - 1] = move(m[i]);
-    m[m.size() - 1] = p.next(D /= T(d.size()));
+    m[m.size() - 1] = p.next(D /= T(d.size() * (d.size() + 1) / 2));
     if(t <= d.size() + m.size()) return res;
     for(int i = 0; i < m.size(); i ++)
       res += m[i] * T(i + 1);
-    return res /= (T(m.size()) * T(m.size()) * T(m.size() + 1) * T(m.size() + 1) / T(4));
+    return res /= T(m.size() * (m.size() + 1) / 2);
   }
 private:
   int t;
