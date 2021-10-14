@@ -454,7 +454,8 @@ int main(int argc, const char* argv[]) {
               strcmp(argv[1], "catr") == 0) {
       vector<typename simpleFile<num_t>::Mat> glay;
       glay.reserve(strcmp(argv[1], "catr") == 0 ? in.size()
-                    : in.size() * (1 + 5 + 1));
+                    : in.size() * min(int(in[0][0].rows()), 1 + 5 + 1));
+      const auto in00sz(in[0][0].rows());
       for(int i = 0; i < in.size(); i ++) {
         typename simpleFile<num_t>::Mat inn[3];
         for(int j = 0; j < 3; j ++)
@@ -463,8 +464,8 @@ int main(int argc, const char* argv[]) {
           glay.emplace_back(redig.rgb2d(inn));
         else {
           auto work(redig.rgb2d(inn));
-          assert(1 + 5 + 1 <= work.rows());
-          for(int j = 0; j < 1 + 5 + 1; j ++) {
+          assert(work.rows() == in00sz);
+          for(int j = 0; j < min(int(work.rows()), 1 + 5 + 1); j ++) {
             SimpleMatrix<num_t> rr(1, work.cols());
             rr.row(0) = std::move(work.row(j));
             glay.emplace_back(rr);
@@ -475,7 +476,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < cat.size(); i ++) {
         for(int j = 0; j < cat[i].size(); j ++)
           std::cout << argv[3 + (strcmp(argv[1], "catr") == 0 ? cat[i][j]
-                         : cat[i][j] / (1 + 5 + 1)) ] << std::endl;
+                         : cat[i][j] / min(in00sz, 1 + 5 + 1)) ] << std::endl;
         std::cout << std::endl;
       }
     } else if(strcmp(argv[1], "composite") == 0) {

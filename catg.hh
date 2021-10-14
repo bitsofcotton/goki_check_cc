@@ -309,7 +309,7 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
     cache.emplace_back(d.subVector(i, varlen) / M);
     cache[cache.size() - 1][cache[cache.size() - 1].size() - 1] = d[i + varlen + step - 2] / M;
   }
-  const auto cat(crush<T>(cache, cache[0].size(), cache[0].size()));
+  const auto cat(crush<T>(cache, cache[0].size(), 0));
   SimpleVector<T> work(varlen);
   for(int i = 1; i < work.size(); i ++)
     work[i - 1] = d[i - work.size() + d.size()] / M;
@@ -318,13 +318,15 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
         auto res(zero);
         auto sscore(zero);
   for(int i = 0; i < cat.size(); i ++) {
-    // XXX: how to handle the illegal value.
     if(! cat[i].first.size()) continue;
     Mat pw(cat[i].first.size(), cat[i].first[0].size() + 1);
     Vec avg(Vec(pw.row(0) = makeProgramInvariant<T>(cat[i].first[0]).first));
     for(int j = 1; j < pw.rows(); j ++)
       avg += (pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first);
-          auto score(vdp.first.dot(avg) / T(cat[i].first.size()));
+    avg /= T(int(pw.rows()));
+    T score(0);
+    for(int j = 0; j < work.size(); j ++)
+      score += work[j] * revertProgramInvariant<T>(make_pair(avg[j], vdp.second));
     const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? Vec() : linearInvariant<T>(pw));
     work[work.size() - 1] = zero;
     res += work[work.size() - 1] = q.size() ? abs(score) *

@@ -3433,8 +3433,8 @@ template <typename T, typename pred> class shrinkMatrix {
 public:
   inline shrinkMatrix() { ; }
   inline shrinkMatrix(pred&& p, const int& len) {
-    d.resize(len);
-    m.resize(len);
+    d.resize(abs(len));
+    m.resize(abs(len));
     this->p = p;
   }
   inline ~shrinkMatrix() { ; }

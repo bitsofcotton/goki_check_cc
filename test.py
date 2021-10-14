@@ -27,7 +27,9 @@ elif(argv[2] == "match"):
   subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(vboxd), str(vboxs), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "match-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-" + root1 + ".mp4"])
 elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "composite"):
-  cmd = [argv[1], argv[2], argv[2] + ".ppm"]
+  cmd = [argv[1], argv[2]]
+  if(argv[2] == "pred" or argv[2] == "lenl"):
+    cmd.append(argv[2] + ".ppm")
   for s in argv[3:]:
     r, e = os.path.splitext(s)
     if(e != ".ppm"):
@@ -79,7 +81,7 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2] == "tilecat"):
+elif(argv[2] == "tilecat" or argv[2] == "tilecatr"):
   pixels = int(argv[3])
   cmd = ["montage"]
   t   = 0
@@ -89,6 +91,8 @@ elif(argv[2] == "tilecat"):
       subprocess.call(cmd)
       cmd = ["montage"]
       t  += 1
+    elif(argv[2] == "tilecatr"):
+      cmd.append(line[:- 1 - len("-represent.ppm")] + ".ppm")
     else:
       cmd.append(line[:- 1])
   cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tilecat-" + str(t) + ".png"])
