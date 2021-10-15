@@ -3443,14 +3443,14 @@ public:
     for(int i = 1; i < d.size(); i ++) d[i - 1] = move(d[i]);
     d[d.size() - 1] = in;
     if(t ++ < d.size()) return res;
-    auto D(d[0] * T(d.size()));
-    for(int i = 1; i < d.size(); i ++) D += d[i] * T(d.size() - i);
+    auto D(d[0]);
+    for(int i = 1; i < d.size(); i ++) D += d[i];
     for(int i = 1; i < m.size(); i ++) m[i - 1] = move(m[i]);
-    m[m.size() - 1] = p.next(D /= T(d.size() * (d.size() + 1) / 2));
+    m[m.size() - 1] = p.next(D) - (D - d[0]);
     if(t <= d.size() + m.size()) return res;
     for(int i = 0; i < m.size(); i ++)
-      res += m[i] * T(i + 1);
-    return res /= T(m.size() * (m.size() + 1) / 2);
+      res += m[i];
+    return res /= T(m.size());
   }
 private:
   int t;

@@ -26,19 +26,27 @@ elif(argv[2] == "match"):
     nemph = int(argv[8])
   subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(vboxd), str(vboxs), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "match-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-" + root1 + ".mp4"])
-elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "composite"):
+elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "catb" or argv[2] == "catbr" or argv[2] == "composite"):
   cmd = [argv[1], argv[2]]
-  if(argv[2] == "pred" or argv[2] == "lenl"):
+  if(argv[2] == "cat" or argv[2] == "catb"):
+    cmd[1] = "cat"
+  elif(argv[2] == "catr" or argv[2] == "catbr"):
+    cmd[1] = "catr"
+  if(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "composite"):
     cmd.append(argv[2] + ".ppm")
   for s in argv[3:]:
     r, e = os.path.splitext(s)
     if(e != ".ppm"):
       subprocess.call(["convert", s, "-compress", "none", r + ".ppm"])
-    if(argv[2] == "cat"):
+    if(argv[2] == "catb"):
+      cmd.append(r + "-bump.ppm")
+    elif(argv[2] == "catr"):
       cmd.append(r + "-represent.ppm")
+    elif(argv[2] == "catbr"):
+      cmd.append(r + "-bump-represent.ppm")
     elif(argv[2] == "pred"):
       subprocess.call(["convert", s, "-blur", "12x12+6", "-compress", "none", r + "-blur.ppm"])
-      cmd[- 1] = r + "-blur.ppm"
+      cmd.append(r + "-blur.ppm")
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)
@@ -81,7 +89,7 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2] == "tilecat" or argv[2] == "tilecatr"):
+elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
   t   = 0
@@ -91,8 +99,12 @@ elif(argv[2] == "tilecat" or argv[2] == "tilecatr"):
       subprocess.call(cmd)
       cmd = ["montage"]
       t  += 1
+    elif(argv[2] == "tilecatb"):
+      cmd.append(line[:- 1 - len("-bump.ppm")] + ".ppm")
     elif(argv[2] == "tilecatr"):
       cmd.append(line[:- 1 - len("-represent.ppm")] + ".ppm")
+    elif(argv[2] == "tilecatbr"):
+      cmd.append(line[:- 1 - len("-bump-represent.ppm")] + ".ppm")
     else:
       cmd.append(line[:- 1])
   cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tilecat-" + str(t) + ".png"])
