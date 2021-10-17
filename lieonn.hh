@@ -3200,73 +3200,6 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
   return size0 < 0 ? ii : dd;
 }
 
-template <typename T> SimpleMatrix<T> diffRecur0(const int& size0) {
-  const auto size(abs(size0));
-  if(! size) {
-    static const SimpleMatrix<T> m0;
-    return m0;
-  }
-  SimpleMatrix<T> dd;
-  SimpleMatrix<T> ii;
-  const auto file(std::string("./.cache/lieonn/diff-recur-") + std::to_string(size) +
-#if defined(_FLOAT_BITS_)
-    std::string("-") + std::to_string(_FLOAT_BITS_)
-#else
-    std::string("-ld")
-#endif
-  );
-  ifstream cache(file.c_str());
-  if(cache.is_open()) {
-    cache >> dd;
-    cache >> ii;
-    cache.close();
-  } else {
-    if(2 < size) {
-      const auto d0(diffRecur0<T>(   size - 1 ) * T(size - 1));
-      const auto i0(diffRecur0<T>(- (size - 1)) * T(size - 1));
-      dd = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, d0);
-      ii = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, i0);
-      dd.setMatrix(1, 1, dd.subMatrix(1, 1, size - 1, size - 1) + d0);
-      ii.setMatrix(1, 1, ii.subMatrix(1, 1, size - 1, size - 1) + i0);
-      dd.row(0) *= T(2);
-      ii.row(0) *= T(2);
-      dd.row(dd.rows() - 1) *= T(2);
-      ii.row(dd.rows() - 1) *= T(2);
-      dd /= T(2);
-      ii /= T(2);
-    } else {
-      dd = SimpleMatrix<T>(size, size).O();
-      ii = SimpleMatrix<T>(size, size).O();
-    }
-    dd += diff<T>(  size);
-    ii += diff<T>(- size);
-    if(2 < size) {
-      dd /= T(size);
-      ii /= T(size);
-    }
-    ofstream ocache(file.c_str());
-    ocache << dd;
-    ocache << ii;
-    ocache.close();
-    cerr << "." << flush;
-  }
-  return size0 < 0 ? ii : dd;
-}
-
-template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
-  const auto size(abs(size0));
-  auto dd(diffRecur0<T>(  size));
-  auto ii(diffRecur0<T>(- size));
-  const auto dd0(dd);
-  const auto ii0(ii);
-  for(int i = 0; i < dd.rows(); i ++)
-    for(int j = 0; j < dd.cols(); j ++) {
-      dd(i, j) += dd0(dd0.rows() - i - 1, dd0.cols() - j - 1);
-      ii(i, j) += ii0(ii0.rows() - i - 1, ii0.cols() - j - 1);
-    }
-  return size0 < 0 ? ii : dd;
-}
-
 template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step) {
   const int  step00(max(int(0), min(size - 1, int(floor(step)))));
   const auto residue0(step - T(step00));
@@ -3381,22 +3314,6 @@ public:
     res[0] = T(int(0));
     for(int i = 1; i < res.size(); i ++)
       res[i] = buf[i] - buf[i - 1];
-    return res;
-  }
-  SimpleVector<T> res;
-  bool full;
-private:
-  feeder f;
-};
-
-template <typename T, typename feeder> class linearFeeder {
-public:
-  inline linearFeeder() { full = false; }
-  inline linearFeeder(const int& size) { f = feeder(size); full = false; }
-  inline ~linearFeeder() { ; }
-  inline const SimpleVector<T>& next(const T& in) {
-    res  = f.next(in);
-    full = f.full;
     return res;
   }
   SimpleVector<T> res;

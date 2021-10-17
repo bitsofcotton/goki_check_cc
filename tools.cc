@@ -39,7 +39,7 @@ using std::make_pair;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|lpf|represent) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|lpf|represent) <input.ppm> <output.ppm> <recur>" << endl;
   cout << "gokicheck (pred|lenl|composite) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|catr) <input0.ppm> ..." << endl;
   cout << "gokicheck obj <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>" << endl;
@@ -71,7 +71,6 @@ int main(int argc, const char* argv[]) {
   reDig<num_t>      redig;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "integ") == 0 ||
-     strcmp(argv[1], "rot") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
@@ -89,41 +88,37 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     const auto recur(4 < argc ? atoi(argv[4]) : 1);
-    const auto n(5 < argc ? atoi(argv[5]) : 1);
     typename simpleFile<num_t>::Mat data[3];
     if(!file.loadp2or3(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], COLLECT_BOTH, n, recur);
+        data[i] = filter<num_t>(data[i], COLLECT_BOTH);
     else if(strcmp(argv[1], "integ") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], INTEG_BOTH, n, recur);
-    else if(strcmp(argv[1], "rot") == 0)
-      for(int i = 0; i < 3; i ++)
-        data[i] = center<num_t>(rotate<num_t>(rotate<num_t>(data[i], atan(num_t(1)) / num_t(n)), - atan(num_t(1)) / num_t(n)), data[i]);
+        data[i] = filter<num_t>(data[i], INTEG_BOTH);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, n, recur), CLIP);
+        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur), CLIP);
     else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], FLARGE_BOTH, n, recur);
+        data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], EXTEND_BOTH, 1, recur);
+        data[i] = filter<num_t>(data[i], EXTEND_BOTH, recur);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], BLINK_BOTH, n, recur);
+        data[i] = filter<num_t>(data[i], BLINK_BOTH, recur);
     else if(strcmp(argv[1], "lpf") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], LPF_BOTH, n, recur);
+        data[i] = filter<num_t>(data[i], LPF_BOTH);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], SHARPEN_BOTH, n, recur);
+        data[i] = filter<num_t>(data[i], SHARPEN_BOTH);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), BUMP_BOTH, n, recur);
+      data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), BUMP_BOTH);
     else if(strcmp(argv[1], "represent") == 0)
-      data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), REPRESENT, n, recur);
+      data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), REPRESENT, recur);
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -222,7 +217,7 @@ int main(int argc, const char* argv[]) {
       for(int j = 0; j < data[i].rows(); j ++)
         for(int k = 0; k < data[i].cols(); k ++)
           out[i](j, k) /= max(num_t(1), cnt(j, k));
-      out[i] = filter<num_t>(out[i], CLIP, 1, 1);
+      out[i] = filter<num_t>(out[i], CLIP);
     }
     if(!file.savep2or3(argv[4], out, ! true, 255))
       return - 1;

@@ -14,9 +14,6 @@
 #if !defined(_REDIG_)
 
 template <typename T> class match_t;
-template <typename T> static inline T getImgPt(const T& y, const T& h);
-template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& theta);
-template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>& dr, const SimpleMatrix<T>& d);
 
 using std::swap;
 using std::abs;
