@@ -1043,9 +1043,9 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const
   const auto guard(8);
   vector<Vec> geoms;
   geoms.reserve(vbox);
-  const auto xx(in * diffRecur<T>(in.cols()) * diffRecur<T>(in.cols()));
-  const auto xy(diffRecur<T>(in.rows()) * in * diffRecur<T>(in.cols()));
-  const auto yy(diffRecur<T>(in.rows()) * diffRecur<T>(in.rows()) * in);
+  const auto xx(in * diff<T>(in.cols()) * diff<T>(in.cols()));
+  const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()));
+  const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)

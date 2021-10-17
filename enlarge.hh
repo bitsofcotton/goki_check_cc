@@ -255,32 +255,34 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       break;
     case DETECT_BOTH:
       {
-        const auto zy(diffRecur<T>(data.rows()) * data);
-        const auto zx(data * diffRecur<T>(data.cols()).transpose());
+        const auto zxx(diff<T>(data.rows()) * diff<T>(data.rows()) * data);
+        const auto zxy(diff<T>(data.rows()) * data * diff<T>(data.cols()).transpose());
+        const auto zyy(data * diff<T>(data.cols()).transpose() * diff<T>(data.cols()).transpose());
               auto res(data);
         res.O();
         for(int i = 0; i < res.rows(); i ++)
           for(int j = 0; j < res.cols(); j ++) {
-            const auto E(T(1) + zy(i, j) * zy(i, j));
-            const auto F(       zy(i, j) * zx(i, j));
-            const auto G(T(1) + zx(i, j) * zx(i, j));
-            res(i, j) = E * G - F * F;
+            const auto& L(zxx(i, j));
+            const auto& M(zxy(i, j));
+            const auto& N(zyy(i, j));
+            res(i, j) = L * N - M * M;
           }
         return res;
       }
       break;
     case INTEG_BOTH:
       {
-        const auto zx(diffRecur<T>(- data.rows()) * data);
-        const auto zy(data * diffRecur<T>(- data.cols()).transpose());
+        const auto zyy(diff<T>(- data.rows()) * diff<T>(- data.rows()) * data);
+        const auto zxy(diff<T>(- data.rows()) * data * diff<T>(- data.cols()).transpose());
+        const auto zxx(data * diff<T>(- data.cols()).transpose() * diff<T>(- data.cols()).transpose());
               auto res(data);
         res.O();
         for(int i = 0; i < res.rows(); i ++)
           for(int j = 0; j < res.cols(); j ++) {
-            const auto E(T(1) + zy(i, j) * zy(i, j));
-            const auto F(       zy(i, j) * zx(i, j));
-            const auto G(T(1) + zx(i, j) * zx(i, j));
-            res(i, j) = E * G - F * F;
+            const auto& L(zxx(i, j));
+            const auto& M(zxy(i, j));
+            const auto& N(zyy(i, j));
+            res(i, j) = L * N - M * M;
           }
         return res;
       }
@@ -311,20 +313,23 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           if(abs(int(y0)) < 3 || rxy < abs(y0) * T(2)) continue;
           const auto Dop(diff<T>(abs(int(y0) & ~ int(1))));
           const auto Dop0((Dop.row(y0 / 2) + Dop.row(y0 / 2 + 1)) / T(2));
+          const auto DDop(Dop * Dop);
+          const auto DDop0((DDop.row(y0 / 2) + DDop.row(y0 / 2 + 1)) / T(2));
           // N.B. curvature matrix det == EG - F^2, we see only \< relation.
           for(int i = 0; i < data.rows(); i ++) {
             for(int j = 0; j < data.cols(); j ++) {
-              T zy(0), zx(0);
+              T L(0), M(0), N(0);
               for(int kk = 0; kk < Dop0.size(); kk ++) {
-                zy += data(getImgPt<int>(i + kk - Dop0.size() / 2,
-                  data.rows()), j) * Dop0[kk];
-                zx += data(i, getImgPt<int>(j + kk - Dop0.size() / 2,
-                  data.cols()) ) * Dop0[kk];
+                L += data(getImgPt<int>(i + kk - Dop0.size() / 2,
+                  data.rows()), j) * DDop0[kk];
+                N += data(i, getImgPt<int>(j + kk - Dop0.size() / 2,
+                  data.cols()) ) * DDop0[kk];
+                for(int ll = 0; ll < Dop0.size(); ll ++)
+                  M += Dop0[kk] * Dop0[ll] *
+                    data(getImgPt<int>(i + kk - Dop0.size() / 2, data.rows()),
+                         getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
               }
-              const auto E(T(1) + zy * zy);
-              const auto F(       zy * zx);
-              const auto G(T(1) + zx * zx);
-              const auto lscore(abs(E * G - F * F));
+              const auto lscore(abs(L * N - M * M));
               if(zscore(i, j) < lscore) {
                 result(i, j) = T(zi + 1);
                 zscore(i, j) = lscore;
