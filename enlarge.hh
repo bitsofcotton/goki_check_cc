@@ -38,6 +38,7 @@ typedef enum {
   DETECT_BOTH,
   COLLECT_BOTH,
   BUMP_BOTH,
+  BUMP_SIDE,
   EXTEND_X,
   EXTEND_Y,
   EXTEND_BOTH,
@@ -237,9 +238,18 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   case COLLECT_BOTH:
     return filter<T>(filter<T>(data, DETECT_BOTH, recur), ABS, recur);
   case BUMP_BOTH:
+  case BUMP_SIDE:
     {
+      assert(dir == BUMP_BOTH || data.cols() == 2);
       SimpleMatrix<T> result(data.rows(), data.cols());
       SimpleMatrix<T> zscore(data.rows(), data.cols());
+      if(dir == BUMP_BOTH) {
+        result.resize(data.rows(), data.cols());
+        zscore.resize(data.rows(), data.cols());
+      } else {
+        result.resize(1, 2);
+        zscore.resize(1, 2);
+      }
       result.O();
       zscore.O(- T(1));
       const auto rxy(T(min(data.rows(), data.cols())));
@@ -263,23 +273,36 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         const auto DDop(Dop * Dop);
         const auto DDop0((DDop.row(y0 / 2) + DDop.row(y0 / 2 + 1)) / T(2));
         // N.B. curvature matrix det == EG - F^2, we see only \< relation.
-        for(int i = 0; i < data.rows(); i ++) {
-          for(int j = 0; j < data.cols(); j ++) {
-            T L(0), M(0), N(0);
-            for(int kk = 0; kk < Dop0.size(); kk ++) {
-              L += data(getImgPt<int>(i + kk - Dop0.size() / 2,
-                data.rows()), j) * DDop0[kk];
-              N += data(i, getImgPt<int>(j + kk - Dop0.size() / 2,
-                data.cols()) ) * DDop0[kk];
-              for(int ll = 0; ll < Dop0.size(); ll ++)
-                M += Dop0[kk] * Dop0[ll] *
-                  data(getImgPt<int>(i + kk - Dop0.size() / 2, data.rows()),
-                       getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
+        if(dir == BUMP_BOTH)
+          for(int i = 0; i < data.rows(); i ++)
+            for(int j = 0; j < data.cols(); j ++) {
+              T L(0), M(0), N(0);
+              for(int kk = 0; kk < Dop0.size(); kk ++) {
+                L += data(getImgPt<int>(i + kk - Dop0.size() / 2,
+                  data.rows()), j) * DDop0[kk];
+                N += data(i, getImgPt<int>(j + kk - Dop0.size() / 2,
+                  data.cols()) ) * DDop0[kk];
+                for(int ll = 0; ll < Dop0.size(); ll ++)
+                  M += Dop0[kk] * Dop0[ll] *
+                    data(getImgPt<int>(i + kk - Dop0.size() / 2, data.rows()),
+                         getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
+              }
+              const auto lscore(abs(L * N - M * M));
+              if(zscore(i, j) < lscore) {
+                result(i, j) = T(zi + 1);
+                zscore(i, j) = lscore;
+              }
             }
-            const auto lscore(abs(L * N - M * M));
-            if(zscore(i, j) < lscore) {
-              result(i, j) = T(zi + 1);
-              zscore(i, j) = lscore;
+        else {
+          SimpleVector<T> work(2);
+          work.O();
+          for(int i = 0; i < Dop0.size(); i ++)
+            work += data.row(getImgPt<int>(data.rows() / 2 + i - Dop0.size() / 2, data.rows())) * Dop0[i];
+          for(int i = 0; i < work.size(); i ++) {
+            const auto lscore(abs(work[i]));
+            if(zscore(0, i) < lscore) {
+              result(0, i) = T(zi + 1);
+              zscore(0, i) = lscore;
             }
           }
         }
