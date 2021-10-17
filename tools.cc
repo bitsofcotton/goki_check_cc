@@ -39,7 +39,7 @@ using std::make_pair;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|integ|sharpen|bump|enlarge|flarge|pextend|blink|lpf|represent) <input.ppm> <output.ppm> <recur>" << endl;
+  cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
   cout << "gokicheck (pred|lenl|composite) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (cat|catr) <input0.ppm> ..." << endl;
   cout << "gokicheck obj <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>" << endl;
@@ -70,19 +70,16 @@ int main(int argc, const char* argv[]) {
   simpleFile<num_t> file;
   reDig<num_t>      redig;
   if(strcmp(argv[1], "collect") == 0 ||
-     strcmp(argv[1], "integ") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
-     strcmp(argv[1], "lpf") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "represent") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
-     strcmp(argv[1], "b2wd")    == 0 ||
-     strcmp(argv[1], "flatten") == 0) {
+     strcmp(argv[1], "b2wd")    == 0) {
     if(argc < 3) {
       usage();
       return 0;
@@ -94,9 +91,6 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter<num_t>(data[i], COLLECT_BOTH);
-    else if(strcmp(argv[1], "integ") == 0)
-      for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], INTEG_BOTH);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur), CLIP);
@@ -109,14 +103,9 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur);
-    else if(strcmp(argv[1], "lpf") == 0)
-      for(int i = 0; i < 3; i ++)
-        data[i] = filter<num_t>(data[i], LPF_BOTH);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < 3; i ++)
         data[i] = filter<num_t>(data[i], SHARPEN_BOTH);
-    else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), BUMP_BOTH);
     else if(strcmp(argv[1], "represent") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(redig.rgb2d(data), REPRESENT, recur);
     else if(strcmp(argv[1], "w2b") == 0) {
@@ -146,31 +135,30 @@ int main(int argc, const char* argv[]) {
               data[1](i, j) == ddata[1](i, j) &&
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
-    } else if(strcmp(argv[1], "flatten") == 0) {
-            auto row(data[0].row(0));
-            auto col(data[0].col(0));
-      for(int k = 0; k < 3; k ++)
-        for(int i = 1; i < data[k].rows(); i ++)
-          row += data[k].row(i);
-      for(int k = 0; k < 3; k ++)
-        for(int i = 1; i < data[k].cols(); i ++)
-          col += data[k].col(i);
-      row /= num_t(3 * data[0].rows());
-      col /= num_t(3 * data[0].cols());
-      // Sum(f(x) + t * x) == 0. <=> Sum(f(x)) + t * x(x + 1) / 2 == 0
-      // t = - 2 * Sum(f(x)) / x / (x + 1)
-      num_t rt(0);
-      num_t ct(0);
-      for(int i = 0; i < row.size(); i ++)
+    } else if(strcmp(argv[1], "bump") == 0) {
+      data[2] = filter<num_t>(filter<num_t>(redig.rgb2d(data),
+                  BUMP_BOTH), INTEG_BOTH);
+      auto row(data[2].row(0));
+      auto col(data[2].col(0));
+      for(int i = 1; i < data[2].rows(); i ++)
+        row += data[2].row(i);
+      for(int i = 1; i < data[2].cols(); i ++)
+        col += data[2].col(i);
+      row /= num_t(data[2].rows());
+      col /= num_t(data[2].cols());
+      auto rt(row[0]);
+      auto ct(col[0]);
+      for(int i = 1; i < row.size(); i ++)
         rt += row[i];
-      for(int i = 0; i < col.size(); i ++)
+      for(int i = 1; i < col.size(); i ++)
         ct += col[i];
-      rt = num_t(2) * rt / num_t(row.size() * (row.size() - 1));
-      ct = num_t(2) * ct / num_t(col.size() * (col.size() - 1));
-      for(int i = 0; i < data[0].rows(); i ++)
-        for(int j = 0; j < data[0].cols(); j ++)
+      rt *= num_t(int(2)) / num_t(row.size() * (row.size() - 1));
+      ct *= num_t(int(2)) / num_t(col.size() * (col.size() - 1));
+      for(int i = 0; i < data[2].rows(); i ++)
+        for(int j = 0; j < data[2].cols(); j ++)
           for(int k = 0; k < 3; k ++)
-            data[k](i, j) += ct * num_t(i) + rt * num_t(j);
+            data[2](i, j) -= ct * num_t(i) + rt * num_t(j);
+      data[0] = data[1] = data[2];
     }
     if(strcmp(argv[1], "b2w") != 0 &&
        strcmp(argv[1], "b2wd") != 0)

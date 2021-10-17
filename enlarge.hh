@@ -216,12 +216,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             auto res(data);
       res.O();
       for(int i = 0; i < res.rows(); i ++)
-        for(int j = 0; j < res.cols(); j ++) {
-          const auto& L(zxx(i, j));
-          const auto& M(zxy(i, j));
-          const auto& N(zyy(i, j));
-          res(i, j) = L * N - M * M;
-        }
+        for(int j = 0; j < res.cols(); j ++)
+          res(i, j) = zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j);
       return res;
     }
     break;
@@ -233,12 +229,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             auto res(data);
       res.O();
       for(int i = 0; i < res.rows(); i ++)
-        for(int j = 0; j < res.cols(); j ++) {
-          const auto& L(zxx(i, j));
-          const auto& M(zxy(i, j));
-          const auto& N(zyy(i, j));
-          res(i, j) = L * N - M * M;
-        }
+        for(int j = 0; j < res.cols(); j ++)
+          res(i, j) = zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j);
       return res;
     }
     break;
