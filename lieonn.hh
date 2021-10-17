@@ -3139,7 +3139,7 @@ template <typename T> SimpleMatrix<complex<T> > dft(const int& size0) {
   return size0 < 0 ? eidft : edft;
 }
 
-template <typename T> SimpleMatrix<T> diff(const int& size0) {
+template <typename T> SimpleMatrix<T> diff0(const int& size0) {
   const auto size(abs(size0));
   if(! size) {
     static const SimpleMatrix<T> m0;
@@ -3198,6 +3198,15 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     cerr << "." << flush;
   }
   return size0 < 0 ? ii : dd;
+}
+
+template <typename T> SimpleMatrix<T> diff(const int& size0) {
+  if(0 < size0) return diff0<T>(size0);
+  const auto integ(diff0<T>(size0));
+        auto res(integ);
+  for(int i = 0; i < res.cols(); i ++)
+    res.setCol(i, (integ.col(i) + integ.col(integ.cols() - 1 - i)) / T(int(2)));
+  return res;
 }
 
 template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step) {
