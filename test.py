@@ -161,8 +161,8 @@ else:
         subprocess.call([argv[1], "sharpen", root + "-sharpen.ppm", root + "-sharpen-work.ppm", str(pixels)])
         subprocess.call(["convert", root + "-sharpen-work.ppm", "-resize", "50%", "-compress", "none", root + "-sharpen.ppm"])
       subprocess.call(["cp", root + "-sharpen0.ppm", root + "-sharpen.ppm"])
-      subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-equalize", root + "-sharpen-minus-equalize.ppm"])
-    elif(argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "integ" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "lpf"):
+      subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-equalize", root + "-sharpen-minus-equalize.png"])
+    elif(argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels), "1",  str(zratio), root + "-bump.ppm", root + ".obj"])
