@@ -156,11 +156,12 @@ else:
         subprocess.call(["cp", root + "-sharpen.ppm", root + "-sharpen0.ppm"])
         subprocess.call([argv[1], "sharpen", root + "-sharpen0.ppm", root + "-sharpen.ppm", str(pixels)])
     elif(argv[2] == "sharpen"):
-      subprocess.call(["cp", root + ".ppm", root + "-sharpen0.ppm"])
+      subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
-        subprocess.call([argv[1], "sharpen", root + "-sharpen0.ppm", root + "-sharpen1.ppm", str(pixels)])
-        subprocess.call(["convert", root + "-sharpen1.ppm", "-resize", "50%", "-compress", "none", root + "-sharpen0.ppm"])
+        subprocess.call([argv[1], "sharpen", root + "-sharpen.ppm", root + "-sharpen-work.ppm", str(pixels)])
+        subprocess.call(["convert", root + "-sharpen-work.ppm", "-resize", "50%", "-compress", "none", root + "-sharpen.ppm"])
       subprocess.call(["cp", root + "-sharpen0.ppm", root + "-sharpen.ppm"])
+      subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-equalize", root + "-sharpen-minus-equalize.ppm"])
     elif(argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "integ" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "lpf"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels)])
     elif(argv[2] == "obj"):
@@ -195,9 +196,6 @@ else:
       subprocess.call([argv[1], "b2w", root + "-sbox-1.ppm", root + "-sbox-bw-1.ppm", "1"])
       for s in range(1, pixels):
         subprocess.call([argv[1], "b2wd", root + "-sbox-" + str(s + 1) + ".ppm", root + "-sbox-bw-" + str(s + 1) + ".ppm", root + "-sbox-" + str(s) + ".ppm"])
-    elif(argv[2] == "demosaic"):
-      subprocess.call(["convert", line, "-resize", str(int(10000. / pow(2., pixels)) / 100.) + "%", "-compress", "none", root + "-demosaic.ppm"])
-      subprocess.call(["python3", argv[0], argv[1], "enlarge", str(pixels), root + "-demosaic.ppm"])
     elif(argv[2] == "prep"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "x>", "-resize", "x" + str(pixels) + ">", root + "-prep.png"])
     elif(argv[2] == "prepsq"):
