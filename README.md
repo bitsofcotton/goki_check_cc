@@ -1,6 +1,7 @@
 # Goki Check
 These program aims to implement one of a complement to ongoing other utilities.  
 And this library is written in deterministic way. So this don't use machine learning methods.
+Closed.
 
 # How to use
 Please touch Makefile for libc++ enabled.  
@@ -25,13 +26,12 @@ Searching the Internet more...
 # Usage
     make gokicheck
     
-    gokicheck (collect|intg|sharpen|bump|enlarge|flarge|lpf|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num> <rotate_num>
+    gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num>
     gokicheck (pred|composite|lenl)  <output.ppm> <input0.ppm> ...
     gokicheck (cat|catr) <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>
     gokicheck (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
-    gokicheck match <num_of_hidden_match> <num_of_emph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
-    gokicheck habit    <in0.obj> <in1.obj> <out.obj>
+    gokicheck match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokicheck recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokicheck recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokicheck recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
@@ -41,12 +41,12 @@ Searching the Internet more...
     gokicheck reimage  <dimension> <input.ppm> <input-src.ppm> <output.ppm> <intensity>
     gokicheck reimage2 <dimension> <input.ppm> <output.ppm> <intensity>
     python2 test.py ./gokicheck match input0.png input1.png
-    python2 test.py ./gokicheck tilecat <tile count> < cat.txt
-    python2 test.py ./gokicheck (cat|catr|pred|composite) input0.png input1.png ...
+    python2 test.py ./gokicheck (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
+    python2 test.py ./gokicheck (cat|catb|catr|catbr|pred|composite|lenl) input0.png input1.png ...
     python2 test.py ./gokicheck newtrace dimension size
     python2 test.py ./gokicheck retrace  dimension input.ppm intensity
     python2 test.py ./gokicheck retrace2 dimension dst.ppm src.ppm intensity
-    python2 test.py ./gokicheck (pextend|sharpen|bump|enlarge|flarge|represent|jps|tilt|btilt|flicker|obj|sbox|demosaic|prep|presq|mask|mask0) input.png
+    python2 test.py ./gokicheck (pextend|sharpen|bump|enlarge|flarge|represent|jps|tilt|btilt|obj|sbox|prep|presq) input.png
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive
@@ -60,13 +60,15 @@ So if we don't have much information for some image to input, we can complement
 it with optimize way. But this needs huge time on calculation,
 they are not implemented. And it is predicted that it's slight difference to
 ongoing deep learning methods.
-(But we can use them with pseudo enlarge with such method.)
 
 # Known Bug not to be fixed.
 reDig::edge returns relaxed edges, this can be fixed with multiple on counting
 +/- on same scan line.
 
-The test.py bump command returns tilt ignored result. This is because we integrate local focuses and integration itself ignores differential offset part.
+reDig::mesh2 returns something buggy when we input non lattice points.
+
+The test.py bump command returns tilt ignored result.
+This is because we integrate local focuses and integration itself ignores differential offset part.
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
