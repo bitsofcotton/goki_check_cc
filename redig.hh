@@ -343,8 +343,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   sp.reserve(pp.size());
   Mat lrot(3, 3);
   lrot.I();
-  lrot(0, 0) =    lrot(1, 1) = cos(T(int(1)));
-  lrot(0, 1) = - (lrot(1, 0) = sin(T(int(1))));
+  lrot(0, 0) =    lrot(1, 1) = cos(T(int(1)) / T(p.size()));
+  lrot(0, 1) = - (lrot(1, 0) = sin(T(int(1)) / T(p.size())));
   T    m1((lrot * p[pp[0]])[1]);
   auto M1(m1);
   for(int i = 0; i < pp.size(); i ++) {
