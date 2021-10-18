@@ -343,8 +343,8 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   sp.reserve(pp.size());
   Mat lrot(3, 3);
   lrot.I();
-  lrot(0, 0) =    lrot(1, 1) = cos(T(int(1)) / T(int(p.size())));
-  lrot(0, 1) = - (lrot(1, 0) = sin(T(int(1)) / T(int(p.size()))));
+  lrot(0, 0) =    lrot(1, 1) = cos(T(int(1)));
+  lrot(0, 1) = - (lrot(1, 0) = sin(T(int(1))));
   T    m1((lrot * p[pp[0]])[1]);
   auto M1(m1);
   for(int i = 0; i < pp.size(); i ++) {
@@ -357,7 +357,7 @@ template <typename T> vector<typename reDig<T>::Veci> reDig<T>::mesh2(const vect
   vector<pair<Vec, int> > scan;
   scan.reserve(sp.size() + 2);
   scan.emplace_back(sp[0]);
-  scan[scan.size() - 1].first[0] -= T(1);
+  scan[scan.size() - 1].first[0] -= T(2);
   scan[scan.size() - 1].first[1]  = m1 - T(1);
   scan.emplace_back(sp[0]);
   scan[scan.size() - 1].first[0] -= T(1);
@@ -1037,11 +1037,11 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getTileVec(const 
 }
 
 template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const Mat& in) const {
-  const auto guard(8);
+  const auto guard(max(1, int(sqrt(T(in.rows() * in.cols() / vbox)))));
   vector<Vec> geoms;
-  geoms.reserve(vbox);
-  const auto xx(in * diff<T>(in.cols()) * diff<T>(in.cols()));
-  const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()));
+  geoms.reserve(vbox + 4);
+  const auto xx(in * diff<T>(in.cols()).transpose() * diff<T>(in.cols()).transpose());
+  const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()).transpose());
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
@@ -1051,7 +1051,7 @@ template <typename T> vector<typename reDig<T>::Vec> reDig<T>::getHesseVec(const
   sort(score.begin(), score.end());
   vector<pair<int, int> > cache;
   cache.reserve(score.size());
-  for(int i = 0; i < score.size() && geoms.size() < abs(vbox); i ++)
+  for(int i = score.size() - 1; 0 <= i && geoms.size() < abs(vbox); i --)
     if(! binary_search(cache.begin(), cache.end(),
            make_pair(score[i].second.first / guard,
                      score[i].second.second / guard)) ) {
