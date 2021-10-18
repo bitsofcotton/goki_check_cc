@@ -152,8 +152,8 @@ int main(int argc, const char* argv[]) {
         rt += row[i];
       for(int i = 1; i < col.size(); i ++)
         ct += col[i];
-      rt *= num_t(int(2)) / num_t(row.size() * (row.size() - 1));
-      ct *= num_t(int(2)) / num_t(col.size() * (col.size() - 1));
+      rt *= - num_t(int(2)) / num_t(row.size() * (row.size() - 1));
+      ct *= - num_t(int(2)) / num_t(col.size() * (col.size() - 1));
       SimpleMatrix<num_t> work(row.size(), 2);
       work.setCol(0, data[0].row(0));
       work.setCol(0, data[0].row(data[0].rows() - 1));
@@ -167,7 +167,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < data[2].rows(); i ++)
         for(int j = 0; j < data[2].cols(); j ++)
           for(int k = 0; k < 3; k ++)
-            data[2](i, j) -= ct * num_t(i) + rt * num_t(j);
+            data[2](i, j) += ct * num_t(i) + rt * num_t(j);
       data[0] = data[1] = data[2];
     }
     if(strcmp(argv[1], "b2w") != 0 &&
