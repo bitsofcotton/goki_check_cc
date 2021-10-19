@@ -269,9 +269,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         const auto y0((camera + (cpoint - camera) * t)[0] * rxy);
         if(abs(int(y0)) < 3 || rxy < abs(y0) * T(2)) continue;
         const auto Dop(diff<T>(abs(int(y0) & ~ int(1))));
-        const auto Dop0((Dop.row(y0 / 2) + Dop.row(y0 / 2 + 1)) / T(2));
+        const auto Dop0((Dop.row(int(y0) / 2) + Dop.row(int(y0) / 2 + 1)) / T(2));
         const auto DDop(Dop * Dop);
-        const auto DDop0((DDop.row(y0 / 2) + DDop.row(y0 / 2 + 1)) / T(2));
+        const auto DDop0((DDop.row(int(y0) / 2) + DDop.row(int(y0) / 2 + 1)) / T(2));
         // N.B. curvature matrix det == EG - F^2, we see only \< relation.
         if(dir == BUMP_BOTH)
           for(int i = 0; i < data.rows(); i ++)

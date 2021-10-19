@@ -2920,7 +2920,9 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::inner(const Simple
     } else if(bu[i] == bl[i])
       fidx.emplace_back(make_pair(- T(int(bu[i] == T(0) ? 0 : 1)), i));
     assert(bL[i] <= bU[i] && abs(bL[i]) <= abs(bU[i]));
-    A.row(i) /= T(2) * bU[i] - bL[i];
+    // XXX: larger A ratio causes linear invariant stricter.
+    //      this is not enough because zeroFix don't adjust them.
+    A.row(i) /= (T(2) * bU[i] - bL[i]) / T(2);
     assert(isfinite(A.row(i).dot(A.row(i))));
   }
   // N.B. in zeroFix, we get linear Invariant s.t. |Ax| <= 1 possible enough.
