@@ -67,7 +67,6 @@ int main(int argc, const char* argv[]) {
     usage();
     return 0;
   }
-  simpleFile<num_t> file;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
@@ -84,8 +83,8 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     const auto recur(4 < argc ? atoi(argv[4]) : 1);
-    vector<typename simpleFile<num_t>::Mat> data;
-    if(!file.loadp2or3(data, argv[2]))
+    vector<SimpleMatrix<num_t> > data;
+    if(!loadp2or3<num_t>(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < data.size(); i ++)
@@ -122,8 +121,8 @@ int main(int argc, const char* argv[]) {
              data[2](i, j) == num_t(0))
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
     } else if(strcmp(argv[1], "b2wd") == 0) {
-      vector<simpleFile<num_t>::Mat> ddata;
-      if(!file.loadp2or3(ddata, argv[4]))
+      vector<SimpleMatrix<num_t> > ddata;
+      if(!loadp2or3<num_t>(ddata, argv[4]))
         return - 1;
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -168,7 +167,7 @@ int main(int argc, const char* argv[]) {
           data[2](i, j) += ct * num_t(i) + rt * num_t(j);
       data[0] = data[1] = data[2];
     }
-    if(!file.savep2or3(argv[3],
+    if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0
         ? normalize<num_t>(data) : data,
         ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
@@ -178,17 +177,16 @@ int main(int argc, const char* argv[]) {
       usage();
       return 0;
     }
-    vector<typename simpleFile<num_t>::Mat> opt;
-    vector<typename simpleFile<num_t>::Mat> data;
-    if(!file.loadp2or3(opt, argv[2]))
+    vector<SimpleMatrix<num_t> > opt, data;
+    if(!loadp2or3<num_t>(opt, argv[2]))
       return - 1;
-    if(!file.loadp2or3(data, argv[3]))
+    if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
-    vector<typename simpleFile<num_t>::Mat> out;
-    typename simpleFile<num_t>::Mat cnt;
+    vector<SimpleMatrix<num_t> > out;
+    SimpleMatrix<num_t> cnt;
     out.resize(3);
-    out[0] = out[1] = out[2] = cnt = typename simpleFile<num_t>::Mat(data[0].rows() * 5 / 4 + 1, data[0].cols() * 5 / 4 + 1).O();
-    typename simpleFile<num_t>::Mat cr(5, 5);
+    out[0] = out[1] = out[2] = cnt = SimpleMatrix<num_t>(data[0].rows() * 5 / 4 + 1, data[0].cols() * 5 / 4 + 1).O();
+    SimpleMatrix<num_t> cr(5, 5);
     for(int i = 0; i < cr.rows(); i ++)
       for(int j = 0; j < cr.cols(); j ++)
         cr(i, j) = num_t(1);
@@ -217,7 +215,7 @@ int main(int argc, const char* argv[]) {
           out[i](j, k) /= max(num_t(1), cnt(j, k));
       out[i] = filter<num_t>(out[i], CLIP);
     }
-    if(!file.savep2or3(argv[4], out, ! true, 255))
+    if(!savep2or3<num_t>(argv[4], out, ! true, 255))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
@@ -228,13 +226,13 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     const auto count(atoi(argv[2]));
-    vector<typename simpleFile<num_t>::Mat> datac, datas;
-    if(!file.loadp2or3(datac, argv[3]))
+    vector<SimpleMatrix<num_t> > datac, datas;
+    if(!loadp2or3<num_t>(datac, argv[3]))
       return - 1;
     if((strcmp(argv[1], "recolor") == 0 ||
         strcmp(argv[1], "recolor3") == 0 ||
         strcmp(argv[1], "reshape") == 0) &&
-       ! file.loadp2or3(datas, argv[4]))
+       ! loadp2or3<num_t>(datas, argv[4]))
       return - 1;
     if(strcmp(argv[1], "reshape") == 0) {
       const auto datav(rgb2d<num_t>(datas));
@@ -252,26 +250,26 @@ int main(int argc, const char* argv[]) {
           reColor<num_t>(xyzc[i], count, num_t(std::atof(argv[5])));
       datac = xyz2rgb<num_t>(xyzc);
     }
-    if(!file.savep2or3(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac), ! true))
+    if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac), ! true))
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
-    vector<typename simpleFile<num_t>::Mat> data, mask;
+    vector<SimpleMatrix<num_t> > data, mask;
     if(argc < 6) {
       usage();
       return - 1;
     }
     const auto  vbox(atoi(argv[2]));
     const num_t ratio(std::atof(argv[3]));
-    if(!file.loadp2or3(data, argv[4]))
+    if(!loadp2or3<num_t>(data, argv[4]))
       return - 1;
     auto points(vbox < 0 ? getHesseVec<num_t>(rgb2d<num_t>(data), abs(vbox))
                          : getTileVec<num_t>(rgb2d<num_t>(data), abs(vbox)));
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
-    file.saveobj(points, ratio * num_t(data[0].rows()),
-                         ratio * num_t(data[0].cols()),
-                 mesh2<num_t>(points), argv[5]);
-    file.saveMTL(argv[5], (string(argv[5]) + string(".mtl")).c_str());
+    saveobj<num_t>(points, ratio * num_t(data[0].rows()),
+                           ratio * num_t(data[0].cols()),
+                   mesh2<num_t>(points), argv[5]);
+    saveMTL<num_t>(argv[5], (string(argv[5]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
@@ -282,13 +280,13 @@ int main(int argc, const char* argv[]) {
     const auto Mindex(atoi(argv[3]));
     num_t psi(0);
     psi = std::atof(argv[4]);
-    vector<typename simpleFile<num_t>::Mat>  data, bump;
-    vector<typename simpleFile<num_t>::Vec>  points;
-    vector<typename simpleFile<num_t>::Veci> polys;
-    if(!file.loadp2or3(data, argv[5]))
+    vector<SimpleMatrix<num_t> > data, bump;
+    vector<SimpleVector<num_t> > points;
+    vector<SimpleVector<int>   > polys;
+    if(!loadp2or3<num_t>(data, argv[5]))
       return - 2;
     const string fn(argv[6]);
-    if(!file.loadp2or3(bump, argv[6]))
+    if(!loadp2or3<num_t>(bump, argv[6]))
       return - 2;
     const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
       strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
@@ -300,7 +298,7 @@ int main(int argc, const char* argv[]) {
       ));
     for(int j = 0; j < data.size(); j ++)
       data[j] = pullRefMatrix<num_t>(tilt0, 1, data[j]);
-    if(!file.savep2or3(argv[7], data, ! true))
+    if(!savep2or3<num_t>(argv[7], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "match") == 0) {
     if(argc < 10) {
@@ -311,14 +309,14 @@ int main(int argc, const char* argv[]) {
     const auto nemph(atoi(argv[3]));
     const auto vboxdst(atoi(argv[4]));
     const auto vboxsrc(atoi(argv[5]));
-    vector<typename simpleFile<num_t>::Mat> in0, in1, bump0, bump1;
-    if(!file.loadp2or3(in0, argv[6]))
+    vector<SimpleMatrix<num_t> > in0, in1, bump0, bump1;
+    if(!loadp2or3<num_t>(in0, argv[6]))
       return - 2;
-    if(!file.loadp2or3(in1, argv[7]))
+    if(!loadp2or3<num_t>(in1, argv[7]))
       return - 2;
-    if(!file.loadp2or3(bump0, argv[8]))
+    if(!loadp2or3<num_t>(bump0, argv[8]))
       return - 2;
-    if(!file.loadp2or3(bump1, argv[9]))
+    if(!loadp2or3<num_t>(bump1, argv[9]))
       return - 2;
     const string outbase(argv[10]);
     const auto shape0(vboxdst < 0
@@ -330,37 +328,39 @@ int main(int argc, const char* argv[]) {
     auto m(shape0.size() < shape1.size()
       ? matchPartial< num_t>(shape0, shape1, nsub)
       : matchPartialR<num_t>(shape0, shape1, nsub));
-    vector<typename simpleFile<num_t>::Mat> outs;
+    vector<SimpleMatrix<num_t> > out;
+    out.resize(3);
     const auto rin0(makeRefMatrix<num_t>(in0[0], 1));
     const auto rin1(makeRefMatrix<num_t>(in1[0], 1 + rin0.rows() * rin0.cols()));
-    vector<vector<typename simpleFile<num_t>::Veci> > mhull0;
-    vector<vector<typename simpleFile<num_t>::Veci> > mhull1;
+    vector<vector<SimpleVector<int> > > mhull0, mhull1;
+    mhull0.reserve(m.size());
+    mhull1.reserve(m.size());
     for(int i = 0; i < m.size(); i ++) {
       mhull0.emplace_back(mesh2<num_t>(shape0, m[i].dst));
       mhull1.emplace_back((~ m[i]).hullConv(mhull0[i]));
     }
-    outs[0] = SimpleMatrix<num_t>(in0[0].rows(), in0[0].cols()).O();
+    out[0] = SimpleMatrix<num_t>(in0[0].rows(), in0[0].cols()).O();
     for(int i = 0; i < m.size(); i ++)
-      outs[0] += showMatch<num_t>(draw<num_t>(in0[0] * num_t(0),
+      out[0] += showMatch<num_t>(draw<num_t>(in0[0] * num_t(0),
                      shape0, mhull0[i]), shape0, mhull0[i]);
-    outs[1] = outs[2] = outs[0];
-    file.savep2or3((outbase + string("-repl0.ppm")).c_str(), normalize<num_t>(outs), false);
-    outs[0] = SimpleMatrix<num_t>(in1[0].rows(), in1[0].cols()).O();
+    out[1] = out[2] = out[0];
+    savep2or3<num_t>((outbase + string("-repl0.ppm")).c_str(), normalize<num_t>(out), false);
+    out[0] = SimpleMatrix<num_t>(in1[0].rows(), in1[0].cols()).O();
     for(int i = 0; i < m.size(); i ++)
-      outs[0] += showMatch<num_t>(draw<num_t>(in1[0] * num_t(0),
+      out[0] += showMatch<num_t>(draw<num_t>(in1[0] * num_t(0),
                    shape1, mhull1[i]), shape1, mhull1[i]);
-    outs[1] = outs[2] = outs[0];
-    file.savep2or3((outbase + string("-repl1.ppm")).c_str(), normalize<num_t>(outs), false);
-    outs[0] = SimpleMatrix<num_t>(in0[0].rows(), in0[0].cols()).O();
+    out[1] = out[2] = out[0];
+    savep2or3<num_t>((outbase + string("-repl1.ppm")).c_str(), normalize<num_t>(out), false);
+    out[0] = SimpleMatrix<num_t>(in0[0].rows(), in0[0].cols()).O();
     for(int i = 0; i < m.size(); i ++)
-      outs[0] += showMatch<num_t>(draw<num_t>(in0[0] * num_t(0),
+      out[0] += showMatch<num_t>(draw<num_t>(in0[0] * num_t(0),
                    m[i].transform(shape1), mhull1[i]),
                    m[i].transform(shape1), mhull1[i]);
-    outs[1] = outs[2] = outs[0];
-    file.savep2or3((outbase + string("-repl2.ppm")).c_str(), normalize<num_t>(outs), false);
+    out[1] = out[2] = out[0];
+    savep2or3<num_t>((outbase + string("-repl2.ppm")).c_str(), normalize<num_t>(out), false);
     for(int i = 0; i < nemph; i ++) {
       const auto iemph(num_t(i) / num_t(nemph));
-      simpleFile<num_t>::Mat reref(rin1.rows(), rin1.cols());
+      SimpleMatrix<num_t> reref(rin1.rows(), rin1.cols());
       reref.O();
       for(int i = 0; i < m.size(); i ++) {
         const auto rd(draw<num_t>(rin1, shape1,
@@ -369,10 +369,10 @@ int main(int argc, const char* argv[]) {
           for(int k = 0; k < min(reref.cols(), rd.cols()); k ++)
             if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);
       }
-      for(int idx = 0; idx < outs.size(); idx ++)
-        outs[idx] = pullRefMatrix<num_t>(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
-      file.savep2or3((outbase + string("-") + to_string(i) + string("-") +
-                      to_string(nemph) + string(".ppm")).c_str(), outs, false);
+      for(int idx = 0; idx < out.size(); idx ++)
+        out[idx] = pullRefMatrix<num_t>(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
+      savep2or3<num_t>((outbase + string("-") + to_string(i) + string("-") +
+                       to_string(nemph) + string(".ppm")).c_str(), out, false);
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
             strcmp(argv[1], "lenl") == 0 ||
@@ -383,16 +383,16 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    vector<vector<typename simpleFile<num_t>::Mat> > in;
+    vector<vector<SimpleMatrix<num_t> > > in;
     in.resize(argc - 3);
     for(int i = 3; i < argc; i ++) {
-      vector<typename simpleFile<num_t>::Mat> ibuf;
-      if(!file.loadp2or3(ibuf, argv[i]))
+      vector<SimpleMatrix<num_t> > ibuf;
+      if(!loadp2or3<num_t>(ibuf, argv[i]))
         return - 2;
       in[i - 3] = std::move(ibuf);
     }
     const auto idx(in.size() - 1);
-    vector<typename simpleFile<num_t>::Mat> out;
+    vector<SimpleMatrix<num_t> > out;
     out.resize(3);
     if(strcmp(argv[1], "pred") == 0) {
       for(int i = 0; i < 3; i ++) {
@@ -409,9 +409,9 @@ int main(int argc, const char* argv[]) {
                 out[m](y, x) += (in[k][m](y, x) +
                   in[k + 1][m](y, x)) / num_t(2) * comp[2 * k + 1];
             }
-      file.savep2or3(argv[2], normalize<num_t>(out), ! true);
+      savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true);
     } else if(strcmp(argv[1], "lenl") == 0) {
-      std::vector<std::pair<typename simpleFile<num_t>::Mat, typename simpleFile<num_t>::Mat> > pair;
+      vector<std::pair<SimpleMatrix<num_t>, SimpleMatrix<num_t> > > pair;
       const auto d5(dft<num_t>(5).subMatrix(0, 0, 4, 5));
       const auto d4(dft<num_t>(- 4));
       const auto taylc(d4 * d5);
@@ -424,13 +424,13 @@ int main(int argc, const char* argv[]) {
               pair.emplace_back(std::make_pair(normalize<num_t>(tayl * work * tayl.transpose(), num_t(1) / num_t(2)), work));
             }
       out[0] = out[1] = out[2] = optImage<num_t>(pair);
-      file.savep2or3(argv[2], out, ! true, 65535);
+      savep2or3<num_t>(argv[2], out, ! true, 65535);
     } else if(strcmp(argv[1], "cat") == 0 ||
               strcmp(argv[1], "catr") == 0) {
-      vector<typename simpleFile<num_t>::Mat> glay;
+      vector<SimpleMatrix<num_t> > glay;
       glay.reserve(strcmp(argv[1], "catr") == 0 ? in.size()
                     : in.size() * min(int(in[0][0].rows()), 1 + 5 + 1));
-      const auto in00sz(in[0][0].rows());
+      const auto& in00sz(in[0][0].rows());
       for(int i = 0; i < in.size(); i ++) {
         if(strcmp(argv[1], "catr") == 0)
           glay.emplace_back(rgb2d<num_t>(in[i]));
@@ -452,21 +452,21 @@ int main(int argc, const char* argv[]) {
         std::cout << std::endl;
       }
     } else if(strcmp(argv[1], "composite") == 0) {
-      vector<typename simpleFile<num_t>::Mat> glay;
+      vector<SimpleMatrix<num_t> > glay;
       glay.reserve(in.size());
       for(int i = 0; i < in.size(); i ++)
         glay.emplace_back(rgb2d<num_t>(in[i]));
       const auto composite(compositeImage<num_t>(glay));
       for(int i = 0; i < composite.size(); i ++) {
         out[0] = out[1] = out[2] = composite[i];
-        file.savep2or3((string(argv[2]) + string("-") + to_string(i) + string(".ppm")).c_str(), normalize<num_t>(out), ! true);
+        savep2or3<num_t>((string(argv[2]) + string("-") + to_string(i) + string(".ppm")).c_str(), normalize<num_t>(out), ! true);
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {
-    vector<typename simpleFile<num_t>::Vec>  pdst,   psrc;
-    vector<typename simpleFile<num_t>::Veci> poldst, polsrc;
-    if(argc < 5 || !file.loadobj(pdst, poldst, argv[2]) ||
-                   !file.loadobj(psrc, polsrc, argv[3])) {
+    vector<SimpleVector<num_t> > pdst, psrc;
+    vector<SimpleVector<int>   > poldst, polsrc;
+    if(argc < 5 || !loadobj<num_t>(pdst, poldst, argv[2]) ||
+                   !loadobj<num_t>(psrc, polsrc, argv[3])) {
       usage();
       return - 2;
     }
@@ -479,7 +479,7 @@ int main(int argc, const char* argv[]) {
       My = max(num_t(My), abs(psrc[i][0]));
       Mx = max(num_t(Mx), abs(psrc[i][1]));
     }
-    file.saveobj(takeShape<num_t>(pdst, psrc,
+    saveobj<num_t>(takeShape<num_t>(pdst, psrc,
       matchPartial<num_t>(pdst, psrc)[0],
       num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
   } else if(strcmp(argv[1], "retrace") == 0 ||
@@ -488,11 +488,11 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    vector<typename simpleFile<num_t>::Mat> dst, src, out;
+    vector<SimpleMatrix<num_t> > dst, src, out;
     out.resize(3);
-    if(!file.loadp2or3(dst, argv[3]))
+    if(!loadp2or3<num_t>(dst, argv[3]))
       exit(- 2);
-    if(!file.loadp2or3(src, argv[4]))
+    if(!loadp2or3<num_t>(src, argv[4]))
       exit(- 2);
     if(strcmp(argv[1], "retrace") == 0)
       out[0] = out[1] = out[2] =
@@ -503,7 +503,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < out.size(); i ++)
         out[i] = reImage<num_t>(dst[i], src[i],
           num_t(std::atof(argv[6])), atoi(argv[2]));
-    if(!file.savep2or3(argv[5], normalize<num_t>(out), ! true, 255))
+    if(!savep2or3<num_t>(argv[5], normalize<num_t>(out), ! true, 255))
       return - 3;
   } else if(strcmp(argv[1], "retrace2") == 0 ||
             strcmp(argv[1], "reimage2") == 0) {
@@ -511,9 +511,9 @@ int main(int argc, const char* argv[]) {
       usage();
       return - 1;
     }
-    vector<typename simpleFile<num_t>::Mat> dst, out;
+    vector<SimpleMatrix<num_t> > dst, out;
     out.resize(3);
-    if(!file.loadp2or3(dst, argv[3]))
+    if(!loadp2or3<num_t>(dst, argv[3]))
       exit(- 2);
     if(strcmp(argv[1], "retrace2") == 0)
       out[0] = out[1] = out[2] =
@@ -525,7 +525,7 @@ int main(int argc, const char* argv[]) {
           num_t(std::atof(argv[5])), atoi(argv[2]));
       autoLevel<num_t>(out, 4 * (out[0].rows() + out[0].cols()));
     }
-    if(!file.savep2or3(argv[4], normalize<num_t>(out), ! true, 255))
+    if(!savep2or3<num_t>(argv[4], normalize<num_t>(out), ! true, 255))
       return - 3;
   } else if(strcmp(argv[1], "newtrace") == 0) {
     if(argc < 5) {
@@ -547,17 +547,17 @@ int main(int argc, const char* argv[]) {
     f /= sqrt(f.dot(f));
     const auto pp(make_pair(make_pair(atoi(argv[3]),
       atoi(argv[3])), make_pair(0, 0)));
-    vector<typename simpleFile<num_t>::Mat> M;
+    vector<SimpleMatrix<num_t> > M;
     M.resize(3);
     M[0] = M[1] = M[2] = normalize<num_t>(applyTrace<num_t>(
       make_pair(dec.synth(m, f), dec.synth(n, f)),
       make_pair(pp, pp)) );
-    file.savep2or3(argv[4], M, true, 255);
+    savep2or3<num_t>(argv[4], M, true, 255);
   } else if(strcmp(argv[1], "omake") == 0) {
     vector<vector<num_t> > data;
     string header;
-    file.loaddat(argv[3], header, data);
-    simpleFile<num_t>::Mat buf(atoi(argv[4]), atoi(argv[4]));
+    loaddat<num_t>(argv[3], header, data);
+    SimpleMatrix<num_t> buf(atoi(argv[4]), atoi(argv[4]));
     const auto mdft(dft<num_t>(buf.rows()));
     const auto midft(dft<num_t>(- buf.rows()));
     for(int i0 = 1; i0 < data.size(); i0 ++) {
@@ -567,7 +567,7 @@ int main(int argc, const char* argv[]) {
             const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
             buf(j, k) = idx < data[i0].size() ? data[i0][idx] : num_t(0);
           }
-        typename simpleFile<num_t>::Mat buf2;
+        SimpleMatrix<num_t> buf2;
         if(strcmp(argv[2], "diff") == 0)
           buf2 = (midft * (
             filter<num_t>(mdft.template real<num_t>() * buf, DETECT_BOTH).template cast<complex<num_t> >() +
