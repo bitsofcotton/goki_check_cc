@@ -128,7 +128,7 @@ private:
 };
 
 template <typename T> inline reDig<T>::reDig() {
-  initialize(3, T(15) / T(100));
+  initialize(3, T(1) / T(2));
 }
 
 template <typename T> inline reDig<T>::~reDig() {
@@ -142,7 +142,7 @@ template <typename T> inline void reDig<T>::initialize(const int& vbox, const T&
   if(T(0) < rz)
     this->rz = rz;
   else
-    this->rz = T(03) / T(10);
+    this->rz = T(1) / T(2);
   return;
 }
 

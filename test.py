@@ -6,7 +6,7 @@ import subprocess
 
 argv   = sys.argv
 pixels = 4
-zratio = .0825
+zratio = 1. / 2.
 psi    = 1. / 3.
 
 if(len(argv) < 4):
@@ -43,9 +43,6 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
       cmd.append(r + "-represent.ppm")
     elif(argv[2] == "catbr"):
       cmd.append(r + "-bump-represent.ppm")
-    elif(argv[2] == "pred"):
-      subprocess.call(["convert", s, "-blur", "12x12+6", "-compress", "none", r + "-blur.ppm"])
-      cmd.append(r + "-blur.ppm")
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)
@@ -160,7 +157,6 @@ else:
       for t in range(0, pixels):
         subprocess.call([argv[1], "sharpen", root + "-sharpen.ppm", root + "-sharpen-work.ppm", str(pixels)])
         subprocess.call(["convert", root + "-sharpen-work.ppm", "-resize", "50%", "-compress", "none", root + "-sharpen.ppm"])
-      subprocess.call(["cp", root + "-sharpen0.ppm", root + "-sharpen.ppm"])
       subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-equalize", root + "-sharpen-minus-equalize.png"])
     elif(argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels)])
