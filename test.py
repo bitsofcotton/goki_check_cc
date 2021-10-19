@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import os
 import sys
@@ -6,7 +6,6 @@ import subprocess
 
 argv   = sys.argv
 pixels = 4
-zratio = 1. / 2.
 psi    = 1. / 3.
 
 if(len(argv) < 4):
@@ -23,7 +22,7 @@ elif(argv[2] == "match"):
     nsub = int(argv[7])
   if(len(argv) > 8):
     nemph = int(argv[8])
-  subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(vboxd), str(vboxs), str(zratio), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
+  subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(vboxd), str(vboxs), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "match-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-" + root1 + ".mp4"])
 elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "catb" or argv[2] == "catbr" or argv[2] == "composite"):
   cmd = [argv[1], argv[2]]
@@ -161,7 +160,7 @@ else:
     elif(argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels)])
     elif(argv[2] == "obj"):
-      subprocess.call([argv[1], "obj", str(pixels), "1",  str(zratio), root + "-bump.ppm", root + ".obj"])
+      subprocess.call([argv[1], "obj", str(pixels), "1", root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "penl"):
       subprocess.call([argv[1], argv[2], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "jps"):
@@ -187,7 +186,7 @@ else:
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
     elif(argv[2] == "sbox"):
       for s in range(0, pixels):
-        subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), str(zratio), root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(pixels - s) + ".ppm"])
+        subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), "0", root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(pixels - s) + ".ppm"])
     elif(argv[2] == "sboxb2w"):
       subprocess.call([argv[1], "b2w", root + "-sbox-1.ppm", root + "-sbox-bw-1.ppm", "1"])
       for s in range(1, pixels):

@@ -307,7 +307,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           }
         }
       }
-      return result;
+      return - result;
     }
     break;
   case EXTEND_Y:

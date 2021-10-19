@@ -11,7 +11,6 @@ We need imagemagick for normal use, and ffmpeg to make .mp4.
 # Status Parameters
 * redig.hh
 * * vbox : size of vector gathering rectangle.
-* * rz   : z-axis output ratio.
 
 # Context
 This program is inspired from re-focus photo softwares.  
@@ -29,9 +28,9 @@ Searching the Internet more...
     gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num>
     gokicheck (pred|composite|lenl)  <output.ppm> <input0.ppm> ...
     gokicheck (cat|catr) <input0.ppm> ...
-    gokicheck obj   <gather_pixels> <ratio> <zratio> <input.ppm> <output.obj>
+    gokicheck obj   <gather_pixels> <ratio> <input.ppm> <output.obj>
     gokicheck (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
-    gokicheck match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <zratio> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
+    gokicheck match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokicheck recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokicheck recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokicheck recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>

@@ -40,7 +40,7 @@ public:
     return true;
   }
 
-  inline bool loadstub(ifstream& input, const int& nmax, const int& ncolor, Mat* datas) {
+  inline bool loadstub(ifstream& input, const int& nmax, const int& ncolor, vector<Mat>& datas) {
     int i = 0, j = 0, k = 0;
     char buf;
     int  work = 0;
@@ -68,7 +68,7 @@ public:
     return true;
   }
   
-  bool loadp2or3(Mat data[3], const char* filename) {
+  bool loadp2or3(vector<Mat>& data, const char* filename) {
     string line;
     string line2;
     string line3;
@@ -76,6 +76,7 @@ public:
     input.open(filename);
     if(input.is_open()) {
       try {
+        data.resize(3, Mat());
         getline(input, line);
         while((whiteline(line) || line[0] == '#') && getline(input, line) && !input.eof() && !input.bad()) ;
         getline(input, line2);
@@ -124,7 +125,7 @@ public:
     return true;
   }
 
-  bool savep2or3(const char* filename, Mat data[3], const bool& gray, const int& depth = 255) {
+  bool savep2or3(const char* filename, const vector<Mat>& data, const bool& gray, const int& depth = 255) {
     ofstream output;
     output.open(filename);
     if(output.is_open()) {
