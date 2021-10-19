@@ -12,7 +12,7 @@ LDFLAGS+=	-lc++ -L/usr/local/lib
 #LDFLAGS+=	-lestdc++ -L/usr/local/lib
 LDFLAGS+=	-static
 
-CXXFLAGS+=	-D_FLOAT_BITS_=32
+#CXXFLAGS+=	-D_FLOAT_BITS_=32
 #CXXFLAGS+=	-D_FLOAT_BITS_=64
 #CXXFLAGS+=	-D_FLOAT_BITS_=128
 #CXXFLAGS+=	-D_FLOAT_BITS_=256
