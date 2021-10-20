@@ -1,16 +1,12 @@
 # Goki Check
 These program aims to implement one of a complement to ongoing other utilities.  
-And this library is written in deterministic way. So this don't use machine learning methods.
-Closed.
+And this library is written in a deterministic way.
 
 # How to use
 Please touch Makefile for libc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
+We can use /dev/stdin, /dev/stdout to in/output.  
 We need imagemagick for normal use, and ffmpeg to make .mp4.  
-
-# Status Parameters
-* redig.hh
-* * vbox : size of vector gathering rectangle.
 
 # Context
 This program is inspired from re-focus photo softwares.  
@@ -50,15 +46,6 @@ Searching the Internet more...
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive
 (but include guard definition should harms).  
-They are NOT thread-safe.  
-
-# Things undone.
-If we use bitsofcotton/catg for many of inputs and categorize, then,
-get invariants multiple times alike in P012L, the structure will be gained.
-So if we don't have much information for some image to input, we can complement
-it with optimize way. But this needs huge time on calculation,
-they are not implemented. And it is predicted that it's slight difference to
-ongoing deep learning methods.
 
 # Known Bug not to be fixed.
 reDig::edge returns relaxed edges, this can be fixed with multiple on counting
@@ -66,7 +53,7 @@ reDig::edge returns relaxed edges, this can be fixed with multiple on counting
 
 reDig::mesh2 returns something buggy when we input non lattice points.
 
-The test.py bump command returns tilt ignored result.
+The bump command returns tilt ignored result.
 This is because we integrate local focuses and integration itself ignores differential offset part.
 
 # Another downloads
