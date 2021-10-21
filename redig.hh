@@ -334,7 +334,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
           auto  camera((p0 + p1 + p2) / T(3));
     camera[2] = T(0);
     const auto t((tri.z - tri.n.dot(camera)) / (tri.n.dot(vz)));
-    zbuf[j].first  = camera[2] + vz[2] * t;
+    zbuf[j].first  = - (camera[2] + vz[2] * t);
     if(! isfinite(zbuf[j].first)) zbuf[j].first = depth;
     zbuf[j].second = move(tri);
   }
