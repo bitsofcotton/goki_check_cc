@@ -211,6 +211,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case DETECT_BOTH:
     {
+      const auto zy(diff<T>(data.rows()) * data);
+      const auto zx(data * diff<T>(data.cols()).transpose());
       const auto zxx(diff<T>(data.rows()) * diff<T>(data.rows()) * data);
       const auto zxy(diff<T>(data.rows()) * data * diff<T>(data.cols()).transpose());
       const auto zyy(data * diff<T>(data.cols()).transpose() * diff<T>(data.cols()).transpose());
@@ -218,12 +220,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       res.O();
       for(int i = 0; i < res.rows(); i ++)
         for(int j = 0; j < res.cols(); j ++)
-          res(i, j) = zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j);
+          res(i, j) = sqrt(abs((zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j)) /
+                           ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
+                            zx(i, j) * zy(i, j)) ));
       return res;
     }
     break;
   case INTEG_BOTH:
     {
+      const auto  zx(diff<T>(- data.rows()) * data);
+      const auto  zy(data * diff<T>(- data.cols()).transpose());
       const auto  zyy(diff<T>(- data.rows()) * data * diff<T>(  data.cols()).transpose());
       const auto& zxy(data);
       const auto  zxx(diff<T>(  data.rows()) * data * diff<T>(- data.cols()).transpose());
@@ -231,7 +237,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       res.O();
       for(int i = 0; i < res.rows(); i ++)
         for(int j = 0; j < res.cols(); j ++)
-          res(i, j) = zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j);
+          res(i, j) = sqrt(abs((zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j)) /
+                           ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
+                            zx(i, j) * zy(i, j)) ));
       return res;
     }
     break;
@@ -276,8 +284,12 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         if(dir == BUMP_BOTH)
           for(int i = 0; i < data.rows(); i ++)
             for(int j = 0; j < data.cols(); j ++) {
-              T L(0), M(0), N(0);
+              T fu(0), fv(0), L(0), M(0), N(0);
               for(int kk = 0; kk < Dop0.size(); kk ++) {
+                fu += data(getImgPt<int>(i + kk - Dop0.size() / 2,
+                  data.rows()), j) * Dop0[kk];
+                fv += data(i, getImgPt<int>(j + kk - Dop0.size() / 2,
+                  data.cols()) ) * Dop0[kk];
                 L += data(getImgPt<int>(i + kk - Dop0.size() / 2,
                   data.rows()), j) * DDop0[kk];
                 N += data(i, getImgPt<int>(j + kk - Dop0.size() / 2,
@@ -287,7 +299,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                     data(getImgPt<int>(i + kk - Dop0.size() / 2, data.rows()),
                          getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
               }
-              const auto lscore(abs(L * N - M * M));
+              const auto lscore(sqrt(abs(L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv)));
               if(zscore(i, j) < lscore) {
                 result(i, j) = T(zi + 1);
                 zscore(i, j) = lscore;
