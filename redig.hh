@@ -268,6 +268,8 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   const auto guard(max(1, int(sqrt(T(in.rows() * in.cols() / vbox)))));
   vector<SimpleVector<T> > geoms;
   geoms.reserve(vbox + 4);
+  const auto x(in * diff<T>(in.cols()).transpose());
+  const auto y(diff<T>(in.rows()) * in);
   const auto xx(in * diff<T>(in.cols()).transpose() * diff<T>(in.cols()).transpose());
   const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()).transpose());
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
@@ -275,7 +277,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)
     for(int j = 0; j < in.cols(); j ++)
-      score.emplace_back(make_pair(abs(xx(i, j) * yy(i, j) - xy(i, j) * xy(i, j)), make_pair(i, j)));
+      score.emplace_back(make_pair(abs((xx(i, j) * yy(i, j) - xy(i, j) * xy(i, j)) / ((T(int(1)) + x(i, j)) * (T(int(1)) + y(i, j)) - x(i, j) * y(i, j))), make_pair(i, j)));
   sort(score.begin(), score.end());
   vector<pair<int, int> > cache;
   cache.reserve(score.size());
