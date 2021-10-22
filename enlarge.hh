@@ -299,7 +299,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                     data(getImgPt<int>(i + kk - Dop0.size() / 2, data.rows()),
                          getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
               }
-              const auto lscore(sqrt(abs(L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv)));
+              const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv))));
               if(zscore(i, j) < lscore) {
                 result(i, j) = T(zi + 1);
                 zscore(i, j) = lscore;
