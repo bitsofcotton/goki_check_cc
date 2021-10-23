@@ -19,10 +19,7 @@ typedef myfloat num_t;
 #include "p1.hh"
 #include "decompose.hh"
 #include "catg.hh"
-#include "fileio.hh"
-#include "enlarge.hh"
-#include "match.hh"
-#include "redig.hh"
+#include "goki.hh"
 
 using std::cout;
 using std::cerr;
@@ -570,8 +567,8 @@ int main(int argc, const char* argv[]) {
         SimpleMatrix<num_t> buf2;
         if(strcmp(argv[2], "diff") == 0)
           buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, DETECT_BOTH).template cast<complex<num_t> >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, DETECT_BOTH).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, COLLECT_BOTH).template cast<complex<num_t> >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, COLLECT_BOTH).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "sharpen") == 0)
           buf2 = (midft * (
             filter<num_t>(mdft.template real<num_t>() * buf, SHARPEN_X).template cast<complex<num_t> >() +
