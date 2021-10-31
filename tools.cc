@@ -159,10 +159,14 @@ int main(int argc, const char* argv[]) {
       const auto ctr(filter<num_t>(work, BUMP_SIDE));
       rt += (rtr(0, 1) - rtr(0, 0)) / num_t(row.size());
       ct += (ctr(0, 1) - ctr(0, 0)) / num_t(col.size());
+      num_t m(int(0));
       for(int i = 0; i < data[2].rows(); i ++)
         for(int j = 0; j < data[2].cols(); j ++)
-          data[2](i, j) += ct * num_t(i) + rt * num_t(j);
-      data[0] = data[1] = data[2];
+          m = min(m, data[2](i, j) += ct * num_t(i) + rt * num_t(j));
+      for(int i = 0; i < data[2].rows(); i ++)
+        for(int j = 0; j < data[2].cols(); j ++)
+          data[2](i, j) -= m;
+      data[0] = data[1] = filter<num_t>(data[2], CLIP);
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0
