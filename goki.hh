@@ -649,7 +649,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
               }
               const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv))));
               if(zscore(i, j) < lscore) {
-                result(i, j) = T(zi + 1);
+                result(i, j) = T(zi + 1) / T(dratio);
                 zscore(i, j) = lscore;
               }
             }
@@ -661,7 +661,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           for(int i = 0; i < work.size(); i ++) {
             const auto lscore(abs(work[i]));
             if(zscore(0, i) < lscore) {
-              result(0, i) = T(zi + 1);
+              result(0, i) = T(zi + 1) / T(dratio);
               zscore(0, i) = lscore;
             }
           }
@@ -706,13 +706,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     result = Decompose<T>(recur).represent(data, 2);
     break;
   case CLIP:
-    {
-      result.resize(data.rows(), data.cols());
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = max(T(0), min(T(1), data(i, j)));
-      return result;
-    }
+    result.resize(data.rows(), data.cols());
+    for(int i = 0; i < result.rows(); i ++)
+      for(int j = 0; j < result.cols(); j ++)
+        result(i, j) = max(T(0), min(T(1), data(i, j)));
     break;
   default:
     assert(0 && "unknown command in filter (should not be reached.)");
@@ -1262,7 +1259,7 @@ template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>&
         SimpleVector<T> work(3);
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
-        work[2] = T(min(in.rows(), in.cols())) * sqrt(sqrt(T(min(in.rows(), in.cols())))) * abs(avg / T(vbox) / T(vbox) - aavg);
+        work[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * abs(avg / T(vbox) / T(vbox) - aavg);
         geoms.emplace_back(work);
       }
     }
@@ -1300,8 +1297,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
       SimpleVector<T> g(3);
       g[0] = T(int(score[i].second.first));
       g[1] = T(int(score[i].second.second));
-      g[2] = T(min(in.rows(), in.cols())) *
-        sqrt(sqrt(T(min(in.rows(), in.cols())))) *
+      g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) *
         in(score[i].second.first, score[i].second.second);
       geoms.emplace_back(move(g));
       cache.emplace_back(make_pair(score[i].second.first / guard,
@@ -1311,23 +1307,19 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   SimpleVector<T> g(3);
   g[0] = T(int(0));
   g[1] = T(int(0));
-  g[2] = T(min(in.rows(), in.cols())) * in(0, 0) *
-           sqrt(sqrt(T(min(in.rows(), in.cols()))));
+  g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * in(0, 0);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(0));
-  g[2] = T(min(in.rows(), in.cols())) * in(in.rows() - 1, 0) *
-           sqrt(sqrt(T(min(in.rows(), in.cols()))));
+  g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * in(in.rows() - 1, 0);
   geoms.emplace_back(g);
   g[0] = T(int(0));
   g[1] = T(int(in.cols() - 1));
-  g[2] = T(min(in.rows(), in.cols())) * in(0, in.cols() - 1) *
-           sqrt(sqrt(T(min(in.rows(), in.cols()))));
+  g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * in(0, in.cols() - 1);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(in.cols() - 1));
-  g[2] = T(min(in.rows(), in.cols())) * in(in.rows() - 1, in.cols() - 1) *
-           sqrt(sqrt(T(min(in.rows(), in.cols()))));
+  g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * in(in.rows() - 1, in.cols() - 1);
   geoms.emplace_back(g);
   return geoms;
 }
