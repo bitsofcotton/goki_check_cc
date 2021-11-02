@@ -149,16 +149,6 @@ int main(int argc, const char* argv[]) {
         ct += col[i];
       rt *= - num_t(int(2)) / num_t(row.size() * (row.size() - 1));
       ct *= - num_t(int(2)) / num_t(col.size() * (col.size() - 1));
-      SimpleMatrix<num_t> work(row.size(), 2);
-      work.setCol(0, data[0].row(0));
-      work.setCol(0, data[0].row(data[0].rows() - 1));
-      const auto rtr(filter<num_t>(work, BUMP_SIDE));
-      work.resize(col.size(), 2);
-      work.setCol(0, data[0].col(0));
-      work.setCol(0, data[0].col(data[0].cols() - 1));
-      const auto ctr(filter<num_t>(work, BUMP_SIDE));
-      rt += (rtr(0, 1) - rtr(0, 0)) / num_t(row.size());
-      ct += (ctr(0, 1) - ctr(0, 0)) / num_t(col.size());
       num_t m(int(0));
       for(int i = 0; i < data[2].rows(); i ++)
         for(int j = 0; j < data[2].cols(); j ++)
