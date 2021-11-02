@@ -147,8 +147,8 @@ int main(int argc, const char* argv[]) {
         rt += row[i];
       for(int i = 1; i < col.size(); i ++)
         ct += col[i];
-      rt *= - num_t(int(2)) / num_t(row.size() * (row.size() - 1));
-      ct *= - num_t(int(2)) / num_t(col.size() * (col.size() - 1));
+      rt *= - num_t(int(2)) / num_t(row.size() * (row.size() - 1) * row.size());
+      ct *= - num_t(int(2)) / num_t(col.size() * (col.size() - 1) * col.size());
       num_t m(int(0));
       for(int i = 0; i < data[2].rows(); i ++)
         for(int j = 0; j < data[2].cols(); j ++)
