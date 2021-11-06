@@ -596,14 +596,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   case BUMP_BOTH:
     {
       assert(dir == BUMP_BOTH || data.cols() == 2);
-      SimpleMatrix<T> zscore;
-      if(dir == BUMP_BOTH) {
-        result.resize(data.rows(), data.cols());
-        zscore.resize(data.rows(), data.cols());
-      } else {
-        result.resize(1, 2);
-        zscore.resize(1, 2);
-      }
+      SimpleMatrix<T> zscore(data.rows(), data.cols());
+      result.resize(data.rows(), data.cols());
       result.O();
       zscore.O(- T(1));
       const auto rxy(T(min(data.rows(), data.cols())));

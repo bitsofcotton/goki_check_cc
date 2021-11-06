@@ -131,13 +131,24 @@ int main(int argc, const char* argv[]) {
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
     } else if(strcmp(argv[1], "bump") == 0) {
-      data[2] = filter<num_t>(filter<num_t>(rgb2d<num_t>(data),
-                  BUMP_BOTH), INTEG_BOTH);
+      data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH);
       auto row(data[2].row(0));
       auto col(data[2].col(0));
       for(int i = 1; i < data[2].rows(); i ++)
         row += data[2].row(i);
       for(int i = 1; i < data[2].cols(); i ++)
+        col += data[2].col(i);
+      auto rt0(row[0]);
+      auto ct0(col[0]);
+      for(int i = 1; i < row.size(); i ++)
+        rt0 += row[i];
+      for(int i = 1; i < col.size(); i ++)
+        ct0 += col[i];
+      data[2] = filter<num_t>(data[2], INTEG_BOTH);
+      row.O(); col.O();
+      for(int i = 0; i < data[2].rows(); i ++)
+        row += data[2].row(i);
+      for(int i = 0; i < data[2].cols(); i ++)
         col += data[2].col(i);
       row /= num_t(data[2].rows());
       col /= num_t(data[2].cols());
@@ -147,6 +158,8 @@ int main(int argc, const char* argv[]) {
         rt += row[i];
       for(int i = 1; i < col.size(); i ++)
         ct += col[i];
+      rt -= rt0;
+      ct -= ct0;
       rt *= - num_t(int(2)) / num_t(row.size() * (row.size() - 1) * row.size());
       ct *= - num_t(int(2)) / num_t(col.size() * (col.size() - 1) * col.size());
       num_t m(int(0));
