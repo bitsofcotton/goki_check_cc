@@ -145,12 +145,23 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels)])
-      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "128x128+128", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "128x128+128", "-compress", "none", root + "-" + argv[2] + "0b.ppm"])
+      subprocess.call(["convert", root + ".ppm", "-flip", "-flop", "-compress", "none", root + "-ff.ppm"])
+      subprocess.call([argv[1], argv[2], root + "-ff.ppm", root + "-" + argv[2] + "1.ppm", str(pixels)])
+      subprocess.call(["convert", root + "-" + argv[2] + "1.ppm", "-blur", "128x128+128", "-flip", "-flop", "-compress", "none", root + "-" + argv[2] + "1b.ppm"])
+      subprocess.call(["convert", root + "-" + argv[2] + "0b.ppm", root + "-" + argv[2] + "1b.ppm", "-average", "-compress", "none", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "enlarge"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
         subprocess.call(["cp", root + "-sharpen.ppm", root + "-sharpen0.ppm"])
         subprocess.call([argv[1], "sharpen", root + "-sharpen0.ppm", root + "-sharpen.ppm", str(pixels)])
+    elif(argv[2] == "1to1enl"):
+      subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
+      for t in range(0, pixels):
+        subprocess.call(["cp", root + "-sharpen.ppm", root + "-sharpen0.ppm"])
+        subprocess.call([argv[1], "sharpen", root + "-sharpen0.ppm", root + "-sharpen1.ppm", str(pixels)])
+        subprocess.call([argv[1], "integ", root + "-sharpen1.ppm", root + "-sharpen2.ppm", str(pixels)])
+        subprocess.call(["convert", root + "-sharpen2.ppm", "-equalize", "-compress", "none", root + "-sharpen.ppm"])
     elif(argv[2] == "sharpen"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
