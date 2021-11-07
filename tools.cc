@@ -81,27 +81,28 @@ int main(int argc, const char* argv[]) {
       return 0;
     }
     const auto recur(4 < argc ? atoi(argv[4]) : 1);
+    const auto rot(5 < argc ? atoi(argv[5]) : 0);
     vector<SimpleMatrix<num_t> > data;
     if(!loadp2or3<num_t>(data, argv[2]))
       return - 1;
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], COLLECT_BOTH);
+        data[i] = filter<num_t>(data[i], COLLECT_BOTH, rot);
     else if(strcmp(argv[1], "integ") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], INTEG_BOTH);
+        data[i] = filter<num_t>(data[i], INTEG_BOTH, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur), CLIP);
+        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
     else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur);
+        data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], EXTEND_BOTH, recur);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], BLINK_BOTH, recur);
+        data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], SHARPEN_BOTH);
@@ -135,7 +136,7 @@ int main(int argc, const char* argv[]) {
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
     } else if(strcmp(argv[1], "bump") == 0) {
-      data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH);
+      data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, rot);
       auto row(data[2].row(0));
       auto col(data[2].col(0));
       for(int i = 1; i < data[2].rows(); i ++)
@@ -148,7 +149,7 @@ int main(int argc, const char* argv[]) {
         rt0 += row[i];
       for(int i = 1; i < col.size(); i ++)
         ct0 += col[i];
-      data[2] = filter<num_t>(data[2], INTEG_BOTH);
+      data[2] = filter<num_t>(data[2], INTEG_BOTH, rot);
       row.O(); col.O();
       for(int i = 0; i < data[2].rows(); i ++)
         row += data[2].row(i);
