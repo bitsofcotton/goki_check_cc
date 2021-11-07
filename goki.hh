@@ -70,7 +70,8 @@ typedef enum {
   BLINK_Y,
   BLINK_BOTH,
   REPRESENT,
-  CLIP } direction_t;
+  CLIP,
+  FLIPFLOP } direction_t;
 
 template <typename T> static inline T getImgPt(const T& y, const T& h) {
   auto yy(y % (2 * h));
@@ -503,7 +504,10 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& recur = 2, const int& rot = 0) {
   assert(0 < recur && 0 <= rot);
   if(0 < rot && dir != EXTEND_BOTH && dir != EXTEND_Y && dir != EXTEND_X) {
-    auto res(filter<T>(data, dir, recur) + filter<T>(data.transpose(), dir, recur).transpose());
+    auto res(filter<T>(data, dir, recur) +
+             filter<T>(data.transpose(), dir, recur).transpose() +
+             filter<T>(filter<T>(filter<T>(data, FLIPFLOP), dir, recur), FLIPFLOP) +
+             filter<T>(filter<T>(filter<T>(data.transpose(), FLIPFLOP), dir, recur), FLIPFLOP).transpose());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -513,7 +517,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
                         dir, recur), - theta), res) +
                       center<T>(rotate<T>(filter<T>(rotate<T>(data.transpose(),
-                        theta), dir, recur), - theta), res).transpose());
+                        theta), dir, recur), - theta), res).transpose() +
+                      filter<T>(center<T>(rotate<T>(filter<T>(rotate<T>(
+                        filter<T>(data, FLIPFLOP), theta),
+                        dir, recur), - theta), res), FLIPFLOP) +
+                      filter<T>(center<T>(rotate<T>(filter<T>(rotate<T>(
+                        filter<T>(data.transpose(), FLIPFLOP), theta),
+                        dir, recur), - theta), res),
+                        FLIPFLOP).transpose());
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
@@ -521,7 +532,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         res += move(work);
       }
     }
-    return res /= T(2 * (rot + 1));
+    return res /= T(4 * (rot + 1));
   }
   SimpleMatrix<T> result;
   static const auto Pi(atan2(T(1), T(1)) * T(4));
@@ -755,6 +766,12 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     for(int i = 0; i < result.rows(); i ++)
       for(int j = 0; j < result.cols(); j ++)
         result(i, j) = max(T(0), min(T(1), data(i, j)));
+    break;
+  case FLIPFLOP:
+    result.resize(data.rows(), data.cols());
+    for(int i = 0; i < result.rows(); i ++)
+      for(int j = 0; j < result.cols(); j ++)
+        result(i, j) = data(data.rows() - i - 1, data.cols() - j - 1);
     break;
   default:
     assert(0 && "unknown command in filter (should not be reached.)");
