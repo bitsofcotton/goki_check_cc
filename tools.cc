@@ -87,10 +87,10 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], COLLECT_BOTH, rot);
+        data[i] = filter<num_t>(data[i], COLLECT_BOTH, recur, rot);
     else if(strcmp(argv[1], "integ") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], INTEG_BOTH, rot);
+        data[i] = filter<num_t>(data[i], INTEG_BOTH, recur, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
@@ -136,7 +136,7 @@ int main(int argc, const char* argv[]) {
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
     } else if(strcmp(argv[1], "bump") == 0) {
-      data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, rot);
+      data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
       auto row(data[2].row(0));
       auto col(data[2].col(0));
       for(int i = 1; i < data[2].rows(); i ++)
@@ -149,7 +149,7 @@ int main(int argc, const char* argv[]) {
         rt0 += row[i];
       for(int i = 1; i < col.size(); i ++)
         ct0 += col[i];
-      data[2] = filter<num_t>(data[2], INTEG_BOTH, rot);
+      data[2] = filter<num_t>(data[2], INTEG_BOTH, recur, rot);
       row.O(); col.O();
       for(int i = 0; i < data[2].rows(); i ++)
         row += data[2].row(i);
@@ -173,6 +173,7 @@ int main(int argc, const char* argv[]) {
           m = min(m, data[2](i, j) += ct * num_t(i) + rt * num_t(j));
       for(int i = 0; i < data[2].rows(); i ++)
         for(int j = 0; j < data[2].cols(); j ++)
+          // XXX: /= 8.
           data[2](i, j) = (data[2](i, j) - m) / num_t(int(8));
       data[0] = data[1] = data[2] = filter<num_t>(data[2], CLIP);
     }
@@ -409,7 +410,7 @@ int main(int argc, const char* argv[]) {
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
         out[i].O();
       }
-      const auto comp(pnext<num_t>(in.size() * 2 + 1));
+      const auto comp(taylor<num_t>(in.size() * 2 + 1, num_t(in.size() * 2 + 1)));
       for(int y = 0; y < out[0].rows(); y ++)
         for(int x = 0; x < out[0].cols(); x ++)
           for(int k = 0; k < in.size(); k ++)

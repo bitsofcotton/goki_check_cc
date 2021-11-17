@@ -146,7 +146,7 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "64x64+64", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "32x32+32", "-compress", "none", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "enlarge"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
@@ -182,11 +182,11 @@ else:
       subprocess.call(["montage", root + "-stereoR.jps", "-geometry", "100%x100%", root + "-stereoR.png"])
       subprocess.call(["cp", root + "-L.ppm", root + "-jps-0.ppm"])
       subprocess.call(["cp", root + "-R.ppm", root + "-jps-1.ppm"])
-      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-jps-%d.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-LR.mp4"])
+      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-jps-%d.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + "-LR.mp4"])
     elif(argv[2] == "tilt"):
       for s in range(0, pixels):
         subprocess.call([argv[1], "tilt", str(s), str(pixels), str(psi), root + ".ppm", root + "-bump.ppm", root + "-tilt-base-" + str(s) + ".ppm"])
-      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + ".mp4"])
+      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + ".mp4"])
     elif(argv[2] == "btilt"):
       for s in range(0, pixels * 2):
         subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])

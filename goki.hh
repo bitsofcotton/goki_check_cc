@@ -517,14 +517,13 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
                         dir, recur), - theta), res) +
                       center<T>(rotate<T>(filter<T>(rotate<T>(data.transpose(),
-                        theta), dir, recur), - theta), res).transpose() +
-                      filter<T>(center<T>(rotate<T>(filter<T>(rotate<T>(
+                        theta), dir, recur), - theta).transpose(), res) +
+                      center<T>(filter<T>(rotate<T>(filter<T>(rotate<T>(
                         filter<T>(data, FLIPFLOP), theta),
-                        dir, recur), - theta), res), FLIPFLOP) +
-                      filter<T>(center<T>(rotate<T>(filter<T>(rotate<T>(
+                        dir, recur), - theta), FLIPFLOP), res) +
+                      center<T>(filter<T>(rotate<T>(filter<T>(rotate<T>(
                         filter<T>(data.transpose(), FLIPFLOP), theta),
-                        dir, recur), - theta), res),
-                        FLIPFLOP).transpose());
+                        dir, recur), - theta), FLIPFLOP).transpose(), res) );
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
@@ -734,7 +733,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + recur) = data.row(i);
       for(int i = 0; i < recur; i ++) {
-        const auto next(pnext<T>(int(data.rows()) / (i + 1)));
+        const auto next(taylor<T>(int(data.rows()) / (i + 1), T(int(data.rows()) / (i + 1))));
         result.row(recur - i - 1).O();
         result.row(data.rows() + recur + i).O();
         for(int j = 0; j < next.size(); j ++) {
@@ -1321,7 +1320,7 @@ template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>&
         SimpleVector<T> work(3);
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
-        work[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * abs(avg / T(vbox) / T(vbox) - aavg);
+        work[2] = sqrt(T(min(in.rows(), in.cols()))) * abs(avg / T(vbox) / T(vbox) - aavg);
         geoms.emplace_back(work);
       }
     }
@@ -1359,7 +1358,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
       SimpleVector<T> g(3);
       g[0] = T(int(score[i].second.first));
       g[1] = T(int(score[i].second.second));
-      g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) *
+      g[2] = sqrt(T(min(in.rows(), in.cols()))) *
         in(score[i].second.first, score[i].second.second);
       geoms.emplace_back(move(g));
       cache.emplace_back(make_pair(score[i].second.first / guard,
@@ -1369,19 +1368,19 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   SimpleVector<T> g(3);
   g[0] = T(int(0));
   g[1] = T(int(0));
-  g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * in(0, 0);
+  g[2] = sqrt(T(min(in.rows(), in.cols()))) * in(0, 0);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(0));
-  g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * in(in.rows() - 1, 0);
+  g[2] = sqrt(T(min(in.rows(), in.cols()))) * in(in.rows() - 1, 0);
   geoms.emplace_back(g);
   g[0] = T(int(0));
   g[1] = T(int(in.cols() - 1));
-  g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * in(0, in.cols() - 1);
+  g[2] = sqrt(T(min(in.rows(), in.cols()))) * in(0, in.cols() - 1);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(in.cols() - 1));
-  g[2] = sqrt(T(min(in.rows(), in.cols()))) * T(int(8)) * in(in.rows() - 1, in.cols() - 1);
+  g[2] = sqrt(T(min(in.rows(), in.cols()))) * in(in.rows() - 1, in.cols() - 1);
   geoms.emplace_back(g);
   return geoms;
 }
