@@ -173,7 +173,8 @@ int main(int argc, const char* argv[]) {
           m = min(m, data[2](i, j) += ct * num_t(i) + rt * num_t(j));
       for(int i = 0; i < data[2].rows(); i ++)
         for(int j = 0; j < data[2].cols(); j ++)
-          data[2](i, j) = (data[2](i, j) - m) / num_t(int(2));
+          // N.B. 1 per bump, 1 per original tilt, 1 per integrate.
+          data[2](i, j) = (data[2](i, j) - m) / num_t(int(3));
       data[0] = data[1] = data[2] = filter<num_t>(data[2], CLIP);
     }
     if(!savep2or3<num_t>(argv[3],

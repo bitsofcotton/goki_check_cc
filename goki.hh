@@ -508,30 +508,33 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
              filter<T>(data.transpose(), dir, recur).transpose() +
              filter<T>(filter<T>(filter<T>(data, FLIPFLOP), dir, recur), FLIPFLOP) +
              filter<T>(filter<T>(filter<T>(data.transpose(), FLIPFLOP), dir, recur), FLIPFLOP).transpose());
+    if(1 < rot) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int i = 0; i < rot; i ++) {
-      cerr << "r" << flush;
-      const auto theta((T(i) - T(rot - 1) / T(2)) * atan(T(1)) / (T(rot) / T(2)));
-            auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
-                        dir, recur), - theta), res) +
-                      center<T>(rotate<T>(filter<T>(rotate<T>(data.transpose(),
-                        theta), dir, recur), - theta).transpose(), res) +
-                      center<T>(filter<T>(rotate<T>(filter<T>(rotate<T>(
-                        filter<T>(data, FLIPFLOP), theta),
-                        dir, recur), - theta), FLIPFLOP), res) +
-                      center<T>(filter<T>(rotate<T>(filter<T>(rotate<T>(
-                        filter<T>(data.transpose(), FLIPFLOP), theta),
-                        dir, recur), - theta), FLIPFLOP).transpose(), res) );
+      for(int i = 0; i < rot; i ++) {
+        cerr << "r" << flush;
+        const auto theta((T(i) - T(rot - 1) / T(2)) * atan(T(1)) / (T(rot) / T(2)));
+              auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
+                          dir, recur), - theta), res) +
+                        center<T>(rotate<T>(filter<T>(rotate<T>(data.transpose(),
+                          theta), dir, recur), - theta).transpose(), res) +
+                        center<T>(filter<T>(rotate<T>(filter<T>(rotate<T>(
+                          filter<T>(data, FLIPFLOP), theta),
+                          dir, recur), - theta), FLIPFLOP), res) +
+                        center<T>(filter<T>(rotate<T>(filter<T>(rotate<T>(
+                          filter<T>(data.transpose(), FLIPFLOP), theta),
+                          dir, recur), - theta), FLIPFLOP).transpose(), res) );
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-      {
-        res += move(work);
+        {
+          res += move(work);
+        }
       }
+      return res /= T(4 * (rot + 1));
     }
-    return res /= T(4 * (rot + 1));
+    return res /= T(4);
   }
   SimpleMatrix<T> result;
   static const auto Pi(atan2(T(1), T(1)) * T(4));
