@@ -7,7 +7,7 @@ import subprocess
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 3.
-rot    = 3
+rot    = 1
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -145,7 +145,7 @@ else:
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(0)])
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "32x32+32", "-compress", "none", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "enlarge"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
