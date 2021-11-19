@@ -173,7 +173,6 @@ int main(int argc, const char* argv[]) {
           m = min(m, data[2](i, j) += ct * num_t(i) + rt * num_t(j));
       for(int i = 0; i < data[2].rows(); i ++)
         for(int j = 0; j < data[2].cols(); j ++)
-          // XXX: /= 2.
           data[2](i, j) = (data[2](i, j) - m) / num_t(int(2));
       data[0] = data[1] = data[2] = filter<num_t>(data[2], CLIP);
     }
@@ -548,7 +547,7 @@ int main(int argc, const char* argv[]) {
     auto n(m);
     auto f(m);
     m[0] = n[0] = num_t(atoi(argv[2]) * 2);
-    // XXX (f[0] := 1 causes flat result.):
+    // N.B. (f[0] := 1 causes flat result.):
     f[0] = num_t(0);
     for(int i = 1; i < m.size(); i ++) {
       m[i] = m[i - 1] + (num_t(arc4random_uniform(3000)) - num_t(1500)) / num_t(1500);
