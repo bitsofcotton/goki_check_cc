@@ -149,7 +149,8 @@ int main(int argc, const char* argv[]) {
         rt0 += row[i];
       for(int i = 1; i < col.size(); i ++)
         ct0 += col[i];
-      data[2] = filter<num_t>(data[2], INTEG_BOTH, recur, rot);
+      // N.B. local focuses returns 2nd derivative form.
+      data[2] = filter<num_t>(filter<num_t>(data[2], INTEG_BOTH, recur, rot), INTEG_BOTH, recur, rot);
       row.O(); col.O();
       for(int i = 0; i < data[2].rows(); i ++)
         row += data[2].row(i);
@@ -173,8 +174,8 @@ int main(int argc, const char* argv[]) {
           m = min(m, data[2](i, j) += ct * num_t(i) + rt * num_t(j));
       for(int i = 0; i < data[2].rows(); i ++)
         for(int j = 0; j < data[2].cols(); j ++)
-          // N.B. 1 per bump, 1 per original tilt, 1 per integrate, twice.
-          data[2](i, j) = (data[2](i, j) - m) / num_t(int(3 * 2));
+          // N.B. 1 per bump, 1 per original tilt, 2 per integrate.
+          data[2](i, j) = (data[2](i, j) - m) / num_t(int(4));
       data[0] = data[1] = data[2] = filter<num_t>(data[2], CLIP);
     }
     if(!savep2or3<num_t>(argv[3],
