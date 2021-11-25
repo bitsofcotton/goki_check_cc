@@ -62,6 +62,8 @@ typedef enum {
   BLUR_BOTH,
   INTEG_BOTH,
   COLLECT_BOTH,
+  BUMP0_BOTH,
+  BUMP1_BOTH,
   BUMP_BOTH,
   EXTEND_X,
   EXTEND_Y,
@@ -378,7 +380,7 @@ template <typename T> bool loadcenterr(vector<SimpleVector<T> >& center, vector<
       sbuf >> work[1];
       sbuf >> work[2];
       center.emplace_back(move(work));
-      num_t workr;
+      T workr;
       sbuf >> workr;
       r.emplace_back(workr);
     }
@@ -504,10 +506,7 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& recur = 2, const int& rot = 0) {
   assert(0 < recur && 0 <= rot);
   if(0 < rot && dir != EXTEND_BOTH && dir != EXTEND_Y && dir != EXTEND_X) {
-    auto res(filter<T>(data, dir, recur) +
-             filter<T>(data.transpose(), dir, recur).transpose() +
-             filter<T>(filter<T>(filter<T>(data, FLIPFLOP), dir, recur), FLIPFLOP) +
-             filter<T>(filter<T>(filter<T>(data.transpose(), FLIPFLOP), dir, recur), FLIPFLOP).transpose());
+    auto res(filter<T>(data, dir, recur));
     if(1 < rot) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -516,15 +515,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         cerr << "r" << flush;
         const auto theta((T(i) - T(rot - 1) / T(2)) * atan(T(1)) / (T(rot) / T(2)));
               auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
-                          dir, recur), - theta), res) +
-                        center<T>(rotate<T>(filter<T>(rotate<T>(data.transpose(),
-                          theta), dir, recur), - theta).transpose(), res) +
-                        center<T>(filter<T>(rotate<T>(filter<T>(rotate<T>(
-                          filter<T>(data, FLIPFLOP), theta),
-                          dir, recur), - theta), FLIPFLOP), res) +
-                        center<T>(filter<T>(rotate<T>(filter<T>(rotate<T>(
-                          filter<T>(data.transpose(), FLIPFLOP), theta),
-                          dir, recur), - theta), FLIPFLOP).transpose(), res) );
+                          dir, recur), - theta), res));
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
@@ -532,7 +523,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           res += move(work);
         }
       }
-      return res /= T(4 * (rot + 1));
+      return res /= T(rot + 1);
     }
     return res /= T(4);
   }
@@ -673,9 +664,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                             zx(i, j) * zy(i, j)) ));
     }
     break;
-  case BUMP_BOTH:
+  case BUMP0_BOTH:
     {
-      assert(dir == BUMP_BOTH || data.cols() == 2);
       SimpleMatrix<T> zscore(data.rows(), data.cols());
       result.resize(data.rows(), data.cols());
       result.O();
@@ -725,6 +715,75 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
           }
       }
+    }
+    break;
+  case BUMP1_BOTH:
+    {
+      result = filter<T>(data, BUMP0_BOTH, recur, rot);
+      auto row(result.row(0));
+      auto col(result.col(0));
+      for(int i = 1; i < result.rows(); i ++)
+        row += result.row(i);
+      for(int i = 1; i < result.cols(); i ++)
+        col += result.col(i);
+      auto rt0(row[0]);
+      auto ct0(col[0]);
+      for(int i = 1; i < row.size(); i ++)
+        rt0 += row[i];
+      for(int i = 1; i < col.size(); i ++)
+        ct0 += col[i];
+      // N.B. local focuses returns 2nd derivative form.
+      result = filter<T>(filter<T>(result, INTEG_BOTH, recur, rot), INTEG_BOTH, recur, rot);
+      row.O(); col.O();
+      for(int i = 0; i < result.rows(); i ++)
+        row += result.row(i);
+      for(int i = 0; i < result.cols(); i ++)
+        col += result.col(i);
+      row /= T(result.rows());
+      col /= T(result.cols());
+      auto rt(row[0]);
+      auto ct(col[0]);
+      for(int i = 1; i < row.size(); i ++)
+        rt += row[i];
+      for(int i = 1; i < col.size(); i ++)
+        ct += col[i];
+      rt -= rt0;
+      ct -= ct0;
+      rt *= - T(int(2)) / T(row.size() * (row.size() - 1) * row.size());
+      ct *= - T(int(2)) / T(col.size() * (col.size() - 1) * col.size());
+      T m(int(0));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          m = min(m, result(i, j) += ct * T(i) + rt * T(j));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          // N.B. 1 per bump, 1 per original tilt, 2 per integrate.
+          result(i, j) = (result(i, j) - m) / T(int(4));
+      result = filter<T>(result, CLIP);
+    }
+    break;
+  case BUMP_BOTH:
+    {
+      result = filter<T>(filter<T>(filter<T>(data, FLIPFLOP), BUMP1_BOTH), FLIPFLOP);
+      const auto lower(filter<T>(data, BUMP1_BOTH));
+            T    gconst(int(0));
+      for(int i = 0; i < result.rows(); i ++) {
+        const auto x(result.cols() - 1 - i * (result.cols() - 1) / (result.rows() - 1));
+        gconst += result(i, x) - lower(i, x);
+      }
+      gconst /= T(int(result.rows()));
+      for(int i = 0; i < result.rows(); i ++) {
+        const auto x(result.cols() - 1 - i * (result.cols() - 1) / (result.rows() - 1));
+        for(int j = x; j < result.cols(); j ++)
+          result(i, x) = lower(i, x) + gconst;
+      }
+      T m(int(0));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          m = min(m, result(i, j));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) -= m;
     }
     break;
   case EXTEND_Y:

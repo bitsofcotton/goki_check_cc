@@ -108,6 +108,8 @@ int main(int argc, const char* argv[]) {
         data[i] = filter<num_t>(data[i], SHARPEN_BOTH);
     else if(strcmp(argv[1], "represent") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), REPRESENT, recur);
+    else if(strcmp(argv[1], "bump") == 0)
+      data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -135,48 +137,6 @@ int main(int argc, const char* argv[]) {
               data[1](i, j) == ddata[1](i, j) &&
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
-    } else if(strcmp(argv[1], "bump") == 0) {
-      data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
-      auto row(data[2].row(0));
-      auto col(data[2].col(0));
-      for(int i = 1; i < data[2].rows(); i ++)
-        row += data[2].row(i);
-      for(int i = 1; i < data[2].cols(); i ++)
-        col += data[2].col(i);
-      auto rt0(row[0]);
-      auto ct0(col[0]);
-      for(int i = 1; i < row.size(); i ++)
-        rt0 += row[i];
-      for(int i = 1; i < col.size(); i ++)
-        ct0 += col[i];
-      // N.B. local focuses returns 2nd derivative form.
-      data[2] = filter<num_t>(filter<num_t>(data[2], INTEG_BOTH, recur, rot), INTEG_BOTH, recur, rot);
-      row.O(); col.O();
-      for(int i = 0; i < data[2].rows(); i ++)
-        row += data[2].row(i);
-      for(int i = 0; i < data[2].cols(); i ++)
-        col += data[2].col(i);
-      row /= num_t(data[2].rows());
-      col /= num_t(data[2].cols());
-      auto rt(row[0]);
-      auto ct(col[0]);
-      for(int i = 1; i < row.size(); i ++)
-        rt += row[i];
-      for(int i = 1; i < col.size(); i ++)
-        ct += col[i];
-      rt -= rt0;
-      ct -= ct0;
-      rt *= - num_t(int(2)) / num_t(row.size() * (row.size() - 1) * row.size());
-      ct *= - num_t(int(2)) / num_t(col.size() * (col.size() - 1) * col.size());
-      num_t m(int(0));
-      for(int i = 0; i < data[2].rows(); i ++)
-        for(int j = 0; j < data[2].cols(); j ++)
-          m = min(m, data[2](i, j) += ct * num_t(i) + rt * num_t(j));
-      for(int i = 0; i < data[2].rows(); i ++)
-        for(int j = 0; j < data[2].cols(); j ++)
-          // N.B. 1 per bump, 1 per original tilt, 2 per integrate.
-          data[2](i, j) = (data[2](i, j) - m) / num_t(int(4));
-      data[0] = data[1] = data[2] = filter<num_t>(data[2], CLIP);
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
