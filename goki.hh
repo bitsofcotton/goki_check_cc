@@ -726,6 +726,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         row += result.row(i);
       for(int i = 1; i < result.cols(); i ++)
         col += result.col(i);
+      row /= T(result.rows());
+      col /= T(result.cols());
       auto rt0(row[0]);
       auto ct0(col[0]);
       for(int i = 1; i < row.size(); i ++)
