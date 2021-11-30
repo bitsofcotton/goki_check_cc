@@ -94,6 +94,35 @@ public:
   feeder f;
 };
 
+template <typename T, typename P> class P0D {
+public:
+  typedef SimpleVector<T> Vec;
+  inline P0D() { ; }
+  inline P0D(const int& size, const int& step = 1) {
+    p = P(size, step);
+    q = P(size, step);
+    r[0] = r[1] = T(int(1));
+    M[0] = M[1] = s[0] = s[1] = bin = T(t ^= t);
+  }
+  inline ~P0D() { ; };
+  inline pair<T, T> next(const T& in) {
+    t ++;
+    s[t & 1] += in - bin;
+    const auto MM((t & 1 ? p : q).next(s[t & 1]));
+    if(M[t & 1] != T(int(0))) r[t & 1] *= M[t & 1] / (M[t & 1] + MM);
+    M[t & 1] += MM;
+    bin = in;
+    return make_pair(r[t & 1] * MM, r[t & 1]);
+  }
+  int t;
+  T s[2];
+  T r[2];
+  T M[2];
+  T bin;
+  P p;
+  P q;
+};
+
 #define _P0_
 #endif
 
