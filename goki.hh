@@ -2231,6 +2231,120 @@ template <typename T> static inline match_t<T> tiltprep(const SimpleMatrix<T>& i
   return m;
 }
 
+template <typename T> SimpleMatrix<T> bump2(const SimpleMatrix<T>& color, const SimpleMatrix<T>& bump, const T& psi) {
+  assert(color.rows() == bump.rows() && color.cols() == bump.cols());
+  const auto margin(tiltprep<T>(bump, 1, 4, - abs(psi)).transform(SimpleVector<T>(3).O())[1]);
+  const auto color0((tilt<T>(color, bump, tiltprep<T>(bump, 1, 4, - abs(psi))).template cast<complex<T> >() * dft<T>(color.cols()).subMatrix(0, margin, color.cols(), color.cols() - margin * 2) * dft<T>(- color.cols()).subMatrix(0, 0, color.cols() - margin * 2, color.cols())).template real<T>());
+  const auto color1((tilt<T>(color, bump, tiltprep<T>(bump, 1, 4,   abs(psi))).template cast<complex<T> >() * dft<T>(color.cols()).subMatrix(0, margin, color.cols(), color.cols() - margin * 2) * dft<T>(- color.cols()).subMatrix(0, 0, color.cols() - margin * 2, color.cols())).template real<T>());
+  const auto color2((dft<T>(- color.rows()).subMatrix(0, 0, color.rows(), color.rows() - margin * 2) * dft<T>(color.rows()).subMatrix(margin, 0, color.rows() - margin * 2, color.rows()) * tilt<T>(color, bump, tiltprep<T>(bump, 1, 2, - abs(psi))).template cast<complex<T> >()).template real<T>());
+  const auto color3((dft<T>(- color.rows()).subMatrix(0, 0, color.rows(), color.rows() - margin * 2) * dft<T>(color.rows()).subMatrix(margin, 0, color.rows() - margin * 2, color.rows()) * tilt<T>(color, bump, tiltprep<T>(bump, 1, 2,   abs(psi))).template cast<complex<T> >()).template real<T>());
+  SimpleMatrix<T> result(color.rows(), color.cols());
+  SimpleMatrix<T> zscore(color.rows(), color.cols());
+  result.O();
+  zscore.O(- T(1));
+  const auto rxy(T(min(color.rows(), color.cols())));
+  const int  dratio(sqrt(sqrt(rxy)));
+        SimpleVector<T> camera(2);
+        SimpleVector<T> cpoint(2);
+  camera[0] = T(0);
+  camera[1] = T(1);
+  cpoint[0] = T(1) / T(2 * dratio);
+  auto dpoint(cpoint);
+  for(int zi = 0; zi < dratio; zi ++) {
+    // N.B. projection scale is linear.
+    cpoint[1] = dpoint[1] = T(zi) / T(dratio);
+    // x-z plane projection of point p with camera geometry c to z=0.
+    // c := camera, p := cpoint.
+    // <c + (p - c) * t, [0, 1]> = 0
+    const auto t(- camera[1] / (dpoint[1] - camera[1]));
+    const auto y0((camera + (dpoint - camera) * t)[0] * rxy);
+    if(abs(int(y0)) < 3 || rxy < abs(y0) * T(2)) continue;
+    const auto Dop(diff<T>(abs(int(y0) & ~ int(1))));
+    const auto Dop0((Dop.row(int(y0) / 2) + Dop.row(int(y0) / 2 + 1)) / T(2));
+    const auto DDop(Dop * Dop);
+    const auto DDop0((DDop.row(int(y0) / 2) + DDop.row(int(y0) / 2 + 1)) / T(2));
+    // N.B. curvature matrix det == EG - F^2, we see only \< relation.
+    for(int i = 0; i < result.rows(); i ++)
+      for(int j = 0; j < result.cols(); j ++) {
+        T fu(0), fv(0), L(0), M(0), N(0);
+        for(int kk = 0; kk < Dop0.size(); kk ++) {
+          cpoint[0] = (T(j + kk) - T(Dop0.size() + result.cols()) / T(2)) / T(2 * dratio) / (T(result.cols()) / T(2));
+          const auto t(- camera[1] / (cpoint[1] - camera[1]));
+          const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
+          cpoint[0] = (T(i + kk) - T(Dop0.size() + result.cols()) / T(2)) / T(2 * dratio) / (T(result.cols()) / T(2));
+          const auto s(- camera[1] / (cpoint[1] - camera[1]));
+          const auto y0((camera + (cpoint - camera) * s)[0] * rxy);
+          const auto& col(kk < Dop0.size() / 2 ? color0 : color1);
+          const auto& row(kk < Dop0.size() / 2 ? color2 : color3);
+          fu += row(getImgPt<int>(y0, row.rows()), j) * Dop0[kk];
+          fv += col(i, getImgPt<int>(x0, result.cols())) * Dop0[kk];
+          L  += row(getImgPt<int>(y0, row.rows()), j) * DDop0[kk];
+          N  += col(i, getImgPt<int>(x0, result.cols())) * DDop0[kk];
+          for(int ll = 0; ll < Dop0.size(); ll ++) {
+            cpoint[0] = (T(j + ll) - T(Dop0.size() + result.cols()) / T(2)) / T(2 * dratio) / (T(result.cols()) / T(2));
+            const auto t(- camera[1] / (cpoint[1] - camera[1]));
+            const auto x0((camera + (cpoint - camera) * t)[0] * rxy);
+            cpoint[0] = (T(j + ll) - T(Dop0.size() + result.cols()) / T(2)) / T(2 * dratio) / (T(result.cols()) / T(2));
+            const auto s(- camera[1] / (cpoint[1] - camera[1]));
+            const auto y0((camera + (cpoint - camera) * s)[0] * rxy);
+            M += Dop0[kk] * Dop0[ll] *
+              (col(getImgPt<int>(y0, result.rows()),
+                   getImgPt<int>(x0, result.cols())) +
+               row(getImgPt<int>(y0, result.rows()),
+                   getImgPt<int>(x0, result.cols())) ) / T(2);
+          }
+        }
+        const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv))));
+        if(zscore(i, j) < lscore) {
+          result(i, j) = T(zi + 1) / T(dratio);
+          zscore(i, j) = lscore;
+        }
+      }
+  }
+  auto row(result.row(0));
+  auto col(result.col(0));
+  for(int i = 1; i < result.rows(); i ++)
+    row += result.row(i);
+  for(int i = 1; i < result.cols(); i ++)
+    col += result.col(i);
+  row /= T(result.rows());
+  col /= T(result.cols());
+  auto rt0(row[0]);
+  auto ct0(col[0]);
+  for(int i = 1; i < row.size(); i ++)
+    rt0 += row[i];
+  for(int i = 1; i < col.size(); i ++)
+    ct0 += col[i];
+  // N.B. local focuses returns 2nd derivative form.
+  result = filter<T>(filter<T>(result, INTEG_BOTH), INTEG_BOTH);
+  row.O(); col.O();
+  for(int i = 0; i < result.rows(); i ++)
+    row += result.row(i);
+  for(int i = 0; i < result.cols(); i ++)
+    col += result.col(i);
+  row /= T(result.rows());
+  col /= T(result.cols());
+  auto rt(row[0]);
+  auto ct(col[0]);
+  for(int i = 1; i < row.size(); i ++)
+    rt += row[i];
+  for(int i = 1; i < col.size(); i ++)
+    ct += col[i];
+  rt -= rt0;
+  ct -= ct0;
+  rt *= - T(int(2)) / T(row.size() * (row.size() - 1) * row.size());
+  ct *= - T(int(2)) / T(col.size() * (col.size() - 1) * col.size());
+  T m(int(0));
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      m = min(m, result(i, j) += ct * T(i) + rt * T(j));
+  for(int i = 0; i < result.rows(); i ++)
+    for(int j = 0; j < result.cols(); j ++)
+      // N.B. 1 per bump, 1 per original tilt, 2 per integrate.
+      result(i, j) = (result(i, j) - m) / T(int(4));
+  return filter<T>(result, CLIP);
+}
+
 #define _GOKICHECK_
 #endif
 
