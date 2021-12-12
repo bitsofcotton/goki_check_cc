@@ -109,7 +109,7 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "represent") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), REPRESENT, recur);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = bump2<num_t>(rgb2d<num_t>(data), filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot), num_t(1) / num_t(6));
+      data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
