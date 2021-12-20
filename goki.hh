@@ -506,25 +506,23 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   assert(0 < recur && 0 <= rot);
   if(0 < rot && dir != EXTEND_BOTH && dir != EXTEND_Y && dir != EXTEND_X) {
     auto res(filter<T>(data, dir, recur));
-    if(1 < rot) {
+    if(rot <= 1) return res;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-      for(int i = 0; i < rot; i ++) {
-        cerr << "r" << flush;
-        const auto theta((T(i) - T(rot - 1) / T(2)) * atan(T(1)) / (T(rot) / T(2)));
-              auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
-                          dir, recur), - theta), res));
+    for(int i = 0; i < rot; i ++) {
+      cerr << "r" << flush;
+      const auto theta((T(i) - T(rot - 1) / T(2)) * atan(T(1)) / (T(rot) / T(2)));
+            auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
+                        dir, recur), - theta), res));
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-        {
-          res += move(work);
-        }
+      {
+        res += move(work);
       }
-      return res /= T(rot + 1);
     }
-    return res /= T(4);
+    return res /= T(rot + 1);
   }
   SimpleMatrix<T> result;
   static const auto Pi(atan2(T(1), T(1)) * T(4));
@@ -692,7 +690,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       camera[0] = T(0);
       camera[1] = T(1);
       cpoint[0] = T(1) / T(2 * dratio);
-      for(int zi = 0; zi < dratio; zi ++) {
+      for(int zi = 0; zi < min(dratio, recur); zi ++) {
         // N.B. projection scale is linear.
         cpoint[1] = T(zi) / T(dratio);
         // x-z plane projection of point p with camera geometry c to z=0.
