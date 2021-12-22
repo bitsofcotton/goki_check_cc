@@ -728,15 +728,17 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
           }
       }
-      result = filter<T>(result, INTINT, recur, rot);
+      // ~ exp(bump) + O(f''' sqrt(dxdy)^3 / 3!).
+      result = filter<T>(result, INTINT, recur, rot) + filter<T>(result, INTEG_BOTH, recur, rot) + result / T(int(2));
+      // ~ log(1 + exp(bump)) < log(5).
       T m(int(0));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          m = min(m, result(i, j));
+          m = min(m, result(i, j) = log(T(int(1)) + result(i, j)));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           // N.B. 1 per bump, 1 per original tilt, 2 per integrate.
-          result(i, j) = (result(i, j) - m) / T(int(4));
+          result(i, j) = (result(i, j) - m) / log(T(int(5)));
       result = filter<T>(result, CLIP);
     }
     break;
