@@ -66,6 +66,8 @@ int main(int argc, const char* argv[]) {
   }
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "integ") == 0 ||
+     strcmp(argv[1], "diffraw") == 0 ||
+     strcmp(argv[1], "integraw") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
@@ -91,6 +93,12 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "integ") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], INTEG_BOTH, recur, rot);
+    else if(strcmp(argv[1], "diffraw") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = diff<num_t>(data[i].rows()) * data[i] * diff<num_t>(data[i].cols());
+    else if(strcmp(argv[1], "integraw") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = diff<num_t>(- data[i].rows()) * data[i] * diff<num_t>(- data[i].cols());
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
