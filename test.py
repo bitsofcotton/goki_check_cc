@@ -135,16 +135,6 @@ elif(argv[2] == "i2i"):
   subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i3n.ppm", "-type", "GrayScale", "-negate", "-compress", "none", argv[idx] + "-" + argv[idx + 1] + "-i2i4n.ppm"])
   subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i4.ppm", "-compose", "multiply", "-composite", argv[idx] + "-" + argv[idx + 1] + "-i2i.png"])
   subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i2n.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i4n.ppm", "-compose", "multiply", "-composite", argv[idx] + "-" + argv[idx + 1] + "-i2in.png"])
-elif(argv[2] == "bump2"):
-  root, ext = os.path.splitext(argv[3])
-  subprocess.call(["montage", argv[3], argv[3], argv[3], argv[3], "-tile", "2x2", "-geometry", "+0+0", "-compress", "none", root + "-tile.ppm"])
-  subprocess.call([argv[1], "bump", root + "-tile.ppm", root + "-tile-bump0.ppm", argv[4], str(rot)])
-  subprocess.call(["convert", root + "-tile-bump0.ppm", "-blur", "192x192+192", "-compress", "none", root + "-tile-bump1.ppm"])
-  subprocess.call(["convert", root + "-tile.ppm", "-modulate", "50", root + "-tile-bump1.ppm", "-compose", "softlight", "-composite", "-equalize", "-compress", "none", root + "-nurie.ppm"])
-  subprocess.call([argv[1], "bump", root + "-nurie.ppm", root + "-tile-bump2.ppm", argv[4], str(rot)])
-  subprocess.call(["convert", root + "-tile-bump2.ppm", "-blur", "192x192+192", "-compress", "none", root + "-tile-bump3.ppm"])
-  subprocess.call(["convert", root + "-tile-bump3.ppm", "-crop", "50%x50%", root + "-ptb.png"])
-  subprocess.call(["convert", root + "-ptb-0.png", root + "-ptb-1.png", root + "-ptb-2.png", root + "-ptb-3.png", "-average", "-compress", "none", root + "-bump.ppm"])
 else:
   for line in argv[3:]:
     try:
@@ -157,6 +147,15 @@ else:
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "192x192+192", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "bump2"):
+      subprocess.call(["montage", line, line, line, line, "-tile", "2x2", "-geometry", "+0+0", "-compress", "none", root + "-tile.ppm"])
+      subprocess.call([argv[1], "bump", root + "-tile.ppm", root + "-tile-bump0.ppm", str(pixels), str(rot)])
+      subprocess.call(["convert", root + "-tile-bump0.ppm", "-blur", "192x192+192", "-compress", "none", root + "-tile-bump1.ppm"])
+      subprocess.call(["convert", root + "-tile.ppm", "-modulate", "50", root + "-tile-bump1.ppm", "-compose", "softlight", "-composite", "-equalize", "-compress", "none", root + "-nurie.ppm"])
+      subprocess.call([argv[1], "bump", root + "-nurie.ppm", root + "-tile-bump2.ppm", str(pixels), str(rot)])
+      subprocess.call(["convert", root + "-tile-bump2.ppm", "-blur", "192x192+192", "-compress", "none", root + "-tile-bump3.ppm"])
+      subprocess.call(["convert", root + "-tile-bump3.ppm", "-crop", "50%x50%", root + "-ptb.png"])
+      subprocess.call(["convert", root + "-ptb-0.png", root + "-ptb-1.png", root + "-ptb-2.png", root + "-ptb-3.png", "-average", "-compress", "none", root + "-bump.ppm"])
     elif(argv[2] == "enlarge"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
