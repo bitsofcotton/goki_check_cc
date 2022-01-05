@@ -130,7 +130,7 @@ public:
   inline P3(const int& size, const int& step = 1) {
     pd = P0D<T, P>(size, step);
     p  = P(size, step);
-    Md = M = s = T(t ^= t);
+    Md = M = s = bin = T(t ^= t);
     -- t;
   }
   inline ~P3() { ; };
@@ -139,8 +139,12 @@ public:
     static const T zero(int(0));
     const auto bMd(Md);
     Md = pd.next(in).first;
-    if(! ((++ t) % 3)) return zero;
-    s += bMd * M * in;
+    if(! ((++ t) % 3)) {
+      bin = in;
+      return zero;
+    }
+    s += bMd * M * (in - bin);
+    bin = in;
     if(t % 3 == 2) {
       M = p.next(s);
       s = T(int(0));
@@ -153,6 +157,7 @@ public:
   T M;
   T Md;
   T s;
+  T bin;
   int t;
 };
 
