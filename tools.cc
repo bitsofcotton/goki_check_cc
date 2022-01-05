@@ -381,6 +381,8 @@ int main(int argc, const char* argv[]) {
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
         out[i].O();
       }
+      auto sgnm(out);
+      auto absm(out);
       const auto rr(int(in.size() / 2) - int(in.size() / 2) % 3);
       for(int i = 0; i < std::atoi(argv[3]); i ++)
         for(int y = 0; y < out[0].rows(); y ++)
@@ -400,11 +402,15 @@ int main(int argc, const char* argv[]) {
                 brnd = rnd;
                 rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
               }
+              sgnm[cidx](y, x) += sgn<num_t>(psgn);
+              absm[cidx](y, x) += abs(pabs);
               out[cidx](y, x) += sgn<num_t>(psgn) * abs(pabs);
             }
-      for(int i = 0; i < 3; i ++) {
-        out[i] /= num_t(int(std::atoi(argv[3]))) / num_t(int(2));
-        out[i] += in[in.size() - 1][i];
+      for(int cidx = 0; cidx < 3; cidx ++) {
+        for(int y = 0; y < sgnm[cidx].rows(); y ++)
+          for(int x = 0; x < sgnm[cidx].cols(); x ++)
+            out[cidx](y, x) = sgn<num_t>(sgnm[cidx](y, x)) * abs(absm[cidx](y, x)) / num_t(int(std::atoi(argv[3]))) * num_t(int(2));
+        out[cidx] += in[in.size() - 1][cidx];
       }
       savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true, 65535);
     } else if(strcmp(argv[1], "lenl") == 0) {

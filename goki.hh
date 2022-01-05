@@ -753,6 +753,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       result.row(0).O();
       result.row(data.rows() + 1).O();
       const auto rr(int(data.rows() / 2) - int(data.rows() / 2) % 3);
+      SimpleVector<T> sgnv0(data.cols());
+      auto sgnv1(sgnv0.O());
+      auto absv0(sgnv0.O());
+      auto absv1(sgnv0.O());
       for(int i = 0; i < recur; i ++)
         for(int k = 0; k < data.cols(); k ++) {
           P3<T, P0<T, idFeeder<T> > > p3f(rr);
@@ -776,12 +780,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             brnd  = rnd;
             rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }
-          result(0,               k) += sgn<T>(bpsgn) * abs(bpabs);
-          result(data.rows() + 1, k) += sgn<T>(fpsgn) * abs(fpabs);
+          sgnv0[k] += sgn<T>(bpsgn);
+          sgnv1[k] += sgn<T>(fpsgn);
+          absv0[k] += abs(bpabs);
+          absv1[k] += abs(fpabs);
         }
-      result.row(0) /= T(int(recur)) / T(int(2));
+      for(int k = 0; k < data.cols(); k ++) {
+        result(0,               k) = sgn<T>(sgnv0[k]) * abs(absv0[k]) / T(int(recur)) * T(int(2));
+        result(data.rows() + 1, k) = sgn<T>(sgnv1[k]) * abs(absv1[k]) / T(int(recur)) * T(int(2));
+      }
       result.row(0) += data.row(0);
-      result.row(data.rows() + 1) /= T(int(recur)) / T(int(2));
       result.row(data.rows() + 1) += data.row(data.rows() - 1);
     }
     break;
