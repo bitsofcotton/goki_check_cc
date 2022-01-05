@@ -64,7 +64,8 @@ int main(int argc, const char* argv[]) {
     usage();
     return 0;
   }
-  if(strcmp(argv[1], "collect") == 0 ||
+  if(strcmp(argv[1], "nop") == 0 ||
+     strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "integ") == 0 ||
      strcmp(argv[1], "diffraw") == 0 ||
      strcmp(argv[1], "integraw") == 0 ||
@@ -106,8 +107,9 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
     else if(strcmp(argv[1], "pextend") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], EXTEND_BOTH, recur);
+      for(int j = 0; j < rot; j ++)
+        for(int i = 0; i < data.size(); i ++)
+          data[i] = filter<num_t>(data[i], EXTEND_BOTH, recur);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
@@ -148,9 +150,9 @@ int main(int argc, const char* argv[]) {
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
-        strcmp(argv[1], "bump") != 0
+        strcmp(argv[1], "bump") != 0 && strcmp(argv[1], "nop") != 0
         ? normalize<num_t>(data) : data,
-        ! true, strcmp(argv[1], "pextend") == 0 ? 255 : 65535))
+        ! true, 65535))
       return - 1;
   } else if(strcmp(argv[1], "penl") == 0) {
     if(argc < 5) {
@@ -195,7 +197,7 @@ int main(int argc, const char* argv[]) {
           out[i](j, k) /= max(num_t(1), cnt(j, k));
       out[i] = filter<num_t>(out[i], CLIP);
     }
-    if(!savep2or3<num_t>(argv[4], out, ! true, 255))
+    if(!savep2or3<num_t>(argv[4], out, ! true, 65535))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
@@ -364,8 +366,8 @@ int main(int argc, const char* argv[]) {
       return - 1;
     }
     vector<vector<SimpleMatrix<num_t> > > in;
-    in.resize(argc - 3);
-    for(int i = 3; i < argc; i ++) {
+    in.resize(argc - (strcmp(argv[1], "pred") == 0 ? 4 : 3));
+    for(int i = strcmp(argv[1], "pred") == 0 ? 4 : 3; i < argc; i ++) {
       vector<SimpleMatrix<num_t> > ibuf;
       if(!loadp2or3<num_t>(ibuf, argv[i]))
         return - 2;
@@ -379,17 +381,32 @@ int main(int argc, const char* argv[]) {
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
         out[i].O();
       }
-      const auto comp(taylor<num_t>(in.size() * 2 + 1, num_t(in.size() * 2 + 1)));
-      for(int y = 0; y < out[0].rows(); y ++)
-        for(int x = 0; x < out[0].cols(); x ++)
-          for(int k = 0; k < in.size(); k ++)
-            for(int m = 0; m < out.size(); m ++) {
-              out[m](y, x) += in[k][m](y, x) * comp[2 * k];
-              if(k < in.size() - 1)
-                out[m](y, x) += (in[k][m](y, x) +
-                  in[k + 1][m](y, x)) / num_t(2) * comp[2 * k + 1];
+      const auto rr(int(in.size() / 2) - int(in.size() / 2) % 3);
+      for(int i = 0; i < std::atoi(argv[3]); i ++)
+        for(int y = 0; y < out[0].rows(); y ++)
+          for(int x = 0; x < out[0].cols(); x ++)
+            for(int cidx = 0; cidx < out.size(); cidx ++) {
+              P3<num_t, P0<num_t, idFeeder<num_t> > > p3(rr);
+              P0<num_t, idFeeder<num_t> > p0(rr);
+              num_t pabs(int(0));
+              num_t psgn(int(0));
+              num_t brnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
+              num_t rnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
+              const auto rr(int(in.size()) - int(in.size()) % 3 - 3);
+              for(int kk = 0; kk < rr; kk ++) {
+                auto delta(in[kk - rr + in.size()][cidx](y, x) * rnd - in[kk - 1 - rr + in.size()][cidx](y, x) * brnd);
+                pabs = p0.next(abs(delta));
+                psgn = p3.next(in[kk - rr + in.size()][cidx](y, x) * rnd);
+                brnd = rnd;
+                rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
+              }
+              out[cidx](y, x) += sgn<num_t>(psgn) * abs(pabs);
             }
-      savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true);
+      for(int i = 0; i < 3; i ++) {
+        out[i] /= num_t(int(std::atoi(argv[3]))) / num_t(int(2));
+        out[i] += in[in.size() - 1][i];
+      }
+      savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true, 65535);
     } else if(strcmp(argv[1], "lenl") == 0) {
       vector<std::pair<SimpleMatrix<num_t>, SimpleMatrix<num_t> > > pair;
       const auto d5(dft<num_t>(5).subMatrix(0, 0, 4, 5));

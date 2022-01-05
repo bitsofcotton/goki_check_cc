@@ -504,7 +504,7 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 // N.B. this function is NOT thread safe.
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& recur = 2, const int& rot = 0) {
   assert(0 < recur && 0 <= rot);
-  if(0 < rot && dir != EXTEND_BOTH && dir != EXTEND_Y && dir != EXTEND_X) {
+  if(0 < rot) {
     auto res(filter<T>(data, dir, recur));
     if(rot <= 1) return res;
 #if defined(_OPENMP)
@@ -744,21 +744,45 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      result.resize(data.rows() + 2 * recur, data.cols());
+      result.resize(data.rows() + 2, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
-        result.row(i + recur) = data.row(i);
-      for(int i = 0; i < recur; i ++) {
-        const auto next(taylor<T>(int(data.rows()) / (i + 1), T(int(data.rows()) / (i + 1))));
-        result.row(recur - i - 1).O();
-        result.row(data.rows() + recur + i).O();
-        for(int j = 0; j < next.size(); j ++) {
-          result.row(recur - i - 1) += data.row(- (j - next.size() + 1) * (i + 1)) * next[j];
-          result.row(data.rows() + recur + i) += data.row(  (j - next.size() + 1) * (i + 1) + data.rows() - 1) * next[j];
+        result.row(i + 1) = data.row(i);
+      result.row(0).O();
+      result.row(data.rows() + 1).O();
+      const auto rr(int(data.rows() / 2) - int(data.rows() / 2) % 3);
+      for(int i = 0; i < recur; i ++)
+        for(int k = 0; k < data.cols(); k ++) {
+          P3<T, P0<T, idFeeder<T> > > p3f(rr);
+          P3<T, P0<T, idFeeder<T> > > p3b(rr);
+          P0<T, idFeeder<T> > p0f(rr);
+          P0<T, idFeeder<T> > p0b(rr);
+          T bpabs(int(0));
+          T bpsgn(int(0));
+          T fpabs(int(0));
+          T fpsgn(int(0));
+          T brnd(T(arc4random_uniform(0x8000000)) / T(0x8000000));
+          T rnd(T(arc4random_uniform(0x8000000)) / T(0x8000000));
+          const auto rr(int(data.rows()) - int(data.rows()) % 3 - 3);
+          for(int kk = 0; kk < rr; kk ++) {
+            auto blast(data(rr - kk - 1, k) * rnd - data(rr - kk, k) * brnd);
+            auto flast(data(kk - rr + data.rows(), k) * rnd - data(kk - 1 - rr + data.rows(), k) * brnd);
+            bpabs = p0b.next(abs(blast));
+            fpabs = p0f.next(abs(flast));
+            bpsgn = p3b.next(data(rr - kk - 1, k) * rnd);
+            fpsgn = p3f.next(data(kk - rr + data.rows(), k) * rnd);
+            brnd  = rnd;
+            rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
+          }
+          result(0,               k) += sgn<T>(bpsgn) * abs(bpabs);
+          result(data.rows() + 1, k) += sgn<T>(fpsgn) * abs(fpabs);
         }
-      }
+      result.row(0) /= T(int(recur)) / T(int(2));
+      result.row(0) += data.row(0);
+      result.row(data.rows() + 1) /= T(int(recur)) / T(int(2));
+      result.row(data.rows() + 1) += data.row(data.rows() - 1);
     }
     break;
   case BLINK_Y:

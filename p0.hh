@@ -123,6 +123,39 @@ public:
   P q;
 };
 
+template <typename T, typename P> class P3 {
+public:
+  typedef SimpleVector<T> Vec;
+  inline P3() { ; }
+  inline P3(const int& size, const int& step = 1) {
+    pd = P0D<T, P>(size, step);
+    p  = P(size, step);
+    Md = M = s = T(t ^= t);
+    -- t;
+  }
+  inline ~P3() { ; };
+  // we have only per 3 step glitch.
+  inline T next(const T& in) {
+    static const T zero(int(0));
+    const auto bMd(Md);
+    Md = pd.next(in).first;
+    if(! ((++ t) % 3)) return zero;
+    s += bMd * M * in;
+    if(t % 3 == 2) {
+      M = p.next(s);
+      s = T(int(0));
+      return Md * M;
+    }
+    return zero;
+  }
+  P0D<T, P> pd;
+  P p;
+  T M;
+  T Md;
+  T s;
+  int t;
+};
+
 #define _P0_
 #endif
 

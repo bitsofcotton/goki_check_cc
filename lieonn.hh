@@ -3295,9 +3295,13 @@ public:
   inline idFeeder(const int& size) { res.resize(size); res.O(); full = false; t = 0; }
   inline ~idFeeder() { ; }
   inline const SimpleVector<T>& next(const T& in) {
-    for(int i = 1; i < res.size(); i ++)
-      res[i - 1] = move(res[i]);
-    res[res.size() - 1] = in;
+    if(t < res.size())
+      res[t] = in;
+    else {
+      for(int i = 1; i < res.size(); i ++)
+        res[i - 1] = move(res[i]);
+      res[res.size() - 1] = in;
+    }
     if(res.size() <= t ++) full = true;
     return res;
   }
