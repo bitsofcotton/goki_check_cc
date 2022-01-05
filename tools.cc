@@ -371,7 +371,7 @@ int main(int argc, const char* argv[]) {
       vector<SimpleMatrix<num_t> > ibuf;
       if(!loadp2or3<num_t>(ibuf, argv[i]))
         return - 2;
-      in[i - 3] = std::move(ibuf);
+      in[i - (strcmp(argv[1], "pred") == 0 ? 4 : 3)] = std::move(ibuf);
     }
     const auto idx(in.size() - 1);
     vector<SimpleMatrix<num_t> > out;
