@@ -393,20 +393,19 @@ int main(int argc, const char* argv[]) {
               num_t pabs(int(0));
               num_t psgn(int(0));
               num_t brnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
-              num_t rnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
+              num_t rnd( num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
               const auto rr(int(in.size()) - int(in.size()) % 3 - 3);
               for(int kk = 0; kk < rr; kk ++) {
-                auto delta(in[kk - rr + in.size()][cidx](y, x) * rnd - in[kk - 1 - rr + in.size()][cidx](y, x) * brnd);
-                pabs = p0.next(abs(delta));
                 psgn = p3.next(in[kk - rr + in.size()][cidx](y, x) * rnd);
+                pabs = p0.next(abs(in[kk - rr + in.size()][cidx](y, x) * rnd -
+                              in[kk - rr - 1 + in.size()][cidx](y, x) * brnd));
                 brnd = rnd;
                 rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
               }
               sgnm[cidx](y, x) += sgn<num_t>(psgn);
               absm[cidx](y, x) += abs(pabs);
-              out[cidx](y, x) += sgn<num_t>(psgn) * abs(pabs);
             }
-      for(int cidx = 0; cidx < 3; cidx ++) {
+      for(int cidx = 0; cidx < out.size(); cidx ++) {
         for(int y = 0; y < sgnm[cidx].rows(); y ++)
           for(int x = 0; x < sgnm[cidx].cols(); x ++)
             out[cidx](y, x) = sgn<num_t>(sgnm[cidx](y, x)) * abs(absm[cidx](y, x)) / num_t(int(std::atoi(argv[3]))) * num_t(int(2));

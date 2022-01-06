@@ -143,7 +143,7 @@ public:
       bin = in;
       return zero;
     }
-    s += bMd * M * (in - bin);
+    s += bMd * (in - bin);
     bin = in;
     if(t % 3 == 2) {
       M = p.next(s);

@@ -750,13 +750,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
-      result.row(0).O();
-      result.row(data.rows() + 1).O();
       const auto rr(int(data.rows() / 2) - int(data.rows() / 2) % 3);
       SimpleVector<T> sgnv0(data.cols());
       auto sgnv1(sgnv0.O());
-      auto absv0(sgnv0.O());
-      auto absv1(sgnv0.O());
+      auto absv0(sgnv0);
+      auto absv1(sgnv0);
       for(int i = 0; i < recur; i ++)
         for(int k = 0; k < data.cols(); k ++) {
           P3<T, P0<T, idFeeder<T> > > p3f(rr);
@@ -767,16 +765,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           T bpsgn(int(0));
           T fpabs(int(0));
           T fpsgn(int(0));
-          T brnd(T(arc4random_uniform(0x8000000)) / T(0x8000000));
-          T rnd(T(arc4random_uniform(0x8000000)) / T(0x8000000));
+          T brnd(T(arc4random_uniform(0x8000001)) / T(0x8000000));
+          T rnd( T(arc4random_uniform(0x8000001)) / T(0x8000000));
           const auto rr(int(data.rows()) - int(data.rows()) % 3 - 3);
           for(int kk = 0; kk < rr; kk ++) {
-            auto blast(data(rr - kk - 1, k) * rnd - data(rr - kk, k) * brnd);
-            auto flast(data(kk - rr + data.rows(), k) * rnd - data(kk - 1 - rr + data.rows(), k) * brnd);
-            bpabs = p0b.next(abs(blast));
-            fpabs = p0f.next(abs(flast));
             bpsgn = p3b.next(data(rr - kk - 1, k) * rnd);
             fpsgn = p3f.next(data(kk - rr + data.rows(), k) * rnd);
+            bpabs = p0b.next(abs(data(rr - kk - 1, k) * rnd -
+                                 data(rr - kk,     k) * brnd));
+            fpabs = p0f.next(abs(data(kk - rr     + data.rows(), k) * rnd -
+                                 data(kk - rr - 1 + data.rows(), k) * brnd));
             brnd  = rnd;
             rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }
@@ -786,8 +784,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           absv1[k] += abs(fpabs);
         }
       for(int k = 0; k < data.cols(); k ++) {
-        result(0,               k) = sgn<T>(sgnv0[k]) * abs(absv0[k]) / T(int(recur)) * T(int(2));
-        result(data.rows() + 1, k) = sgn<T>(sgnv1[k]) * abs(absv1[k]) / T(int(recur)) * T(int(2));
+        result(0,               k) =
+          sgn<T>(sgnv0[k]) * abs(absv0[k]) / T(int(recur)) * T(int(2));
+        result(data.rows() + 1, k) =
+          sgn<T>(sgnv1[k]) * abs(absv1[k]) / T(int(recur)) * T(int(2));
       }
       result.row(0) += data.row(0);
       result.row(data.rows() + 1) += data.row(data.rows() - 1);
