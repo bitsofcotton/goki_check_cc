@@ -750,7 +750,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
-      const auto rr(int(data.rows() / 2) - int(data.rows() / 2) % 3);
+      const auto rr(int(data.rows() / 4) - int(data.rows() / 4) % 3);
       SimpleVector<T> sgnv0(data.cols());
       auto sgnv1(sgnv0.O());
       auto absv0(sgnv0);
@@ -769,12 +769,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           T rnd( T(arc4random_uniform(0x8000001)) / T(0x8000000));
           const auto rr(int(data.rows()) - int(data.rows()) % 3 - 3);
           for(int kk = 0; kk < rr; kk ++) {
-            bpsgn = p3b.next(data(rr - kk - 1, k) * rnd);
-            fpsgn = p3f.next(data(kk - rr + data.rows(), k) * rnd);
-            bpabs = p0b.next(abs(data(rr - kk - 1, k) * rnd -
-                                 data(rr - kk,     k) * brnd));
-            fpabs = p0f.next(abs(data(kk - rr     + data.rows(), k) * rnd -
-                                 data(kk - rr - 1 + data.rows(), k) * brnd));
+            const auto bdelta(data(rr - kk - 1, k) * rnd -
+                              data(rr - kk,     k) * brnd);
+            const auto fdelta(data(kk - rr + data.rows(), k) * rnd -
+                          data(kk - rr - 1 + data.rows(), k) * brnd);
+            bpsgn = p3b.next(bdelta);
+            fpsgn = p3f.next(fdelta);
+            bpabs = p0b.next(abs(bdelta));
+            fpabs = p0f.next(abs(fdelta));
             brnd  = rnd;
             rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }

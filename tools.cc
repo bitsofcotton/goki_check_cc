@@ -383,7 +383,7 @@ int main(int argc, const char* argv[]) {
       }
       auto sgnm(out);
       auto absm(out);
-      const auto rr(int(in.size() / 2) - int(in.size() / 2) % 3);
+      const auto rr(int(in.size() / 4) - int(in.size() / 4) % 3);
       for(int i = 0; i < std::atoi(argv[3]); i ++)
         for(int y = 0; y < out[0].rows(); y ++)
           for(int x = 0; x < out[0].cols(); x ++)
@@ -396,9 +396,10 @@ int main(int argc, const char* argv[]) {
               num_t rnd( num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
               const auto rr(int(in.size()) - int(in.size()) % 3 - 3);
               for(int kk = 0; kk < rr; kk ++) {
-                psgn = p3.next(in[kk - rr + in.size()][cidx](y, x) * rnd);
-                pabs = p0.next(abs(in[kk - rr + in.size()][cidx](y, x) * rnd -
-                              in[kk - rr - 1 + in.size()][cidx](y, x) * brnd));
+                const auto delta(in[kk - rr + in.size()][cidx](y, x) * rnd -
+                             in[kk - rr - 1 + in.size()][cidx](y, x) * brnd);
+                psgn = p3.next(delta);
+                pabs = p0.next(abs(delta));
                 brnd = rnd;
                 rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
               }
