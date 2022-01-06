@@ -384,8 +384,11 @@ int main(int argc, const char* argv[]) {
       auto sgnm(out);
       auto absm(out);
       const auto rr(int(in.size() / 4) - int(in.size() / 4) % 3);
-      for(int i = 0; i < std::atoi(argv[3]); i ++)
-        for(int y = 0; y < out[0].rows(); y ++)
+      for(int i = 0; i < std::atoi(argv[3]); i ++) {
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+        for(int y = 0; y < out[0].rows(); y ++) {
           for(int x = 0; x < out[0].cols(); x ++)
             for(int cidx = 0; cidx < out.size(); cidx ++) {
               P3<num_t, P0<num_t, idFeeder<num_t> > > p3(rr);
@@ -403,9 +406,19 @@ int main(int argc, const char* argv[]) {
                 brnd = rnd;
                 rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
               }
-              sgnm[cidx](y, x) += sgn<num_t>(psgn);
-              absm[cidx](y, x) += abs(pabs);
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+              {
+                sgnm[cidx](y, x) += sgn<num_t>(psgn);
+                absm[cidx](y, x) += abs(pabs);
+              }
             }
+        }
+      }
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
       for(int cidx = 0; cidx < out.size(); cidx ++) {
         for(int y = 0; y < sgnm[cidx].rows(); y ++)
           for(int x = 0; x < sgnm[cidx].cols(); x ++)

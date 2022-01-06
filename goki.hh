@@ -704,6 +704,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         const auto DDop(Dop * Dop);
         const auto DDop0((DDop.row(int(y0) / 2) + DDop.row(int(y0) / 2 + 1)) / T(2));
         // N.B. curvature matrix det == EG - F^2, we see only \< relation.
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
         for(int i = 0; i < data.rows(); i ++)
           for(int j = 0; j < data.cols(); j ++) {
             T fu(0), fv(0), L(0), M(0), N(0);
@@ -722,9 +725,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                        getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
             }
             const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv))));
-            if(zscore(i, j) < lscore) {
-              result(i, j) = T(zi + 1) / T(dratio);
-              zscore(i, j) = lscore;
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+            {
+              if(zscore(i, j) < lscore) {
+                result(i, j) = T(zi + 1) / T(dratio);
+                zscore(i, j) = lscore;
+              }
             }
           }
       }
@@ -755,7 +763,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       auto sgnv1(sgnv0.O());
       auto absv0(sgnv0);
       auto absv1(sgnv0);
-      for(int i = 0; i < recur; i ++)
+      for(int i = 0; i < recur; i ++) {
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
         for(int k = 0; k < data.cols(); k ++) {
           P3<T, P0<T, idFeeder<T> > > p3f(rr);
           P3<T, P0<T, idFeeder<T> > > p3b(rr);
@@ -780,11 +791,20 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             brnd  = rnd;
             rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }
-          sgnv0[k] += sgn<T>(bpsgn);
-          sgnv1[k] += sgn<T>(fpsgn);
-          absv0[k] += abs(bpabs);
-          absv1[k] += abs(fpabs);
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+          {
+            sgnv0[k] += sgn<T>(bpsgn);
+            sgnv1[k] += sgn<T>(fpsgn);
+            absv0[k] += abs(bpabs);
+            absv1[k] += abs(fpabs);
+          }
         }
+      }
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
       for(int k = 0; k < data.cols(); k ++) {
         result(0,               k) =
           sgn<T>(sgnv0[k]) * abs(absv0[k]) / T(int(recur)) * T(int(2));
@@ -1108,7 +1128,7 @@ template <typename T> vector<match_t<T> > matchPartialR(const vector<SimpleVecto
   for(int i = 0; i < cr.size(); i ++) {
     if(! cr[i].first.size()) continue;
     match_t<T> m(T(int(1)) / T(int(100)), max(gs.first, gp.first));
-    SimpleVector<bool> dfix, sfix;
+    SimpleVector<int> dfix, sfix;
     dfix.resize(dst.size());
     sfix.resize(src.size());
     dfix.I(false);
@@ -1776,7 +1796,7 @@ template <typename T> SimpleMatrix<T> reColor(const SimpleMatrix<T>& cbase, cons
 
 template <typename T> vector<vector<int> > floodfill(const SimpleMatrix<T>& mask, const vector<SimpleVector<T> >& points, const int& vbox = 3) {
   vector<vector<int> > result;
-  SimpleMatrix<bool> checked(mask.rows(), mask.cols());
+  SimpleMatrix<int> checked(mask.rows(), mask.cols());
   checked.O(false);
   for(int i = 0; i < points.size(); i ++) {
     const auto& pi(points[i]);

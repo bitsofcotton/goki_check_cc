@@ -68,7 +68,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
         auto Pt(A.QR());
   const auto R(Pt * A);
         Vec  one(Pt.cols());
-  SimpleVector<bool> fix(one.size());
+  SimpleVector<int> fix(one.size());
   one.I(T(int(1)));
   fix.I(false);
   const auto on(Pt.projectionPt(one));
