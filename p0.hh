@@ -130,21 +130,20 @@ public:
   inline P3(const int& size, const int& step = 1) {
     pd = P0D<T, P>(size, step);
     p  = P(size, step);
-    Md = bMd = M = s = bin = T(t ^= t);
+    Md = M = s = bin = T(t ^= t);
     -- t;
   }
   inline ~P3() { ; };
   // we have only per 3 step glitch.
   inline T next(const T& in) {
     static const T zero(int(0));
-    const auto bbMd(bMd);
-    bMd = Md;
+    const auto bMd(Md);
     Md  = pd.next(in).first;
     if(! ((++ t) % 3)) {
       bin = in;
       return zero;
     }
-    s += bbMd * (in - bin);
+    s += bMd * (in - bin);
     bin = in;
     if(t % 3 == 2) {
       M = p.next(s);
@@ -156,7 +155,6 @@ public:
   P0D<T, P> pd;
   P p;
   T M;
-  T bMd;
   T Md;
   T s;
   T bin;
