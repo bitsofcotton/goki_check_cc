@@ -409,10 +409,10 @@ int main(int argc, const char* argv[]) {
               num_t rnd( num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
               const auto rr(int(in.size()) - int(in.size()) % 3 - 3);
               for(int kk = 0; kk < rr; kk ++) {
-                const auto delta(in[kk - rr + in.size()][cidx](y, x) * rnd -
-                             in[kk - rr - 1 + in.size()][cidx](y, x) * brnd);
-                psgn = p3.next(delta);
-                pabs = p0.next(abs(delta));
+                auto delta(in[kk - rr + in.size()][cidx](y, x) * rnd -
+                           in[kk - rr - 1 + in.size()][cidx](y, x) * brnd);
+                psgn = p3.next(in[kk - rr + in.size()][cidx](y, x) * rnd);
+                pabs = p0.next(abs(std::move(delta)));
                 brnd = rnd;
                 rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
               }

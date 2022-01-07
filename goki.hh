@@ -786,14 +786,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           T rnd( T(arc4random_uniform(0x8000001)) / T(0x8000000));
           const auto rr(int(data.rows()) - int(data.rows()) % 3 - 3);
           for(int kk = 0; kk < rr; kk ++) {
-            const auto bdelta(data(rr - kk - 1, k) * rnd -
-                              data(rr - kk,     k) * brnd);
-            const auto fdelta(data(kk - rr + data.rows(), k) * rnd -
-                          data(kk - rr - 1 + data.rows(), k) * brnd);
-            bpsgn = p3b.next(bdelta);
-            fpsgn = p3f.next(fdelta);
-            bpabs = p0b.next(abs(bdelta));
-            fpabs = p0f.next(abs(fdelta));
+            auto bdelta(data(rr - kk - 1, k) * rnd -
+                        data(rr - kk,     k) * brnd);
+            auto fdelta(data(kk - rr + data.rows(), k) * rnd -
+                        data(kk - rr - 1 + data.rows(), k) * brnd);
+            bpsgn = p3b.next(data(rr - kk - 1, k) * rnd);
+            fpsgn = p3f.next(data(kk - rr + data.rows(), k) * rnd);
+            bpabs = p0b.next(abs(move(bdelta)));
+            fpabs = p0f.next(abs(move(fdelta)));
             brnd  = rnd;
             rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }
