@@ -11,6 +11,10 @@
 #include <random>
 #include <assert.h>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
 //#define int int64_t
 #define int int32_t
 #include "lieonn.hh"
@@ -384,6 +388,12 @@ int main(int argc, const char* argv[]) {
       auto sgnm(out);
       auto absm(out);
       const auto rr(int(in.size() / 4) - int(in.size() / 4) % 3);
+#if defined(_OPENMP)
+      std::vector<omp_lock_t> olock;
+      olock.resize(out[0].rows());
+      for(int i = 0; i < olock.size(); i ++)
+        omp_init_lock(&olock[i]);
+#endif
       for(int i = 0; i < std::atoi(argv[3]); i ++) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -406,17 +416,22 @@ int main(int argc, const char* argv[]) {
                 brnd = rnd;
                 rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
               }
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
               {
+#if defined(_OPENMP)
+                omp_set_lock(&olock[y]);
+#endif
                 sgnm[cidx](y, x) += sgn<num_t>(psgn);
                 absm[cidx](y, x) += abs(pabs);
+#if defined(_OPENMP)
+                omp_unset_lock(&olock[y]);
+#endif
               }
             }
         }
       }
 #if defined(_OPENMP)
+      for(int i = 0; i < olock.size(); i ++)
+        omp_destroy_lock(&olock[i]);
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int cidx = 0; cidx < out.size(); cidx ++) {

@@ -46,9 +46,6 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
       cmd.append(r + "-represent.ppm")
     elif(argv[2] == "catbr"):
       cmd.append(r + "-bump-represent.ppm")
-    elif(argv[2] == "pred"):
-      cmd.append(r + ".ppm")
-      cmd.append(r + ".ppm")
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)
@@ -186,6 +183,8 @@ else:
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(pixels), "1", root + "-bump.ppm", root + ".obj"])
+    elif(argv[2] == "-obj"):
+      subprocess.call([argv[1], "obj", str(pixels), "-1", root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "penl"):
       subprocess.call([argv[1], argv[2], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "jps"):

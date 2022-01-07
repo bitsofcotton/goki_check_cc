@@ -763,6 +763,12 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       auto sgnv1(sgnv0.O());
       auto absv0(sgnv0);
       auto absv1(sgnv0);
+#if defined(_OPENMP)
+      vector<omp_lock_t> olock;
+      olock.resize(data.cols());
+      for(int i = 0; i < olock.size(); i ++)
+        omp_init_lock(&olock[i]);
+#endif
       for(int i = 0; i < recur; i ++) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -791,18 +797,23 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             brnd  = rnd;
             rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
           {
+#if defined(_OPENMP)
+            omp_set_lock(&olock[k]);
+#endif
             sgnv0[k] += sgn<T>(bpsgn);
             sgnv1[k] += sgn<T>(fpsgn);
             absv0[k] += abs(bpabs);
             absv1[k] += abs(fpabs);
+#if defined(_OPENMP)
+            omp_unset_lock(&olock[k]);
+#endif
           }
         }
       }
 #if defined(_OPENMP)
+      for(int i = 0; i < olock.size(); i ++)
+        omp_destroy_lock(&olock[i]);
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int k = 0; k < data.cols(); k ++) {
