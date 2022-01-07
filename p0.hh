@@ -148,7 +148,7 @@ public:
     if(t % 3 == 2) {
       M = p.next(s);
       s = T(int(0));
-      return bMd * M;
+      return Md * M;
     }
     return zero;
   }
