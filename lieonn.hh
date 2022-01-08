@@ -3100,12 +3100,12 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 0; i < DD.rows(); i ++)
-      DD.row(i) *=    complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(DD.rows()));
+      DD.row(i) *= complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(DD.rows()));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int i = 1; i < II.rows(); i ++)
-      II.row(i) /= - complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(DD.rows()));
+      II.row(i) /= complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(DD.rows()));
     // N.B. if we apply DD onto 1 / (1 / f(x)) graph, it's reverse order.
     //      if we average them, it's the only 0 vector.
     // N.B. there exists also completely correct differential matrix,
@@ -3120,8 +3120,8 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     //       sum_0^1 - 2 Pi i (theta/n)^2/2 -&gt; Pi)
     // N.B. if we make plain differential with no error on cosine curve,
     //      it causes constant 0 vector.
-    dd = (dft<T>(- size) * DD).template real<T>();
-    ii = (dft<T>(- size) * II).template real<T>();
+    dd =   (dft<T>(- size) * DD).template real<T>();
+    ii = - (dft<T>(- size) * II).template real<T>();
     ofstream ocache(file.c_str());
     ocache << dd;
     ocache << ii;
