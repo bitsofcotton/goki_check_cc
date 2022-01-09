@@ -507,20 +507,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   if(0 < rot) {
     auto res(filter<T>(data, dir, recur));
     if(rot <= 1) return res;
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
     for(int i = 0; i < rot; i ++) {
       cerr << "r" << flush;
       const auto theta((T(i) - T(rot - 1) / T(2)) * atan(T(1)) / (T(rot) / T(2)));
-            auto work(center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
-                        dir, recur), - theta), res));
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-      {
-        res += move(work);
-      }
+      res += center<T>(rotate<T>(filter<T>(rotate<T>(data, theta),
+                       dir, recur), - theta), res);
     }
     return res /= T(rot + 1);
   }
