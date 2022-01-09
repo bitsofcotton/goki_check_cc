@@ -419,8 +419,8 @@ int main(int argc, const char* argv[]) {
               for(int kk = 0; kk < rr; kk ++) {
                 auto delta(in[kk - rr + in.size()][cidx](y, x) * rnd -
                            in[kk - rr - 1 + in.size()][cidx](y, x) * brnd);
-                psgn = p3.next(in[kk - rr + in.size()][cidx](y, x) * rnd);
-                pabs = p0.next(abs(std::move(delta)));
+                pabs = p0.next(abs(delta));
+                psgn = p3.next(std::move(delta));
                 brnd = rnd;
                 rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
               }

@@ -129,7 +129,7 @@ public:
   inline P3() { ; }
   inline P3(const int& size, const int& step = 1) {
     pd = P0D<T, P>(size, step);
-    p  = P(size, step);
+    p  = P(3, step);
     Md = M = s = bin = T(t ^= t);
     -- t;
   }

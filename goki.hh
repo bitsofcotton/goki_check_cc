@@ -781,10 +781,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                         data(rr - kk,     k) * brnd);
             auto fdelta(data(kk - rr + data.rows(), k) * rnd -
                         data(kk - rr - 1 + data.rows(), k) * brnd);
-            bpsgn = p3b.next(data(rr - kk - 1, k) * rnd);
-            fpsgn = p3f.next(data(kk - rr + data.rows(), k) * rnd);
-            bpabs = p0b.next(abs(move(bdelta)));
-            fpabs = p0f.next(abs(move(fdelta)));
+            bpabs = p0b.next(abs(bdelta));
+            fpabs = p0f.next(abs(fdelta));
+            bpsgn = p3b.next(move(bdelta));
+            fpsgn = p3f.next(move(fdelta));
             brnd  = rnd;
             rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }
