@@ -749,7 +749,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
-      const auto rr(int(data.rows()));
+      const auto rr(int(data.rows()) - 1);
       SimpleVector<T> v0(data.cols());
       auto v1(v0.O());
 #if defined(_OPENMP)
@@ -768,6 +768,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           T bp(int(0));
           T fp(int(0));
           T rnd(T(arc4random_uniform(0x8000001)) / T(0x8000000));
+          const auto rr(int(data.rows()));
           for(int kk = 0; kk < rr; kk ++) {
             bp  = pb.next(data(rr - kk - 1, k) * rnd);
             fp  = pf.next(data(kk - rr + data.rows(), k) * rnd);

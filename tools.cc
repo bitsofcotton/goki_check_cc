@@ -394,7 +394,7 @@ int main(int argc, const char* argv[]) {
         out[i].O();
       }
       auto m(out);
-      const auto rr(int(in.size()));
+      const auto rr(int(in.size()) - 1);
 #if defined(_OPENMP)
       std::vector<omp_lock_t> olock;
       olock.resize(out[0].rows());
@@ -411,6 +411,7 @@ int main(int argc, const char* argv[]) {
               P0<num_t, idFeeder<num_t> > p(rr);
               num_t pp(int(0));
               num_t rnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
+              const auto rr(int(in.size()));
               for(int kk = 0; kk < rr; kk ++) {
                 pp  = p.next(in[kk - rr + in.size()][cidx](y, x) * rnd);
                 rnd = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
