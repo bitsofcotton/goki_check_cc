@@ -94,6 +94,28 @@ public:
   feeder f;
 };
 
+template <typename T, typename P> class P0Dsgn {
+public:
+  typedef SimpleVector<T> Vec;
+  inline P0Dsgn() { ; }
+  inline P0Dsgn(const int& size, const int& step = 1) {
+    p = P(size, step);
+    q = P(size, step);
+    r = P(size, step);
+    b = T(int(0));
+  }
+  inline ~P0Dsgn() { ; };
+  inline T next(const T& in) {
+    auto res(sgn<T>(sgn<T>(p.next(in - b)) * abs(q.next(abs(in - b))) + in) * r.next(abs(in)));
+    b = in;
+    return move(res);
+  }
+  P p;
+  P q;
+  P r;
+  T b;
+};
+
 #define _P0_
 #endif
 
