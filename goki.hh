@@ -763,8 +763,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int k = 0; k < data.cols(); k ++) {
-          P0Dsgn<T, P0<T, idFeeder<T> > > pf(rr);
-          P0Dsgn<T, P0<T, idFeeder<T> > > pb(rr);
+          P0Dsgn<T, P0<T, idFeeder<T> > > pf(rr, 1, recur);
+          P0Dsgn<T, P0<T, idFeeder<T> > > pb(rr, 1, recur);
           T bp(int(0));
           T fp(int(0));
           T rnd(T(arc4random_uniform(0x8000001)) / T(0x8000000));

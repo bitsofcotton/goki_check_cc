@@ -408,7 +408,7 @@ int main(int argc, const char* argv[]) {
         for(int y = 0; y < out[0].rows(); y ++) {
           for(int x = 0; x < out[0].cols(); x ++)
             for(int cidx = 0; cidx < out.size(); cidx ++) {
-              P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > p(rr);
+              P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > p(rr, 1, std::atoi(argv[3]));
               num_t pp(int(0));
               num_t rnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
               const auto rr(int(in.size()));
