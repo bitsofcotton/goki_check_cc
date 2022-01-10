@@ -98,22 +98,37 @@ template <typename T, typename P> class P0Dsgn {
 public:
   typedef SimpleVector<T> Vec;
   inline P0Dsgn() { ; }
-  inline P0Dsgn(const int& size, const int& step = 1) {
-    p = P(size, step);
-    q = P(size, step);
-    r = P(size, step);
+  inline P0Dsgn(const int& size, const int& step = 1, const int& recur = 1) {
+    p.resize(recur, P(size, step));
+    q.resize(recur, P(size, step));
+    r.resize(recur, P(size, step));
     b = T(int(0));
+    rnd = T(int(arc4random_uniform(0x80000001))) /
+          T(int(arc4random_uniform(0x80000000) + 1));
   }
   inline ~P0Dsgn() { ; };
   inline T next(const T& in) {
-    auto res(sgn<T>(sgn<T>(p.next(in - b)) * abs(q.next(abs(in - b))) + in) * r.next(abs(in)));
+    T pp(int(0));
+    T qq(int(0));
+    T rr(int(0));
+    assert(p.size() == q.size() && q.size() == r.size());
+    const auto brnd(rnd);
+    rnd = T(int(arc4random_uniform(0x80000001))) /
+          T(int(arc4random_uniform(0x80000000) + 1));
+    for(int i = 0; i < p.size(); i ++) {
+      pp += sgn<T>(p[i].next(in * rnd - b * brnd));
+      qq += abs(q[i].next(abs(in * rnd - b * brnd)));
+      rr += abs(r[i].next(abs(in * rnd)));
+    }
+    auto res(sgn<T>(sgn<T>(pp) * abs(qq) / T(int(p.size())) * T(int(2)) + in) * rr / T(int(p.size())) * T(int(2)));
     b = in;
     return move(res);
   }
-  P p;
-  P q;
-  P r;
+  vector<P> p;
+  vector<P> q;
+  vector<P> r;
   T b;
+  T rnd;
 };
 
 #define _P0_
