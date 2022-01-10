@@ -749,11 +749,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
-      const auto rr(int(data.rows() / 4) - int(data.rows() / 4) % 3);
-      SimpleVector<T> sgnv0(data.cols());
-      auto sgnv1(sgnv0.O());
-      auto absv0(sgnv0);
-      auto absv1(sgnv0);
+      const auto rr(int(data.rows()));
+      SimpleVector<T> v0(data.cols());
+      auto v1(v0.O());
 #if defined(_OPENMP)
       vector<omp_lock_t> olock;
       olock.resize(data.cols());
@@ -765,37 +763,22 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #pragma omp parallel for schedule(static, 1)
 #endif
         for(int k = 0; k < data.cols(); k ++) {
-          P3<T, P0<T, idFeeder<T> > > p3f(rr);
-          P3<T, P0<T, idFeeder<T> > > p3b(rr);
-          P0<T, idFeeder<T> > p0f(rr);
-          P0<T, idFeeder<T> > p0b(rr);
-          T bpabs(int(0));
-          T bpsgn(int(0));
-          T fpabs(int(0));
-          T fpsgn(int(0));
-          T brnd(T(arc4random_uniform(0x8000001)) / T(0x8000000));
-          T rnd( T(arc4random_uniform(0x8000001)) / T(0x8000000));
-          const auto rr(int(data.rows()) - int(data.rows()) % 3 - 3);
+          P0<T, idFeeder<T> > pf(rr);
+          P0<T, idFeeder<T> > pb(rr);
+          T bp(int(0));
+          T fp(int(0));
+          T rnd(T(arc4random_uniform(0x8000001)) / T(0x8000000));
           for(int kk = 0; kk < rr; kk ++) {
-            auto bdelta(data(rr - kk - 1, k) * rnd -
-                        data(rr - kk,     k) * brnd);
-            auto fdelta(data(kk - rr + data.rows(), k) * rnd -
-                        data(kk - rr - 1 + data.rows(), k) * brnd);
-            bpabs = p0b.next(abs(bdelta));
-            fpabs = p0f.next(abs(fdelta));
-            bpsgn = p3b.next(move(bdelta));
-            fpsgn = p3f.next(move(fdelta));
-            brnd  = rnd;
-            rnd   = T(arc4random_uniform(0x8000001)) / T(0x8000000);
+            bp  = pb.next(data(rr - kk - 1, k) * rnd);
+            fp  = pf.next(data(rr - kk,     k) * rnd);
+            rnd = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }
           {
 #if defined(_OPENMP)
             omp_set_lock(&olock[k]);
 #endif
-            sgnv0[k] += sgn<T>(bpsgn);
-            sgnv1[k] += sgn<T>(fpsgn);
-            absv0[k] += abs(bpabs);
-            absv1[k] += abs(fpabs);
+            v0[k] += bp;
+            v1[k] += fp;
 #if defined(_OPENMP)
             omp_unset_lock(&olock[k]);
 #endif
@@ -808,13 +791,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int k = 0; k < data.cols(); k ++) {
-        result(0,               k) =
-          sgn<T>(sgnv0[k]) * abs(absv0[k]) / T(int(recur)) * T(int(2));
-        result(data.rows() + 1, k) =
-          sgn<T>(sgnv1[k]) * abs(absv1[k]) / T(int(recur)) * T(int(2));
+        result(0,               k) = v0[k] / T(int(recur)) * T(int(2));
+        result(data.rows() + 1, k) = v1[k] / T(int(recur)) * T(int(2));
       }
-      result.row(0) += data.row(0);
-      result.row(data.rows() + 1) += data.row(data.rows() - 1);
     }
     break;
   case BLINK_Y:

@@ -393,9 +393,8 @@ int main(int argc, const char* argv[]) {
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
         out[i].O();
       }
-      auto sgnm(out);
-      auto absm(out);
-      const auto rr(int(in.size() / 4) - int(in.size() / 4) % 3);
+      auto m(out);
+      const auto rr(int(in.size()));
 #if defined(_OPENMP)
       std::vector<omp_lock_t> olock;
       olock.resize(out[0].rows());
@@ -409,27 +408,18 @@ int main(int argc, const char* argv[]) {
         for(int y = 0; y < out[0].rows(); y ++) {
           for(int x = 0; x < out[0].cols(); x ++)
             for(int cidx = 0; cidx < out.size(); cidx ++) {
-              P3<num_t, P0<num_t, idFeeder<num_t> > > p3(rr);
-              P0<num_t, idFeeder<num_t> > p0(rr);
-              num_t pabs(int(0));
-              num_t psgn(int(0));
-              num_t brnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
-              num_t rnd( num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
-              const auto rr(int(in.size()) - int(in.size()) % 3 - 3);
+              P0<num_t, idFeeder<num_t> > p(rr);
+              num_t pp(int(0));
+              num_t rnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
               for(int kk = 0; kk < rr; kk ++) {
-                auto delta(in[kk - rr + in.size()][cidx](y, x) * rnd -
-                           in[kk - rr - 1 + in.size()][cidx](y, x) * brnd);
-                pabs = p0.next(abs(delta));
-                psgn = p3.next(std::move(delta));
-                brnd = rnd;
-                rnd  = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
+                pp  = p.next(in[kk - rr + in.size()][cidx](y, x) * rnd);
+                rnd = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
               }
               {
 #if defined(_OPENMP)
                 omp_set_lock(&olock[y]);
 #endif
-                sgnm[cidx](y, x) += sgn<num_t>(psgn);
-                absm[cidx](y, x) += abs(pabs);
+                m[cidx](y, x) += pp;
 #if defined(_OPENMP)
                 omp_unset_lock(&olock[y]);
 #endif
@@ -443,10 +433,9 @@ int main(int argc, const char* argv[]) {
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int cidx = 0; cidx < out.size(); cidx ++) {
-        for(int y = 0; y < sgnm[cidx].rows(); y ++)
-          for(int x = 0; x < sgnm[cidx].cols(); x ++)
-            out[cidx](y, x) = sgn<num_t>(sgnm[cidx](y, x)) * abs(absm[cidx](y, x)) / num_t(int(std::atoi(argv[3]))) * num_t(int(2));
-        out[cidx] += in[in.size() - 1][cidx];
+        for(int y = 0; y < m[cidx].rows(); y ++)
+          for(int x = 0; x < m[cidx].cols(); x ++)
+            out[cidx](y, x) = m[cidx](y, x) / num_t(int(std::atoi(argv[3]))) * num_t(int(2));
       }
       savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true, 65535);
     } else if(strcmp(argv[1], "lenl") == 0) {
