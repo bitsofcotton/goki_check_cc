@@ -770,7 +770,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           T rnd(T(arc4random_uniform(0x8000001)) / T(0x8000000));
           for(int kk = 0; kk < rr; kk ++) {
             bp  = pb.next(data(rr - kk - 1, k) * rnd);
-            fp  = pf.next(data(rr - kk,     k) * rnd);
+            fp  = pf.next(data(kk - rr + data.rows(), k) * rnd);
             rnd = T(arc4random_uniform(0x8000001)) / T(0x8000000);
           }
           {
