@@ -389,54 +389,19 @@ int main(int argc, const char* argv[]) {
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);
     if(strcmp(argv[1], "pred") == 0) {
-      for(int i = 0; i < 3; i ++) {
+      for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-        out[i].O();
-      }
-      auto m(out);
-      const auto rr(int(in.size()) - 1);
-#if defined(_OPENMP)
-      std::vector<omp_lock_t> olock;
-      olock.resize(out[0].rows());
-      for(int i = 0; i < olock.size(); i ++)
-        omp_init_lock(&olock[i]);
-#endif
-      for(int i = 0; i < std::atoi(argv[3]); i ++) {
+      P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > prep(in.size() - 1, 1, std::atoi(argv[3]));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-        for(int y = 0; y < out[0].rows(); y ++) {
-          for(int x = 0; x < out[0].cols(); x ++)
-            for(int cidx = 0; cidx < out.size(); cidx ++) {
-              P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > p(rr, 1, std::atoi(argv[3]));
-              num_t pp(int(0));
-              num_t rnd(num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000));
-              const auto rr(int(in.size()));
-              for(int kk = 0; kk < rr; kk ++) {
-                pp  = p.next(in[kk - rr + in.size()][cidx](y, x) * rnd);
-                rnd = num_t(arc4random_uniform(0x8000001)) / num_t(0x8000000);
-              }
-              {
-#if defined(_OPENMP)
-                omp_set_lock(&olock[y]);
-#endif
-                m[cidx](y, x) += pp;
-#if defined(_OPENMP)
-                omp_unset_lock(&olock[y]);
-#endif
-              }
-            }
-        }
-      }
-#if defined(_OPENMP)
-      for(int i = 0; i < olock.size(); i ++)
-        omp_destroy_lock(&olock[i]);
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int cidx = 0; cidx < out.size(); cidx ++) {
-        for(int y = 0; y < m[cidx].rows(); y ++)
-          for(int x = 0; x < m[cidx].cols(); x ++)
-            out[cidx](y, x) = m[cidx](y, x) / num_t(int(std::atoi(argv[3]))) * num_t(int(2));
+      for(int y = 0; y < out[0].rows(); y ++) {
+        for(int x = 0; x < out[0].cols(); x ++)
+          for(int cidx = 0; cidx < out.size(); cidx ++) {
+            P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > p(in.size() - 1, 1, std::atoi(argv[3]));
+            for(int kk = 0; kk < in.size(); kk ++)
+              out[cidx](y, x) = p.next(in[kk][cidx](y, x));
+          }
       }
       savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true, 65535);
     } else if(strcmp(argv[1], "lenl") == 0) {

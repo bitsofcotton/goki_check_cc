@@ -749,51 +749,17 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
-      const auto rr(int(data.rows()) - 1);
-      SimpleVector<T> v0(data.cols());
-      auto v1(v0.O());
+      P0Dsgn<T, P0<T, idFeeder<T> > > prep(data.rows() - 1, 1, recur);
 #if defined(_OPENMP)
-      vector<omp_lock_t> olock;
-      olock.resize(data.cols());
-      for(int i = 0; i < olock.size(); i ++)
-        omp_init_lock(&olock[i]);
-#endif
-      for(int i = 0; i < recur; i ++) {
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-        for(int k = 0; k < data.cols(); k ++) {
-          P0Dsgn<T, P0<T, idFeeder<T> > > pf(rr, 1, recur);
-          P0Dsgn<T, P0<T, idFeeder<T> > > pb(rr, 1, recur);
-          T bp(int(0));
-          T fp(int(0));
-          T rnd(T(arc4random_uniform(0x8000001)) / T(0x8000000));
-          const auto rr(int(data.rows()));
-          for(int kk = 0; kk < rr; kk ++) {
-            bp  = pb.next(data(rr - kk - 1, k) * rnd);
-            fp  = pf.next(data(kk - rr + data.rows(), k) * rnd);
-            rnd = T(arc4random_uniform(0x8000001)) / T(0x8000000);
-          }
-          {
-#if defined(_OPENMP)
-            omp_set_lock(&olock[k]);
-#endif
-            v0[k] += bp;
-            v1[k] += fp;
-#if defined(_OPENMP)
-            omp_unset_lock(&olock[k]);
-#endif
-          }
-        }
-      }
-#if defined(_OPENMP)
-      for(int i = 0; i < olock.size(); i ++)
-        omp_destroy_lock(&olock[i]);
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int k = 0; k < data.cols(); k ++) {
-        result(0,               k) = v0[k] / T(int(recur)) * T(int(2));
-        result(data.rows() + 1, k) = v1[k] / T(int(recur)) * T(int(2));
+        P0Dsgn<T, P0<T, idFeeder<T> > > pf(data.rows() - 1, 1, recur);
+        P0Dsgn<T, P0<T, idFeeder<T> > > pb(data.rows() - 1, 1, recur);
+        for(int kk = 0; kk < data.rows(); kk ++) {
+          result(0, k) = pb.next(data(data.rows() - kk - 1, k));
+          result(data.rows() + 1, k) = pf.next(data(kk, k));
+        }
       }
     }
     break;

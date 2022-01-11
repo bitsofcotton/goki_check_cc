@@ -99,36 +99,49 @@ public:
   typedef SimpleVector<T> Vec;
   inline P0Dsgn() { ; }
   inline P0Dsgn(const int& size, const int& step = 1, const int& recur = 1) {
-    p.resize(recur, P(size, step));
-    q.resize(recur, P(size, step));
-    r.resize(recur, P(size, step));
-    b = T(int(0));
-    rnd = T(int(arc4random_uniform(0x80000001))) /
-          T(int(arc4random_uniform(0x80000000) + 1));
+    p.resize(recur * recur, P(size, step));
+    q.resize(p.size(), P(size, step));
+    r.resize(p.size(), P(size, step));
+    brnd.resize(p.size(), b = T(int(0)));
+    vbrnd.resize(recur, b);
   }
   inline ~P0Dsgn() { ; };
   inline T next(const T& in) {
-    T pp(int(0));
-    T qq(int(0));
-    T rr(int(0));
-    assert(p.size() == q.size() && q.size() == r.size());
-    const auto brnd(rnd);
-    rnd = T(int(arc4random_uniform(0x80000001))) /
-          T(int(arc4random_uniform(0x80000000) + 1));
-    for(int i = 0; i < p.size(); i ++) {
-      pp += sgn<T>(p[i].next(in * rnd - b * brnd));
-      qq += abs(q[i].next(abs(in * rnd - b * brnd)));
-      rr += abs(r[i].next(abs(in * rnd)));
+    assert(p.size() == q.size() && q.size() == r.size() &&
+           p.size() == brnd.size());
+    auto rnd(brnd);
+    auto vrnd(vbrnd);
+    for(int i = 0; i < rnd.size(); i ++)
+      rnd[i]  = T(int(arc4random_uniform(0x80000001))) /
+                T(int(arc4random_uniform(0x80000000) + 1));
+    for(int i = 0; i < vrnd.size(); i ++)
+      vrnd[i] = T(int(arc4random_uniform(0x80000001))) /
+                T(int(arc4random_uniform(0x80000000) + 1));
+    T res(int(0));
+    for(int i = 0; i < vrnd.size(); i ++) {
+      T pp(int(0));
+      T qq(int(0));
+      T rr(int(0));
+      for(int j = 0; j < vrnd.size(); j ++) {
+        const auto din(in * rnd[i * vrnd.size() + j] * vrnd[i]);
+        const auto ddelta(din - b * brnd[i * vrnd.size() + j] * vbrnd[i]);
+        pp += sgn<T>(p[i * vrnd.size() + j].next( ddelta));
+        qq += abs(q[i * vrnd.size() + j].next(abs(ddelta)));
+        rr += abs(r[i * vrnd.size() + j].next(abs(din)));
+      }
+      res += (sgn<T>(sgn<T>(pp) * abs(qq) / T(int(vrnd.size())) * T(int(2)) + in * vrnd[i]) * abs(rr) / T(int(vrnd.size())) * T(int(2)));
     }
-    auto res(sgn<T>(sgn<T>(pp) * abs(qq) / T(int(p.size())) * T(int(2)) + in) * rr / T(int(p.size())) * T(int(2)));
     b = in;
-    return move(res);
+    brnd  = rnd;
+    vbrnd = vrnd;
+    return res /= T(int(vrnd.size())) * T(int(2));
   }
   vector<P> p;
   vector<P> q;
   vector<P> r;
+  vector<T> brnd;
+  vector<T> vbrnd;
   T b;
-  T rnd;
 };
 
 #define _P0_

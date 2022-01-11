@@ -4,19 +4,10 @@ CXX=	clang++
 # compiler flags.
 CXXFLAGS+=	-Ofast -mtune=native -gfull
 #CXXFLAGS+=	-Oz -mtune=native -gfull
-#CXXFLAGS+=	-O0 -mtune=native -gfull
-#CXXFLAGS+=	-O0 -mtune=native -g3
-#CXXFLAGS+=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
+MPFLAGS=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
 CXXFLAGS+=	-std=c++11
 LDFLAGS+=	-lc++ -L/usr/local/lib
 #LDFLAGS+=	-lestdc++ -L/usr/local/lib
-LDFLAGS+=	-static
-
-CXXFLAGS+=	-D_FLOAT_BITS_=32
-#CXXFLAGS+=	-D_FLOAT_BITS_=64
-#CXXFLAGS+=	-D_FLOAT_BITS_=128
-#CXXFLAGS+=	-D_FLOAT_BITS_=256
-#CXXFLAGS+=	-D_FLOAT_BITS_=512
 
 CLEANFILES= *.o tools
 
@@ -25,5 +16,13 @@ all:	tools
 clean:
 	@rm -rf ${CLEANFILES}
 
-tools.o:        tools.cc catg.hh decompose.hh p0.hh p1.hh goki.hh lieonn.hh
+all:	gokibin gokibin32 gokibinmp gokibin32mp
+gokibin:	tools.cc
+	${CXX} ${CXXFLAGS} -static -o gokibin tools.cc
+gokibin32:	tools.cc
+	${CXX} ${CXXFLAGS} -static -D_FLOAT_BITS_=32 -o gokibin32 tools.cc
+gokibinmp:	tools.cc
+	${CXX} ${CXXFLAGS} ${MPFLAGS} -o gokibinmp tools.cc
+gokibin32mp:	tools.cc
+	${CXX} ${CXXFLAGS} ${MPFLAGS} -D_FLOAT_BITS_=32 -o gokibin32mp tools.cc
 

@@ -46,9 +46,6 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
       cmd.append(r + "-represent.ppm")
     elif(argv[2] == "catbr"):
       cmd.append(r + "-bump-represent.ppm")
-    elif(argv[2] == "pred" and s != argv[- 1]):
-      for t in range(0, max(int(20 / len(argv)), 1) + 1):
-        cmd.append(r + ".ppm")
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)
