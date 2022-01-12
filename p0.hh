@@ -129,12 +129,12 @@ public:
         qq += abs(q[i * vrnd.size() + j].next(abs(ddelta)));
         rr += abs(r[i * vrnd.size() + j].next(abs(din)));
       }
-      res += (sgn<T>(- sgn<T>(pp) * abs(qq) / T(int(vrnd.size())) * T(int(2)) + in * vrnd[i]) * abs(rr) / T(int(vrnd.size())) * T(int(2)));
+      res += sgn<T>(- sgn<T>(pp) * abs(qq) / T(int(vrnd.size())) * T(int(2)) + in * vrnd[i]) * abs(rr) / T(int(vrnd.size())) * T(int(2));
     }
     b = in;
     brnd  = rnd;
     vbrnd = vrnd;
-    return res /= - T(int(vrnd.size())) * T(int(2));
+    return res /= T(int(vrnd.size())) / T(int(2));
   }
   vector<P> p;
   vector<P> q;
