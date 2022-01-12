@@ -94,53 +94,31 @@ public:
   feeder f;
 };
 
-template <typename T, typename P> class P0Dsgn {
+template <typename T, typename P> class P0D {
 public:
   typedef SimpleVector<T> Vec;
-  inline P0Dsgn() { ; }
-  inline P0Dsgn(const int& size, const int& step = 1, const int& recur = 1) {
-    p.resize(recur * recur, P(size, step));
-    q.resize(p.size(), P(size, step));
-    r.resize(p.size(), P(size, step));
+  inline P0D() { ; }
+  inline P0D(const int& size, const int& step = 1, const int& recur = 1) {
+    p.resize(recur, P(size, step));
     brnd.resize(p.size(), b = T(int(0)));
-    vbrnd.resize(recur, b);
   }
-  inline ~P0Dsgn() { ; };
+  inline ~P0D() { ; };
   inline T next(const T& in) {
-    assert(p.size() == q.size() && q.size() == r.size() &&
-           p.size() == brnd.size());
+    assert(p.size() == brnd.size());
     auto rnd(brnd);
-    auto vrnd(vbrnd);
     for(int i = 0; i < rnd.size(); i ++)
       rnd[i]  = T(int(arc4random_uniform(0x80000001))) /
                                    T(int(0x80000000 + 1));
-    for(int i = 0; i < vrnd.size(); i ++)
-      vrnd[i] = T(int(arc4random_uniform(0x80000001))) /
-                                   T(int(0x80000000 + 1));
     T res(int(0));
-    for(int i = 0; i < vrnd.size(); i ++) {
-      T pp(int(0));
-      T qq(int(0));
-      T rr(int(0));
-      for(int j = 0; j < vrnd.size(); j ++) {
-        const auto din(in * rnd[i * vrnd.size() + j] * vrnd[i]);
-        const auto ddelta(din - b * brnd[i * vrnd.size() + j] * vbrnd[i]);
-        pp += sgn<T>(p[i * vrnd.size() + j].next( ddelta));
-        qq += abs(q[i * vrnd.size() + j].next(abs(ddelta)));
-        rr += abs(r[i * vrnd.size() + j].next(abs(din)));
-      }
-      res += sgn<T>(- sgn<T>(pp) * abs(qq) / T(int(vrnd.size())) * T(int(2)) + in * vrnd[i]) * abs(rr) / T(int(vrnd.size())) * T(int(2));
-    }
-    b = in;
-    brnd  = rnd;
-    vbrnd = vrnd;
-    return res /= T(int(vrnd.size())) / T(int(2));
+    for(int i = 0; i < rnd.size(); i ++)
+      res += p[i].next(in * rnd[i] - b * brnd[i]);
+    res /= - T(rnd.size()) / T(int(2));
+    b    = in;
+    brnd = rnd;
+    return res += in;
   }
   vector<P> p;
-  vector<P> q;
-  vector<P> r;
   vector<T> brnd;
-  vector<T> vbrnd;
   T b;
 };
 

@@ -749,20 +749,25 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + 1) = data.row(i);
-      P0Dsgn<T, P0<T, idFeeder<T> > > prep(data.rows() - 1, 1, recur);
+      P0<T, idFeeder<T> > prep((data.rows() - 1) / 2);
+      static const T one(int(1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int k = 0; k < data.cols(); k ++) {
-        P0Dsgn<T, P0<T, idFeeder<T> > > pf(data.rows() - 2, 1, recur);
-        P0Dsgn<T, P0<T, idFeeder<T> > > pb(data.rows() - 2, 1, recur);
+        P0D<T, P0<T, idFeeder<T> > > pf(data.rows() / 2 - 1, 1, recur);
+        P0D<T, P0<T, idFeeder<T> > > pb(data.rows() / 2 - 1, 1, recur);
+        P0<T, idFeeder<T> > p0f(data.rows() / 2 - 2);
+        P0<T, idFeeder<T> > p0b(data.rows() / 2 - 2);
+        T bb(int(0));
+        T bf(int(0));
         for(int kk = 0; kk < data.rows() - 1; kk ++) {
-          result(0, k) = pb.next(data(data.rows() - kk - 2, k) - data(data.rows() - kk - 1, k));
-          result(data.rows() + 1, k) = pf.next(data(kk + 1, k) - data(kk, k));
+          result(0, k) = p0b.next(one / (bb + one / (one + data(data.rows() - kk - 2, k))) - one);
+          result(result.rows() - 1, k) = p0f.next(one / (bf + one / (one + data(kk + 1, k))) - one);
+          bb = pb.next(one / (one + data(data.rows() - kk - 2, k)) - one / (one + data(data.rows() - kk - 1, k)));
+          bf = pf.next(one / (one + data(kk + 1, k)) - one / (one + data(kk, k)));
         }
       }
-      result.row(0) += data.row(0);
-      result.row(result.rows() - 1) += data.row(data.rows() - 1);
     }
     break;
   case BLINK_Y:

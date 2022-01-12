@@ -8,7 +8,7 @@ argv   = sys.argv
 pixels = 4
 psi    = 1. / 6.
 rot    = 3
-noise  = 7
+noise  = 101
 
 if(len(argv) < 4):
   print("no much argments.")

@@ -391,21 +391,19 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "pred") == 0) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > prep(in.size() - 1, 1, std::atoi(argv[3]));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int y = 0; y < out[0].rows(); y ++) {
-        for(int x = 0; x < out[0].cols(); x ++)
-          for(int cidx = 0; cidx < out.size(); cidx ++) {
-            P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > p(in.size() - 2, 1, std::atoi(argv[3]));
-            for(int kk = 0; kk < in.size() - 1; kk ++)
-              out[cidx](y, x) = p.next(in[kk + 1][cidx](y, x) - in[kk][cidx](y, x));
-          }
-      }
+      auto mout(out);
       for(int i = 0; i < out.size(); i ++)
-        out[i] += in[in.size() - 1][i];
+        for(int j = 0; j < out[i].rows(); j ++) {
+          SimpleMatrix<num_t> m(in.size(), out[i].cols());
+          for(int k = 0; k < in.size(); k ++)
+            m.row(k) = in[k][i].row(j);
+          auto ext(filter<num_t>(m, EXTEND_Y, std::atoi(argv[3])));
+          mout[i].row(j) = std::move(ext.row(0));
+          out[i].row(j)  = std::move(ext.row(ext.rows() - 1));
+        }
       savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true, 65535);
+      savep2or3<num_t>((std::string(argv[2]) + std::string("-m")).c_str(),
+                       normalize<num_t>(mout), ! true, 65535);
     } else if(strcmp(argv[1], "lenl") == 0) {
       vector<std::pair<SimpleMatrix<num_t>, SimpleMatrix<num_t> > > pair;
       const auto d5(dft<num_t>(5).subMatrix(0, 0, 4, 5));
