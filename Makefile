@@ -9,9 +9,7 @@ CXXFLAGS+=	-std=c++11
 LDFLAGS+=	-lc++ -L/usr/local/lib
 #LDFLAGS+=	-lestdc++ -L/usr/local/lib
 
-CLEANFILES= *.o tools
-
-all:	tools
+CLEANFILES= *.o gokibin gokibin32 gokibinmp gokibin32mp
 
 clean:
 	@rm -rf ${CLEANFILES}

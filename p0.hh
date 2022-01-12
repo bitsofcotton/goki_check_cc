@@ -113,10 +113,10 @@ public:
     auto vrnd(vbrnd);
     for(int i = 0; i < rnd.size(); i ++)
       rnd[i]  = T(int(arc4random_uniform(0x80000001))) /
-                T(int(arc4random_uniform(0x80000000) + 1));
+                                   T(int(0x80000000 + 1));
     for(int i = 0; i < vrnd.size(); i ++)
       vrnd[i] = T(int(arc4random_uniform(0x80000001))) /
-                T(int(arc4random_uniform(0x80000000) + 1));
+                                   T(int(0x80000000 + 1));
     T res(int(0));
     for(int i = 0; i < vrnd.size(); i ++) {
       T pp(int(0));
@@ -134,7 +134,7 @@ public:
     b = in;
     brnd  = rnd;
     vbrnd = vrnd;
-    return res /= T(int(vrnd.size())) * T(int(2));
+    return res /= - T(int(vrnd.size())) * T(int(2));
   }
   vector<P> p;
   vector<P> q;

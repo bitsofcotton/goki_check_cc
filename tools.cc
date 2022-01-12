@@ -398,11 +398,13 @@ int main(int argc, const char* argv[]) {
       for(int y = 0; y < out[0].rows(); y ++) {
         for(int x = 0; x < out[0].cols(); x ++)
           for(int cidx = 0; cidx < out.size(); cidx ++) {
-            P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > p(in.size() - 1, 1, std::atoi(argv[3]));
-            for(int kk = 0; kk < in.size(); kk ++)
-              out[cidx](y, x) = p.next(in[kk][cidx](y, x));
+            P0Dsgn<num_t, P0<num_t, idFeeder<num_t> > > p(in.size() - 2, 1, std::atoi(argv[3]));
+            for(int kk = 0; kk < in.size() - 1; kk ++)
+              out[cidx](y, x) = p.next(in[kk + 1][cidx](y, x) - in[kk][cidx](y, x));
           }
       }
+      for(int i = 0; i < out.size(); i ++)
+        out[i] += in[in.size() - 1][i];
       savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true, 65535);
     } else if(strcmp(argv[1], "lenl") == 0) {
       vector<std::pair<SimpleMatrix<num_t>, SimpleMatrix<num_t> > > pair;

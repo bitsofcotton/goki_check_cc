@@ -754,13 +754,15 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int k = 0; k < data.cols(); k ++) {
-        P0Dsgn<T, P0<T, idFeeder<T> > > pf(data.rows() - 1, 1, recur);
-        P0Dsgn<T, P0<T, idFeeder<T> > > pb(data.rows() - 1, 1, recur);
-        for(int kk = 0; kk < data.rows(); kk ++) {
-          result(0, k) = pb.next(data(data.rows() - kk - 1, k));
-          result(data.rows() + 1, k) = pf.next(data(kk, k));
+        P0Dsgn<T, P0<T, idFeeder<T> > > pf(data.rows() - 2, 1, recur);
+        P0Dsgn<T, P0<T, idFeeder<T> > > pb(data.rows() - 2, 1, recur);
+        for(int kk = 0; kk < data.rows() - 1; kk ++) {
+          result(0, k) = pb.next(data(data.rows() - kk - 2, k) - data(data.rows() - kk - 1, k));
+          result(data.rows() + 1, k) = pf.next(data(kk + 1, k) - data(kk, k));
         }
       }
+      result.row(0) += data.row(0);
+      result.row(result.rows() - 1) += data.row(data.rows() - 1);
     }
     break;
   case BLINK_Y:
