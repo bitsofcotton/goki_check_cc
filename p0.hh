@@ -107,8 +107,8 @@ public:
     assert(p.size() == brnd.size());
     auto rnd(brnd);
     for(int i = 0; i < rnd.size(); i ++)
-      rnd[i]  = T(int(arc4random_uniform(0x80000001))) /
-                                   T(int(0x80000000 + 1));
+      rnd[i]  = T(int(arc4random_uniform(0x70000001))) /
+                                   T(int(0x70000000 + 1));
     T res(int(0));
     for(int i = 0; i < rnd.size(); i ++)
       res += p[i].next(in * rnd[i] - b * brnd[i]);

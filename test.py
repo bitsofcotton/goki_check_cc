@@ -8,7 +8,7 @@ argv   = sys.argv
 pixels = 4
 psi    = 1. / 6.
 rot    = 3
-noise  = 101
+noise  = 1001
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -29,9 +29,11 @@ elif(argv[2] == "match"):
 elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "catb" or argv[2] == "catbr" or argv[2] == "composite"):
   cmd = [argv[1], argv[2]]
   if(argv[2] == "cat" or argv[2] == "catb"):
-    cmd[1] = "cat"
-  elif(argv[2] == "catr" or argv[2] == "catbr"):
     cmd[1] = "catr"
+    cmd.append("dummy")
+  elif(argv[2] == "catr" or argv[2] == "catbr"):
+    cmd[1] = "cat"
+    cmd.append("dummy")
   if(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "composite"):
     cmd.append(argv[2] + ".ppm")
   if(argv[2] == "pred"):

@@ -396,7 +396,7 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < out[i].rows(); j ++) {
           SimpleMatrix<num_t> m(in.size(), out[i].cols());
           for(int k = 0; k < in.size(); k ++)
-            m.row(k) = in[k][i].row(j);
+            m.row(k) = std::move(in[k][i].row(j));
           auto ext(filter<num_t>(m, EXTEND_Y, std::atoi(argv[3])));
           mout[i].row(j) = std::move(ext.row(0));
           out[i].row(j)  = std::move(ext.row(ext.rows() - 1));
