@@ -21,7 +21,7 @@ Searching the Internet more...
 # Usage
     make gokicheck
     
-    gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num>
+    gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokicheck (pred|composite|lenl)  <output.ppm> <input0.ppm> ...
     gokicheck (cat|catr) <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <input.ppm> <output.obj>
@@ -41,7 +41,7 @@ Searching the Internet more...
     python2 test.py ./gokicheck newtrace dimension size
     python2 test.py ./gokicheck retrace  dimension input.ppm intensity
     python2 test.py ./gokicheck retrace2 dimension dst.ppm src.ppm intensity
-    python2 test.py ./gokicheck (pextend|sharpen|bump|enlarge|flarge|represent|jps|tilt|btilt|obj|sbox|prep|presq) input.png
+    python2 test.py ./gokicheck (pextend|sharpen|bump|penlarge|penl|flarge|represent|jps|tilt|btilt|obj|sbox|prep|presq) input.png
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive
