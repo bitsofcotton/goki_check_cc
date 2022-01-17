@@ -149,7 +149,10 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "penlarge"):
+    if(argv[2] == "bump"):
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
+      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "120", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "penlarge"):
       subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
       subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl-sh0.ppm", str(pixels)])
       subprocess.call(["convert", root + "-penl-sh0.ppm", "-resize", "50%", root + "-penl-sh1.png"])
@@ -173,9 +176,9 @@ else:
     elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "integraw" or argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
-      subprocess.call([argv[1], "obj", str(int(pixels * 10)),  "1", root + "-bump.ppm", root + ".obj"])
+      subprocess.call([argv[1], "obj", str(int(pixels)),  "1", root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "-obj"):
-      subprocess.call([argv[1], "obj", str(int(pixels * 10)), "-1", root + "-bump.ppm", root + ".obj"])
+      subprocess.call([argv[1], "obj", str(int(pixels)), "-1", root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "penl"):
       subprocess.call([argv[1], argv[2], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "jps"):

@@ -1340,14 +1340,10 @@ template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>&
         gbuf[2] = geoms[geoms.size() - 1][2];
         geoms.emplace_back(gbuf);
       } else {
-        T avg(0);
-        for(int ii = i * vbox; ii < (i + 1) * vbox; ii ++)
-          for(int jj = j * vbox; jj < (j + 1) * vbox; jj ++)
-            avg += in(ii, jj);
         SimpleVector<T> work(3);
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
-        work[2] = T(min(in.rows(), in.cols()) * 2) * abs(avg / T(vbox) / T(vbox) - aavg);
+        work[2] = T(min(in.rows(), in.cols()) * 2) * abs(in(i * vbox, j * vbox) / T(vbox) / T(vbox) - aavg);
         geoms.emplace_back(work);
       }
     }
