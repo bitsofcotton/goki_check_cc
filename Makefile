@@ -14,7 +14,7 @@ CLEANFILES= *.o gokibin gokibin32 gokibinmp gokibin32mp
 clean:
 	@rm -rf ${CLEANFILES}
 
-all:	gokibin gokibin32 gokibinmp gokibin32mp
+all:	gokibin gokibin32
 gokibin:	tools.cc
 	${CXX} ${CXXFLAGS} -static -o gokibin tools.cc
 gokibin32:	tools.cc
