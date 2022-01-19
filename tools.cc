@@ -391,7 +391,9 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "pred") == 0) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      auto mout(out);
+      std::vector<std::vector<SimpleMatrix<num_t> > > mout;
+      mout.resize(in.size() / 30, out);
+      auto nout(mout);
       for(int i = 0; i < out.size(); i ++)
         for(int j = 0; j < out[i].rows(); j ++) {
           SimpleMatrix<num_t> m(in.size(), out[i].cols());
@@ -400,12 +402,15 @@ int main(int argc, const char* argv[]) {
           auto ext(filter<num_t>(m, EXTEND_Y, std::atoi(argv[3])));
           for(int k = 0; k < std::atoi(argv[3]); k ++)
             ext += filter<num_t>(m, EXTEND_Y, std::atoi(argv[3]));
-          mout[i].row(j) = std::move(ext.row(0));
-          out[i].row(j)  = std::move(ext.row(ext.rows() - 1));
+          for(int k = 0; k < mout.size(); k ++) {
+            mout[k][i].row(j) = std::move(ext.row(k));
+            nout[k][i].row(j) = std::move(ext.row(ext.rows() - 1 - k));
+          }
         }
-      savep2or3<num_t>(argv[2], normalize<num_t>(out), ! true, 65535);
-      savep2or3<num_t>((std::string(argv[2]) + std::string("-m")).c_str(),
-                       normalize<num_t>(mout), ! true, 65535);
+      for(int k = 0; k < mout.size(); k ++) {
+        savep2or3<num_t>((std::string(argv[2]) + std::string("-p-") + std::to_string(k)).c_str(), normalize<num_t>(mout[k]), ! true, 65535);
+        savep2or3<num_t>((std::string(argv[2]) + std::string("-n-") + std::to_string(k)).c_str(), normalize<num_t>(nout[k]), ! true, 65535);
+      }
     } else if(strcmp(argv[1], "lenl") == 0) {
       vector<std::pair<SimpleMatrix<num_t>, SimpleMatrix<num_t> > > pair;
       const auto d5(dft<num_t>(5).subMatrix(0, 0, 4, 5));

@@ -531,7 +531,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     result = filter<T>(filter<T>(data, BLUR_Y, recur), BLUR_X, recur);
     break;
   case EXTEND_BOTH:
-    result = filter<T>(filter<T>(filter<T>(filter<T>(data, EXTEND_X, recur), CLIP, recur), EXTEND_Y, recur), CLIP, recur);
+    result = filter<T>(filter<T>(data, EXTEND_X, recur), EXTEND_Y, recur);
     break;
   case BLINK_BOTH:
     result = filter<T>(filter<T>(data, BLINK_X, recur), BLINK_Y, recur);
@@ -743,31 +743,37 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      result.resize(data.rows() + 2, data.cols());
+      const auto ext(data.rows() / 30);
+      result.resize(data.rows() + 2 * ext, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
-        result.row(i + 1) = data.row(i);
-      P0<T, idFeeder<T> > prep((data.rows() - 1) / 2);
+        result.row(i + ext) = data.row(i);
+      P0<T, idFeeder<T> > prep(3);
       static const T one(int(1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-      for(int k = 0; k < data.cols(); k ++) {
-        P0D<T, P0<T, idFeeder<T> > > pf(data.rows() / 2 - 1, 1, recur);
-        P0D<T, P0<T, idFeeder<T> > > pb(data.rows() / 2 - 1, 1, recur);
-        P0<T, idFeeder<T> > p0f(data.rows() / 2 - 2);
-        P0<T, idFeeder<T> > p0b(data.rows() / 2 - 2);
-        T bb(int(0));
-        T bf(int(0));
-        for(int kk = 0; kk < data.rows() - 1; kk ++) {
-          result(0, k) = p0b.next(one / (bb + one / (one + data(data.rows() - kk - 2, k))) - one);
-          result(result.rows() - 1, k) = p0f.next(one / (bf + one / (one + data(kk + 1, k))) - one);
-          bb = pb.next(one / (one + data(data.rows() - kk - 2, k)) - one / (one + data(data.rows() - kk - 1, k)));
-          bf = pf.next(one / (one + data(kk + 1, k)) - one / (one + data(kk, k)));
+      for(int m = 0; m < ext; m ++)
+        for(int k = 0; k < data.cols(); k ++) {
+          P0D<T, P0<T, idFeeder<T> > > pf(3, recur);
+          P0D<T, P0<T, idFeeder<T> > > pb(3, recur);
+          P0<T, idFeeder<T> > p0f(3);
+          P0<T, idFeeder<T> > p0b(3);
+          T bb(int(0));
+          T bf(int(0));
+          for(int kk = (m + 1) * max(0, data.rows() / (m + 1) - 10) + data.rows() % (m + 1); kk < data.rows(); kk += m + 1) {
+            result(ext - m - 1, k) =
+              bb == - one / (one + data(data.rows() - kk - m, k)) ? T(int(0)) :
+              p0b.next(one / (bb + one / (one + data(data.rows() - kk - m, k))) - one);
+            result(m - ext + result.rows(), k) =
+              bf == - one / (one + data(kk + m, k)) ? T(int(0)) :
+              p0f.next(one / (bf + one / (one + data(kk + m, k))) - one);
+            bb = pb.next(one / (one + data(data.rows() - kk - m, k)) - one / (one + data(data.rows() - kk + 1, k)));
+            bf = pf.next(one / (one + data(kk + m, k)) - one / (one + data(kk - 1, k)));
+          }
         }
-      }
     }
     break;
   case BLINK_Y:
