@@ -1324,7 +1324,7 @@ template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>&
         SimpleVector<T> work(3);
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
-        work[2] = T(min(in.rows(), in.cols()) * 2) * abs(in(i * vbox, j * vbox) / T(vbox) / T(vbox) - aavg);
+        work[2] = sqrt(sqrt(T(in.rows()) * T(in.cols()))) * abs(in(i * vbox, j * vbox) - aavg);
         geoms.emplace_back(work);
       }
     }
