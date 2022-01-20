@@ -119,9 +119,8 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
     else if(strcmp(argv[1], "pextend") == 0)
-      for(int j = 0; j < rot; j ++)
-        for(int i = 0; i < data.size(); i ++)
-          data[i] = filter<num_t>(data[i], EXTEND_BOTH, recur);
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = filter<num_t>(data[i], EXTEND_BOTH, recur);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
