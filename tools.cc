@@ -130,7 +130,7 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "represent") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), REPRESENT, recur);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
+      data[0] = data[1] = data[2] = autoLevel<num_t>(filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot), data[0].rows() + data[0].cols());
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -161,7 +161,7 @@ int main(int argc, const char* argv[]) {
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
-        strcmp(argv[1], "bump") != 0 && strcmp(argv[1], "nop") != 0
+        strcmp(argv[1], "nop") != 0
         ? normalize<num_t>(data) : data,
         ! true, 65535))
       return - 1;

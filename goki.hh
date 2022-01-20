@@ -61,7 +61,6 @@ typedef enum {
   BLUR_Y,
   BLUR_BOTH,
   INTEG_BOTH,
-  INTINT,
   COLLECT_BOTH,
   BUMP_BOTH,
   EXTEND_X,
@@ -630,10 +629,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       result = SimpleMatrix<T>(data.rows(), data.cols()).O();
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = sqrt(abs((zxx(i, j) * zyy(i, j) -
-                                   zxy(i, j) * zxy(i, j)) /
-                           ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
-                            zx(i, j) * zy(i, j)) ));
+          result(i, j) = sqrt(abs(
+            (zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j)) /
+            ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
+             zx(i, j) * zy(i, j)) /
+            (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) ));
     }
     break;
   case INTEG_BOTH:
@@ -646,26 +646,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       result = SimpleMatrix<T>(data.rows(), data.cols()).O();
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = sqrt(abs((zxx(i, j) * zyy(i, j) -
-                                   zxy(i, j) * zxy(i, j)) /
-                           ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
-                            zx(i, j) * zy(i, j)) ));
-    }
-    break;
-  case INTINT:
-    {
-      const auto zx(diff<T>(- data.rows()) * diff<T>(- data.rows()) * data * diff<T>(- data.cols()).transpose());
-      const auto zy(diff<T>(- data.rows()) * data * diff<T>(- data.cols()).transpose() * diff<T>(- data.cols()).transpose());
-      const auto zyy(diff<T>(- data.rows()) * diff<T>(- data.rows()) * data);
-      const auto zxy(diff<T>(- data.rows()) * data * diff<T>(- data.cols()).transpose());
-      const auto zxx(data * diff<T>(- data.cols()).transpose() * diff<T>(- data.cols()).transpose());
-      result = SimpleMatrix<T>(data.rows(), data.cols()).O();
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = sqrt(abs((zxx(i, j) * zyy(i, j) -
-                                   zxy(i, j) * zxy(i, j)) /
-                           ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
-                            zx(i, j) * zy(i, j)) ));
+          result(i, j) = sqrt(abs(
+            (zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j)) /
+            ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
+             zx(i, j) * zy(i, j)) /
+            (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) ));
     }
     break;
   case BUMP_BOTH:
@@ -715,7 +700,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                   data(getImgPt<int>(i + kk - Dop0.size() / 2, data.rows()),
                        getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
             }
-            const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv))));
+            const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv) / (fu * fu + fv * fv + T(int(1))))));
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
@@ -727,18 +712,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
           }
       }
-      // ~ exp(bump) + O(f''' sqrt(dxdy)^3 / 3!).
-      result = filter<T>(result, INTINT, recur, rot) + filter<T>(result, INTEG_BOTH, recur, rot) + result / T(int(2));
-      // ~ log(1 + exp(bump)) < log(5).
-      T m(int(0));
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          m = min(m, result(i, j) = log(T(int(1)) + result(i, j)));
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          // N.B. 1 per bump, 1 per original tilt, 2 per integrate.
-          result(i, j) = (result(i, j) - m) / log(T(int(5)));
-      result = filter<T>(result, CLIP);
+      result = filter<T>(result, INTEG_BOTH);
     }
     break;
   case EXTEND_Y:
@@ -774,6 +748,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             bf = pf.next(one / (one + data(kk + m, k)) - one / (one + data(kk - 1, k)));
           }
         }
+      result = filter<T>(result, CLIP);
     }
     break;
   case BLINK_Y:
