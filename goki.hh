@@ -717,7 +717,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      const auto ext(data.rows() / 12);
+      const auto ext(data.rows() / 9);
       result.resize(data.rows() + 2 * ext, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -731,21 +731,17 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
-          P0D<T, P0<T, idFeeder<T> > > pf(3, recur);
-          P0D<T, P0<T, idFeeder<T> > > pb(3, recur);
+          P0D<T, P0<T, idFeeder<T> > > pdf(3, recur);
+          P0D<T, P0<T, idFeeder<T> > > pdb(3, recur);
           P0<T, idFeeder<T> > p0f(3);
           P0<T, idFeeder<T> > p0b(3);
-          T bb(int(0));
-          T bf(int(0));
-          for(int kk = (m + 1) * max(0, data.rows() / (m + 1) - 10) + data.rows() % (m + 1); kk < data.rows(); kk += m + 1) {
+          for(int kk = (m + 1) * max(0,
+            data.rows() / (m + 1) - 9) + data.rows() % (m + 1);
+            kk < data.rows(); kk += m + 1) {
             result(ext - m - 1, k) =
-              bb == - one / (one + data(data.rows() - kk - m - 1, k)) ? T(int(0)) :
-              p0b.next(one / (bb + one / (one + data(data.rows() - kk - m - 1, k))) - one);
+              p0b.next(pdb.next(data(data.rows() - kk - m - 1, k)));
             result(m - ext + result.rows(), k) =
-              bf == - one / (one + data(kk + m, k)) ? T(int(0)) :
-              p0f.next(one / (bf + one / (one + data(kk + m, k))) - one);
-            bb = pb.next(one / (one + data(data.rows() - kk - m - 1, k)) - one / (one + data(data.rows() - kk, k)));
-            bf = pf.next(one / (one + data(kk + m, k)) - one / (one + data(kk - 1, k)));
+              p0f.next(pdf.next(data(kk + m, k)));
           }
         }
       result = filter<T>(result, CLIP);

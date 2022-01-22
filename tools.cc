@@ -391,7 +391,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
       std::vector<std::vector<SimpleMatrix<num_t> > > mout;
-      mout.resize(in.size() / 12, out);
+      mout.resize(in.size() / 9, out);
       auto nout(mout);
       for(int i = 0; i < out.size(); i ++)
         for(int j = 0; j < out[i].rows(); j ++) {
@@ -399,8 +399,6 @@ int main(int argc, const char* argv[]) {
           for(int k = 0; k < in.size(); k ++)
             m.row(k) = std::move(in[k][i].row(j));
           auto ext(filter<num_t>(m, EXTEND_Y, std::atoi(argv[3])));
-          for(int k = 0; k < std::atoi(argv[3]); k ++)
-            ext += filter<num_t>(m, EXTEND_Y, std::atoi(argv[3]));
           for(int k = 0; k < mout.size(); k ++) {
             mout[k][i].row(j) = std::move(ext.row(k));
             nout[k][i].row(j) = std::move(ext.row(ext.rows() - 1 - k));

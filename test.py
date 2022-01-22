@@ -8,7 +8,6 @@ argv   = sys.argv
 pixels = 4
 psi    = 1. / 6.
 rot    = 3
-noise  = 31
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -36,8 +35,6 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
     cmd.append("dummy")
   if(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "composite"):
     cmd.append(argv[2] + ".ppm")
-  if(argv[2] == "pred"):
-    cmd.append(str(noise))
   for s in argv[3:]:
     r, e = os.path.splitext(s)
     if(e != ".ppm"):
@@ -49,7 +46,7 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
     elif(argv[2] == "catbr"):
       cmd.append(r + "-bump-represent.ppm")
     else:
-      cmd.append(r + ".ppm")
+      cmd.append(s)
   subprocess.call(cmd)
 elif(argv[2] == "retrace" or argv[2] == "newtrace" or argv[2] == "retrace2"):
   idx = 3
