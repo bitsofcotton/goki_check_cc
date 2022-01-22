@@ -407,8 +407,8 @@ int main(int argc, const char* argv[]) {
           }
         }
       for(int k = 0; k < mout.size(); k ++) {
-        savep2or3<num_t>((std::string(argv[2]) + std::string("-p-") + std::to_string(k)).c_str(), normalize<num_t>(mout[k]), ! true, 65535);
-        savep2or3<num_t>((std::string(argv[2]) + std::string("-n-") + std::to_string(k)).c_str(), normalize<num_t>(nout[k]), ! true, 65535);
+        savep2or3<num_t>((std::string(argv[2]) + std::string("-p-") + std::to_string(k) + std::string(".ppm")).c_str(), normalize<num_t>(mout[k]), ! true, 65535);
+        savep2or3<num_t>((std::string(argv[2]) + std::string("-n-") + std::to_string(k) + std::string(".ppm")).c_str(), normalize<num_t>(nout[k]), ! true, 65535);
       }
     } else if(strcmp(argv[1], "lenl") == 0) {
       vector<std::pair<SimpleMatrix<num_t>, SimpleMatrix<num_t> > > pair;
