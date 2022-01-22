@@ -99,27 +99,21 @@ public:
   typedef SimpleVector<T> Vec;
   inline P0D() { ; }
   inline P0D(const int& size, const int& step = 1, const int& recur = 1) {
-    p.resize(recur, P(size, step));
-    brnd.resize(p.size(), b = T(int(0)));
+    p = P(size, step);
+    q = P(size, step);
   }
   inline ~P0D() { ; };
   inline T next(const T& in) {
-    assert(p.size() == brnd.size());
-    auto rnd(brnd);
-    for(int i = 0; i < rnd.size(); i ++)
-      rnd[i]  = T(int(arc4random_uniform(0x70000001))) /
-                                   T(int(0x70000000 + 1));
-    T res(int(0));
-    for(int i = 0; i < rnd.size(); i ++)
-      res += p[i].next(in * rnd[i] - b * brnd[i]);
-    res /= - T(rnd.size()) / T(int(2));
-    b    = in;
-    brnd = rnd;
-    return res += in;
+    const static T zero(int(0));
+    const static T one(int(1));
+    const static T two(int(2));
+    if(in == zero) return zero;
+    const auto qn(q.next(one / in));
+    if(qn == zero) return p.next(in);
+    return (p.next(in) + one / qn) / two;
   }
-  vector<P> p;
-  vector<T> brnd;
-  T b;
+  P p;
+  P q;
 };
 
 #define _P0_

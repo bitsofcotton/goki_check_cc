@@ -46,7 +46,7 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
     elif(argv[2] == "catbr"):
       cmd.append(r + "-bump-represent.ppm")
     else:
-      cmd.append(s)
+      cmd.append(r + ".ppm")
   subprocess.call(cmd)
 elif(argv[2] == "retrace" or argv[2] == "newtrace" or argv[2] == "retrace2"):
   idx = 3
