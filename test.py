@@ -7,7 +7,7 @@ import subprocess
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 6.
-rot    = 3
+rot    = 0
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -194,8 +194,15 @@ else:
         subprocess.call([argv[1], "tilt", str(s), str(pixels), str(psi), root + ".ppm", root + "-bump.ppm", root + "-tilt-base-" + str(s) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + ".mp4"])
     elif(argv[2] == "btilt"):
+      w = h = 0
+      with open(root + "-bump.ppm") as f:
+        f.readline()
+        a = f.readline().split(" ")
+        w = int(a[0])
+        h = int(a[1])
       for s in range(0, pixels * 2):
         subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])
+        subprocess.call(["mogrify", "-trim", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root + "-b.mp4"])
     elif(argv[2] == "sbox"):
