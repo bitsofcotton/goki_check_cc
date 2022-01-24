@@ -3285,21 +3285,19 @@ template <typename T, typename pred> class shrinkMatrix {
 public:
   inline shrinkMatrix() { ; }
   inline shrinkMatrix(pred&& p, const int& len) {
-    d.resize(abs(len));
-    m.resize(abs(len));
+    d.resize(abs(len), T(int(0)));
+    m.resize(abs(len), T(int(0)));
     this->p = p;
   }
   inline ~shrinkMatrix() { ; }
   inline T next(const T& in) {
     T res(0);
-    for(int i = 1; i < d.size(); i ++) d[i - 1] = move(d[i]);
-    d[d.size() - 1] = in;
-    if(t ++ < d.size()) return res;
+    d[(t ++) % d.size()] = in;
     auto D(d[0]);
     for(int i = 1; i < d.size(); i ++) D += d[i];
-    for(int i = 1; i < m.size(); i ++) m[i - 1] = move(m[i]);
-    m[m.size() - 1] = p.next(D) - (D - d[0]);
-    if(t <= d.size() + m.size()) return res;
+    auto pn(p.next(D));
+    if(pn == res) return res;
+    m[t % m.size()] = pn - (D - d[(t + d.size() - 1) % d.size()]);
     for(int i = 0; i < m.size(); i ++)
       res += m[i];
     return res /= T(m.size());

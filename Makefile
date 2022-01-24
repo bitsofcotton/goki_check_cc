@@ -15,12 +15,12 @@ clean:
 	@rm -rf ${CLEANFILES}
 
 all:	gokibin gokibin32
-gokibin:	tools.cc
+gokibin:
 	${CXX} ${CXXFLAGS} -static -o gokibin tools.cc
-gokibin32:	tools.cc
+gokibin32:
 	${CXX} ${CXXFLAGS} -static -D_FLOAT_BITS_=32 -o gokibin32 tools.cc
-gokibinmp:	tools.cc
+gokibinmp:
 	${CXX} ${CXXFLAGS} ${MPFLAGS} -o gokibinmp tools.cc
-gokibin32mp:	tools.cc
+gokibin32mp:
 	${CXX} ${CXXFLAGS} ${MPFLAGS} -D_FLOAT_BITS_=32 -o gokibin32mp tools.cc
 
