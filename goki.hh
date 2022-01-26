@@ -70,8 +70,7 @@ typedef enum {
   BLINK_Y,
   BLINK_BOTH,
   REPRESENT,
-  CLIP,
-  FLIPFLOP } direction_t;
+  CLIP } direction_t;
 
 template <typename T> static inline T getImgPt(const T& y, const T& h) {
   auto yy(y % (2 * h));
@@ -717,7 +716,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      const auto ext(data.rows() / 4);
+      const auto ext(int(sqrt(T(data.rows()))));
       result.resize(data.rows() + 2 * ext, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -764,12 +763,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     for(int i = 0; i < result.rows(); i ++)
       for(int j = 0; j < result.cols(); j ++)
         result(i, j) = max(T(0), min(T(1), data(i, j)));
-    break;
-  case FLIPFLOP:
-    result.resize(data.rows(), data.cols());
-    for(int i = 0; i < result.rows(); i ++)
-      for(int j = 0; j < result.cols(); j ++)
-        result(i, j) = data(data.rows() - i - 1, data.cols() - j - 1);
     break;
   default:
     assert(0 && "unknown command in filter (should not be reached.)");
@@ -1302,6 +1295,7 @@ template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>&
     for(int j = 0; j < in.cols(); j ++)
       aavg += in(i, j);
   aavg /= T(in.rows() * in.cols());
+  geoms.reserve((in.rows() / vbox + 1) * (in.cols() / vbox + 1));
   for(int i = 0; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
@@ -1326,6 +1320,7 @@ template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>&
   avg /= geoms.size();
   for(int i = 0; i < geoms.size(); i ++)
     geoms[i][2] -= avg[2];
+  geoms.reserve(geoms.size());
   return geoms;
 }
 
