@@ -41,22 +41,21 @@ using std::make_pair;
 void usage() {
   cout << "Usage:" << endl;
   cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
-  cout << "gokicheck (pred|lenl|composite) <output.ppm> <input0.ppm> ..." << endl;
-  cout << "gokicheck (cat|catr) <input0.ppm> ..." << endl;
-  cout << "gokicheck obj <gather_pixels> <ratio> <input.ppm> <output.obj>" << endl;
+  cout << "gokicheck (pred|lenl|composite|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << "gokicheck (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
+  cout << "gokicheck obj   <gather_pixels> <ratio> <input.ppm> <output.obj>" << endl;
   cout << "gokicheck match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
-  cout << "gokicheck habit   <in0.obj> <in1.obj> <out.obj>" << endl;
   cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck retrace <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokicheck retrace  <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck retrace2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck newtrace <num_shape_per_point> <size> <output.ppm>" << endl;
-  cout << "gokicheck reimage <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokicheck reimage  <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck reimage2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokicheck penl <opt.ppm> <in.ppm> <output.ppm>" << endl;
+  cout << "gokicheck habit <in0.obj> <in1.obj> <out.obj>" << endl;
+  cout << "gokicheck penl  <opt.ppm> <in.ppm> <output.ppm>" << endl;
   return;
 }
 

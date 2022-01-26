@@ -22,8 +22,7 @@ Searching the Internet more...
     make gokicheck
     
     gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num> <rot_num>
-    gokicheck (pred|composite|lenl)  <output.ppm> <input0.ppm> ...
-    gokicheck (cat|catr) <input0.ppm> ...
+    gokicheck (pred|composite|lenl|cat|catr) <output.ppm> <input0.ppm> ...
     gokicheck obj   <gather_pixels> <ratio> <input.ppm> <output.obj>
     gokicheck (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
     gokicheck match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
@@ -35,13 +34,13 @@ Searching the Internet more...
     gokicheck newtrace <dimension> <size> <output.ppm>
     gokicheck reimage  <dimension> <input.ppm> <input-src.ppm> <output.ppm> <intensity>
     gokicheck reimage2 <dimension> <input.ppm> <output.ppm> <intensity>
-    python2 test.py ./gokicheck match input0.png input1.png
-    python2 test.py ./gokicheck (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
+    python2 test.py ./gokicheck (pextend|sharpen|bump|penlarge|penl|flarge|represent|jps|tilt|btilt|obj|sbox|prep|presq|nop) <param> input0.png ...
     python2 test.py ./gokicheck (cat|catb|catr|catbr|composite|lenl|pred) input0.png input1.png ...
+    python2 test.py ./gokicheck (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
+    python2 test.py ./gokicheck match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python2 test.py ./gokicheck newtrace dimension size
     python2 test.py ./gokicheck retrace  dimension input.ppm intensity
     python2 test.py ./gokicheck retrace2 dimension dst.ppm src.ppm intensity
-    python2 test.py ./gokicheck (pextend|sharpen|bump|penlarge|penl|flarge|represent|jps|tilt|btilt|obj|sbox|prep|presq) param input.png
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive

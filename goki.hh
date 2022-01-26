@@ -1161,7 +1161,7 @@ template <typename T> void drawMatchTriangle(SimpleMatrix<T>& map, SimpleVector<
         auto ldiff(lref2 - lref0);
   ldiff -= ldiff0 * ldiff.dot(ldiff0) / ldiff0.dot(ldiff0);
   const auto lnum((sqrt(ldiff.dot(ldiff)) + T(1)) * T(2));
-  // XXX : tan theta depend loop num, this have glitches.
+  // XXX: tan theta depend loop num, this have glitches.
   const auto d20(lref2 - lref0);
   const auto d21(lref2 - lref1);
   for(int k = 0; k < int(lnum); k ++)
@@ -1223,6 +1223,7 @@ template <typename T> vector<SimpleVector<int> > mesh2(const vector<SimpleVector
   sp.reserve(pp.size());
   SimpleMatrix<T> lrot(3, 3);
   lrot.I();
+  // XXX: glitch for non lattice with assert.
   lrot(0, 0) =    lrot(1, 1) = cos(T(int(1)) / T(pp.size()));
   lrot(0, 1) = - (lrot(1, 0) = sin(T(int(1)) / T(pp.size())));
   T    m1((lrot * p[pp[0]])[1]);
