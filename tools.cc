@@ -40,19 +40,17 @@ using std::make_pair;
 
 void usage() {
   cout << "Usage:" << endl;
-  cout << "gokicheck (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
-  cout << "gokicheck (pred|lenl|composite|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
-  cout << "gokicheck (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << "gokicheck obj   <gather_pixels> <ratio> <input.ppm> <output.obj>" << endl;
-  cout << "gokicheck match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
-  cout << "gokicheck reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokicheck recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck reimage  <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokicheck reimage2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokicheck habit <in0.obj> <in1.obj> <out.obj>" << endl;
-  cout << "gokicheck penl  <opt.ppm> <in.ppm> <output.ppm>" << endl;
+  cout << "gokibin (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
+  cout << "gokibin (pred|lenl|composite|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
+  cout << "gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
+  cout << "gokibin obj   <gather_pixels> <ratio> <input.ppm> <output.obj>" << endl;
+  cout << "gokibin match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
+  cout << "gokibin reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << "gokibin recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokibin recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
+  cout << "gokibin recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << "gokibin habit <in0.obj> <in1.obj> <out.obj>" << endl;
+  cout << "gokibin penl  <opt.ppm> <in.ppm> <output.ppm>" << endl;
   return;
 }
 
@@ -476,37 +474,6 @@ int main(int argc, const char* argv[]) {
     saveobj<num_t>(takeShape<num_t>(pdst, psrc,
       matchPartial<num_t>(pdst, psrc)[0],
       num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
-  } else if(strcmp(argv[1], "reimage") == 0) {
-    if(argc < 7) {
-      usage();
-      return - 1;
-    }
-    vector<SimpleMatrix<num_t> > dst, src, out;
-    out.resize(3);
-    if(!loadp2or3<num_t>(dst, argv[3]))
-      exit(- 2);
-    if(!loadp2or3<num_t>(src, argv[4]))
-      exit(- 2);
-    for(int i = 0; i < out.size(); i ++)
-      out[i] = reImage<num_t>(dst[i], src[i],
-        num_t(std::atof(argv[6])), atoi(argv[2]));
-    if(!savep2or3<num_t>(argv[5], normalize<num_t>(out), ! true, 255))
-      return - 3;
-  } else if(strcmp(argv[1], "reimage2") == 0) {
-    if(argc < 6) {
-      usage();
-      return - 1;
-    }
-    vector<SimpleMatrix<num_t> > dst, out;
-    out.resize(3);
-    if(!loadp2or3<num_t>(dst, argv[3]))
-      exit(- 2);
-    for(int i = 0; i < out.size(); i ++)
-      out[i] = reImage<num_t>(dst[i],
-        num_t(std::atof(argv[5])), atoi(argv[2]));
-    autoLevel<num_t>(out, 4 * (out[0].rows() + out[0].cols()));
-    if(!savep2or3<num_t>(argv[4], normalize<num_t>(out), ! true, 255))
-      return - 3;
   } else if(strcmp(argv[1], "omake") == 0) {
     vector<vector<num_t> > data;
     string header;

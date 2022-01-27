@@ -18,6 +18,7 @@ using std::min;
 using std::cerr;
 using std::endl;
 using std::string;
+using std::to_string;
 using std::ifstream;
 using std::getline;
 using std::istringstream;
@@ -329,7 +330,7 @@ template <typename T> bool loaddat(const char* filename, string& header, vector<
       else if(work[0] == ';')
         header += work + string("\n");
       else {
-        std::stringstream ss(work);
+        stringstream ss(work);
         for(int i = 0, j = 0; ss.tellg() <= work.size(); j ++) {
           if(data.size() <= j)
             data.resize(j + 1, vector<T>());
@@ -366,12 +367,12 @@ template <typename T> bool savedat(const char* filename, string& header, vector<
 template <typename T> bool loadcenterr(vector<SimpleVector<T> >& center, vector<T>& r, const char* filename) {
   center = vector<SimpleVector<T> >();
   r      = vector<T>();
-  std::ifstream input;
+  ifstream input;
   try {
     input.open(filename);
     string buf;
     while(getline(input, buf) && !input.eof() && !input.bad()) {
-      std::stringstream sbuf(buf);
+      stringstream sbuf(buf);
       SimpleVector<T> work(3);
       sbuf >> work[0];
       sbuf >> work[1];
@@ -409,11 +410,11 @@ template <typename T> bool savecenterr(const char* filename, const vector<Simple
 template <typename T> SimpleMatrix<T> sharpen(const int& size) {
   assert(0 < size);
   SimpleMatrix<T> s;
-  const auto file(std::string("./.cache/lieonn/sharpen-") + std::to_string(size) +
+  const auto file(string("./.cache/lieonn/sharpen-") + to_string(size) +
 #if defined(_FLOAT_BITS_)
-    std::string("-") + std::to_string(_FLOAT_BITS_)
+    string("-") + to_string(_FLOAT_BITS_)
 #else
-    std::string("-ld")
+    string("-ld")
 #endif
   );
   ifstream cache(file.c_str());
@@ -1141,7 +1142,7 @@ template <typename T> void drawMatchLine(SimpleMatrix<T>& map, const SimpleVecto
   const auto dlt(abs(lref0[idxM] - lref1[idxM]));
   if(dlt == T(0)) return;
   const auto denom(T(1) / dlt);
-  for(int i = 0; i <= int(dlt); i ++) {
+  for(int i = - 1; i <= int(dlt) + 1; i ++) {
     const auto gidx(lref0 + d10 * T(i) * denom);
     map(max(int(0), min(int(gidx[0]), int(map.rows() - 1))),
         max(int(0), min(int(gidx[1]), int(map.cols() - 1)))) = c;
@@ -1150,23 +1151,24 @@ template <typename T> void drawMatchLine(SimpleMatrix<T>& map, const SimpleVecto
 }
 
 template <typename T> void drawMatchTriangle(SimpleMatrix<T>& map, SimpleVector<T> lref0, SimpleVector<T> lref1, SimpleVector<T> lref2, const T& c) {
-  int idxm(0);
-  int idxM(1);
-  if(abs(lref1[idxM] - lref0[idxM]) < abs(lref1[idxm] - lref0[idxm])) {
-    idxm = 1;
-    idxM = 0;
-  }
-  lref0[2] = lref1[2] = lref2[2] = T(0);
-  const auto ldiff0(lref1 - lref0);
-        auto ldiff(lref2 - lref0);
-  ldiff -= ldiff0 * ldiff.dot(ldiff0) / ldiff0.dot(ldiff0);
-  // XXX: tan theta depend loop num, this have glitches.
-  const auto lnum((sqrt(ldiff.dot(ldiff)) + T(1)) * T(2));
-  const auto d20(lref2 - lref0);
-  const auto d21(lref2 - lref1);
-  for(int k = 0; k < int(lnum); k ++)
-    drawMatchLine<T>(map, lref0 + d20 * T(k) / lnum,
-                          lref1 + d21 * T(k) / lnum, c);
+  // make middle to lref2
+  if((lref0[0] <= lref1[0] && lref1[0] <= lref2[0]) ||
+     (lref2[0] <= lref1[0] && lref1[0] <= lref0[0]))
+    swap(lref1, lref2);
+  else if((lref2[0] <= lref0[0] && lref0[0] <= lref1[0]) ||
+          (lref1[0] <= lref0[0] && lref0[0] <= lref2[0]) )
+    swap(lref0, lref2);
+  auto d0(lref0 - lref2);
+  auto d1(lref1 - lref2);
+  auto d01(lref1 - lref0);
+  for(int i = - 1; i <= max(0, int(abs(d0[0])) + 1); i ++)
+    drawMatchLine<T>(map, d0  * T(i) / abs(d0[0]) + lref2,
+                          d01 * T(int(d0[0] / (abs(d1[0]) + abs(d0[0]))) - i) /
+                            abs(d01[0]) + lref0, c);
+  for(int i = - 1; i <= max(0, int(abs(d1[0])) + 1); i ++)
+    drawMatchLine<T>(map, d1 * T(i) / abs(d0[0]) + lref2,
+                          - d01 * T(int(d1[0] / (abs(d1[0]) + abs(d0[0]))) - i) /
+                            abs(d01[0]) + lref1, c);
   return;
 }
 
@@ -1268,7 +1270,7 @@ template <typename T> vector<SimpleVector<int> > mesh2(const vector<SimpleVector
   }
   while(6 < scan.size()) {
     const auto before(scan.size());
-    for(int i = 2; i < scan.size() - 3; i ++)
+    for(int i = 2; i < scan.size() - 2; i ++)
       addMeshTri<T>(res, scan, p, i);
     if(before == scan.size()) break;
   }
@@ -1682,23 +1684,6 @@ template <typename T> SimpleMatrix<T> reColor(const SimpleMatrix<T>& cbase, cons
         auto res(cbase);
   for(int i = 0; i < ccc.size(); i ++)
     res(cpoints[i].second.first, cpoints[i].second.second) = ccc[i];
-  return res;
-}
-
-template <typename T> static inline SimpleMatrix<T> reImage(const SimpleMatrix<T>& dst, const SimpleMatrix<T>& src, const T& intensity, const int& count) {
-  Decompose<T> decom(count);
-  assert(dst.rows() == src.rows() && dst.cols() == src.cols());
-  SimpleMatrix<T> res(dst.rows(), dst.cols());
-  for(int i = 0; i < res.rows(); i ++)
-    res.row(i) = decom.mimic(dst.row(i), src.row(i), intensity);
-  return res;
-}
-
-template <typename T> static inline SimpleMatrix<T> reImage(const SimpleMatrix<T>& dst, const T& intensity, const int& count) {
-  Decompose<T> decom(count);
-  SimpleMatrix<T> res(dst.rows(), dst.cols());
-  for(int i = 0; i < res.rows(); i ++)
-    res.row(i) = decom.emphasis(dst.row(i), intensity);
   return res;
 }
 
