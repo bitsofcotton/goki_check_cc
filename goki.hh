@@ -732,11 +732,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
-          P0D<T, P0<T, idFeeder<T> > > pdf(data.rows() - 1, m + 1);
           P0D<T, P0<T, idFeeder<T> > > pdb(data.rows() - 1, m + 1);
+          P0D<T, P0<T, idFeeder<T> > > pdf(data.rows() - 1, m + 1);
           for(int kk = 0; kk < data.rows(); kk ++) {
-            result(ext - m - 1, k) = pdb.next(data(data.rows() - kk - 1, k));
-            result(m - ext + result.rows(), k) = pdf.next(data(kk, k));
+            result(ext - m - 1, k) = pdb.next(data(data.rows() - kk - 1, k) + T(int(1))) - T(int(1));
+            result(m - ext + result.rows(), k) = pdf.next(data(kk, k) + T(int(1))) - T(int(1));
           }
         }
       result = filter<T>(result, CLIP);
