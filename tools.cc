@@ -38,19 +38,19 @@ using std::make_pair;
 
 #include <stdlib.h>
 
-void usage() {
+void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << "gokibin (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
-  cout << "gokibin (pred|lenl|composite|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
-  cout << "gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << "gokibin obj   <gather_pixels> <ratio> <input.ppm> <output.obj>" << endl;
-  cout << "gokibin match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
-  cout << "gokibin reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokibin recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokibin recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokibin recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokibin habit <in0.obj> <in1.obj> <out.obj>" << endl;
-  cout << "gokibin penl  <opt.ppm> <in.ppm> <output.ppm>" << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
+  cout << en << " (pred|lenl|composite|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
+  cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
+  cout << en << " obj   <gather_pixels> <ratio> <input.ppm> <output.obj>" << endl;
+  cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
+  cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
+  cout << en << " recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
+  cout << en << " recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << en << " habit <in0.obj> <in1.obj> <out.obj>" << endl;
+  cout << en << " penl  <opt.ppm> <in.ppm> <output.ppm>" << endl;
   return;
 }
 
@@ -59,7 +59,7 @@ int main(int argc, const char* argv[]) {
 //#define int int64_t
 #define int int32_t
   if(argc < 2) {
-    usage();
+    usage(argv[0]);
     return 0;
   }
   if(strcmp(argv[1], "nop") == 0 ||
@@ -78,7 +78,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "b2w")     == 0 ||
      strcmp(argv[1], "b2wd")    == 0) {
     if(argc < 3) {
-      usage();
+      usage(argv[0]);
       return 0;
     }
     const auto recur(4 < argc ? atoi(argv[4]) : 1);
@@ -161,7 +161,7 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "penl") == 0) {
     if(argc < 5) {
-      usage();
+      usage(argv[0]);
       return 0;
     }
     vector<SimpleMatrix<num_t> > opt, data;
@@ -209,7 +209,7 @@ int main(int argc, const char* argv[]) {
             strcmp(argv[1], "recolor2") == 0 ||
             strcmp(argv[1], "recolor3") == 0) {
     if(argc < 6) {
-      usage();
+      usage(argv[0]);
       return 0;
     }
     const auto count(atoi(argv[2]));
@@ -242,7 +242,7 @@ int main(int argc, const char* argv[]) {
   } else if(strcmp(argv[1], "obj") == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
     if(argc < 6) {
-      usage();
+      usage(argv[0]);
       return - 1;
     }
     const auto  vbox(atoi(argv[2]));
@@ -260,7 +260,7 @@ int main(int argc, const char* argv[]) {
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
-      usage();
+      usage(argv[0]);
       return - 1;
     }
     const auto index(atoi(argv[2]));
@@ -289,7 +289,7 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "match") == 0) {
     if(argc < 10) {
-      usage();
+      usage(argv[0]);
       return - 1;
     }
     const auto nsub(atoi(argv[2]));
@@ -367,7 +367,7 @@ int main(int argc, const char* argv[]) {
             strcmp(argv[1], "catr") == 0 ||
             strcmp(argv[1], "composite") == 0) {
     if(argc < 4) {
-      usage();
+      usage(argv[0]);
       return - 1;
     }
     vector<vector<SimpleMatrix<num_t> > > in;
@@ -459,7 +459,7 @@ int main(int argc, const char* argv[]) {
     vector<SimpleVector<int>   > poldst, polsrc;
     if(argc < 5 || !loadobj<num_t>(pdst, poldst, argv[2]) ||
                    !loadobj<num_t>(psrc, polsrc, argv[3])) {
-      usage();
+      usage(argv[0]);
       return - 2;
     }
     num_t Mx(0), My(0);
@@ -527,7 +527,7 @@ int main(int argc, const char* argv[]) {
       cout << endl;
     }
   } else {
-    usage();
+    usage(argv[0]);
     return - 1;
   }
   return 0;
