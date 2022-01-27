@@ -29,29 +29,19 @@ Searching the Internet more...
     gokicheck recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokicheck recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokicheck recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
-    gokicheck retrace  <dimension> <input-mask.ppm> <input-mask-copy.ppm> <intensity>
-    gokicheck retrace2 <dimension> <input-mask.ppm> <outbase> <intensity>
-    gokicheck newtrace <dimension> <size> <output.ppm>
     gokicheck reimage  <dimension> <input.ppm> <input-src.ppm> <output.ppm> <intensity>
     gokicheck reimage2 <dimension> <input.ppm> <output.ppm> <intensity>
     python2 test.py ./gokicheck (pextend|sharpen|bump|penlarge|penl|flarge|represent|jps|tilt|btilt|obj|sbox|prep|presq|nop) <param> input0.png ...
     python2 test.py ./gokicheck (cat|catb|catr|catbr|composite|lenl|pred) input0.png input1.png ...
     python2 test.py ./gokicheck (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python2 test.py ./gokicheck match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
-    python2 test.py ./gokicheck newtrace dimension size
-    python2 test.py ./gokicheck retrace  dimension input.ppm intensity
-    python2 test.py ./gokicheck retrace2 dimension dst.ppm src.ppm intensity
+    python2 test.py ./gokicheck i2i src.ppm dst.ppm
 
 # How to use as library (sample code).
 Please refer tools.cc, and please include with namespace directive
 (but include guard definition should harms).  
 
 # Known Bug not to be fixed.
-reDig::edge returns relaxed edges, this can be fixed with multiple on counting
-+/- on same scan line.
-
-reDig::mesh2 returns something buggy when we input non lattice points.
-
 The bump command returns tilt ignored result.
 This is because we integrate local focuses and integration itself ignores differential offset part.
 

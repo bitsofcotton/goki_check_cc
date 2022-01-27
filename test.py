@@ -48,19 +48,6 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)
-elif(argv[2] == "retrace" or argv[2] == "newtrace" or argv[2] == "retrace2"):
-  idx = 3
-  try:
-    pixels = int(argv[3])
-    idx = 4
-  except:
-    pass
-  if(argv[2] == "retrace"):
-    subprocess.call([argv[1], "retrace2", str(pixels), argv[idx], argv[idx] + "-emphmask.ppm", argv[idx + 1]])
-  elif(argv[2] == "retrace2"):
-    subprocess.call([argv[1], "retrace", str(pixels), argv[idx], argv[idx + 1], argv[idx] + "-" + argv[idx + 1] + "-mask.ppm", argv[idx + 2]])
-  else:
-    subprocess.call([argv[1], "newtrace", str(pixels), argv[idx], "newtrace.ppm"])
 elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   files = []
   if(argv[2] == "seinsq"):
@@ -169,12 +156,22 @@ else:
       subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-normalize", "+contrast", root + "-sharpen-minus-normalize.png"])
     elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "integraw" or argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "obj"):
-      subprocess.call(["convert", root + "-bump0.ppm", "-blur", str(abs(int(pixels))) + "x" + str(abs(int(pixels))), "-equalize", "-compress", "none", root + "-bump.ppm"])
-      subprocess.call([argv[1], "obj", str(int(pixels)),  "1", root + "-bump.ppm", root + ".obj"])
-    elif(argv[2] == "-obj"):
-      subprocess.call(["convert", root + "-bump0.ppm", "-blur", str(abs(int(pixels))) + "x" + str(abs(int(pixels))), "-equalize", "-compress", "none", root + "-bump.ppm"])
-      subprocess.call([argv[1], "obj", str(int(pixels)), "-1", root + "-bump.ppm", root + ".obj"])
+    elif(argv[2] == "obj" or argv[2] == "-obj"):
+      if(pixels < 0):
+        w = h = 0
+        with open(root + "-bump0.ppm") as f:
+          f.readline()
+          a = f.readline().split(" ")
+          w = int(a[0])
+          h = int(a[1])
+        p = int(pow(w * h / abs(pixels), .5))
+        subprocess.call(["convert", root + "-bump0.ppm", "-blur", str(p) + "x" + str(p), "-equalize", "-compress", "none", root + "-bump.ppm"])
+      else:
+        subprocess.call(["convert", root + "-bump0.ppm", "-blur", str(abs(int(pixels))) + "x" + str(abs(int(pixels))), "-equalize", "-compress", "none", root + "-bump.ppm"])
+      if(argv[2] == "obj"):
+        subprocess.call([argv[1], "obj", str(int(pixels)),  "1", root + "-bump.ppm", root + ".obj"])
+      else:
+        subprocess.call([argv[1], "obj", str(int(pixels)), "-1", root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "penl"):
       subprocess.call([argv[1], argv[2], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "jps"):

@@ -1160,8 +1160,8 @@ template <typename T> void drawMatchTriangle(SimpleMatrix<T>& map, SimpleVector<
   const auto ldiff0(lref1 - lref0);
         auto ldiff(lref2 - lref0);
   ldiff -= ldiff0 * ldiff.dot(ldiff0) / ldiff0.dot(ldiff0);
-  const auto lnum((sqrt(ldiff.dot(ldiff)) + T(1)) * T(2));
   // XXX: tan theta depend loop num, this have glitches.
+  const auto lnum((sqrt(ldiff.dot(ldiff)) + T(1)) * T(2));
   const auto d20(lref2 - lref0);
   const auto d21(lref2 - lref1);
   for(int k = 0; k < int(lnum); k ++)
@@ -1221,11 +1221,14 @@ template <typename T> void addMeshTri(vector<SimpleVector<int> >& res, vector<pa
 template <typename T> vector<SimpleVector<int> > mesh2(const vector<SimpleVector<T> >& p, const vector<int>& pp) {
   vector<pair<SimpleVector<T>, int> > sp;
   sp.reserve(pp.size());
+  T Mxy(int(0));
+  for(int i = 0; i < p.size(); i ++)
+    Mxy = max(Mxy, max(abs(p[i][0]), abs(p[i][1])));
+  Mxy *= T(int(2));
   SimpleMatrix<T> lrot(3, 3);
   lrot.I();
-  // XXX: glitch for non lattice with assert.
-  lrot(0, 0) =    lrot(1, 1) = cos(T(int(1)) / T(pp.size()));
-  lrot(0, 1) = - (lrot(1, 0) = sin(T(int(1)) / T(pp.size())));
+  lrot(0, 0) =    lrot(1, 1) = cos(T(int(1)) / max(Mxy, T(pp.size())));
+  lrot(0, 1) = - (lrot(1, 0) = sin(T(int(1)) / max(Mxy, T(pp.size()))));
   T    m1((lrot * p[pp[0]])[1]);
   auto M1(m1);
   for(int i = 0; i < pp.size(); i ++) {
@@ -1349,7 +1352,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
       SimpleVector<T> g(3);
       g[0] = T(int(score[i].second.first));
       g[1] = T(int(score[i].second.second));
-      g[2] = T(min(in.rows(), in.cols()) * 2) *
+      g[2] = sqrt(sqrt(T(in.rows()) * T(in.cols()) )) *
         in(score[i].second.first, score[i].second.second);
       geoms.emplace_back(move(g));
       cache.emplace_back(make_pair(score[i].second.first / guard,
@@ -1359,19 +1362,19 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   SimpleVector<T> g(3);
   g[0] = T(int(0));
   g[1] = T(int(0));
-  g[2] = T(min(in.rows(), in.cols()) * 2) * in(0, 0);
+  g[2] = sqrt(sqrt(T(in.rows()) * T(in.cols()) )) * in(0, 0);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(0));
-  g[2] = T(min(in.rows(), in.cols()) * 2) * in(in.rows() - 1, 0);
+  g[2] = sqrt(sqrt(T(in.rows()) * T(in.cols()) )) * in(in.rows() - 1, 0);
   geoms.emplace_back(g);
   g[0] = T(int(0));
   g[1] = T(int(in.cols() - 1));
-  g[2] = T(min(in.rows(), in.cols()) * 2) * in(0, in.cols() - 1);
+  g[2] = sqrt(sqrt(T(in.rows()) * T(in.cols()) )) * in(0, in.cols() - 1);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(in.cols() - 1));
-  g[2] = T(min(in.rows(), in.cols()) * 2) * in(in.rows() - 1, in.cols() - 1);
+  g[2] = sqrt(sqrt(T(in.rows()) * T(in.cols()) )) * in(in.rows() - 1, in.cols() - 1);
   geoms.emplace_back(g);
   return geoms;
 }
@@ -1536,37 +1539,6 @@ template <typename T> static inline SimpleMatrix<T> pullRefMatrix(const SimpleMa
   return result;
 }
 
-template <typename T> vector<int> edge(const vector<SimpleVector<T> >& p, const vector<int>& pp) {
-  vector<pair<SimpleVector<T>, int> > sp;
-  sp.reserve(pp.size());
-  for(int i = 0; i < pp.size(); i ++)
-    sp.emplace_back(make_pair(p[pp[i]], pp[i]));
-  sort(sp.begin(), sp.end(), less0<pair<SimpleVector<T>, int> >);
-  vector<int> resl, resr;
-  int i;
-  for(i = 0; i < sp.size(); i ++) {
-    const auto y(sp[i].first[0]);
-    int jj = i;
-    for(int j = i; j < sp.size() && y == sp[j].first[0]; j ++)
-      if(sp[j].first[1] <= sp[jj].first[1])
-        jj = j;
-    resl.emplace_back(sp[jj].second);
-    jj = i;
-    for(int j = i; j < sp.size() && y == sp[j].first[0]; j ++)
-      if(sp[j].first[1] >= sp[jj].first[1])
-        jj = j;
-    resr.emplace_back(sp[jj].second);
-    i = jj + 1;
-  }
-  vector<int> res;
-  res.reserve(resl.size() + resr.size());
-  for(int i = 0; i < resl.size(); i ++)
-    res.emplace_back(move(resl[i]));
-  for(int i = 0; i < resr.size(); i ++)
-    res.emplace_back(move(resr[resr.size() - i - 1]));
-  return res;
-}
-
 template <typename T> SimpleMatrix<T> reShape(const SimpleMatrix<T>& cbase, const SimpleMatrix<T>& vbase, const int& count, const T& thresh) {
   assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
   assert(cbase.rows() == vbase.rows() && cbase.cols() == vbase.cols());
@@ -1711,152 +1683,6 @@ template <typename T> SimpleMatrix<T> reColor(const SimpleMatrix<T>& cbase, cons
   for(int i = 0; i < ccc.size(); i ++)
     res(cpoints[i].second.first, cpoints[i].second.second) = ccc[i];
   return res;
-}
-
-template <typename T> vector<vector<int> > floodfill(const SimpleMatrix<T>& mask, const vector<SimpleVector<T> >& points, const int& vbox = 3) {
-  vector<vector<int> > result;
-  SimpleMatrix<int> checked(mask.rows(), mask.cols());
-  checked.O(false);
-  for(int i = 0; i < points.size(); i ++) {
-    const auto& pi(points[i]);
-    const int   y0(pi[0]);
-    const int   x0(pi[1]);
-    if(0 <= y0 && y0 < mask.rows() &&
-       0 <= x0 && x0 < mask.cols() &&
-       mask(y0, x0) < T(1) / T(2)) {
-      vector<pair<T, T> > tries;
-      tries.emplace_back(make_pair(  T(vbox),         0));
-      tries.emplace_back(make_pair(        0,   T(vbox)));
-      tries.emplace_back(make_pair(- T(vbox),         0));
-      tries.emplace_back(make_pair(        0, - T(vbox)));
-      vector<pair<int, int> > stack;
-      vector<int> store;
-      stack.emplace_back(make_pair(i, i));
-      while(stack.size()) {
-        const auto pop(stack[stack.size() - 1]);
-        stack.pop_back();
-        if(pop.first < 0 || points.size() <= pop.first)
-          store.emplace_back(pop.second);
-        const int& yy(points[pop.first][0]);
-        const int& xx(points[pop.first][1]);
-        if(! (0 <= yy && yy < checked.rows() &&
-              0 <= xx && xx < checked.cols() &&
-              mask(yy, xx) < T(1) / T(2) &&
-              !checked(yy, xx) ) )
-          store.emplace_back(pop.first);
-        else if(!checked(yy, xx)) {
-          checked(yy, xx) = true;
-          for(int ii = 0; ii < tries.size(); ii ++) {
-            const auto ny(T(yy) + tries[ii].first);
-            const auto nx(T(xx) + tries[ii].second);
-            for(int k = 0; k < points.size(); k ++)
-              if(abs(points[k][0] - ny) < T(1) / T(2) &&
-                 abs(points[k][1] - nx) < T(1) / T(2)) {
-                stack.emplace_back(make_pair(k, pop.first));
-                break;
-              }
-          }
-        }
-      }
-      if(! store.size()) continue;
-      result.emplace_back(move(store));
-    }
-  }
-  return result;
-}
-
-template <typename T> void prepTrace(pair<SimpleVector<T>, SimpleVector<T> >& v, pair<pair<int, int>, pair<int, int> >& hw, const SimpleMatrix<T>& mask, const int& vbox = 3) {
-        auto pdst(getTileVec<T>(mask, vbox));
-  const auto idsts(floodfill<T>(mask, pdst, vbox));
-  assert(idsts.size());
-  int iidst(0);
-  for(int i = 1; i < idsts.size(); i ++)
-    if(idsts[iidst].size() < idsts[i].size()) iidst = i;
-  const auto idst(edge<T>(pdst, idsts[iidst]));
-  assert(idst.size());
-  auto& yMd(hw.first.first   = pdst[idst[0]][0]);
-  auto& ymd(hw.second.first  = pdst[idst[0]][0]);
-  auto& xMd(hw.first.second  = pdst[idst[0]][1]);
-  auto& xmd(hw.second.second = pdst[idst[0]][1]);
-  for(int i = 1; i < idst.size(); i ++) {
-    yMd = max(yMd, int(pdst[idst[i]][0]));
-    ymd = min(ymd, int(pdst[idst[i]][0]));
-    xMd = max(xMd, int(pdst[idst[i]][1]));
-    xmd = min(xMd, int(pdst[idst[i]][1]));
-  }
-  v.first.resize(idst.size());
-  v.second.resize(idst.size());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < idst.size(); i ++) {
-    v.first[ i] = pdst[idst[i]][0];
-    v.second[i] = pdst[idst[i]][1];
-  }
-  return;
-}
-
-template <typename T> SimpleMatrix<T> applyTrace(const pair<SimpleVector<T>, SimpleVector<T> >& v, const pair<pair<pair<int, int>, pair<int, int> >, pair<pair<int, int>, pair<int, int> > >& hw) {
-  const auto& vy(v.first);
-  const auto& vx(v.second);
-  pair<int, int> MM(make_pair(int(vy[0]), int(vx[0])));
-  auto mm(MM);
-  for(int i = 1; i < vy.size(); i ++) {
-    MM.first  = max(MM.first,  int(vy[i]));
-    MM.second = max(MM.second, int(vx[i]));
-    mm.first  = min(mm.first,  int(vy[i]));
-    mm.second = min(mm.second, int(vx[i]));
-  }
-  const auto& dsthw(hw.first);
-  const auto& srchw(hw.second);
-  const auto yy(max(dsthw.first.first - dsthw.second.first,
-                    srchw.first.first - srchw.second.first) + 1);
-  const auto xx(max(dsthw.first.second - dsthw.second.second,
-                    srchw.first.second - srchw.second.second) + 1);
-  const auto yyy(MM.first - mm.first + 1);
-  const auto xxx(MM.second - mm.second + 1);
-  SimpleMatrix<T> res(yy, xx);
-  res.O();
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < vy.size(); i ++) {
-    SimpleVector<T> v0(3);
-    SimpleVector<T> v1(3);
-    v0[2] = v1[2] = T(0);
-    v0[0] = (vy[i] - T(mm.first))  / T(yyy) * T(yy);
-    v0[1] = (vx[i] - T(mm.second)) / T(xxx) * T(xx);
-    if(i == vy.size() - 1) {
-      v1[0] = (vy[0] - T(mm.first))  / T(yyy) * T(yy);
-      v1[1] = (vx[0] - T(mm.second)) / T(xxx) * T(xx);
-    } else {
-      v1[0] = (vy[i + 1] - T(mm.first))  / T(yyy) * T(yy);
-      v1[1] = (vx[i + 1] - T(mm.second)) / T(xxx) * T(xx);
-    }
-    drawMatchLine<T>(res, v0, v1, T(1));
-  }
-  return res;
-}
-
-template <typename T> static inline SimpleMatrix<T> reTrace(const SimpleMatrix<T>& dst, const SimpleMatrix<T>& src, const T& intensity, const int& count) {
-  pair<SimpleVector<T>, SimpleVector<T> > pdst, psrc;
-  pair<pair<int, int>, pair<int, int> > dsthw, srchw;
-  prepTrace<T>(pdst, dsthw, dst);
-  prepTrace<T>(psrc, srchw, src);
-  Decompose<T> decom(count);
-  return applyTrace<T>(make_pair(
-    decom.mimic(pdst.first,  psrc.first,  intensity),
-    decom.mimic(pdst.second, psrc.second, intensity)), make_pair(dsthw, srchw));
-}
-
-template <typename T> static inline SimpleMatrix<T> reTrace(const SimpleMatrix<T>& dst, const T& intensity, const int& count) {
-  pair<SimpleVector<T>, SimpleVector<T> > pdst;
-  pair<pair<int, int>, pair<int, int> > hw;
-  prepTrace<T>(pdst, hw, dst);
-  Decompose<T> decom(count);
-  return applyTrace<T>(make_pair(
-    decom.emphasis(pdst.first,  intensity),
-    decom.emphasis(pdst.second, intensity)), make_pair(hw, hw));
 }
 
 template <typename T> static inline SimpleMatrix<T> reImage(const SimpleMatrix<T>& dst, const SimpleMatrix<T>& src, const T& intensity, const int& count) {

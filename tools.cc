@@ -49,9 +49,6 @@ void usage() {
   cout << "gokicheck recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << "gokicheck retrace  <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokicheck retrace2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
-  cout << "gokicheck newtrace <num_shape_per_point> <size> <output.ppm>" << endl;
   cout << "gokicheck reimage  <num_shape_per_point> <inputdst.ppm> <inputsrc.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck reimage2 <num_shape_per_point> <inputdst.ppm> <output.ppm> <intensity>" << endl;
   cout << "gokicheck habit <in0.obj> <in1.obj> <out.obj>" << endl;
@@ -479,8 +476,7 @@ int main(int argc, const char* argv[]) {
     saveobj<num_t>(takeShape<num_t>(pdst, psrc,
       matchPartial<num_t>(pdst, psrc)[0],
       num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
-  } else if(strcmp(argv[1], "retrace") == 0 ||
-            strcmp(argv[1], "reimage") == 0) {
+  } else if(strcmp(argv[1], "reimage") == 0) {
     if(argc < 7) {
       usage();
       return - 1;
@@ -491,19 +487,12 @@ int main(int argc, const char* argv[]) {
       exit(- 2);
     if(!loadp2or3<num_t>(src, argv[4]))
       exit(- 2);
-    if(strcmp(argv[1], "retrace") == 0)
-      out[0] = out[1] = out[2] =
-        reTrace<num_t>(normalize<num_t>(rgb2d<num_t>(dst)),
-          normalize<num_t>(rgb2d<num_t>(src)),
-          num_t(std::atof(argv[6])), atoi(argv[2]));
-    else
-      for(int i = 0; i < out.size(); i ++)
-        out[i] = reImage<num_t>(dst[i], src[i],
-          num_t(std::atof(argv[6])), atoi(argv[2]));
+    for(int i = 0; i < out.size(); i ++)
+      out[i] = reImage<num_t>(dst[i], src[i],
+        num_t(std::atof(argv[6])), atoi(argv[2]));
     if(!savep2or3<num_t>(argv[5], normalize<num_t>(out), ! true, 255))
       return - 3;
-  } else if(strcmp(argv[1], "retrace2") == 0 ||
-            strcmp(argv[1], "reimage2") == 0) {
+  } else if(strcmp(argv[1], "reimage2") == 0) {
     if(argc < 6) {
       usage();
       return - 1;
@@ -512,44 +501,12 @@ int main(int argc, const char* argv[]) {
     out.resize(3);
     if(!loadp2or3<num_t>(dst, argv[3]))
       exit(- 2);
-    if(strcmp(argv[1], "retrace2") == 0)
-      out[0] = out[1] = out[2] =
-        reTrace<num_t>(normalize<num_t>(rgb2d<num_t>(dst)),
-          num_t(std::atof(argv[5])), atoi(argv[2]));
-    else {
-      for(int i = 0; i < out.size(); i ++)
-        out[i] = reImage<num_t>(dst[i],
-          num_t(std::atof(argv[5])), atoi(argv[2]));
-      autoLevel<num_t>(out, 4 * (out[0].rows() + out[0].cols()));
-    }
+    for(int i = 0; i < out.size(); i ++)
+      out[i] = reImage<num_t>(dst[i],
+        num_t(std::atof(argv[5])), atoi(argv[2]));
+    autoLevel<num_t>(out, 4 * (out[0].rows() + out[0].cols()));
     if(!savep2or3<num_t>(argv[4], normalize<num_t>(out), ! true, 255))
       return - 3;
-  } else if(strcmp(argv[1], "newtrace") == 0) {
-    if(argc < 5) {
-      usage();
-      return -1;
-    }
-    SimpleVector<num_t> m(atoi(argv[2]));
-    Decompose<num_t> dec(m.size());
-    auto n(m);
-    auto f(m);
-    m[0] = n[0] = num_t(atoi(argv[2]) * 2);
-    // N.B. (f[0] := 1 causes flat result.):
-    f[0] = num_t(0);
-    for(int i = 1; i < m.size(); i ++) {
-      m[i] = m[i - 1] + (num_t(arc4random_uniform(3000)) - num_t(1500)) / num_t(1500);
-      n[i] = n[i - 1] + (num_t(arc4random_uniform(3000)) - num_t(1500)) / num_t(1500);
-      f[i] = num_t(1);
-    }
-    f /= sqrt(f.dot(f));
-    const auto pp(make_pair(make_pair(atoi(argv[3]),
-      atoi(argv[3])), make_pair(0, 0)));
-    vector<SimpleMatrix<num_t> > M;
-    M.resize(3);
-    M[0] = M[1] = M[2] = normalize<num_t>(applyTrace<num_t>(
-      make_pair(dec.synth(m, f), dec.synth(n, f)),
-      make_pair(pp, pp)) );
-    savep2or3<num_t>(argv[4], M, true, 255);
   } else if(strcmp(argv[1], "omake") == 0) {
     vector<vector<num_t> > data;
     string header;
