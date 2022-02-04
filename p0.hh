@@ -116,45 +116,6 @@ public:
   P q;
 };
 
-template <typename T, typename P> class PC {
-public:
-  inline PC() { ; }
-  inline PC(const P& p0, const int& sz = 20) {
-    p = P(p0);
-    q = P(p0);
-    bb.resize(sz, M = S = T(int(0)));
-    assert(! (bb.size() & 1));
-  }
-  inline ~PC() { ; };
-  inline T next(const T& in) {
-    for(int i = 1; i < bb.size() - 1; i ++)
-      bb[i - 1] = move(bb[i]);
-    bb[bb.size() - 2]  = bb[bb.size() - 1];
-    bb[bb.size() - 1] += (S += in);
-    vector<T> H;
-    vector<T> h;
-    vector<T> g;
-    H.reserve(bb.size() / 2);
-    h.reserve(bb.size() / 2);
-    g.reserve(bb.size() / 2);
-    for(int i = 0; i < bb.size() / 2; i ++) {
-      g.emplace_back(bb[i * 2 + 0] + bb[i * 2 + 0]);
-      H.emplace_back(bb[i * 2 + 0] + bb[i * 2 + 1]);
-      h.emplace_back(bb[i * 2 + 1] + bb[i * 2 + 1]);
-    }
-    const auto MM(q.next(M * (H[H.size() - 1] - h[h.size() - 1] + g[g.size() - 2] - H[H.size() - 2])));
-    auto pp(p);
-    for(int i = 1; i < H.size(); i ++)
-      M = pp.next(H[i] - h[i] + g[g.size() - 1] - H[H.size() - 1]);
-    return - M * MM;
-  }
-  P p;
-  P q;
-  T M;
-  T S;
-  vector<T> bb;
-};
-
 template <typename T, typename P> class pC {
 public:
   inline pC() { ; }
@@ -163,22 +124,19 @@ public:
     p.resize(bit, p0);
     r = exp(log(upper / lower) / T(int(bit)));
     this->lower = lower;
-    bres = T(int(0));
   }
   inline ~pC() { ; };
   inline T next(const T& in) {
-    auto res(bres * T(int(2)));
-    bres = T(int(0));
+    T res(int(0));
     for(int i = 0; i < p.size(); i ++) {
       if(p[i].next(T(int(myint(in / lower / pow(r, T(i)))) & 1) - T(int(1)) / T(int(2))) > T(int(0)))
-        bres += lower * pow(r, T(i));
+        res += lower * pow(r, T(i));
     }
-    return res -= in;
+    return res;
   }
   vector<P> p;
   T lower;
   T r;
-  T bres;
 };
 
 #define _P0_
