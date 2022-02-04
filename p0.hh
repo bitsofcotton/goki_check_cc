@@ -161,7 +161,7 @@ public:
   inline pC(const P& p0, const T& lower, const T& upper, const int& bit) {
     assert(T(int(0)) < lower && lower < upper);
     p.resize(bit, p0);
-    r = exp(log(upper - lower) / T(int(bit)));
+    r = exp(log(upper / lower) / T(int(bit)));
     this->lower = lower;
     bres = T(int(0));
   }
