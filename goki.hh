@@ -732,12 +732,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
-          P0D<T, P0<T, idFeeder<T> > > pdb(data.rows() - 1, m + 1);
-          P0D<T, P0<T, idFeeder<T> > > pdf(data.rows() - 1, m + 1);
-          for(int kk = 0; kk < data.rows(); kk ++) {
-            result(ext - m - 1, k) = pdb.next(data(data.rows() - kk - 1, k) + T(int(1))) - T(int(1));
-            result(m - ext + result.rows(), k) = pdf.next(data(kk, k) + T(int(1))) - T(int(1));
-          }
+          pC<num_t, PC<num_t, P0D<T, P0<T, idFeeder<T> > > > > pdb(PC<num_t, P0D<T, P0<T, idFeeder<T> > > >(P0D<T, P0<T, idFeeder<T> > >(data.rows() - 1)), T(int(1)) / T(int(256)), T(int(1)), 8);
+          pC<num_t, PC<num_t, P0D<T, P0<T, idFeeder<T> > > > > pdf(PC<num_t, P0D<T, P0<T, idFeeder<T> > > >(P0D<T, P0<T, idFeeder<T> > >(data.rows() - 1)), T(int(1)) / T(int(256)), T(int(1)), 8);
+          for(int j = 0; j < max(2000 / data.rows() * (m + 1), 1); j ++)
+            for(int kk = 2; kk < data.rows() / (m + 1); kk ++) {
+              const auto k1(kk * (m + 1) + data.rows() % (m + 1) - 1);
+              result(ext - m - 1, k) =
+                pdb.next(data(data.rows() - 1 - k1, k));
+              result(m - ext + result.rows(), k) =
+                pdf.next(data(k1, k));
+            }
         }
       result = filter<T>(result, CLIP);
     }
