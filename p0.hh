@@ -122,7 +122,7 @@ public:
   inline PC(const P& p0, const int& sz = 20) {
     p = P(p0);
     q = P(p0);
-    bb.resize(sz, M = T(int(0)));
+    bb.resize(sz, M = S = T(int(0)));
     assert(! (bb.size() & 1));
   }
   inline ~PC() { ; };
@@ -130,7 +130,7 @@ public:
     for(int i = 1; i < bb.size() - 1; i ++)
       bb[i - 1] = move(bb[i]);
     bb[bb.size() - 2]  = bb[bb.size() - 1];
-    bb[bb.size() - 1] += in;
+    bb[bb.size() - 1] += (S += in);
     vector<T> H;
     vector<T> h;
     vector<T> g;
@@ -151,6 +151,7 @@ public:
   P p;
   P q;
   T M;
+  T S;
   vector<T> bb;
 };
 
