@@ -127,7 +127,7 @@ public:
   }
   inline ~PC() { ; };
   inline T next(const T& in) {
-    for(int i = 1; i < bb.size() - 2; i ++)
+    for(int i = 1; i < bb.size() - 1; i ++)
       bb[i - 1] = move(bb[i]);
     bb[bb.size() - 2]  = bb[bb.size() - 1];
     bb[bb.size() - 1] += in;

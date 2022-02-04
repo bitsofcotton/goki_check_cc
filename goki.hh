@@ -743,7 +743,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                 pdf.next(data(k1, k));
             }
         }
-      result = filter<T>(result, CLIP);
     }
     break;
   case BLINK_Y:
