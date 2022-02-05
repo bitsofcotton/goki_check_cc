@@ -3297,7 +3297,8 @@ public:
     for(int i = 1; i < d.size(); i ++) D += d[i];
     auto pn(p.next(D));
     if(pn == res) return res;
-    m[t % m.size()] = pn - (D - d[(t + ((d.size() - 1) << 1)) % d.size()]);
+    // N.B. we bet per d.size() range from this sequence.
+    m[t % m.size()] = pn - D + in;
     for(int i = 0; i < m.size(); i ++)
       res += m[i];
     return res /= T(m.size());
