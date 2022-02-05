@@ -3297,7 +3297,7 @@ public:
     for(int i = 1; i < d.size(); i ++) D += d[i];
     auto pn(p.next(D));
     if(pn == res) return res;
-    m[t % m.size()] = pn - (D - d[(t + d.size() - 1) % d.size()]);
+    m[t % m.size()] = pn - (D - d[(t + ((d.size() - 1) << 1)) % d.size()]);
     for(int i = 0; i < m.size(); i ++)
       res += m[i];
     return res /= T(m.size());

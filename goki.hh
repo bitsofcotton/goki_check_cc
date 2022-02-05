@@ -1271,7 +1271,7 @@ template <typename T> vector<SimpleVector<int> > mesh2(const vector<SimpleVector
   }
   while(6 < scan.size()) {
     const auto before(scan.size());
-    for(int i = 2; i < scan.size() - 2; i ++)
+    for(int i = 2; i < scan.size() - 3; i ++)
       addMeshTri<T>(res, scan, p, i);
     if(before == scan.size()) break;
   }
