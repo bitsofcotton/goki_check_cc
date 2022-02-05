@@ -724,24 +724,22 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + ext) = data.row(i);
+      vector<P0D<T, P0<T, idFeeder<T> > > > p0;
+      p0.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        P0<T, idFeeder<T> > prep(data.rows() - 1, m + 1);
+        p0.emplace_back(P0D<T, P0<T, idFeeder<T> > >(data.rows() - 1, m + 1));
       static const T one(int(1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
-          pC<num_t, P0D<T, P0<T, idFeeder<T> > > > pdb(P0D<T, P0<T, idFeeder<T> > >(data.rows() / (m + 1) - 4), T(int(1)) / T(int(256)), T(int(1)), 8);
-          pC<num_t, P0D<T, P0<T, idFeeder<T> > > > pdf(P0D<T, P0<T, idFeeder<T> > >(data.rows() / (m + 1) - 4), T(int(1)) / T(int(256)), T(int(1)), 8);
-          for(int j = 0; j < max(2000 / data.rows() * (m + 1), 1); j ++)
-            for(int kk = 2; kk < data.rows() / (m + 1); kk ++) {
-              const auto k1(kk * (m + 1) + data.rows() % (m + 1) - 1);
-              result(ext - m - 1, k) =
-                pdb.next(data(data.rows() - 1 - k1, k));
-              result(m - ext + result.rows(), k) =
-                pdf.next(data(k1, k));
-            }
+          pC<num_t, P0D<T, P0<T, idFeeder<T> > > > pdb(p0[m], T(int(1)) / T(int(256)), T(int(1)), 8);
+          auto pdf(pdb);
+          for(int kk = 0; kk < data.rows(); kk ++) {
+            result(ext - m - 1, k) = pdb.next(data(data.rows() - 1 - kk, k));
+            result(m - ext + result.rows(), k) = pdf.next(data(kk, k));
+          }
         }
     }
     break;
