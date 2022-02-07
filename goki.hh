@@ -734,7 +734,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
-          pC<num_t, P0D<T, P0<T, idFeeder<T> > > > pdb(p0[m], T(int(1)) / T(int(256)), T(int(1)), 8);
+          auto p0d(p0[m]);
+          northPole<num_t, P0D<T, P0<T, idFeeder<T> > > > pdb(std::move(p0d));
           auto pdf(pdb);
           for(int kk = 0; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) = pdb.next(data(data.rows() - 1 - kk, k));

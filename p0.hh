@@ -116,6 +116,36 @@ public:
   P q;
 };
 
+template <typename T, typename P> class northPole {
+public:
+  inline northPole() { ; }
+  inline northPole(P&& p, const T& r = sqrt(T(int(3)))) {
+    this->p = p;
+    this->r = r;
+    M0 = M1 = T(int(0));
+    assert(r != T(int(0)));
+  }
+  inline ~northPole() { ; }
+  inline T next(const T& in) {
+    static const T zero(int(0));
+    static const T one(int(1));
+    if(M0 < abs(in)) M0 = abs(in) * T(int(2));
+    if(in == zero || M0 == zero) return in;
+    auto s(one / atan(in * r / M0));
+    if(M1 < abs(s)) M1 = abs(s) * T(int(2));
+    if(s  == zero || M1 == zero) return in;
+    const auto pn(max(- atan(r), min(atan(r), p.next(atan(s * r / M1)))));
+    if(pn == zero) return in;
+    auto res(tan(one / (tan(pn) * (M1 / r))) * M0 / r);
+    if(isfinite(res)) return res;
+    return in;
+  }
+  P p;
+  T r;
+  T M0;
+  T M1;
+};
+
 template <typename T, typename P> class pC {
 public:
   inline pC() { ; }
