@@ -737,10 +737,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           auto p0d(p0[m]);
           northPole<num_t, P0D<T, P0<T, idFeeder<T> > > > pdb(std::move(p0d));
           auto pdf(pdb);
-          for(int kk = 0; kk < data.rows(); kk ++) {
-            result(ext - m - 1, k) = pdb.next(data(data.rows() - 1 - kk, k));
-            result(m - ext + result.rows(), k) = pdf.next(data(kk, k));
-          }
+          for(int mm = 0; mm < 2; mm ++)
+            for(int kk = 0; kk < data.rows(); kk ++) {
+              result(ext - m - 1, k) = pdb.next(data(data.rows() - 1 - kk, k));
+              result(m - ext + result.rows(), k) = pdf.next(data(kk, k));
+            }
         }
     }
     break;
