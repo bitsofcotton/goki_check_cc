@@ -735,7 +735,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
           auto p0d(p0[m]);
-          northPole<num_t, P0D<T, P0<T, idFeeder<T> > > > pdb(std::move(p0d));
+          northPole<T, northPole<T, P0D<T, P0<T, idFeeder<T> > > > > pdb(northPole<T, P0D<T, P0<T, idFeeder<T> > > >(std::move(p0d)));
           auto pdf(pdb);
           for(int mm = 0; mm < 3; mm ++)
             for(int kk = 0; kk < data.rows(); kk ++) {
