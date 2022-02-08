@@ -98,9 +98,8 @@ template <typename T, typename P> class P0D {
 public:
   typedef SimpleVector<T> Vec;
   inline P0D() { ; }
-  inline P0D(const int& size, const int& step = 1) {
-    p = P(size, step);
-    q = P(size, step);
+  inline P0D(P&& p0) {
+    p = q = p0;
   }
   inline ~P0D() { ; };
   inline T next(const T& in) {
