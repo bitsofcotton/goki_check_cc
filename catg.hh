@@ -309,7 +309,7 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
     cache.emplace_back(d.subVector(i, varlen) / M);
     cache[cache.size() - 1][cache[cache.size() - 1].size() - 1] = d[i + varlen + step - 2] / M;
   }
-  const auto cat(crush<T>(cache, cache[0].size(), cache[0].size()));
+  const auto cat(crush<T>(cache));
   SimpleVector<T> work(varlen);
   for(int i = 1; i < work.size(); i ++)
     work[i - 1] = d[i - work.size() + d.size()] / M;
