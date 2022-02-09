@@ -304,10 +304,11 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
   M *= T(int(2));
   if(! f.full || M <= zero) return zero;
   vector<SimpleVector<T> > cache;
-  cache.reserve(d.size() - varlen + 2);
+  cache.reserve(d.size() - varlen + 1);
   for(int i = 0; i < d.size() - varlen - step + 2; i ++) {
-    cache.emplace_back(d.subVector(i, varlen) / M);
-    cache[cache.size() - 1][cache[cache.size() - 1].size() - 1] = d[i + varlen + step - 2] / M;
+    auto temp(d.subVector(i, varlen) / M);
+    temp[temp.size() - 1] = d[i + varlen + step - 2] / M;
+    cache.emplace_back(makeProgramInvariant<T>(std::move(temp)).first);
   }
   const auto cat(crush<T>(cache));
   SimpleVector<T> work(varlen);
