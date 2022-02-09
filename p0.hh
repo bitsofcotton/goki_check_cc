@@ -94,27 +94,6 @@ public:
   feeder f;
 };
 
-template <typename T, typename P> class P0D {
-public:
-  typedef SimpleVector<T> Vec;
-  inline P0D() { ; }
-  inline P0D(P&& p0) {
-    p = q = p0;
-  }
-  inline ~P0D() { ; };
-  inline T next(const T& in) {
-    const static T zero(int(0));
-    const static T one(int(1));
-    const static T two(int(2));
-    if(in == zero) return zero;
-    const auto qn(q.next(one / in));
-    if(qn == zero) return p.next(in);
-    return (p.next(in) + one / qn) / two;
-  }
-  P p;
-  P q;
-};
-
 template <typename T, typename P> class northPole {
 public:
   inline northPole() { ; }
@@ -143,29 +122,6 @@ public:
   T r;
   T M0;
   T M1;
-};
-
-template <typename T, typename P> class pC {
-public:
-  inline pC() { ; }
-  inline pC(const P& p0, const T& lower, const T& upper, const int& bit) {
-    assert(T(int(0)) < lower && lower < upper);
-    p.resize(bit, p0);
-    r = exp(log(upper / lower) / T(int(bit)));
-    this->lower = lower;
-  }
-  inline ~pC() { ; };
-  inline T next(const T& in) {
-    T res(int(0));
-    for(int i = 0; i < p.size(); i ++) {
-      if(p[i].next(T(int(myint(in / lower / pow(r, T(i)))) & 1) - T(int(1)) / T(int(2))) > T(int(0)))
-        res += lower * pow(r, T(i));
-    }
-    return res;
-  }
-  vector<P> p;
-  T lower;
-  T r;
 };
 
 #define _P0_

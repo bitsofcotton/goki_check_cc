@@ -724,18 +724,18 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + ext) = data.row(i);
-      vector<P0D<T, P0<T, idFeeder<T> > > > p0;
+      vector<P0<T, idFeeder<T> > > p0;
       p0.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p0.emplace_back(P0D<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1, m + 1)));
+        p0.emplace_back(P0<T, idFeeder<T> >(data.rows() - 1, m + 1));
       static const T one(int(1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
-          auto p0d(p0[m]);
-          northPole<T, northPole<T, P0D<T, P0<T, idFeeder<T> > > > > pdb(northPole<T, P0D<T, P0<T, idFeeder<T> > > >(std::move(p0d)));
+          auto pd0(p0[m]);
+          northPole<T, northPole<T, P0<T, idFeeder<T> > > > pdb(northPole<T, P0<T, idFeeder<T> > >(std::move(pd0)));
           auto pdf(pdb);
           for(int mm = 0; mm < 3; mm ++)
             for(int kk = 0; kk < data.rows(); kk ++) {
