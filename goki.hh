@@ -727,7 +727,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       vector<P0<T, idFeeder<T> > > p0;
       p0.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p0.emplace_back(P0<T, idFeeder<T> >(data.rows() - 1, m + 1));
+        p0.emplace_back(P0<T, idFeeder<T> >(data.rows() - 1 - 6, m + 1));
       static const T one(int(1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -735,7 +735,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
           auto pd0(p0[m]);
-          northPole<T, northPole<T, P0<T, idFeeder<T> > > > pdb(northPole<T, P0<T, idFeeder<T> > >(std::move(pd0)));
+          northPole<T, shrinkMatrix<T, northPole<T, P0<T, idFeeder<T> > > > > pdb(shrinkMatrix<T, northPole<T, P0<T, idFeeder<T> > > >(northPole<T, P0<T, idFeeder<T> > >(std::move(pd0)), 3));
           auto pdf(pdb);
           for(int mm = 0; mm < 3; mm ++)
             for(int kk = 0; kk < data.rows(); kk ++) {
@@ -744,6 +744,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
         }
     }
+    result = filter<T>(result, CLIP);
     break;
   case BLINK_Y:
     {

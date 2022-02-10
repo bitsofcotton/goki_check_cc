@@ -3285,8 +3285,8 @@ template <typename T, typename pred> class shrinkMatrix {
 public:
   inline shrinkMatrix() { ; }
   inline shrinkMatrix(pred&& p, const int& len) {
-    d.resize(abs(len), T(int(0)));
-    m.resize(abs(len), T(int(0)));
+    d.resize(abs(len), T(t ^= t));
+    m.resize(abs(len), T(t));
     this->p = p;
   }
   inline ~shrinkMatrix() { ; }
@@ -3300,7 +3300,7 @@ public:
     m[t % m.size()] = (pn - D) / T(int(m.size())) + in;
     for(int i = 0; i < m.size(); i ++)
       res += m[i];
-    return res /= T(m.size());
+    return t < m.size() * 2 + 1 ? T(int(0)) : res /= T(m.size());
   }
 private:
   int t;
