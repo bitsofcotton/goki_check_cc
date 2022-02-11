@@ -36,13 +36,6 @@ Searching the Internet more...
     python2 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python2 test.py ./gokibin i2i src.ppm dst.ppm
 
-# How to use as library (sample code).
-Please refer tools.cc, and please include with namespace directive
-(but include guard definition should harms).  
-
-# Known Bug not to be fixed.
-The bump command returns tilt ignored result.
-
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
 * https://drive.google.com/drive/folders/1B71X1BMttL6yyi76REeOTNRrpopO8EAR?usp=sharing
@@ -50,3 +43,4 @@ The bump command returns tilt ignored result.
 * https://ja.osdn.net/users/bitsofcotton/
 * https://www.sourceforge.net/projects/gokicheck/ (abandoned)
 
+# Archived.
