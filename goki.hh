@@ -717,7 +717,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      const auto ext(int(sqrt(T(data.rows()))));
+      const auto ext(int(sqrt(T(data.rows() / 3))));
       result.resize(data.rows() + 2 * ext, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -727,7 +727,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       vector<northPole<T, northPole<T, P0<T, idFeeder<T> > > > > p0;
       p0.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p0.emplace_back(northPole<T, northPole<T, P0<T, idFeeder<T> > > >(northPole<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1 - 6, m + 1))));
+        p0.emplace_back(northPole<T, northPole<T, P0<T, idFeeder<T> > > >(northPole<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() / 3 - 1 - 3, m + 1))));
       static const T one(int(1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)

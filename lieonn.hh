@@ -3286,7 +3286,8 @@ public:
   inline shrinkMatrix() { ; }
   inline shrinkMatrix(P&& p, const int& len) {
     d.resize(abs(len), T(t ^= t));
-    this->p = p;
+    (this->p).resize(d.size(), p);
+    m.resize(d.size(), T(t));
   }
   inline ~shrinkMatrix() { ; }
   inline T next(const T& in) {
@@ -3294,14 +3295,16 @@ public:
     d[(t ++) % d.size()] = in;
     auto D(d[0]);
     for(int i = 1; i < d.size(); i ++) D += d[i];
-    auto pn(p.next(D));
-    if(pn == zero) return zero;
-    return pn - D + d[(t - 2 + d.size()) % d.size()];
+    m[t % m.size()] = (p[t % p.size()].next(D) - D) / T(int(d.size())) + in;
+    auto res(zero);
+    for(int i = 0; i < m.size(); i ++) res += m[i];
+    return res /= T(int(m.size()));
   }
 private:
-  P   p;
   int t;
   vector<T> d;
+  vector<T> m;
+  vector<P> p;
 };
 
 template <typename T> const T& sgn(const T& x) {
