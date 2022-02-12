@@ -3281,12 +3281,12 @@ private:
   feeder f;
 };
 
-template <typename T, typename P> class shrinkMatrix {
+template <typename T, typename P, bool array = false> class shrinkMatrix {
 public:
   inline shrinkMatrix() { ; }
   inline shrinkMatrix(P&& p, const int& len) {
     d.resize(abs(len), T(t ^= t));
-    (this->p).resize(d.size(), p);
+    (this->p).resize(array ? d.size() : 1, p);
     m.resize(d.size(), T(t));
   }
   inline ~shrinkMatrix() { ; }
