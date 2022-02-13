@@ -1787,32 +1787,32 @@ template <typename T> using complex = Complex<T>;
 # if _FLOAT_BITS_ == 8
   typedef uint8_t myuint;
   typedef int8_t  myint;
-  typedef SimpleFloat<myuint, uint16_t, 8, int64_t> myfloat;
+  typedef SimpleFloat<myuint, uint16_t, 8, myint> myfloat;
 # elif _FLOAT_BITS_ == 16
   typedef uint16_t myuint;
   typedef int16_t  myint;
-  typedef SimpleFloat<myuint, uint32_t, 16, int64_t> myfloat;
+  typedef SimpleFloat<myuint, uint32_t, 16, myint> myfloat;
 # elif _FLOAT_BITS_ == 32
   typedef uint32_t myuint;
   typedef int32_t  myint;
-  typedef SimpleFloat<myuint, uint64_t, 32, int64_t> myfloat;
+  typedef SimpleFloat<myuint, uint64_t, 32, myint> myfloat;
 # elif _FLOAT_BITS_ == 64
   typedef uint64_t myuint;
   typedef int64_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 64>, 64, int64_t> myfloat;
+  typedef SimpleFloat<myuint, DUInt<myuint, 64>, 64, myint> myfloat;
 # elif _FLOAT_BITS_ == 128
   typedef DUInt<uint64_t, 64> uint128_t;
   typedef Signed<uint128_t, 128> int128_t;
   typedef uint128_t myuint;
   typedef int128_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 128>, 128, int64_t> myfloat;
+  typedef SimpleFloat<myuint, DUInt<myuint, 128>, 128, myint> myfloat;
 # elif _FLOAT_BITS_ == 256
   typedef DUInt<uint64_t, 64> uint128_t;
   typedef DUInt<uint128_t, 128> uint256_t;
   typedef Signed<uint256_t, 256> int256_t;
   typedef uint256_t myuint;
   typedef int256_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 256>, 256, int64_t> myfloat;
+  typedef SimpleFloat<myuint, DUInt<myuint, 256>, 256, myint> myfloat;
 # elif _FLOAT_BITS_ == 512
   typedef DUInt<uint64_t, 64> uint128_t;
   typedef DUInt<uint128_t, 128> uint256_t;
@@ -1820,7 +1820,7 @@ template <typename T> using complex = Complex<T>;
   typedef Signed<uint512_t, 512> int512_t;
   typedef uint512_t myuint;
   typedef int512_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 512>, 512, int64_t> myfloat;
+  typedef SimpleFloat<myuint, DUInt<myuint, 512>, 512, myint> myfloat;
 # elif _FLOAT_BITS_ == 1024
   typedef DUInt<uint64_t, 64> uint128_t;
   typedef DUInt<uint128_t, 128> uint256_t;
@@ -1829,7 +1829,7 @@ template <typename T> using complex = Complex<T>;
   typedef Signed<uint1024_t, 1024> int1024_t;
   typedef uint1024_t myuint;
   typedef int1024_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 1024>, 1024, int64_t> myfloat;
+  typedef SimpleFloat<myuint, DUInt<myuint, 1024>, 1024, myint> myfloat;
 # else
 #   error cannot handle float
 # endif
@@ -2226,7 +2226,7 @@ private:
 template <typename T> inline SimpleMatrix<T>::SimpleMatrix() {
   ecols  = 0;
 #if defined(_FLOAT_BITS_)
-  epsilon = myfloat(int(1)) >> int64_t(_FLOAT_BITS_ - 1);
+  epsilon = myfloat(int(1)) >> myint(_FLOAT_BITS_ - 1);
 #else
   epsilon = std::numeric_limits<myfloat>::epsilon();
 #endif
@@ -2243,7 +2243,7 @@ template <typename T> inline SimpleMatrix<T>::SimpleMatrix(const int& rows, cons
     entity[i].resize(cols);
   ecols = cols;
 #if defined(_FLOAT_BITS_)
-  epsilon = myfloat(int(1)) >> int64_t(_FLOAT_BITS_ - 1);
+  epsilon = myfloat(int(1)) >> myint(_FLOAT_BITS_ - 1);
 #else
   epsilon = std::numeric_limits<myfloat>::epsilon();
 #endif

@@ -735,13 +735,17 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
           auto pd0(p0[m]);
-          northPole<T, northPole<T, shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true> > > pdb(northPole<T, shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true> >(shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true>(std::move(pd0), 3)));
+          auto pf(pd0);
+          auto pb(pd0);
+          compressIllegal<T, northPole<T, northPole<T, shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true> > > > pdb(northPole<T, northPole<T, shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true> > >(northPole<T, shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true> >(shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true>(std::move(pd0), 3))), - 8);
           auto pdf(pdb);
-          for(int mm = 0; mm < 3; mm ++)
-            for(int kk = 0; kk < data.rows(); kk ++) {
-              result(ext - m - 1, k) = pdb.next(data(data.rows() - 1 - kk, k));
-              result(m - ext + result.rows(), k) = pdf.next(data(kk, k));
+          for(int mm = 0; mm < 3 + 8; mm ++)
+            for(int kk = 1; kk < data.rows(); kk ++) {
+              result(ext - m - 1, k) = sgn<T>(pdb.next(data(data.rows() - 1 - kk, k) - data(data.rows() - kk, k))) * abs(pb.next(abs(data(data.rows() - 1 - kk, k) - data(data.rows() - kk, k))));
+              result(m - ext + result.rows(), k) = sgn<T>(pdf.next(data(kk, k) - data(kk - 1, k))) * abs(pf.next(abs(data(kk, k) - data(kk - 1, k))));
             }
+          result(ext - m - 1, k) += result(ext - m, k);
+          result(m - ext + result.rows(), k) += result(m - ext + result.rows() - 1, k);
         }
     }
     result = filter<T>(result, CLIP);
