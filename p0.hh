@@ -107,14 +107,16 @@ public:
   inline T next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
+    if(! isfinite(in)) return in;
     if(M0 < abs(in)) M0 = abs(in) * T(int(2));
     if(in == zero || M0 == zero) return in;
     auto s(one / atan(in * r / M0));
+    if(! isfinite(s)) return in;
     if(M1 < abs(s)) M1 = abs(s) * T(int(2));
     if(s  == zero || M1 == zero) return in;
     const auto pn(max(- atan(r), min(atan(r), p.next(atan(s * r / M1)))));
-    if(pn == zero) return in;
-    auto res(tan(one / (tan(pn) * (M1 / r))) * M0 / r);
+    if(pn == zero || ! isfinite(pn)) return in;
+    auto res(tan(max(- atan(r), min(atan(r), one / (tan(pn) * (M1 / r))))) * M0 / r);
     if(isfinite(res)) return res;
     return in;
   }
@@ -122,6 +124,44 @@ public:
   T r;
   T M0;
   T M1;
+};
+
+template <typename T, typename P> class compressIllegal {
+public:
+  inline compressIllegal() { ; }
+  inline compressIllegal(P&& p, const int& n = 0, const T& r = T(int(100))) {
+    (this->M).resize(abs(n), S = T(int(0)));
+    this->p = p;
+    this->n = n;
+    this->r = r;
+    assert(r != T(int(0)));
+  }
+  inline ~compressIllegal() { ; }
+  inline T next(const T& in) {
+    const auto bS(S);
+    if(in == T(int(0))) return T(int(0));
+    if(! n) return p.next(S += in) - bS;
+          auto d(in);
+    for(int i = 0; i < abs(n); i ++) {
+      M[i] = max(M[i], abs(d));
+      d = n < 0 ? logscale(d * r / M[i]) : expscale(d * r / M[i]);
+    }
+          auto res(p.next(S += d) - bS);
+    for(int i = 0; i < abs(n); i ++)
+      res = max(- M[i], min(M[i], n < 0 ? expscale(res) / r * M[i] : logscale(res) / r * M[i]));
+    return res;
+  }
+  inline T logscale(const T& x) {
+    return x == T(int(0)) ? x : sgn<T>(x) * log(abs(x) + T(int(1)));
+  }
+  inline T expscale(const T& x) {
+    return x == T(int(0)) ? x : sgn<T>(x) * (exp(abs(x)) -T(int(1)));
+  }
+  T   r;
+  T   S;
+  P   p;
+  int n;
+  vector<T> M;
 };
 
 #define _P0_
