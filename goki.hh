@@ -724,13 +724,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + ext) = data.row(i);
-      vector<P0<T, idFeeder<T> > > p0;
+      vector<northPole<T, P0<T, idFeeder<T> > > > p0;
       vector<northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> >, true> > > p1;
       p0.reserve(ext);
       p1.reserve(ext);
       for(int m = 0; m < ext; m ++) {
         P0<T, idFeeder<T> > pp(data.rows() / 3 - 2, m + 1);
-        p0.emplace_back(pp);
+        auto ppp(pp);
+        p0.emplace_back(northPole<T, P0<T, idFeeder<T> > >(std::move(ppp), T(int(4096))));
         p1.emplace_back(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> >, true> >(shrinkMatrix<T, P0<T, idFeeder<T> >, true>(std::move(pp), 3), T(int(4096))));
       }
       static const T one(int(1));
