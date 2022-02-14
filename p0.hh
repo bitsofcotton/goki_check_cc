@@ -97,7 +97,7 @@ public:
 template <typename T, typename P> class northPole {
 public:
   inline northPole() { ; }
-  inline northPole(P&& p, const T& r = sqrt(T(int(3)))) {
+  inline northPole(P&& p, const T& r = atan(T(int(1))) * T(int(2))) {
     this->p = p;
     this->r = r;
     M0 = M1 = T(int(0));
