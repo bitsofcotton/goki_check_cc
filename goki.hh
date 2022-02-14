@@ -742,14 +742,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             avgb += data(data.rows() - 1 - kk, k) - data(data.rows() - kk, k);
             avgf += data(kk, k) - data(kk - 1, k);
           }
-          avgb /= T(int(data.rows()));
-          avgf /= T(int(data.rows()));
+          avgb /= T(int(data.rows() - 1));
+          avgf /= T(int(data.rows() - 1));
           for(int kk = 1; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
-              tan(pb.next(atan(ratio * (data(data.rows() - 1 - kk, k) -
-                data(data.rows() - kk, k) - avgb)))) / ratio + avgb;
+              pb.next(ratio * (data(data.rows() - 1 - kk, k) -
+                data(data.rows() - kk, k) - avgb)) / ratio + avgb;
             result(m - ext + result.rows(), k) =
-              tan(pf.next(atan(ratio * (data(kk, k) - data(kk - 1, k) - avgf))))
+              pf.next(ratio * (data(kk, k) - data(kk - 1, k) - avgf))
                 / ratio + avgf;
           }
           result(ext - m - 1, k) += result(ext - m, k);

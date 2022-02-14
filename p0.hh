@@ -113,9 +113,9 @@ public:
     if(! isfinite(s)) return in;
     if(M1 < abs(s)) M1 = abs(s) * T(int(2));
     if(s  == zero || M1 == zero) return in;
-    const auto pn(max(- atan(r), min(atan(r), p.next(atan(r == zero ? s : s * r / M1)))));
+    const auto pn(r == zero ? p.next(atan(s)) : max(- atan(r), min(atan(r), p.next(atan(s * r / M1)))));
     if(pn == zero || ! isfinite(pn)) return in;
-    auto res(tan(max(- atan(r), min(atan(r), one / (tan(pn) * (r == zero ? one : M1 / r))))) * (r == zero ? one : M0 / r));
+    auto res(tan(r == zero ? one / tan(pn) : max(- atan(r), min(atan(r), one / (tan(pn) * M1 / r)))) * (r == zero ? one : M0 / r));
     if(isfinite(res)) return res;
     return in;
   }
