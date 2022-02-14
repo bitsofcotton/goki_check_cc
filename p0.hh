@@ -97,11 +97,10 @@ public:
 template <typename T, typename P> class northPole {
 public:
   inline northPole() { ; }
-  inline northPole(P&& p, const T& r = atan(T(int(1))) * T(int(2))) {
+  inline northPole(P&& p, const T& r = T(int(0))) {
     this->p = p;
     this->r = r;
     M0 = M1 = T(int(0));
-    assert(r != T(int(0)));
   }
   inline ~northPole() { ; }
   inline T next(const T& in) {
@@ -110,13 +109,13 @@ public:
     if(! isfinite(in)) return in;
     if(M0 < abs(in)) M0 = abs(in) * T(int(2));
     if(in == zero || M0 == zero) return in;
-    auto s(one / atan(in * r / M0));
+    auto s(r == zero ? one / atan(in) : one / atan(in * r / M0));
     if(! isfinite(s)) return in;
     if(M1 < abs(s)) M1 = abs(s) * T(int(2));
     if(s  == zero || M1 == zero) return in;
-    const auto pn(max(- atan(r), min(atan(r), p.next(atan(s * r / M1)))));
+    const auto pn(max(- atan(r), min(atan(r), p.next(atan(r == zero ? s : s * r / M1)))));
     if(pn == zero || ! isfinite(pn)) return in;
-    auto res(tan(max(- atan(r), min(atan(r), one / (tan(pn) * (M1 / r))))) * M0 / r);
+    auto res(tan(max(- atan(r), min(atan(r), one / (tan(pn) * (r == zero ? one : M1 / r))))) * (r == zero ? one : M0 / r));
     if(isfinite(res)) return res;
     return in;
   }
@@ -124,6 +123,31 @@ public:
   T r;
   T M0;
   T M1;
+};
+
+template <typename T, typename P> class sumChain {
+public:
+  inline sumChain() { ; }
+  inline sumChain(P&& p) { S = T(int(0)); this->p = p; }
+  inline ~sumChain() { ; }
+  inline T next(const T& in) {
+    auto res(- S); return res += p.next(S += in);
+  }
+  T S;
+  P p;
+};
+
+template <typename T, typename I, typename P> class avgOrigin {
+public:
+  inline avgOrigin() { ; }
+  inline avgOrigin(P&& p) { S = T(t ^= t); this->p = p; }
+  inline ~avgOrigin() { ; }
+  inline T next(const T& in) {
+    S += in; ++ t; return p.next(in - S / T(t)) + S / T(t);
+  }
+  T S;
+  I t;
+  P p;
 };
 
 #define _P0_
