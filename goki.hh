@@ -724,25 +724,29 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + ext) = data.row(i);
-      vector<northPole<T, northPole<T, P0<T, idFeeder<T> > > > > p0;
+      vector<P0<T, idFeeder<T> > > p0;
+      vector<northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> >, true> > > p1;
       p0.reserve(ext);
-      for(int m = 0; m < ext; m ++)
-        p0.emplace_back(northPole<T, northPole<T, P0<T, idFeeder<T> > > >(northPole<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() / 3 - 1 - 6, m + 1))));
+      p1.reserve(ext);
+      for(int m = 0; m < ext; m ++) {
+        P0<T, idFeeder<T> > pp(data.rows() / 3 - 2, m + 1);
+        p0.emplace_back(pp);
+        p1.emplace_back(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> >, true> >(shrinkMatrix<T, P0<T, idFeeder<T> >, true>(std::move(pp), 3), T(int(4096))));
+      }
       static const T one(int(1));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
-          auto pd0(p0[m]);
-          auto pf(pd0);
-          auto pb(pd0);
-          compressIllegal<T, northPole<T, northPole<T, shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true> > > > pdb(northPole<T, northPole<T, shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true> > >(northPole<T, shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true> >(shrinkMatrix<T, northPole<T, northPole<T, P0<T, idFeeder<T> > > >, true>(std::move(pd0), 3))), - 8);
-          auto pdf(pdb);
-          for(int mm = 0; mm < 3 + 8; mm ++)
+          auto pf(p0[m]);
+          auto pb(p0[m]);
+          auto pdf(p1[m]);
+          auto pdb(p1[m]);
+          for(int mm = 0; mm < 2; mm ++)
             for(int kk = 1; kk < data.rows(); kk ++) {
-              result(ext - m - 1, k) = sgn<T>(pdb.next(data(data.rows() - 1 - kk, k) - data(data.rows() - kk, k))) * abs(pb.next(abs(data(data.rows() - 1 - kk, k) - data(data.rows() - kk, k))));
-              result(m - ext + result.rows(), k) = sgn<T>(pdf.next(data(kk, k) - data(kk - 1, k))) * abs(pf.next(abs(data(kk, k) - data(kk - 1, k))));
+              result(ext - m - 1, k) = sgn<T>(pdb.next(data(data.rows() - 1 - kk, k)) - data(data.rows() - 1 - kk, k)) * abs(pb.next(abs(data(data.rows() - 1 - kk, k) - data(data.rows() - kk, k))));
+              result(m - ext + result.rows(), k) = sgn<T>(pdf.next(data(kk, k)) - data(kk, k)) * abs(pf.next(abs(data(kk, k) - data(kk - 1, k))));
             }
           result(ext - m - 1, k) += result(ext - m, k);
           result(m - ext + result.rows(), k) += result(m - ext + result.rows() - 1, k);

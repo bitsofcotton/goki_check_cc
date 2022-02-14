@@ -126,44 +126,6 @@ public:
   T M1;
 };
 
-template <typename T, typename P> class compressIllegal {
-public:
-  inline compressIllegal() { ; }
-  inline compressIllegal(P&& p, const int& n = 0, const T& r = T(int(100))) {
-    (this->M).resize(abs(n), S = T(int(0)));
-    this->p = p;
-    this->n = n;
-    this->r = r;
-    assert(r != T(int(0)));
-  }
-  inline ~compressIllegal() { ; }
-  inline T next(const T& in) {
-    const auto bS(S);
-    if(in == T(int(0))) return T(int(0));
-    if(! n) return p.next(S += in) - bS;
-          auto d(in);
-    for(int i = 0; i < abs(n); i ++) {
-      M[i] = max(M[i], abs(d));
-      d = n < 0 ? logscale(d * r / M[i]) : expscale(d * r / M[i]);
-    }
-          auto res(p.next(S += d) - bS);
-    for(int i = 0; i < abs(n); i ++)
-      res = max(- M[i], min(M[i], n < 0 ? expscale(res) / r * M[i] : logscale(res) / r * M[i]));
-    return res;
-  }
-  inline T logscale(const T& x) {
-    return x == T(int(0)) ? x : sgn<T>(x) * log(abs(x) + T(int(1)));
-  }
-  inline T expscale(const T& x) {
-    return x == T(int(0)) ? x : sgn<T>(x) * (exp(abs(x)) -T(int(1)));
-  }
-  T   r;
-  T   S;
-  P   p;
-  int n;
-  vector<T> M;
-};
-
 #define _P0_
 #endif
 
