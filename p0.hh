@@ -97,32 +97,21 @@ public:
 template <typename T, typename P> class northPole {
 public:
   inline northPole() { ; }
-  inline northPole(P&& p, const T& r = T(int(0))) {
-    this->p = p;
-    this->r = r;
-    M0 = M1 = T(int(0));
-  }
+  inline northPole(P&& p) { this->p = p; }
   inline ~northPole() { ; }
   inline T next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    if(! isfinite(in)) return in;
-    if(M0 < abs(in)) M0 = abs(in) * T(int(2));
-    if(in == zero || M0 == zero) return in;
-    auto s(r == zero ? one / atan(in) : one / atan(in * r / M0));
-    if(! isfinite(s)) return in;
-    if(M1 < abs(s)) M1 = abs(s) * T(int(2));
-    if(s  == zero || M1 == zero) return in;
-    const auto pn(r == zero ? p.next(atan(s)) : max(- atan(r), min(atan(r), p.next(atan(s * r / M1)))));
-    if(pn == zero || ! isfinite(pn)) return in;
-    auto res(tan(r == zero ? one / tan(pn) : max(- atan(r), min(atan(r), one / (tan(pn) * M1 / r)))) * (r == zero ? one : M0 / r));
+    if(! isfinite(in) || in == zero) return in;
+    auto s(one / atan(in));
+    if(! isfinite(s)  || s  == zero) return in;
+    const auto pn(p.next(atan(s)));
+    if(! isfinite(pn) || pn == zero) return in;
+    auto res(tan(one / tan(pn)));
     if(isfinite(res)) return res;
     return in;
   }
   P p;
-  T r;
-  T M0;
-  T M1;
 };
 
 template <typename T, typename P> class sumChain {
