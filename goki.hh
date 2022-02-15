@@ -1150,15 +1150,13 @@ public:
 template <typename T> void drawMatchLine(SimpleMatrix<T>& map, const SimpleVector<T>& lref0, const SimpleVector<T>& lref1, const T& c) {
   int idxm(0);
   int idxM(1);
-  if(abs(lref1[idxM] - lref0[idxM]) < abs(lref1[idxm] - lref0[idxm])) {
-    idxm = 1;
-    idxM = 0;
-  }
+  if(abs(lref1[idxM] - lref0[idxM]) < abs(lref1[idxm] - lref0[idxm]))
+    swap(idxm, idxM);
   const auto d10(lref1 - lref0);
   const auto dlt(abs(lref0[idxM] - lref1[idxM]));
   if(dlt == T(0)) return;
   const auto denom(T(1) / dlt);
-  for(int i = - 1; i <= int(dlt) + 1; i ++) {
+  for(int i = 0; i <= int(dlt) + 1; i ++) {
     const auto gidx(lref0 + d10 * T(i) * denom);
     map(max(int(0), min(int(gidx[0]), int(map.rows() - 1))),
         max(int(0), min(int(gidx[1]), int(map.cols() - 1)))) = c;
@@ -1167,24 +1165,23 @@ template <typename T> void drawMatchLine(SimpleMatrix<T>& map, const SimpleVecto
 }
 
 template <typename T> void drawMatchTriangle(SimpleMatrix<T>& map, SimpleVector<T> lref0, SimpleVector<T> lref1, SimpleVector<T> lref2, const T& c) {
-  // make middle to lref2
+  // make middle point to lref2 on index 0.
   if((lref0[0] <= lref1[0] && lref1[0] <= lref2[0]) ||
      (lref2[0] <= lref1[0] && lref1[0] <= lref0[0]))
     swap(lref1, lref2);
-  else if((lref2[0] <= lref0[0] && lref0[0] <= lref1[0]) ||
-          (lref1[0] <= lref0[0] && lref0[0] <= lref2[0]) )
+  if((lref1[0] <= lref0[0] && lref0[0] <= lref2[0]) ||
+     (lref2[0] <= lref0[0] && lref0[0] <= lref1[0]) )
     swap(lref0, lref2);
-  auto d0(lref0 - lref2);
-  auto d1(lref1 - lref2);
-  auto d01(lref1 - lref0);
-  for(int i = - 1; i <= max(0, int(abs(d0[0])) + 1); i ++)
-    drawMatchLine<T>(map, d0  * T(i) / abs(d0[0]) + lref2,
-                          d01 * T(int(d0[0] / (abs(d1[0]) + abs(d0[0]))) - i) /
-                            abs(d01[0]) + lref0, c);
-  for(int i = - 1; i <= max(0, int(abs(d1[0])) + 1); i ++)
-    drawMatchLine<T>(map, d1 * T(i) / abs(d0[0]) + lref2,
-                          - d01 * T(int(d1[0] / (abs(d1[0]) + abs(d0[0]))) - i) /
-                            abs(d01[0]) + lref1, c);
+  const auto d0(lref0 - lref2);
+  const auto d1(lref1 - lref2);
+  const auto d2(lref1 - lref0);
+  const auto idx(abs(d2[0]) < abs(d2[1]) ? 1 : 0);
+  for(int i = 0; i <= int(abs(d0[idx])); i ++)
+    drawMatchLine<T>(map, d0 * (abs(d0[idx]) - T(i)) / abs(d0[idx]) + lref2,
+                          d2 * T(i) / abs(d2[idx]) + lref0, c);
+  for(int i = 0; i <= int(abs(d1[idx])); i ++)
+    drawMatchLine<T>(map, d1 * (abs(d1[idx]) - T(i)) / abs(d1[idx]) + lref2,
+                        - d2 * T(i) / abs(d2[idx]) + lref1, c);
   return;
 }
 
