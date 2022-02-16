@@ -731,28 +731,22 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-      for(int m = 0; m < ext; m ++)
+      for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
           auto pf(p[m]);
           auto pb(p[m]);
-          T    avgf(int(0));
-          auto avgb(avgf);
-          for(int kk = 1; kk < data.rows(); kk ++) {
-            avgb += data(data.rows() - 1 - kk, k) - data(data.rows() - kk, k);
-            avgf += data(kk, k) - data(kk - 1, k);
-          }
-          avgb /= T(int(data.rows() - 1));
-          avgf /= T(int(data.rows() - 1));
           for(int kk = 1; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
               pb.next(data(data.rows() - 1 - kk, k) -
-                      data(data.rows() - kk, k) - avgb) + avgb;
+                      data(data.rows() - kk, k));
             result(m - ext + result.rows(), k) =
-              pf.next(data(kk, k) - data(kk - 1, k) - avgf) + avgf;
+              pf.next(data(kk, k) - data(kk - 1, k));
           }
-          result(ext - m - 1, k) += result(ext - m, k);
-          result(m - ext + result.rows(), k) += result(m - ext + result.rows() - 1, k);
         }
+        result.row(ext - m - 1) += result.row(ext - m);
+        result.row(m - ext + result.rows()) +=
+          result.row(m - ext + result.rows() - 1);
+      }
     }
     result = filter<T>(result, CLIP);
     break;
