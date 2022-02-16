@@ -728,7 +728,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
         p.emplace_back(northPole<T, sumChain<T, northPole<T, P0<T, idFeeder<T> > > > >(sumChain<T, northPole<T, P0<T, idFeeder<T> > > >(northPole<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1, m + 1)))));
-      static const T ratio(int(256 * 32));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -746,11 +745,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           avgf /= T(int(data.rows() - 1));
           for(int kk = 1; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
-              pb.next(ratio * (data(data.rows() - 1 - kk, k) -
-                data(data.rows() - kk, k) - avgb)) / ratio + avgb;
+              pb.next(data(data.rows() - 1 - kk, k) -
+                      data(data.rows() - kk, k) - avgb) + avgb;
             result(m - ext + result.rows(), k) =
-              pf.next(ratio * (data(kk, k) - data(kk - 1, k) - avgf))
-                / ratio + avgf;
+              pf.next(data(kk, k) - data(kk - 1, k) - avgf) + avgf;
           }
           result(ext - m - 1, k) += result(ext - m, k);
           result(m - ext + result.rows(), k) += result(m - ext + result.rows() - 1, k);

@@ -102,13 +102,12 @@ public:
   inline T next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
+    static const T M(atan(T(int(1))) * T(int(2)) * (T(int(1)) - sqrt(SimpleMatrix<T>().epsilon)));
     if(! isfinite(in) || in == zero) return in;
-    auto s(one / atan(in));
-    if(! isfinite(s)  || s  == zero) return in;
-    const auto pn(p.next(atan(s)));
+    auto pn(p.next(atan(one / atan(in))));
     if(! isfinite(pn) || pn == zero) return in;
-    auto res(tan(one / tan(pn)));
-    if(isfinite(res)) return res;
+    auto res(tan(max(- M, min(M, one / tan(max(- M, min(M, move(pn))))))));
+    if(isfinite(res)) return move(res);
     return in;
   }
   P p;
@@ -123,19 +122,6 @@ public:
     auto res(- S); return res += p.next(S += in);
   }
   T S;
-  P p;
-};
-
-template <typename T, typename I, typename P> class avgOrigin {
-public:
-  inline avgOrigin() { ; }
-  inline avgOrigin(P&& p) { S = T(t ^= t); this->p = p; }
-  inline ~avgOrigin() { ; }
-  inline T next(const T& in) {
-    S += in; ++ t; return p.next(in - S / T(t)) + S / T(t);
-  }
-  T S;
-  I t;
   P p;
 };
 
