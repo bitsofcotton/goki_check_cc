@@ -117,10 +117,12 @@ public:
   inline                operator T    () const;
   inline                operator DUInt<T,bits> () const;
 
-  // friend std::ostream&  operator << (std::ostream& os, DUInt<T,bits>  v);
-  // friend std::istream&  operator >> (std::istream& is, DUInt<T,bits>& v);
-
   T e[2];
+/*
+friend:
+  std::ostream&  operator << (std::ostream& os, DUInt<T,bits>  v);
+  std::istream&  operator >> (std::istream& is, DUInt<T,bits>& v);
+*/
 };
 
 template <typename T, int bits> inline DUInt<T,bits>::DUInt() {
@@ -430,24 +432,23 @@ template <typename T, int bits> inline           DUInt<T,bits>::operator DUInt<T
 }
 
 template <typename T, int bits> std::ostream&  operator << (std::ostream& os, DUInt<T,bits> v) {
-  const static DUInt<T,bits> ten(10);
+  static const char table[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
+    '9', 'a', 'b', 'c', 'd', 'e', 'f'};
   vector<char> buf;
   while(v) {
-    const auto div(v / ten);
-    buf.emplace_back(int(v - div * ten));
-    v = div;
+    buf.emplace_back(table[int(v) & 0x0f]);
+    v >>= 4;
   }
   if(buf.size()) {
     for(int i = 0; 0 <= i && i < buf.size(); i ++)
-      os << int(buf[buf.size() - 1 - i]);
+      os << char(buf[buf.size() - 1 - i]);
     return os;
   }
   return os << '0';
 }
 
 template <typename T, int bits> std::istream&  operator >> (std::istream& is, DUInt<T,bits>& v) {
-  const static DUInt<T,bits> ten(10);
-  v = DUInt<T,bits>(0);
+  v ^= v;
   // skip white spaces.
   while(! is.eof()) {
     const auto buf(is.get());
@@ -459,8 +460,11 @@ template <typename T, int bits> std::istream&  operator >> (std::istream& is, DU
   while(! is.eof() ) {
     const auto buf(is.get());
     if('0' <= buf && buf <= '9') {
-      v *= ten;
-      v += DUInt<T,bits>(int(buf - '0'));
+      v <<= 4;
+      v |= DUInt<T,bits>(int(buf - '0'));
+    } else if('a' <= buf && buf <= 'f') {
+      v <<= 4;
+      v |= DUInt<T,bits>(int(buf - 'a' + 10));
     } else {
       is.unget();
       break;
@@ -481,7 +485,10 @@ public:
   inline bool operator <= (const Signed<T,bits>& src) const;
   inline bool operator >  (const Signed<T,bits>& src) const;
   inline bool operator >= (const Signed<T,bits>& src) const;
-  // friend std::ostream&  operator << (std::ostream& os, Signed<T,bits> v);
+/*
+friend:
+  std::ostream&  operator << (std::ostream& os, Signed<T,bits> v);
+*/
 };
 
 template <typename T, int bits> inline Signed<T,bits>::Signed() {
@@ -581,9 +588,6 @@ public:
          SimpleFloat<T,W,bits,U>  atan() const;
   inline SimpleFloat<T,W,bits,U>  sqrt() const;
   
-  // friend std::ostream&    operator << (std::ostream& os, const SimpleFloat<T,W,bits,U>& v);
-  // friend std::istream&    operator >> (std::istream& is, SimpleFloat<T,W,bits,U>& v);
-  
   unsigned char s;
   typedef enum {
     INF = 0,
@@ -611,6 +615,11 @@ private:
   // XXX: these are NOT threadsafe on first call.
   const vector<SimpleFloat<T,W,bits,U> >& exparray()    const;
   const vector<SimpleFloat<T,W,bits,U> >& invexparray() const;
+/*
+friend:
+  std::ostream&    operator << (std::ostream& os, const SimpleFloat<T,W,bits,U>& v);
+  std::istream&    operator >> (std::istream& is, SimpleFloat<T,W,bits,U>& v);
+*/
 };
 
 template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,bits,U>::SimpleFloat() {
@@ -1270,7 +1279,6 @@ template <typename T, typename W, int bits, typename U> std::ostream& operator <
 
 template <typename T, typename W, int bits, typename U> std::istream& operator >> (std::istream& is, SimpleFloat<T,W,bits,U>& v) {
   const static SimpleFloat<T,W,bits,U> two(2);
-  const static SimpleFloat<T,W,bits,U> ten(10);
                SimpleFloat<T,W,bits,U> e(0);
   bool mode(false);
   bool sign(false);
@@ -1318,11 +1326,21 @@ template <typename T, typename W, int bits, typename U> std::istream& operator >
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
       if(mode) {
-        e *= ten;
-        e += SimpleFloat<T,W,bits,U>(int(buf - '0'));
+        e <<= U(int(4));
+        e  += SimpleFloat<T,W,bits,U>(int(buf - '0'));
       } else {
-        v *= ten;
-        v += SimpleFloat<T,W,bits,U>(int(buf - '0'));
+        v <<= U(int(4));
+        v  += SimpleFloat<T,W,bits,U>(int(buf - '0'));
+      }
+      fsign = true;
+      break;
+    case 'a': case'b': case 'c': case 'd': case 'e': case 'f':
+      if(mode) {
+        e <<= U(int(4));
+        e  += SimpleFloat<T,W,bits,U>(int(buf - 'a' + 10));
+      } else {
+        v <<= U(int(4));
+        v  += SimpleFloat<T,W,bits,U>(int(buf - 'a' + 10));
       }
       fsign = true;
       break;
@@ -3291,13 +3309,12 @@ public:
   }
   inline ~shrinkMatrix() { ; }
   inline T next(const T& in) {
-    const static T zero(int(0));
     d[(t ++) % d.size()] = in;
     auto D(d[0]);
     for(int i = 1; i < d.size(); i ++) D += d[i];
     m[t % m.size()] = (p[t % p.size()].next(D) - D) / T(int(d.size())) + in;
-    auto res(zero);
-    for(int i = 0; i < m.size(); i ++) res += m[i];
+    auto res(m[0]);
+    for(int i = 1; i < m.size(); i ++) res += m[i];
     return res /= T(int(m.size()));
   }
 private:
