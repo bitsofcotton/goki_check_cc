@@ -1274,7 +1274,7 @@ template <typename T, typename W, int bits, typename U> std::ostream& operator <
     return os << "NaN ";
   if(isinf(v))
     return os << (const char*)(v.s & (1 << v.SIGN) ? "-" : "") << "Inf ";
-  return os << (const char*)(v.s & (1 << v.SIGN) ? "-" : "") << T(v.m) << "*2^" << v.e << " ";
+  return os << (const char*)(v.s & (1 << v.SIGN) ? "-" : "") << std::hex << T(v.m) << "*2^" << (const char*)(v.e < 0 ? "-" : "") << abs(v.e) << " " << std::dec;
 }
 
 template <typename T, typename W, int bits, typename U> std::istream& operator >> (std::istream& is, SimpleFloat<T,W,bits,U>& v) {
