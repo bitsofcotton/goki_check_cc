@@ -733,14 +733,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
-          auto pf(p[m]);
           auto pb(p[m]);
+          auto pf(p[m]);
+          const auto avgb((data(0, k) - data(data.rows() - 1, k)) / T(int(data.rows() - 1)));
+          const auto avgf(- avgb);
           for(int kk = 1; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
               pb.next(data(data.rows() - 1 - kk, k) -
-                      data(data.rows() - kk, k));
+                      data(data.rows() - kk, k) - avgb) + avgb;
             result(m - ext + result.rows(), k) =
-              pf.next(data(kk, k) - data(kk - 1, k));
+              pf.next(data(kk, k) - data(kk - 1, k) - avgf) + avgf;
           }
         }
         result.row(ext - m - 1) += result.row(ext - m);

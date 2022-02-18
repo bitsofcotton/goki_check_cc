@@ -113,14 +113,16 @@ public:
   P p;
 };
 
-template <typename T, typename P> class sumChain {
+template <typename T, typename P, bool avg = false> class sumChain {
 public:
   inline sumChain() { ; }
-  inline sumChain(P&& p) { S = T(int(0)); this->p = p; }
+  inline sumChain(P&& p) { S = T(t ^= t); this->p = p; }
   inline ~sumChain() { ; }
   inline T next(const T& in) {
+    if(avg) { auto A((S += in) / T(++ t)); return p.next(in - A) + A; }
     auto res(- S); return res += p.next(S += in);
   }
+  myuint t;
   T S;
   P p;
 };
