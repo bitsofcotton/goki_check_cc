@@ -3300,29 +3300,31 @@ private:
   feeder f;
 };
 
-template <typename T, typename P, bool array = false> class shrinkMatrix {
+template <typename T, typename P, bool noend = false> class shrinkMatrix {
 public:
   inline shrinkMatrix() { ; }
-  inline shrinkMatrix(P&& p, const int& len) {
-    d.resize(abs(len), T(t ^= t));
-    m.resize(array ? 1 : d.size(), T(t));
+  inline shrinkMatrix(P&& p, const int& len = 0) {
+    d.resize(noend ? 1 : abs(len), T(t ^= t));
+    m.resize(d.size(), T(t));
     this->p = p;
   }
   inline ~shrinkMatrix() { ; }
   inline T next(const T& in) {
-    d[(t ++) % d.size()] = in;
+    if(noend) { d[0] += in; ++ t; }
+    else d[int(t ++) % d.size()] = in;
+    const T dsize(noend ? t : myuint(min(int(t), int(d.size()))));
     auto D(d[0]);
     for(int i = 1; i < d.size(); i ++) D += d[i];
-    m[t % m.size()] = array
-      ?  p.next(D) - D + d[(t - 2 + d.size()) % d.size()]
-      : (p.next(D) - D) / T(int(d.size())) + in;
+    m[int(t) % m.size()] = noend
+      ?  p.next(D / dsize) * dsize - D
+      : (p.next(D / dsize) * dsize - D) / dsize + in;
     auto res(m[0]);
     for(int i = 1; i < m.size(); i ++) res += m[i];
     return res /= T(int(m.size()));
   }
 private:
-  int t;
-  P   p;
+  P p;
+  myuint t;
   vector<T> d;
   vector<T> m;
 };

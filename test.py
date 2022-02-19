@@ -113,17 +113,18 @@ elif(argv[2] == "i2i"):
     idx += 1
   except:
     pass
-  subprocess.call([argv[1], "recolor3", str(pixels), argv[idx], argv[idx + 1], argv[idx] + "-" + argv[idx + 1] + "-i2i0.ppm"])
-  subprocess.call([argv[1], "recolor",  str(pixels), argv[idx + 1], argv[idx], argv[idx] + "-" + argv[idx + 1] + "-i2i1.ppm", ".5"])
-  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i1.ppm", "-negate", "-compress", "none", argv[idx] + "-" + argv[idx + 1] + "-i2i1n.ppm"])
-  subprocess.call([argv[1], "recolor3", str(pixels), argv[idx] + "-" + argv[idx + 1] + "-i2i1.ppm", argv[idx], argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm"])
-  subprocess.call([argv[1], "recolor3", str(pixels), argv[idx] + "-" + argv[idx + 1] + "-i2i1n.ppm", argv[idx], argv[idx] + "-" + argv[idx + 1] + "-i2i2n.ppm"])
-  subprocess.call([argv[1], "collect", argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i3.ppm", "1", "1"])
-  subprocess.call([argv[1], "collect", argv[idx] + "-" + argv[idx + 1] + "-i2i2n.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i3n.ppm", "1", "1"])
-  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i3.ppm", "-type", "GrayScale", "-negate", "-compress", "none", argv[idx] + "-" + argv[idx + 1] + "-i2i4.ppm"])
-  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i3n.ppm", "-type", "GrayScale", "-negate", "-compress", "none", argv[idx] + "-" + argv[idx + 1] + "-i2i4n.ppm"])
-  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i2.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i4.ppm", "-compose", "multiply", "-composite", argv[idx] + "-" + argv[idx + 1] + "-i2i.png"])
-  subprocess.call(["convert", argv[idx] + "-" + argv[idx + 1] + "-i2i2n.ppm", argv[idx] + "-" + argv[idx + 1] + "-i2i4n.ppm", "-compose", "multiply", "-composite", argv[idx] + "-" + argv[idx + 1] + "-i2in.png"])
+  for line in argv[idx:]:
+    root, ext = os.path.splitext(line)
+    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
+      subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
+  for linex in argv[idx:]:
+    rootx, extx = os.path.splitext(linex)
+    for liney in argv[idx:]:
+      if(linex == liney): continue
+      rooty, exty = os.path.splitext(liney)
+      subprocess.call([argv[1], "recolor3", str(pixels), rootx + ".ppm", rooty + ".ppm", rootx + "-" + rooty + "-i2i0.ppm"])
+      subprocess.call([argv[1], "recolor",  str(pixels), rooty + ".ppm", rootx + ".ppm", rootx + "-" + rooty + "-i2i1.ppm", ".5"])
+      subprocess.call([argv[1], "recolor3", str(pixels), rootx + "-" + rooty + "-i2i1.ppm", rootx + "-" + rooty + "-i2i0.ppm", rootx + "-" + rooty + "-i2i.ppm"])
 else:
   for line in argv[3:]:
     try:
