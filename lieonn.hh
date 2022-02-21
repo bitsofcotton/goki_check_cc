@@ -1127,6 +1127,8 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
       return s & (1 << SIGN) ? - halfpi() : halfpi();
     return *this;
   }
+  if(s & (1 << SIGN))
+    return - (- *this).atan();
   static const auto half(one() >> U(1));
   static const auto four(one() << U(2));
   static const auto five((one() << U(2)) + one());
@@ -1158,8 +1160,6 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
   //       (v = x - .5 and 0 <= 2y - 1)
   if(- two() <= *this && *this <= two()) {
     static const auto atanhalf(half.atan());
-    if(s & (1 << SIGN))
-      return - (- *this).atan();
     const auto v(five * *this / (four + (*this << U(1))) - half);
     assert(v < *this);
     return atanhalf + v.atan();
@@ -1167,14 +1167,15 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
   // N.B.
   //    in u = v case,
   //  2 atan(u) = atan(2 * u / (1 - u * u))
-  //    in u := x + 1 case,
-  //  2 atan(1 + x) = atan(2 * (1 + x) / (x + x * x))
-  //                = atan(2 / x)
-  //    in Y := 2 / x case,
-  //  atan(Y) = 2 atan(1 + 2 / Y)
-  const auto y(one() + two() / (*this));
-  assert(- two() <= y && y <= two());
-  return y.atan() << U(1);
+  //  2 atan(u) = atan(2 * u / (1 - u) / (1 + u))
+  //            = atan(2 / (1 / u - u))
+  //    in 2Y := 1 / u - u case,
+  //            = atan(4 / Y),
+  //  u^2 + 2Yu - 1 == 0, u = - Y \pm sqrt(Y^2 + 1)
+  const auto Y(four / (*this));
+  const auto u((Y * Y + one()).sqrt() - Y);
+  assert(- *this < u && u < *this);
+  return u.atan() << U(1);
 }
 
 template <typename T, typename W, int bits, typename U> const vector<SimpleFloat<T,W,bits,U> >& SimpleFloat<T,W,bits,U>::exparray() const {
@@ -3316,8 +3317,8 @@ public:
     auto D(d[0]);
     for(int i = 1; i < d.size(); i ++) D += d[i];
     m[int(t) % m.size()] = noend
-      ?  p.next(D / dsize) * dsize - D
-      : (p.next(D / dsize) * dsize - D) / dsize + in;
+      ?  p.next(D / dsize) * (dsize + T(int(1))) - D
+      : (p.next(D / dsize) *  dsize - D) / dsize + in;
     auto res(m[0]);
     for(int i = 1; i < m.size(); i ++) res += m[i];
     return res /= T(int(m.size()));
