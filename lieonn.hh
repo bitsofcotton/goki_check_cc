@@ -1170,9 +1170,9 @@ template <typename T, typename W, int bits, typename U> SimpleFloat<T,W,bits,U> 
   //  2 atan(u) = atan(2 * u / (1 - u) / (1 + u))
   //            = atan(2 / (1 / u - u))
   //    in 2Y := 1 / u - u case,
-  //            = atan(4 / Y),
+  //            = atan(1 / Y),
   //  u^2 + 2Yu - 1 == 0, u = - Y \pm sqrt(Y^2 + 1)
-  const auto Y(four / (*this));
+  const auto Y(one() / (*this));
   const auto u((Y * Y + one()).sqrt() - Y);
   assert(- *this < u && u < *this);
   return u.atan() << U(1);

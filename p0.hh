@@ -102,9 +102,13 @@ public:
   inline T next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    static const T M(atan(T(int(1))) * T(int(2)) * (T(int(1)) - sqrt(SimpleMatrix<T>().epsilon)));
+    static const T M(atan(one / sqrt(sqrt(SimpleMatrix<T>().epsilon))));
     if(! isfinite(in) || in == zero) return in;
-    auto pn(p.next(atan(one / atan(in))));
+    auto ain(atan(in));
+    assert(- M < ain && ain < M);
+    auto bin(atan(one / move(ain)));
+    assert(- M < bin && bin < M);
+    auto pn(p.next(move(bin)));
     if(! isfinite(pn) || pn == zero) return in;
     auto res(tan(max(- M, min(M, one / tan(max(- M, min(M, move(pn))))))));
     if(isfinite(res)) return move(res);
