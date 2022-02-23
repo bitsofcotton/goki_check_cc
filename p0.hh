@@ -102,7 +102,7 @@ public:
   inline T next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    static const T M(atan(one / sqrt(sqrt(SimpleMatrix<T>().epsilon))));
+    static const T M(atan(one / sqrt(SimpleMatrix<T>().epsilon)));
     if(! isfinite(in) || in == zero) return in;
     auto ain(atan(in));
     assert(- M < ain && ain < M);

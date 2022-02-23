@@ -66,6 +66,7 @@ typedef enum {
   BUMP_BOTH,
   EXTEND_X,
   EXTEND_Y,
+  EXTEND_Y0,
   EXTEND_BOTH,
   BLINK_X,
   BLINK_Y,
@@ -717,38 +718,31 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      const auto ext(int(sqrt(T(data.rows()))));
+      const auto ext(sqrt(data.rows()));
       result.resize(data.rows() + 2 * ext, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + ext) = data.row(i);
-      vector<northPole<T, sumChain<T, northPole<T, P0<T, idFeeder<T> > > > > > p;
+      vector<northPole<T, P0<T, idFeeder<T> > > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(northPole<T, sumChain<T, northPole<T, P0<T, idFeeder<T> > > > >(sumChain<T, northPole<T, P0<T, idFeeder<T> > > >(northPole<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1, m + 1)))));
+        p.emplace_back(northPole<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1, m + 1)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-      for(int m = 0; m < ext; m ++) {
+      for(int m = 0; m < ext; m ++)
         for(int k = 0; k < data.cols(); k ++) {
           auto pb(p[m]);
           auto pf(p[m]);
-          const auto avgb((data(0, k) - data(data.rows() - 1, k)) / T(int(data.rows() - 1)));
-          const auto avgf(- avgb);
-          for(int kk = 1; kk < data.rows(); kk ++) {
+          for(int kk = 0; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
-              pb.next(data(data.rows() - 1 - kk, k) -
-                      data(data.rows() - kk, k) - avgb) + avgb;
+              pb.next(data(data.rows() - 1 - kk, k) * T(int(65536))) / T(int(65536));
             result(m - ext + result.rows(), k) =
-              pf.next(data(kk, k) - data(kk - 1, k) - avgf) + avgf;
+              pf.next(data(kk, k) * T(int(65536))) / T(int(65536));
           }
         }
-        result.row(ext - m - 1) += result.row(ext - m);
-        result.row(m - ext + result.rows()) +=
-          result.row(m - ext + result.rows() - 1);
-      }
     }
     result = filter<T>(result, CLIP);
     break;
