@@ -122,14 +122,14 @@ public:
   P p;
 };
 
-template <typename T, typename P, bool avg = false> class sumChain {
+template <typename T, typename P> class avgOrigin {
 public:
-  inline sumChain() { ; }
-  inline sumChain(P&& p) { S = T(t ^= t); this->p = p; }
-  inline ~sumChain() { ; }
+  inline avgOrigin() { ; }
+  inline avgOrigin(P&& p) { S = T(t ^= t); this->p = p; }
+  inline ~avgOrigin() { ; }
   inline T next(const T& in) {
-    if(avg) { auto A((S += in) / T(++ t)); return p.next(in - A) + A; }
-    auto res(- (S += in)); return res += p.next(S);
+    const auto A((S += in) / T(++ t));
+    return p.next(in - A) + A;
   }
   myuint t;
   T S;
