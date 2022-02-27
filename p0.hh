@@ -44,8 +44,8 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
     p[0] = T(1);
   } else if(size <= 2) {
     p.resize(2);
-    p[0] = T(1) / T(2);
-    p[1] = T(1) / T(2) + T(1);
+    p[0] = T(1) / T(2) + T(step < 0 ? 1 : 0);
+    p[1] = T(1) / T(2) + T(step < 0 ? 0 : 1);
     p   /= T(2);
   } else {
     const auto file(std::string("./.cache/lieonn/next-") +
@@ -61,9 +61,9 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
       cache >> p;
       cache.close();
     } else {
-      p = taylor(size, T(size + step - 1));
+      p = taylor(size, T(step < 0 ? step : size + step - 1));
       cerr << "." << flush;
-      if(step * 2 < size) {
+      if(abs(step) * 2 < size) {
         const auto pp(pnext<T>(size - 1, step));
         for(int j = 0; j < pp.size(); j ++)
           p[j - pp.size() + p.size()] += pp[j] * T(size - 1);
