@@ -63,13 +63,15 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
     } else {
       p = taylor(size, T(size + step - 1));
       cerr << "." << flush;
-      const auto pp(pnext<T>(size - 1, step));
-      for(int j = 0; j < pp.size(); j ++)
-        p[j - pp.size() + p.size()] += pp[j] * T(size - 1);
-      p /= T(size);
-      ofstream ocache(file.c_str());
-      ocache << p << endl;
-      ocache.close();
+      if(step * 2 < size) {
+        const auto pp(pnext<T>(size - 1, step));
+        for(int j = 0; j < pp.size(); j ++)
+          p[j - pp.size() + p.size()] += pp[j] * T(size - 1);
+        p /= T(size);
+        ofstream ocache(file.c_str());
+        ocache << p << endl;
+        ocache.close();
+      }
     }
   }
   assert(p.size() == size);
@@ -79,19 +81,22 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
 template <typename T, typename feeder> class P0 {
 public:
   typedef SimpleVector<T> Vec;
+  typedef SimpleMatrix<T> Mat;
   inline P0() { ; }
   inline P0(const int& size, const int& step = 1) {
     f = feeder(size);
+    g = feeder(size);
     p = pnext<T>(size, step);
   }
   inline ~P0() { ; };
   inline T next(const T& in) {
-    const auto& ff(f.next(in));
-    static const T zero(int(0));
-    return f.full ? p.dot(ff) : zero;
+    const auto ff(f.next(in));
+    const auto gg(g.next(num_t(int(1)) / in));
+    return f.full ? (p.dot(ff) + num_t(int(1)) / p.dot(gg)) / num_t(int(2)) : T(int(0));
   }
   Vec p;
   feeder f;
+  feeder g;
 };
 
 template <typename T, typename P> class northPole {
@@ -124,7 +129,7 @@ public:
   inline ~sumChain() { ; }
   inline T next(const T& in) {
     if(avg) { auto A((S += in) / T(++ t)); return p.next(in - A) + A; }
-    auto res(- S); return res += p.next(S += in);
+    auto res(- (S += in)); return res += p.next(S);
   }
   myuint t;
   T S;

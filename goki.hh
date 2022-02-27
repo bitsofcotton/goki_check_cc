@@ -718,17 +718,17 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      const auto ext(sqrt(data.rows()));
+      const int ext(exp(sqrt(log(T(data.rows())))));
       result.resize(data.rows() + 2 * ext, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + ext) = data.row(i);
-      vector<northPole<T, P0<T, idFeeder<T> > > > p;
+      vector<northPole<T, northPole<T, P0<T, idFeeder<T> > > > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(northPole<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1, m + 1)));
+        p.emplace_back(northPole<T, northPole<T, P0<T, idFeeder<T> > > >(northPole<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1, m + 1))));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
