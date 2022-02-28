@@ -91,8 +91,7 @@ public:
   inline ~P0() { ; };
   inline T next(const T& in) {
     const auto ff(f.next(in));
-    const auto gg(g.next(num_t(int(1)) / in));
-    return f.full ? (p.dot(ff) + num_t(int(1)) / p.dot(gg)) / num_t(int(2)) : T(int(0));
+    return f.full ? p.dot(ff) : T(int(0));
   }
   Vec p;
   feeder f;
