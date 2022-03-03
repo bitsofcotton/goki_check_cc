@@ -718,7 +718,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      const int ext(exp(sqrt(log(T(data.rows())))) - T(int(2)));
+      const int ext(exp(sqrt(log(T(data.rows() - 4)))));
       result.resize(data.rows() + 2 * ext, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -728,8 +728,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       vector<northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++) {
-        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1 - 2, m + 1 + 2), 2))));
-        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1 - 2, m + 1 + 2 - 1), 2))));
+        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1 - 4, m + 1 + 2), 2))));
+        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() - 1 - 4, m + 1 + 2 - 1), 2))));
       }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
