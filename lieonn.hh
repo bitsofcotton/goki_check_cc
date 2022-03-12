@@ -2836,6 +2836,15 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::zeroFix(const Simp
 #endif
     for(int j = 0; j < this->cols(); j ++)
       this->setCol(j, this->col(j) - orth * this->col(j).dot(orth) / n2);
+    if(T(int(0)) < fidx[idx].first) {
+      const auto rfidxsz(fidx.size());
+      fidx.resize(0);
+      fidx.reserve(this->cols());
+      const auto on(projectionPt(one));
+      for(int j = 0; j < this->cols(); j ++)
+        fidx.emplace_back(make_pair(abs(on[j]), i));
+      i -= rfidxsz - fidx.size();
+    }
     i ++;
   }
   // N.B. now we have fix indexes that to be P R [x 1] * t == 0.

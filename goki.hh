@@ -742,10 +742,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           auto pf2(p[m / 2 + 1]);
           for(int kk = 0; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
-              pb.next( data(data.rows() - 1 - kk, k)) +
-              pb2.next(data(data.rows() - 1 - kk, k));
+              pb.next( data(data.rows() - 1 - kk, k) + T(int(1))) +
+              pb2.next(data(data.rows() - 1 - kk, k) + T(int(1))) - T(int(2));
             result(m - ext + result.rows(), k) =
-              pf.next(data(kk, k)) + pf2.next(data(kk, k));
+              pf.next( data(kk, k) + T(int(1))) +
+              pf2.next(data(kk, k) + T(int(1))) - T(int(2));
           }
         }
         result.row(ext - m - 1) /= num_t(int(2));
