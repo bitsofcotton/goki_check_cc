@@ -71,31 +71,32 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
   SimpleVector<int> fix(one.size());
   one.I(T(int(1)));
   fix.I(false);
-  const auto on(Pt.projectionPt(one));
-  vector<pair<T, int> > fidx;
-  vector<int> pidx;
-  fidx.reserve(on.size());
-  pidx.resize(on.size(), 0);
-  if(0 < size0) {
-    for(int i = 0; i < on.size(); i ++)
-      fidx.emplace_back(make_pair(abs(on[i]), i));
-  } else {
-    for(int i = 0; i < on.size(); i ++) {
-      T score(0);
-      for(int j = 0; j < in.size(); j ++) {
-        const auto lscore(abs(on[i] + on[j]));
-        if(score == T(int(0)) || lscore < score) {
-          score = lscore;
-          pidx[i] = j;
-        }
-      }
-      fidx.emplace_back(make_pair(score, i));
-    }
-  }
-  sort(fidx.begin(), fidx.end());
   for(int n_fixed = 0, idx = 0;
-          n_fixed < Pt.rows() - 1 && idx < fidx.size();
+          n_fixed < Pt.rows() - 1;
           n_fixed ++, idx ++) {
+    const auto on(Pt.projectionPt(one));
+    vector<pair<T, int> > fidx;
+    vector<int> pidx;
+    fidx.reserve(on.size());
+    pidx.resize(on.size(), 0);
+    if(0 < size0) {
+      for(int i = 0; i < on.size(); i ++)
+        fidx.emplace_back(make_pair(abs(on[i]), i));
+    } else {
+      for(int i = 0; i < on.size(); i ++) {
+        T score(0);
+        for(int j = 0; j < in.size(); j ++) {
+          const auto lscore(abs(on[i] + on[j]));
+          if(score == T(int(0)) || lscore < score) {
+            score = lscore;
+            pidx[i] = j;
+          }
+        }
+        fidx.emplace_back(make_pair(score, i));
+      }
+    }
+    sort(fidx.begin(), fidx.end());
+    if(fidx.size() <= idx) break;
     const auto& iidx(fidx[idx].second);
     if(fix[iidx]) continue;
     const auto  orth(Pt.col(iidx));

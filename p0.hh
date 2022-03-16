@@ -107,9 +107,9 @@ public:
     static const T M(atan(one / sqrt(SimpleMatrix<T>().epsilon)));
     if(! isfinite(in) || in == zero) return in;
     auto ain(atan(in));
-    assert(- M < ain && ain < M);
+    //assert(- M < ain && ain < M);
     auto bin(atan(one / move(ain)));
-    assert(- M < bin && bin < M);
+    //assert(- M < bin && bin < M);
     auto pn(p.next(move(bin)));
     if(! isfinite(pn) || pn == zero) return in;
     auto res(tan(max(- M, min(M, one / tan(max(- M, min(M, move(pn))))))));
@@ -122,18 +122,22 @@ public:
 template <typename T, typename P, bool avg = false> class sumChain {
 public:
   inline sumChain() { ; }
-  inline sumChain(P&& p) { S = T(t ^= t); this->p = p; }
+  inline sumChain(P&& p, const int& avglen = 2) { this->p = p; q = P(p); b.resize(avglen, T(int(0))); }
   inline ~sumChain() { ; }
   inline T next(const T& in) {
     if(avg) {
-      const auto A((S += in) / T(++ t));
-      return p.next(in - A) + A;
+      for(int i = 0; i < b.size() - 1; i ++) b[i] = move(b[i + 1]);
+      b[b.size() - 1] = in;
+      auto A(b[0]);
+      for(int i = 1; i < b.size(); i ++) A += b[i];
+      A /= T(int(b.size()));
+      return p.next(in - A) + q.next(A);
     }
-    S += in; return p.next(S) - S;
+    b[0] += in; return p.next(b[0]) - b[0];
   }
-  myuint t;
-  T S;
+  vector<T> b;
   P p;
+  P q;
 };
 
 #define _P0_

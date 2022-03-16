@@ -40,7 +40,7 @@ public:
   typedef SimpleMatrix<T> Mat;
   inline P1I() { varlen = 0; }
   inline P1I(const int& stat, const int& var, const int& step = 1) {
-    assert(0 < stat && 1 < var && 0 < step);
+    assert(0 < stat && 0 < var && 0 < step);
     f = feeder(stat + (this->step = step) - 1 + (varlen = var) - 1);
   }
   inline ~P1I() { ; }
