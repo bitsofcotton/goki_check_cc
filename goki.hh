@@ -1153,7 +1153,7 @@ template <typename T> void drawMatchLine(SimpleMatrix<T>& map, const SimpleVecto
   const auto dlt(abs(lref0[idxM] - lref1[idxM]));
   if(dlt == T(0)) return;
   const auto denom(T(1) / dlt);
-  for(int i = 0; i <= int(dlt) + 1; i ++) {
+  for(int i = 0; i <= int(ceil(dlt)); i ++) {
     const auto gidx(lref0 + d10 * T(i) * denom);
     map(max(int(0), min(int(gidx[0]), int(map.rows() - 1))),
         max(int(0), min(int(gidx[1]), int(map.cols() - 1)))) = c;
@@ -1462,6 +1462,20 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const Simp
     for(int j = 0; j < 3; j ++) {
       assert(0 <= facets[i][j] && facets[i][j] < points.size());
       work.p.setCol(j, m.transform(points[facets[i][j]]));
+    }
+    for(int j = 0; j < 2; j ++) {
+      if(work.p(j, 0) <= work.p(j, 1) && work.p(j, 0) <= work.p(j, 2))
+        work.p(j, 0) = floor(work.p(j, 0));
+      else if(work.p(j, 1) <= work.p(j, 0) && work.p(j, 1) <= work.p(j, 2))
+        work.p(j, 1) = floor(work.p(j, 1));
+      else if(work.p(j, 2) <= work.p(j, 0) && work.p(j, 2) <= work.p(j, 1))
+        work.p(j, 2) = floor(work.p(j, 2));
+      if(work.p(j, 1) <= work.p(j, 0) && work.p(j, 2) <= work.p(j, 0))
+        work.p(j, 0) = ceil(work.p(j, 0));
+      else if(work.p(j, 0) <= work.p(j, 1) && work.p(j, 2) <= work.p(j, 1))
+        work.p(j, 1) = ceil(work.p(j, 1));
+      else if(work.p(j, 0) <= work.p(j, 2) && work.p(j, 1) <= work.p(j, 2))
+        work.p(j, 2) = ceil(work.p(j, 2));
     }
     if(T(0) <= points[facets[i][0]][0] && points[facets[i][0]][0] < T(in.rows()) &&
        T(0) <= points[facets[i][0]][1] && points[facets[i][0]][1] < T(in.cols()))
