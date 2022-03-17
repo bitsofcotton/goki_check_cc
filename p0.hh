@@ -78,6 +78,15 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
   return p;
 }
 
+template <typename T> const SimpleVector<T> pnextcache(const int& size, const int& step) {
+  assert(0 < size && 0 <= step);
+  vector<vector<SimpleVector<T> > > cp;
+  if(cp.size() <= size) cp.resize(size + 1, vector<SimpleVector<T> >());
+  if(cp[size].size() <= step) cp[size].resize(step + 1, SimpleVector<T>());
+  if(cp[size][step].size()) return cp[size][step];
+  return cp[size][step] = pnext<T>(size, step);
+}
+
 template <typename T, typename feeder> class P0 {
 public:
   typedef SimpleVector<T> Vec;
@@ -85,14 +94,53 @@ public:
   inline P0() { ; }
   inline P0(const int& size, const int& step = 1) {
     f = feeder(size);
-    p = pnext<T>(size, step);
+    this->step = step;
   }
   inline ~P0() { ; };
   inline T next(const T& in) {
     const auto ff(f.next(in));
-    return f.full ? p.dot(ff) : T(int(0));
+    return f.full ? pnextcache<T>(ff.size(), step).dot(ff) : T(int(0));
   }
-  Vec p;
+  int step;
+  feeder f;
+};
+
+template <typename T> const SimpleMatrix<complex<T> > dftcache(const int& size) {
+  assert(size != 0);
+  vector<SimpleMatrix<complex<T> > > cdft;
+  vector<SimpleMatrix<complex<T> > > cidft;
+  if(0 < size) {
+    if(cdft.size() <= size) cdft.resize(size + 1, SimpleMatrix<complex<T> >());
+    if(cdft[size].rows() && cdft[size].cols()) return cdft[size];
+    return cdft[size] = dft<T>(size);
+  }
+  if(cidft.size() <= abs(size)) cidft.resize(abs(size) + 1, SimpleMatrix<complex<T> >());
+  if(cidft[abs(size)].rows() && cidft[abs(size)].cols()) return cidft[abs(size)];
+  return cidft[abs(size)] = dft<T>(size);
+}
+
+template <typename T, typename P, typename feeder> class P0DFT {
+public:
+  typedef SimpleVector<T> Vec;
+  typedef SimpleMatrix<T> Mat;
+  inline P0DFT() { ; }
+  inline P0DFT(P&& p, const int& size) {
+    f = feeder(size);
+    (this->p).resize(size, p);
+    q = this->p;
+  }
+  inline ~P0DFT() { ; };
+  inline T next(const T& in) {
+    const auto& fn(f.next(in));
+    if(! f.full) return T(int(0));
+    auto ff(dftcache<T>(fn.size()) * fn.template cast<complex<T> >());
+    assert(ff.size() == p.size() && p.size() == q.size());
+    for(int i = 0; i < ff.size(); i ++)
+      ff[i] = complex<T>(p[i].next(ff[i].real()), q[i].next(ff[i].imag()));
+    return (dftcache<T>(- fn.size()) * ff)[ff.size() - 1].real();
+  }
+  vector<P> p;
+  vector<P> q;
   feeder f;
 };
 
@@ -122,22 +170,17 @@ public:
 template <typename T, typename P, bool avg = false> class sumChain {
 public:
   inline sumChain() { ; }
-  inline sumChain(P&& p, const int& avglen = 2) { this->p = p; q = P(p); b.resize(avglen, T(int(0))); }
+  inline sumChain(P&& p) { this->p = p; S = T(t ^= t); }
   inline ~sumChain() { ; }
   inline T next(const T& in) {
-    if(avg) {
-      for(int i = 0; i < b.size() - 1; i ++) b[i] = move(b[i + 1]);
-      b[b.size() - 1] = in;
-      auto A(b[0]);
-      for(int i = 1; i < b.size(); i ++) A += b[i];
-      A /= T(int(b.size()));
-      return p.next(in - A) + q.next(A);
-    }
-    b[0] += in; return p.next(b[0]) - b[0];
+    S += in;
+    if(! avg) return p.next(S) - S;
+    const auto A(S / T(++ t));
+    return p.next(in - A) + A;
   }
-  vector<T> b;
+  T S;
   P p;
-  P q;
+  myuint t;
 };
 
 #define _P0_
