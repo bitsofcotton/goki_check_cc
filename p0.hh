@@ -78,9 +78,9 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
   return p;
 }
 
-template <typename T> const SimpleVector<T> pnextcache(const int& size, const int& step) {
+template <typename T> const SimpleVector<T>& pnextcache(const int& size, const int& step) {
   assert(0 < size && 0 <= step);
-  vector<vector<SimpleVector<T> > > cp;
+  static vector<vector<SimpleVector<T> > > cp;
   if(cp.size() <= size) cp.resize(size + 1, vector<SimpleVector<T> >());
   if(cp[size].size() <= step) cp[size].resize(step + 1, SimpleVector<T>());
   if(cp[size][step].size()) return cp[size][step];
@@ -105,10 +105,10 @@ public:
   feeder f;
 };
 
-template <typename T> const SimpleMatrix<complex<T> > dftcache(const int& size) {
+template <typename T> const SimpleMatrix<complex<T> >& dftcache(const int& size) {
   assert(size != 0);
-  vector<SimpleMatrix<complex<T> > > cdft;
-  vector<SimpleMatrix<complex<T> > > cidft;
+  static vector<SimpleMatrix<complex<T> > > cdft;
+  static vector<SimpleMatrix<complex<T> > > cidft;
   if(0 < size) {
     if(cdft.size() <= size) cdft.resize(size + 1, SimpleMatrix<complex<T> >());
     if(cdft[size].rows() && cdft[size].cols()) return cdft[size];
