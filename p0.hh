@@ -137,7 +137,7 @@ public:
     assert(ff.size() == p.size() && p.size() == q.size());
     for(int i = 0; i < ff.size(); i ++)
       ff[i] = complex<T>(p[i].next(ff[i].real()), q[i].next(ff[i].imag()));
-    return (dftcache<T>(- fn.size()) * ff)[ff.size() - 1].real();
+    return dftcache<T>(- fn.size()).row(fn.size() - 1).dot(ff).real();
   }
   vector<P> p;
   vector<P> q;
