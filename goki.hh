@@ -727,10 +727,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         result.row(i + ext) = data.row(i);
       vector<northPole<T, northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > > > > p;
       p.reserve(ext);
-      for(int m = 0; m < ext; m ++) {
-        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > >(shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > >(P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >(P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >(P0<T, idFeeder<T> >(data.rows() / 3 - 1 - 4, m + 1 + 2), data.rows() / 3), data.rows() / 3), 2))));
-        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > >(shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > >(P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >(P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >(P0<T, idFeeder<T> >(data.rows() / 3 - 1 - 4, m + 1 + 2 - 1), data.rows() / 3), data.rows() / 3), 2))));
-      }
+      for(int m = 0; m < ext; m ++)
+        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > >(shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > >(P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >(P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >(P0<T, idFeeder<T> >(data.rows() / 3 - 1 - 4, m + 2), data.rows() / 3), data.rows() / 3), 2))));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -738,15 +736,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         for(int k = 0; k < data.cols(); k ++) {
           auto pb(p[m / 2]);
           auto pf(p[m / 2]);
-          auto pb2(p[m / 2 + 1]);
-          auto pf2(p[m / 2 + 1]);
           for(int kk = 0; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
-              pb.next( data(data.rows() - 1 - kk, k) + T(int(1))) +
-              pb2.next(data(data.rows() - 1 - kk, k) + T(int(1))) - T(int(2));
+              pb.next( data(data.rows() - 1 - kk, k) + T(int(1))) - T(int(1));
             result(m - ext + result.rows(), k) =
-              pf.next( data(kk, k) + T(int(1))) +
-              pf2.next(data(kk, k) + T(int(1))) - T(int(2));
+              pf.next( data(kk, k) + T(int(1))) - T(int(1));
           }
         }
         result.row(ext - m - 1) /= num_t(int(2));

@@ -99,7 +99,9 @@ public:
   inline ~P0() { ; };
   inline T next(const T& in) {
     const auto ff(f.next(in));
-    return f.full ? pnextcache<T>(ff.size(), step).dot(ff) : T(int(0));
+    return f.full ? (pnextcache<T>(ff.size(), step) +
+                     pnextcache<T>(ff.size(), step - 1)).dot(ff) / T(int(2))
+                  : T(int(0));
   }
   int step;
   feeder f;
