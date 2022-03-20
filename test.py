@@ -217,8 +217,8 @@ else:
       subprocess.call(["convert", line, "-resize", str(pixels) + "x>", "-resize", "x" + str(pixels) + ">", root + "-prep.png"])
     elif(argv[2] == "prepsq"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "x" + str(pixels) + "!", root + "-prepsq.png"])
-    elif(argv[2] == "rot"):
-      subprocess.call(["convert", line, "-rotate", "90", root + "-rot.png"])
+    elif(argv[2] == "equalize"):
+      subprocess.call(["convert", line, "-equalize", root + "-equalize.png"])
     elif(argv[2] == "nurie"):
       subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):

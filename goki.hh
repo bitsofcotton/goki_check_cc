@@ -734,8 +734,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
-          auto pb(p[m / 2]);
-          auto pf(p[m / 2]);
+          auto pb(p[m]);
+          auto pf(p[m]);
           for(int kk = 0; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
               pb.next( data(data.rows() - 1 - kk, k) + T(int(1))) - T(int(1));
