@@ -389,7 +389,7 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
       std::vector<std::vector<SimpleMatrix<num_t> > > mout;
-      mout.resize(int(exp(sqrt(log(num_t(in.size() - 4))))), out);
+      mout.resize(int(exp(sqrt(log(num_t(in.size() / 3 - 4))))), out);
       auto nout(mout);
       for(int i = 0; i < out.size(); i ++)
         for(int j = 0; j < out[i].rows(); j ++) {
