@@ -718,17 +718,17 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      const int ext(exp(sqrt(log(T(data.rows() / 3 - 4)))));
+      const int ext(exp(sqrt(log(T(data.rows() / 4 - 5)))));
       result.resize(data.rows() + 2 * ext, data.cols());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int i = 0; i < data.rows(); i ++)
         result.row(i + ext) = data.row(i);
-      vector<northPole<T, northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > > > > p;
+      vector<northPole<T, northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > > > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > >(shrinkMatrix<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > >(P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >(P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >(P0<T, idFeeder<T> >(data.rows() / 3 - 1 - 4, m + 2), data.rows() / 3), data.rows() / 3), 2))));
+        p.emplace_back(northPole<T, northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0DFT<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > > >(shrinkMatrix<T, P0DFT<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >, idFeeder<T> > >(P0DFT<T, P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >(P0DFT<T, P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >, idFeeder<T> >(P0DFT<T, P0<T, idFeeder<T> >, idFeeder<T> >(P0<T, idFeeder<T> >(data.rows() / 4 - 6, m + 2), data.rows() / 4), data.rows() / 4), data.rows() / 4), 2))));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -743,8 +743,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
               pf.next( data(kk, k) + T(int(1))) - T(int(1));
           }
         }
-        result.row(ext - m - 1) /= num_t(int(2));
-        result.row(m - ext + result.rows()) /= num_t(int(2));
       }
     }
     result = filter<T>(result, CLIP);
