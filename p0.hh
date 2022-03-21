@@ -138,7 +138,8 @@ public:
     auto ff(dftcache<T>(fn.size()) * fn.template cast<complex<T> >());
     assert(ff.size() == p.size() && p.size() == q.size());
     for(int i = 0; i < ff.size(); i ++)
-      ff[i] = abs(p[i].next(abs(ff[i]))) * exp(complex<T>(T(int(0)), q[i].next(arg(ff[i]))));
+      if(! (ff[i].real() == T(int(0)) && ff[i].imag() == T(int(0)) ) )
+        ff[i] = abs(p[i].next(abs(ff[i]))) * exp(complex<T>(T(int(0)), q[i].next(arg(ff[i]))));
     return dftcache<T>(- fn.size()).row(fn.size() - 1).dot(ff).real();
   }
   vector<P> p;
