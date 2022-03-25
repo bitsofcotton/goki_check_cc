@@ -195,7 +195,7 @@ public:
     T pw(int(1));
     T res(int(0));
     for(int i = 0; i < p.size(); i ++) {
-      res += p[i].next(T(int(in / pw) & 1) - T(int(1)) / T(int(2))) < T(int(0)) ? T(int(0)) : pw;
+      res += pw * (p[i].next(T(int(in / pw) & 1) - T(int(1)) / T(int(2))) + T(int(1)) / T(int(2)) );
       pw /= T(int(2));
     }
     return res;
