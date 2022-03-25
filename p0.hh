@@ -186,6 +186,23 @@ public:
   myuint t;
 };
 
+template <typename T, typename P> class P0Binary01 {
+public:
+  inline P0Binary01() { ; }
+  inline P0Binary01(P&& p, const int& depth = 1) { (this->p).resize(depth, p); }
+  inline ~P0Binary01() { ; }
+  inline T next(const T& in) {
+    T pw(int(1));
+    T res(int(0));
+    for(int i = 0; i < p.size(); i ++) {
+      res += p[i].next(T(int(in / pw) & 1) - T(int(1)) / T(int(2))) < T(int(0)) ? T(int(0)) : pw;
+      pw /= T(int(2));
+    }
+    return res;
+  }
+  vector<P> p;
+};
+
 #define _P0_
 #endif
 
