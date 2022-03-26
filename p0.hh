@@ -186,6 +186,35 @@ public:
   myuint t;
 };
 
+template <typename T, typename P> class P0ContRand {
+public:
+  inline P0ContRand() { ; }
+  inline P0ContRand(P&& p, const int& para) {
+    (this->p).resize(para, p);
+    r.resize(para, T(t ^= t));
+    br.resize(para, T(t));
+  }
+  inline ~P0ContRand() { ; }
+  inline T next(const T& in) {
+    t ++;
+    T res(0);
+    for(int i = 0; i < p.size(); i ++) {
+      const auto rr(t & 1 ? r[i] + br[i] : r[i] + r[i]);
+      auto rres(p[i].next(in * rr));
+      if(! (t & 1)) {
+        br[i] = r[i];
+        r[i]  = T(arc4random_uniform(0x800000) + 1);
+      }
+      res += rres / (t & 1 ? r[i] + r[i] : r[i] + br[i]);
+    }
+    return res /= T(int(p.size()));
+  }
+  vector<P> p;
+  vector<T> r;
+  vector<T> br;
+  int t;
+};
+
 template <typename T, typename P> class P0Binary01 {
 public:
   inline P0Binary01() { ; }

@@ -66,7 +66,6 @@ typedef enum {
   BUMP_BOTH,
   EXTEND_X,
   EXTEND_Y,
-  EXTEND_Y0,
   EXTEND_BOTH,
   BLINK_X,
   BLINK_Y,
@@ -501,6 +500,68 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
   return res;
 }
 
+template <typename T> vector<SimpleMatrix<T> > normalize(const vector<SimpleMatrix<T> >& data, const T& upper = T(1)) {
+  T MM(0), mm(0);
+  bool fixed(false);
+  for(int k = 0; k < data.size(); k ++)
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++)
+        if(! fixed || (isfinite(data[k](i, j)) && ! isinf(data[k](i, j)) && ! isnan(data[k](i, j)))) {
+          if(! fixed)
+            MM = mm = data[k](i, j);
+          else {
+            MM = max(MM, data[k](i, j));
+            mm = min(mm, data[k](i, j));
+          }
+          fixed = true;
+        }
+  if(MM == mm || ! fixed)
+    return data;
+  auto result(data);
+  for(int k = 0; k < data.size(); k ++)
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++) {
+        if(isfinite(result[k](i, j)) && ! isinf(data[k](i, j)) && ! isnan(result[k](i, j)))
+          result[k](i, j) -= mm;
+        else
+          result[k](i, j)  = T(0);
+        assert(T(0) <= result[k](i, j) && result[k](i, j) <= MM - mm);
+        result[k](i, j) *= upper / (MM - mm);
+      }
+  return result;
+}
+
+template <typename T> static inline SimpleMatrix<T> normalize(const SimpleMatrix<T>& data, const T& upper = T(1)) {
+  vector<SimpleMatrix<T> > work;
+  work.emplace_back(data);
+  return normalize<T>(work, upper)[0];
+}
+
+template <typename T> vector<SimpleMatrix<T> > autoLevel(const vector<SimpleMatrix<T> >& data, const int& count = 0) {
+  vector<T> res;
+  res.reserve(data[0].rows() * data[0].cols() * data.size());
+  for(int k = 0; k < data.size(); k ++)
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++)
+        res.emplace_back(data[k](i, j));
+  sort(res.begin(), res.end());
+  auto result(data);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int k = 0; k < data.size(); k ++)
+    for(int i = 0; i < data[k].rows(); i ++)
+      for(int j = 0; j < data[k].cols(); j ++)
+        result[k](i, j) = max(min(data[k](i, j), res[res.size() - count - 1]), res[count]);
+  return result;
+}
+
+template <typename T> static inline SimpleMatrix<T> autoLevel(const SimpleMatrix<T>& data, const int& count = 0) {
+  vector<SimpleMatrix<T> > work;
+  work.emplace_back(data);
+  return autoLevel(work, count)[0];
+}
+
 // N.B. this function is NOT thread safe.
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& recur = 2, const int& rot = 0) {
   assert(0 < recur && 0 <= rot);
@@ -720,15 +781,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     {
       const int ext(exp(sqrt(log(T(data.rows() / 3)))));
       result.resize(data.rows() + 2 * ext, data.cols());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-      for(int i = 0; i < data.rows(); i ++)
-        result.row(i + ext) = data.row(i);
-      vector<P0Binary01<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > p;
+      result.O();
+      vector<P0ContRand<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(P0Binary01<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() / 3, m + 2), data.rows() / 3), 9));
+        p.emplace_back(P0ContRand<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > >(northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() / 3, m + 2), data.rows() / 3) )), recur) );
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -738,14 +795,15 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           auto pf(p[m]);
           for(int kk = 0; kk < data.rows(); kk ++) {
             result(ext - m - 1, k) =
-              pb.next( data(data.rows() - 1 - kk, k) + T(int(1))) - T(int(1));
+              pb.next(data(data.rows() - 1 - kk, k) + T(int(1))) - T(int(1));
             result(m - ext + result.rows(), k) =
-              pf.next( data(kk, k) + T(int(1))) - T(int(1));
+              pf.next(data(kk, k) + T(int(1))) - T(int(1));
           }
         }
       }
+      result = normalize<T>(autoLevel<T>(result, result.cols()));
+      result.setMatrix(ext, 0, normalize<T>(data));
     }
-    result = filter<T>(result, CLIP);
     break;
   case BLINK_Y:
     {
@@ -1899,68 +1957,6 @@ template <typename T> static inline SimpleMatrix<T> contrast(const SimpleMatrix<
   vector<SimpleMatrix<T> > work;
   work.emplace_back(in);
   return contrast<T>(work, intensity, thresh)[0];
-}
-
-template <typename T> vector<SimpleMatrix<T> > normalize(const vector<SimpleMatrix<T> >& data, const T& upper = T(1)) {
-  T MM(0), mm(0);
-  bool fixed(false);
-  for(int k = 0; k < data.size(); k ++)
-    for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++)
-        if(! fixed || (isfinite(data[k](i, j)) && ! isinf(data[k](i, j)) && ! isnan(data[k](i, j)))) {
-          if(! fixed)
-            MM = mm = data[k](i, j);
-          else {
-            MM = max(MM, data[k](i, j));
-            mm = min(mm, data[k](i, j));
-          }
-          fixed = true;
-        }
-  if(MM == mm || ! fixed)
-    return data;
-  auto result(data);
-  for(int k = 0; k < data.size(); k ++)
-    for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++) {
-        if(isfinite(result[k](i, j)) && ! isinf(data[k](i, j)) && ! isnan(result[k](i, j)))
-          result[k](i, j) -= mm;
-        else
-          result[k](i, j)  = T(0);
-        assert(T(0) <= result[k](i, j) && result[k](i, j) <= MM - mm);
-        result[k](i, j) *= upper / (MM - mm);
-      }
-  return result;
-}
-
-template <typename T> static inline SimpleMatrix<T> normalize(const SimpleMatrix<T>& data, const T& upper = T(1)) {
-  vector<SimpleMatrix<T> > work;
-  work.emplace_back(data);
-  return normalize<T>(work, upper)[0];
-}
-
-template <typename T> vector<SimpleMatrix<T> > autoLevel(const vector<SimpleMatrix<T> >& data, const int& count) {
-  vector<T> res;
-  res.reserve(data[0].rows() * data[0].cols() * data.size());
-  for(int k = 0; k < data.size(); k ++)
-    for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++)
-        res.emplace_back(data[k](i, j));
-  sort(res.begin(), res.end());
-  auto result(data);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int k = 0; k < data.size(); k ++)
-    for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++)
-        result[k](i, j) = max(min(data[k](i, j), res[res.size() - count - 1]), res[count]);
-  return result;
-}
-
-template <typename T> static inline SimpleMatrix<T> autoLevel(const SimpleMatrix<T>& data, const int& count) {
-  vector<SimpleMatrix<T> > work;
-  work.emplace_back(data);
-  return autoLevel(work, count)[0];
 }
 
 template <typename T> static inline match_t<T> tiltprep(const SimpleMatrix<T>& in, const int& idx, const int& samples, const T& psi) {
