@@ -801,8 +801,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           }
         }
       }
-      result = normalize<T>(autoLevel<T>(result, result.cols()));
-      result.setMatrix(ext, 0, normalize<T>(data));
+      result = filter<T>(result.setMatrix(ext, 0, data), CLIP);
     }
     break;
   case BLINK_Y:
