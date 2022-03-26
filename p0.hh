@@ -206,7 +206,7 @@ public:
         r[i]  = T(arc4random_uniform(0x800000) + 1) / T(int(0x800000));
       }
     }
-    return res /= T(int(p.size())) / T(int(2));
+    return res /= T(int(p.size()));
   }
   vector<P> p;
   vector<T> r;
