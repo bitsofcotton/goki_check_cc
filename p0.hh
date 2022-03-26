@@ -200,14 +200,13 @@ public:
     T res(0);
     for(int i = 0; i < p.size(); i ++) {
       const auto rr(t & 1 ? r[i] + br[i] : r[i] + r[i]);
-      auto rres(p[i].next(in * rr));
+      res += p[i].next(in * rr);
       if(! (t & 1)) {
         br[i] = r[i];
-        r[i]  = T(arc4random_uniform(0x800000) + 1);
+        r[i]  = T(arc4random_uniform(0x800000) + 1) / T(int(0x800000));
       }
-      res += rres / (t & 1 ? r[i] + r[i] : r[i] + br[i]);
     }
-    return res /= T(int(p.size()));
+    return res /= T(int(p.size())) / T(int(2));
   }
   vector<P> p;
   vector<T> r;
