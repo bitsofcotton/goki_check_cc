@@ -316,9 +316,7 @@ int main(int argc, const char* argv[]) {
     const auto shape1(vboxsrc < 0
       ? getHesseVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump1)), abs(vboxsrc))
       : getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump1)), abs(vboxsrc)));
-    auto m(shape0.size() < shape1.size()
-      ? matchPartial< num_t>(shape0, shape1, nsub)
-      : matchPartialR<num_t>(shape0, shape1, nsub));
+    const auto m(matchPartial<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);
     const auto rin0(makeRefMatrix<num_t>(in0[0], 1));
