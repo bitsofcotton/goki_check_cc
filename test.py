@@ -46,18 +46,6 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
       cmd.append(r + "-represent.ppm")
     elif(argv[2] == "catbr"):
       cmd.append(r + "-bump-represent.ppm")
-    elif(argv[2] == "pred"):
-      if(bs != ""):
-        subprocess.call(["convert", s, bs, "-average", "-compress", "none", s + "-" + bs + ".ppm"])
-        subprocess.call(["convert", s + "-" + bs + ".ppm", bs, "-average", "-compress", "none", s + "-" + bs + "-1.ppm"])
-        subprocess.call(["convert", s + "-" + bs + ".ppm", s, "-average", "-compress", "none", s + "-" + bs + "-2.ppm"])
-        cmd.append(s + "-" + bs + "-1.ppm")
-        cmd.append(s + "-" + bs + ".ppm")
-        cmd.append(s + "-" + bs + "-2.ppm")
-        cmd.append(r + ".ppm")
-      else:
-        cmd.append(r + ".ppm")
-      bs = s
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)

@@ -225,7 +225,10 @@ int main(int argc, const char* argv[]) {
       const auto datav(rgb2d<num_t>(datas));
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reShape<num_t>(datac[i], datav, count, std::atof(argv[6]));
-    } else if(strcmp(argv[1], "recolor3") == 0)
+    } else if(strcmp(argv[1], "recolor2") == 0)
+      for(int i = 0; i < datac.size(); i ++)
+        datac[i] = reColor<num_t>(datac[i], count, std::atof(argv[5]));
+    else if(strcmp(argv[1], "recolor3") == 0)
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reColor3<num_t>(datac[i], datas[i], count);
     else {
@@ -387,7 +390,11 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
       std::vector<std::vector<SimpleMatrix<num_t> > > mout;
-      mout.resize(int(exp(sqrt(log(num_t(in.size() / 3))))), out);
+      int ext(1);
+      for( ; ext < in.size() / 3; ext ++)
+        if(exp(sqrt(log(num_t(in.size() / 3 / ext)))) < num_t(int(3))) break;
+      ext --;
+      mout.resize(ext, out);
       auto nout(mout);
       for(int i = 0; i < out.size(); i ++)
         for(int j = 0; j < out[i].rows(); j ++) {

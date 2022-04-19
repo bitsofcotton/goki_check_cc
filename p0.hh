@@ -84,7 +84,7 @@ template <typename T> const SimpleVector<T>& pnextcache(const int& size, const i
   if(cp.size() <= size) cp.resize(size + 1, vector<SimpleVector<T> >());
   if(cp[size].size() <= step) cp[size].resize(step + 1, SimpleVector<T>());
   if(cp[size][step].size()) return cp[size][step];
-  return cp[size][step] = pnext<T>(size, step);
+  return cp[size][step] = (pnext<T>(size, step) + pnext<T>(size, step + 1)) / T(int(2));
 }
 
 template <typename T, typename feeder> class P0 {
@@ -98,10 +98,8 @@ public:
   }
   inline ~P0() { ; };
   inline T next(const T& in) {
-    const auto ff(f.next(in));
-    return f.full ? (pnextcache<T>(ff.size(), step) +
-                     pnextcache<T>(ff.size(), step - 1)).dot(ff) / T(int(2))
-                  : T(int(0));
+    const auto& ff(f.next(in));
+    return f.full ? pnextcache<T>(ff.size(), step).dot(ff) : T(int(0));
   }
   int step;
   feeder f;
@@ -130,12 +128,13 @@ public:
     f = feeder(size);
     (this->p).resize(size, p);
     q = this->p;
+    ff = SimpleVector<complex<T> >(size);
   }
   inline ~P0DFT() { ; };
   inline T next(const T& in) {
     const auto& fn(f.next(in));
     if(! f.full) return T(int(0));
-    auto ff(dftcache<T>(fn.size()) * fn.template cast<complex<T> >());
+    ff = dftcache<T>(fn.size()) * fn.template cast<complex<T> >();
     assert(ff.size() == p.size() && p.size() == q.size());
     for(int i = 0; i < ff.size(); i ++)
       if(! (ff[i].real() == T(int(0)) && ff[i].imag() == T(int(0)) ) )
@@ -144,6 +143,7 @@ public:
   }
   vector<P> p;
   vector<P> q;
+  SimpleVector<complex<T> > ff;
   feeder f;
 };
 
@@ -184,6 +184,25 @@ public:
   T S;
   P p;
   myuint t;
+};
+
+template <typename T, typename P> class logChain {
+public:
+  inline logChain() { ; }
+  inline logChain(P&& p) { this->p = p; S = T(int(0)); }
+  inline ~logChain() { ; }
+  inline T next(const T& in) {
+    static const T zero(int(0));
+    static const T one(int(1));
+    const auto bS(S);
+    S += in;
+    if(bS == zero) return zero;
+    const auto dd(S / bS - one);
+    if(! isfinite(dd)) return zero;
+    return p.next(dd) * S;
+  }
+  T S;
+  P p;
 };
 
 template <typename T, typename P> class P0ContRand {

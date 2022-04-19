@@ -779,13 +779,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      const int ext(exp(sqrt(log(T(data.rows() / 3)))));
+      int ext(1);
+      for( ; ext < data.rows() / 3; ext ++)
+        if(exp(sqrt(log(T(data.rows() / 3 / ext)))) < T(int(3))) break;
+      ext --;
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
-      vector<P0ContRand<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > p;
+      vector<P0ContRand<T, sumChain<T, logChain<T, logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > >, true> > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(P0ContRand<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > >(northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() / 3, m + 2), data.rows() / 3) )), recur) );
+        p.emplace_back(P0ContRand<T, sumChain<T, logChain<T, logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > >, true> >(sumChain<T, logChain<T, logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > >, true>(logChain<T, logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > >(logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > >(sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > >(northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() / 3 / (m + 1)), data.rows() / 3 / (m + 1)) )) ) )) ), recur) );
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -793,13 +796,23 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         for(int k = 0; k < data.cols(); k ++) {
           auto pb(p[m]);
           auto pf(p[m]);
-          for(int kk = 0; kk < data.rows(); kk ++) {
+          for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
             result(ext - m - 1, k) =
-              pb.next(data(data.rows() - 1 - kk, k) + T(int(1))) - T(int(1));
+              pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k) -
+                      data((data.rows() / (m + 1) - kk - 1) * (m + 1), k));
             result(m - ext + result.rows(), k) =
-              pf.next(data(kk, k) + T(int(1))) - T(int(1));
+              pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
+                      data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k));
           }
         }
+        for(int k = 0; k < m; k ++) {
+          result.row(ext - m - 1) += result.row(ext - k - 1);
+          result.row(m - ext + result.rows()) += result.row(k - ext + result.rows());
+        }
+      }
+      for(int k = 0; k < ext; k ++) {
+        result.row(ext - k - 1) += data.row(0);
+        result.row(k - ext + result.rows()) += data.row(data.rows() - 1);
       }
       result = filter<T>(result.setMatrix(ext, 0, data), CLIP);
     }
