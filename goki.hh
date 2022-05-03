@@ -795,14 +795,24 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
           auto pb(p[m]);
+          auto qb(p[m]);
           auto pf(p[m]);
+          auto qf(p[m]);
           for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
             result(ext - m - 1, k) =
-              pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k) -
-                      data((data.rows() / (m + 1) - kk - 1) * (m + 1), k));
+              (pb.next( data((data.rows() / (m + 1) - kk) * (m + 1), k) -
+                        data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) +
+               qb.next((data((data.rows() / (m + 1) - kk) * (m + 1), k) -
+                        data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
+                       T(int(data.rows()) + kk * (m + 1)) /
+                         T(int(data.rows()) * 2))) / T(int(2));
             result(m - ext + result.rows(), k) =
-              pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
-                      data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k));
+              (pf.next( data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
+                        data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) +
+               qf.next((data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
+                        data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
+                       T(int(data.rows()) + kk * (m + 1)) /
+                         T(int(data.rows()) * 2))) / T(int(2));
           }
         }
         for(int k = 0; k < m; k ++) {
@@ -1495,6 +1505,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
     camera[2] = T(0);
     const auto t((tri.z - tri.n.dot(camera)) / (tri.n.dot(vz)));
     zbuf[j].first  = camera[2] + vz[2] * t;
+    // XXX: clang++ bug, isfinite after substituting nan immediately.
     if(! isfinite(zbuf[j].first)) zbuf[j].first = depth;
     zbuf[j].second = move(tri);
   }

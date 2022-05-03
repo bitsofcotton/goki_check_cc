@@ -2,6 +2,8 @@ CXX=	clang++
 #CXX=	/usr/local/bin/eg++
 
 # compiler flags.
+#CXXFLAGS+=	-O0 -mtune=native -gfull
+# XXX:
 CXXFLAGS+=	-Ofast -mtune=native -gfull
 #CXXFLAGS+=	-Oz -mtune=native -gfull
 MPFLAGS=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
