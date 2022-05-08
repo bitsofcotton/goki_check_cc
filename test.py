@@ -144,7 +144,7 @@ else:
       subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
       subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl-sh0.ppm", str(pixels)])
       subprocess.call(["convert", root + "-penl-sh0.ppm", "-resize", "50%", root + "-penl-sh1.png"])
-      subprocess.call(["convert", root + "-penl0.ppm", root + "-penl-sh1.png", "-compose", "minus", "-composite", "-negate", "-normalize", root + "-penl-sh2.png"])
+      subprocess.call(["convert", root + "-penl0.ppm", root + "-penl-sh1.png", "-compose", "minus", "-composite", "-negate", "-normalize", "-modulate", "50", root + "-penl-sh2.png"])
       subprocess.call(["convert", root + "-penl-sh2.png", root + "-penl0.ppm", "-average", "+contrast", "-normalize", root + "-penl.png"])
     elif(argv[2] == "1to1enl"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
