@@ -785,10 +785,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       ext --;
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
-      vector<P0ContRand<T, sumChain<T, logChain<T, logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > >, true> > > p;
+      vector<P0recur<T, P0maxRank<T> > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(P0ContRand<T, sumChain<T, logChain<T, logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > >, true> >(sumChain<T, logChain<T, logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > >, true>(logChain<T, logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > > >(logChain<T, sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > > >(sumChain<T, northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > > >(northPole<T, northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > > >(northPole<T, shrinkMatrix<T, P0<T, idFeeder<T> > > >(shrinkMatrix<T, P0<T, idFeeder<T> > >(P0<T, idFeeder<T> >(data.rows() / 3 / (m + 1)), data.rows() / 3 / (m + 1)) )) ) )) ), recur) );
+        p.emplace_back(P0recur<T, P0maxRank<T> >(data.rows() / (m + 1) / 3));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif

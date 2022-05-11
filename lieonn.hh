@@ -1819,7 +1819,7 @@ template <typename T> using complex = Complex<T>;
 # elif _FLOAT_BITS_ == 64
   typedef uint64_t myuint;
   typedef int64_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 64>, 64, myint> myfloat;
+  typedef SimpleFloat<myuint, unsigned __int128, 64, myint> myfloat;
 # elif _FLOAT_BITS_ == 128
   typedef DUInt<uint64_t, 64> uint128_t;
   typedef Signed<uint128_t, 128> int128_t;
