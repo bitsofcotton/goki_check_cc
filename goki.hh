@@ -785,34 +785,24 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       ext --;
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
-      vector<P0recur<T, P0maxRank<T> > > p;
+      vector<P0ContRand<T, P0recur<T, P0maxRank<T> > > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(P0recur<T, P0maxRank<T> >(data.rows() / (m + 1) / 3));
+        p.emplace_back(P0ContRand<T, P0recur<T, P0maxRank<T> > >(P0recur<T, P0maxRank<T> >(data.rows() / (m + 1) / 3), recur));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
           auto pb(p[m]);
-          auto qb(p[m]);
           auto pf(p[m]);
-          auto qf(p[m]);
           for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
             result(ext - m - 1, k) =
-              (pb.next( data((data.rows() / (m + 1) - kk) * (m + 1), k) -
-                        data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) +
-               qb.next((data((data.rows() / (m + 1) - kk) * (m + 1), k) -
-                        data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
-                       T(int(data.rows()) + kk * (m + 1)) /
-                         T(int(data.rows()) * 2))) / T(int(2));
+              pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k) -
+                      data((data.rows() / (m + 1) - kk - 1) * (m + 1), k));
             result(m - ext + result.rows(), k) =
-              (pf.next( data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
-                        data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) +
-               qf.next((data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
-                        data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
-                       T(int(data.rows()) + kk * (m + 1)) /
-                         T(int(data.rows()) * 2))) / T(int(2));
+              pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
+                      data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k));
           }
         }
         for(int k = 0; k < m; k ++) {
