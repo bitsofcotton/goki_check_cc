@@ -267,7 +267,7 @@ public:
       T(status) + T(t - bt) / T(status) ));
     M(2, M.cols() - 1) = r.next(in * (
       T(status) - T(t - bt) / T(status) ));
-    M(3, M.cols() - 1) = - avg.next(in);
+    M(3, M.cols() - 1) = avg.next(in);
     qq.next(in * (T(status) + T(t - btt) / T(status)));
     rr.next(in * (T(status) - T(t - btt) / T(status)));
     bvg.next(in);
