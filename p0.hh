@@ -87,6 +87,13 @@ template <typename T> const SimpleVector<T>& pnextcache(const int& size, const i
   return cp[size][step] = (pnext<T>(size, step) + pnext<T>(size, step + 1)) / T(int(2));
 }
 
+template <typename T> class Pnull {
+public:
+  inline Pnull() { ; }
+  inline ~Pnull() { ; };
+  inline T next(const T& in) { return T(int(0)); }
+};
+
 template <typename T, typename feeder> class P0 {
 public:
   typedef SimpleVector<T> Vec;
@@ -176,7 +183,7 @@ public:
 
 template <typename T, typename P, bool avg = false> class sumChain {
 public:
-  inline sumChain() { ; }
+  inline sumChain() { S = T(t ^= t); }
   inline sumChain(P&& p) { this->p = p; S = T(t ^= t); }
   inline ~sumChain() { ; }
   inline T next(const T& in) {
@@ -244,10 +251,9 @@ public:
     assert(0 < status && 0 < var);
     p0 = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
     rr = qq = q = r = p = p0;
-    bt = - status;
+    bt = - (this->status = status);
     t  = (btt ^= btt);
-    M  = SimpleMatrix<T>(3, max(3, status)).O();
-    this->status = status;
+    M  = SimpleMatrix<T>(4, max(4, status)).O();
   }
   inline ~P0maxRank() { ; }
   inline T next(const T& in) {
@@ -261,8 +267,10 @@ public:
       T(status) + T(t - bt) / T(status) ));
     M(2, M.cols() - 1) = r.next(in * (
       T(status) - T(t - bt) / T(status) ));
+    M(3, M.cols() - 1) = - avg.next(in);
     qq.next(in * (T(status) + T(t - btt) / T(status)));
     rr.next(in * (T(status) - T(t - btt) / T(status)));
+    bvg.next(in);
     auto MM(M);
     for(int i = 0; i < MM.rows(); i ++) {
       const auto norm2(MM.row(i).dot(MM.row(i)));
@@ -291,6 +299,8 @@ public:
       rr   = p0;
       bt   = btt;
       btt += status;
+      avg  = bvg;
+      bvg  = cvg;
       M.O();
     }
     return res;
@@ -302,26 +312,26 @@ public:
   //      sampling points, so omitted part exists.
   //      even if the parameter on P0 is large, situation unchange.
   //      so we should use sectional measurement for them.
-  typedef P0<num_t, idFeeder<num_t> > p0_0t;
+  typedef P0<T, idFeeder<T> > p0_0t;
   // N.B. sectional measurement, also expected value.
-  typedef shrinkMatrix<num_t, p0_0t> p0_1t;
+  typedef shrinkMatrix<T, p0_0t> p0_1t;
 /*
   // N.B. make information-rich not to associative/commutative.
   //      2 dimension semi-order causes (x, status) from input as sedenion.
-  typedef P0DFT<num_t, p0_1t, idFeeder<num_t> > p0_2t;
-  typedef P0DFT<num_t, p0_2t, idFeeder<num_t> > p0_3t;
-  typedef P0DFT<num_t, p0_3t, idFeeder<num_t> > p0_4t;
-  typedef P0DFT<num_t, p0_4t, idFeeder<num_t> > p0_5t;
+  typedef P0DFT<T, p0_1t, idFeeder<T> > p0_2t;
+  typedef P0DFT<T, p0_2t, idFeeder<T> > p0_3t;
+  typedef P0DFT<T, p0_3t, idFeeder<T> > p0_4t;
+  typedef P0DFT<T, p0_4t, idFeeder<T> > p0_5t;
   // N.B. on any R to R into reasonable taylor.
-  typedef northPole<num_t, p0_5t> p0_6t;
-  typedef northPole<num_t, p0_6t> p0_7t;
+  typedef northPole<T, p0_5t> p0_6t;
+  typedef northPole<T, p0_6t> p0_7t;
   // N.B. we make the prediction on (delta) summation.
-  typedef sumChain<num_t, p0_7t>  p0_8t;
+  typedef sumChain<T, p0_7t>  p0_8t;
   // N.B. we treat periodical part as non aligned complex arg part.
-  typedef logChain<num_t, p0_8t>  p0_9t;
-  typedef logChain<num_t, p0_9t>  p0_10t;
+  typedef logChain<T, p0_8t>  p0_9t;
+  typedef logChain<T, p0_9t>  p0_10t;
   // N.B. we take average as origin of input.
-  typedef sumChain<num_t, p0_10t, true> p0_t;
+  typedef sumChain<T, p0_10t, true> p0_t;
   // N.B. if original sample lebesgue integrate is not enough continuous,
   //      imitate original function by some of sample points,
   //      but move origin point to average one, so a little better
@@ -329,16 +339,16 @@ public:
   // N.B. frequency space *= 2 causes nyquist frequency ok.
   // N.B. but this is equivalent from jammer on PRNG, and probe on some
   //      measurable phenomenon.
-  //typedef P0Expect<num_t, p0_11t> p0_t;
+  //typedef P0Expect<T, p0_11t> p0_t;
   // N.B. this needs huge memory to run.
 */
   // N.B. plain complex form.
-  typedef northPole<num_t, p0_1t>  p0_s2t;
-  typedef northPole<num_t, p0_s2t> p0_s3t;
-  typedef sumChain<num_t, p0_s3t>  p0_s4t;
-  typedef logChain<num_t, p0_s4t>  p0_s5t;
-  typedef logChain<num_t, p0_s5t>  p0_s6t;
-  typedef sumChain<num_t, p0_s6t, true> p0_st;
+  typedef northPole<T, p0_1t>  p0_s2t;
+  typedef northPole<T, p0_s2t> p0_s3t;
+  typedef sumChain<T, p0_s3t>  p0_s4t;
+  typedef logChain<T, p0_s4t>  p0_s5t;
+  typedef logChain<T, p0_s5t>  p0_s6t;
+  typedef sumChain<T, p0_s6t, true> p0_st;
   int t;
   int bt;
   int btt;
@@ -349,6 +359,9 @@ public:
   p0_st r;
   p0_st qq;
   p0_st rr;
+  sumChain<T, Pnull<T>, true> avg;
+  sumChain<T, Pnull<T>, true> bvg;
+  sumChain<T, Pnull<T>, true> cvg;
   SimpleMatrix<T> M;
 };
 
@@ -361,6 +374,7 @@ public:
       p.emplace_back(P(i, int(max(T(int(3)), ceil(exp(sqrt(log(T(i)))))))));
       std::cerr << i << ", ";
     }
+    if(! p.size()) { p.emplace_back(P(status, 1)); std::cerr << status; }
     std::cerr << std::endl;
     M.resize(p.size(), T(int(0)));
   }
