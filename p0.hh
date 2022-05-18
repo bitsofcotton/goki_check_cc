@@ -396,7 +396,7 @@ public:
   inline T next(const T& in) {
     auto b(M);
     auto d(in);
-    T    res(int(0));
+    T    res(int(1));
     for(int i = 0; i < p.size(); i ++)
       res *= (M[i] = p[i].next(i ? d *= b[i - 1] : d));
     return res;
