@@ -2222,7 +2222,7 @@ public:
   inline       SimpleVector<T>  projectionPt(const SimpleVector<T>& other) const;
   inline       SimpleMatrix<T>& fillP(const vector<int>& idx);
   inline       SimpleMatrix<T>  QR() const;
-  inline       SimpleMatrix<T>  SVD(const int& cut = 20000) const;
+  inline       SimpleMatrix<T>  SVD() const;
   inline       pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, SimpleMatrix<T> > SVD(const SimpleMatrix<T>& src) const;
   inline       SimpleVector<T>  zeroFix(const SimpleMatrix<T>& A, vector<pair<T, int> > fidx);
   inline       SimpleVector<T>  inner(const SimpleVector<T>& bl, const SimpleVector<T>& bu) const;
@@ -2232,7 +2232,7 @@ public:
   inline const int rows() const;
   inline const int cols() const;
   inline       void resize(const int& rows, const int& cols);
-  myfloat      epsilon;
+  myfloat      epsilon() const;
 
   // friend std::ostream& operator << (std::ostream& os, const SimpleVector<T>& v);
   // friend std::istream& operator >> (std::istream& os, SimpleVector<T>& v);
@@ -2244,12 +2244,7 @@ private:
 };
 
 template <typename T> inline SimpleMatrix<T>::SimpleMatrix() {
-  ecols  = 0;
-#if defined(_FLOAT_BITS_)
-  epsilon = myfloat(int(1)) >> myint(_FLOAT_BITS_ - 1);
-#else
-  epsilon = std::numeric_limits<myfloat>::epsilon();
-#endif
+  ecols = 0;
   return;
 }
 
@@ -2262,30 +2257,28 @@ template <typename T> inline SimpleMatrix<T>::SimpleMatrix(const int& rows, cons
   for(int i = 0; i < entity.size(); i ++)
     entity[i].resize(cols);
   ecols = cols;
-#if defined(_FLOAT_BITS_)
-  epsilon = myfloat(int(1)) >> myint(_FLOAT_BITS_ - 1);
-#else
-  epsilon = std::numeric_limits<myfloat>::epsilon();
-#endif
   return; 
 }
 
 template <typename T> inline SimpleMatrix<T>::SimpleMatrix(const SimpleMatrix<T>& other) {
-  ecols   = other.ecols;
-  entity  = other.entity;
-  epsilon = other.epsilon;
-  return;
+  *this = other;
 }
 
 template <typename T> inline SimpleMatrix<T>::SimpleMatrix(SimpleMatrix<T>&& other) {
-  ecols   = move(other.ecols);
-  entity  = move(other.entity);
-  epsilon = move(other.epsilon);
-  return;
+  *this = other;
 }
 
 template <typename T> inline SimpleMatrix<T>::~SimpleMatrix() {
   ;
+}
+
+template <typename T> myfloat SimpleMatrix<T>::epsilon() const {
+#if defined(_FLOAT_BITS_)
+  static const auto eps(myfloat(int(1)) >> myint(_FLOAT_BITS_ - 1));
+#else
+  static const auto eps(std::numeric_limits<myfloat>::epsilon());
+#endif
+  return eps;
 }
   
 template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::operator - () const {
@@ -2383,16 +2376,14 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator /= (cons
 }
 
 template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator = (const SimpleMatrix<T>& other) {
-  ecols   = other.ecols;
-  entity  = other.entity;
-  epsilon = other.epsilon;
+  ecols  = other.ecols;
+  entity = other.entity;
   return *this;
 }
 
 template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::operator = (SimpleMatrix<T>&& other) {
-  ecols   = move(other.ecols);
-  entity  = move(other.entity);
-  epsilon = move(other.epsilon);
+  ecols  = move(other.ecols);
+  entity = move(other.entity);
   return *this;
 }
 
@@ -2519,9 +2510,9 @@ template <typename T> inline T SimpleMatrix<T>::determinant(const bool& nonzero)
     swap(work.entity[i], work.entity[xchg]);
     const auto& ei(work.entity[i]);
     const auto& eii(ei[i]);
-    if(! nonzero || ! i || pow(abs(det), T(int(1)) / T(int(i))) * epsilon <= abs(eii))
+    if(! nonzero || ! i || pow(abs(det), T(int(1)) / T(int(i))) * epsilon() <= abs(eii))
       det *= eii;
-    if(epsilon * ei.dot(ei) < eii * eii) {
+    if(ei.dot(ei) * epsilon() < eii * eii) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -2555,7 +2546,7 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector
     swap(other[i], other[xchg]);
     const auto& ei(work.entity[i]);
     const auto& eii(ei[i]);
-    if(epsilon * ei.dot(ei) < eii * eii) {
+    if(ei.dot(ei) * epsilon() < eii * eii) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -2611,7 +2602,7 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::fillP(const vecto
     ek.ek(j);
     ek -= this->projectionPt(ek);
     const auto n2(ek.dot(ek));
-    if(n2 <= epsilon) continue;
+    if(n2 <= epsilon()) continue;
     assert(0 <= idx[ii] && idx[ii] < this->rows());
     this->row(idx[ii ++]) = ek / sqrt(n2);
   }
@@ -2620,9 +2611,7 @@ template <typename T> inline SimpleMatrix<T>& SimpleMatrix<T>::fillP(const vecto
 }
 
 template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::QR() const {
-  T norm2(int(0));
-  for(int i = 0; i < rows(); i ++)
-    norm2 = max(norm2, row(i).dot(row(i)));
+  const auto norm2(norm2M(*this));
   if(! isfinite(norm2)) return *this;
   SimpleMatrix<T> Q(min(this->rows(), this->cols()), this->rows());
   Q.O();
@@ -2632,7 +2621,7 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::QR() const {
     const auto Atrowi(this->col(i));
     const auto work(Atrowi - Q.projectionPt(Atrowi));
     const auto n2(work.dot(work));
-    if(n2 <= epsilon * norm2)
+    if(n2 <= norm2 * epsilon())
       residue.emplace_back(i);
     else
       Q.row(i) = work / sqrt(n2);
@@ -2640,7 +2629,7 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::QR() const {
   return Q.fillP(residue);
 }
 
-template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::SVD(const int& cut) const {
+template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::SVD() const {
   // N.B. A = QR, (S - lambda I)x = 0 <=> R^t Q^t U = R^-1 Q^t U Lambda
   //        <=> R^t Q^t U Lambda' = R^-1 Q^t U Lambda'^(- 1)
   //      A := R^t, B := Q^t U, C := Lambda'
@@ -2660,34 +2649,12 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::SVD(const int& cut
   for(int i = 0; i < Right.rows(); i ++)
     Right(i, i) = abs(R(i, i)) + T(int(1));
   // N.B. now we have B = Left * B * Right.
-  auto before(Left * Right);
-  for(int i = 0; cut < 0 || i < cut; i ++) {
-    Left  = Left  * Left;
-    Right = Right * Right;
-    auto rl(Left.row(0).dot(Left.row(0)));
-    auto rr(Right.row(0).dot(Right.row(0)));
-    for(int i = 1; i < Left.rows(); i ++)
-      rl = max(rl, Left.row(i).dot(Left.row(i)));
-    for(int i = 1; i < Right.rows(); i ++)
-      rr = max(rr, Right.row(i).dot(Right.row(i)));
-          auto next((Left /= (rl = sqrt(rl))) * (Right /= (rr = sqrt(rr))));
-    const auto err(next - (before /= rl * rr));
-          auto er(err.row(0).dot(err.row(0)));
-    for(int i = 1; i < err.rows(); i ++)
-      er = max(er, err.row(i).dot(err.row(i)));
-    if(er < epsilon || ! isfinite(er))
-      break;
-    before = move(next);
-  }
-  return before.QR() * Qt;
+  static const T p(int(exp(sqrt(- log(epsilon())))));
+  return (pow(Left / dnorm2M(Left), p) * pow(Right / dnorm2M(Right), p)).QR() * Qt;
 }
 
 template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, SimpleMatrix<T> > SimpleMatrix<T>::SVD(const SimpleMatrix<T>& src) const {
-  T norm2(int(0));
-  for(int i = 0; i < rows(); i ++)
-    norm2 = max(norm2, row(i).dot(row(i)));
-  for(int i = 0; i < src.rows(); i ++)
-    norm2 = max(norm2, src.row(i).dot(src.row(i)));
+  const auto norm2(max(norm2M(*this), norm2M(src)));
   if(! isfinite(norm2)) return *this;
   // refered from : https://en.wikipedia.org/wiki/Generalized_singular_value_decomposition .
   assert(this->cols() == src.cols());
@@ -2701,7 +2668,7 @@ template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, Simpl
   fill.reserve(d.size());
   for(int i = 0; i < d.size(); i ++) {
     d[i] = Qt.row(i).dot(Qt.row(i));
-    if(d[i] <= epsilon * norm2) {
+    if(d[i] <= norm2 * epsilon()) {
       fill.emplace_back(i);
       d[i] = sqrt(d[i]);
     } else
@@ -2727,7 +2694,7 @@ template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, Simpl
   fill.reserve(Wt.rows());
   for(int i = 0; i < Wt.rows(); i ++) {
     const auto n2(Wt.row(i).dot(Wt.row(i)));
-    if(n2 <= epsilon)
+    if(n2 <= epsilon())
       fill.emplace_back(i);
     else
       Wt.row(i) /= sqrt(n2);
@@ -2738,7 +2705,7 @@ template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, Simpl
   fill.reserve(U2.rows());
   for(int i = 0; i < U2.rows(); i ++) {
     const auto n2(U2.row(i).dot(U2.row(i)));
-    if(n2 <= epsilon)
+    if(n2 <= epsilon())
       fill.emplace_back(i);
     else
       U2.row(i) /= sqrt(n2);
@@ -2828,7 +2795,7 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::zeroFix(const Simp
     const auto& iidx(fidx[idx].second);
     const auto  orth(this->col(iidx));
     const auto  n2(orth.dot(orth));
-    if(n2 <= epsilon)
+    if(n2 <= epsilon())
       continue;
     // N.B. O(mn) can be writed into O(lg m + lg n) in many core cond.
 #if defined(_OPENMP)
@@ -3022,19 +2989,31 @@ template <typename T> std::istream& operator >> (std::istream& is, SimpleMatrix<
   return is;
 }
 
-template <typename T> static inline SimpleMatrix<T> log(const SimpleMatrix<T>& m, const int& cut = 2000) {
-  T norm2(int(0));
-  for(int i = 0; i < m.rows(); i ++)
+template <typename T> static inline T norm2M(const SimpleMatrix<T>& m) {
+  auto norm2(m.row(0).dot(m.row(0)));
+  for(int i = 1; i < m.rows(); i ++)
     norm2 = max(norm2, m.row(i).dot(m.row(i)));
+  return norm2;
+}
+template <typename T> static inline T dnorm2M(const SimpleMatrix<T>& m) {
+  static const T one(int(1));
+  auto norm2(one);
+  for(int i = 0; i < m.rows(); i ++) {
+    const auto n2(m.row(i).dot(m.row(i)));
+    if(one < n2) norm2 *= sqrt(n2);
+  }
+  return norm2;
+}
+
+template <typename T> static inline SimpleMatrix<T> log(const SimpleMatrix<T>& m) {
+  static const int cut(- log(SimpleMatrix<T>().epsilon()) / log(T(int(2))) * T(int(2)) );
   SimpleMatrix<T> res(m.rows(), m.cols());
-  const auto c(max(sqrt(norm2), abs(m.determinant()) * T(8)));
+  const auto c(dnorm2M(m) * T(2));
   const auto residue(SimpleMatrix<T>(m.rows(), m.cols()).I() - m / c);
         auto buf(residue);
   res.I(c);
   for(int i = 1; 0 < i && i < cut; i ++) {
-    const auto before(res);
     res -= buf / T(i);
-    if(before == res) break;
     buf *= residue;
   }
   return res;
@@ -3044,8 +3023,8 @@ template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m
   SimpleMatrix<T> res(m.rows(), m.cols());
   auto buf(m);
   res.I();
-  for(int i = 1; 0 < i ; i ++) {
-    const auto before(res);
+  for(int i = 1; 0 < i; i ++) {
+    auto before(res);
     res += buf;
     if(before == res) break;
     buf *= m / T(i + 1);

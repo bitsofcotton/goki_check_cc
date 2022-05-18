@@ -166,7 +166,7 @@ public:
   inline T next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    static const T M(atan(one / sqrt(SimpleMatrix<T>().epsilon)));
+    static const T M(atan(one / sqrt(SimpleMatrix<T>().epsilon())));
     if(! isfinite(in) || in == zero) return in;
     auto ain(atan(in));
     //assert(- M < ain && ain < M);
@@ -205,7 +205,7 @@ public:
   inline T next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    static const auto epsilon(sqrt(sqrt(SimpleMatrix<T>().epsilon)));
+    static const auto epsilon(sqrt(sqrt(SimpleMatrix<T>().epsilon())));
     const auto bS(S);
     S += in;
     if(bS == zero) return zero;
@@ -249,32 +249,42 @@ public:
   inline P0maxRank() { ; }
   inline P0maxRank(const int& status, const int& var) {
     assert(0 < status && 0 < var);
-    p0 = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-    rr = qq = q = r = p = p0;
+    p  = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
+    q  = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
+    r  = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
+    qq = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
+    rr = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
+    this->var = var;
     bt = - (this->status = status);
     t  = (btt ^= btt);
     M  = SimpleMatrix<T>(4, max(4, status)).O();
+    bw = aw = SimpleVector<T>(M.rows()).O();
   }
   inline ~P0maxRank() { ; }
   inline T next(const T& in) {
-    static const T epsilon(sqrt(sqrt(SimpleMatrix<T>().epsilon)));
+    static const T epsilon(sqrt(sqrt(SimpleMatrix<T>().epsilon())));
     static const T zero(int(0));
     auto res(zero);
     for(int i = 0; i < M.cols() - 1; i ++)
       M.setCol(i, M.col(i + 1));
+    for(int i = 0; i < M.rows(); i ++) {
+      aw[i] += M(i, M.cols() - 1) * in;
+      bw[i] += M(i, M.cols() - 1) * in;
+    }
     M(0, M.cols() - 1) = p.next(in);
     M(1, M.cols() - 1) = q.next(in * (
-      T(status) + T(t - bt) / T(status) ));
+      T(int(4)) + T(t - bt) / T(status) ));
     M(2, M.cols() - 1) = r.next(in * (
-      T(status) - T(t - bt) / T(status) ));
+      T(int(4)) - T(t - bt) / T(status) ));
     M(3, M.cols() - 1) = avg.next(in);
-    qq.next(in * (T(status) + T(t - btt) / T(status)));
-    rr.next(in * (T(status) - T(t - btt) / T(status)));
+    qq.next(in * (T(int(4)) + T(t - btt) / T(status)));
+    rr.next(in * (T(int(4)) - T(t - btt) / T(status)));
     bvg.next(in);
     auto MM(M);
     for(int i = 0; i < MM.rows(); i ++) {
       const auto norm2(MM.row(i).dot(MM.row(i)));
       if(norm2 != zero) MM.row(i) /= sqrt(norm2);
+      MM.row(i) *= sgn<T>(aw[i]);
     }
     const auto lsvd(MM.SVD());
     const auto svd(lsvd * MM);
@@ -295,13 +305,15 @@ public:
     if(! ((++ t) % status)) {
       q    = qq;
       r    = rr;
-      qq   = p0;
-      rr   = p0;
+      qq   = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
+      rr   = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
       bt   = btt;
       btt += status;
       avg  = bvg;
       bvg  = cvg;
+      aw   = bw;
       M.O();
+      bw.O();
     }
     return res;
   }
@@ -352,8 +364,10 @@ public:
   int t;
   int bt;
   int btt;
+  int var;
   int status;
-  p0_st p0;
+  SimpleVector<T> aw;
+  SimpleVector<T> bw;
   p0_st p;
   p0_st q;
   p0_st r;

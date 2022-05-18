@@ -101,7 +101,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     if(fix[iidx]) continue;
     const auto  orth(Pt.col(iidx));
     const auto  n2(orth.dot(orth));
-    if(n2 <= Pt.epsilon) continue;
+    if(n2 <= Pt.epsilon()) continue;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
