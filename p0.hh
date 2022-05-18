@@ -270,13 +270,8 @@ public:
     // N.B. return to the average on walk, for no invariant chain.
     M(2, M.cols() - 1) = - avg.next(in);
     bvg.next(in);
-    auto MM(M);
-    for(int i = 0; i < MM.rows(); i ++) {
-      const auto norm2(MM.row(i).dot(MM.row(i)));
-      if(norm2 != zero) MM.row(i) /= sqrt(norm2);
-    }
-    const auto lsvd(MM.SVD());
-    const auto svd(lsvd * MM);
+    const auto lsvd(M.SVD());
+    const auto svd(lsvd * M);
     vector<T> stat;
     stat.reserve(svd.rows());
     for(int i = 0; i < svd.rows(); i ++)
@@ -291,7 +286,7 @@ public:
         res += svd(i, svd.cols() - 1) / stat[i] * sgn<T>(sum);
       }
     if(! isfinite(res)) res = zero;
-    if(status <= t) {
+    if(status <= t ++) {
       avg = bvg;
       bvg = sumChain<T, Pnull<T>, true>();
       t  ^= t;
