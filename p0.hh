@@ -394,15 +394,15 @@ public:
   }
   inline ~P0recur() { ; }
   inline T next(const T& in) {
-    auto d(M);
-    T    res(int(1));
-    for(int i = 0; i < d.size(); i ++) d[i] *= in;
+    auto b(M);
+    auto d(in);
+    T    res(int(0));
     for(int i = 0; i < p.size(); i ++)
-      res *= (M[i] = p[i].next(i ? d[i - 1] : in));
+      res += (M[i] = p[i].next(i ? d *= b[i - 1] : d));
     return res;
   }
-  vector<T> M;
   vector<P> p;
+  vector<T> M;
 };
 
 template <typename T, typename P> class P0ContRand {

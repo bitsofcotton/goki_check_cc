@@ -781,14 +781,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     {
       int ext(1);
       for( ; ext < data.rows() / 3; ext ++)
-        if(exp(sqrt(log(T(data.rows() / 3 / ext)))) < T(int(3))) break;
+        if(exp(sqrt(log(T(data.rows() / ext - 3)))) < T(int(3))) break;
       ext --;
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
       vector<P0ContRand<T, P0recur<T, P0maxRank<T> > > > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(P0ContRand<T, P0recur<T, P0maxRank<T> > >(P0recur<T, P0maxRank<T> >(data.rows() / (m + 1) / 3), recur));
+        p.emplace_back(P0ContRand<T, P0recur<T, P0maxRank<T> > >(P0recur<T, P0maxRank<T> >(data.rows() / (m + 1) - 3), recur));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
