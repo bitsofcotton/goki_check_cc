@@ -251,40 +251,29 @@ public:
     assert(0 < status && 0 < var);
     p  = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
     q  = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-    r  = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-    qq = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-    rr = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-    this->var = var;
-    bt = - (this->status = status);
-    t  = (btt ^= btt);
-    M  = SimpleMatrix<T>(4, max(4, status)).O();
-    bw = aw = SimpleVector<T>(M.rows()).O();
+    this->status = status;
+    t ^= t;
+    M  = SimpleMatrix<T>(3, max(3, status)).O();
   }
   inline ~P0maxRank() { ; }
   inline T next(const T& in) {
     static const T epsilon(sqrt(sqrt(SimpleMatrix<T>().epsilon())));
     static const T zero(int(0));
+    static const T one(int(1));
+    if(in == zero) return in;
     auto res(zero);
     for(int i = 0; i < M.cols() - 1; i ++)
       M.setCol(i, M.col(i + 1));
-    for(int i = 0; i < M.rows(); i ++) {
-      aw[i] += M(i, M.cols() - 1) * in;
-      bw[i] += M(i, M.cols() - 1) * in;
-    }
+    // N.B. apply prediction on 2 of the reasonable invariants.
     M(0, M.cols() - 1) = p.next(in);
-    M(1, M.cols() - 1) = q.next(in * (
-      T(int(4)) + T(t - bt) / T(status) ));
-    M(2, M.cols() - 1) = r.next(in * (
-      T(int(4)) - T(t - bt) / T(status) ));
-    M(3, M.cols() - 1) = avg.next(in);
-    qq.next(in * (T(int(4)) + T(t - btt) / T(status)));
-    rr.next(in * (T(int(4)) - T(t - btt) / T(status)));
+    M(1, M.cols() - 1) = one / q.next(one / in);
+    // N.B. return to the average on walk, for no invariant chain.
+    M(2, M.cols() - 1) = - avg.next(in);
     bvg.next(in);
     auto MM(M);
     for(int i = 0; i < MM.rows(); i ++) {
       const auto norm2(MM.row(i).dot(MM.row(i)));
       if(norm2 != zero) MM.row(i) /= sqrt(norm2);
-      MM.row(i) *= sgn<T>(aw[i]);
     }
     const auto lsvd(MM.SVD());
     const auto svd(lsvd * MM);
@@ -302,18 +291,10 @@ public:
         res += svd(i, svd.cols() - 1) / stat[i] * sgn<T>(sum);
       }
     if(! isfinite(res)) res = zero;
-    if(! ((++ t) % status)) {
-      q    = qq;
-      r    = rr;
-      qq   = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-      rr   = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-      bt   = btt;
-      btt += status;
-      avg  = bvg;
-      bvg  = cvg;
-      aw   = bw;
-      M.O();
-      bw.O();
+    if(status <= t) {
+      avg = bvg;
+      bvg = sumChain<T, Pnull<T>, true>();
+      t  ^= t;
     }
     return res;
   }
@@ -362,20 +343,11 @@ public:
   typedef logChain<T, p0_s5t>  p0_s6t;
   typedef sumChain<T, p0_s6t, true> p0_st;
   int t;
-  int bt;
-  int btt;
-  int var;
   int status;
-  SimpleVector<T> aw;
-  SimpleVector<T> bw;
   p0_st p;
   p0_st q;
-  p0_st r;
-  p0_st qq;
-  p0_st rr;
   sumChain<T, Pnull<T>, true> avg;
   sumChain<T, Pnull<T>, true> bvg;
-  sumChain<T, Pnull<T>, true> cvg;
   SimpleMatrix<T> M;
 };
 
