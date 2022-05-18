@@ -398,7 +398,7 @@ public:
     auto d(in);
     T    res(int(0));
     for(int i = 0; i < p.size(); i ++)
-      res += (M[i] = p[i].next(i ? d *= b[i - 1] : d));
+      res *= (M[i] = p[i].next(i ? d *= b[i - 1] : d));
     return res;
   }
   vector<P> p;
