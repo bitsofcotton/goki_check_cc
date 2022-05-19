@@ -2150,7 +2150,7 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::SVD() const {
     Right(i, i) = abs(R(i, i)) + T(int(1));
   // N.B. now we have B = Left * B * Right.
   static const T p(int(exp(sqrt(- log(epsilon())) / T(int(2)))));
-  return (pow(Left, p) * pow(Right, p)).QR() * Qt;
+  return (pow(Left /= sqrt(norm2M(Left)), p) * pow(Right /= sqrt(norm2M(Right)), p)).QR() * Qt;
 }
 
 template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, SimpleMatrix<T> > SimpleMatrix<T>::SVD(const SimpleMatrix<T>& src) const {
@@ -2467,11 +2467,10 @@ template <typename T> static inline SimpleMatrix<T> exp01(const SimpleMatrix<T>&
 }
 
 template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m) {
-  const auto p00(ceil(sqrt(norm2M(m))));
-  const auto p0(p00 * p00);
-  if(! isfinite(p0)) throw "matrix exp with non finite value";
+  const auto p0(ceil(sqrt(norm2M(m))));
   myuint p(p0);
-  auto mm(exp01(m / T(p00)));
+  assert(abs(p0 - T(p)) < T(int(1)));
+  auto mm(exp01(m / T(p)));
   auto res(m);
   res.I();
   for( ; p; ) {
