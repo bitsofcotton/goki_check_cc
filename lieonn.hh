@@ -3036,6 +3036,7 @@ template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m
   const auto p0(ceil(sqrt(norm2M(m))));
   if(! isfinite(p0)) throw "matrix exp with non finite value";
   myuint p(p0);
+  assert(abs(T(p) - p0) <= T(int(1)));
   auto mm(exp01(m / T(p)));
   auto res(m);
   res.O();
