@@ -205,13 +205,12 @@ public:
   inline T next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    static const auto epsilon(sqrt(sqrt(SimpleMatrix<T>().epsilon())));
     const auto bS(S);
     S += in;
     if(bS == zero) return zero;
     const auto dd(S / bS - one);
     if(! isfinite(dd)) return zero;
-    return p.next(dd / epsilon) * S * epsilon;
+    return p.next(dd) * S;
   }
   T S;
   P p;

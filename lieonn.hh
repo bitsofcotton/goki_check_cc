@@ -2650,8 +2650,8 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::SVD() const {
   for(int i = 0; i < Right.rows(); i ++)
     Right(i, i) = abs(R(i, i)) + T(int(1));
   // N.B. now we have B = Left * B * Right.
-  static const T p(int(exp(sqrt(sqrt(- log(epsilon()))))));
-  return (pow(Left / norm2M(Left), p) * pow(Right / norm2M(Right), p)).QR() * Qt;
+  static const T p(int(exp(sqrt(- log(epsilon())) / T(int(2)))));
+  return (pow(Left, p) * pow(Right, p)).QR() * Qt;
 }
 
 template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, SimpleMatrix<T> > SimpleMatrix<T>::SVD(const SimpleMatrix<T>& src) const {
@@ -2996,20 +2996,11 @@ template <typename T> static inline T norm2M(const SimpleMatrix<T>& m) {
     norm2 = max(norm2, m.row(i).dot(m.row(i)));
   return norm2;
 }
-template <typename T> static inline T dnorm2M(const SimpleMatrix<T>& m) {
-  static const T one(int(1));
-  auto norm2(one);
-  for(int i = 0; i < m.rows(); i ++) {
-    const auto n2(m.row(i).dot(m.row(i)));
-    if(one < n2) norm2 *= sqrt(n2);
-  }
-  return norm2;
-}
 
 template <typename T> static inline SimpleMatrix<T> log(const SimpleMatrix<T>& m) {
   static const int cut(- log(SimpleMatrix<T>().epsilon()) / log(T(int(2))) * T(int(2)) );
   SimpleMatrix<T> res(m.rows(), m.cols());
-  const auto c(dnorm2M(m) * T(2));
+  const auto c(sqrt(norm2M(m)) * T(2));
   const auto residue(SimpleMatrix<T>(m.rows(), m.cols()).I() - m / c);
         auto buf(residue);
   res.I(c);
@@ -3033,11 +3024,11 @@ template <typename T> static inline SimpleMatrix<T> exp01(const SimpleMatrix<T>&
 }
 
 template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m) {
-  const auto p0(ceil(sqrt(norm2M(m))));
+  const auto p00(ceil(sqrt(norm2M(m))));
+  const auto p0(p00 * p00);
   if(! isfinite(p0)) throw "matrix exp with non finite value";
   myuint p(p0);
-  assert(abs(T(p) - p0) <= T(int(1)));
-  auto mm(exp01(m / T(p)));
+  auto mm(exp01(m / T(p00)));
   auto res(m);
   res.O();
   for( ; p; ) {
