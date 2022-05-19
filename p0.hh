@@ -268,7 +268,7 @@ public:
     M(0, M.cols() - 1) = p.next(in);
     M(1, M.cols() - 1) = one / q.next(one / in);
     // N.B. return to the average on walk, for no invariant chain.
-    M(2, M.cols() - 1) = - avg.next(in);
+    M(2, M.cols() - 1) = avg.next(in);
     bvg.next(in);
     const auto lsvd(M.SVD());
     const auto svd(lsvd * M);
@@ -288,7 +288,7 @@ public:
     if(! isfinite(res)) res = zero;
     if(status <= t ++) {
       avg = bvg;
-      bvg = sumChain<T, Pnull<T>, true>();
+      bvg = sumChain<T, sumChain<T, Pnull<T>, true> >();
       t  ^= t;
     }
     return res;
@@ -341,8 +341,8 @@ public:
   int status;
   p0_st p;
   p0_st q;
-  sumChain<T, Pnull<T>, true> avg;
-  sumChain<T, Pnull<T>, true> bvg;
+  sumChain<T, sumChain<T, Pnull<T>, true> > avg;
+  sumChain<T, sumChain<T, Pnull<T>, true> > bvg;
   SimpleMatrix<T> M;
 };
 
