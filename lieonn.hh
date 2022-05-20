@@ -2060,10 +2060,10 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector
     if(work.entity[i][i] == T(int(0))) continue;
     const auto buf(other[i] / work.entity[i][i]);
     if(!isfinite(buf) || isnan(buf)) {
-    //  assert(!isfinite(work.entity[i][i] / other[i]) || isnan(work.entity[i][i] / other[i]));
+      // assert(!isfinite(work.entity[i][i] / other[i]) || isnan(work.entity[i][i] / other[i]));
       continue;
     }
-    other[i]    = buf;
+    other[i] = buf;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -2150,7 +2150,15 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::SVD() const {
     Right(i, i) = abs(R(i, i)) + T(int(1));
   // N.B. now we have B = Left * B * Right.
   static const T p(int(exp(sqrt(- log(epsilon())) / T(int(2)))));
-  return (pow(Left /= sqrt(norm2M(Left)), p) * pow(Right /= sqrt(norm2M(Right)), p)).QR() * Qt;
+  try {
+    return (pow(Left /= sqrt(norm2M(Left)), p) * pow(Right /= sqrt(norm2M(Right)), p)).QR() * Qt;
+  } catch(const char* e) {
+    /* might be Left or Right are sparse. */
+    /* in this case, we should separate them by LDLt S matrix. */
+    /* no code in here. */
+    ;
+  }
+  return Left.O();
 }
 
 template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, SimpleMatrix<T> > SimpleMatrix<T>::SVD(const SimpleMatrix<T>& src) const {
@@ -2469,7 +2477,7 @@ template <typename T> static inline SimpleMatrix<T> exp01(const SimpleMatrix<T>&
 template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m) {
   const auto p0(ceil(sqrt(norm2M(m))));
   myuint p(p0);
-  assert(abs(p0 - T(p)) < T(int(1)));
+  if(T(int(1)) < abs(p0 - T(p))) throw "too large abs num in exp matrix";
   auto mm(exp01(m / T(p)));
   auto res(m);
   res.I();

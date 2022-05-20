@@ -192,7 +192,8 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
         (score < T(int(0)) ? left : right).emplace_back(move(result[t].first[i]));
         (score < T(int(0)) ? lidx : ridx).emplace_back(result[t].second[i]);
       }
-      if((abs(cs) + 1 < left.size() || abs(cs) + 1 < right.size()) && left.size() && right.size()) {
+      //if((abs(cs) + 1 < left.size() || abs(cs) + 1 < right.size()) && left.size() && right.size()) {
+      if(left.size() && right.size()) {
         if(left.size() < right.size()) {
           swap(left, right);
           swap(lidx, ridx);

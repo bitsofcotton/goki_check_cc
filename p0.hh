@@ -169,9 +169,9 @@ public:
     static const T M(atan(one / sqrt(SimpleMatrix<T>().epsilon())));
     if(! isfinite(in) || in == zero) return in;
     auto work(atan(in));
-    assert(- M < work && work < M);
+    // assert(- M < work && work < M);
     work = atan(one / work);
-    assert(- M < work && work < M);
+    // assert(- M < work && work < M);
     work = p.next(work);
     if(! isfinite(work) || work == zero) return in;
     work = tan(max(- M, min(M, one / tan(max(- M, min(M, work))))));
