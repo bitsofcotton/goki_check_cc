@@ -55,9 +55,9 @@ public:
     for(int i = 0; i < toeplitz.rows(); i ++) {
       auto work(buf.subVector(i, varlen) / nin);
       work[work.size() - 1] = buf[i + varlen + step - 2] / nin;
-      toeplitz.row(i) =
-        makeProgramInvariant<T>(move(work),
-          T(i + 1) / T(toeplitz.rows() + 1)).first;
+      auto mp(makeProgramInvariant<T>(move(work),
+                T(i + 1) / T(toeplitz.rows() + 1)));
+      toeplitz.row(i) = move(mp.first) * pow(mp.second, ceil(- log(toeplitz.epsilon()) ));
     }
     const auto invariant(linearInvariant<T>(toeplitz));
     if(invariant[varlen - 1] == zero) return zero;
@@ -66,11 +66,12 @@ public:
       work[i - 1] = buf[i - work.size() + buf.size()] / nin;
     work[work.size() - 1] = zero;
     const auto work2(makeProgramInvariant<T>(work, T(1)));
-    return revertProgramInvariant<T>(make_pair(
-        - (invariant.dot(work2.first) -
+    return pow(revertProgramInvariant<T>(make_pair(
+        - pow(work2.second, ceil(- log(toeplitz.epsilon()) )) *
+          (invariant.dot(work2.first) -
              invariant[varlen - 1] * work2.first[varlen - 1]) /
-          invariant[varlen - 1], work2.second)) *
-      nin;
+          invariant[varlen - 1], work2.second)),
+             - ceil(- log(toeplitz.epsilon()) )) * nin;
   }
   feeder f;
 private:

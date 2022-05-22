@@ -54,18 +54,17 @@ public:
 
 template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& in) {
   const auto size(abs(size0));
-  SimpleMatrix<T> A(in.size(), size + 2);
+  SimpleMatrix<T> A(in.size(), size + 1);
   for(int i = 0; i < in.size(); i ++)
     tayl(size, in[i].size());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < in.size(); i ++) {
-    A.row(i).setVector(0, makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first);
+    auto work(makeProgramInvariant(tayl(size, in[i].size()) * in[i]));
+    A.row(i) = move(work.first) * pow(abs(work.second), ceil(- log(A.epsilon()) / T(int(2)) ));
     // N.B. test for linear ones:
     // A.row(i).setVector(0, tayl(size, in[i].size()) * in[i]);
-    // N.B. we need to add const. for nonlinear to linear scaled.
-    A(i, A.cols() - 1) = T(int(1));
   }
         auto Pt(A.QR());
         auto Ptb(Pt);
@@ -142,11 +141,9 @@ template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& size
 template <typename T> inline T CatG<T>::score(const Vec& in) {
   const auto size(cut.size() - 2);
   assert(0 < size);
-  auto sv(cut);
-  sv.setVector(0, makeProgramInvariant<T>(tayl(size, in.size()) * in).first);
-  // N.B. for linear:sv.setVector(0, tayl(size, in.size()) * in);
-  sv[sv.size() - 1] = T(int(1));
-  return sv.dot(cut) - T(int(1)) / T(int(2));
+  auto work(makeProgramInvariant(tayl(size, in.size()) * in));
+  auto sv(move(work.first) * pow(abs(work.second), ceil(- log(SimpleMatrix<T>().epsilon()) / T(int(2)) )) );
+  return sv.dot(cut);
 }
 
 
