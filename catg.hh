@@ -54,17 +54,18 @@ public:
 
 template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& in) {
   const auto size(abs(size0));
-  SimpleMatrix<T> A(in.size(), size + 1);
+  SimpleMatrix<T> A(in.size(), size + 2);
   for(int i = 0; i < in.size(); i ++)
     tayl(size, in[i].size());
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < in.size(); i ++) {
-    A.row(i)  = makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first;
+    A.row(i).setVector(0, makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first);
     // N.B. test for linear ones:
     // A.row(i).setVector(0, tayl(size, in[i].size()) * in[i]);
-    // A(i, A.cols() - 1) = T(int(1));
+    // N.B. we need to add const. for nonlinear to linear scaled.
+    A(i, A.cols() - 1) = T(int(1));
   }
         auto Pt(A.QR());
         auto Ptb(Pt);
@@ -139,12 +140,12 @@ template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& size
 }
 
 template <typename T> inline T CatG<T>::score(const Vec& in) {
-  const auto size(cut.size() - 1);
+  const auto size(cut.size() - 2);
   assert(0 < size);
-  auto sv(makeProgramInvariant<T>(tayl(size, in.size()) * in).first);
-  // N.B. test for lienar ones.
-  // sv.setVector(0, tayl(size, in.size()) * in);
-  // sv[sv.size() - 1] = T(int(1));
+  auto sv(cut);
+  sv.setVector(0, makeProgramInvariant<T>(tayl(size, in.size()) * in).first);
+  // N.B. for linear:sv.setVector(0, tayl(size, in.size()) * in);
+  sv[sv.size() - 1] = T(int(1));
   return sv.dot(cut) - T(int(1)) / T(int(2));
 }
 
@@ -172,7 +173,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
     int iidx(sidx.size() - 1);
     for( ; - 1 <= iidx; iidx --)
       if(iidx < 0 || (! sidx[iidx].second.second &&
-        abs(cs) + 1 <= result[sidx[iidx].second.first].first.size() ) ) break;
+        abs(cs) + 1 < result[sidx[iidx].second.first].first.size() ) ) break;
     if(iidx < 0) break;
     const auto& t(sidx[iidx].second.first);
     CatG<T> catg(cs, result[t].first);
