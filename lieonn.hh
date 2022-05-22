@@ -2635,7 +2635,7 @@ template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvarian
   if(T(int(0)) <= index)
     res[in.size() + 1] = T(index);
   T   lsum(0);
-  for(int i = 0; i < res.size() - 1; i ++) {
+  for(int i = 0; i < res.size(); i ++) {
     assert(- T(int(1)) <= res[i] && res[i] <= T(int(1)));
     res[i] += T(int(1));
     if(res[i] != T(int(0))) lsum += log(res[i]);

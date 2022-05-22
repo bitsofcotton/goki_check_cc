@@ -216,30 +216,73 @@ public:
   P p;
 };
 
-template <typename T, typename P> class P0Expect {
+template <typename T, typename P> class P0measure {
 public:
-  inline P0Expect() { ; }
-  inline P0Expect(P&& p, const int& nyquist = 2, const int& offset = 0) {
-    Mx = M = d = T(t ^= t);
-    t -= offset;
-    tM = nyquist;
-    assert(0 < tM);
+  inline P0measure() { ; }
+  inline P0measure(P&& p, const int& range) {
     this->p = p;
+    M = d = T(t ^= t);
+    h = idFeeder<T>(range);
+    g = idFeeder<T>(range);
+    bd = T(int(1));
   }
-  inline ~P0Expect() { ; }
-  inline const T& next(const T& in) {
-    if(0 <= t) d += in;
-    if(++ t < tM) return M;
-    Mx = max(Mx, abs(d /= T(tM * tM)) * T(int(2)));
-    M  = max(- Mx, min(Mx, p.next(d)));
-    d  = T(t ^= t);
-    return M;
+  inline ~P0measure() { ; }
+  inline T next(const T& in) {
+    static const T zero(int(0));
+    d += in;
+    if(d * bd < zero) {
+      const auto& H(h.next(p.next(d)));
+      const auto& G(g.next(d));
+      if(! g.full) return zero;
+      auto hh(zero);
+      auto gg(zero);
+      for(int i = 1; i < min(H.size() - 1, H.size()); i ++) {
+        hh += H[H.size() - i - 1] * H[H.size() - i - 1];
+        gg += G[G.size() - i] * G[G.size() - i];
+      }
+      if(hh == zero) M = zero;
+      else M = sqrt(gg / hh);
+      bd = d;
+      d  = zero;
+      t ++;
+    } else if(abs(M * h.res[h.res.size() - 1]) / T(int(2)) < abs(d) &&
+              d * (t & 1 ? - T(int(1)) : T(int(1))) < zero)
+      M = zero;
+    return abs(M * h.res[h.res.size() - 1]) * (t & 1 ? - T(int(1)) : T(int(1)));
   }
-  int t;
-  int tM;
   T d;
+  T bd;
   T M;
-  T Mx;
+  int t;
+  idFeeder<T> h;
+  idFeeder<T> g;
+  P p;
+};
+
+template <typename T, typename P> class P0avg {
+public:
+  inline P0avg() { ; }
+  inline P0avg(P&& p, const int& range) {
+    this->p = p;
+    res = T(int(0));
+    h = idFeeder<T>(range);
+  }
+  inline ~P0avg() { ; }
+  inline const T& next(const T& in) {
+    static const T zero(int(0));
+    if(in == zero) return res;
+    const auto& H(h.next(in));
+    if(! h.full) return res = zero;
+    auto avg(H[0]);
+    for(int i = 1; i < H.size() - 1; i ++) avg += H[i];
+    res = - p.next(in - avg / T(int(H.size() - 1)));
+    avg = H[1];
+    for(int i = 2; i < H.size(); i ++) avg += H[i];
+    if(res * avg < zero) return res = zero;
+    return res;
+  }
+  T res;
+  idFeeder<T> h;
   P p;
 };
 
