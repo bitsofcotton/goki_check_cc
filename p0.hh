@@ -133,14 +133,8 @@ public:
   inline P0DFT() { ; }
   inline P0DFT(P&& p, const int& size) {
     f = feeder(size);
-    (this->p).reserve(size);
-    q.reserve(size);
-    (this->p).emplace_back(p);
-    q.emplace_back((this->p)[0]);
-    for(int i = 1; i < size; i ++) {
-      (this->p).emplace_back((this->p)[0]);
-      q.emplace_back((this->p)[0]);
-    }
+    (this->p).resize(size, p);
+    q = this->p;
   }
   inline ~P0DFT() { ; };
   inline T next(const T& in) {
@@ -216,74 +210,30 @@ public:
   P p;
 };
 
-template <typename T, typename P> class P0measure {
+template <typename T, typename P> class P0restart {
 public:
-  inline P0measure() { ; }
-  inline P0measure(P&& p, const int& range) {
-    this->p = p;
-    M = d = T(t ^= t);
-    h = idFeeder<T>(range);
-    g = idFeeder<T>(range);
-    bd = T(int(1));
+  inline P0restart() { ; }
+  inline P0restart(P&& p0, const int& range) {
+    t ^= t;
+    this->range = range;
+    p  = q = r = p0;
   }
-  inline ~P0measure() { ; }
+  inline ~P0restart() { ; }
   inline T next(const T& in) {
-    static const T zero(int(0));
-    d += in;
-    if(d * bd < zero) {
-      const auto& H(h.next(p.next(d)));
-      const auto& G(g.next(d));
-      if(! g.full) return zero;
-      auto hh(zero);
-      auto gg(zero);
-      for(int i = 1; i < min(H.size() - 1, H.size()); i ++) {
-        hh += H[H.size() - i - 1] * H[H.size() - i - 1];
-        gg += G[G.size() - i] * G[G.size() - i];
-      }
-      if(hh == zero) M = zero;
-      else M = sqrt(gg / hh);
-      bd = d;
-      d  = zero;
-      t ++;
-    } else if(abs(M * h.res[h.res.size() - 1]) / T(int(2)) < abs(d) &&
-              d * (t & 1 ? - T(int(1)) : T(int(1))) < zero)
-      M = zero;
-    return abs(M * h.res[h.res.size() - 1]) * (t & 1 ? - T(int(1)) : T(int(1)));
-  }
-  T d;
-  T bd;
-  T M;
-  int t;
-  idFeeder<T> h;
-  idFeeder<T> g;
-  P p;
-};
-
-template <typename T, typename P> class P0avg {
-public:
-  inline P0avg() { ; }
-  inline P0avg(P&& p, const int& range) {
-    this->p = p;
-    res = T(int(0));
-    h = idFeeder<T>(range);
-  }
-  inline ~P0avg() { ; }
-  inline const T& next(const T& in) {
-    static const T zero(int(0));
-    if(in == zero) return res;
-    const auto& H(h.next(in));
-    if(! h.full) return res = zero;
-    auto avg(H[0]);
-    for(int i = 1; i < H.size() - 1; i ++) avg += H[i];
-    res = - p.next(in - avg / T(int(H.size() - 1)));
-    avg = H[1];
-    for(int i = 2; i < H.size(); i ++) avg += H[i];
-    if(res * avg < zero) return res = zero;
+    const auto res(p.next(in));
+    q.next(in);
+    if(range * 8 < t ++) {
+      p  = q;
+      q  = r;
+      t ^= t;
+    }
     return res;
   }
-  T res;
-  idFeeder<T> h;
+  int t;
+  int range;
   P p;
+  P q;
+  P r;
 };
 
 template <typename T> class P0maxRank {
@@ -291,47 +241,23 @@ public:
   inline P0maxRank() { ; }
   inline P0maxRank(const int& status, const int& var) {
     assert(0 < status && 0 < var);
-    p  = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-    q  = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-    this->status = status;
-    t ^= t;
-    M  = SimpleMatrix<T>(3, max(3, status)).O();
+    p = p0_st(p0_s7t(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ), status);
+    q = p0_st(p0_s7t(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ), status);
   }
   inline ~P0maxRank() { ; }
-  inline T next(const T& in) {
-    static const T epsilon(sqrt(sqrt(SimpleMatrix<T>().epsilon())));
+  inline vector<T> next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    if(in == zero) return in;
-    auto res(zero);
-    for(int i = 0; i < M.cols() - 1; i ++)
-      M.setCol(i, M.col(i + 1));
-    // N.B. apply prediction on 2 of the reasonable invariants.
-    M(0, M.cols() - 1) = p.next(in);
-    M(1, M.cols() - 1) = one / q.next(one / in);
-    // N.B. return to the average on walk, for no invariant chain.
-    M(2, M.cols() - 1) = avg.next(in);
-    bvg.next(in);
-    const auto lsvd(M.SVD());
-    const auto svd(lsvd * M);
-    vector<T> stat;
-    stat.reserve(svd.rows());
-    for(int i = 0; i < svd.rows(); i ++)
-      stat.emplace_back(sqrt(svd.row(i).dot(svd.row(i))));
-    auto sstat(stat);
-    sort(sstat.begin(), sstat.end());
-    for(int i = 0; i < svd.rows(); i ++)
-      if(sstat[sstat.size() - 1] * epsilon < stat[i]) {
-        auto sum(lsvd(i, 0));
-        for(int j = 1; j < lsvd.cols(); j ++)
-          sum += lsvd(i, j);
-        res += svd(i, svd.cols() - 1) / stat[i] * sgn<T>(sum);
-      }
-    if(! isfinite(res)) res = zero;
-    if(status <= t ++) {
-      avg = bvg;
-      bvg = sumChain<T, sumChain<T, Pnull<T>, true> >();
-      t  ^= t;
+    vector<T> res;
+    res.reserve(3);
+    if(in == zero) {
+      res.emplace_back(zero);
+      res.emplace_back(zero);
+      res.emplace_back(zero);
+    } else {
+      res.emplace_back(p.next(in));
+      res.emplace_back(one / q.next(one / in));
+      res.emplace_back(r.next(in));
     }
     return res;
   }
@@ -355,11 +281,11 @@ public:
   // N.B. on any R to R into reasonable taylor.
   typedef northPole<T, p0_5t> p0_6t;
   typedef northPole<T, p0_6t> p0_7t;
-  // N.B. we make the prediction on (delta) summation.
-  typedef sumChain<T, p0_7t>  p0_8t;
   // N.B. we treat periodical part as non aligned complex arg part.
+  typedef logChain<T, p0_7t>  p0_8t;
   typedef logChain<T, p0_8t>  p0_9t;
-  typedef logChain<T, p0_9t>  p0_10t;
+  // N.B. we make the prediction on (delta) summation.
+  typedef sumChain<T, p0_9t>  p0_10t;
   // N.B. we take average as origin of input.
   typedef sumChain<T, p0_10t, true> p0_t;
   // N.B. if original sample lebesgue integrate is not enough continuous,
@@ -375,53 +301,21 @@ public:
   // N.B. plain complex form.
   typedef northPole<T, p0_1t>  p0_s2t;
   typedef northPole<T, p0_s2t> p0_s3t;
-  typedef sumChain<T, p0_s3t>  p0_s4t;
+  typedef logChain<T, p0_s3t>  p0_s4t;
   typedef logChain<T, p0_s4t>  p0_s5t;
-  typedef logChain<T, p0_s5t>  p0_s6t;
-  typedef sumChain<T, p0_s6t, true> p0_st;
-  int t;
-  int status;
+  typedef sumChain<T, p0_s5t>  p0_s6t;
+  typedef sumChain<T, p0_s6t, true> p0_s7t;
+  typedef P0restart<T, p0_s7t> p0_st;
   p0_st p;
   p0_st q;
-  sumChain<T, sumChain<T, Pnull<T>, true> > avg;
-  sumChain<T, sumChain<T, Pnull<T>, true> > bvg;
-  SimpleMatrix<T> M;
-};
-
-template <typename T, typename P> class P0recur {
-public:
-  inline P0recur() { ; }
-  inline P0recur(const int& status) {
-    // N.B. parameters are not optimal but we use this.
-    for(int i = status; i > 4; i = int(max(T(int(2)), ceil(exp(sqrt(log(T(i)))))))) {
-      p.emplace_back(P(i, int(max(T(int(3)), ceil(exp(sqrt(log(T(i)))))))));
-      std::cerr << i << ", ";
-    }
-    if(! p.size()) { p.emplace_back(P(status, 1)); std::cerr << status; }
-    std::cerr << std::endl;
-    M.resize(p.size(), T(int(0)));
-  }
-  inline ~P0recur() { ; }
-  inline T next(const T& in) {
-    auto b(M);
-    auto d(in);
-    T    res(int(1));
-    for(int i = 0; i < p.size(); i ++)
-      res *= (M[i] = p[i].next(i ? d *= b[i - 1] : d));
-    return res;
-  }
-  vector<P> p;
-  vector<T> M;
+  P0restart<T, sumChain<T, sumChain<T, Pnull<T>, true> > > r;
 };
 
 template <typename T, typename P> class P0ContRand {
 public:
   inline P0ContRand() { ; }
   inline P0ContRand(P&& p, const int& para) {
-    (this->p).reserve(para);
-    (this->p).emplace_back(p);
-    for(int i = 1; i < para; i ++)
-      (this->p).emplace_back((this->p)[0]);
+    (this->p).resize(para, p);
     r.resize(para, T(t ^= t));
     br.resize(para, T(t));
   }

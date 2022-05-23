@@ -781,13 +781,13 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     {
       int ext(1);
       for( ; ext < data.rows() / 2; ext ++)
-        if(exp(sqrt(log(T(data.rows() / ext / 2)))) < T(int(3))) break;
+        if(exp(sqrt(log(T(data.rows() / ext - 4)))) < T(int(3))) break;
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
-      vector<P0ContRand<T, P0recur<T, P0maxRank<T> > > > p;
+      vector<P0maxRank<T> > p;
       p.reserve(ext);
       for(int m = 0; m < ext; m ++)
-        p.emplace_back(P0ContRand<T, P0recur<T, P0maxRank<T> > >(P0recur<T, P0maxRank<T> >(data.rows() / (m + 1) / 2), recur));
+        p.emplace_back(P0maxRank<T>(data.rows() / (m + 1) - 4, int(exp(sqrt(log(T(data.rows() / (m + 1) - 4)))))));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -796,12 +796,12 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           auto pb(p[m]);
           auto pf(p[m]);
           for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
-            result(ext - m - 1, k) =
-              pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k) -
-                      data((data.rows() / (m + 1) - kk - 1) * (m + 1), k));
-            result(m - ext + result.rows(), k) =
-              pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
-                      data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k));
+            auto back(pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k) -
+                      data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) );
+            result(ext - m - 1, k) = (back[0] + back[1] + back[2]) / T(int(3));
+            auto forw(pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
+                      data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) );
+            result(m - ext + result.rows(), k) = (forw[0] + forw[1] + forw[2]) / T(int(3));
           }
         }
         for(int k = 0; k < m; k ++) {
