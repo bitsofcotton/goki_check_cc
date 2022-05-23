@@ -779,15 +779,20 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      int ext(1);
-      for( ; ext < data.rows() / 2; ext ++)
-        if(exp(sqrt(log(T(data.rows() / ext - 4)))) < T(int(3))) break;
+      vector<P0maxRank<T> > p;
+      int ext(0);
+      for( ; ext < data.rows() / 2; ext ++) {
+        if(data.rows() / (ext + 1) < 4) break;
+        int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 3)))));
+        for( ; 0 < var; var --)
+          if(data.rows() / (ext + 1) < 3 + var * 2 ||
+             var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 3 - var * 2))))))
+            break;
+        if(var <= 0 || data.rows() / (ext + 1) < 3 + var * 2) break;
+        p.emplace_back(P0maxRank<T>(data.rows() / (ext + 1) - 3 - var * 2, var));
+      }
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
-      vector<P0maxRank<T> > p;
-      p.reserve(ext);
-      for(int m = 0; m < ext; m ++)
-        p.emplace_back(P0maxRank<T>(data.rows() / (m + 1) - 4, int(exp(sqrt(log(T(data.rows() / (m + 1) - 4)))))));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
