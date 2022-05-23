@@ -809,10 +809,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             result(m - ext + result.rows(), k) = (forw[0] + forw[1] + forw[2]) / T(int(3));
           }
         }
-        for(int k = 0; k < m; k ++) {
-          result.row(ext - m - 1) += result.row(ext - k - 1);
-          result.row(m - ext + result.rows()) += result.row(k - ext + result.rows());
-        }
       }
       for(int k = 0; k < ext; k ++) {
         result.row(ext - k - 1) += data.row(0);
