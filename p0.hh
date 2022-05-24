@@ -123,6 +123,15 @@ public:
   inline ~P0() { ; };
   inline T next(const T& in) {
     const auto& ff(f.next(in));
+/*
+    if(f.full) {
+      auto avg(ff);
+      T avgf(avg[0]);
+      for(int i = 1; i < avg.size(); i ++) avgf += avg[i];
+      for(int i = 0; i < avg.size(); i ++) avg[i] -= avgf / T(int(avg.size()));
+      std::cerr << sqrt(avg.dot(avg) / ff.dot(ff)) << std::endl;
+    }
+*/
     return f.full ? pnextcache<T>(ff.size(), step).dot(ff) : T(int(0));
   }
   int step;
@@ -285,8 +294,9 @@ public:
   inline P0maxRank(const int& status, const int& var) {
     assert(0 < status && 0 < var);
     p = p0_st(p0_s7t(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ), status);
-    q = p0_it(p0_i8t(p0_i7t(p0_i6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ) ), status);
-    s = P0restart<T, sumChain<T, sumChain<T, P0ms<T, idFeeder<T> > >, true> >(sumChain<T, sumChain<T, P0ms<T, idFeeder<T> > >, true>(sumChain<T, P0ms<T, idFeeder<T> > >(P0ms<T, idFeeder<T> >(status))), status);
+    q = p0_it(p0_i7t(p0_i6t(p0_i5t(p0_i4t(p0_i3t(p0_i2t(p0_i1t(p0_i0t(p0_0t(status, var) ), var) )) ) )) ), status);
+    r = p0_mt(p0_m7t(p0_m6t(p0_m5t(p0_m4t(p0_m3t(p0_m2t(p0_m1t(p0_m0t(status), var) )) ) )) ), status);
+    s = p0_at(p0_a7t(p0_a6t(p0_a5t(p0_a4t(p0_a3t(p0_a2t(p0_a1t(p0_a0t(), var) )) ) )) ), status);
   }
   inline ~P0maxRank() { ; }
   inline vector<T> next(const T& in) {
@@ -345,16 +355,40 @@ public:
   typedef sumChain<T, p0_s5t>  p0_s6t;
   typedef sumChain<T, p0_s6t, true> p0_s7t;
   typedef P0restart<T, p0_s7t> p0_st;
-  // N.B. if we make P0inv to bared P0, the prediction dimension decreases
-  //      in some case, so we need to do them in here.
-  typedef P0inv<T, p0_s5t> p0_i6t;
-  typedef sumChain<T, p0_i6t>  p0_i7t;
-  typedef sumChain<T, p0_i7t, true> p0_i8t;
-  typedef P0restart<T, p0_i8t> p0_it;
+
+  typedef P0inv<T, p0_0t> p0_i0t;
+  typedef shrinkMatrix<T, p0_i0t> p0_i1t;
+  typedef northPole<T, p0_i1t> p0_i2t;
+  typedef northPole<T, p0_i2t> p0_i3t;
+  typedef logChain<T, p0_i3t> p0_i4t;
+  typedef logChain<T, p0_i4t> p0_i5t;
+  typedef sumChain<T, p0_i5t>  p0_i6t;
+  typedef sumChain<T, p0_i6t, true> p0_i7t;
+  typedef P0restart<T, p0_i7t> p0_it;
+
+  typedef P0ms<T, idFeeder<T> >   p0_m0t;
+  typedef shrinkMatrix<T, p0_m0t> p0_m1t;
+  typedef northPole<T, p0_m1t>    p0_m2t;
+  typedef northPole<T, p0_m2t>    p0_m3t;
+  typedef logChain<T, p0_m3t>     p0_m4t;
+  typedef logChain<T, p0_m4t>     p0_m5t;
+  typedef sumChain<T, p0_m5t>     p0_m6t;
+  typedef sumChain<T, p0_m6t, true> p0_m7t;
+  typedef P0restart<T, p0_m7t>    p0_mt;
+
+  typedef sumChain<T, Pnull<T>, true> p0_a0t;
+  typedef shrinkMatrix<T, p0_a0t> p0_a1t;
+  typedef northPole<T, p0_a1t>    p0_a2t;
+  typedef northPole<T, p0_a2t>    p0_a3t;
+  typedef logChain<T, p0_a3t>     p0_a4t;
+  typedef logChain<T, p0_a4t>     p0_a5t;
+  typedef sumChain<T, p0_a5t>     p0_a6t;
+  typedef sumChain<T, p0_a6t, true> p0_a7t;
+  typedef P0restart<T, p0_a7t>    p0_at;
   p0_st p;
   p0_it q;
-  P0restart<T, sumChain<T, sumChain<T, Pnull<T>, true> > > r;
-  P0restart<T, sumChain<T, sumChain<T, P0ms<T, idFeeder<T> > >, true> > s;
+  p0_mt r;
+  p0_at s;
 };
 
 template <typename T, typename P> class P0ContRand {

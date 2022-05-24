@@ -801,12 +801,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           auto pb(p[m]);
           auto pf(p[m]);
           for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
-            auto back(pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k) -
-                      data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) );
-            result(ext - m - 1, k) = (back[0] + back[1] + back[2] + back[3]) / T(int(4));
-            auto forw(pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
-                      data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) );
-            result(m - ext + result.rows(), k) = (forw[0] + forw[1] + forw[2] + forw[3]) / T(int(4));
+            auto back(pb.next((data((data.rows() / (m + 1) - kk) * (m + 1), k) -
+                      data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
+                      T(int(256)) ));
+            result(ext - m - 1, k) = (back[0] + back[1] + back[2] + back[3]) / T(int(4 * 256));
+            auto forw(pf.next((data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
+                      data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
+                      T(int(256)) ));
+            result(m - ext + result.rows(), k) = (forw[0] + forw[1] + forw[2] + forw[3]) / T(int(4 * 256));
           }
         }
       }
