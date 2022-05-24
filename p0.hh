@@ -112,6 +112,22 @@ public:
   feeder f;
 };
 
+template <typename T, typename P> class P0inv {
+public:
+  inline P0inv() { ; }
+  inline P0inv(P&& p) { this->p = p; }
+  inline ~P0inv() { ; }
+  inline T next(const T& in) {
+    static const T zero(int(0));
+    static const T one(int(1));
+    if(in == zero) return zero;
+    const auto pn(p.next(one / in));
+    if(pn == zero) return in;
+    return one / pn;
+  }
+  P p;
+};
+
 template <typename T> const SimpleMatrix<complex<T> >& dftcache(const int& size) {
   assert(size != 0);
   static vector<SimpleMatrix<complex<T> > > cdft;
@@ -242,7 +258,7 @@ public:
   inline P0maxRank(const int& status, const int& var) {
     assert(0 < status && 0 < var);
     p = p0_st(p0_s7t(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ), status);
-    q = p0_st(p0_s7t(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ), status);
+    q = p0_it(p0_i8t(p0_i7t(p0_i6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ) ), status);
   }
   inline ~P0maxRank() { ; }
   inline vector<T> next(const T& in) {
@@ -250,15 +266,9 @@ public:
     static const T one(int(1));
     vector<T> res;
     res.reserve(3);
-    if(in == zero) {
-      res.emplace_back(zero);
-      res.emplace_back(zero);
-      res.emplace_back(zero);
-    } else {
-      res.emplace_back(p.next(in));
-      res.emplace_back(one / q.next(one / in));
-      res.emplace_back(r.next(in));
-    }
+    res.emplace_back(p.next(in));
+    res.emplace_back(q.next(in));
+    res.emplace_back(r.next(in));
     return res;
   }
   // N.B. on existing taylor series.
@@ -306,8 +316,12 @@ public:
   typedef sumChain<T, p0_s5t>  p0_s6t;
   typedef sumChain<T, p0_s6t, true> p0_s7t;
   typedef P0restart<T, p0_s7t> p0_st;
+  typedef P0inv<T, p0_s5t> p0_i6t;
+  typedef sumChain<T, p0_i6t>  p0_i7t;
+  typedef sumChain<T, p0_i7t, true> p0_i8t;
+  typedef P0restart<T, p0_i8t> p0_it;
   p0_st p;
-  p0_st q;
+  p0_it q;
   P0restart<T, sumChain<T, sumChain<T, Pnull<T>, true> > > r;
 };
 
