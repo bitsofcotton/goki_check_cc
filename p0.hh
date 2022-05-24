@@ -78,6 +78,17 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
   return p;
 }
 
+template <typename T> SimpleVector<T> minsq(const int& size) {
+  assert(1 < size);
+  const T xsum(size * (size - 1) / 2);
+  const T xdot(size * (size - 1) * (2 * size - 1) / 6);
+  const auto denom(xdot * T(size) - xsum * xsum);
+  SimpleVector<T> s(size);
+  for(int i = 0; i < s.size(); i ++)
+    s[i] = (T(i) * T(size) - xsum) / denom;
+  return s;
+}
+
 template <typename T> const SimpleVector<T>& pnextcache(const int& size, const int& step) {
   assert(0 < size && 0 <= step);
   static vector<vector<SimpleVector<T> > > cp;
@@ -85,6 +96,14 @@ template <typename T> const SimpleVector<T>& pnextcache(const int& size, const i
   if(cp[size].size() <= step) cp[size].resize(step + 1, SimpleVector<T>());
   if(cp[size][step].size()) return cp[size][step];
   return cp[size][step] = (pnext<T>(size, step) + pnext<T>(size, step + 1)) / T(int(2));
+}
+
+template <typename T> const SimpleVector<T>& mscache(const int& size) {
+  assert(0 < size);
+  static vector<SimpleVector<T> > ms;
+  if(ms.size() <= size) ms.resize(size + 1, SimpleVector<T>());
+  if(ms[size].size()) return ms[size];
+  return ms[size] = minsq<T>(size);
 }
 
 template <typename T> class Pnull {
@@ -96,8 +115,6 @@ public:
 
 template <typename T, typename feeder> class P0 {
 public:
-  typedef SimpleVector<T> Vec;
-  typedef SimpleMatrix<T> Mat;
   inline P0() { ; }
   inline P0(const int& size, const int& step = 1) {
     f = feeder(size);
@@ -109,6 +126,18 @@ public:
     return f.full ? pnextcache<T>(ff.size(), step).dot(ff) : T(int(0));
   }
   int step;
+  feeder f;
+};
+
+template <typename T, typename feeder> class P0ms {
+public:
+  inline P0ms() { ; }
+  inline P0ms(const int& size) { f = feeder(size); }
+  inline ~P0ms() { ; };
+  inline T next(const T& in) {
+    const auto& ff(f.next(in));
+    return f.full ? mscache<T>(ff.size()).dot(ff) + in : in;
+  }
   feeder f;
 };
 
@@ -144,8 +173,6 @@ template <typename T> const SimpleMatrix<complex<T> >& dftcache(const int& size)
 
 template <typename T, typename P, typename feeder> class P0DFT {
 public:
-  typedef SimpleVector<T> Vec;
-  typedef SimpleMatrix<T> Mat;
   inline P0DFT() { ; }
   inline P0DFT(P&& p, const int& size) {
     f = feeder(size);
@@ -259,16 +286,18 @@ public:
     assert(0 < status && 0 < var);
     p = p0_st(p0_s7t(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ), status);
     q = p0_it(p0_i8t(p0_i7t(p0_i6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ) ), status);
+    s = P0restart<T, sumChain<T, sumChain<T, P0ms<T, idFeeder<T> > >, true> >(sumChain<T, sumChain<T, P0ms<T, idFeeder<T> > >, true>(sumChain<T, P0ms<T, idFeeder<T> > >(P0ms<T, idFeeder<T> >(status))), status);
   }
   inline ~P0maxRank() { ; }
   inline vector<T> next(const T& in) {
     static const T zero(int(0));
     static const T one(int(1));
     vector<T> res;
-    res.reserve(3);
+    res.reserve(4);
     res.emplace_back(p.next(in));
     res.emplace_back(q.next(in));
     res.emplace_back(r.next(in));
+    res.emplace_back(s.next(in));
     return res;
   }
   // N.B. on existing taylor series.
@@ -316,6 +345,8 @@ public:
   typedef sumChain<T, p0_s5t>  p0_s6t;
   typedef sumChain<T, p0_s6t, true> p0_s7t;
   typedef P0restart<T, p0_s7t> p0_st;
+  // N.B. if we make P0inv to bared P0, the prediction dimension decreases
+  //      in some case, so we need to do them in here.
   typedef P0inv<T, p0_s5t> p0_i6t;
   typedef sumChain<T, p0_i6t>  p0_i7t;
   typedef sumChain<T, p0_i7t, true> p0_i8t;
@@ -323,6 +354,7 @@ public:
   p0_st p;
   p0_it q;
   P0restart<T, sumChain<T, sumChain<T, Pnull<T>, true> > > r;
+  P0restart<T, sumChain<T, sumChain<T, P0ms<T, idFeeder<T> > >, true> > s;
 };
 
 template <typename T, typename P> class P0ContRand {
