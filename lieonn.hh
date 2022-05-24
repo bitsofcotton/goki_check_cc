@@ -2768,10 +2768,10 @@ public:
     const T dsize(min(t, int(d.size())));
     auto D(d[0]);
     for(int i = 1; i < d.size(); i ++) D += d[i];
-    if((m[t % m.size()] = p.next(D / dsize)) != zero) nzt = t;
+    if(! nzt && (m[t % m.size()] = p.next(D / dsize)) != zero) nzt = t;
     auto res(m[0]);
     for(int i = 1; i < m.size(); i ++) res += m[i];
-    return nzt && (t < m.size() + nzt) ? res = in : res /= T(int(m.size()));
+    return ! nzt || (t < m.size() + nzt) ? res = in : res /= T(int(m.size()));
   }
 private:
   P p;
