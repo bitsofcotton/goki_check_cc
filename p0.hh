@@ -283,7 +283,7 @@ public:
     assert(0 < status && 0 < var);
     p = p0_st(p0_s7t(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ), status);
     q = p0_it(p0_i7t(p0_i6t(p0_i5t(p0_i4t(p0_i3t(p0_i2t(p0_i1t(p0_i0t(p0_0t(status, var) ), var) )) ) )) ), status);
-    r = p0_at(p0_a7t(p0_a6t(p0_a5t(p0_a4t(p0_a3t(p0_a2t(p0_a1t() )) ) )) ), status);
+    r = p0_at(p0_a6t(p0_a5t(p0_a4t(p0_a3t(p0_a2t(p0_a1t() )) ) )) );
   }
   inline ~P0maxRank() { ; }
   inline vector<T> next(const T& in) {
@@ -358,8 +358,7 @@ public:
   typedef logChain<T, p0_a3t>     p0_a4t;
   typedef logChain<T, p0_a4t>     p0_a5t;
   typedef sumChain<T, p0_a5t>     p0_a6t;
-  typedef sumChain<T, p0_a6t, true> p0_a7t;
-  typedef P0restart<T, p0_a7t>    p0_at;
+  typedef sumChain<T, p0_a6t, true> p0_at;
   p0_st p;
   p0_it q;
   p0_at r;

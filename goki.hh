@@ -804,11 +804,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             auto back(pb.next((data((data.rows() / (m + 1) - kk) * (m + 1), k) -
                       data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
                       T(int(256)) ));
-            result(ext - m - 1, k) = (back[0] + back[1] + back[2]) / T(int(3 * 256));
+            result(ext - m - 1, k) = (back[0] + back[1]) / T(int(2 * 256));
             auto forw(pf.next((data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
                       data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
                       T(int(256)) ));
-            result(m - ext + result.rows(), k) = (forw[0] + forw[1] + forw[2]) / T(int(3 * 256));
+            result(m - ext + result.rows(), k) = (forw[0] + forw[1]) / T(int(2 * 256));
           }
         }
       }
