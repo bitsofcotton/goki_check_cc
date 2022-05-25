@@ -66,12 +66,10 @@ public:
       work[i - 1] = buf[i - work.size() + buf.size()] / nin;
     work[work.size() - 1] = zero;
     const auto work2(makeProgramInvariant<T>(work, T(1)));
-    return pow(revertProgramInvariant<T>(make_pair(
-        - pow(work2.second, ceil(- log(toeplitz.epsilon()) )) *
-          (invariant.dot(work2.first) -
-             invariant[varlen - 1] * work2.first[varlen - 1]) /
-          invariant[varlen - 1], work2.second)),
-             - ceil(- log(toeplitz.epsilon()) )) * nin;
+    return revertProgramInvariant<T>(make_pair(
+             abs(- (invariant.dot(work2.first) -
+                    invariant[varlen - 1] * work2.first[varlen - 1]) /
+               invariant[varlen - 1]), work2.second)) * nin;
   }
   feeder f;
 private:
