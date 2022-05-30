@@ -46,9 +46,20 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
       cmd.append(r + "-represent.ppm")
     elif(argv[2] == "catbr"):
       cmd.append(r + "-bump-represent.ppm")
+    elif(argv[2] == "pred"):
+      if(bs != ""):
+        subprocess.call(["convert", bs, s, "-average", "-compress", "none", bs + "-" + s + ".ppm"])
+        cmd.append(bs + "-" + s + ".ppm")
+      bs = s
+      cmd.append(r + ".ppm")
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)
+  if(argv[2] == "pred"):
+    subprocess.call(["convert", argv[3], "-level", "0,200%", argv[3] + "-50.png"])
+    subprocess.call(["convert", argv[- 1], "-level", "0,200%", argv[- 1] + "-50.png"])
+    subprocess.call(["convert", "pred.ppm-p-0.ppm", argv[3] + "-50.png", "-compose", "minus", "-composite", "pred-p-0-0.png"])
+    subprocess.call(["convert", "pred.ppm-n-0.ppm", argv[- 1] + "-50.png", "-compose", "minus", "-composite", "pred-n-0-0.png"])
 elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   files = []
   if(argv[2] == "seinsq"):
