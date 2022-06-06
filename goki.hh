@@ -779,9 +779,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      vector<P0maxRank<T> > p;
-      int ext(0);
-      for( ; ext < data.rows() / 2; ext ++) {
+      vector<int> avar;
+      for(int ext = 0 ; ext < data.rows() / 2; ext ++) {
         if(data.rows() / (ext + 1) < 4) break;
         int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 3)))));
         for( ; 0 < var; var --)
@@ -789,8 +788,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
              var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 3 - var * 2))))))
             break;
         if(var <= 0 || data.rows() / (ext + 1) < 3 + var * 2) break;
-        p.emplace_back(P0maxRank<T>(data.rows() / (ext + 1) - 3 - var * 2, var));
+        avar.emplace_back(var);
       }
+      const auto& ext(avar.size());
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
 #if defined(_OPENMP)
@@ -798,8 +798,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
-          auto pb(p[m]);
-          auto pf(p[m]);
+          P0maxRank<T> pb(data.rows() / (m + 1) - 3 - avar[m] * 2, avar[m]);
+          P0maxRank<T> pf(data.rows() / (m + 1) - 3 - avar[m] * 2, avar[m]);
           for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
             auto back(pb.next((data((data.rows() / (m + 1) - kk) * (m + 1), k) -
                       data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *

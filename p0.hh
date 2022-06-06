@@ -250,39 +250,13 @@ public:
   P p;
 };
 
-template <typename T, typename P> class P0restart {
-public:
-  inline P0restart() { ; }
-  inline P0restart(P&& p0, const int& range) {
-    t ^= t;
-    this->range = range;
-    p  = q = r = p0;
-  }
-  inline ~P0restart() { ; }
-  inline T next(const T& in) {
-    const auto res(p.next(in));
-    q.next(in);
-    if(range * 8 < t ++) {
-      p  = q;
-      q  = r;
-      t ^= t;
-    }
-    return res;
-  }
-  int t;
-  int range;
-  P p;
-  P q;
-  P r;
-};
-
 template <typename T> class P0maxRank {
 public:
   inline P0maxRank() { ; }
   inline P0maxRank(const int& status, const int& var) {
     assert(0 < status && 0 < var);
-    p = p0_st(p0_s7t(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) ), status);
-    q = p0_it(p0_i7t(p0_i6t(p0_i5t(p0_i4t(p0_i3t(p0_i2t(p0_i1t(p0_i0t(p0_0t(status, var) ), var) )) ) )) ), status);
+    p = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
+    q = p0_it(p0_i6t(p0_i5t(p0_i4t(p0_i3t(p0_i2t(p0_i1t(p0_i0t(p0_0t(status, var) ), var) )) ) )) );
     r = p0_at(p0_a6t(p0_a5t(p0_a4t(p0_a3t(p0_a2t(p0_a1t() )) ) )) );
   }
   inline ~P0maxRank() { ; }
@@ -339,8 +313,7 @@ public:
   typedef logChain<T, p0_s3t>  p0_s4t;
   typedef logChain<T, p0_s4t>  p0_s5t;
   typedef sumChain<T, p0_s5t>  p0_s6t;
-  typedef sumChain<T, p0_s6t, true> p0_s7t;
-  typedef P0restart<T, p0_s7t> p0_st;
+  typedef sumChain<T, p0_s6t, true> p0_st;
 
   typedef P0inv<T, p0_0t> p0_i0t;
   typedef shrinkMatrix<T, p0_i0t> p0_i1t;
@@ -349,8 +322,7 @@ public:
   typedef logChain<T, p0_i3t> p0_i4t;
   typedef logChain<T, p0_i4t> p0_i5t;
   typedef sumChain<T, p0_i5t>  p0_i6t;
-  typedef sumChain<T, p0_i6t, true> p0_i7t;
-  typedef P0restart<T, p0_i7t> p0_it;
+  typedef sumChain<T, p0_i6t, true> p0_it;
 
   typedef sumChain<T, Pnull<T>, true> p0_a1t;
   typedef northPole<T, p0_a1t>    p0_a2t;

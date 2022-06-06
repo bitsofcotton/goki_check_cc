@@ -134,9 +134,9 @@ elif(argv[2] == "i2i"):
     for liney in argv[idx:]:
       if(linex == liney): continue
       rooty, exty = os.path.splitext(liney)
-      subprocess.call([argv[1], "recolor3", str(pixels), rootx + ".ppm", rooty + ".ppm", rootx + "-" + rooty + "-i2i0.ppm"])
-      subprocess.call([argv[1], "recolor",  str(pixels), rooty + ".ppm", rootx + ".ppm", rootx + "-" + rooty + "-i2i1.ppm", ".5"])
-      subprocess.call([argv[1], "recolor3", str(pixels), rootx + "-" + rooty + "-i2i1.ppm", rootx + "-" + rooty + "-i2i0.ppm", rootx + "-" + rooty + "-i2i.ppm"])
+      subprocess.call([argv[1], "recolor3", str(pixels), rooty + ".ppm", rootx + ".ppm", rooty + "-" + rootx + "-i2i0.ppm"])
+      subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", ".5"])
+      subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
 else:
   for line in argv[3:]:
     try:
