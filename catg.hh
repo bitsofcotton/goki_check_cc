@@ -309,19 +309,23 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
   for(int i = 0; i < cat.size(); i ++) {
     if(! cat[i].first.size()) continue;
     Mat pw(cat[i].first.size(), cat[i].first[0].size() + 1);
-    Vec avg(Vec(pw.row(0) = makeProgramInvariant<T>(cat[i].first[0]).first));
-    for(int j = 1; j < pw.rows(); j ++)
-      avg += (pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first);
+    auto mp(makeProgramInvariant<T>(cat[i].first[0]));
+    auto avg(pw.row(0) = move(mp.first) * pow(mp.second, ceil(- log(pw.epsilon()) )) );
+    for(int j = 1; j < pw.rows(); j ++) {
+      auto mp(makeProgramInvariant<T>(cat[i].first[j]));
+      avg += (pw.row(j) = move(mp.first) * pow(mp.second, ceil(- log(pw.epsilon()) )) );
+    }
     avg /= T(int(pw.rows()));
     const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? Vec() : linearInvariant<T>(pw));
-    work[work.size() - 1] = q.size() ?
+    work[work.size() - 1] = (q.size() ?
       revertProgramInvariant<T>(make_pair(
         - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1])
         / q[varlen - 1], vdp.second) ) :
-      revertProgramInvariant<T>(make_pair(avg[varlen - 1], vdp.second));
+      revertProgramInvariant<T>(make_pair(avg[varlen - 1], vdp.second)) ) /
+      pow(vdp.second, ceil(- log(pw.epsilon()) ));
     T score(0);
     for(int j = 0; j < work.size(); j ++)
-      score += work[j] * revertProgramInvariant<T>(make_pair(avg[j], vdp.second));
+      score += work[j] * revertProgramInvariant<T>(make_pair(avg[j], vdp.second)) / pow(vdp.second, ceil(- log(pw.epsilon()) ));
     res += q.size() ? abs(score) * work[work.size() - 1] : score * work[work.size() - 1];
     sscore += abs(score);
   }
