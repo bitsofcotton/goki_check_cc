@@ -810,7 +810,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           }
         }
       }
-      result = filter<T>(result.setMatrix(ext, 0, data), CLIP);
+      result.setMatrix(ext, 0, data);
     }
     break;
   case BLINK_Y:
