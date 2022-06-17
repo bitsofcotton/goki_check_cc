@@ -392,7 +392,7 @@ int main(int argc, const char* argv[]) {
       std::vector<std::vector<SimpleMatrix<num_t> > > mout;
       int ext(1);
       for( ; ext < in.size() / 3; ext ++)
-        if(exp(sqrt(log(num_t(in.size() / 3 / ext)))) < num_t(int(3))) break;
+        if(exp(sqrt(log(num_t(in.size() / 3 * 2 / ext)))) < num_t(int(3))) break;
       ext --;
       mout.resize(ext, out);
       auto nout(mout);
