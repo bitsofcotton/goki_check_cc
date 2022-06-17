@@ -2568,6 +2568,9 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     auto DD(dft<T>(size));
     auto II(dft<T>(size));
     static const auto Pi(T(int(4)) * atan2(T(int(1)), T(int(1))));
+    // N.B. we should start this loop with i == 1 on integrate(diff) or inverse.
+    //      we also should start with i == 0 on taylor series.
+    //      we select latter one.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -2592,6 +2595,8 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
     //       sum_0^1 - 2 Pi i (theta/n)^2/2 -&gt; Pi)
     // N.B. if we make plain differential with no error on cosine curve,
     //      it causes constant 0 vector.
+    // N.B. if we don't take this real operator, we cannot get better accuracy
+    //      result on taylor series.
     dd =   (dft<T>(- size) * DD).template real<T>();
     ii = - (dft<T>(- size) * II).template real<T>();
     ofstream ocache(file.c_str());

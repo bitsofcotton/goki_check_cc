@@ -260,15 +260,8 @@ public:
     r = p0_at(p0_a6t(p0_a5t(p0_a4t(p0_a3t(p0_a2t(p0_a1t() )) ) )) );
   }
   inline ~P0maxRank() { ; }
-  inline vector<T> next(const T& in) {
-    static const T zero(int(0));
-    static const T one(int(1));
-    vector<T> res;
-    res.reserve(3);
-    res.emplace_back(p.next(in));
-    res.emplace_back(q.next(in));
-    res.emplace_back(r.next(in));
-    return res;
+  inline T next(const T& in) {
+    return (p.next(in) + q.next(in) + r.next(in)) / T(int(3));
   }
   // N.B. on existing taylor series.
   //      if the sampling frequency is not enough, middle range of the original
@@ -336,49 +329,79 @@ public:
   p0_at r;
 };
 
-template <typename T, typename P> class P0ContRand {
+template <typename T, typename P> class P0normalizeStat {
 public:
-  inline P0ContRand() { ; }
-  inline P0ContRand(P&& p, const int& para) {
-    (this->p).resize(para, p);
-    r.resize(para, T(t ^= t));
-    br.resize(para, T(t));
-  }
-  inline ~P0ContRand() { ; }
-  inline T next(const T& in) {
-    t ++;
-    T res(0);
-    for(int i = 0; i < p.size(); i ++) {
-      const auto rr(t & 1 ? r[i] + br[i] : r[i] + r[i]);
-      res += p[i].next(in * rr);
-      if(! (t & 1)) {
-        br[i] = r[i];
-        r[i]  = T((random() & 0x7ffffff) + 1) / T(int(0x8000000));
-      }
-    }
-    return res /= T(int(p.size()));
-  }
-  vector<P> p;
-  vector<T> r;
-  vector<T> br;
-  int t;
-};
-
-template <typename T, typename P> class P0Binary01 {
-public:
-  inline P0Binary01() { ; }
-  inline P0Binary01(P&& p, const int& depth = 1) { (this->p).resize(depth, p); }
-  inline ~P0Binary01() { ; }
-  inline T next(const T& in) {
-    T pw(int(1));
-    T res(int(0));
-    for(int i = 0; i < p.size(); i ++) {
-      res += pw * (p[i].next(T(int(in / pw) & 1) - T(int(1)) / T(int(2))) + T(int(1)) / T(int(2)) );
-      pw /= T(int(2));
-    }
+  inline P0normalizeStat() { ; }
+  inline P0normalizeStat(P&& p) { this->p = p; }
+  inline ~P0normalizeStat() { ; }
+  inline T next(T in) {
+    static const auto L(pow(SimpleMatrix<T>().epsilon(), - T(int(1)) / T(int(8))));
+    static const int recur(max(T(int(1)), exp(sqrt(- log(SimpleMatrix<T>().epsilon()) ))) );
+    for(int i = 0; i <= recur; i ++) in  = logscale(in * L);
+    auto res(p.next(in));
+    for(int i = 0; i <= recur; i ++) res = expscale(res) / L;
     return res;
   }
-  vector<P> p;
+  inline T expscale(const T& in) {
+    return sgn<T>(in) * (exp(abs(in)) - T(int(1)));
+  }
+  inline T logscale(const T& in) {
+    return sgn<T>(in) * log(abs(in) + T(int(1)));
+  }
+  P p;
+};
+
+template <typename T, typename P> class P0midLin {
+public:
+  inline P0midLin() { ; }
+  inline P0midLin(P&& p) { this->p = p; b = T(int(0)); }
+  inline ~P0midLin() { ; }
+  inline T next(const T& in) {
+    p.next(b + in);
+    return p.next(in + in) - (b = in);
+  }
+  T b;
+  P p;
+};
+
+template <typename T> class P0alignStart {
+public:
+  inline P0alignStart() { ; }
+  inline P0alignStart(const int& status) {
+    assert(0 < status);
+    p0.reserve(status);
+    for(int i = 1; i <= status; i ++)
+      p0.emplace_back(P0maxRank<T>(i,
+        max(int(1), int(exp(sqrt(log(T(i)))))) ));
+    p = p0;
+    M = T(t ^= t);
+    b = idFeeder<T>(abs(t -= max(int(1), int(exp(sqrt(log(T(status)))))) ));
+  }
+  inline ~P0alignStart() { ; }
+  inline const T& next(const T& in) {
+    if(t < 0)
+      for(int i = 0; i < p.size(); i ++) p[i].next(in);
+    else {
+      M = p[t].next(in) / T(max(int(1), int(exp(sqrt(log(T(t + 1)))))));
+      for(int i = 0; i < p.size(); i ++) if(t != i) p[i].next(in);
+    }
+    b.next(in);
+    if(t ++ < 0) return M;
+    if(p0.size() <= t) {
+      t ^= t;
+      p  = p0;
+      const auto& bb(b.res);
+      for(int i = 0; i < p.size(); i ++)
+        for(int j = 0; j < bb.size(); j ++)
+          p[i].next(bb[j]);
+    }
+    return M;
+  }
+  T M;
+  int t;
+  idFeeder<T> b;
+  vector<P0maxRank<T> > p0;
+  vector<P0maxRank<T> > p;
 };
 
 #define _P0_

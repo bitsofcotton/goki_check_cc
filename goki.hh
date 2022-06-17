@@ -781,13 +781,13 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     {
       vector<int> avar;
       for(int ext = 0 ; ext < data.rows() / 2; ext ++) {
-        if(data.rows() / (ext + 1) < 4) break;
-        int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 3)))));
+        if(data.rows() / (ext + 1) * 2 < 4) break;
+        int var(exp(sqrt(log(T(data.rows() / (ext + 1) * 2 - 3)))));
         for( ; 0 < var; var --)
-          if(data.rows() / (ext + 1) < 3 + var * 2 ||
-             var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 3 - var * 2))))))
+          if(data.rows() / (ext + 1) * 2 < 3 + var * 2 ||
+             var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) * 2 - 3 - var * 2))))))
             break;
-        if(var <= 0 || data.rows() / (ext + 1) < 3 + var * 2) break;
+        if(var <= 0 || data.rows() / (ext + 1) * 2 < 3 + var * 2) break;
         avar.emplace_back(var);
       }
       const auto& ext(avar.size());
@@ -798,23 +798,17 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
-          P0maxRank<T> pb(data.rows() / (m + 1) - 3 - avar[m] * 2, avar[m]);
-          P0maxRank<T> pf(data.rows() / (m + 1) - 3 - avar[m] * 2, avar[m]);
-          for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
-            auto back(pb.next((data((data.rows() / (m + 1) - kk) * (m + 1), k) -
-                      data((data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
-                      T(int(256)) ));
-            result(ext - m - 1, k) = (back[0] + back[1] + back[2]) / T(int(3 * 256));
-            auto forw(pf.next((data(data.rows() - 1 - (data.rows() / (m + 1) - kk) * (m + 1), k) -
-                      data(data.rows() - 1 - (data.rows() / (m + 1) - kk - 1) * (m + 1), k)) *
-                      T(int(256)) ));
-            result(m - ext + result.rows(), k) = (forw[0] + forw[1] + forw[2]) / T(int(3 * 256));
+          P0midLin<T, P0maxRank<T> > pb(P0maxRank<T>(data.rows() / (m + 1) * 2 - 3 - avar[m], avar[m]) );
+          P0midLin<T, P0maxRank<T> > pf(P0maxRank<T>(data.rows() / (m + 1) * 2 - 3 - avar[m], avar[m]) );
+          // P0normalizeStat<T, ...> causes unstable result on medium accuracy.
+          for(int kk = 1; kk <= data.rows() / (m + 1); kk ++) {
+            result(ext - m - 1, k) =
+              pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k));
+            result(m - ext + result.rows(), k) =
+              pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk)
+                           * (m + 1), k));
           }
         }
-      }
-      for(int k = 0; k < ext; k ++) {
-        result.row(ext - k - 1) += data.row(0);
-        result.row(k - ext + result.rows()) += data.row(data.rows() - 1);
       }
       result = filter<T>(result.setMatrix(ext, 0, data), CLIP);
     }
