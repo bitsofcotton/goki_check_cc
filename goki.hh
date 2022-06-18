@@ -781,13 +781,13 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     {
       vector<int> avar;
       for(int ext = 0 ; ext < data.rows() / 2; ext ++) {
-        if(data.rows() / (ext + 1) * 2 < 4) break;
-        int var(exp(sqrt(log(T(data.rows() / (ext + 1) * 2 - 3)))));
+        if(data.rows() / (ext + 1) < 4) break;
+        int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 3)))));
         for( ; 0 < var; var --)
-          if(data.rows() / (ext + 1) * 2 < 3 + var * 2 ||
-             var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) * 2 - 3 - var * 2))))))
+          if(data.rows() / (ext + 1) < 3 + var * 2 ||
+             var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 3 - var * 2))))))
             break;
-        if(var <= 0 || data.rows() / (ext + 1) * 2 < 3 + var * 2) break;
+        if(var <= 0 || data.rows() / (ext + 1) < 3 + var * 2) break;
         avar.emplace_back(var);
       }
       const auto& ext(avar.size());
@@ -798,19 +798,25 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
-          P0midLin<T, P0maxRank<T> > pb(P0maxRank<T>(data.rows() / (m + 1) * 2 - 3 - avar[m], avar[m]) );
-          P0midLin<T, P0maxRank<T> > pf(P0maxRank<T>(data.rows() / (m + 1) * 2 - 3 - avar[m], avar[m]) );
-          // P0normalizeStat<T, ...> causes unstable result on medium accuracy.
-          for(int kk = 1; kk <= data.rows() / (m + 1); kk ++) {
-            result(ext - m - 1, k) =
-              pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k));
-            result(m - ext + result.rows(), k) =
-              pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk)
-                           * (m + 1), k));
-          }
+          const auto d(data.rows() / (m + 1) - 3);
+          PthenQ<T, P0normalizeStat<T, P0midLin<T, P0maxRank<T> > >, P0midLin<T, P0maxRank<T> > > pb(P0normalizeStat<T, P0midLin<T, P0maxRank<T> > >(P0midLin<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m]))), P0midLin<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m])) );
+          PthenQ<T, P0normalizeStat<T, P0midLin<T, P0maxRank<T> > >, P0midLin<T, P0maxRank<T> > > pf(P0normalizeStat<T, P0midLin<T, P0maxRank<T> > >(P0midLin<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m]))), P0midLin<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m])) );
+          for(int sute = 0; sute < 2; sute ++)
+            for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
+              result(ext - m - 1, k) =
+                pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k) -
+                        data((data.rows() / (m + 1) -  kk) * (m + 1), k) );
+              result(m - ext + result.rows(), k) =
+                pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - (kk + 1))
+                             * (m + 1), k) -
+                        data(data.rows() - 1 - (data.rows() / (m + 1) -  kk)
+                             * (m + 1), k) );
+            }
         }
+        result.row(ext - m - 1) += data.row(0);
+        result.row(m - ext + result.rows()) += data.row(data.rows() - 1);
       }
-      result = filter<T>(result.setMatrix(ext, 0, data * T(int(16)) ) / T(int(16)), CLIP);
+      result = filter<T>(result.setMatrix(ext, 0, data), CLIP);
     }
     break;
   case BLINK_Y:
