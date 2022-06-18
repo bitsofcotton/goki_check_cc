@@ -380,20 +380,17 @@ public:
   vector<P0maxRank<T> > p;
 };
 
-template <typename T, typename P, typename Q> class PthenQ {
+template <typename T, typename P, typename Q> class PorQ {
 public:
-  inline PthenQ() { ; }
-  inline PthenQ(P&& p, Q&& q) { this->p = p; this->q = q; M = Mx = T(int(0)); }
-  inline ~PthenQ() { ; }
+  inline PorQ() { ; }
+  inline PorQ(P&& p, Q&& q) { this->p = p; this->q = q; Mx = T(int(0)); }
+  inline ~PorQ() { ; }
   inline T next(const T& in) {
     Mx = max(Mx, abs(in) * T(int(2)));
-    auto res(max(- Mx, min(Mx, q.next(in * M))));
-    M = max(- Mx, min(Mx, p.next(in)));
-    return res *= M;
+    return (max(- Mx, min(Mx, p.next(in))) + max(- Mx, min(Mx, q.next(in)))) / T(int(2));
   }
   P p;
   Q q;
-  T M;
   T Mx;
 };
 
