@@ -351,31 +351,17 @@ public:
   P p;
 };
 
-template <typename T, typename P> class P0midLin {
-public:
-  inline P0midLin() { ; }
-  inline P0midLin(P&& p) { this->p = p; b = T(int(0)); }
-  inline ~P0midLin() { ; }
-  inline T next(const T& in) {
-    p.next(b + in);
-    return p.next(in + in) - (b = in);
-  }
-  T b;
-  P p;
-};
-
 template <typename T> class P0alignStart {
 public:
   inline P0alignStart() { ; }
   inline P0alignStart(const int& status) {
     assert(0 < status);
-    p0.reserve(status);
+    p.reserve(status);
     for(int i = 1; i <= status; i ++)
-      p0.emplace_back(P0maxRank<T>(i,
+      p.emplace_back(P0maxRank<T>(i,
         max(int(1), int(exp(sqrt(log(T(i)))))) ));
-    p = p0;
-    M = T(t ^= t);
-    b = idFeeder<T>(abs(t -= max(int(1), int(exp(sqrt(log(T(status)))))) ));
+    M  = T(t ^= t);
+    t -= max(int(1), int(exp(sqrt(log(T(status)))))) * 3;
   }
   inline ~P0alignStart() { ; }
   inline const T& next(const T& in) {
@@ -385,22 +371,12 @@ public:
       M = p[t].next(in) / T(max(int(1), int(exp(sqrt(log(T(t + 1)))))));
       for(int i = 0; i < p.size(); i ++) if(t != i) p[i].next(in);
     }
-    b.next(in);
     if(t ++ < 0) return M;
-    if(p0.size() <= t) {
-      t ^= t;
-      p  = p0;
-      const auto& bb(b.res);
-      for(int i = 0; i < p.size(); i ++)
-        for(int j = 0; j < bb.size(); j ++)
-          p[i].next(bb[j]);
-    }
+    if(p.size() <= t) t ^= t;
     return M;
   }
   T M;
   int t;
-  idFeeder<T> b;
-  vector<P0maxRank<T> > p0;
   vector<P0maxRank<T> > p;
 };
 

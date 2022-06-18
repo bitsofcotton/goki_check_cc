@@ -799,8 +799,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
           const auto d(data.rows() / (m + 1) - 3);
-          PthenQ<T, P0normalizeStat<T, P0midLin<T, P0maxRank<T> > >, P0midLin<T, P0maxRank<T> > > pb(P0normalizeStat<T, P0midLin<T, P0maxRank<T> > >(P0midLin<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m]))), P0midLin<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m])) );
-          PthenQ<T, P0normalizeStat<T, P0midLin<T, P0maxRank<T> > >, P0midLin<T, P0maxRank<T> > > pf(P0normalizeStat<T, P0midLin<T, P0maxRank<T> > >(P0midLin<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m]))), P0midLin<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m])) );
+          PthenQ<T, P0normalizeStat<T, P0maxRank<T> >, P0maxRank<T> > pb(P0normalizeStat<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m])), P0maxRank<T>(d, avar[m]) );
+          PthenQ<T, P0normalizeStat<T, P0maxRank<T> >, P0maxRank<T> > pf(P0normalizeStat<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m])), P0maxRank<T>(d, avar[m]) );
           for(int sute = 0; sute < 2; sute ++)
             for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
               result(ext - m - 1, k) =
