@@ -389,7 +389,7 @@ public:
     Mx = max(Mx, abs(in) * T(int(2)));
     auto res(max(- Mx, min(Mx, q.next(in * M))));
     M = max(- Mx, min(Mx, p.next(in)));
-    return res;
+    return res *= M;
   }
   P p;
   Q q;
