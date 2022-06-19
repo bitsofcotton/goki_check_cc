@@ -106,13 +106,6 @@ template <typename T> const SimpleVector<T>& mscache(const int& size) {
   return ms[size] = minsq<T>(size);
 }
 
-template <typename T> class Pnull {
-public:
-  inline Pnull() { ; }
-  inline ~Pnull() { ; };
-  inline T next(const T& in) { return T(int(0)); }
-};
-
 template <typename T, typename feeder> class P0 {
 public:
   inline P0() { ; }
@@ -122,6 +115,8 @@ public:
   }
   inline ~P0() { ; };
   inline T next(const T& in) {
+    static const T zero(int(0));
+    if(! step) return zero;
     const auto& ff(f.next(in));
 /*
     if(f.full) {
@@ -132,7 +127,7 @@ public:
       std::cerr << sqrt(avg.dot(avg) / ff.dot(ff)) << std::endl;
     }
 */
-    return f.full ? pnextcache<T>(ff.size(), step).dot(ff) : T(int(0));
+    return f.full ? pnextcache<T>(ff.size(), step).dot(ff) : ff[ff.size() - 1];
   }
   int step;
   feeder f;
@@ -250,16 +245,16 @@ public:
   P p;
 };
 
-template <typename T> class P0maxRank {
+template <typename T> class P0maxRank0 {
 public:
-  inline P0maxRank() { ; }
-  inline P0maxRank(const int& status, const int& var) {
+  inline P0maxRank0() { ; }
+  inline P0maxRank0(const int& status, const int& var) {
     assert(0 < status && 0 < var);
-    p = p0_st(p0_s6t(p0_s5t(p0_s4t(p0_s3t(p0_s2t(p0_1t(p0_0t(status, var), var) )) ) )) );
-    q = p0_it(p0_i6t(p0_i5t(p0_i4t(p0_i3t(p0_i2t(p0_i1t(p0_i0t(p0_0t(status, var) ), var) )) ) )) );
-    r = p0_at(p0_a6t(p0_a5t(p0_a4t(p0_a3t(p0_a2t(p0_a1t() )) ) )) );
+    p = p0_st(p0_0t(status, var), var);
+    q = p0_it(p0_i0t(p0_0t(status, var)), var);
+    r = p0_at(p0_a0t(p0_0t(0, 0)), var);
   }
-  inline ~P0maxRank() { ; }
+  inline ~P0maxRank0() { ; }
   inline T next(const T& in) {
     return (p.next(in) + q.next(in) + r.next(in)) / T(int(3));
   }
@@ -272,7 +267,29 @@ public:
   //      so we should use sectional measurement for them.
   typedef P0<T, idFeeder<T> > p0_0t;
   // N.B. sectional measurement, also expected value.
-  typedef shrinkMatrix<T, p0_0t> p0_1t;
+  typedef shrinkMatrix<T, p0_0t> p0_st;
+
+  typedef P0inv<T, p0_0t> p0_i0t;
+  typedef shrinkMatrix<T, p0_i0t> p0_it;
+  typedef sumChain<T, p0_0t, true> p0_a0t;
+  typedef shrinkMatrix<T, p0_a0t> p0_at;
+  
+  p0_st p;
+  p0_it q;
+  p0_at r;
+};
+
+template <typename T> class P0maxRank {
+public:
+  inline P0maxRank() { ; }
+  inline P0maxRank(const int& status, int var = - 1) {
+    if(var < 0) var = max(int(1), int(exp(sqrt(log(T(status))))));
+    p = p0_t(p0_5t(p0_4t(p0_3t(p0_2t(p0_1t(p0_0t(status, var) )) )) ));
+  }
+  inline ~P0maxRank() { ; }
+  inline T next(const T& in) {
+    return p.next(in);
+  };
 /*
   // N.B. make information-rich not to associative/commutative.
   //      2 dimension semi-order causes (x, status) from input as sedenion.
@@ -301,32 +318,14 @@ public:
   // N.B. this needs huge memory to run.
 */
   // N.B. plain complex form.
-  typedef northPole<T, p0_1t>  p0_s2t;
-  typedef northPole<T, p0_s2t> p0_s3t;
-  typedef logChain<T, p0_s3t>  p0_s4t;
-  typedef logChain<T, p0_s4t>  p0_s5t;
-  typedef sumChain<T, p0_s5t>  p0_s6t;
-  typedef sumChain<T, p0_s6t, true> p0_st;
-
-  typedef P0inv<T, p0_0t> p0_i0t;
-  typedef shrinkMatrix<T, p0_i0t> p0_i1t;
-  typedef northPole<T, p0_i1t> p0_i2t;
-  typedef northPole<T, p0_i2t> p0_i3t;
-  typedef logChain<T, p0_i3t> p0_i4t;
-  typedef logChain<T, p0_i4t> p0_i5t;
-  typedef sumChain<T, p0_i5t>  p0_i6t;
-  typedef sumChain<T, p0_i6t, true> p0_it;
-
-  typedef sumChain<T, Pnull<T>, true> p0_a1t;
-  typedef northPole<T, p0_a1t>    p0_a2t;
-  typedef northPole<T, p0_a2t>    p0_a3t;
-  typedef logChain<T, p0_a3t>     p0_a4t;
-  typedef logChain<T, p0_a4t>     p0_a5t;
-  typedef sumChain<T, p0_a5t>     p0_a6t;
-  typedef sumChain<T, p0_a6t, true> p0_at;
-  p0_st p;
-  p0_it q;
-  p0_at r;
+  typedef P0maxRank0<T> p0_0t;
+  typedef northPole<T, p0_0t>  p0_1t;
+  typedef northPole<T, p0_1t> p0_2t;
+  typedef logChain<T, p0_2t>  p0_3t;
+  typedef logChain<T, p0_3t>  p0_4t;
+  typedef sumChain<T, p0_4t>  p0_5t;
+  typedef sumChain<T, p0_5t, true> p0_t;
+  p0_t p;
 };
 
 template <typename T, typename P> class P0normalizeStat {
@@ -335,11 +334,14 @@ public:
   inline P0normalizeStat(P&& p) { this->p = p; }
   inline ~P0normalizeStat() { ; }
   inline T next(T in) {
-    static const auto L(pow(SimpleMatrix<T>().epsilon(), - T(int(1)) / T(int(8))));
-    static const int recur(max(T(int(1)), exp(sqrt(- log(SimpleMatrix<T>().epsilon()) ))) );
+    static const T    zero(int(0));
+    static const auto L(- log(SimpleMatrix<T>().epsilon()) );
+    static const int  recur(max(T(int(1)), sqrt(- log(SimpleMatrix<T>().epsilon()) )) );
     for(int i = 0; i <= recur; i ++) in  = logscale(in * L);
     auto res(p.next(in));
-    for(int i = 0; i <= recur; i ++) res = expscale(res) / L;
+    for(int i = 0; i <= recur; i ++) res = expscale(res / L);
+    // XXX: from somehow, this slips with some clang, -O0 can avoid them.
+    if(! isfinite(res)) res = zero;
     return res;
   }
   inline T expscale(const T& in) {
@@ -349,49 +351,6 @@ public:
     return sgn<T>(in) * log(abs(in) + T(int(1)));
   }
   P p;
-};
-
-template <typename T> class P0alignStart {
-public:
-  inline P0alignStart() { ; }
-  inline P0alignStart(const int& status) {
-    assert(0 < status);
-    p.reserve(status);
-    for(int i = 1; i <= status; i ++)
-      p.emplace_back(P0maxRank<T>(i,
-        max(int(1), int(exp(sqrt(log(T(i)))))) ));
-    M  = T(t ^= t);
-    t -= max(int(1), int(exp(sqrt(log(T(status)))))) * 3;
-  }
-  inline ~P0alignStart() { ; }
-  inline const T& next(const T& in) {
-    if(t < 0)
-      for(int i = 0; i < p.size(); i ++) p[i].next(in);
-    else {
-      M = p[t].next(in) / T(max(int(1), int(exp(sqrt(log(T(t + 1)))))));
-      for(int i = 0; i < p.size(); i ++) if(t != i) p[i].next(in);
-    }
-    if(t ++ < 0) return M;
-    if(p.size() <= t) t ^= t;
-    return M;
-  }
-  T M;
-  int t;
-  vector<P0maxRank<T> > p;
-};
-
-template <typename T, typename P, typename Q> class PorQ {
-public:
-  inline PorQ() { ; }
-  inline PorQ(P&& p, Q&& q) { this->p = p; this->q = q; Mx = T(int(0)); }
-  inline ~PorQ() { ; }
-  inline T next(const T& in) {
-    Mx = max(Mx, abs(in) * T(int(2)));
-    return (max(- Mx, min(Mx, p.next(in))) + max(- Mx, min(Mx, q.next(in)))) / T(int(2));
-  }
-  P p;
-  Q q;
-  T Mx;
 };
 
 #define _P0_

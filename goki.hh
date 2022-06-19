@@ -779,7 +779,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      vector<int> avar;
+      vector<P0normalizeStat<T, P0maxRank<T> > > p0;
       for(int ext = 0 ; ext < data.rows() / 2; ext ++) {
         if(data.rows() / (ext + 1) < 4) break;
         int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 3)))));
@@ -788,9 +788,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
              var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 3 - var * 2))))))
             break;
         if(var <= 0 || data.rows() / (ext + 1) < 3 + var * 2) break;
-        avar.emplace_back(var);
+        p0.emplace_back(P0normalizeStat<T, P0maxRank<T> >(P0maxRank<T>(data.rows() / (ext + 1) - 3 - var * 2)));
       }
-      const auto& ext(avar.size());
+      const auto& ext(p0.size());
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
 #if defined(_OPENMP)
@@ -798,20 +798,18 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #endif
       for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
-          const auto d(data.rows() / (m + 1) - 3);
-          PorQ<T, P0normalizeStat<T, P0maxRank<T> >, P0maxRank<T> > pb(P0normalizeStat<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m])), P0maxRank<T>(d, avar[m]) );
-          PorQ<T, P0normalizeStat<T, P0maxRank<T> >, P0maxRank<T> > pf(P0normalizeStat<T, P0maxRank<T> >(P0maxRank<T>(d, avar[m])), P0maxRank<T>(d, avar[m]) );
-          for(int sute = 0; sute < 2; sute ++)
-            for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
-              result(ext - m - 1, k) =
-                pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k) -
-                        data((data.rows() / (m + 1) -  kk) * (m + 1), k) );
-              result(m - ext + result.rows(), k) =
-                pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - (kk + 1))
-                             * (m + 1), k) -
-                        data(data.rows() - 1 - (data.rows() / (m + 1) -  kk)
-                             * (m + 1), k) );
-            }
+          auto pf(p0[m]);
+          auto pb(p0[m]);
+          for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
+            result(ext - m - 1, k) =
+              pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k) -
+                      data((data.rows() / (m + 1) -  kk) * (m + 1), k) );
+            result(m - ext + result.rows(), k) =
+              pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - (kk + 1))
+                           * (m + 1), k) -
+                      data(data.rows() - 1 - (data.rows() / (m + 1) -  kk)
+                           * (m + 1), k) );
+          }
         }
         result.row(ext - m - 1) += data.row(0);
         result.row(m - ext + result.rows()) += data.row(data.rows() - 1);

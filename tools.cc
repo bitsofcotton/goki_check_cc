@@ -114,7 +114,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], EXTEND_BOTH, recur);
+        data[i] = filter<num_t>(data[i], EXTEND_BOTH);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
@@ -389,19 +389,18 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "pred") == 0) {
       for(int i = 0; i < 3; i ++)
         out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      std::vector<std::vector<SimpleMatrix<num_t> > > mout;
-      int ext(1);
-      for( ; ext < in.size() / 3; ext ++)
-        if(exp(sqrt(log(num_t(in.size() / 3 * 2 / ext)))) < num_t(int(3))) break;
-      ext --;
-      mout.resize(ext, out);
-      auto nout(mout);
+      std::vector<std::vector<SimpleMatrix<num_t> > > mout, nout;
       for(int i = 0; i < out.size(); i ++)
         for(int j = 0; j < out[i].rows(); j ++) {
           SimpleMatrix<num_t> m(in.size(), out[i].cols());
           for(int k = 0; k < in.size(); k ++)
             m.row(k) = std::move(in[k][i].row(j));
-          auto ext(filter<num_t>(m, EXTEND_Y, 4));
+          auto ext(filter<num_t>(m, EXTEND_Y));
+          if(! mout.size()) {
+            const auto szext((ext.rows() - m.rows()) / 2);
+            mout.resize(szext, out);
+            nout.resize(szext, out);
+          }
           for(int k = 0; k < mout.size(); k ++) {
             mout[k][i].row(j) = std::move(ext.row(k));
             nout[k][i].row(j) = std::move(ext.row(ext.rows() - 1 - k));
