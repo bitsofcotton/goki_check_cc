@@ -2,8 +2,6 @@ CXX=	clang++
 #CXX=	/usr/local/bin/eg++
 
 # compiler flags.
-#CXXFLAGS+=	-O0 -mtune=native -gfull
-# XXX:
 CXXFLAGS+=	-Ofast -mtune=native -gfull
 #CXXFLAGS+=	-Oz -mtune=native -gfull
 MPFLAGS=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
@@ -19,6 +17,8 @@ clean:
 all:	gokibin gokibin32
 gokibin:
 	${CXX} ${CXXFLAGS} -static -o gokibin tools.cc
+gokibinO0:
+	${CXX} ${CXXFLAGS} -static -O0 -o gokibinO0 tools.cc
 gokibin32:
 	${CXX} ${CXXFLAGS} -static -D_FLOAT_BITS_=32 -o gokibin32 tools.cc
 gokibin64:

@@ -220,7 +220,7 @@ template <typename T> bool saveobj(const vector<SimpleVector<T> >& data, const T
     for(int i = 0; i < data.size(); i ++)
       lz = min(data[i][2], lz);
     for(int i = 0; i < data.size(); i ++)
-      output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] << endl;
+      output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
     for(int i = 0; i < data.size(); i ++)
       output << "vt " << data[i][1] / T(Mh) / T(2) << " " << T(1) - data[i][0] / T(Mw) / T(2) << endl;
     // xchg with clockwise/counter clockwise.
@@ -257,6 +257,7 @@ template <typename T> bool loadobj(vector<SimpleVector<T> >& data, vector<Simple
         sub >> buf[0];
         sub >> buf[2];
         buf[0] = - buf[0];
+        buf[2] = - buf[2];
         data.emplace_back(move(buf));
       } else if(i + 1 < work.size() && work[i] == 'f' && work[i + 1] == ' ') {
         stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
@@ -774,12 +775,12 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
           }
       }
-      result = filter<T>(result, INTEG_BOTH);
+      result = - filter<T>(result, INTEG_BOTH);
     }
     break;
   case EXTEND_Y:
     {
-      vector<P0normalizeStat<T, P0maxRank<T> > > p0;
+      vector<P0maxRank<T> > p0;
       for(int ext = 0 ; ext < data.rows() / 2; ext ++) {
         if(data.rows() / (ext + 1) < 4) break;
         int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 3)))));
@@ -788,7 +789,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
              var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 3 - var * 2))))))
             break;
         if(var <= 0 || data.rows() / (ext + 1) < 3 + var * 2) break;
-        p0.emplace_back(P0normalizeStat<T, P0maxRank<T> >(P0maxRank<T>(data.rows() / (ext + 1) - 3 - var * 2)));
+        p0.emplace_back(P0maxRank<T>(data.rows() / (ext + 1) - 3 - var * 2));
       }
       const auto& ext(p0.size());
       result.resize(data.rows() + 2 * ext, data.cols());
@@ -1494,12 +1495,12 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
           auto  camera((p0 + p1 + p2) / T(3));
     camera[2] = T(0);
     const auto t((tri.z - tri.n.dot(camera)) / (tri.n.dot(vz)));
-    zbuf[j].first  = camera[2] + vz[2] * t;
+    zbuf[j].first  = - (camera[2] + vz[2] * t);
     // XXX: clang++ bug, isfinite after substituting nan immediately.
     if(! isfinite(zbuf[j].first)) zbuf[j].first = depth;
     zbuf[j].second = move(tri);
   }
-  sort(zbuf.begin(), zbuf.end(), lessf<pair<T, triangles_t<T>> >);
+  sort(zbuf.begin(), zbuf.end(), lessf<pair<T, triangles_t<T> > >);
   int i;
   for(i = 0; i < zbuf.size() && zbuf[i].first < depth; i ++) ;
   for( ; i < zbuf.size(); i ++) {

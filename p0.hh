@@ -328,31 +328,6 @@ public:
   p0_t p;
 };
 
-template <typename T, typename P> class P0normalizeStat {
-public:
-  inline P0normalizeStat() { ; }
-  inline P0normalizeStat(P&& p) { this->p = p; }
-  inline ~P0normalizeStat() { ; }
-  inline T next(T in) {
-    static const T    zero(int(0));
-    static const auto L(- log(SimpleMatrix<T>().epsilon()) );
-    static const int  recur(max(T(int(1)), sqrt(- log(SimpleMatrix<T>().epsilon()) )) );
-    for(int i = 0; i <= recur; i ++) in  = logscale(in * L);
-    auto res(p.next(in));
-    for(int i = 0; i <= recur; i ++) res = expscale(res / L);
-    // XXX: from somehow, this slips with some clang, -O0 can avoid them.
-    if(! isfinite(res)) res = zero;
-    return res;
-  }
-  inline T expscale(const T& in) {
-    return sgn<T>(in) * (exp(abs(in)) - T(int(1)));
-  }
-  inline T logscale(const T& in) {
-    return sgn<T>(in) * log(abs(in) + T(int(1)));
-  }
-  P p;
-};
-
 #define _P0_
 #endif
 
