@@ -307,14 +307,6 @@ public:
   typedef sumChain<T, p0_9t>  p0_10t;
   // N.B. we take average as origin of input.
   typedef sumChain<T, p0_10t, true> p0_t;
-  // N.B. if original sample lebesgue integrate is not enough continuous,
-  //      imitate original function by some of sample points,
-  //      but move origin point to average one, so a little better
-  //      original function estimation.
-  // N.B. frequency space *= 2 causes nyquist frequency ok.
-  // N.B. but this is equivalent from jammer on PRNG, and probe on some
-  //      measurable phenomenon.
-  //typedef P0Expect<T, p0_11t> p0_t;
   // N.B. this needs huge memory to run.
 */
   // N.B. plain complex form.
