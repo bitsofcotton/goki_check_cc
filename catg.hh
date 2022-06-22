@@ -186,7 +186,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
     for(int i = 0; i < result[t].first.size(); i ++) {
       const auto score(catg.score(result[t].first[i]));
       (score < T(int(0)) ? left : right).emplace_back(move(result[t].first[i]));
-      (score < T(int(0)) ? lidx : ridx).emplace_back(result[t].second[i]);
+      (score < T(int(0)) ? lidx : ridx).emplace_back(move(result[t].second[i]));
     }
     if(left.size() && right.size()) {
       if(left.size() < right.size()) {
@@ -284,8 +284,8 @@ private:
 
 template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& in) {
   static const T zero(int(0));
-  const auto d(f.next(in));
-        auto M(zero);
+  const auto& d(f.next(in));
+        auto  M(zero);
   for(int i = 0; i < d.size(); i ++) {
     if(! isfinite(d[i])) return zero;
     M = max(M, abs(d[i]));

@@ -252,11 +252,10 @@ public:
     assert(0 < status && 0 < var);
     p = p0_st(p0_0t(status, var), var);
     q = p0_it(p0_i0t(p0_0t(status, var)), var);
-    r = p0_at(p0_a0t(p0_0t(0, 0)), var);
   }
   inline ~P0maxRank0() { ; }
   inline T next(const T& in) {
-    return (p.next(in) + q.next(in) + r.next(in)) / T(int(3));
+    return (p.next(in) + q.next(in)) / T(int(2));
   }
   // N.B. on existing taylor series.
   //      if the sampling frequency is not enough, middle range of the original
@@ -271,12 +270,9 @@ public:
 
   typedef P0inv<T, p0_0t> p0_i0t;
   typedef shrinkMatrix<T, p0_i0t> p0_it;
-  typedef sumChain<T, p0_0t, true> p0_a0t;
-  typedef shrinkMatrix<T, p0_a0t> p0_at;
   
   p0_st p;
   p0_it q;
-  p0_at r;
 };
 
 template <typename T> class P0maxRank {
