@@ -178,8 +178,11 @@ public:
     auto ff(dftcache<T>(fn.size()) * fn.template cast<complex<T> >());
     assert(ff.size() == p.size() && p.size() == q.size());
     for(int i = 0; i < ff.size(); i ++)
+      ff[i] = complex<T>(p[i].next(ff[i].real()), q[i].next(ff[i].imag()));
+/*
       if(! (ff[i].real() == T(int(0)) && ff[i].imag() == T(int(0)) ) )
         ff[i] = abs(p[i].next(abs(ff[i]))) * exp(complex<T>(T(int(0)), q[i].next(arg(ff[i]))));
+*/
     return dftcache<T>(- fn.size()).row(fn.size() - 1).dot(ff).real();
   }
   vector<P> p;
@@ -289,12 +292,11 @@ public:
 /*
   // N.B. make information-rich not to associative/commutative.
   //      2 dimension semi-order causes (x, status) from input as sedenion.
+  // N.B. we need only once P0DFT in general because associative condition
+  //      is necessary for input ordering.
   typedef P0DFT<T, p0_1t, idFeeder<T> > p0_2t;
-  typedef P0DFT<T, p0_2t, idFeeder<T> > p0_3t;
-  typedef P0DFT<T, p0_3t, idFeeder<T> > p0_4t;
-  typedef P0DFT<T, p0_4t, idFeeder<T> > p0_5t;
   // N.B. on any R to R into reasonable taylor.
-  typedef northPole<T, p0_5t> p0_6t;
+  typedef northPole<T, p0_2t> p0_6t;
   typedef northPole<T, p0_6t> p0_7t;
   // N.B. we treat periodical part as non aligned complex arg part.
   typedef logChain<T, p0_7t>  p0_8t;
