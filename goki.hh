@@ -40,6 +40,47 @@ using std::ostream;
 using std::swap;
 using std::binary_search;
 
+template <typename T> class P {
+public:
+  inline P() { ; }
+  inline P(const int& status) {
+    assert(0 < status);
+    const auto var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
+    const auto var1(max(T(int(2)), pow(T(status), T(int(1)) / T(int(3)))));
+    const auto var2(max(T(int(2)), pow(T(status), T(int(1)) / T(int(4)))));
+    p0 = P0maxRank<T>(status);
+    p1 = shrinkMatrix<T, P1I<T, idFeeder<T> > >(P1I<T, idFeeder<T> >(status, var1, var1), var1);
+    p2 = shrinkMatrix<T, P012L<T, idFeeder<T> > >(P012L<T, idFeeder<T> >(status, var2, var2), var2);
+    const int qstatus(sqrt(num_t(status)));
+    q  = idFeeder<T>(qstatus);
+    q0 = SimpleVector<T>(qstatus + 1).O();
+  }
+  inline ~P() { ; }
+  inline T next(T d) {
+    static const T one(int(1));
+    auto M(max(- one, min(one, p0.next(d))) );
+    M += max(- one, min(one, p1.next(d)));
+    M += max(- one, min(one, p2.next(d)));
+    {
+      auto qm(makeProgramInvariant<T>(q.next(d)));
+      q0 += std::move(qm.first) * pow(qm.second, ceil(- log(SimpleMatrix<T>().epsilon())));
+      auto qq(q);
+      auto qqm(makeProgramInvariant<T>(qq.next(d)));
+      M += max(- one, min(one, revertProgramInvariant<T>(make_pair(
+        - (q0.dot(qqm.first) - q0[q0.size() - 2] *
+             qqm.first[qqm.first.size() - 2]) / q0[q0.size() - 2],
+           qqm.second)) /
+          pow(qqm.second, ceil(- log(SimpleMatrix<T>().epsilon()) )) ));
+    }
+    return M /= num_t(int(4));
+  }
+  P0maxRank<T> p0;
+  shrinkMatrix<T, P1I<T, idFeeder<T> > > p1;
+  shrinkMatrix<T, P012L<T, idFeeder<T> > > p2;
+  idFeeder<T> q;
+  SimpleVector<T> q0;
+};
+
 template <typename T> static inline bool less0(const T& x, const T& y) {
   return x.first[0] < y.first[0] || (x.first[0] == y.first[0] && x.first[1] < y.first[1]);
 }
@@ -780,7 +821,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case EXTEND_Y:
     {
-      vector<P0maxRank<T> > p0;
+      vector<P<T> > p0;
       for(int ext = 0 ; ext < data.rows() / 2; ext ++) {
         if(data.rows() / (ext + 1) < 4) break;
         int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 3)))));
@@ -789,7 +830,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
              var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 3 - var * 2))))))
             break;
         if(var <= 0 || data.rows() / (ext + 1) < 3 + var * 2) break;
-        p0.emplace_back(P0maxRank<T>(data.rows() / (ext + 1) - 3 - var * 2));
+        p0.emplace_back(P<T>(data.rows() / (ext + 1) - 3 - var * 2));
       }
       const auto& ext(p0.size());
       result.resize(data.rows() + 2 * ext, data.cols());
@@ -801,15 +842,23 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         for(int k = 0; k < data.cols(); k ++) {
           auto pf(p0[m]);
           auto pb(p0[m]);
-          for(int kk = 1; kk < data.rows() / (m + 1); kk ++) {
-            result(ext - m - 1, k) =
-              pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k) -
-                      data((data.rows() / (m + 1) -  kk) * (m + 1), k) );
-            result(m - ext + result.rows(), k) =
-              pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - (kk + 1))
-                           * (m + 1), k) -
-                      data(data.rows() - 1 - (data.rows() / (m + 1) -  kk)
-                           * (m + 1), k) );
+          try {
+            for(int kk = 1; kk < data.rows() / (m + 1); kk ++)
+              result(ext - m - 1, k) =
+                pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k) -
+                        data((data.rows() / (m + 1) -  kk) * (m + 1), k) );
+          } catch(const char* e) {
+            result(ext - m - 1, k) = data(0, k);
+          }
+          try {
+            for(int kk = 1; kk < data.rows() / (m + 1); kk ++)
+              result(m - ext + result.rows(), k) =
+                pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) -
+                             (kk + 1)) * (m + 1), k) -
+                        data(data.rows() - 1 - (data.rows() / (m + 1) -
+                              kk) * (m + 1), k) );
+          } catch(const char* e) {
+            result(m - ext + result.rows(), k) = data(data.rows() - 1, k);
           }
         }
         result.row(ext - m - 1) += data.row(0);

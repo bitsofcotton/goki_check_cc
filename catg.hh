@@ -321,8 +321,9 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
       revertProgramInvariant<T>(make_pair(
         - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1])
         / q[varlen - 1], vdp.second) ) :
-      revertProgramInvariant<T>(make_pair(avg[varlen - 1], vdp.second)) ) /
-      pow(vdp.second, ceil(- log(pw.epsilon()) ));
+      revertProgramInvariant<T>(make_pair(avg[varlen - 1] /=
+        pow(vdp.second, ceil(- log(pw.epsilon()) )),
+        vdp.second)) );
     T score(0);
     for(int j = 0; j < work.size(); j ++)
       score += work[j] * revertProgramInvariant<T>(make_pair(avg[j], vdp.second)) / pow(vdp.second, ceil(- log(pw.epsilon()) ));

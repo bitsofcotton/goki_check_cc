@@ -2034,7 +2034,7 @@ template <typename T> inline T SimpleMatrix<T>::determinant(const bool& nonzero)
 }
 
 template <typename T> inline SimpleVector<T> SimpleMatrix<T>::solve(SimpleVector<T> other) const {
-  assert(0 <= entity.size() && 0 <= ecols && entity.size() == ecols && entity.size() == other.size());
+  if(! (0 <= entity.size() && 0 <= ecols && entity.size() == ecols && entity.size() == other.size()) ) throw "SimpleMatrix<T>::Solve error";
   auto work(*this);
   for(int i = 0; i < entity.size(); i ++) {
     int xchg = i;
