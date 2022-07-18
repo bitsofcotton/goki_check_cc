@@ -43,7 +43,7 @@ void usage(const char* en) {
   cout << en << " (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
   cout << en << " (pred|lenl|composite|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << en << " obj   <gather_pixels> <ratio> <input.ppm> <output.obj>" << endl;
+  cout << en << " obj   <ratio> <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
