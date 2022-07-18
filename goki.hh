@@ -45,12 +45,12 @@ public:
   inline P() { ; }
   inline P(const int& status) {
     assert(0 < status);
-    // const int var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
+    const int var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
     const int var1(max(T(int(2)), pow(T(status), T(int(1)) / T(int(3)))));
     const int var2(max(T(int(2)), pow(T(status), T(int(1)) / T(int(4)))));
-    p0 = P0maxRank<T>(status);
-    p1 = shrinkMatrix<T, P1I<T, idFeeder<T> > >(P1I<T, idFeeder<T> >(status - 2 - var1 * 2, var1, var1), var1);
-    p2 = shrinkMatrix<T, P012L<T, idFeeder<T> > >(P012L<T, idFeeder<T> >(status - 2 - var2 * 2, var2, var2), var2);
+    p0 = P0maxRank<T>(status - var0 * 2);
+    p1 = shrinkMatrix<T, P1I<T, idFeeder<T> > >(P1I<T, idFeeder<T> >(status - var1 * 2, var1, var1), var1);
+    p2 = shrinkMatrix<T, P012L<T, idFeeder<T> > >(P012L<T, idFeeder<T> >(status - var2 * 2, var2, var2), var2);
     const int qstatus(sqrt(num_t(status)));
     q  = idFeeder<T>(qstatus);
     q0 = SimpleVector<T>(qstatus + 1).O();
