@@ -823,14 +823,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     {
       vector<P<T> > p0;
       for(int ext = 0 ; ext < data.rows() / 2; ext ++) {
-        if(data.rows() / (ext + 1) < 4) break;
-        int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 2)))));
-        for( ; 0 < var; var --)
-          if(data.rows() / (ext + 1) < 2 + var * 2 ||
-             var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 2 - var * 2))))))
-            break;
-        if(var <= 0 || data.rows() / (ext + 1) < 2 + var * 2) break;
-        p0.emplace_back(P<T>(data.rows() / (ext + 1)));
+        const int status(data.rows() / (ext + 1) - 1);
+        const int var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
+        if(status < var0 * 2 + 4) break;
+        p0.emplace_back(P<T>(status));
       }
       const auto& ext(p0.size());
       result.resize(data.rows() + 2 * ext, data.cols());
