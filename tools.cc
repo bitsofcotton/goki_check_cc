@@ -244,25 +244,20 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
-    if(argc < 6) {
+    if(argc < 5) {
       usage(argv[0]);
       return - 1;
     }
-    const auto  vbox(atoi(argv[2]));
-    const num_t ratio(std::atof(argv[3]));
-    if(!loadp2or3<num_t>(data, argv[4]))
+    const num_t ratio(std::atof(argv[2]));
+    if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
-    auto points(vbox < 0 ? getHesseVec<num_t>(
-                             getTiltAfterBump<num_t>(rgb2d<num_t>(data)),
-                                                     abs(vbox))
-                         : getTileVec<num_t>(
-                             getTiltAfterBump<num_t>(rgb2d<num_t>(data)),
-                                                     abs(vbox)));
+    auto points(getTileVec<num_t>(
+                  getTiltAfterBump<num_t>(rgb2d<num_t>(data))));
     for(int i = 0; i < points.size(); i ++)
       points[i] *= ratio;
     saveobj<num_t>(points, ratio * num_t(data[0].rows()),
                            ratio * num_t(data[0].cols()),
-                   mesh2<num_t>(points), argv[5]);
+                   mesh2<num_t>(points), argv[4]);
     saveMTL<num_t>(argv[5], (string(argv[5]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {

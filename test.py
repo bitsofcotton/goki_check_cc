@@ -6,7 +6,7 @@ import subprocess
 
 argv   = sys.argv
 pixels = 4
-psi    = 1. / 3.
+psi    = 7. / 16.
 rot    = 0
 
 if(len(argv) < 4):
@@ -160,22 +160,11 @@ else:
       subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-normalize", "+contrast", root + "-sharpen-minus-normalize.png"])
     elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "integraw" or argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "obj" or argv[2] == "-obj"):
-      if(pixels < 0):
-        w = h = 0
-        with open(root + "-bump0.ppm") as f:
-          f.readline()
-          a = f.readline().split(" ")
-          w = int(a[0])
-          h = int(a[1])
-        p = int(pow(w * h / abs(pixels), .5))
-        subprocess.call(["convert", root + "-bump0.ppm", "-blur", str(p) + "x" + str(p), "-equalize", "-compress", "none", root + "-bump.ppm"])
-      else:
-        subprocess.call(["convert", root + "-bump0.ppm", "-blur", str(abs(int(pixels))) + "x" + str(abs(int(pixels))), "-equalize", "-compress", "none", root + "-bump.ppm"])
-      if(argv[2] == "obj"):
-        subprocess.call([argv[1], "obj", str(int(pixels)),  "1", root + "-bump.ppm", root + ".obj"])
-      else:
-        subprocess.call([argv[1], "obj", str(int(pixels)), "-1", root + "-bump.ppm", root + ".obj"])
+    elif(argv[2] == "obj"):
+      subprocess.call(["convert", root + "-bump0.ppm", "-blur", str(pixels) + "x" + str(pixels), "-normalize", "-compress", "none", root + "-bump.ppm"])
+      subprocess.call([argv[1], "obj", "1", root + "-bump.ppm", root + ".obj"])
+      subprocess.call([argv[1], "obj", "-1", root + "-bump.ppm", root + "-.obj"])
+      subprocess.call(["cp", root + ".obj.mtl", root + "-.obj.mtl"])
     elif(argv[2] == "penl"):
       subprocess.call([argv[1], argv[2], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "jps"):
