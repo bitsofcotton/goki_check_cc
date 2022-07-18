@@ -1423,7 +1423,7 @@ template <typename T> SimpleMatrix<T> getTiltAfterBump(const SimpleMatrix<T>& in
   for(int i = 0; i < res.rows(); i ++)
     for(int j = 0; j < res.cols(); j ++)
       res(i, j) += r * T(i) + c * T(j);
-  return res;
+  return normalize<T>(res);
 }
 
 // get bump with multiple scale and vectorized result.
@@ -1443,7 +1443,7 @@ template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>&
         SimpleVector<T> work(3);
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
-        work[2] = log(sqrt(T(in.rows()) * T(in.cols()))) * in(i * vbox, j * vbox);
+        work[2] = sqrt(T(in.rows()) * T(in.cols())) * in(i * vbox, j * vbox);
         geoms.emplace_back(work);
       }
     }
@@ -1481,7 +1481,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
       SimpleVector<T> g(3);
       g[0] = T(int(score[i].second.first));
       g[1] = T(int(score[i].second.second));
-      g[2] = log(sqrt(T(in.rows()) * T(in.cols()) )) *
+      g[2] = sqrt(T(in.rows()) * T(in.cols()) ) *
         in(score[i].second.first, score[i].second.second);
       geoms.emplace_back(move(g));
       cache.emplace_back(make_pair(score[i].second.first / guard,
@@ -1491,19 +1491,19 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   SimpleVector<T> g(3);
   g[0] = T(int(0));
   g[1] = T(int(0));
-  g[2] = log(sqrt(T(in.rows()) * T(in.cols()) )) * in(0, 0);
+  g[2] = sqrt(T(in.rows()) * T(in.cols()) ) * in(0, 0);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(0));
-  g[2] = log(sqrt(T(in.rows()) * T(in.cols()) )) * in(in.rows() - 1, 0);
+  g[2] = sqrt(T(in.rows()) * T(in.cols()) ) * in(in.rows() - 1, 0);
   geoms.emplace_back(g);
   g[0] = T(int(0));
   g[1] = T(int(in.cols() - 1));
-  g[2] = log(sqrt(T(in.rows()) * T(in.cols()) )) * in(0, in.cols() - 1);
+  g[2] = sqrt(T(in.rows()) * T(in.cols()) ) * in(0, in.cols() - 1);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(in.cols() - 1));
-  g[2] = log(sqrt(T(in.rows()) * T(in.cols()) )) * in(in.rows() - 1, in.cols() - 1);
+  g[2] = sqrt(T(in.rows()) * T(in.cols()) ) * in(in.rows() - 1, in.cols() - 1);
   geoms.emplace_back(g);
   T avg(int(0));
   for(int i = 0; i < geoms.size(); i ++)
