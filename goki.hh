@@ -45,12 +45,12 @@ public:
   inline P() { ; }
   inline P(const int& status) {
     assert(0 < status);
-    const auto var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
-    const auto var1(max(T(int(2)), pow(T(status), T(int(1)) / T(int(3)))));
-    const auto var2(max(T(int(2)), pow(T(status), T(int(1)) / T(int(4)))));
+    // const int var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
+    const int var1(max(T(int(2)), pow(T(status), T(int(1)) / T(int(3)))));
+    const int var2(max(T(int(2)), pow(T(status), T(int(1)) / T(int(4)))));
     p0 = P0maxRank<T>(status);
-    p1 = shrinkMatrix<T, P1I<T, idFeeder<T> > >(P1I<T, idFeeder<T> >(status, var1, var1), var1);
-    p2 = shrinkMatrix<T, P012L<T, idFeeder<T> > >(P012L<T, idFeeder<T> >(status, var2, var2), var2);
+    p1 = shrinkMatrix<T, P1I<T, idFeeder<T> > >(P1I<T, idFeeder<T> >(status - 2 - var1 * 2, var1, var1), var1);
+    p2 = shrinkMatrix<T, P012L<T, idFeeder<T> > >(P012L<T, idFeeder<T> >(status - 2 - var2 * 2, var2, var2), var2);
     const int qstatus(sqrt(num_t(status)));
     q  = idFeeder<T>(qstatus);
     q0 = SimpleVector<T>(qstatus + 1).O();
@@ -824,13 +824,13 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       vector<P<T> > p0;
       for(int ext = 0 ; ext < data.rows() / 2; ext ++) {
         if(data.rows() / (ext + 1) < 4) break;
-        int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 3)))));
+        int var(exp(sqrt(log(T(data.rows() / (ext + 1) - 2)))));
         for( ; 0 < var; var --)
-          if(data.rows() / (ext + 1) < 3 + var * 2 ||
-             var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 3 - var * 2))))))
+          if(data.rows() / (ext + 1) < 2 + var * 2 ||
+             var <= int(exp(sqrt(log(T(data.rows() / (ext + 1) - 2 - var * 2))))))
             break;
-        if(var <= 0 || data.rows() / (ext + 1) < 3 + var * 2) break;
-        p0.emplace_back(P<T>(data.rows() / (ext + 1) - 3 - var * 2));
+        if(var <= 0 || data.rows() / (ext + 1) < 2 + var * 2) break;
+        p0.emplace_back(P<T>(data.rows() / (ext + 1)));
       }
       const auto& ext(p0.size());
       result.resize(data.rows() + 2 * ext, data.cols());
