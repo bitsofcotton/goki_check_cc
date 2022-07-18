@@ -258,7 +258,7 @@ int main(int argc, const char* argv[]) {
     saveobj<num_t>(points, ratio * num_t(data[0].rows()),
                            ratio * num_t(data[0].cols()),
                    mesh2<num_t>(points), argv[4]);
-    saveMTL<num_t>(argv[5], (string(argv[5]) + string(".mtl")).c_str());
+    saveMTL<num_t>(argv[4], (string(argv[4]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
