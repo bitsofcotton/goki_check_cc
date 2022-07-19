@@ -161,10 +161,16 @@ else:
     elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "integraw" or argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
-      subprocess.call(["convert", root + "-bump0.ppm", "-resize", str(100. / float(pixels)) + "%", "-normalize", "-compress", "none", root + "-bump.ppm"])
-      subprocess.call([argv[1], "obj", "1", root + "-bump.ppm", root + ".obj"])
-      subprocess.call([argv[1], "obj", "-1", root + "-bump.ppm", root + "-.obj"])
+      subprocess.call(["convert", root + "-bump0.ppm", "-resize", str(100. / float(pixels)) + "%", "-normalize", "-compress", "none", root + "-bump1.ppm"])
+      subprocess.call([argv[1], "obj",  "1", root + "-bump1.ppm", root + ".obj"])
+      subprocess.call([argv[1], "obj", "-1", root + "-bump1.ppm", root + "-.obj"])
       subprocess.call(["cp", root + ".obj.mtl", root + "-.obj.mtl"])
+      with open(root + "-bump0.ppm") as f:
+        f.readline()
+        a = f.readline().split(" ")
+        w = int(a[0])
+        h = int(a[1])
+      subprocess.call(["convert", root + "-bump1.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-bump.ppm"])
     elif(argv[2] == "penl"):
       subprocess.call([argv[1], argv[2], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "jps"):
@@ -179,10 +185,6 @@ else:
       subprocess.call(["cp", root + "-L.ppm", root + "-jps-0.ppm"])
       subprocess.call(["cp", root + "-R.ppm", root + "-jps-1.ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-jps-%d.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + "-LR.mp4"])
-    elif(argv[2] == "tilt"):
-      for s in range(0, pixels):
-        subprocess.call([argv[1], "tilt", str(s), str(pixels), str(psi), root + ".ppm", root + "-bump.ppm", root + "-tilt-base-" + str(s) + ".ppm"])
-      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + ".mp4"])
     elif(argv[2] == "btilt"):
       w = h = 0
       with open(root + "-bump.ppm") as f:
