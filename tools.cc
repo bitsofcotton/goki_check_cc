@@ -114,7 +114,7 @@ int main(int argc, const char* argv[]) {
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
     else if(strcmp(argv[1], "pextend") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], EXTEND_BOTH);
+        data[i] = filter<num_t>(data[i], EXTEND_BOTH, 1);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
@@ -390,7 +390,7 @@ int main(int argc, const char* argv[]) {
           SimpleMatrix<num_t> m(in.size(), out[i].cols());
           for(int k = 0; k < in.size(); k ++)
             m.row(k) = std::move(in[k][i].row(j));
-          auto ext(filter<num_t>(m, EXTEND_Y));
+          auto ext(filter<num_t>(m, EXTEND_Y, 2));
           if(! mout.size()) {
             const auto szext((ext.rows() - m.rows()) / 2);
             mout.resize(szext, out);

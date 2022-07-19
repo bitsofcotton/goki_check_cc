@@ -606,7 +606,7 @@ template <typename T> static inline SimpleMatrix<T> autoLevel(const SimpleMatrix
 
 // N.B. this function is NOT thread safe.
 template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const direction_t& dir, const int& recur = 2, const int& rot = 0) {
-  assert(0 < recur && 0 <= rot);
+  assert(0 <= rot);
   if(0 < rot) {
     auto res(filter<T>(data, dir, recur));
     if(rot <= 1) return res;
@@ -823,7 +823,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     {
       vector<P<T> > p0;
       for(int ext = 0; ext < data.rows() / 2; ext ++) {
-        const int status(data.rows() / (ext + 1) - 1);
+        const int status(data.rows() / (ext + 1) - (recur & 1 ? 2 : 1));
         const int var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
         if(status < var0 * 2 + 3 + 3) break;
         p0.emplace_back(P<T>(status));
@@ -839,20 +839,38 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           auto pf(p0[m]);
           auto pb(p0[m]);
           try {
-            for(int kk = 1; kk <= data.rows() / (m + 1); kk ++)
-              result(ext - m - 1, k) =
-                pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k));
+            if(recur & 1)
+              for(int kk = 1; kk < data.rows() / (m + 1); kk ++)
+                result(ext - m - 1, k) =
+                  pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k) -
+                    data((data.rows() / (m + 1) - kk) * (m + 1), k));
+            else
+              for(int kk = 1; kk <= data.rows() / (m + 1); kk ++)
+                result(ext - m - 1, k) =
+                  pb.next(data((data.rows() / (m + 1) - kk) * (m + 1), k));
           } catch(const char* e) {
             result(ext - m - 1, k) = data(0, k);
           }
           try {
-            for(int kk = 1; kk <= data.rows() / (m + 1); kk ++)
-              result(m - ext + result.rows(), k) =
-                pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk) *
-                                               (m + 1), k));
+            if(recur & 1)
+              for(int kk = 1; kk < data.rows() / (m + 1); kk ++)
+                result(m - ext + result.rows(), k) =
+                  pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) -
+                                     (kk + 1)) * (m + 1), k) -
+                    data(data.rows() - 1 - (data.rows() / (m + 1) - kk) *
+                                                 (m + 1), k));
+            else
+              for(int kk = 1; kk <= data.rows() / (m + 1); kk ++)
+                result(m - ext + result.rows(), k) =
+                  pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) - kk) *
+                                                 (m + 1), k));
           } catch(const char* e) {
             result(m - ext + result.rows(), k) = data(data.rows() - 1, k);
           }
+        }
+        if(recur & 1) {
+          result.row(ext - m - 1) += data.row(0);
+          result.row(m - ext + result.rows()) += data.row(data.rows() - 1);
         }
       }
       result = filter<T>(result.setMatrix(ext, 0, data), CLIP);
