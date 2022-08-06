@@ -6,7 +6,7 @@ import subprocess
 
 argv   = sys.argv
 pixels = 4
-psi    = 7. / 16.
+psi    = 1. / 3.
 rot    = 0
 
 if(len(argv) < 4):
@@ -123,7 +123,7 @@ elif(argv[2] == "i2i"):
       if(linex == liney): continue
       rooty, exty = os.path.splitext(liney)
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + ".ppm", rootx + ".ppm", rooty + "-" + rootx + "-i2i0.ppm"])
-      subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", ".5"])
+      subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", "5."])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
 else:
   for line in argv[3:]:
