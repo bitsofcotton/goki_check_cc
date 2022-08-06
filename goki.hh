@@ -804,7 +804,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                   data(getImgPt<int>(i + kk - Dop0.size() / 2, data.rows()),
                        getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
             }
-            const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv) / (fu * fu + fv * fv + T(int(1))))));
+            // N.B. curvature theirselves and divide by sqrt(range).
+            //      division is needed because we compair same norm.
+            const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv) / (fu * fu + fv * fv + T(int(1))))) / sqrt(T(int(Dop0.size()))));
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
