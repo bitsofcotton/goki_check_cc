@@ -110,13 +110,13 @@ elif(argv[2] == "touchwithoutshape"):
   file = []
   for line in argv[3:5]:
     root, ext = os.path.splitext(line)
-    subprocess.call(["convert", line, "-resize", str(argv[5]) + "x>", "-resize", "x" + str(argv[5]) + ">", "-compress", "none", root + "-touch.ppm"])
-    file.append(root + "-touch.ppm")
-  subprocess.call([argv[1], "recolor3", str(int(argv[6])), file[1], file[0], file[0] + "-" + file[1] + "0.ppm"])
-  subprocess.call([argv[1], "recolor",  str(int(argv[6])), file[0], file[1], file[0] + "-" + file[1] + "1.ppm", "2.5"])
-  subprocess.call([argv[1], "recolor3", str(int(argv[6])), file[0] + "-" + file[1] + "1.ppm", file[0] + "-" + file[1] + "0.ppm", file[0] + file[1] + "-touch.ppm"])
-  subprocess.call(["ddpmopt", str(int(argv[7])), "3", str(int(argv[7])), file[0] + "-" + file[1] + "-touch.ppm", file[1]])
-  subprocess.call(["ddpmopt", str(int(argv[7])), "3", str(int(argv[7])), file[0] + "-" + file[1] + "-touch.ppm", file[1]])
+    subprocess.call(["convert", line, "-resize", str(argv[5]) + "x>", "-resize", "x" + str(argv[5]) + ">", "-compress", "none", root + "-work.ppm"])
+    file.append(root + "-work.ppm")
+  subprocess.call([argv[1], "recolor3", str(int(argv[6])), file[1], file[0], file[0] + file[1] + "0.ppm"])
+  subprocess.call([argv[1], "recolor",  str(int(argv[6])), file[0], file[1], file[0] + file[1] + "1.ppm", "2.5"])
+  subprocess.call([argv[1], "recolor3", str(int(argv[6])), file[0] + file[1] + "1.ppm", file[0] + file[1] + "0.ppm", file[0] + file[1] + ".ppm"])
+  subprocess.call(["ddpmopt", str(int(argv[7])), "3", str(int(argv[7])), file[0] + file[1] + ".ppm", file[1]])
+  subprocess.call(["ddpmopt", str(int(argv[7])), "3", str(int(argv[7])), file[0] + file[1] + ".ppm", file[1]])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
