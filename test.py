@@ -6,7 +6,7 @@ import subprocess
 
 argv   = sys.argv
 pixels = 4
-psi    = 1. / 3.
+psi    = 1. / 6.
 rot    = 0
 
 if(len(argv) < 4):
@@ -106,6 +106,17 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
+elif(argv[2] == "touchwithoutshape"):
+  file = []
+  for line in argv[3:5]:
+    root, ext = os.path.splitext(line)
+    subprocess.call(["convert", line, "-resize", str(argv[5]) + "x>", "-resize", "x" + str(argv[5]) + ">", "-compress", "none", root + "-touch.ppm"])
+    file.append(root + "-touch.ppm")
+  subprocess.call([argv[1], "recolor3", str(int(argv[6])), file[1], file[0], file[0] + "-" + file[1] + "0.ppm"])
+  subprocess.call([argv[1], "recolor",  str(int(argv[6])), file[0], file[1], file[0] + "-" + file[1] + "1.ppm", "2.5"])
+  subprocess.call([argv[1], "recolor3", str(int(argv[6])), file[0] + "-" + file[1] + "1.ppm", file[0] + "-" + file[1] + "0.ppm", file[0] + file[1] + "-touch.ppm"])
+  subprocess.call(["ddpmopt", str(int(argv[7])), "3", str(int(argv[7])), file[0] + "-" + file[1] + "-touch.ppm", file[1]])
+  subprocess.call(["ddpmopt", str(int(argv[7])), "3", str(int(argv[7])), file[0] + "-" + file[1] + "-touch.ppm", file[1]])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
