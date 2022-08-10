@@ -116,7 +116,6 @@ elif(argv[2] == "touchwithoutshape"):
   subprocess.call([argv[1], "recolor",  str(int(argv[6])), file[0], file[1], file[0] + file[1] + "1.ppm", "2.5"])
   subprocess.call([argv[1], "recolor3", str(int(argv[6])), file[0] + file[1] + "1.ppm", file[0] + file[1] + "0.ppm", file[0] + file[1] + ".ppm"])
   subprocess.call(["ddpmopt", str(int(argv[7])), "3", str(int(argv[7])), file[0] + file[1] + ".ppm", file[1]])
-  subprocess.call(["ddpmopt", str(int(argv[7])), "3", str(int(argv[7])), file[0] + file[1] + ".ppm", file[1]])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
@@ -161,7 +160,7 @@ else:
       for t in range(0, pixels):
         subprocess.call(["cp", root + "-sharpen.ppm", root + "-sharpen0.ppm"])
         subprocess.call([argv[1], "sharpen", root + "-sharpen0.ppm", root + "-sharpen1.ppm", str(pixels)])
-        subprocess.call([argv[1], "integ", root + "-sharpen1.ppm", root + "-sharpen2.ppm", str(pixels), str(rot)])
+        subprocess.call([argv[1], "diffraw", root + "-sharpen1.ppm", root + "-sharpen2.ppm", str(pixels), str(rot)])
         subprocess.call(["convert", root + "-sharpen2.ppm", "-equalize", "-compress", "none", root + "-sharpen.ppm"])
     elif(argv[2] == "sharpen"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
@@ -169,7 +168,9 @@ else:
         subprocess.call([argv[1], "sharpen", root + "-sharpen.ppm", root + "-sharpen-work.ppm", str(pixels)])
         subprocess.call(["convert", root + "-sharpen-work.ppm", "-resize", "50%", "-compress", "none", root + "-sharpen.ppm"])
       subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-normalize", "+contrast", root + "-sharpen-minus-normalize.png"])
-    elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "integraw" or argv[2] == "diffraw"):
+    elif(argv[2] == "diffraw"):
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(pixels)])
+    elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call(["convert", root + "-bump0.ppm", "-resize", str(100. / float(pixels)) + "%", "-normalize", "-compress", "none", root + "-bump1.ppm"])

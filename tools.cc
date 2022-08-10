@@ -64,9 +64,7 @@ int main(int argc, const char* argv[]) {
   }
   if(strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "collect") == 0 ||
-     strcmp(argv[1], "integ") == 0 ||
      strcmp(argv[1], "diffraw") == 0 ||
-     strcmp(argv[1], "integraw") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
@@ -89,23 +87,9 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], COLLECT_BOTH, recur, rot);
-    else if(strcmp(argv[1], "integ") == 0)
+    else if(strcmp(argv[1], "diffraw") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], INTEG_BOTH, recur, rot);
-    else if(strcmp(argv[1], "diffraw") == 0) {
-      auto avgdiffL(dft<num_t>(data[0].rows()));
-      auto avgdiffR(dft<num_t>(data[0].cols()));
-      for(int i = 1; i < avgdiffL.rows(); i ++)
-        avgdiffL.row(i)  *= complex<num_t>(num_t(int(0)), - num_t(int(2))) * atan(num_t(int(1))) * num_t(int(4)) * num_t(i) / num_t(int(avgdiffL.rows()));
-      for(int i = 1; i < avgdiffR.rows(); i ++)
-        avgdiffR.row(i)  *= complex<num_t>(num_t(int(0)), - num_t(int(2))) * atan(num_t(int(1))) * num_t(int(4)) * num_t(i) / num_t(int(avgdiffR.rows()));
-      const auto dL((dft<num_t>(- data[0].rows()) * avgdiffL).template real<num_t>());
-      const auto dR((dft<num_t>(- data[0].cols()) * avgdiffR).template real<num_t>());
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = dL * data[i] * dR;
-    } else if(strcmp(argv[1], "integraw") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = diff<num_t>(- data[i].rows()) * data[i] * diff<num_t>(- data[i].cols()).transpose();
+        data[i] = filter<num_t>(data[i], DIFFRAW_BOTH, recur, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);

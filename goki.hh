@@ -102,6 +102,8 @@ typedef enum {
   BLUR_X,
   BLUR_Y,
   BLUR_BOTH,
+  INTEGRAW_BOTH,
+  DIFFRAW_BOTH,
   INTEG_BOTH,
   COLLECT_BOTH,
   BUMP_BOTH,
@@ -740,13 +742,27 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) ));
     }
     break;
+  case INTEGRAW_BOTH:
+    result = (diff<T>(- data.rows()) * data + data * diff<T>(- data.cols()).transpose()) / T(int(2));
+    break;
+  case DIFFRAW_BOTH:
+    {
+      auto avgdiffL(dft<T>(data.rows()));
+      auto avgdiffR(dft<T>(data.cols()));
+      for(int i = 1; i < avgdiffL.rows(); i ++)
+        avgdiffL.row(i) *= complex<T>(T(int(0)), - T(int(2))) * Pi * T(int(i)) / T(int(avgdiffL.rows()));
+      for(int i = 1; i < avgdiffR.rows(); i ++)
+        avgdiffR.row(i) *= complex<T>(T(int(0)), - T(int(2))) * Pi * T(int(i)) / T(int(avgdiffR.rows()));
+      result = ((dft<T>(- data.rows()) * avgdiffL).template real<T>() * data + data * (dft<T>(- data.cols()) * avgdiffR).template real<T>().transpose()) / T(int(2));
+    }
+    break;
   case INTEG_BOTH:
     {
-      const auto  zx(diff<T>(- data.rows()) * data);
-      const auto  zy(data * diff<T>(- data.cols()).transpose());
-      const auto  zyy(diff<T>(- data.rows()) * data * diff<T>(  data.cols()).transpose());
+      const auto  zx(data * diff<T>(- data.cols()).transpose());
+      const auto  zy(diff<T>(- data.rows()) * data);
+      const auto  zyy(diff<T>(data.rows()) * data * diff<T>(- data.cols()).transpose());
       const auto& zxy(data);
-      const auto  zxx(diff<T>(  data.rows()) * data * diff<T>(- data.cols()).transpose());
+      const auto  zxx(diff<T>(- data.rows()) * data * diff<T>(data.cols()).transpose());
       result = SimpleMatrix<T>(data.rows(), data.cols()).O();
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
@@ -811,7 +827,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
 #pragma omp critical
 #endif
             {
-              if(zscore(i, j) < lscore) {
+              if(zscore(i, j) <= lscore) {
                 result(i, j) = T(zi + 1) / T(dratio);
                 zscore(i, j) = lscore;
               }
