@@ -843,7 +843,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       for(int ext = 0; ext < data.rows() / 2; ext ++) {
         const int status(data.rows() / (ext + 1) - (recur & 1 ? 2 : 1));
         const int var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
-        if(status < var0 * 2 + 3 + 3) break;
+        if(status < var0 * 2 + 3 * 2) break;
         p0.emplace_back(P<T>(status));
       }
       const auto& ext(p0.size());

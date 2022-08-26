@@ -2241,16 +2241,17 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::zeroFix(const Simp
   // sort by: |<Q^t(1), q_k>|, we subject to minimize each, to do this,
   //   maximize minimum q_k orthogonality.
   for(int i = 0, idx = 0; i < this->rows() - 1 && idx < fidx.size(); idx ++) {
-    if(T(int(0)) < fidx[idx].first &&
-       fidx[idx].first < sqrt(one.dot(one)) * epsilon()) {
-      *this = Pb;
-      break;
-    }
     const auto& iidx(fidx[idx].second);
     const auto  orth(this->col(iidx));
     const auto  n2(orth.dot(orth));
     if(n2 <= epsilon())
       continue;
+    if(T(int(0)) < fidx[idx].first &&
+       fidx[idx].first < sqrt(one.dot(one)) * epsilon()) {
+      *this = Pb;
+      break;
+    }
+    Pb = *this;
     // N.B. O(mn) can be writed into O(lg m + lg n) in many core cond.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
