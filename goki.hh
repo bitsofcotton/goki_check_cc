@@ -68,9 +68,8 @@ public:
       auto qqm(makeProgramInvariant<T>(qq.next(d)));
       M += max(- one, min(one, revertProgramInvariant<T>(make_pair(
         - (q0.dot(qqm.first) - q0[q0.size() - 2] *
-             qqm.first[qqm.first.size() - 2]) / q0[q0.size() - 2],
-           qqm.second)) /
-          pow(qqm.second, ceil(- log(SimpleMatrix<T>().epsilon()) )) ));
+             qqm.first[qqm.first.size() - 2]) / q0[q0.size() - 2] /
+           T(int(q0.size())), qqm.second)) ));
     }
     return (M += d) /= num_t(int(5));
   }

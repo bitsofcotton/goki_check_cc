@@ -69,7 +69,8 @@ public:
     return revertProgramInvariant<T>(make_pair(
              - (invariant.dot(work2.first) -
                     invariant[varlen - 1] * work2.first[varlen - 1]) /
-               invariant[varlen - 1], work2.second)) * nin;
+               invariant[varlen - 1] / T(int(invariant.size())),
+                 work2.second)) * nin;
   }
   feeder f;
 private:
