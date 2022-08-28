@@ -106,31 +106,6 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
-elif(argv[2] == "touch"):
-  file = []
-  m    = - 1
-  for line in argv[5:]:
-    root, ext = os.path.splitext(line)
-    subprocess.call(["convert", line, "-resize", str(argv[4]) + "x>", "-resize", "x" + str(argv[4]) + ">", "-compress", "none", "-equalize", root + "-work0.ppm"])
-    file.append(root + "-work")
-    k = 0
-    while(True):
-      with open(root + "-work" + str(k) + ".ppm") as f:
-        f.readline()
-        a = f.readline().split(" ")
-        w = int(a[0])
-        h = int(a[1])
-      if(w < 12 or h < 12): break
-      k += 1
-      subprocess.call(["convert", root + "-work" + str(k - 1) + ".ppm", "-resize", "50%", "-compress", "none", "-equalize", root + "-work" + str(k) + ".ppm"])
-    if(m < 0): m = k
-    if(k < m): m = k
-  for k in range(0, m + 1):
-    cmd = ["ddpmopt", str(int(argv[3])), "3", str(int(argv[3]))]
-    for ff in file:
-      cmd.append(ff + str(m - k) + ".ppm")
-    subprocess.call(cmd)
-    subprocess.call(["convert", file[0] + str(m - k) + ".ppm", "-resize", "200%", "-compress", "none", "-equalize", file[0] + str(m - k - 1) + ".ppm"])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
