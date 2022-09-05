@@ -388,7 +388,6 @@ template <typename T, int bits> std::ostream& operator << (std::ostream& os, Sig
   return os << dynamic_cast<const T&>(v);
 }
 
-
 // integer to integer float part.
 template <typename T, typename W, int bits, typename U> class SimpleFloat {
 public:
@@ -434,14 +433,14 @@ public:
         s |= safeAdd(e, 1);
         U se(e);
         if(! safeAdd(se, - src.e) && se < U(bits))
-          m += src.m >> int(se);
+          m += se ? src.m >> int(se) : src.m;
       } else
         return *this = src + *this;
     } else {
       if(e > src.e) {
         U se(e);
         if(! safeAdd(se, - src.e) && se < U(bits))
-          m -= src.m >> int(se);
+          m -= se ? src.m >> int(se) : src.m;
       } else if(e == src.e) {
         if(m >= src.m)
           m -= src.m;
@@ -690,7 +689,7 @@ private:
     }
     const auto shift(tb - b - 1);
     assert(0 <= shift);
-    src <<= shift;
+    if(shift) src <<= shift;
     return - U(shift);
   }
   inline SimpleFloat<T,W,bits,U>& ensureFlag() {
@@ -2486,7 +2485,7 @@ template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m
   auto res(m);
   res.I();
   for( ; p; ) {
-    if(p & myuint(1)) res *= mm;
+    if(bool(p & myuint(int(1)))) res *= mm;
     if(! (p >>= 1)) break;
     mm *= mm;
   }

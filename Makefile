@@ -19,6 +19,8 @@ gokibin:
 	${CXX} ${CXXFLAGS} -static -o gokibin tools.cc
 gokibinO0:
 	${CXX} ${CXXFLAGS} -static -O0 -o gokibinO0 tools.cc
+gokibin16:
+	${CXX} ${CXXFLAGS} -static -D_FLOAT_BITS_=16 -o gokibin16 tools.cc
 gokibin32:
 	${CXX} ${CXXFLAGS} -static -D_FLOAT_BITS_=32 -o gokibin32 tools.cc
 gokibin64:
