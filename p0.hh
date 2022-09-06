@@ -98,6 +98,21 @@ template <typename T> const SimpleVector<T>& pnextcache(const int& size, const i
   return cp[size][step] = (pnext<T>(size, step) + pnext<T>(size, step + 1)) / T(int(2));
 }
 
+template <typename T> const SimpleVector<T>& pnextcacher(const int& size, const int& step, const int& r) {
+  assert(0 < size && 0 <= step && 0 < r);
+  static vector<vector<vector<SimpleVector<T> > > > cp;
+  if(cp.size() <= size)
+    cp.resize(size + 1, vector<vector<SimpleVector<T> > >());
+  if(cp[size].size() <= step)
+    cp[size].resize(step + 1, vector<SimpleVector<T> >());
+  if(cp[size][step].size() <= r)
+    cp[size][step].resize(r + 1, SimpleVector<T>());
+  if(cp[size][step][r].size()) return cp[size][step][r];
+  auto res(pnext<T>(size * r, step * r));
+  for(int i = 1; i < r; i ++) res += pnext<T>(size * r, step * r + i);
+  return cp[size][step][r] = (dft<T>(- size * r).subMatrix(0, 0, size * r, size) * dft<T>(size)).template real<T>().transpose() * (res /= T(int(r)));
+}
+
 template <typename T> const SimpleVector<T>& mscache(const int& size) {
   assert(0 < size);
   static vector<SimpleVector<T> > ms;
@@ -106,7 +121,21 @@ template <typename T> const SimpleVector<T>& mscache(const int& size) {
   return ms[size] = minsq<T>(size);
 }
 
-template <typename T, typename feeder> class P0 {
+template <typename T> const SimpleMatrix<complex<T> >& dftcache(const int& size) {
+  assert(size != 0);
+  static vector<SimpleMatrix<complex<T> > > cdft;
+  static vector<SimpleMatrix<complex<T> > > cidft;
+  if(0 < size) {
+    if(cdft.size() <= size) cdft.resize(size + 1, SimpleMatrix<complex<T> >());
+    if(cdft[size].rows() && cdft[size].cols()) return cdft[size];
+    return cdft[size] = dft<T>(size);
+  }
+  if(cidft.size() <= abs(size)) cidft.resize(abs(size) + 1, SimpleMatrix<complex<T> >());
+  if(cidft[abs(size)].rows() && cidft[abs(size)].cols()) return cidft[abs(size)];
+  return cidft[abs(size)] = dft<T>(size);
+}
+
+template <typename T, typename feeder, int r = 2> class P0 {
 public:
   inline P0() { ; }
   inline P0(const int& size, const int& step = 1) {
@@ -127,7 +156,7 @@ public:
       std::cerr << sqrt(avg.dot(avg) / ff.dot(ff)) << std::endl;
     }
 */
-    return f.full ? pnextcache<T>(ff.size(), step).dot(ff) : ff[ff.size() - 1];
+    return f.full ? pnextcacher<T>(ff.size(), step, r).dot(ff) : ff[ff.size() - 1];
   }
   int step;
   feeder f;
@@ -148,20 +177,6 @@ public:
   }
   P p;
 };
-
-template <typename T> const SimpleMatrix<complex<T> >& dftcache(const int& size) {
-  assert(size != 0);
-  static vector<SimpleMatrix<complex<T> > > cdft;
-  static vector<SimpleMatrix<complex<T> > > cidft;
-  if(0 < size) {
-    if(cdft.size() <= size) cdft.resize(size + 1, SimpleMatrix<complex<T> >());
-    if(cdft[size].rows() && cdft[size].cols()) return cdft[size];
-    return cdft[size] = dft<T>(size);
-  }
-  if(cidft.size() <= abs(size)) cidft.resize(abs(size) + 1, SimpleMatrix<complex<T> >());
-  if(cidft[abs(size)].rows() && cidft[abs(size)].cols()) return cidft[abs(size)];
-  return cidft[abs(size)] = dft<T>(size);
-}
 
 template <typename T, typename P, typename feeder> class P0DFT {
 public:
