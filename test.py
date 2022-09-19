@@ -151,6 +151,15 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + ".ppm", rootx + ".ppm", rooty + "-" + rootx + "-i2i0.ppm"])
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", "5."])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
+elif(argv[2] == "predline"):
+  cmd = [argv[1], "pred", "predline.ppm"]
+  for line in argv[3:]:
+    root, ext = os.path.splitext(line)
+    if(ext != ".ppm"):
+      subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
+    subprocess.call([argv[1], "diffraw", root + ".ppm", root + "-diffraw.ppm", "8", "8"])
+    cmd.append(root + "-diffraw.ppm")
+  subprocess.call(cmd)
 else:
   for line in argv[3:]:
     try:
