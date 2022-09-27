@@ -106,7 +106,6 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
-
 elif(argv[2] == "touch"):
   file = []
   m    = - 1
@@ -173,7 +172,7 @@ else:
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
     elif(argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-blur", "3x1", root + "-" + argv[2] + ".png"])
+      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-resize", "25%", "-resize", "400%", root + "-" + argv[2] + ".png"])
     elif(argv[2] == "penlarge"):
       subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
       subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl-sh0.ppm", str(pixels)])
@@ -198,7 +197,7 @@ else:
     elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
-      subprocess.call(["convert", root + "-bump0.ppm", "-resize", str(100. / float(pixels * 2)) + "%", "-normalize", "-compress", "none", root + "-bump1.ppm"])
+      subprocess.call(["convert", root + "-bump0.ppm", "-resize", str(100. / float(pixels * 4)) + "%", "-normalize", "-compress", "none", root + "-bump1.ppm"])
       subprocess.call([argv[1], "obj",  "1", root + "-bump1.ppm", root + ".obj"])
       subprocess.call([argv[1], "obj", "-1", root + "-bump1.ppm", root + "-.obj"])
       subprocess.call(["cp", root + ".obj.mtl", root + "-.obj.mtl"])
