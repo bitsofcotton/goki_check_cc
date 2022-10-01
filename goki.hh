@@ -103,7 +103,6 @@ typedef enum {
   BLUR_BOTH,
   INTEGRAW_BOTH,
   DIFFRAW_BOTH,
-  INTEG_BOTH,
   COLLECT_BOTH,
   BUMP_BOTH,
   EXTEND_X,
@@ -755,23 +754,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       result = ((dft<T>(- data.rows()) * avgdiffL).template real<T>() * data + data * (dft<T>(- data.cols()) * avgdiffR).template real<T>().transpose()) / T(int(2));
     }
     break;
-  case INTEG_BOTH:
-    {
-      const auto  zx(data * diff<T>(- data.cols()).transpose());
-      const auto  zy(diff<T>(- data.rows()) * data);
-      const auto  zyy(diff<T>(data.rows()) * data * diff<T>(- data.cols()).transpose());
-      const auto& zxy(data);
-      const auto  zxx(diff<T>(- data.rows()) * data * diff<T>(data.cols()).transpose());
-      result = SimpleMatrix<T>(data.rows(), data.cols()).O();
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = sqrt(abs(
-            (zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j)) /
-            ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
-             zx(i, j) * zy(i, j)) /
-            (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) ));
-    }
-    break;
   case BUMP_BOTH:
     {
       SimpleMatrix<T> zscore(data.rows(), data.cols());
@@ -833,7 +815,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
           }
       }
-      result = - filter<T>(result, INTEG_BOTH);
+      result = - filter<T>(result, INTEGRAW_BOTH);
     }
     break;
   case EXTEND_Y:
