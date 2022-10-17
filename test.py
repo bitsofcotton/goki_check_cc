@@ -109,20 +109,23 @@ elif(argv[2] == "tile"):
     subprocess.call(cmd)
 elif(argv[2] == "applycontext"):
   for line in argv[6:]:
-    subprocess.call(["convert", line, "-resize", str(int(argv[4]) * int(pow(2, int(argv[5]) - 1))) + "x" + str(int(argv[4]) * int(pow(2, int(argv[5]) - 1))) + "!", line + "-0.png"])
+    subprocess.call(["convert", line, "-resize", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", line + "-0.ppm"])
   for tt in range(0, int(argv[5])):
-    subprocess.call(["convert", line + "-" + str(tt) + ".png", "-crop", str(int(argv[4]) * int(pow(2, tt))) + "x" + str(int(argv[4]) * int(pow(2, tt))) + "!", "-compress", "-none", line + str(tt) + "-%d.ppm"])
     for line in argv[6:]:
-      for u in range(0, int(pow(2, tt))):
-        subprocess.call(["sh", "-c", str(argv[1]) + " " + str(- abs(int(argv[3]))) + line + "-" + str(tt) + "-" + str(u) + ".ppm" + " < learn-" + str(tt) + "-" + str(u)])
-      subprocess.call(["convert", "-tile", str(int(pow(2, tt))) + "x" + str(int(pow(2, tt))), "-geometry", "+0+0", "-resize", "200%", line + "-" + str(tt + 1) + ".png"])
+      subprocess.call(["convert", line + "-" + str(tt) + ".ppm", "-crop", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", "-compress", "none", line + "-" + str(tt) + "-%d.ppm"])
+      cmd = ["montage"]
+      for u in range(0, int(pow(4, tt))):
+        subprocess.call(["sh", "-c", str(argv[1]) + " " + str(- abs(int(argv[3]))) + " " + line + "-" + str(tt) + "-" + str(u) + ".ppm" + " < learn-" + str(tt) + "-" + str(u)])
+        cmd.append(line + "-" + str(tt) + "-" + str(u) + ".ppm")
+      cmd.extend(["-tile", str(int(pow(2, tt))) + "x" + str(int(pow(2, tt))), "-geometry", "+0+0", "-resize", "200%", line + "-" + str(tt + 1) + ".ppm"])
+      subprocess.call(cmd)
 elif(argv[2] == "getcontext"):
   for tt in range(0, int(argv[5])):
     file = []
     for line in argv[6:]:
       subprocess.call(["convert", line, "-resize", str(int(argv[4]) * int(pow(2, tt))) + "x" + str(int(argv[4]) * int(pow(2, tt))) + "!", "-crop", str(int(argv[4])) + "x" + str(int(argv[4])), "-compress", "none", line + "-work%d.ppm"])
       file.append(line + "-work")
-    for u in range(0, int(pow(2, tt))):
+    for u in range(0, int(pow(4, tt))):
       cmd = [argv[1], str(abs(int(argv[3])))]
       for f in file:
         cmd.append("\"" + f + str(u) + ".ppm" + "\"")
