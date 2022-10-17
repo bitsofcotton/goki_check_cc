@@ -115,7 +115,7 @@ elif(argv[2] == "applycontext"):
       subprocess.call(["convert", line + "-" + str(tt) + ".ppm", "-crop", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", "-compress", "none", line + "-" + str(tt) + "-%d.ppm"])
       cmd = ["montage"]
       for u in range(0, int(pow(4, tt))):
-        subprocess.call(["sh", "-c", str(argv[1]) + " " + str(- abs(int(argv[3]))) + " " + line + "-" + str(tt) + "-" + str(u) + ".ppm" + " < learn-" + str(tt) + "-" + str(u)])
+        subprocess.call(["sh", "-c", str(argv[1]) + " " + str(- abs(int(argv[3]))) + " " + line + "-" + str(tt) + "-" + str(u) + ".ppm" + " < learn-" + str(tt)])
         cmd.append(line + "-" + str(tt) + "-" + str(u) + ".ppm")
       cmd.extend(["-tile", str(int(pow(2, tt))) + "x" + str(int(pow(2, tt))), "-geometry", "+0+0", "-resize", "200%", line + "-" + str(tt + 1) + ".ppm"])
       subprocess.call(cmd)
@@ -125,11 +125,11 @@ elif(argv[2] == "getcontext"):
     for line in argv[6:]:
       subprocess.call(["convert", line, "-resize", str(int(argv[4]) * int(pow(2, tt))) + "x" + str(int(argv[4]) * int(pow(2, tt))) + "!", "-crop", str(int(argv[4])) + "x" + str(int(argv[4])), "-compress", "none", line + "-work%d.ppm"])
       file.append(line + "-work")
+    cmd = [argv[1], str(abs(int(argv[3])))]
     for u in range(0, int(pow(4, tt))):
-      cmd = [argv[1], str(abs(int(argv[3])))]
       for f in file:
         cmd.append("\"" + f + str(u) + ".ppm" + "\"")
-      subprocess.call(["sh", "-c", " ".join(cmd) + " > learn-" + str(tt) + "-" + str(u)])
+    subprocess.call(["sh", "-c", " ".join(cmd) + " > learn-" + str(tt)])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
