@@ -41,7 +41,7 @@ using std::make_pair;
 void usage(const char* en) {
   cout << "Usage:" << endl;
   cout << en << " (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
-  cout << en << " (pred|lenl|composite|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
+  cout << en << " (pred|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj   <ratio> <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
@@ -50,7 +50,6 @@ void usage(const char* en) {
   cout << en << " recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
   cout << en << " recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << en << " habit <in0.obj> <in1.obj> <out.obj>" << endl;
-  cout << en << " penl  <opt.ppm> <in.ppm> <output.ppm>" << endl;
   return;
 }
 
@@ -142,51 +141,6 @@ int main(int argc, const char* argv[]) {
         strcmp(argv[1], "nop") != 0
         ? normalize<num_t>(data) : data,
         ! true, 65535))
-      return - 1;
-  } else if(strcmp(argv[1], "penl") == 0) {
-    if(argc < 5) {
-      usage(argv[0]);
-      return 0;
-    }
-    vector<SimpleMatrix<num_t> > opt, data;
-    if(!loadp2or3<num_t>(opt, argv[2]))
-      return - 1;
-    if(!loadp2or3<num_t>(data, argv[3]))
-      return - 1;
-    vector<SimpleMatrix<num_t> > out;
-    SimpleMatrix<num_t> cnt;
-    out.resize(3);
-    out[0] = out[1] = out[2] = cnt = SimpleMatrix<num_t>(data[0].rows() * 5 / 4 + 1, data[0].cols() * 5 / 4 + 1).O();
-    SimpleMatrix<num_t> cr(5, 5);
-    for(int i = 0; i < cr.rows(); i ++)
-      for(int j = 0; j < cr.cols(); j ++)
-        cr(i, j) = num_t(1);
-    for(int i = 0; i < data.size(); i ++)
-      for(int j = 0; j < data[i].rows() - 5; j += 2)
-        for(int k = 0; k < data[i].cols() - 5; k += 2) {
-          num_t m(data[i](j, k));
-          num_t M(data[i](j, k));
-          for(int ii = 0; ii < 4; ii ++)
-            for(int jj = 0; jj < 4; jj ++) {
-              m = min(m, data[i](ii, jj));
-              M = max(M, data[i](ii, jj));
-            }
-          out[i].setMatrix(j * 5 / 4, k * 5 / 4,
-            out[i].subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) +
-             compImage<num_t>(normalize<num_t>(
-              data[i].subMatrix(j, k, 4, 4), num_t(1) / num_t(2)), opt[0]) *
-             (M == m ? num_t(1) : M - m)
-          );
-          cnt.setMatrix(j * 5 / 4, k * 5 / 4,
-            cnt.subMatrix(j * 5 / 4, k * 5 / 4, 5, 5) + cr);
-        }
-    for(int i = 0; i < data.size(); i ++) {
-      for(int j = 0; j < data[i].rows(); j ++)
-        for(int k = 0; k < data[i].cols(); k ++)
-          out[i](j, k) /= max(num_t(1), cnt(j, k));
-      out[i] = filter<num_t>(out[i], CLIP);
-    }
-    if(!savep2or3<num_t>(argv[4], out, ! true, 65535))
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
@@ -346,10 +300,8 @@ int main(int argc, const char* argv[]) {
                        to_string(nemph) + string(".ppm")).c_str(), out, false);
     }
   } else if(strcmp(argv[1], "pred") == 0 ||
-            strcmp(argv[1], "lenl") == 0 ||
             strcmp(argv[1], "cat") == 0 ||
-            strcmp(argv[1], "catr") == 0 ||
-            strcmp(argv[1], "composite") == 0) {
+            strcmp(argv[1], "catr") == 0) {
     if(argc < 4) {
       usage(argv[0]);
       return - 1;
@@ -389,21 +341,6 @@ int main(int argc, const char* argv[]) {
         savep2or3<num_t>((std::string(argv[2]) + std::string("-p-") + std::to_string(k) + std::string(".ppm")).c_str(), normalize<num_t>(mout[k]), ! true, 65535);
         savep2or3<num_t>((std::string(argv[2]) + std::string("-n-") + std::to_string(k) + std::string(".ppm")).c_str(), normalize<num_t>(nout[k]), ! true, 65535);
       }
-    } else if(strcmp(argv[1], "lenl") == 0) {
-      vector<std::pair<SimpleMatrix<num_t>, SimpleMatrix<num_t> > > pair;
-      const auto d5(dft<num_t>(5).subMatrix(0, 0, 4, 5));
-      const auto d4(dft<num_t>(- 4));
-      const auto taylc(d4 * d5);
-      const auto tayl(taylc.template real<num_t>());
-      for(int i = 0; i < in.size(); i ++)
-        for(int j = 0; j < in[i].size(); j ++)
-          for(int k = 0; k < in[i][j].rows() - 5; k += 2)
-            for(int kk = 0; kk < in[i][j].cols() - 5; kk += 2) {
-              const auto work(normalize<num_t>(in[i][j].subMatrix(k, kk, 5, 5), num_t(1) / num_t(2)));
-              pair.emplace_back(std::make_pair(normalize<num_t>(tayl * work * tayl.transpose(), num_t(1) / num_t(2)), work));
-            }
-      out[0] = out[1] = out[2] = optImage<num_t>(pair);
-      savep2or3<num_t>(argv[2], out, ! true, 65535);
     } else if(strcmp(argv[1], "cat") == 0 ||
               strcmp(argv[1], "catr") == 0) {
       vector<SimpleMatrix<num_t> > glay;
@@ -429,16 +366,6 @@ int main(int argc, const char* argv[]) {
           std::cout << argv[3 + (strcmp(argv[1], "catr") == 0 ? cat[i][j]
                          : cat[i][j] / min(in00sz, 1 + 5 + 1)) ] << std::endl;
         std::cout << std::endl;
-      }
-    } else if(strcmp(argv[1], "composite") == 0) {
-      vector<SimpleMatrix<num_t> > glay;
-      glay.reserve(in.size());
-      for(int i = 0; i < in.size(); i ++)
-        glay.emplace_back(rgb2d<num_t>(in[i]));
-      const auto composite(compositeImage<num_t>(glay));
-      for(int i = 0; i < composite.size(); i ++) {
-        out[0] = out[1] = out[2] = composite[i];
-        savep2or3<num_t>((string(argv[2]) + string("-") + to_string(i) + string(".ppm")).c_str(), normalize<num_t>(out), ! true);
       }
     }
   } else if(strcmp(argv[1], "habit") == 0) {

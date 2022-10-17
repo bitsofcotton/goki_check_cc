@@ -26,7 +26,7 @@ elif(argv[2] == "match"):
     nemph = int(argv[8])
   subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(vboxd), str(vboxs), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "match-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-" + root1 + ".mp4"])
-elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "catb" or argv[2] == "catbr" or argv[2] == "composite"):
+elif(argv[2] == "pred" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "catb" or argv[2] == "catbr"):
   cmd = [argv[1], argv[2]]
   if(argv[2] == "cat" or argv[2] == "catb"):
     cmd[1] = "catr"
@@ -34,7 +34,7 @@ elif(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "cat" or argv[2] == "c
   elif(argv[2] == "catr" or argv[2] == "catbr"):
     cmd[1] = "cat"
     cmd.append("dummy")
-  if(argv[2] == "pred" or argv[2] == "lenl" or argv[2] == "composite"):
+  if(argv[2] == "pred"):
     cmd.append(argv[2] + ".ppm")
   for s in argv[3:]:
     r, e = os.path.splitext(s)
@@ -107,31 +107,26 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
-elif(argv[2] == "touch"):
-  file = []
-  m    = - 1
-  for line in argv[5:]:
-    root, ext = os.path.splitext(line)
-    subprocess.call(["convert", line, "-resize", str(argv[4]) + "x>", "-resize", "x" + str(argv[4]) + ">", "-compress", "none", "-equalize", root + "-work0.ppm"])
-    file.append(root + "-work")
-    k = 0
-    while(True):
-      with open(root + "-work" + str(k) + ".ppm") as f:
-        f.readline()
-        a = f.readline().split(" ")
-        w = int(a[0])
-        h = int(a[1])
-      if(w < 32 or h < 32): break
-      k += 1
-      subprocess.call(["convert", root + "-work" + str(k - 1) + ".ppm", "-resize", "50%", "-compress", "none", "-equalize", root + "-work" + str(k) + ".ppm"])
-    if(m < 0): m = k
-    if(k < m): m = k
-  for k in range(0, m + 1):
-    cmd = ["ddpmopt", str(int(argv[3])), "3", str(int(argv[3]))]
-    for ff in file:
-      cmd.append(ff + str(m - k) + ".ppm")
-    subprocess.call(cmd)
-    subprocess.call(["convert", file[0] + str(m - k) + ".ppm", "-resize", "200%", "-compress", "none", "-equalize", file[0] + str(m - k - 1) + ".ppm"])
+elif(argv[2] == "applycontext"):
+  for line in argv[6:]:
+    subprocess.call(["convert", line, "-resize", str(int(argv[4]) * int(pow(2, int(argv[5]) - 1))) + "x" + str(int(argv[4]) * int(pow(2, int(argv[5]) - 1))) + "!", line + "-0.png"])
+  for tt in range(0, int(argv[5])):
+    subprocess.call(["convert", line + "-" + str(tt) + ".png", "-crop", str(int(argv[4]) * int(pow(2, tt))) + "x" + str(int(argv[4]) * int(pow(2, tt))) + "!", "-compress", "-none", line + str(tt) + "-%d.ppm"])
+    for line in argv[6:]:
+      for u in range(0, int(pow(2, tt))):
+        subprocess.call(["sh", "-c", str(argv[1]) + " " + str(- abs(int(argv[3]))) + line + "-" + str(tt) + "-" + str(u) + ".ppm" + " < learn-" + str(tt) + "-" + str(u)])
+      subprocess.call(["convert", "-tile", str(int(pow(2, tt))) + "x" + str(int(pow(2, tt))), "-geometry", "+0+0", "-resize", "200%", line + "-" + str(tt + 1) + ".png"])
+elif(argv[2] == "getcontext"):
+  for tt in range(0, int(argv[5])):
+    file = []
+    for line in argv[6:]:
+      subprocess.call(["convert", line, "-resize", str(int(argv[4]) * int(pow(2, tt))) + "x" + str(int(argv[4]) * int(pow(2, tt))) + "!", "-crop", str(int(argv[4])) + "x" + str(int(argv[4])), "-compress", "none", line + "-work%d.ppm"])
+      file.append(line + "-work")
+    for u in range(0, int(pow(2, tt))):
+      cmd = [argv[1], str(abs(int(argv[3])))]
+      for f in file:
+        cmd.append("\"" + f + str(u) + ".ppm" + "\"")
+      subprocess.call(["sh", "-c", " ".join(cmd) + " > learn-" + str(tt) + "-" + str(u)])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
@@ -208,8 +203,6 @@ else:
         w = int(a[0])
         h = int(a[1])
       subprocess.call(["convert", root + "-bump1.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-bump.ppm"])
-    elif(argv[2] == "penl"):
-      subprocess.call([argv[1], argv[2], "lenl.ppm", root + ".ppm", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])

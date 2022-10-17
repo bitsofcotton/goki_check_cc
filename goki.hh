@@ -1840,56 +1840,6 @@ template <typename T> SimpleMatrix<T> reColor(const SimpleMatrix<T>& cbase, cons
   return res;
 }
 
-template <typename T> SimpleMatrix<T> optImage(const vector<pair<SimpleMatrix<T>, SimpleMatrix<T> > >& img) {
-  assert(0 < img.size());
-  const auto ss0(img[0].first.rows() * img[0].first.cols());
-  const auto ss1(img[0].second.rows() * img[0].second.cols());
-  SimpleMatrix<T> serialize(img.size(), ss0 + ss1 + 2);
-  for(int i = 0; i < img.size(); i ++) {
-    assert(img[i].first.rows() == img[0].first.rows());
-    assert(img[i].first.cols() == img[0].first.cols());
-    assert(img[i].second.rows() == img[0].second.rows());
-    assert(img[i].second.cols() == img[0].second.cols());
-    SimpleVector<T> buf(ss0 + ss1);
-    for(int j = 0; j < img[i].first.rows(); j ++)
-      buf.setVector(j * img[i].first.cols(), img[i].first.row(j));
-    for(int j = 0; j < img[i].second.rows(); j ++)
-      buf.setVector(ss0 + j * img[i].second.cols(), img[i].second.row(j));
-    serialize.row(i) = makeProgramInvariant<T>(buf).first;
-  }
-  SimpleMatrix<T> res(serialize.rows() - 1, serialize.cols());
-  for(int i = 0; i < res.rows(); i ++) {
-    res.row(i) = linearInvariant(serialize);
-    if(res.row(i).dot(res.row(i)) <= T(1) / T(10000)) {
-      SimpleMatrix<T> ares(i, res.cols());
-      for(int j = 0; j < ares.rows(); j ++)
-        ares.row(j) = move(res.row(j));
-      return ares;
-    }
-    const auto orth(res.row(i) /= sqrt(res.row(i).dot(res.row(i))));
-    for(int j = 0; j < serialize.rows(); j ++)
-      serialize.row(j) -= orth * orth.dot(serialize.row(j));
-  }
-  return res;
-}
-
-template <typename T> SimpleMatrix<T> compImage(const SimpleMatrix<T>& in, const SimpleMatrix<T>& opt) {
-  const auto ss(opt.cols() - 2);
-  SimpleVector<T> work(ss);
-  work.O();
-  for(int j = 0; j < in.rows(); j ++)
-    work.setVector(j * in.cols(), in.row(j));
-  auto work2(makeProgramInvariant<T>(work));
-  work  = move(work2.first);
-  work -= opt.projectionPt(work);
-  SimpleMatrix<T> res(sqrt(work.size() - in.rows() * in.cols()),
-                      sqrt(work.size() - in.rows() * in.cols()));
-  for(int j = 0; j < res.rows(); j ++)
-    for(int k = 0; k < res.cols(); k ++)
-      res(j, k) = revertProgramInvariant<T>(make_pair(work[(j * res.cols() + k) % work.size()], work2.second));
-  return res;
-}
-
 template <typename T> vector<vector<int> > catImage(const vector<SimpleMatrix<T> >& imgs, const int& cs = 40) {
   for(int i = 1; i < imgs.size(); i ++) {
     assert(imgs[i].rows() == imgs[0].rows());
@@ -1907,30 +1857,6 @@ template <typename T> vector<vector<int> > catImage(const vector<SimpleMatrix<T>
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++)
     res.emplace_back(move(cg[i].second));
-  return res;
-}
-
-template <typename T> vector<SimpleMatrix<T> > compositeImage(const vector<SimpleMatrix<T> >& imgs, const int& cs = 40) {
-  assert(imgs.size());
-  vector<SimpleVector<T> > work;
-  work.reserve(imgs.size());
-  for(int i = 0; i < imgs.size(); i ++) {
-    work.emplace_back(SimpleVector<T>(imgs[i].rows() * imgs[i].cols()).O());
-    for(int j = 0; j < imgs[i].rows(); j ++)
-      work[i].setVector(imgs[i].cols() * j, imgs[i].row(j));
-  }
-  auto cg(crush<T>(work, cs, 0));
-  vector<SimpleMatrix<T> > res;
-  res.reserve(cg.size());
-  for(int i = 0; i < cg.size(); i ++) {
-    res.emplace_back(SimpleMatrix<T>(imgs[0].rows(), imgs[0].cols()).O());
-    auto work(cg[i].first[0]);
-    for(int j = 1; j < cg[i].first.size(); j ++)
-      work += cg[i].first[j];
-    assert(res[i].rows() * res[i].cols() == work.size());
-    for(int j = 0; j < res[i].rows(); j ++)
-      res[i].row(j) = work.subVector(res[i].cols() * j, res[i].cols());
-  }
   return res;
 }
 
