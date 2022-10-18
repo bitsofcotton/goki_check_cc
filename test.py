@@ -166,8 +166,7 @@ else:
     elif(argv[2] == "penlarge"):
       subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
       subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl1.ppm", str(pixels)])
-      # XXX: modulate 50 is correct, but it is weak.
-      subprocess.call(["convert", root + "-penl1.ppm", "-resize", "50%", root + "-penl0.ppm", "-compose", "minus", "-composite", "-modulate", "200", root + "-penl0.ppm", "-average", "-normalize", "+contrast", root + "-penl.png"])
+      subprocess.call(["convert", root + "-penl1.ppm", "-resize", "50%", root + "-penl0.ppm", "-compose", "minus", "-composite", "-modulate", "50", root + "-penl0.ppm", "-average", "-normalize", root + "-penl.png"])
     elif(argv[2] == "1to1enl"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
