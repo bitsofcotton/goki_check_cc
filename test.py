@@ -108,28 +108,19 @@ elif(argv[2] == "tile"):
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
 elif(argv[2] == "applycontext"):
-  for line in argv[6:]:
-    subprocess.call(["convert", line, "-resize", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", line + "-0.ppm"])
-  for tt in range(0, int(argv[5])):
-    for line in argv[6:]:
-      subprocess.call(["convert", line + "-" + str(tt) + ".ppm", "-crop", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", "-compress", "none", line + "-" + str(tt) + "-%d.ppm"])
-      cmd = ["montage"]
-      for u in range(0, int(pow(4, tt))):
-        subprocess.call(["sh", "-c", str(argv[1]) + " " + str(- abs(int(argv[3]))) + " " + line + "-" + str(tt) + "-" + str(u) + ".ppm" + " < learn-" + str(tt) + "-" + str(u)])
-        cmd.append(line + "-" + str(tt) + "-" + str(u) + ".ppm")
-      cmd.extend(["-tile", str(int(pow(2, tt))) + "x" + str(int(pow(2, tt))), "-geometry", "+0+0", "-resize", "200%", line + "-" + str(tt + 1) + ".ppm"])
-      subprocess.call(cmd)
+  for line in argv[5:]:
+    subprocess.call(["convert", line, "-resize", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", "-compress", "none", line + "-work.ppm"])
+    subprocess.call(["sh", "-c", str(argv[1]) + " " + str(- abs(int(argv[3]))) + " \"" + line + "-work.ppm\"" + " < ddpmopt.txt"])
+  # XXX: instead of learning, we need enlarge or penlarge for latter stages.
+  #      this isn't complement much datas should be learned from data.
+  #      data learning can be done with ddpmopt method as output change,
+  #      but there's many much time we need to learn enlarge matrix.
 elif(argv[2] == "getcontext"):
-  for tt in range(0, int(argv[5])):
-    file = []
-    for line in argv[6:]:
-      subprocess.call(["convert", line, "-resize", str(int(argv[4]) * int(pow(2, tt))) + "x" + str(int(argv[4]) * int(pow(2, tt))) + "!", "-crop", str(int(argv[4])) + "x" + str(int(argv[4])), "-compress", "none", line + "-work%d.ppm"])
-      file.append(line + "-work")
-    for u in range(0, int(pow(4, tt))):
-      cmd = [argv[1], str(abs(int(argv[3])))]
-      for f in file:
-        cmd.append("\"" + f + str(u) + ".ppm" + "\"")
-      subprocess.call(["sh", "-c", " ".join(cmd) + " > learn-" + str(tt) + "-" + str(u)])
+  cmd = [argv[1], str(abs(int(argv[3])))]
+  for line in argv[5:]:
+    subprocess.call(["convert", line, "-resize", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", "-compress", "none", line + "-work.ppm"])
+    cmd.append("\"" + line + "-work.ppm\"")
+  subprocess.call(["sh", "-c", " ".join(cmd) + " > ddpmopt.txt"])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
@@ -174,10 +165,9 @@ else:
       subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-resize", "25%", "-resize", "400%", root + "-" + argv[2] + ".png"])
     elif(argv[2] == "penlarge"):
       subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
-      subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl-sh0.ppm", str(pixels)])
-      subprocess.call(["convert", root + "-penl-sh0.ppm", "-resize", "50%", root + "-penl-sh1.png"])
-      subprocess.call(["convert", root + "-penl0.ppm", root + "-penl-sh1.png", "-compose", "minus", "-composite", "-negate", "-normalize", "-modulate", "50", root + "-penl-sh2.png"])
-      subprocess.call(["convert", root + "-penl-sh2.png", root + "-penl0.ppm", "-average", "+contrast", "-normalize", root + "-penl.png"])
+      subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl1.ppm", str(pixels)])
+      # XXX: modulate 50 is correct, but it is weak.
+      subprocess.call(["convert", root + "-penl1.ppm", "-resize", "50%", root + "-penl0.ppm", "-compose", "minus", "-composite", "-modulate", "200", root + "-penl0.ppm", "-average", "-normalize", "+contrast", root + "-penl.png"])
     elif(argv[2] == "1to1enl"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
@@ -193,7 +183,7 @@ else:
       subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-normalize", "+contrast", root + "-sharpen-minus-normalize.png"])
     elif(argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(pixels)])
-    elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw"):
+    elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw" or argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call(["convert", root + "-bump0.ppm", "-resize", str(100. / float(pixels * 4)) + "%", "-normalize", "-compress", "none", root + "-bump1.ppm"])
