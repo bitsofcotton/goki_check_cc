@@ -189,12 +189,11 @@ int main(int argc, const char* argv[]) {
     const num_t ratio(std::atof(argv[2]));
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
-    auto points(getTileVec<num_t>(
-                  getTiltAfterBump<num_t>(rgb2d<num_t>(data))));
+    auto points(getTileVec<num_t>(rgb2d<num_t>(data)));
     for(int i = 0; i < points.size(); i ++)
-      points[i] *= ratio;
-    saveobj<num_t>(points, ratio * num_t(data[0].rows()),
-                           ratio * num_t(data[0].cols()),
+      points[i][2] *= ratio;
+    saveobj<num_t>(points, num_t(data[0].rows()),
+                           num_t(data[0].cols()),
                    mesh2<num_t>(points), argv[4]);
     saveMTL<num_t>(argv[4], (string(argv[4]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
@@ -247,11 +246,11 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const string outbase(argv[10]);
     const auto shape0(vboxdst < 0
-      ? getHesseVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump0)), abs(vboxdst))
-      : getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump0)), abs(vboxdst)));
+      ? getHesseVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst))
+      : getTileVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst)));
     const auto shape1(vboxsrc < 0
-      ? getHesseVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump1)), abs(vboxsrc))
-      : getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump1)), abs(vboxsrc)));
+      ? getHesseVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc))
+      : getTileVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc)));
     const auto m(matchPartial<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);

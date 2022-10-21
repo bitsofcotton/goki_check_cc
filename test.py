@@ -7,8 +7,9 @@ import subprocess
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 6.
+zratio = .025
 rot    = 0
-if(argv[2] == "obj" or argv[2] == "bump"): pixels = 16
+if(argv[2] == "obj" or argv[2] == "bump"): pixels = 12
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -160,6 +161,8 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
+      subprocess.call(["convert", line, "-flip", "-flop", "-compress", "none", root + "-ff.ppm"])
+      subprocess.call([argv[1], argv[2], root + "-ff.ppm", root + "-" + argv[2] + "0ff.ppm", str(pixels), str(rot)])
     elif(argv[2] == "pextend"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
       subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-resize", "25%", "-resize", "400%", root + "-" + argv[2] + ".png"])
@@ -185,10 +188,8 @@ else:
     elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw" or argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
-      subprocess.call(["convert", root + "-bump0.ppm", "-resize", str(100. / float(pixels * 4)) + "%", "-normalize", "-compress", "none", root + "-bump1.ppm"])
-      subprocess.call([argv[1], "obj",  "1", root + "-bump1.ppm", root + ".obj"])
-      subprocess.call([argv[1], "obj", "-1", root + "-bump1.ppm", root + "-.obj"])
-      subprocess.call(["cp", root + ".obj.mtl", root + "-.obj.mtl"])
+      subprocess.call(["convert", root + "-bump0ff.ppm", "-flip", "-flop", root + "-bump0.ppm", "-average", "-resize", str(100. / float(pixels * 4)) + "%", "-normalize", "-compress", "none", root + "-bump1.ppm"])
+      subprocess.call([argv[1], "obj", str(zratio), root + "-bump1.ppm", root + ".obj"])
       with open(root + "-bump0.ppm") as f:
         f.readline()
         a = f.readline().split(" ")
@@ -196,8 +197,8 @@ else:
         h = int(a[1])
       subprocess.call(["convert", root + "-bump1.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-bump.ppm"])
     elif(argv[2] == "jps"):
-      subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-      subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+      subprocess.call([argv[1], "tilt", "1", "4", str(1. / 20.), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "3", "4", str(1. / 20.), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
       subprocess.call(["convert", root + "-R.ppm", "-trim", root + "-R.png"])
       subprocess.call(["convert", root + "-L.ppm", "-trim", root + "-L.png"])
       subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])
