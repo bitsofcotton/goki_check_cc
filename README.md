@@ -23,7 +23,7 @@ Searching the Internet more...
     
     gokibin (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (pred|cat|catr) <output.ppm> <input0.ppm> ...
-    gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
+    gokibin (tilt|sbox) <index> <max_index> <psi> <zratio> <input.ppm> <input-bump.ppm> <output.ppm>
     gokibin obj   <zratio> <input.ppm> <output.obj>
     gokibin match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokibin recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
