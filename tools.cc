@@ -42,8 +42,8 @@ void usage(const char* en) {
   cout << "Usage:" << endl;
   cout << en << " (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
   cout << en << " (pred|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
-  cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << en << " obj   <ratio> <input.ppm> <output.obj>" << endl;
+  cout << en << " (tilt|sbox) <index> <max_index> <psi> <zratio> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
+  cout << en << " obj   <zratio> <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
@@ -204,19 +204,22 @@ int main(int argc, const char* argv[]) {
     }
     const auto index(atoi(argv[2]));
     const auto Mindex(atoi(argv[3]));
-    num_t psi(0);
-    psi = std::atof(argv[4]);
+    num_t psi(std::atof(argv[4]));
+    num_t zratio(std::atof(argv[5]));
     vector<SimpleMatrix<num_t> > data, bump;
     vector<SimpleVector<num_t> > points;
     vector<SimpleVector<int>   > polys;
-    if(!loadp2or3<num_t>(data, argv[5]))
+    if(!loadp2or3<num_t>(data, argv[6]))
       return - 2;
     const string fn(argv[6]);
-    if(!loadp2or3<num_t>(bump, argv[6]))
+    if(!loadp2or3<num_t>(bump, argv[7]))
       return - 2;
-    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
+    const auto diag(sqrt(num_t(int(bump[0].rows() * bump[0].rows() +
+      bump[0].cols() * bump[0].cols()))));
+    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1),
+      bump[0] * zratio,
       strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
-        tiltprep<num_t>(data[0], index, Mindex, psi),
+        tiltprep<num_t>(data[0], index, Mindex, psi, zratio * diag / num_t(int(2))),
       strcmp(argv[1], "sbox") == 0 ?
         num_t(index) / num_t(Mindex) *
           num_t(min(data[0].rows(), data[0].cols())) :
@@ -224,7 +227,7 @@ int main(int argc, const char* argv[]) {
       ));
     for(int j = 0; j < data.size(); j ++)
       data[j] = pullRefMatrix<num_t>(tilt0, 1, data[j]);
-    if(!savep2or3<num_t>(argv[7], data, ! true))
+    if(!savep2or3<num_t>(argv[8], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "match") == 0) {
     if(argc < 10) {

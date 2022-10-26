@@ -7,7 +7,7 @@ import subprocess
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 6.
-zratio = .025
+zratio = .01
 rot    = 0
 if(argv[2] == "obj" or argv[2] == "bump"): pixels = 12
 
@@ -197,8 +197,8 @@ else:
         h = int(a[1])
       subprocess.call(["convert", root + "-bump1.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-bump.ppm"])
     elif(argv[2] == "jps"):
-      subprocess.call([argv[1], "tilt", "1", "4", str(1. / 20.), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-      subprocess.call([argv[1], "tilt", "3", "4", str(1. / 20.), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+      subprocess.call([argv[1], "tilt", "1", "4", str(1. / 20.), str(zratio), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "3", "4", str(1. / 20.), str(zratio), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
       subprocess.call(["convert", root + "-R.ppm", "-trim", root + "-R.png"])
       subprocess.call(["convert", root + "-L.ppm", "-trim", root + "-L.png"])
       subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])
@@ -216,13 +216,13 @@ else:
         w = int(a[0])
         h = int(a[1])
       for s in range(0, pixels * 2):
-        subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])
+        subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), str(zratio), root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["mogrify", "-trim", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + "-b.mp4"])
     elif(argv[2] == "sbox"):
       for s in range(0, pixels):
-        subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), "0", root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(pixels - s) + ".ppm"])
+        subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), "0", str(zratio), root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(pixels - s) + ".ppm"])
     elif(argv[2] == "sboxb2w"):
       subprocess.call([argv[1], "b2w", root + "-sbox-1.ppm", root + "-sbox-bw-1.ppm", "1"])
       for s in range(1, pixels):

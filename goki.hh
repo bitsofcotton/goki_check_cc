@@ -1414,6 +1414,7 @@ template <typename T> static inline vector<SimpleVector<int> > mesh2(const vecto
 template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>& in, const int& vbox = 1) {
   vector<SimpleVector<T> > geoms;
   geoms.reserve((in.rows() / vbox + 1) * (in.cols() / vbox + 1));
+  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())));
   for(int i = 0; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
@@ -1427,7 +1428,7 @@ template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>&
         SimpleVector<T> work(3);
         work[0] = T(i * vbox);
         work[1] = T(j * vbox);
-        work[2] = sqrt(T(in.rows()) * T(in.cols())) * in(i * vbox, j * vbox);
+        work[2] = diag * in(i * vbox, j * vbox);
         geoms.emplace_back(work);
       }
     }
@@ -1450,6 +1451,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   const auto xx(in * diff<T>(in.cols()).transpose() * diff<T>(in.cols()).transpose());
   const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()).transpose());
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
+  const auto diag(sqrt(T(int(in.rows() * in.rows() + in.cols() * in.cols()))));
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)
@@ -1465,7 +1467,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
       SimpleVector<T> g(3);
       g[0] = T(int(score[i].second.first));
       g[1] = T(int(score[i].second.second));
-      g[2] = sqrt(T(in.rows()) * T(in.cols()) ) *
+      g[2] = diag *
         in(score[i].second.first, score[i].second.second);
       geoms.emplace_back(move(g));
       cache.emplace_back(make_pair(score[i].second.first / guard,
@@ -1475,19 +1477,19 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   SimpleVector<T> g(3);
   g[0] = T(int(0));
   g[1] = T(int(0));
-  g[2] = sqrt(T(in.rows()) * T(in.cols()) ) * in(0, 0);
+  g[2] = diag * in(0, 0);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(0));
-  g[2] = sqrt(T(in.rows()) * T(in.cols()) ) * in(in.rows() - 1, 0);
+  g[2] = diag * in(in.rows() - 1, 0);
   geoms.emplace_back(g);
   g[0] = T(int(0));
   g[1] = T(int(in.cols() - 1));
-  g[2] = sqrt(T(in.rows()) * T(in.cols()) ) * in(0, in.cols() - 1);
+  g[2] = diag * in(0, in.cols() - 1);
   geoms.emplace_back(g);
   g[0] = T(int(in.rows() - 1));
   g[1] = T(int(in.cols() - 1));
-  g[2] = sqrt(T(in.rows()) * T(in.cols()) ) * in(in.rows() - 1, in.cols() - 1);
+  g[2] = diag * in(in.rows() - 1, in.cols() - 1);
   geoms.emplace_back(g);
   T avg(int(0));
   for(int i = 0; i < geoms.size(); i ++)
@@ -1924,7 +1926,7 @@ template <typename T> static inline SimpleMatrix<T> contrast(const SimpleMatrix<
   return contrast<T>(work, intensity, thresh)[0];
 }
 
-template <typename T> static inline match_t<T> tiltprep(const SimpleMatrix<T>& in, const int& idx, const int& samples, const T& psi) {
+template <typename T> static inline match_t<T> tiltprep(const SimpleMatrix<T>& in, const int& idx, const int& samples, const T& psi, const T& z0 = T(int(0))) {
   const auto Pi(atan2(T(int(1)), T(int(1))) * T(int(4)));
   const auto theta(T(2) * Pi * T(idx) / T(samples));
   const auto lpsi(Pi * psi);
@@ -1957,7 +1959,7 @@ template <typename T> static inline match_t<T> tiltprep(const SimpleMatrix<T>& i
   SimpleVector<T> pcenter(3);
   pcenter[0] = T(in.rows() - 1) / T(2);
   pcenter[1] = T(in.cols() - 1) / T(2);
-  pcenter[2] = T(0);
+  pcenter[2] = z0;
   // x -> m.rot * x, same center
   // x - origin -> m.rot * (x - origin)
   // x -> m.rot * x - m.rot * origin + origin.

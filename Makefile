@@ -1,13 +1,14 @@
-CXX=	clang++
-#CXX=	/usr/local/bin/eg++
+#CXX=	clang++
+CXX=	eg++
 
 # compiler flags.
-CXXFLAGS+=	-Ofast -mtune=native -gfull
+#CXXFLAGS+=	-Ofast -mtune=native -gfull
+CXXFLAGS+=	-O3 -mtune=native -g3
 #CXXFLAGS+=	-Oz -mtune=native -gfull
 MPFLAGS=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
 CXXFLAGS+=	-std=c++11
-LDFLAGS+=	-lc++ -L/usr/local/lib
-#LDFLAGS+=	-lestdc++ -L/usr/local/lib
+#LDFLAGS+=	-lc++ -L/usr/local/lib
+LDFLAGS+=	-lestdc++ -L/usr/local/lib
 
 CLEANFILES= *.o gokibin gokibin32 gokibinmp gokibin32mp
 
