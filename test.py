@@ -199,8 +199,8 @@ else:
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", str(1. / 20.), str(zratio), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "3", "4", str(1. / 20.), str(zratio), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
-      subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-fuzz", "5%", "-trim", root + "-R.png"])
-      subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-fuzz", "5%", "-trim", root + "-L.png"])
+      subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-fuzz", "25%", "-trim", root + "-R.png"])
+      subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-fuzz", "25%", "-trim", root + "-L.png"])
       subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])
       subprocess.call(["montage", root + "-L.png", root + "-R.png", "-geometry", "100%x100%", root + "-stereoR.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
@@ -217,7 +217,7 @@ else:
         h = int(a[1])
       for s in range(0, pixels * 2):
         subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), str(zratio), root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])
-        subprocess.call(["mogrify", "-define", "trim:edges=east,west", "-fuzz", "5%", "-trim", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-btilt-base-" + str(s) + ".ppm"])
+        subprocess.call(["mogrify", "-define", "trim:edges=east,west", "-fuzz", "25%", "-trim", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + "-b.mp4"])
     elif(argv[2] == "sbox"):
