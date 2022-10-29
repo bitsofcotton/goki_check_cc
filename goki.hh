@@ -1534,6 +1534,8 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
     const auto& zbi(zbuf[i].second);
     drawMatchTriangle<T>(result, zbi.p.col(0), zbi.p.col(1), zbi.p.col(2), zbi.c);
   }
+  // XXX:
+  result(0, 0) = T(int(0));
   return result;
 }
 
