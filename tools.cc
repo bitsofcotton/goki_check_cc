@@ -53,6 +53,10 @@ void usage(const char* en) {
   return;
 }
 
+static inline num_t myatof(const char* v) {
+  return num_t(int(std::atof(v) * 10000)) / num_t(int(10000));
+}
+
 #undef int
 int main(int argc, const char* argv[]) {
 //#define int int64_t
@@ -162,10 +166,10 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "reshape") == 0) {
       const auto datav(rgb2d<num_t>(datas));
       for(int i = 0; i < datac.size(); i ++)
-        datac[i] = reShape<num_t>(datac[i], datav, count, std::atof(argv[6]));
+        datac[i] = reShape<num_t>(datac[i], datav, count, myatof(argv[6]) );
     } else if(strcmp(argv[1], "recolor2") == 0)
       for(int i = 0; i < datac.size(); i ++)
-        datac[i] = reColor<num_t>(datac[i], count, std::atof(argv[5]));
+        datac[i] = reColor<num_t>(datac[i], count, myatof(argv[5]));
     else if(strcmp(argv[1], "recolor3") == 0)
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reColor3<num_t>(datac[i], datas[i], count);
@@ -174,8 +178,8 @@ int main(int argc, const char* argv[]) {
       auto xyzs(rgb2xyz<num_t>(datas));
       for(int i = 0; i < xyzc.size(); i ++)
         xyzc[i] = strcmp(argv[1], "recolor") == 0 ?
-          reColor<num_t>(xyzc[i], xyzs[i], count, num_t(std::atof(argv[6]))) :
-          reColor<num_t>(xyzc[i], count, num_t(std::atof(argv[5])));
+          reColor<num_t>(xyzc[i], xyzs[i], count, myatof(argv[6])) :
+          reColor<num_t>(xyzc[i], count, myatof(argv[5]));
       datac = xyz2rgb<num_t>(xyzc);
     }
     if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac), ! true))
@@ -186,7 +190,7 @@ int main(int argc, const char* argv[]) {
       usage(argv[0]);
       return - 1;
     }
-    const num_t ratio(std::atof(argv[2]));
+    const auto ratio(myatof(argv[2]));
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
     auto points(getTileVec<num_t>(rgb2d<num_t>(data)));
@@ -204,8 +208,8 @@ int main(int argc, const char* argv[]) {
     }
     const auto index(atoi(argv[2]));
     const auto Mindex(atoi(argv[3]));
-    num_t psi(std::atof(argv[4]));
-    num_t zratio(std::atof(argv[5]));
+    auto psi(myatof(argv[4]));
+    auto zratio(myatof(argv[5]));
     vector<SimpleMatrix<num_t> > data, bump;
     vector<SimpleVector<num_t> > points;
     vector<SimpleVector<int>   > polys;

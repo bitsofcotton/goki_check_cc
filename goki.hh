@@ -1280,12 +1280,14 @@ template <typename T> void drawMatchTriangle(SimpleMatrix<T>& map, SimpleVector<
   const auto d1(lref1 - lref2);
   const auto d2(lref1 - lref0);
   const auto idx(abs(d2[0]) < abs(d2[1]) ? 1 : 0);
-  for(int i = 0; i <= int(abs(d0[idx])); i ++)
-    drawMatchLine<T>(map, d0 * (abs(d0[idx]) - T(i)) / abs(d0[idx]) + lref2,
-                          d2 * T(i) / abs(d2[idx]) + lref0, c);
-  for(int i = 0; i <= int(abs(d1[idx])); i ++)
-    drawMatchLine<T>(map, d1 * (abs(d1[idx]) - T(i)) / abs(d1[idx]) + lref2,
-                        - d2 * T(i) / abs(d2[idx]) + lref1, c);
+  if(abs(d0[idx]) != T(int(0)) && abs(d2[idx]) != T(int(0)))
+    for(int i = 0; i <= int(abs(d0[idx])); i ++)
+      drawMatchLine<T>(map, d0 * (abs(d0[idx]) - T(i)) / abs(d0[idx]) + lref2,
+                            d2 * T(i) / abs(d2[idx]) + lref0, c);
+  if(abs(d1[idx]) != T(int(0)) && abs(d2[idx]) != T(int(0)))
+    for(int i = 0; i <= int(abs(d1[idx])); i ++)
+      drawMatchLine<T>(map, d1 * (abs(d1[idx]) - T(i)) / abs(d1[idx]) + lref2,
+                          - d2 * T(i) / abs(d2[idx]) + lref1, c);
   return;
 }
 
