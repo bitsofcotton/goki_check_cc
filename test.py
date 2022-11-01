@@ -7,7 +7,7 @@ import subprocess
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 6.
-zratio = .01
+zratio = .02
 rot    = 0
 if(argv[2] == "obj" or argv[2] == "bump"): pixels = 12
 
