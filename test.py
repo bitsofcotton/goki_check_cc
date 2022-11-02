@@ -109,9 +109,12 @@ elif(argv[2] == "tile"):
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
 elif(argv[2] == "applycontext"):
-  for line in argv[5:]:
-    subprocess.call(["convert", line, "-resize", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", "-compress", "none", line + "-work.ppm"])
-    subprocess.call(["sh", "-c", str(argv[1]) + " " + str(- abs(int(argv[3]))) + " \"" + line + "-work.ppm\"" + " < ddpmopt.txt"])
+  sz = 1
+  with open(argv[1] + ".txt") as f:
+    sz = int(pow(float(int(f.readline())), .5))
+  for line in argv[3:]:
+    subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-work.ppm"])
+    subprocess.call(["sh", "-c", str(argv[1]) + " -1 \"" + line + "-work.ppm\"" + " < " + argv[1] + ".txt"])
   # XXX: instead of learning, we need enlarge or penlarge for latter stages.
   #      this isn't complement much datas should be learned from data.
   #      data learning can be done with ddpmopt method as output change,
@@ -121,7 +124,7 @@ elif(argv[2] == "getcontext"):
   for line in argv[5:]:
     subprocess.call(["convert", line, "-resize", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", "-compress", "none", line + "-work.ppm"])
     cmd.append("\"" + line + "-work.ppm\"")
-  subprocess.call(["sh", "-c", " ".join(cmd) + " > ddpmopt.txt"])
+  subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
