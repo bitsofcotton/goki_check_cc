@@ -37,19 +37,20 @@ using std::cerr;
 using std::flush;
 using std::endl;
 
-template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1) {
+template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1, const int& r = 1) {
   SimpleVector<T> p;
-  if(size <= 1) {
+  if(size * r <= 1) {
     p.resize(1);
     p[0] = T(1);
-  } else if(size <= 2) {
+  } else if(size * r <= 2) {
     p.resize(2);
-    p[0] = T(1) / T(2) + T(step < 0 ? 1 : 0);
-    p[1] = T(1) / T(2) + T(step < 0 ? 0 : 1);
+    p[0] = T(1) / T(2) + T(step * r < 0 ? 1 : 0);
+    p[1] = T(1) / T(2) + T(step * r < 0 ? 0 : 1);
     p   /= T(2);
   } else {
     const auto file(std::string("./.cache/lieonn/next-") +
       std::to_string(size) + std::string("-") + std::to_string(step) +
+      std::string("-") + std::to_string(r) +
 #if defined(_FLOAT_BITS_)
       std::string("-") + std::to_string(_FLOAT_BITS_)
 #else
@@ -61,10 +62,10 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
       cache >> p;
       cache.close();
     } else {
-      p = taylor(size, T(step < 0 ? step : size + step - 1));
+      p = taylor(size * r, T(step * r < 0 ? step * r : (size + step) * r - 1));
       cerr << "." << flush;
-      if(abs(step) * 2 < size) {
-        const auto pp(pnext<T>(size - 1, step));
+      if(abs(step) <= int(exp(sqrt(log(T(size * 2)))))) {
+        const auto pp(pnext<T>(size - 1, step, r));
         for(int j = 0; j < pp.size(); j ++)
           p[step < 0 ? j : j - pp.size() + p.size()] += pp[j] * T(size - 1);
         p /= T(size);
@@ -74,7 +75,7 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
       }
     }
   }
-  assert(p.size() == size);
+  assert(p.size() == size * r);
   return p;
 }
 
@@ -89,15 +90,6 @@ template <typename T> SimpleVector<T> minsq(const int& size) {
   return s;
 }
 
-template <typename T> const SimpleVector<T>& pnextcache(const int& size, const int& step) {
-  assert(0 < size && 0 <= step);
-  static vector<vector<SimpleVector<T> > > cp;
-  if(cp.size() <= size) cp.resize(size + 1, vector<SimpleVector<T> >());
-  if(cp[size].size() <= step) cp[size].resize(step + 1, SimpleVector<T>());
-  if(cp[size][step].size()) return cp[size][step];
-  return cp[size][step] = (pnext<T>(size, step) + pnext<T>(size, step + 1)) / T(int(2));
-}
-
 template <typename T> const SimpleVector<T>& pnextcacher(const int& size, const int& step, const int& r) {
   assert(0 < size && 0 <= step && 0 < r);
   static vector<vector<vector<SimpleVector<T> > > > cp;
@@ -108,9 +100,7 @@ template <typename T> const SimpleVector<T>& pnextcacher(const int& size, const 
   if(cp[size][step].size() <= r)
     cp[size][step].resize(r + 1, SimpleVector<T>());
   if(cp[size][step][r].size()) return cp[size][step][r];
-  auto res(pnext<T>(size * r, step * r));
-  for(int i = 1; i < r; i ++) res += pnext<T>(size * r, step * r + i);
-  return cp[size][step][r] = (dft<T>(- size * r).subMatrix(0, 0, size * r, size) * dft<T>(size)).template real<T>().transpose() * (res /= T(int(r)));
+  return cp[size][step][r] = (dft<T>(- size * r).subMatrix(0, 0, size * r, size) * dft<T>(size)).template real<T>().transpose() * pnext<T>(size, step, r);
 }
 
 template <typename T> const SimpleVector<T>& mscache(const int& size) {
