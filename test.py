@@ -6,7 +6,7 @@ import subprocess
 
 argv   = sys.argv
 pixels = 4
-psi    = 1. / 6.
+psi    = 1. / 60.
 rot    = 0
 if(argv[2] == "obj" or argv[2] == "bump"): pixels = 12
 
@@ -206,8 +206,8 @@ else:
         h = int(a[1])
       subprocess.call(["convert", root + "-bump1.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-bump.ppm"])
     elif(argv[2] == "jps"):
-      subprocess.call([argv[1], "tilt", "1", "4", str(1. / 20.), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-      subprocess.call([argv[1], "tilt", "3", "4", str(1. / 20.), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+      subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
       subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", root + "-R.png"])
       subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", root + "-L.png"])
       subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])

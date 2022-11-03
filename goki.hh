@@ -1543,10 +1543,14 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
     const auto  p2(tri.p.col(2));
           auto  camera((p0 + p1 + p2) / T(3));
     camera[2] = T(0);
-    const auto t((tri.z - tri.n.dot(camera)) / (tri.n.dot(vz)));
-    zbuf[j].first  = - (camera[2] + vz[2] * t);
-    // XXX: clang++ bug, isfinite after substituting nan immediately.
-    if(! isfinite(zbuf[j].first)) zbuf[j].first = depth;
+    const auto nvz(tri.n.dot(vz));
+    if(nvz == T(int(0))) zbuf[j] .first = depth;
+    else {
+      const auto t((tri.z - tri.n.dot(camera)) / nvz);
+      zbuf[j].first  = - (camera[2] + vz[2] * t);
+      // XXX: clang++ bug, isfinite after substituting nan immediately.
+      if(! isfinite(zbuf[j].first)) zbuf[j].first = depth;
+    }
     zbuf[j].second = move(tri);
   }
   sort(zbuf.begin(), zbuf.end(), lessf<pair<T, triangles_t<T> > >);
