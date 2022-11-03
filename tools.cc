@@ -42,8 +42,8 @@ void usage(const char* en) {
   cout << "Usage:" << endl;
   cout << en << " (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
   cout << en << " (pred|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
-  cout << en << " (tilt|sbox) <index> <max_index> <psi> <zratio> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << en << " obj   <zratio> <input.ppm> <output.obj>" << endl;
+  cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
+  cout << en << " obj   <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
@@ -186,20 +186,17 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
-    if(argc < 5) {
+    if(argc < 4) {
       usage(argv[0]);
       return - 1;
     }
-    const auto ratio(myatof(argv[2]));
-    if(!loadp2or3<num_t>(data, argv[3]))
+    if(!loadp2or3<num_t>(data, argv[2]))
       return - 1;
-    auto points(getTileVec<num_t>(rgb2d<num_t>(data)));
-    for(int i = 0; i < points.size(); i ++)
-      points[i][2] *= ratio;
+    const auto points(getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(data))));
     saveobj<num_t>(points, num_t(data[0].rows()),
                            num_t(data[0].cols()),
-                   mesh2<num_t>(points), argv[4]);
-    saveMTL<num_t>(argv[4], (string(argv[4]) + string(".mtl")).c_str());
+                   mesh2<num_t>(points), argv[3]);
+    saveMTL<num_t>(argv[3], (string(argv[3]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
@@ -209,21 +206,19 @@ int main(int argc, const char* argv[]) {
     const auto index(atoi(argv[2]));
     const auto Mindex(atoi(argv[3]));
     auto psi(myatof(argv[4]));
-    auto zratio(myatof(argv[5]));
     vector<SimpleMatrix<num_t> > data, bump;
     vector<SimpleVector<num_t> > points;
     vector<SimpleVector<int>   > polys;
-    if(!loadp2or3<num_t>(data, argv[6]))
+    if(!loadp2or3<num_t>(data, argv[5]))
       return - 2;
-    const string fn(argv[6]);
-    if(!loadp2or3<num_t>(bump, argv[7]))
+    const string fn(argv[5]);
+    if(!loadp2or3<num_t>(bump, argv[6]))
       return - 2;
     const auto diag(sqrt(num_t(int(bump[0].rows() * bump[0].rows() +
       bump[0].cols() * bump[0].cols()))));
-    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1),
-      bump[0] * zratio,
+    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
       strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
-        tiltprep<num_t>(data[0], index, Mindex, psi, zratio * diag / num_t(int(2))),
+        tiltprep<num_t>(data[0], index, Mindex, psi, diag / num_t(int(2))),
       strcmp(argv[1], "sbox") == 0 ?
         num_t(index) / num_t(Mindex) *
           num_t(min(data[0].rows(), data[0].cols())) :
@@ -231,7 +226,7 @@ int main(int argc, const char* argv[]) {
       ));
     for(int j = 0; j < data.size(); j ++)
       data[j] = pullRefMatrix<num_t>(tilt0, 1, data[j]);
-    if(!savep2or3<num_t>(argv[8], data, ! true))
+    if(!savep2or3<num_t>(argv[7], data, ! true))
       return - 1;
   } else if(strcmp(argv[1], "match") == 0) {
     if(argc < 10) {
@@ -253,11 +248,11 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const string outbase(argv[10]);
     const auto shape0(vboxdst < 0
-      ? getHesseVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst))
-      : getTileVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst)));
+      ? getHesseVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump0)), abs(vboxdst))
+      : getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump0)), abs(vboxdst)));
     const auto shape1(vboxsrc < 0
-      ? getHesseVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc))
-      : getTileVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc)));
+      ? getHesseVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump1)), abs(vboxsrc))
+      : getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump1)), abs(vboxsrc)));
     const auto m(matchPartial<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);

@@ -1412,6 +1412,26 @@ template <typename T> static inline vector<SimpleVector<int> > mesh2(const vecto
   return mesh2<T>(p, pp);
 }
 
+template <typename T> SimpleMatrix<T> getTiltAfterBump(const SimpleMatrix<T>& in) {
+  auto row(in.row(0));
+  auto col(in.col(0));
+  for(int i = 1; i < in.rows(); i ++) row += in.row(i);
+  for(int i = 1; i < in.cols(); i ++) col += in.col(i);
+  row /= T(int(in.rows()));
+  col /= T(int(in.cols()));
+  auto r(row[0]);
+  auto c(col[0]);
+  for(int i = 1; i < row.size(); i ++) r += row[i];
+  for(int i = 1; i < col.size(); i ++) c += col[i];
+  r /= T(int(row.size())) * T(int(row.size() - 1)) / T(int(2));
+  c /= T(int(col.size())) * T(int(col.size() - 1)) / T(int(2));
+  auto res(in);
+  for(int i = 0; i < res.rows(); i ++)
+    for(int j = 0; j < res.cols(); j ++)
+      res(i, j) -= r * T(i) + c * T(j);
+  return normalize<T>(res);
+}
+
 // get bump with multiple scale and vectorized result.
 template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>& in, const int& vbox = 1) {
   vector<SimpleVector<T> > geoms;
