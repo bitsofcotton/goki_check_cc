@@ -114,10 +114,13 @@ elif(argv[2] == "applycontext"):
   for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-work.ppm"])
     subprocess.call(["sh", "-c", argv[1] + " - \"" + line + "-work.ppm\"" + " < " + argv[1] + ".txt"])
-  # XXX: instead of learning, we need enlarge or penlarge for latter stages.
-  #      this isn't complement much datas should be learned from data.
-  #      data learning can be done with ddpmopt method as output change,
-  #      but there's many much time we need to learn enlarge matrix.
+elif(argv[2] == "applyenlarge"):
+  sz = 1
+  with open(argv[1] + ".txt") as f:
+    sz = int(f.readline())
+  for line in argv[3:]:
+    subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
+    subprocess.call(["sh", "-c", argv[1] + " - \"" + line + "-genl.ppm\"" + " < " + argv[1] + ".txt"])
 elif(argv[2] == "getcontext"):
   cmd = [argv[1], "+"]
   sz  = int(pow(float(len(argv) - 3), .5))
@@ -126,6 +129,16 @@ elif(argv[2] == "getcontext"):
   for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-work.ppm"])
     cmd.append("\"" + line + "-work.ppm\"")
+  subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
+elif(argv[2] == "getenlarge"):
+  cmd = [argv[1], "+"]
+  sz  = int(pow(float(len(argv) - 3), 1. / 3.))
+  if(len(argv) - 3 < sz * sz + 2): sz -= 1
+  if(sz < 0): exit(0)
+  sz *= sz
+  for line in argv[3:]:
+    subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
+    cmd.append("\"" + line + "-genl.ppm\"")
   subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
 elif(argv[2] == "i2i"):
   idx = 3
