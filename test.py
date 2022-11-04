@@ -113,15 +113,18 @@ elif(argv[2] == "applycontext"):
     sz = int(pow(float(int(f.readline())), .5))
   for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-work.ppm"])
-    subprocess.call(["sh", "-c", str(argv[1]) + " -1 \"" + line + "-work.ppm\"" + " < " + argv[1] + ".txt"])
+    subprocess.call(["sh", "-c", argv[1] + " - \"" + line + "-work.ppm\"" + " < " + argv[1] + ".txt"])
   # XXX: instead of learning, we need enlarge or penlarge for latter stages.
   #      this isn't complement much datas should be learned from data.
   #      data learning can be done with ddpmopt method as output change,
   #      but there's many much time we need to learn enlarge matrix.
 elif(argv[2] == "getcontext"):
-  cmd = [argv[1], str(abs(int(argv[3])))]
-  for line in argv[5:]:
-    subprocess.call(["convert", line, "-resize", str(int(argv[4])) + "x" + str(int(argv[4])) + "!", "-compress", "none", line + "-work.ppm"])
+  cmd = [argv[1], "+"]
+  sz  = int(pow(float(len(argv) - 3), .5))
+  if(len(argv) - 3 < sz * sz + 2): sz -= 1
+  if(sz < 0): exit(0)
+  for line in argv[3:]:
+    subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-work.ppm"])
     cmd.append("\"" + line + "-work.ppm\"")
   subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
 elif(argv[2] == "i2i"):
