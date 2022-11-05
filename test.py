@@ -132,8 +132,7 @@ elif(argv[2] == "getcontext"):
   subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
 elif(argv[2] == "getenlarge"):
   cmd = [argv[1], "+"]
-  sz  = int(pow(float(len(argv) - 3), 1. / 3.))
-  if(len(argv) - 3 < sz * sz + 2): sz -= 1
+  sz  = int(pow(float(len(argv) - 3), .5))
   if(sz < 0): exit(0)
   sz *= sz
   for line in argv[3:]:
