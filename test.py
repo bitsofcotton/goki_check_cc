@@ -12,6 +12,50 @@ if(argv[2] == "obj" or argv[2] == "bump"): pixels = 12
 
 if(len(argv) < 4):
   print("no much argments.")
+elif(argv[1] == "senganext"):
+  cmd = ["python3", argv[0], argv[2] , "diffraw", "8"]
+  cmd.extend(argv[5:])
+  subprocess.call(cmd)
+  cmd = ["python3", argv[0], argv[2], "pextend"]
+  for line in argv[5:]:
+    root, ext = os.path.splitext(line)
+    cmd.append(line + "-diffraw.ppm")
+  subprocess.call(cmd)
+  cmd = ["python3"]
+  cmd.extend(argv[0:5])
+  cmd[2] = "sengadnext"
+  for line in argv[5:]:
+    root, ext = os.path.splitext(line)
+    cmd.append(line + "-diffraw-pextend0.ppm")
+  subprocess.call(cmd)
+elif(argv[1] == "sengadnext"):
+  cmd = ["python3", argv[0], argv[2], "pred"]
+  cmd.extend(argv[5:])
+  subprocess.call(cmd)
+  cmd = ["python3", argv[0], argv[3], "getcontext"]
+  cmd.extend(argv[5:])
+  subprocess.call(cmd)
+  cmd = ["python3", argv[0], argv[4], "getenlarge"]
+  cmd.extend(argv[5:])
+  subprocess.call(cmd)
+  pred = []
+  dir  = os.listdir(".")
+  for f in dir:
+    if(f[0:len("pred-")] == "pred-"):
+      pred.append(f)
+  cmd = ["python3", argv[0], argv[3], "applycontext"]
+  cmd.extend(pred)
+  subprocess.call(cmd)
+  cmd = ["python3", argv[0], argv[4], "applyenlarge"]
+  for t in range(0, len(pred)):
+    pred[t] = pred[t] + "-work.ppm"
+  cmd.extend(pred)
+  subprocess.call(cmd)
+  cmd = ["python3", argv[0], argv[2], "denlarge"]
+  for t in range(0, len(pred)):
+    pred[t] = pred[t] + "-genl.ppm"
+  cmd.extend(pred)
+  subprocess.call(cmd)
 elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
@@ -121,6 +165,10 @@ elif(argv[2] == "applyenlarge"):
   for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
     subprocess.call(["sh", "-c", argv[1] + " - \"" + line + "-genl.ppm\"" + " < " + argv[1] + ".txt"])
+elif(argv[2] == "denlarge"):
+  for line in argv[3:]:
+    subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
+    subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
 elif(argv[2] == "getcontext"):
   cmd = [argv[1], "+"]
   sz  = int(pow(float(len(argv) - 3), .5))
