@@ -41,6 +41,9 @@ Searching the Internet more...
     python2 test.py enlarge applyenlarge <out.png> ...
     python2 test.py senga(d)?next gokibin ddpmopt enlarge <in.png> ... # for extra small images upto ~ 200px
 
+# Tips
+The command pextend and pred better predicts with the certain condition alpha \< |Delta| \< beta which sup k average |Delta_m| / |Sum^k Delta_m| in some condition. This is because we need some of the continuous condition on the tracing data differed from tracing |f|.
+
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
 * https://drive.google.com/drive/folders/1B71X1BMttL6yyi76REeOTNRrpopO8EAR?usp=sharing

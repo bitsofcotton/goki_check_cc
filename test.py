@@ -19,14 +19,14 @@ elif(argv[1] == "senganext"):
   cmd = ["python3", argv[0], argv[2], "pextend"]
   for line in argv[5:]:
     root, ext = os.path.splitext(line)
-    cmd.append(line + "-diffraw.ppm")
+    cmd.append(root + "-diffraw.ppm")
   subprocess.call(cmd)
   cmd = ["python3"]
   cmd.extend(argv[0:5])
   cmd[2] = "sengadnext"
   for line in argv[5:]:
     root, ext = os.path.splitext(line)
-    cmd.append(line + "-diffraw-pextend0.ppm")
+    cmd.append(root + "-diffraw-pextend0.ppm")
   subprocess.call(cmd)
 elif(argv[1] == "sengadnext"):
   cmd = ["python3", argv[0], argv[2], "pred"]
@@ -41,7 +41,7 @@ elif(argv[1] == "sengadnext"):
   pred = []
   dir  = os.listdir(".")
   for f in dir:
-    if(f[0:len("pred-")] == "pred-"):
+    if(f[0:len("pred.ppm-")] == "pred.ppm-"):
       pred.append(f)
   cmd = ["python3", argv[0], argv[3], "applycontext"]
   cmd.extend(pred)
