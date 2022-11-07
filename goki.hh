@@ -71,7 +71,7 @@ public:
              qqm.first[qqm.first.size() - 2]) / q0[q0.size() - 2] /
            T(int(q0.size())), qqm.second)) ));
     }
-    return (M += d) /= num_t(int(5));
+    return max(- num_t(int(1)), min(num_t(int(1)), (M += d) *= num_t(int(2)) / num_t(int(5)) ));
   }
   P0maxRank<T> p0;
   shrinkMatrix<T, P1I<T, idFeeder<T> > > p1;
@@ -838,26 +838,39 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           auto pf(p0[m]);
           auto pb(p0[m]);
           try {
+/*
             for(int kk = 1; kk < data.rows() / (m + 1); kk ++)
               result(ext - m - 1, k) =
                 pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k) -
                   data((data.rows() / (m + 1) - kk) * (m + 1), k));
+*/
+            for(int kk = 0; kk < data.rows() / (m + 1); kk ++)
+              result(ext - m - 1, k) =
+                pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k));
           } catch(const char* e) {
             result(ext - m - 1, k) = T(int(0));
           }
           try {
+/*
             for(int kk = 1; kk < data.rows() / (m + 1); kk ++)
               result(m - ext + result.rows(), k) =
                 pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) -
                                    (kk + 1)) * (m + 1), k) -
                   data(data.rows() - 1 - (data.rows() / (m + 1) - kk) *
                                                (m + 1), k));
+*/
+            for(int kk = 0; kk < data.rows() / (m + 1); kk ++)
+              result(m - ext + result.rows(), k) =
+                pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) -
+                                   (kk + 1)) * (m + 1), k) );
           } catch(const char* e) {
             result(m - ext + result.rows(), k) = T(int(0));
           }
         }
+/*
         result.row(ext - m - 1) += data.row(0);
         result.row(m - ext + result.rows()) += data.row(data.rows() - 1);
+*/
       }
       result = filter<T>(result.setMatrix(ext, 0, data), CLIP);
     }

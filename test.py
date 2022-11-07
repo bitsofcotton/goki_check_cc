@@ -26,15 +26,15 @@ elif(argv[1] == "senganext"):
   cmd[2] = "sengadnext"
   for line in argv[5:]:
     root, ext = os.path.splitext(line)
-    cmd.append(root + "-diffraw-pextend0.ppm")
+    cmd.append(root + "-diffraw-pextend.ppm")
   subprocess.call(cmd)
 elif(argv[1] == "sengadnext"):
   cmd = ["python3", argv[0], argv[2], "pred"]
   cmd.extend(argv[5:])
   subprocess.call(cmd)
-  cmd = ["python3", argv[0], argv[3], "getcontext"]
-  cmd.extend(argv[5:])
-  subprocess.call(cmd)
+  #cmd = ["python3", argv[0], argv[3], "getcontext"]
+  #cmd.extend(argv[5:])
+  #subprocess.call(cmd)
   cmd = ["python3", argv[0], argv[4], "getenlarge"]
   cmd.extend(argv[5:])
   subprocess.call(cmd)
@@ -43,12 +43,12 @@ elif(argv[1] == "sengadnext"):
   for f in dir:
     if(f[0:len("pred.ppm-")] == "pred.ppm-"):
       pred.append(f)
-  cmd = ["python3", argv[0], argv[3], "applycontext"]
-  cmd.extend(pred)
-  subprocess.call(cmd)
+  #cmd = ["python3", argv[0], argv[3], "applycontext"]
+  #cmd.extend(pred)
+  #subprocess.call(cmd)
   cmd = ["python3", argv[0], argv[4], "applyenlarge"]
-  for t in range(0, len(pred)):
-    pred[t] = pred[t] + "-work.ppm"
+  #for t in range(0, len(pred)):
+  #  pred[t] = pred[t] + "-work.ppm"
   cmd.extend(pred)
   subprocess.call(cmd)
   cmd = ["python3", argv[0], argv[2], "denlarge"]
@@ -232,9 +232,6 @@ else:
       subprocess.call([argv[1], argv[2], root + "-flip.ppm", root + "-" + argv[2] + "0flip.ppm", str(pixels), str(rot)])
       subprocess.call([argv[1], argv[2], root + "-flop.ppm", root + "-" + argv[2] + "0flop.ppm", str(pixels), str(rot)])
       subprocess.call([argv[1], argv[2], root + "-ff.ppm", root + "-" + argv[2] + "0ff.ppm", str(pixels), str(rot)])
-    elif(argv[2] == "pextend"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call(["convert", root + "-" + argv[2] + "0.ppm", "-resize", "25%", "-resize", "400%", root + "-" + argv[2] + ".png"])
     elif(argv[2] == "penlarge"):
       subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
       subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl1.ppm", str(pixels)])
