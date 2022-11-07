@@ -133,20 +133,8 @@ public:
     this->step = step;
   }
   inline ~P0() { ; };
-  inline T next(const T& in) {
-    static const T zero(int(0));
-    if(! step) return zero;
-    const auto& ff(f.next(in));
-/*
-    if(f.full) {
-      auto avg(ff);
-      T avgf(avg[0]);
-      for(int i = 1; i < avg.size(); i ++) avgf += avg[i];
-      for(int i = 0; i < avg.size(); i ++) avg[i] -= avgf / T(int(avg.size()));
-      std::cerr << sqrt(avg.dot(avg) / ff.dot(ff)) << std::endl;
-    }
-*/
-    return f.full ? pnextcacher<T>(ff.size(), step, r).dot(ff) : ff[ff.size() - 1];
+  inline T next(const SimpleVector<T>& in) {
+    return pnextcacher<T>(in.size(), step, r).dot(in);
   }
   int step;
   feeder f;
@@ -157,12 +145,14 @@ public:
   inline P0inv() { ; }
   inline P0inv(P&& p) { this->p = p; }
   inline ~P0inv() { ; }
-  inline T next(const T& in) {
+  inline T next(const SimpleVector<T>& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    if(in == zero) return zero;
-    const auto pn(p.next(one / in));
-    if(pn == zero) return in;
+    auto ff(in);
+    for(int i = 0; i < in.size(); i ++) if(in[i] == zero) return in[in.size() - 1];
+    else ff[i] = one / in[i];
+    const auto pn(p.next(ff));
+    if(pn == zero) return in[in.size() - 1];
     return one / pn;
   }
   P p;
@@ -200,56 +190,63 @@ public:
   inline northPole() { ; }
   inline northPole(P&& p) { this->p = p; }
   inline ~northPole() { ; }
-  inline T next(const T& in) {
+  inline T next(const SimpleVector<T>& in) {
     static const T zero(int(0));
     static const T one(int(1));
     static const T M(atan(one / sqrt(SimpleMatrix<T>().epsilon())));
-    if(! isfinite(in) || in == zero) return in;
-    auto work(atan(in));
-    // assert(- M < work && work < M);
-    work = atan(one / work);
-    // assert(- M < work && work < M);
-    work = p.next(work);
-    if(! isfinite(work) || work == zero) return in;
+    auto ff(in);
+    for(int i = 0; i < in.size(); i ++)
+      if(! isfinite(in[i]) || in[i] == zero) return in[in.size() - 1];
+      else {
+        ff[i] = atan(in[i]);
+        // assert(- M < ff[i] && ff[i] < M);
+        ff[i] = atan(one / ff[i]);
+        // assert(- M < ff[i] && ff[i] < M);
+      }
+    auto work(p.next(ff));
+    if(! isfinite(work) || work == zero) return in[in.size() - 1];
     work = tan(max(- M, min(M, one / tan(max(- M, min(M, work))))));
     if(isfinite(work)) return move(work);
-    return in;
+    return in[in.size() - 1];
   }
   P p;
 };
 
 template <typename T, typename P, bool avg = false> class sumChain {
 public:
-  inline sumChain() { S = T(t ^= t); }
-  inline sumChain(P&& p) { this->p = p; S = T(t ^= t); }
+  inline sumChain() { ; }
+  inline sumChain(P&& p) { this->p = p; }
   inline ~sumChain() { ; }
-  inline T next(const T& in) {
-    S += in;
-    if(! avg) return p.next(S) - S;
-    const auto A(S / T(++ t));
-    return p.next(in - A) + A;
+  inline T next(const SimpleVector<T>& in) {
+    auto ff(in);
+    for(int i = 1; i < ff.size(); i ++)
+      ff[i] += ff[i - 1];
+    if(! avg) return p.next(ff) - ff[ff.size() - 1];
+    const auto A(ff[ff.size() - 1] / T(ff.size()));
+    for(int i = 0; i < ff.size(); i ++)
+      ff[i] = in[i] - A;
+    return p.next(ff) + A;
   }
-  T S;
   P p;
-  myuint t;
 };
 
 template <typename T, typename P> class logChain {
 public:
   inline logChain() { ; }
-  inline logChain(P&& p) { this->p = p; S = T(int(0)); }
+  inline logChain(P&& p) { this->p = p; }
   inline ~logChain() { ; }
-  inline T next(const T& in) {
+  inline T next(const SimpleVector<T>& in) {
     static const T zero(int(0));
     static const T one(int(1));
-    const auto bS(S);
-    S += in;
-    if(bS == zero) return zero;
-    const auto dd(S / bS - one);
-    if(! isfinite(dd)) return zero;
-    return p.next(dd) * S;
+    auto ff(in);
+    for(int i = 1; i < ff.size(); i ++)
+      if((ff[i] += ff[i - 1]) == zero) return in[in.size() - 1];
+    SimpleVector<T> gg(ff.size() - 1);
+    gg.O();
+    for(int i = 1; i < ff.size(); i ++)
+      if(! isfinite(gg[i - 1] = ff[i] / ff[i - 1] - one)) return in[in.size() - 1];
+    return p.next(gg) * ff[ff.size() - 1];
   }
-  T S;
   P p;
 };
 
@@ -262,7 +259,7 @@ public:
     q = p0_it(p0_i0t(p0_0t(status, var)), var);
   }
   inline ~P0maxRank0() { ; }
-  inline T next(const T& in) {
+  inline T next(const SimpleVector<T>& in) {
     return (p.next(in) + q.next(in)) / T(int(2));
   }
   // N.B. on existing taylor series.
@@ -274,10 +271,10 @@ public:
   //      so we should use sectional measurement for them.
   typedef P0<T, idFeeder<T> > p0_0t;
   // N.B. sectional measurement, also expected value.
-  typedef shrinkMatrix<T, p0_0t> p0_st;
+  typedef shrinkMatrixV<T, p0_0t> p0_st;
 
   typedef P0inv<T, p0_0t> p0_i0t;
-  typedef shrinkMatrix<T, p0_i0t> p0_it;
+  typedef shrinkMatrixV<T, p0_i0t> p0_it;
   
   p0_st p;
   p0_it q;
@@ -289,11 +286,13 @@ public:
   inline P0maxRank(const int& status, int var = - 1) {
     if(var < 0) var = max(int(1), int(exp(sqrt(log(T(status))))));
     p = p0_t(p0_5t(p0_4t(p0_3t(p0_2t(p0_1t(p0_0t(status, var) )) )) ));
+    buf = idFeeder<T>(status + 1 + var);
   }
   inline ~P0maxRank() { ; }
   inline T next(const T& in) {
-    return p.next(in);
-  };
+    buf.next(in);
+    return buf.full ? p.next(buf.res) : T(int(0));
+  }
 /*
   // N.B. make information-rich not to associative/commutative.
   //      2 dimension semi-order causes (x, status) from input as sedenion.
@@ -321,6 +320,7 @@ public:
   typedef sumChain<T, p0_4t>  p0_5t;
   typedef sumChain<T, p0_5t, true> p0_t;
   p0_t p;
+  idFeeder<T> buf;
 };
 
 #define _P0_

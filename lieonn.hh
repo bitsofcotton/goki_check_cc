@@ -2788,6 +2788,32 @@ private:
   vector<T> m;
 };
 
+template <typename T, typename P> class shrinkMatrixV {
+public:
+  inline shrinkMatrixV() { ; }
+  inline shrinkMatrixV(P&& p, const int& len = 0) {
+    m.resize(abs(len), T(t ^= t));
+    this->p = p;
+  }
+  inline ~shrinkMatrixV() { ; }
+  inline T next(const SimpleVector<T>& in) {
+    static const T zero(int(0));
+    SimpleVector<T> ff(in.size() - m.size());
+    ff.O();
+    for(int i = m.size(); i < in.size(); i ++)
+      for(int j = 0; j < m.size(); j ++)
+        ff[i - m.size()] += in[i + j - m.size()];
+    m[(t ++) % m.size()] = p.next(ff) != zero;
+    auto res(m[0]);
+    for(int i = 1; i < m.size(); i ++) res += m[i];
+    return res /= T(int(m.size() * m.size()));
+  }
+private:
+  P p;
+  int t;
+  vector<T> m;
+};
+
 template <typename T> const T& sgn(const T& x) {
   static const T zero(0);
   static const T one(1);
