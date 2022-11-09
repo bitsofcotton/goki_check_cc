@@ -151,14 +151,7 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
-elif(argv[2] == "applycontext"):
-  sz = 1
-  with open(argv[1] + ".txt") as f:
-    sz = int(pow(float(int(f.readline())), .5))
-  for line in argv[3:]:
-    subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-work.ppm"])
-    subprocess.call(["sh", "-c", argv[1] + " - \"" + line + "-work.ppm\"" + " < " + argv[1] + ".txt"])
-elif(argv[2] == "applyenlarge"):
+elif(argv[2] == "apply"):
   sz = 1
   with open(argv[1] + ".txt") as f:
     sz = int(f.readline())
@@ -169,20 +162,23 @@ elif(argv[2] == "denlarge"):
   for line in argv[3:]:
     subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
     subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
-elif(argv[2] == "getcontext"):
+elif(argv[2] == "getcontext" or argv[2] == "getcontext2"):
   cmd = [argv[1], "+"]
   sz  = int(pow(float(len(argv) - 3), .5))
   if(len(argv) - 3 < sz * sz + 2): sz -= 1
   if(sz < 0): exit(0)
+  if(argv[2] == "getcontext2" and 10 < sz): sz = 10
   for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-work.ppm"])
     cmd.append("\"" + line + "-work.ppm\"")
   subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
-elif(argv[2] == "getenlarge"):
+elif(argv[2] == "getenlarge" or argv[2] == "getenlarge2"):
   cmd = [argv[1], "+"]
   sz  = int(pow(float(len(argv) - 3), .5))
   if(sz < 0): exit(0)
   sz *= sz
+  if(argv[2] == "getenlarge2" and 100 < sz):
+    sz = 100
   for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
     cmd.append("\"" + line + "-genl.ppm\"")
