@@ -43,10 +43,10 @@ elif(argv[1] == "sengadnext"):
   for f in dir:
     if(f[0:len("pred.ppm-")] == "pred.ppm-"):
       pred.append(f)
-  #cmd = ["python3", argv[0], argv[3], "applycontext"]
+  #cmd = ["python3", argv[0], argv[3], "apply"]
   #cmd.extend(pred)
   #subprocess.call(cmd)
-  cmd = ["python3", argv[0], argv[4], "applyenlarge"]
+  cmd = ["python3", argv[0], argv[4], "apply"]
   #for t in range(0, len(pred)):
   #  pred[t] = pred[t] + "-work.ppm"
   cmd.extend(pred)
