@@ -155,9 +155,14 @@ elif(argv[2] == "apply"):
   sz = 1
   with open(argv[1] + ".txt") as f:
     sz = int(f.readline())
+  list = []
   for line in argv[3:]:
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
-    subprocess.call(["sh", "-c", argv[1] + " - \"" + line + "-genl.ppm\"" + " < " + argv[1] + ".txt"])
+    list.append(line + "-genl.ppm")
+  subprocess.call(["sh", "-c", argv[1] + " - " + " ".join(list) + " < " + argv[1] + ".txt"])
+  cmd = ["mogrify", "-resize", "50%", "-resize", "200%", "-compress", "none"]
+  cmd.extend(list)
+  subprocess.call(cmd)
 elif(argv[2] == "denlarge"):
   for line in argv[3:]:
     subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
