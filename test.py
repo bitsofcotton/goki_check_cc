@@ -14,46 +14,36 @@ if(len(argv) < 4):
   print("no much argments.")
 elif(argv[1] == "senganext"):
   cmd = ["python3", argv[0], argv[2] , "diffraw", "8"]
-  cmd.extend(argv[5:])
+  cmd.extend(argv[4:])
   subprocess.call(cmd)
   cmd = ["python3", argv[0], argv[2], "pextend"]
-  for line in argv[5:]:
+  for line in argv[4:]:
     root, ext = os.path.splitext(line)
     cmd.append(root + "-diffraw.ppm")
   subprocess.call(cmd)
   cmd = ["python3"]
-  cmd.extend(argv[0:5])
+  cmd.extend(argv[0:4])
   cmd[2] = "sengadnext"
-  for line in argv[5:]:
+  for line in argv[4:]:
     root, ext = os.path.splitext(line)
     cmd.append(root + "-diffraw-pextend.ppm")
   subprocess.call(cmd)
 elif(argv[1] == "sengadnext"):
   cmd = ["python3", argv[0], argv[2], "pred"]
-  cmd.extend(argv[5:])
+  cmd.extend(argv[4:])
   subprocess.call(cmd)
-  #cmd = ["python3", argv[0], argv[3], "getcontext"]
-  #cmd.extend(argv[5:])
-  #subprocess.call(cmd)
-  cmd = ["python3", argv[0], argv[4], "getenlarge"]
-  cmd.extend(argv[5:])
+  cmd = ["python3", argv[0], argv[3], "getcontext"]
+  cmd.extend(argv[4:])
   subprocess.call(cmd)
   pred = []
   dir  = os.listdir(".")
   for f in dir:
     if(f[0:len("pred.ppm-")] == "pred.ppm-"):
       pred.append(f)
-  #cmd = ["python3", argv[0], argv[3], "apply"]
-  #cmd.extend(pred)
-  #subprocess.call(cmd)
-  cmd = ["python3", argv[0], argv[4], "apply"]
-  #for t in range(0, len(pred)):
-  #  pred[t] = pred[t] + "-work.ppm"
+  cmd = ["python3", argv[0], argv[3], "apply"]
   cmd.extend(pred)
   subprocess.call(cmd)
   cmd = ["python3", argv[0], argv[2], "denlarge"]
-  for t in range(0, len(pred)):
-    pred[t] = pred[t] + "-genl.ppm"
   cmd.extend(pred)
   subprocess.call(cmd)
 elif(argv[2] == "match"):
@@ -167,26 +157,9 @@ elif(argv[2] == "denlarge"):
   for line in argv[3:]:
     subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
     subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
-elif(argv[2] == "getcontext" or argv[2] == "getcontext2"):
+elif(argv[2] == "getcontext"):
   cmd = [argv[1], "+"]
-  sz  = int(pow(float(len(argv) - 3), .5))
-  if(len(argv) - 3 < sz * sz + 2): sz -= 1
-  if(sz < 0): exit(0)
-  if(argv[2] == "getcontext2" and 10 < sz): sz = 10
-  for line in argv[3:]:
-    subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-work.ppm"])
-    cmd.append("\"" + line + "-work.ppm\"")
-  subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
-elif(argv[2] == "getenlarge" or argv[2] == "getenlarge2"):
-  cmd = [argv[1], "+"]
-  sz  = int(pow(float(len(argv) - 3), .5))
-  if(sz < 0): exit(0)
-  sz *= sz
-  if(argv[2] == "getenlarge2" and 100 < sz):
-    sz = 100
-  for line in argv[3:]:
-    subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
-    cmd.append("\"" + line + "-genl.ppm\"")
+  cmd.extend(argv[3:])
   subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
 elif(argv[2] == "i2i"):
   idx = 3
