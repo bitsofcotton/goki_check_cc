@@ -152,12 +152,9 @@ elif(argv[2] == "apply"):
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
     list.append(line + "-genl.ppm")
   subprocess.call(["sh", "-c", argv[1] + " - " + " ".join(list) + " < " + argv[1] + ".txt"])
-  cmd = ["mogrify", "-resize", "50%", "-resize", "200%", "-compress", "none"]
-  cmd.extend(list)
-  subprocess.call(cmd)
 elif(argv[2] == "denlarge"):
   for line in argv[3:]:
-    subprocess.call(["mogrify", "-resize", "25%", "-compress", "none", line])
+    subprocess.call(["mogrify", "-resize", "30x>", "-resize", "x30>", "-compress", "none", line])
     subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
     subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
 elif(argv[2] == "getcontext"):
