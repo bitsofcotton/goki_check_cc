@@ -44,7 +44,9 @@ elif(argv[1] == "sengadnext"):
   cmd.extend(pred)
   subprocess.call(cmd)
   cmd = ["python3", argv[0], argv[2], "denlarge"]
-  cmd.extend(pred)
+  for f in pred:
+    cmd.append(f)
+    cmd.append(f + "-genl.ppm")
   subprocess.call(cmd)
 elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
@@ -155,6 +157,7 @@ elif(argv[2] == "apply"):
   subprocess.call(cmd)
 elif(argv[2] == "denlarge"):
   for line in argv[3:]:
+    subprocess.call(["mogrify", "-resize", "25%", "-compress", "none", line])
     subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
     subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
 elif(argv[2] == "getcontext"):
