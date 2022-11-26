@@ -8,7 +8,7 @@ argv   = sys.argv
 pixels = 4
 psi    = 1. / 60.
 rot    = 0
-if(argv[2] == "obj" or argv[2] == "bump"): pixels = 12
+gather = "5%"
 
 if(len(argv) < 4):
   print("no much argments.")
@@ -154,7 +154,7 @@ elif(argv[2] == "apply"):
   subprocess.call(["sh", "-c", argv[1] + " - " + " ".join(list) + " < " + argv[1] + ".txt"])
 elif(argv[2] == "denlarge"):
   for line in argv[3:]:
-    subprocess.call(["mogrify", "-resize", "30x>", "-resize", "x30>", "-compress", "none", line])
+    subprocess.call(["mogrify", "-resize", gather, "-compress", "none", line])
     subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
     subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
 elif(argv[2] == "getcontext"):
@@ -231,7 +231,7 @@ else:
       subprocess.call(["convert", root + "-bump0flip.ppm", "-flip", root + "-bump1.png"])
       subprocess.call(["convert", root + "-bump0flop.ppm", "-flop", root + "-bump2.png"])
       subprocess.call(["convert", root + "-bump0ff.ppm", "-flip", "-flop", root + "-bump3.png"])
-      subprocess.call(["convert", root + "-bump0.ppm", root + "-bump1.png", root + "-bump2.png", root + "-bump3.png", "-average", "-resize", str(100. / float(pixels * 4)) + "%", "-normalize", "-compress", "none", root + "-bump1.ppm"])
+      subprocess.call(["convert", root + "-bump0.ppm", root + "-bump1.png", root + "-bump2.png", root + "-bump3.png", "-average", "-resize", gather, "-normalize", "-compress", "none", root + "-bump1.ppm"])
       subprocess.call([argv[1], "obj", root + "-bump1.ppm", root + ".obj"])
       with open(root + "-bump0.ppm") as f:
         f.readline()

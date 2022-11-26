@@ -767,7 +767,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       camera[0] = T(0);
       camera[1] = T(1);
       cpoint[0] = T(1) / T(2 * dratio);
-      for(int zi = 0; zi < min(dratio, recur); zi ++) {
+      for(int zi = 0; zi < dratio; zi ++) {
         // N.B. projection scale is linear.
         cpoint[1] = T(zi) / T(dratio);
         // x-z plane projection of point p with camera geometry c to z=0.
