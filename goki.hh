@@ -1248,12 +1248,12 @@ public:
   }
   inline triangles_t<T>& rotate(const Mat& R, const Vec& origin) {
     for(int i = 0; i < 3; i ++)
-      p.setCol(i, R * (p.col(i) - origin) + origin);
+      p.row[i] = R * (p.row(i) - origin) + origin;
     return *this;
   }
   inline triangles_t<T>& solveN() {
-    const auto pq(p.col(1) - p.col(0));
-    const auto pr(p.col(2) - p.col(0));
+    const auto pq(p.row(1) - p.row(0));
+    const auto pr(p.row(2) - p.row(0));
     n[0] =   (pq[1] * pr[2] - pq[2] * pr[1]);
     n[1] = - (pq[0] * pr[2] - pq[2] * pr[0]);
     n[2] =   (pq[0] * pr[1] - pq[1] * pr[0]);
@@ -1551,13 +1551,13 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
 #endif
   for(int j = 0; j < triangles.size(); j ++) {
           auto& tri(triangles[j]);
-    const auto  p0(tri.p.col(0));
-    const auto  p1(tri.p.col(1));
-    const auto  p2(tri.p.col(2));
+    const auto& p0(tri.p.row(0));
+    const auto& p1(tri.p.row(1));
+    const auto& p2(tri.p.row(2));
           auto  camera((p0 + p1 + p2) / T(3));
     camera[2] = T(0);
     const auto nvz(tri.n.dot(vz));
-    if(nvz == T(int(0))) zbuf[j] .first = depth;
+    if(nvz == T(int(0))) zbuf[j].first = depth;
     else {
       const auto t((tri.z - tri.n.dot(camera)) / nvz);
       zbuf[j].first  = - (camera[2] + vz[2] * t);
@@ -1571,7 +1571,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
   for(i = 0; i < zbuf.size() && zbuf[i].first < depth; i ++) ;
   for( ; i < zbuf.size(); i ++) {
     const auto& zbi(zbuf[i].second);
-    drawMatchTriangle<T>(result, zbi.p.col(0), zbi.p.col(1), zbi.p.col(2), zbi.c);
+    drawMatchTriangle<T>(result, zbi.p.row(0), zbi.p.row(1), zbi.p.row(2), zbi.c);
   }
   // XXX:
   result(0, 0) = T(int(0));
@@ -1593,21 +1593,21 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const Simp
     triangles_t<T> work;
     for(int j = 0; j < 3; j ++) {
       assert(0 <= facets[i][j] && facets[i][j] < points.size());
-      work.p.setCol(j, m.transform(points[facets[i][j]]));
+      work.p.row(j) = m.transform(points[facets[i][j]]);
     }
     for(int j = 0; j < 2; j ++) {
-      if(work.p(j, 0) <= work.p(j, 1) && work.p(j, 0) <= work.p(j, 2))
-        work.p(j, 0) = floor(work.p(j, 0));
-      else if(work.p(j, 1) <= work.p(j, 0) && work.p(j, 1) <= work.p(j, 2))
-        work.p(j, 1) = floor(work.p(j, 1));
-      else if(work.p(j, 2) <= work.p(j, 0) && work.p(j, 2) <= work.p(j, 1))
-        work.p(j, 2) = floor(work.p(j, 2));
-      if(work.p(j, 1) <= work.p(j, 0) && work.p(j, 2) <= work.p(j, 0))
-        work.p(j, 0) = ceil(work.p(j, 0));
-      else if(work.p(j, 0) <= work.p(j, 1) && work.p(j, 2) <= work.p(j, 1))
-        work.p(j, 1) = ceil(work.p(j, 1));
-      else if(work.p(j, 0) <= work.p(j, 2) && work.p(j, 1) <= work.p(j, 2))
-        work.p(j, 2) = ceil(work.p(j, 2));
+      if(work.p(0, j) <= work.p(1, j) && work.p(0, j) <= work.p(2, j))
+        work.p(0, j) = floor(work.p(0, j));
+      else if(work.p(1, j) <= work.p(0, j) && work.p(1, j) <= work.p(2, j))
+        work.p(1, j) = floor(work.p(1, j));
+      else if(work.p(2, j) <= work.p(0, j) && work.p(2, j) <= work.p(1, j))
+        work.p(2, j) = floor(work.p(2, j));
+      if(work.p(1, j) <= work.p(0, j) && work.p(2, j) <= work.p(0, j))
+        work.p(0, j) = ceil(work.p(0, j));
+      else if(work.p(0, j) <= work.p(1, j) && work.p(2, j) <= work.p(1, j))
+        work.p(1, j) = ceil(work.p(1, j));
+      else if(work.p(0, j) <= work.p(2, j) && work.p(1, j) <= work.p(2, j))
+        work.p(2, j) = ceil(work.p(2, j));
     }
     if(T(0) <= points[facets[i][0]][0] && points[facets[i][0]][0] < T(in.rows()) &&
        T(0) <= points[facets[i][0]][1] && points[facets[i][0]][1] < T(in.cols()))
@@ -1631,7 +1631,7 @@ template <typename T> SimpleMatrix<T> draw(const SimpleMatrix<T>& img, const vec
     assert(0 <= hull[i][2] && hull[i][2] < shape.size());
     triangles_t<T> work;
     for(int j = 0; j < 3; j ++)
-      work.p.setCol(j, emph[hull[i][j]]);
+      work.p.row(j) = emph[hull[i][j]];
     work.c = img(max(int(0), min(int(img.rows() - 1),
                    int(shape[hull[i][0]][0]))),
                  max(int(0), min(int(img.cols() - 1),
