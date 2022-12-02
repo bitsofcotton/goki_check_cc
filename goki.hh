@@ -1248,7 +1248,7 @@ public:
   }
   inline triangles_t<T>& rotate(const Mat& R, const Vec& origin) {
     for(int i = 0; i < 3; i ++)
-      p.row[i] = R * (p.row(i) - origin) + origin;
+      p.row(i) = R * (p.row(i) - origin) + origin;
     return *this;
   }
   inline triangles_t<T>& solveN() {
