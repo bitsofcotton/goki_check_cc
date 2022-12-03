@@ -830,10 +830,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       const auto& ext(p0.size());
       result.resize(data.rows() + 2 * ext, data.cols());
       result.O();
+      for(int m = 0; m < ext; m ++) {
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-      for(int m = 0; m < ext; m ++) {
         for(int k = 0; k < data.cols(); k ++) {
           auto pf(p0[m]);
           auto pb(p0[m]);
