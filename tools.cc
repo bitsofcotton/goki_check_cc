@@ -40,8 +40,8 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|flarge|pextend|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
-  cout << en << " (pred|cat|catr) <output.ppm> <input0.ppm> ..." << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|flarge|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
+  cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj   <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
@@ -99,9 +99,6 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
-    else if(strcmp(argv[1], "pextend") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], EXTEND_BOTH, 1);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
@@ -300,8 +297,7 @@ int main(int argc, const char* argv[]) {
       savep2or3<num_t>((outbase + string("-") + to_string(i) + string("-") +
                        to_string(nemph) + string(".ppm")).c_str(), out, false);
     }
-  } else if(strcmp(argv[1], "pred") == 0 ||
-            strcmp(argv[1], "cat") == 0 ||
+  } else if(strcmp(argv[1], "cat") == 0 ||
             strcmp(argv[1], "catr") == 0) {
     if(argc < 4) {
       usage(argv[0]);
@@ -318,32 +314,8 @@ int main(int argc, const char* argv[]) {
     const auto idx(in.size() - 1);
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);
-    if(strcmp(argv[1], "pred") == 0) {
-      for(int i = 0; i < 3; i ++)
-        out[i].resize(in[idx][0].rows(), in[idx][0].cols());
-      std::vector<std::vector<SimpleMatrix<num_t> > > mout, nout;
-      for(int i = 0; i < out.size(); i ++)
-        for(int j = 0; j < out[i].rows(); j ++) {
-          SimpleMatrix<num_t> m(in.size(), out[i].cols());
-          for(int k = 0; k < in.size(); k ++)
-            m.row(k) = std::move(in[k][i].row(j));
-          auto ext(filter<num_t>(m, EXTEND_Y, 2));
-          if(! mout.size()) {
-            const auto szext((ext.rows() - m.rows()) / 2);
-            mout.resize(szext, out);
-            nout.resize(szext, out);
-          }
-          for(int k = 0; k < mout.size(); k ++) {
-            mout[k][i].row(j) = std::move(ext.row(k));
-            nout[k][i].row(j) = std::move(ext.row(ext.rows() - 1 - k));
-          }
-        }
-      for(int k = 0; k < mout.size(); k ++) {
-        savep2or3<num_t>((std::string(argv[2]) + std::string("-p-") + std::to_string(k) + std::string(".ppm")).c_str(), normalize<num_t>(mout[k]), ! true, 65535);
-        savep2or3<num_t>((std::string(argv[2]) + std::string("-n-") + std::to_string(k) + std::string(".ppm")).c_str(), normalize<num_t>(nout[k]), ! true, 65535);
-      }
-    } else if(strcmp(argv[1], "cat") == 0 ||
-              strcmp(argv[1], "catr") == 0) {
+    if(strcmp(argv[1], "cat") == 0 ||
+       strcmp(argv[1], "catr") == 0) {
       vector<SimpleMatrix<num_t> > glay;
       glay.reserve(strcmp(argv[1], "catr") == 0 ? in.size()
                     : in.size() * min(int(in[0][0].rows()), 1 + 5 + 1));

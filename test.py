@@ -14,39 +14,14 @@ if(len(argv) < 4):
   print("no much argments.")
 elif(argv[1] == "senganext"):
   cmd = ["python3", argv[0], argv[2] , "diffraw", "8"]
-  cmd.extend(argv[4:])
+  cmd.extend(argv[5:])
   subprocess.call(cmd)
-  cmd = ["python3", argv[0], argv[2], "pextend"]
-  for line in argv[4:]:
+  cmd = [argv[3]]
+  for line in argv[5:]:
     root, ext = os.path.splitext(line)
     cmd.append(root + "-diffraw.ppm")
   subprocess.call(cmd)
-  cmd = ["python3"]
-  cmd.extend(argv[0:4])
-  cmd[2] = "sengadnext"
-  for line in argv[4:]:
-    root, ext = os.path.splitext(line)
-    cmd.append(root + "-diffraw-pextend.ppm")
-  subprocess.call(cmd)
-elif(argv[1] == "sengadnext"):
-  cmd = ["python3", argv[0], argv[2], "pred"]
-  cmd.extend(argv[4:])
-  subprocess.call(cmd)
-  cmd = ["python3", argv[0], argv[3], "getcontext"]
-  cmd.extend(argv[4:])
-  subprocess.call(cmd)
-  pred = []
-  dir  = os.listdir(".")
-  for f in dir:
-    if(f[0:len("pred.ppm-")] == "pred.ppm-"):
-      pred.append(f)
-  cmd = ["python3", argv[0], argv[3], "apply"]
-  cmd.extend(pred)
-  subprocess.call(cmd)
-  cmd = ["python3", argv[0], argv[2], "denlarge"]
-  for f in pred:
-    cmd.append(f)
-    cmd.append(f + "-genl.ppm")
+  cmd[0] = argv[4]
   subprocess.call(cmd)
 elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
@@ -62,7 +37,7 @@ elif(argv[2] == "match"):
     nemph = int(argv[8])
   subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(vboxd), str(vboxs), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "match-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-" + root1 + ".mp4"])
-elif(argv[2] == "pred" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "catb" or argv[2] == "catbr"):
+elif(argv[2] == "cat" or argv[2] == "catr" or argv[2] == "catb" or argv[2] == "catbr"):
   cmd = [argv[1], argv[2]]
   if(argv[2] == "cat" or argv[2] == "catb"):
     cmd[1] = "catr"
@@ -70,8 +45,6 @@ elif(argv[2] == "pred" or argv[2] == "cat" or argv[2] == "catr" or argv[2] == "c
   elif(argv[2] == "catr" or argv[2] == "catbr"):
     cmd[1] = "cat"
     cmd.append("dummy")
-  if(argv[2] == "pred"):
-    cmd.append(argv[2] + ".ppm")
   for s in argv[3:]:
     r, e = os.path.splitext(s)
     if(e != ".ppm"):
@@ -180,15 +153,6 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + ".ppm", rootx + ".ppm", rooty + "-" + rootx + "-i2i0.ppm"])
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", "2.5"])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
-elif(argv[2] == "predline"):
-  cmd = [argv[1], "pred", "predline.ppm"]
-  for line in argv[3:]:
-    root, ext = os.path.splitext(line)
-    if(ext != ".ppm"):
-      subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    subprocess.call([argv[1], "diffraw", root + ".ppm", root + "-diffraw.ppm", "8", "8"])
-    cmd.append(root + "-diffraw.ppm")
-  subprocess.call(cmd)
 else:
   for line in argv[3:]:
     try:
@@ -225,7 +189,7 @@ else:
       subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-normalize", "+contrast", root + "-sharpen-minus-normalize.png"])
     elif(argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(pixels)])
-    elif(argv[2] == "bump" or argv[2] == "pextend" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw" or argv[2] == "enlarge"):
+    elif(argv[2] == "bump" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw" or argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call(["convert", root + "-bump0flip.ppm", "-flip", root + "-bump1.png"])

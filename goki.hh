@@ -105,9 +105,6 @@ typedef enum {
   DIFFRAW_BOTH,
   COLLECT_BOTH,
   BUMP_BOTH,
-  EXTEND_X,
-  EXTEND_Y,
-  EXTEND_BOTH,
   BLINK_X,
   BLINK_Y,
   BLINK_BOTH,
@@ -633,9 +630,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   case BLUR_BOTH:
     result = filter<T>(filter<T>(data, BLUR_Y, recur), BLUR_X, recur);
     break;
-  case EXTEND_BOTH:
-    result = filter<T>(filter<T>(data, EXTEND_X, recur), EXTEND_Y, recur);
-    break;
   case BLINK_BOTH:
     result = filter<T>(filter<T>(data, BLINK_X, recur), BLINK_Y, recur);
     break;
@@ -650,9 +644,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case BLUR_X:
     result = filter<T>(data.transpose(), BLUR_Y, recur).transpose();
-    break;
-  case EXTEND_X:
-    result = filter<T>(data.transpose(), EXTEND_Y, recur).transpose();
     break;
   case BLINK_X:
     result = filter<T>(data.transpose(), BLINK_Y, recur).transpose();
@@ -816,63 +807,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           }
       }
       result = - filter<T>(result, INTEGRAW_BOTH);
-    }
-    break;
-  case EXTEND_Y:
-    {
-      vector<P<T> > p0;
-      for(int ext = 0; ext < data.rows() / 2; ext ++) {
-        const int status(data.rows() / (ext + 1) - 2);
-        const int var0(max(T(int(1)), T(int(exp(sqrt(log(T(status)))))) ) );
-        if(status < var0 + 3 * 2) break;
-        p0.emplace_back(P<T>(status));
-      }
-      const auto& ext(p0.size());
-      result.resize(data.rows() + 2 * ext, data.cols());
-      result.O();
-      for(int m = 0; m < ext; m ++) {
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-        for(int k = 0; k < data.cols(); k ++) {
-          auto pf(p0[m]);
-          auto pb(p0[m]);
-          try {
-/*
-            for(int kk = 1; kk < data.rows() / (m + 1); kk ++)
-              result(ext - m - 1, k) =
-                pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k) -
-                  data((data.rows() / (m + 1) - kk) * (m + 1), k));
-*/
-            for(int kk = 0; kk < data.rows() / (m + 1); kk ++)
-              result(ext - m - 1, k) =
-                pb.next(data((data.rows() / (m + 1) - (kk + 1)) * (m + 1), k));
-          } catch(const char* e) {
-            result(ext - m - 1, k) = T(int(0));
-          }
-          try {
-/*
-            for(int kk = 1; kk < data.rows() / (m + 1); kk ++)
-              result(m - ext + result.rows(), k) =
-                pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) -
-                                   (kk + 1)) * (m + 1), k) -
-                  data(data.rows() - 1 - (data.rows() / (m + 1) - kk) *
-                                               (m + 1), k));
-*/
-            for(int kk = 0; kk < data.rows() / (m + 1); kk ++)
-              result(m - ext + result.rows(), k) =
-                pf.next(data(data.rows() - 1 - (data.rows() / (m + 1) -
-                                   (kk + 1)) * (m + 1), k) );
-          } catch(const char* e) {
-            result(m - ext + result.rows(), k) = T(int(0));
-          }
-        }
-/*
-        result.row(ext - m - 1) += data.row(0);
-        result.row(m - ext + result.rows()) += data.row(data.rows() - 1);
-*/
-      }
-      result = filter<T>(result.setMatrix(ext, 0, data), CLIP);
     }
     break;
   case BLINK_Y:
