@@ -163,13 +163,7 @@ else:
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
-      subprocess.call(["convert", line, "-flip", "-compress", "none", root + "-flip.ppm"])
-      subprocess.call(["convert", line, "-flop", "-compress", "none", root + "-flop.ppm"])
-      subprocess.call(["convert", line, "-flip", "-flop", "-compress", "none", root + "-ff.ppm"])
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], argv[2], root + "-flip.ppm", root + "-" + argv[2] + "0flip.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], argv[2], root + "-flop.ppm", root + "-" + argv[2] + "0flop.ppm", str(pixels), str(rot)])
-      subprocess.call([argv[1], argv[2], root + "-ff.ppm", root + "-" + argv[2] + "0ff.ppm", str(pixels), str(rot)])
     elif(argv[2] == "penlarge"):
       subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
       subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl1.ppm", str(pixels)])
@@ -192,10 +186,7 @@ else:
     elif(argv[2] == "bump" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw" or argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
-      subprocess.call(["convert", root + "-bump0flip.ppm", "-flip", root + "-bump1.png"])
-      subprocess.call(["convert", root + "-bump0flop.ppm", "-flop", root + "-bump2.png"])
-      subprocess.call(["convert", root + "-bump0ff.ppm", "-flip", "-flop", root + "-bump3.png"])
-      subprocess.call(["convert", root + "-bump0.ppm", root + "-bump1.png", root + "-bump2.png", root + "-bump3.png", "-average", "-resize", gather, "-normalize", "-compress", "none", root + "-bump1.ppm"])
+      subprocess.call(["convert", root + "-bump0.ppm", "-resize", gather, "-normalize", "-compress", "none", root + "-bump1.ppm"])
       subprocess.call([argv[1], "obj", root + "-bump1.ppm", root + ".obj"])
       with open(root + "-bump0.ppm") as f:
         f.readline()

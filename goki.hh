@@ -499,6 +499,20 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
   return res;
 }
 
+template <typename T> static inline SimpleMatrix<T> flip(const SimpleMatrix<T>& d) {
+  auto res(d);
+  for(int i = 0; i < d.rows(); i ++)
+    res.row(res.rows() - 1 - i) = d.row(i);
+  return res;
+}
+
+template <typename T> static inline SimpleMatrix<T> flop(const SimpleMatrix<T>& d) {
+  auto res(d);
+  for(int i = 0; i < d.cols(); i ++)
+    res.setCol(res.cols() - 1 - i, d.col(i));
+  return res;
+}
+
 template <typename T> vector<SimpleMatrix<T> > normalize(const vector<SimpleMatrix<T> >& data, const T& upper = T(1)) {
   T MM(0), mm(0);
   bool fixed(false);
@@ -719,6 +733,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       camera[1] = T(1);
       cpoint[0] = T(1) / T(2 * dratio);
       for(int zi = 0; zi < dratio; zi ++) {
+        cerr << "z" << flush;
         // N.B. projection scale is linear.
         cpoint[1] = T(zi) / T(dratio);
         // x-z plane projection of point p with camera geometry c to z=0.
@@ -766,7 +781,15 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
           }
       }
-      result = - filter<T>(result, INTEGRAW_BOTH);
+      cerr << "i" << flush;
+      auto resb(filter<T>(result, INTEGRAW_BOTH));
+      cerr << "i" << flush;
+      resb += flip<T>(filter<T>(flip<T>(result), INTEGRAW_BOTH));
+      cerr << "i" << flush;
+      resb += flop<T>(filter<T>(flop<T>(result), INTEGRAW_BOTH));
+      cerr << "i" << flush;
+      resb += flip<T>(flop<T>(filter<T>(flip<T>(flop<T>(result)), INTEGRAW_BOTH)));
+      result = - (move(resb) /= T(int(4)));
     }
     break;
   case BLINK_Y:
