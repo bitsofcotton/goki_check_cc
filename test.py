@@ -7,7 +7,7 @@ import subprocess
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 60.
-rot    = 0
+rot    = 2
 gather = "5%"
 
 if(len(argv) < 4):
@@ -187,7 +187,7 @@ else:
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call(["convert", root + "-bump0.ppm", "-resize", gather, "-normalize", "-compress", "none", root + "-bump1.ppm"])
-      subprocess.call([argv[1], "obj", root + "-bump1.ppm", root + ".obj"])
+      subprocess.call([argv[1], "obj", str(rot), root + "-bump1.ppm", root + ".obj"])
       with open(root + "-bump0.ppm") as f:
         f.readline()
         a = f.readline().split(" ")
@@ -195,8 +195,8 @@ else:
         h = int(a[1])
       subprocess.call(["convert", root + "-bump1.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-bump.ppm"])
     elif(argv[2] == "jps"):
-      subprocess.call([argv[1], "tilt", "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-      subprocess.call([argv[1], "tilt", "3", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+      subprocess.call([argv[1], "tilt", "1", "4", str(  psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "1", "4", str(- psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
       subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", root + "-R.png"])
       subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", root + "-L.png"])
       subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])
@@ -217,7 +217,7 @@ else:
         subprocess.call([argv[1], "tilt", "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + "-bump.ppm", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["mogrify", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-btilt-base-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-btilt-base-" + str(s) + ".ppm", root + "-btilt-base-" + str(pixels * 4 - s - 1) + ".ppm"])
-      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + "-b.mp4"])
+      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-btilt-base-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + ".mp4"])
     elif(argv[2] == "sbox"):
       for s in range(0, pixels):
         subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), "0", root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(pixels - s) + ".ppm"])

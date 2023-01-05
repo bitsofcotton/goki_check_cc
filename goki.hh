@@ -65,6 +65,7 @@ typedef enum {
   DIFFRAW_BOTH,
   COLLECT_BOTH,
   BUMP_BOTH,
+  AFTERBUMP,
   BLINK_X,
   BLINK_Y,
   BLINK_BOTH,
@@ -706,7 +707,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     }
     break;
   case INTEGRAW_BOTH:
-    result = (diff<T>(- data.rows()) * data + data * diff<T>(- data.cols()).transpose()) / T(int(2));
+    result = (diffRecur<T>(- data.rows()) * data + data * diffRecur<T>(- data.cols()).transpose()) / T(int(2));
     break;
   case DIFFRAW_BOTH:
     {
@@ -790,6 +791,27 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       cerr << "i" << flush;
       resb += flip<T>(flop<T>(filter<T>(flip<T>(flop<T>(result)), INTEGRAW_BOTH)));
       result = - (move(resb) /= T(int(4)));
+    }
+    break;
+  case AFTERBUMP:
+    {
+      auto row(data.row(0));
+      auto col(data.col(0));
+      for(int i = 1; i < data.rows(); i ++) row += data.row(i);
+      for(int i = 1; i < data.cols(); i ++) col += data.col(i);
+      row /= T(int(data.rows()));
+      col /= T(int(data.cols()));
+      auto r(row[0]);
+      auto c(col[0]);
+      for(int i = 1; i < row.size(); i ++) r += row[i];
+      for(int i = 1; i < col.size(); i ++) c += col[i];
+      r /= T(int(row.size())) * T(int(row.size() - 1)) / T(int(2));
+      c /= T(int(col.size())) * T(int(col.size() - 1)) / T(int(2));
+      result = data;
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) -= r * T(i) + c * T(j);
+      result = normalize<T>(result);
     }
     break;
   case BLINK_Y:
@@ -1342,26 +1364,6 @@ template <typename T> static inline vector<SimpleVector<int> > mesh2(const vecto
   return mesh2<T>(p, pp);
 }
 
-template <typename T> SimpleMatrix<T> getTiltAfterBump(const SimpleMatrix<T>& in) {
-  auto row(in.row(0));
-  auto col(in.col(0));
-  for(int i = 1; i < in.rows(); i ++) row += in.row(i);
-  for(int i = 1; i < in.cols(); i ++) col += in.col(i);
-  row /= T(int(in.rows()));
-  col /= T(int(in.cols()));
-  auto r(row[0]);
-  auto c(col[0]);
-  for(int i = 1; i < row.size(); i ++) r += row[i];
-  for(int i = 1; i < col.size(); i ++) c += col[i];
-  r /= T(int(row.size())) * T(int(row.size() - 1)) / T(int(2));
-  c /= T(int(col.size())) * T(int(col.size() - 1)) / T(int(2));
-  auto res(in);
-  for(int i = 0; i < res.rows(); i ++)
-    for(int j = 0; j < res.cols(); j ++)
-      res(i, j) -= r * T(i) + c * T(j);
-  return normalize<T>(res);
-}
-
 // get bump with multiple scale and vectorized result.
 template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>& in, const int& vbox = 1) {
   vector<SimpleVector<T> > geoms;
@@ -1727,8 +1729,12 @@ template <typename T> SimpleMatrix<T> reColor(const SimpleMatrix<T>& cbase, cons
   return res;
 }
 
-template <typename T> SimpleMatrix<T> reColor3(const SimpleMatrix<T>& cbase, const SimpleMatrix<T>& vbase, const int& count) {
-  assert(cbase.rows() && cbase.cols() && vbase.rows() && vbase.cols());
+template <typename T> SimpleMatrix<T> reColor3(const SimpleMatrix<T>& ccbase, const SimpleMatrix<T>& vbase, const int& count) {
+  assert(ccbase.rows() && ccbase.cols() && vbase.rows() && vbase.cols());
+  auto cbase(ccbase);
+  for(int i = 0; i < cbase.rows(); i ++)
+    for(int j = 0; j < cbase.cols(); j ++)
+      cbase(i, j) += T(int(1)) / T(int(256));
   vector<pair<T, pair<int, int> > > vpoints;
   vector<pair<T, pair<int, int> > > cpoints;
   vpoints.reserve(vbase.rows() * vbase.cols());

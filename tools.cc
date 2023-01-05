@@ -43,7 +43,7 @@ void usage(const char* en) {
   cout << en << " (collect|sharpen|bump|enlarge|flarge|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
   cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << en << " obj   <input.ppm> <output.obj>" << endl;
+  cout << en << " obj   <rot> <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
@@ -183,17 +183,17 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
-    if(argc < 4) {
+    if(argc < 5) {
       usage(argv[0]);
       return - 1;
     }
-    if(!loadp2or3<num_t>(data, argv[2]))
+    if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
-    const auto points(getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(data))));
+    const auto points(getTileVec<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2]))));
     saveobj<num_t>(points, num_t(data[0].rows()),
                            num_t(data[0].cols()),
-                   mesh2<num_t>(points), argv[3]);
-    saveMTL<num_t>(argv[3], (string(argv[3]) + string(".mtl")).c_str());
+                   mesh2<num_t>(points), argv[4]);
+    saveMTL<num_t>(argv[4], (string(argv[4]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
@@ -245,11 +245,11 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const string outbase(argv[10]);
     const auto shape0(vboxdst < 0
-      ? getHesseVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump0)), abs(vboxdst))
-      : getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump0)), abs(vboxdst)));
+      ? getHesseVec<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP), abs(vboxdst))
+      : getTileVec<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP), abs(vboxdst)));
     const auto shape1(vboxsrc < 0
-      ? getHesseVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump1)), abs(vboxsrc))
-      : getTileVec<num_t>(getTiltAfterBump<num_t>(rgb2d<num_t>(bump1)), abs(vboxsrc)));
+      ? getHesseVec<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP), abs(vboxsrc))
+      : getTileVec<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP), abs(vboxsrc)));
     const auto m(matchPartial<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);

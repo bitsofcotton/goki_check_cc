@@ -21,10 +21,10 @@ Searching the Internet more...
 # Usage
     make gokibin
     
-    gokibin (collect|sharpen|bump|enlarge|flarge|blink|represent) <input.ppm> <output.ppm> <recursive_num> <rot_num>
+    gokibin (collect|sharpen|bump|enlarge|flarge|blink) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (cat|catr) <output.ppm> <input0.ppm> ...
     gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
-    gokibin obj   <input.ppm> <output.obj>
+    gokibin obj   <rot> <input.ppm> <output.obj>
     gokibin match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokibin recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
