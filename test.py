@@ -8,21 +8,9 @@ argv   = sys.argv
 pixels = 4
 psi    = 1. / 60.
 rot    = 2
-gather = "5%"
 
 if(len(argv) < 4):
   print("no much argments.")
-elif(argv[1] == "senganext"):
-  cmd = ["python3", argv[0], argv[2] , "diffraw", "8"]
-  cmd.extend(argv[5:])
-  subprocess.call(cmd)
-  cmd = [argv[3]]
-  for line in argv[5:]:
-    root, ext = os.path.splitext(line)
-    cmd.append(root + "-diffraw.ppm")
-  subprocess.call(cmd)
-  cmd[0] = argv[4]
-  subprocess.call(cmd)
 elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
@@ -116,6 +104,18 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
+elif(argv[2] == "denlarge"):
+  for line in argv[3:]:
+    gather = "100%"
+    with open(line) as f:
+      f.readline()
+      a = f.readline().split(" ")
+      w = int(a[0])
+      h = int(a[1])
+      gather = str(int(pow(w, .5))) + "x" + str(int(pow(h, .5)))
+    subprocess.call(["mogrify", "-resize", gather, "-compress", "none", line])
+    subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
+    subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
 elif(argv[2] == "apply"):
   sz = 1
   with open(argv[1] + ".txt") as f:
@@ -125,11 +125,6 @@ elif(argv[2] == "apply"):
     subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
     list.append(line + "-genl.ppm")
   subprocess.call(["sh", "-c", argv[1] + " - " + " ".join(list) + " < " + argv[1] + ".txt"])
-elif(argv[2] == "denlarge"):
-  for line in argv[3:]:
-    subprocess.call(["mogrify", "-resize", gather, "-compress", "none", line])
-    subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
-    subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
 elif(argv[2] == "getcontext"):
   cmd = [argv[1], "+"]
   cmd.extend(argv[3:])
@@ -153,6 +148,7 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + ".ppm", rootx + ".ppm", rooty + "-" + rootx + "-i2i0.ppm"])
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", "2.5"])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
+      subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i--02.ppm", "-.02"])
 else:
   for line in argv[3:]:
     try:
@@ -168,13 +164,6 @@ else:
       subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
       subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl1.ppm", str(pixels)])
       subprocess.call(["convert", root + "-penl1.ppm", "-resize", "50%", root + "-penl0.ppm", "-compose", "minus", "-composite", "-modulate", "50", "-negate", root + "-penl0.ppm", "-average", "-normalize", root + "-penl.png"])
-    elif(argv[2] == "1to1enl"):
-      subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
-      for t in range(0, pixels):
-        subprocess.call(["cp", root + "-sharpen.ppm", root + "-sharpen0.ppm"])
-        subprocess.call([argv[1], "sharpen", root + "-sharpen0.ppm", root + "-sharpen1.ppm", str(pixels)])
-        subprocess.call([argv[1], "diffraw", root + "-sharpen1.ppm", root + "-sharpen2.ppm", str(pixels), str(rot)])
-        subprocess.call(["convert", root + "-sharpen2.ppm", "-equalize", "-compress", "none", root + "-sharpen.ppm"])
     elif(argv[2] == "sharpen"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
@@ -183,9 +172,15 @@ else:
       subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-normalize", "+contrast", root + "-sharpen-minus-normalize.png"])
     elif(argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(pixels)])
-    elif(argv[2] == "bump" or argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "diffraw" or argv[2] == "enlarge"):
+    elif(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
+      with open(root + "-bump0.ppm") as f:
+        f.readline()
+        a = f.readline().split(" ")
+        w = int(a[0])
+        h = int(a[1])
+        gather = str(int(pow(w, .5))) + "x" + str(int(pow(h, .5)))
       subprocess.call(["convert", root + "-bump0.ppm", "-resize", gather, "-normalize", "-compress", "none", root + "-bump1.ppm"])
       subprocess.call([argv[1], "obj", str(rot), root + "-bump1.ppm", root + ".obj"])
       with open(root + "-bump0.ppm") as f:
@@ -203,10 +198,7 @@ else:
       subprocess.call(["montage", root + "-L.png", root + "-R.png", "-geometry", "100%x100%", root + "-stereoR.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
       subprocess.call(["montage", root + "-stereoR.jps", "-geometry", "100%x100%", root + "-stereoR.png"])
-      subprocess.call(["cp", root + "-L.ppm", root + "-jps-0.ppm"])
-      subprocess.call(["cp", root + "-R.ppm", root + "-jps-1.ppm"])
-      subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-jps-%d.ppm", "-framerate", "20", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + "-LR.mp4"])
-    elif(argv[2] == "btilt"):
+    elif(argv[2] == "tilt"):
       w = h = 0
       with open(root + "-bump.ppm") as f:
         f.readline()

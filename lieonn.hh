@@ -2859,7 +2859,7 @@ public:
     for(int i = m.size(); i < in.size(); i ++)
       for(int j = 0; j < m.size(); j ++)
         ff[i - m.size()] += in[i + j - m.size()];
-    m[(t ++) % m.size()] = p.next(ff) != zero;
+    m[(t ++) % m.size()] = p.next(ff);
     auto res(m[0]);
     for(int i = 1; i < m.size(); i ++) res += m[i];
     return res /= T(int(m.size() * m.size()));
