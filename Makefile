@@ -5,7 +5,7 @@ CXX=	clang++
 CXXFLAGS+=	-Ofast -mtune=native -gfull
 #CXXFLAGS+=	-O2 -mtune=native -g3
 #CXXFLAGS+=	-Oz -mtune=native -gfull
-#MPFLAGS=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
+MPFLAGS=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
 #CXXFLAGS+=	-pg
 CXXFLAGS+=	-std=c++11
 LDFLAGS+=	-lc++ -L/usr/local/lib
@@ -16,7 +16,7 @@ CLEANFILES= *.o gokibin gokibin32 gokibinmp gokibin32mp
 clean:
 	@rm -rf ${CLEANFILES}
 
-all:	gokibin gokibin32
+all:	gokibin gokibin32 gokibinmp gokibin32mp
 gokibin:
 	${CXX} ${CXXFLAGS} -static -o gokibin tools.cc
 gokibinO0:
