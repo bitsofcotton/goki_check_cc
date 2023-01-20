@@ -49,7 +49,8 @@ public:
     const auto& buf(f.next(in));
     if(! f.full) return T(0);
     // N.B. please use catgp to compete with over learning.
-    const auto nin(sqrt(buf.dot(buf)));
+    // XXX: division accuracy glitch.
+    const auto nin(sqrt(buf.dot(buf)) * T(int(2)));
     if(! isfinite(nin) || nin == zero) return zero;
     SimpleMatrix<T> toeplitz(buf.size() - varlen - step + 2, varlen + 2);
     for(int i = 0; i < toeplitz.rows(); i ++) {
@@ -57,7 +58,8 @@ public:
       work[work.size() - 1] = buf[i + varlen + step - 2] / nin;
       auto mp(makeProgramInvariant<T>(move(work),
                 T(i + 1) / T(toeplitz.rows() + 1)));
-      toeplitz.row(i) = move(mp.first) * pow(mp.second, ceil(- log(toeplitz.epsilon()) ));
+      toeplitz.row(i)  = move(mp.first);
+      toeplitz.row(i) *= pow(mp.second, ceil(- log(toeplitz.epsilon()) ));
     }
     const auto invariant(linearInvariant<T>(toeplitz));
     if(invariant[varlen - 1] == zero) return zero;

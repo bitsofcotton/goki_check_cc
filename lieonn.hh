@@ -2179,9 +2179,9 @@ template <typename T> inline SimpleMatrix<T> SimpleMatrix<T>::SVD() const {
     if(i & 1)
       res = svd.second.transpose() * res;
     else
-      res = move(svd.first) * res;
+      res = svd.first * res;
   }
-  return move(res);
+  return res;
 }
 
 template <typename T> inline pair<pair<SimpleMatrix<T>, SimpleMatrix<T> >, SimpleMatrix<T> > SimpleMatrix<T>::SVD(const SimpleMatrix<T>& src) const {

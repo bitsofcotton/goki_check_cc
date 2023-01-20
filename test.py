@@ -113,7 +113,7 @@ elif(argv[2] == "denlarge"):
       w = int(a[0])
       h = int(a[1])
       gather = str(int(pow(w, .5))) + "x" + str(int(pow(h, .5)))
-    subprocess.call(["mogrify", "-resize", gather, "-compress", "none", line])
+    subprocess.call(["mogrify", "-scale", gather, "-compress", "none", line])
     subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
     subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
 elif(argv[2] == "apply"):
@@ -181,7 +181,7 @@ else:
         w = int(a[0])
         h = int(a[1])
         gather = str(int(pow(w, .5))) + "x" + str(int(pow(h, .5)))
-      subprocess.call(["convert", root + "-bump0.ppm", "-resize", gather, "-normalize", "-compress", "none", root + "-bump1.ppm"])
+      subprocess.call(["convert", root + "-bump0.ppm", "-scale", gather, "-normalize", "-compress", "none", root + "-bump1.ppm"])
       subprocess.call([argv[1], "obj", str(rot), root + "-bump1.ppm", root + ".obj"])
       with open(root + "-bump0.ppm") as f:
         f.readline()

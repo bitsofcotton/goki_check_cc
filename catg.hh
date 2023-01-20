@@ -62,7 +62,8 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
 #endif
   for(int i = 0; i < in.size(); i ++) {
     auto work(makeProgramInvariant(tayl(size, in[i].size()) * in[i]));
-    A.row(i) = move(work.first) * pow(abs(work.second), ceil(- log(A.epsilon()) / T(int(2)) ));
+    A.row(i)  = move(work.first);
+    A.row(i) *= pow(abs(work.second), ceil(- log(A.epsilon()) / T(int(2)) ));
     // N.B. test for linear ones:
     // A.row(i).setVector(0, tayl(size, in[i].size()) * in[i]);
   }
@@ -141,8 +142,9 @@ template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& size
 template <typename T> inline T CatG<T>::score(const Vec& in) {
   const auto size(cut.size() - 2);
   assert(0 < size);
-  auto work(makeProgramInvariant(tayl(size, in.size()) * in));
-  auto sv(move(work.first) * pow(abs(work.second), ceil(- log(SimpleMatrix<T>().epsilon()) / T(int(2)) )) );
+  auto  work(makeProgramInvariant(tayl(size, in.size()) * in));
+  auto& sv(work.first);
+  sv *= pow(abs(work.second), ceil(- log(SimpleMatrix<T>().epsilon()) / T(int(2)) ));
   return sv.dot(cut);
 }
 
@@ -310,10 +312,12 @@ template <typename T, typename feeder> inline T P012L<T,feeder>::next(const T& i
     if(! cat[i].first.size()) continue;
     Mat pw(cat[i].first.size(), cat[i].first[0].size() + 1);
     auto mp(makeProgramInvariant<T>(cat[i].first[0]));
-    auto avg(pw.row(0) = move(mp.first) * pow(mp.second, ceil(- log(pw.epsilon()) )) );
+    pw.row(0) = move(mp.first);
+    auto avg(pw.row(0) *= pow(mp.second, ceil(- log(pw.epsilon()) )) );
     for(int j = 1; j < pw.rows(); j ++) {
       auto mp(makeProgramInvariant<T>(cat[i].first[j]));
-      avg += (pw.row(j) = move(mp.first) * pow(mp.second, ceil(- log(pw.epsilon()) )) );
+      pw.row(j) = move(mp.first);
+      avg += (pw.row(j) *= pow(mp.second, ceil(- log(pw.epsilon()) )) );
     }
     avg /= T(int(pw.rows()));
     const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? Vec() : linearInvariant<T>(pw));

@@ -206,7 +206,7 @@ public:
     auto work(p.next(ff));
     if(! isfinite(work) || work == zero) return in[in.size() - 1];
     work = tan(max(- M, min(M, one / tan(max(- M, min(M, work))))));
-    if(isfinite(work)) return move(work);
+    if(isfinite(work)) return work;
     return in[in.size() - 1];
   }
   P p;
