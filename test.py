@@ -114,8 +114,9 @@ elif(argv[2] == "denlarge"):
       h = int(a[1])
       gather = str(int(pow(w, .5))) + "x" + str(int(pow(h, .5)))
     subprocess.call(["mogrify", "-scale", gather, "-compress", "none", line])
-    subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "2", "8"])
+    subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "4", "16"])
     subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
+    subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl-penl.png"])
 elif(argv[2] == "apply"):
   sz = 1
   with open(argv[1] + ".txt") as f:
