@@ -104,19 +104,10 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
-elif(argv[2] == "denlarge"):
-  for line in argv[3:]:
-    gather = "100%"
-    with open(line) as f:
-      f.readline()
-      a = f.readline().split(" ")
-      w = int(a[0])
-      h = int(a[1])
-      gather = str(int(pow(w, .5))) + "x" + str(int(pow(h, .5)))
-    subprocess.call(["mogrify", "-scale", gather, "-compress", "none", line])
-    subprocess.call([argv[1], "enlarge", line, line + "-enl.ppm", "4", "16"])
-    subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl.ppm"])
-    subprocess.call(["python3", argv[0], argv[1], "penlarge", line + "-enl-penl.png"])
+elif(argv[2] == "venlarge"):
+  cmd = ["display", "-resize", "25%", "-despeckle", "-despeckle", "-despeckle", "-despeckle", "-sample", "400%"]
+  cmd.extend(argv[3:])
+  subprocess.call(cmd)
 elif(argv[2] == "apply"):
   sz = 1
   with open(argv[1] + ".txt") as f:
@@ -176,13 +167,7 @@ else:
     elif(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
-      with open(root + "-bump0.ppm") as f:
-        f.readline()
-        a = f.readline().split(" ")
-        w = int(a[0])
-        h = int(a[1])
-        gather = str(int(pow(w, .5))) + "x" + str(int(pow(h, .5)))
-      subprocess.call(["convert", root + "-bump0.ppm", "-scale", gather, "-normalize", "-compress", "none", root + "-bump1.ppm"])
+      subprocess.call(["convert", root + "-bump0.ppm", "-resize", "25%", "-despeckle", "-despeckle", "-despeckle", "-despeckle", "-compress", "none", root + "-bump1.ppm"])
       subprocess.call([argv[1], "obj", str(rot), root + "-bump1.ppm", root + ".obj"])
       with open(root + "-bump0.ppm") as f:
         f.readline()
