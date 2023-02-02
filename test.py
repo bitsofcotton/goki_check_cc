@@ -117,7 +117,9 @@ elif(argv[2] == "denlarge"):
       a = f.readline().split(" ")
       w = int(a[0])
       h = int(a[1])
-      subprocess.call(["mogrify", "-resize", str(int(w / log2(w))) + "x" + str(int(h / log2(h))) + "!", "-equalize", file])
+      subprocess.call(["mogrify", "-resize", str(int(w / log2(w))) + "x" + str(int(h / log2(h))) + "!", "-equalize", "-compress", "none", file])
+      subprocess.call([argv[1], "enlarge", file, file + "-enlarge.ppm", "4", "12"])
+      subprocess.call(["mogrify", file + "-enlarge.ppm", "-scale", "20%", "-despeckle", "-despeckle", "-resize", "500%"])
 elif(argv[2] == "apply"):
   sz = 1
   with open(argv[1] + ".txt") as f:
