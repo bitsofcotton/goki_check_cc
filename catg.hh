@@ -46,10 +46,29 @@ public:
   inline CatG() { ; }
   inline CatG(const int& size0, const vector<Vec>& in);
   inline ~CatG() { ; }
-  inline T score(const Vec& in);
-  const Mat& tayl(const int& size, const int& in);
+  inline T score(const Vec& in) {
+    const auto size(cut.size() - 2);
+    assert(0 < size);
+    auto  work(makeProgramInvariant(tayl(size, in.size()) * in));
+    auto& sv(work.first);
+    sv *= pow(abs(work.second), ceil(- log(SimpleMatrix<T>().epsilon()) / T(int(2)) ));
+    return abs(sv.dot(cut)) - origin;
+  }
+  const Mat& tayl(const int& size, const int& in) {
+    static vector<Mat> t;
+    if(in < t.size()) {
+      if(t[in].rows() && t[in].cols())
+        return t[in];
+    } else
+      t.resize(in + 1, Mat());
+    t[in].resize(size, in);
+    for(int i = 0; i < size; i ++)
+      t[in].row(i) = taylor<T>(in, T(i) * T(in) / T(size));
+    return t[in];
+  }
   Vec cut;
   T   distance;
+  T   origin;
 };
 
 template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& in) {
@@ -67,9 +86,9 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     // N.B. test for linear ones:
     // A.row(i).setVector(0, tayl(size, in[i].size()) * in[i]);
   }
-        auto Pt(A.QR());
+  const auto Q(A.QR());
+        auto Pt(Q);
         auto Ptb(Pt);
-        auto bdistance(distance);
   const auto R(Pt * A);
         Vec  one(Pt.cols());
   SimpleVector<int> fix(one.size());
@@ -81,7 +100,6 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     const auto on(Pt.projectionPt(one));
     if(on.dot(on) < one.dot(one) * Pt.epsilon()) {
       Pt = move(Ptb);
-      distance = move(bdistance);
       break;
     }
     vector<pair<T, int> > fidx;
@@ -112,8 +130,6 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     const auto  n2(orth.dot(orth));
     if(n2 <= Pt.epsilon()) continue;
     Ptb = Pt;
-    bdistance = distance;
-    distance  = fidx[idx].first;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -123,31 +139,19 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     if(size0 < 0) fix[pidx[iidx]] = true;
   }
   cut = R.solve(Pt * one);
+  auto test(Q.transpose() * cut);
+  vector<T> testv;
+  testv.reserve(test.size());
+  for(int i = 0; i < test.size(); i ++) testv.emplace_back(abs(test[i]));
+  std::sort(testv.begin(), testv.end());
+  distance = T(int(0));
+  for(int i = 1; i < testv.size(); i ++)
+    if(distance < testv[i] - testv[i - 1]) {
+      distance =  testv[i] - testv[i - 1];
+      origin   = (testv[i] + testv[i - 1]) / T(int(2));
+    }
   return;
 }
-
-template <typename T> const typename CatG<T>::Mat& CatG<T>::tayl(const int& size, const int& in) {
-  static vector<Mat> t;
-  if(in < t.size()) {
-    if(t[in].rows() && t[in].cols())
-      return t[in];
-  } else
-    t.resize(in + 1, Mat());
-  t[in].resize(size, in);
-  for(int i = 0; i < size; i ++)
-    t[in].row(i) = taylor<T>(in, T(i) * T(in) / T(size));
-  return t[in];
-}
-
-template <typename T> inline T CatG<T>::score(const Vec& in) {
-  const auto size(cut.size() - 2);
-  assert(0 < size);
-  auto  work(makeProgramInvariant(tayl(size, in.size()) * in));
-  auto& sv(work.first);
-  sv *= pow(abs(work.second), ceil(- log(SimpleMatrix<T>().epsilon()) / T(int(2)) ));
-  return sv.dot(cut);
-}
-
 
 template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crush(const vector<SimpleVector<T> >& v, const int& cs, const int& count = 0) {
   assert(0 <= count);
