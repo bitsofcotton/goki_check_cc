@@ -40,7 +40,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|flarge|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|denlarge|flarge|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
   cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj   <rot> <input.ppm> <output.obj>" << endl;
@@ -69,6 +69,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "diffraw") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
+     strcmp(argv[1], "denlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
@@ -96,7 +97,34 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
-    else if(strcmp(argv[1], "flarge") == 0)
+    else if(strcmp(argv[1], "denlarge") == 0) {
+      const int rows(min(sqrt(num_t(data[0].rows())),
+                         num_t(data[0].rows()) / log(num_t(data[0].rows()))
+                           * log(num_t(int(2)))));
+      const int cols(min(sqrt(num_t(data[0].cols())),
+                         num_t(data[0].rows()) / log(num_t(data[0].cols()))
+                           * log(num_t(int(2)))));
+      for(int i = 0; i < data.size(); i ++) {
+        SimpleMatrix<num_t> work(rows, cols);
+        work.O();
+        for(int ii = 0; ii < work.rows(); ii ++)
+          for(int jj = 0; jj < work.cols(); jj ++) {
+            int cnt(0);
+            for(int iii  = ii * data[i].rows() / work.rows();
+                    iii <= min((ii + 1) * data[i].rows() / work.rows(),
+                               data[i].rows() - 1);
+                    iii ++)
+              for(int jjj  = jj * data[i].cols() / work.cols();
+                      jjj <= min((jj + 1) * data[i].cols() / work.cols(),
+                                 data[i].cols() - 1);
+                      jjj ++, cnt ++) work(ii, jj) += data[i](iii, jjj);
+            if(cnt) work(ii, jj) /= num_t(cnt);
+          }
+        std::swap(work, data[i]);
+      }
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
+    } else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
     else if(strcmp(argv[1], "blink") == 0)

@@ -110,16 +110,6 @@ elif(argv[2] == "tile"):
     cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
     cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
     subprocess.call(cmd)
-elif(argv[2] == "denlarge"):
-  for file in argv[3:]:
-    with open(file) as f:
-      f.readline()
-      a = f.readline().split(" ")
-      w = int(a[0])
-      h = int(a[1])
-      subprocess.call(["mogrify", "-resize", str(int(w / log2(w))) + "x" + str(int(h / log2(h))) + "!", "-equalize", "-compress", "none", file])
-      subprocess.call([argv[1], "enlarge", file, file + "-enlarge.ppm", "4", "12"])
-      subprocess.call(["mogrify", file + "-enlarge.ppm", "-scale", "20%", "-despeckle", "-despeckle", "-resize", "500%"])
 elif(argv[2] == "apply"):
   sz = 1
   with open(argv[1] + ".txt") as f:
@@ -164,19 +154,13 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-    elif(argv[2] == "penlarge"):
-      subprocess.call(["convert", line, "-resize", "200%", "-compress", "none", root + "-penl0.ppm"])
-      subprocess.call([argv[1], "sharpen", root + "-penl0.ppm", root + "-penl1.ppm", str(pixels)])
-      subprocess.call(["convert", root + "-penl1.ppm", "-resize", "50%", root + "-penl0.ppm", "-compose", "minus", "-composite", "-modulate", "50", "-negate", root + "-penl0.ppm", "-average", "-normalize", root + "-penl.png"])
     elif(argv[2] == "sharpen"):
       subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
       for t in range(0, pixels):
         subprocess.call([argv[1], "sharpen", root + "-sharpen.ppm", root + "-sharpen-work.ppm", str(pixels)])
         subprocess.call(["convert", root + "-sharpen-work.ppm", "-resize", "50%", "-compress", "none", root + "-sharpen.ppm"])
       subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-normalize", "+contrast", root + "-sharpen-minus-normalize.png"])
-    elif(argv[2] == "diffraw"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(pixels)])
-    elif(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge"):
+    elif(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "diffraw"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       with open(root + "-bump0.ppm") as f:
