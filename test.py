@@ -4,12 +4,6 @@ import os
 import sys
 import subprocess
 
-def log2(x):
-  res = 0
-  for lres in range(1, 20):
-    if(pow(2., lres) < x): res = lres
-  return res
-
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 60.
@@ -152,30 +146,10 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-    elif(argv[2] == "sharpen"):
-      subprocess.call(["cp", root + ".ppm", root + "-sharpen.ppm"])
-      for t in range(0, pixels):
-        subprocess.call([argv[1], "sharpen", root + "-sharpen.ppm", root + "-sharpen-work.ppm", str(pixels)])
-        subprocess.call(["convert", root + "-sharpen-work.ppm", "-resize", "50%", "-compress", "none", root + "-sharpen.ppm"])
-      subprocess.call(["convert", root + ".ppm", root + "-sharpen.ppm", "-compose", "minus", "-composite", "-negate", "-normalize", "+contrast", root + "-sharpen-minus-normalize.png"])
-    elif(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "diffraw"):
+    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "diffraw" or argv[2] == "bump" or argv[2] == "sharpen"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
-      with open(root + "-bump0.ppm") as f:
-        f.readline()
-        a = f.readline().split(" ")
-        w = int(a[0])
-        h = int(a[1])
-        subprocess.call(["convert", root + "-bump0.ppm", "-resize", str(int(w / log2(w))) + "x", "-compress", "none", root + "-bump1.ppm"])
-      subprocess.call([argv[1], "obj", str(rot), root + "-bump1.ppm", root + ".obj"])
-      with open(root + "-bump0.ppm") as f:
-        f.readline()
-        a = f.readline().split(" ")
-        w = int(a[0])
-        h = int(a[1])
-      subprocess.call(["convert", root + "-bump1.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-bump.ppm"])
+      subprocess.call([argv[1], "obj", str(rot), root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", str(  psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "1", "4", str(- psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])

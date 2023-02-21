@@ -646,11 +646,10 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   case SHARPEN_Y:
     {
       const auto shp(sharpen<T>(int(data.rows())) * data);
-      result = SimpleMatrix<T>(data.rows() * 2, data.cols());
-      for(int i = 0; i < data.rows(); i ++) {
-        result.row(2 * i)     = data.row(i) - shp.row(i);
-        result.row(2 * i + 1) = data.row(i) + shp.row(i);
-      }
+      result = data;
+      for(int i = 0; i < data.rows(); i ++)
+        result.row(i) -= shp.row(i);
+      result = filter<num_t>(result, CLIP);
     }
     break;
   case ENLARGE_Y:
@@ -841,6 +840,33 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     assert(0 && "unknown command in filter (should not be reached.)");
   }
   return result;
+}
+
+template <typename T> SimpleMatrix<T> shrinkd(const SimpleMatrix<T>& in) {
+  SimpleMatrix<T> res(min(sqrt(T(in.rows())),
+                        T(in.rows()) / log(T(in.rows())) * log(T(int(2))) ),
+                      min(sqrt(T(in.cols())),
+                        T(in.cols()) / log(T(in.cols())) * log(T(int(2))) ) );
+  res.O();
+  for(int i = 0; i < res.rows(); i ++)
+    for(int j = 0; j < res.cols(); j ++) {
+      int cnt(0);
+      for(int ii  = i * in.rows() / res.rows();
+              ii <= min((i + 1) * in.rows() / res.rows(),
+                        in.rows() - 1);
+              ii ++)
+        for(int jj  = j * in.cols() / res.cols();
+                jj <= min((j + 1) * in.cols() / res.cols(),
+                          in.cols() - 1);
+                jj ++, cnt ++) res(i, j) += in(ii, jj);
+      if(cnt) res(i, j) /= T(cnt);
+    }
+  return res;
+}
+
+template <typename T> SimpleMatrix<T> shrinkde(const SimpleMatrix<T>& in) {
+  auto sd(shrinkd<T>(in));
+  return (dft<T>(- in.rows()).subMatrix(0, 0, in.rows(), sd.rows()) * dft<T>(sd.rows())).template real<T>() * sd * (dft<T>(- in.cols()).subMatrix(0, 0, in.cols(), sd.cols()) * dft<T>(sd.cols())).template real<T>().transpose();
 }
 
 template <typename T> class match_t {

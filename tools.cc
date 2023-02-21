@@ -97,34 +97,10 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
-    else if(strcmp(argv[1], "denlarge") == 0) {
-      const int rows(min(sqrt(num_t(data[0].rows())),
-                         num_t(data[0].rows()) / log(num_t(data[0].rows()))
-                           * log(num_t(int(2)))));
-      const int cols(min(sqrt(num_t(data[0].cols())),
-                         num_t(data[0].rows()) / log(num_t(data[0].cols()))
-                           * log(num_t(int(2)))));
-      for(int i = 0; i < data.size(); i ++) {
-        SimpleMatrix<num_t> work(rows, cols);
-        work.O();
-        for(int ii = 0; ii < work.rows(); ii ++)
-          for(int jj = 0; jj < work.cols(); jj ++) {
-            int cnt(0);
-            for(int iii  = ii * data[i].rows() / work.rows();
-                    iii <= min((ii + 1) * data[i].rows() / work.rows(),
-                               data[i].rows() - 1);
-                    iii ++)
-              for(int jjj  = jj * data[i].cols() / work.cols();
-                      jjj <= min((jj + 1) * data[i].cols() / work.cols(),
-                                 data[i].cols() - 1);
-                      jjj ++, cnt ++) work(ii, jj) += data[i](iii, jjj);
-            if(cnt) work(ii, jj) /= num_t(cnt);
-          }
-        std::swap(work, data[i]);
-      }
+    else if(strcmp(argv[1], "denlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
-    } else if(strcmp(argv[1], "flarge") == 0)
+        data[i] = filter<num_t>(filter<num_t>(shrinkd<num_t>(data[i]), ENLARGE_BOTH, recur, rot), CLIP);
+    else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
     else if(strcmp(argv[1], "blink") == 0)
@@ -217,9 +193,11 @@ int main(int argc, const char* argv[]) {
     }
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
-    const auto points(getTileVec<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2]))));
-    saveobj<num_t>(points, num_t(data[0].rows()),
-                           num_t(data[0].cols()),
+          auto sd(shrinkd<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2]))));
+    const auto rows(sd.rows());
+    const auto cols(sd.cols());
+    const auto points(getTileVec<num_t>(std::move(sd)));
+    saveobj<num_t>(points, num_t(rows), num_t(cols),
                    mesh2<num_t>(points), argv[4]);
     saveMTL<num_t>(argv[4], (string(argv[4]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
@@ -241,7 +219,8 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const auto diag(sqrt(num_t(int(bump[0].rows() * bump[0].rows() +
       bump[0].cols() * bump[0].cols()))));
-    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
+    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1),
+      shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP)),
       strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
         tiltprep<num_t>(data[0], index, Mindex, psi, diag / num_t(int(2))),
       strcmp(argv[1], "sbox") == 0 ?
@@ -273,11 +252,11 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const string outbase(argv[10]);
     const auto shape0(vboxdst < 0
-      ? getHesseVec<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP), abs(vboxdst))
-      : getTileVec<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP), abs(vboxdst)));
+      ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP)), abs(vboxdst))
+      : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP)), abs(vboxdst)));
     const auto shape1(vboxsrc < 0
-      ? getHesseVec<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP), abs(vboxsrc))
-      : getTileVec<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP), abs(vboxsrc)));
+      ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP)), abs(vboxsrc))
+      : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP)), abs(vboxsrc)));
     const auto m(matchPartial<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);
