@@ -107,8 +107,9 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
     else if(strcmp(argv[1], "sharpen") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], SHARPEN_BOTH);
+      for(int ii = 0; ii < (recur < 1 ? 1 : recur); ii ++)
+        for(int i = 0; i < data.size(); i ++)
+          data[i] = filter<num_t>(data[i], SHARPEN_BOTH, 1, rot);
     else if(strcmp(argv[1], "represent") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), REPRESENT, recur);
     else if(strcmp(argv[1], "bump") == 0)
