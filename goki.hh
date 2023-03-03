@@ -842,11 +842,13 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   return result;
 }
 
-template <typename T> SimpleMatrix<T> shrinkd(const SimpleMatrix<T>& in) {
-  SimpleMatrix<T> res(min(sqrt(T(in.rows())),
-                        T(in.rows()) / log(T(in.rows())) * log(T(int(2))) ),
-                      min(sqrt(T(in.cols())),
-                        T(in.cols()) / log(T(in.cols())) * log(T(int(2))) ) );
+template <typename T> SimpleMatrix<T> shrinkd(const SimpleMatrix<T>& in, const char& m = '\0') {
+  const auto sx(sqrt(T(in.rows())));
+  const auto sy(sqrt(T(in.cols())));
+  const auto lx(T(in.rows()) / log(T(in.rows())) * log(T(int(2))));
+  const auto ly(T(in.cols()) / log(T(in.cols())) * log(T(int(2))));
+  SimpleMatrix<T> res(m ? max(sx, lx) : min(sx, lx),
+                      m ? max(sy, ly) : min(sy, ly));
   res.O();
   for(int i = 0; i < res.rows(); i ++)
     for(int j = 0; j < res.cols(); j ++) {

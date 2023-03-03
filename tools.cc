@@ -40,7 +40,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|denlarge|flarge|blink|represent) <input.ppm> <output.ppm> <recur>" << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop) <input.ppm> <output.ppm> <recur>" << endl;
   cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj   <rot> <input.ppm> <output.obj>" << endl;
@@ -67,14 +67,14 @@ int main(int argc, const char* argv[]) {
   }
   if(strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "collect") == 0 ||
+     strcmp(argv[1], "sharpen") == 0 ||
+     strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "diffraw") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "denlarge") == 0 ||
+     strcmp(argv[1], "denlarge+") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
-     strcmp(argv[1], "pextend") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
-     strcmp(argv[1], "sharpen") == 0 ||
-     strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "represent") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
@@ -97,9 +97,10 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
-    else if(strcmp(argv[1], "denlarge") == 0)
+    else if(strcmp(argv[1], "denlarge") == 0 ||
+            strcmp(argv[1], "denlarge+") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(filter<num_t>(shrinkd<num_t>(data[i]), ENLARGE_BOTH, recur, rot), CLIP);
+        data[i] = filter<num_t>(filter<num_t>(shrinkd<num_t>(data[i], argv[1][strlen("denlarge")]), ENLARGE_BOTH, recur, rot), CLIP);
     else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
