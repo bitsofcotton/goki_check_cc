@@ -33,4 +33,6 @@ gokibinmp:
 	${CXX} ${CXXFLAGS} ${MPFLAGS} -o gokibinmp tools.cc
 gokibin32mp:
 	${CXX} ${CXXFLAGS} ${MPFLAGS} -D_FLOAT_BITS_=32 -o gokibin32mp tools.cc
+gokibin64mp:
+	${CXX} ${CXXFLAGS} ${MPFLAGS} -D_FLOAT_BITS_=64 -o gokibin64mp tools.cc
 

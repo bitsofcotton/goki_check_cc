@@ -81,127 +81,6 @@ template <typename T> static inline T getImgPt(const T& y, const T& h) {
   return yy % h;
 }
 
-static inline bool whiteline(const string& s) {
-  for(auto ss(s.begin()); ss < s.end(); ++ ss)
-    if(! std::isspace(* ss) && *ss != '\n')
-      return false;
-  return true;
-}
-
-template <typename T> static inline bool loadstub(ifstream& input, const int& nmax, const int& ncolor, vector<SimpleMatrix<T> >& datas) {
-  int i = 0, j = 0, k = 0;
-  char buf;
-  int  work = 0;
-  bool mode = false;
-  while(input.get(buf) && j < datas[0].rows()) {
-    if('0' <= buf && buf <= '9') {
-      work *= 10;
-      work += buf - '0';
-      mode  = true;
-      continue;
-    } else if(mode) {
-      mode = false;
-      datas[k](j, i) = T(work) / T(nmax);
-      work = 0;
-      if(++ k >= ncolor) {
-        if(++ i >= datas[0].cols()) {
-          if(++ j >= datas[0].rows())
-            return true;
-          i = 0;
-        }
-        k = 0;
-      }
-    }
-  }
-  return true;
-}
-
-template <typename T> bool loadp2or3(vector<SimpleMatrix<T> >& data, const char* filename) {
-  string line;
-  string line2;
-  string line3;
-  ifstream input;
-  input.open(filename);
-  if(input.is_open()) {
-    try {
-      data.resize(3, SimpleMatrix<T>());
-      getline(input, line);
-      while((whiteline(line) || line[0] == '#') && getline(input, line) && !input.eof() && !input.bad()) ;
-      getline(input, line2);
-      while((whiteline(line2) || line2[0] == '#') && getline(input, line2) && !input.eof() && !input.bad()) ;
-      getline(input, line3);
-      while((whiteline(line3) || line3[0] == '#') && getline(input, line3) && !input.eof() && !input.bad()) ;
-      istringstream iline2(line2);
-      int w, h;
-      iline2 >> w;
-      iline2 >> h;
-      if(line.size() < 2 || w <= 0 || h <= 0) {
-        cerr << "unknown size." << endl;
-        input.close();
-        return false;
-      } 
-      istringstream iline3(line3);
-      int nmax;
-      iline3 >> nmax;
-      if(line[0] == 'P') {
-        if(line[1] == '2') {
-          data[0] = SimpleMatrix<T>(h, w).O();
-          loadstub<T>(input, nmax, 1, data);
-          data[1] = data[2] = data[0];
-        } else if(line[1] == '3') {
-          for(int i = 0; i < 3; i ++)
-            data[i] = SimpleMatrix<T>(h, w).O();
-          loadstub<T>(input, nmax, 3, data);
-        } else {
-          cerr << "unknown file type." << endl;
-          input.close();
-          return false;
-        }
-      } else {
-        cerr << "unknown file type." << endl;
-        input.close();
-        return false;
-      }
-    } catch (...) {
-      cerr << "Exception while reading." << endl;
-    }
-    input.close();
-  } else {
-    cerr << "Unable to open file for read: " << filename << endl;
-    return false;
-  }
-  return true;
-}
-
-template <typename T> bool savep2or3(const char* filename, const vector<SimpleMatrix<T> >& data, const bool& gray, const int& depth = 255) {
-  ofstream output;
-  output.open(filename);
-  if(output.is_open()) {
-    try {
-      if(gray)
-        output << "P2" << "\n";
-      else
-        output << "P3" << "\n";
-      output << data[0].cols() << " " << data[0].rows() << "\n";
-      output << depth << "\n";
-      for(int i = 0; i < data[0].rows(); i ++)
-        for(int j = 0; j < data[0].cols(); j ++)
-          if(gray)
-            output << int(data[0](i, j) * T(depth)) << "\n";
-          else
-            for(int k = 0; k < 3; k ++)
-              output << int(data[k](i, j) * T(depth)) << "\n";
-    } catch (...) {
-      cerr << "An error has occured while writing file." << endl;
-    }
-    output.close();
-  } else {
-    cerr << "Unable to open file for write: " << filename << endl;
-    return false;
-  }
-  return true;
-}
-
 template <typename T> bool saveobj(const vector<SimpleVector<T> >& data, const T& Mw0, const T& Mh0, const vector<SimpleVector<int> >& polys, const char* filename) {
   ofstream output;
   output.open(filename, std::ios::out);
@@ -514,37 +393,6 @@ template <typename T> static inline SimpleMatrix<T> flop(const SimpleMatrix<T>& 
   return res;
 }
 
-template <typename T> vector<SimpleMatrix<T> > normalize(const vector<SimpleMatrix<T> >& data, const T& upper = T(1)) {
-  T MM(0), mm(0);
-  bool fixed(false);
-  for(int k = 0; k < data.size(); k ++)
-    for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++)
-        if(! fixed || (isfinite(data[k](i, j)) && ! isinf(data[k](i, j)) && ! isnan(data[k](i, j)))) {
-          if(! fixed)
-            MM = mm = data[k](i, j);
-          else {
-            MM = max(MM, data[k](i, j));
-            mm = min(mm, data[k](i, j));
-          }
-          fixed = true;
-        }
-  if(MM == mm || ! fixed)
-    return data;
-  auto result(data);
-  for(int k = 0; k < data.size(); k ++)
-    for(int i = 0; i < data[k].rows(); i ++)
-      for(int j = 0; j < data[k].cols(); j ++) {
-        if(isfinite(result[k](i, j)) && ! isinf(data[k](i, j)) && ! isnan(result[k](i, j)))
-          result[k](i, j) -= mm;
-        else
-          result[k](i, j)  = T(0);
-        assert(T(0) <= result[k](i, j) && result[k](i, j) <= MM - mm);
-        result[k](i, j) *= upper / (MM - mm);
-      }
-  return result;
-}
-
 template <typename T> static inline SimpleMatrix<T> normalize(const SimpleMatrix<T>& data, const T& upper = T(1)) {
   vector<SimpleMatrix<T> > work;
   work.emplace_back(data);
@@ -649,7 +497,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       result = data;
       for(int i = 0; i < data.rows(); i ++)
         result.row(i) -= shp.row(i);
-      result = filter<num_t>(result, CLIP);
+      result = filter<T>(result, CLIP);
     }
     break;
   case ENLARGE_Y:
@@ -1059,15 +907,16 @@ template <typename T> static inline pair<T, vector<SimpleVector<T> > > normalize
 
 template <typename T> static inline SimpleVector<T> toQuarterNormalize(const SimpleVector<T>& xyz) {
   assert(xyz.size() == 3);
+  static const T    zero(int(0));
   static const auto twoPi(atan(T(int(1))) * T(int(4)));
   SimpleVector<T> quat(4);
   quat[0] = sqrt(xyz.dot(xyz) / T(int(6)));
   // y-z plane
-  quat[1] = atan2(xyz[1], xyz[2]) / twoPi;
+  quat[1] = xyz[1] == zero && xyz[2] == zero ? zero : atan2(xyz[1], xyz[2]) / twoPi;
   // same for z-x.
-  quat[2] = atan2(xyz[2], xyz[0]) / twoPi;
+  quat[2] = xyz[2] == zero && xyz[0] == zero ? zero : atan2(xyz[2], xyz[0]) / twoPi;
   // same for x-y.
-  quat[3] = atan2(xyz[0], xyz[1]) / twoPi;
+  quat[3] = xyz[0] == zero && xyz[1] == zero ? zero : atan2(xyz[0], xyz[1]) / twoPi;
   return quat;
 }
 
@@ -1261,13 +1110,21 @@ template <typename T> void drawMatchTriangle(SimpleMatrix<T>& map, SimpleVector<
   const auto d2(lref1 - lref0);
   const auto idx(abs(d2[0]) < abs(d2[1]) ? 1 : 0);
   if(abs(d0[idx]) != T(int(0)) && abs(d2[idx]) != T(int(0)))
-    for(int i = 0; i <= int(abs(d0[idx])); i ++)
-      drawMatchLine<T>(map, d0 * (abs(d0[idx]) - T(i)) / abs(d0[idx]) + lref2,
-                            d2 * T(i) / abs(d2[idx]) + lref0, c);
+    try {
+      for(int i = 0; i <= int(abs(d0[idx])); i ++)
+        drawMatchLine<T>(map, d0 * (abs(d0[idx]) - T(i)) / abs(d0[idx]) + lref2,
+                              d2 * T(i) / abs(d2[idx]) + lref0, c);
+    } catch (const char* e) {
+      ; /* fall through */
+    }
   if(abs(d1[idx]) != T(int(0)) && abs(d2[idx]) != T(int(0)))
-    for(int i = 0; i <= int(abs(d1[idx])); i ++)
-      drawMatchLine<T>(map, d1 * (abs(d1[idx]) - T(i)) / abs(d1[idx]) + lref2,
-                          - d2 * T(i) / abs(d2[idx]) + lref1, c);
+    try {
+      for(int i = 0; i <= int(abs(d1[idx])); i ++)
+        drawMatchLine<T>(map, d1 * (abs(d1[idx]) - T(i)) / abs(d1[idx]) + lref2,
+                            - d2 * T(i) / abs(d2[idx]) + lref1, c);
+    } catch (const char* e) {
+      ; /* fall through */
+    }
   return;
 }
 
@@ -1898,24 +1755,6 @@ template <typename T> static inline SimpleMatrix<T> rgb2d(const vector<SimpleMat
       result(j, k) = sqrt(xyz[0](j, k) * xyz[0](j, k) + xyz[1](j, k) * xyz[1](j, k) + xyz[2](j, k) * xyz[2](j, k));
   }
   return result;
-}
-
-template <typename T> vector<SimpleMatrix<T> > contrast(const vector<SimpleMatrix<T> >& in, const T& intensity, const T& thresh) {
-  auto result(in);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int k = 0; k < result.size(); k ++)
-    for(int i = 0; i < result[k].rows(); i ++)
-      for(int j = 0; j < result[k].cols(); j ++)
-        result[k](i, j) = min(abs(thresh) + T(.5), max(- abs(thresh) + T(.5), intensity * (result[k](i, j) - T(.5)) )) + T(.5);
-  return result;
-}
-
-template <typename T> static inline SimpleMatrix<T> contrast(const SimpleMatrix<T>& in, const T& intensity, const T& thresh) {
-  vector<SimpleMatrix<T> > work;
-  work.emplace_back(in);
-  return contrast<T>(work, intensity, thresh)[0];
 }
 
 template <typename T> static inline match_t<T> tiltprep(const SimpleMatrix<T>& in, const int& idx, const int& samples, const T& psi, const T& z0 = T(int(0))) {

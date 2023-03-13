@@ -19,10 +19,6 @@
 #define int int32_t
 #include "lieonn.hh"
 typedef myfloat num_t;
-#include "p0.hh"
-#include "p1.hh"
-#include "decompose.hh"
-#include "catg.hh"
 #include "goki.hh"
 
 using std::cout;
@@ -146,8 +142,7 @@ int main(int argc, const char* argv[]) {
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
         strcmp(argv[1], "nop") != 0
-        ? normalize<num_t>(data) : data,
-        ! true, 65535))
+        ? normalize<num_t>(data) : data) )
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
@@ -185,7 +180,7 @@ int main(int argc, const char* argv[]) {
           reColor<num_t>(xyzc[i], count, myatof(argv[5]));
       datac = xyz2rgb<num_t>(xyzc);
     }
-    if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac), ! true))
+    if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac)))
       return - 1;
   } else if(strcmp(argv[1], "obj") == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
@@ -232,7 +227,7 @@ int main(int argc, const char* argv[]) {
       ));
     for(int j = 0; j < data.size(); j ++)
       data[j] = pullRefMatrix<num_t>(tilt0, 1, data[j]);
-    if(!savep2or3<num_t>(argv[7], data, ! true))
+    if(!savep2or3<num_t>(argv[7], data))
       return - 1;
   } else if(strcmp(argv[1], "match") == 0) {
     if(argc < 10) {
