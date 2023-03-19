@@ -36,7 +36,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop) <input.ppm> <output.ppm> <recur>" << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj   <rot> <input.ppm> <output.obj>" << endl;
@@ -62,6 +62,7 @@ int main(int argc, const char* argv[]) {
     return 0;
   }
   if(strcmp(argv[1], "nop") == 0 ||
+     strcmp(argv[1], "limit") == 0 ||
      strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
@@ -141,8 +142,9 @@ int main(int argc, const char* argv[]) {
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
-        strcmp(argv[1], "nop") != 0
-        ? normalize<num_t>(data) : data) )
+        strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0
+        ? normalize<num_t>(data) : data,
+        strcmp(argv[1], "limit") == 0 ? recur : 65535) )
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
             strcmp(argv[1], "recolor") == 0 ||
