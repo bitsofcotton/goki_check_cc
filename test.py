@@ -117,19 +117,6 @@ elif(argv[2] == "getcontext"):
   cmd = [argv[1], "+"]
   cmd.extend(argv[3:])
   subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
-elif(argv[2] == "predbit"):
-  bit = int(argv[3])
-  for t in range(0, 8, bit):
-    tt   = t + bit
-    cmd  = [argv[1]]
-    for f in argv[4:]:
-      subprocess.call(["convert", f, "-equalize", "-level", str(100. * pow(2., t - 8)) + "%," + str(100. * pow(2., tt - 8)) + "%", "-compress", "none", f + "-" + str(t) + ".ppm"])
-      cmd.append(f + "-" + str(t) + ".ppm")
-    subprocess.call(cmd)
-    for root, dirs, filesw in os.walk("."):
-      for f in filesw:
-        if(f[0:len("predg-")] == "predg-"):
-          subprocess.call(["convert", f, "-level", "0%," + str(50. * pow(2., 8 / bit)) + "%",  "-fill", "white", "-colorize", str(100. * pow(2., t - 8)) + "%", "out-" + f + "-" + str(t) + ".png"])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
@@ -159,7 +146,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "denlarge+" or argv[2] == "diffraw" or argv[2] == "bump" or argv[2] == "sharpen" or argv[2] == "limit"):
+    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "denlarge+" or argv[2] == "diffraw" or argv[2] == "bump" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], "obj", str(rot), root + "-bump.ppm", root + ".obj"])

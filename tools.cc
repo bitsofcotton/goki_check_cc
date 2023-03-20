@@ -36,7 +36,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj   <rot> <input.ppm> <output.obj>" << endl;
@@ -63,6 +63,7 @@ int main(int argc, const char* argv[]) {
   }
   if(strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "limit") == 0 ||
+     strcmp(argv[1], "bit") == 0 ||
      strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
@@ -139,6 +140,28 @@ int main(int argc, const char* argv[]) {
               data[1](i, j) == ddata[1](i, j) &&
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
+    } else if(strcmp(argv[1], "bit") == 0 && 0 < recur) {
+      for(int i = 0; i < data.size(); i ++) {
+        SimpleMatrix<num_t> work(data[i].rows() * recur, data[i].cols());
+        work.O();
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++)
+            for(int m = 0; m < recur; m ++)
+              work(j * recur + m, k) = num_t(1 & int(data[i](j, k) *
+                pow(num_t(int(2)), num_t(int(m + 1))) ) );
+        swap(work, data[i]);
+      }
+    } else if(strcmp(argv[1], "bit") == 0 && recur < 0) {
+      for(int i = 0; i < data.size(); i ++) {
+        SimpleMatrix<num_t> work(data[i].rows() / abs(recur), data[i].cols());
+        work.O();
+        for(int j = 0; j < work.rows(); j ++)
+          for(int k = 0; k < work.cols(); k ++)
+            for(int m = 0; m < abs(recur); m ++)
+              work(j, k) += data[i](j * abs(recur) + m, k) /
+                pow(num_t(int(2)), num_t(int(m + 1)));
+        swap(work, data[i]);
+      }
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&

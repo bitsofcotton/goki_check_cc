@@ -21,7 +21,7 @@ Searching the Internet more...
 # Usage
     make gokibin
     
-    gokibin (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
+    gokibin (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (cat|catr) <output.ppm> <input0.ppm> ...
     gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
     gokibin obj   <rot> <input.ppm> <output.obj>
@@ -30,7 +30,7 @@ Searching the Internet more...
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokibin recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokibin habit <in0.obj> <in1.obj> <out.obj>
-    python2 test.py ./gokibin (sharpen|bump|enlarge|denlarge|denlarge+|flarge|represent|jps|tilt|obj|sbox|prep|presq|nop|limit) <param> input0.png ...
+    python2 test.py ./gokibin (sharpen|bump|enlarge|denlarge|denlarge+|flarge|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit) <param> input0.png ...
     python2 test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
     python2 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python2 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
@@ -49,3 +49,5 @@ Searching the Internet more...
 2023/03/03
 2023/03/13 integrate some files into lieonn.hh after close #1.
 2023/03/19 add per depth predbit command, after close #2.
+2023/03/20 elim predbit, add bit cmd.
+
