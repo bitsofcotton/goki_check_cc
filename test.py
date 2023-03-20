@@ -119,21 +119,17 @@ elif(argv[2] == "getcontext"):
   subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
 elif(argv[2] == "predbit"):
   bit = int(argv[3])
-  rem = 8
-  t   = 0
-  while(0 < rem / bit):
-    t   += 1
-    rem0 = rem
-    rem  = int(rem / bit)
+  for t in range(0, 8, bit):
+    tt   = t + bit
     cmd  = [argv[1]]
     for f in argv[4:]:
-      subprocess.call(["convert", f, "-equalize", "-level", str(100. * pow(2., rem - 8)) + "%," + str(100. * pow(2., rem0 - 8)) + "%", "-compress", "none", f + "-" + str(t) + ".ppm"])
+      subprocess.call(["convert", f, "-equalize", "-level", str(100. * pow(2., t - 8)) + "%," + str(100. * pow(2., tt - 8)) + "%", "-compress", "none", f + "-" + str(t) + ".ppm"])
       cmd.append(f + "-" + str(t) + ".ppm")
     subprocess.call(cmd)
     for root, dirs, filesw in os.walk("."):
       for f in filesw:
         if(f[0:len("predg-")] == "predg-"):
-          subprocess.call(["convert", f, "-level", "0%," + str(100. * pow(2., 8 / bit)) + "%",  "-colorize", str(100. * pow(2., rem - 8)) + "%", "out-" + f + "-" + str(t) + ".png"])
+          subprocess.call(["convert", f, "-level", "0%," + str(200. * pow(2., bit)) + "%",  "-fill", "white", "-colorize", str(100. * pow(2., t - 8)) + "%", "out-" + f + "-" + str(t) + ".png"])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
