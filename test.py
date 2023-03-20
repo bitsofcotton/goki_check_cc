@@ -129,7 +129,7 @@ elif(argv[2] == "predbit"):
     for root, dirs, filesw in os.walk("."):
       for f in filesw:
         if(f[0:len("predg-")] == "predg-"):
-          subprocess.call(["convert", f, "-level", "0%," + str(200. * pow(2., bit)) + "%",  "-fill", "white", "-colorize", str(100. * pow(2., t - 8)) + "%", "out-" + f + "-" + str(t) + ".png"])
+          subprocess.call(["convert", f, "-level", "0%," + str(50. * pow(2., 8 / bit)) + "%",  "-fill", "white", "-colorize", str(100. * pow(2., t - 8)) + "%", "out-" + f + "-" + str(t) + ".png"])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
