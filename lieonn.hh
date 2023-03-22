@@ -3590,14 +3590,14 @@ public:
   }
   inline ~Prange() { ; }
   inline T next(const SimpleVector<T>& in) {
-    f0 = feed0(status);
-    f1 = feed1(status);
+    feed0 f0(status);
+    feed1 f1(status);
     for(int i = 0; i < in.size(); i ++) {
-      f0.next(abs(in[i]));
+      f0.next(in[i]);
       f1.next(in[i]);
     }
     T M(int(1));
-    for(int i = 0; i < f0.res.size(); i ++) M = max(M, f0.res[i]);
+    for(int i = 0; i < f0.res.size(); i ++) M = max(M, abs(f0.res[i]));
     return max(- M, min(M, (
       max(- M, min(M, p0.next(f1.res))) +
       max(- M, min(M, p1.next(f1.res))) +
@@ -3606,8 +3606,6 @@ public:
   P0maxRank<T> p0;
   P1I<T> p1;
   P012L<T> p2;
-  feed0 f0;
-  feed1 f1;
   int status;
 };
 
@@ -3629,7 +3627,7 @@ public:
     if(! (f0.full && f1.full)) return T(int(0));
     const auto  pg0(p.next(g0));
           auto  pg1(p.next(g1));
-    pg1 = pg1 == g1[g1.size() - 1] ? pg0 : T(int(1)) / (pg1 + g1[g1.size() - 1]) - g0[g0.size() - 1];
+    pg1 = pg1 == - g1[g1.size() - 1] ? pg0 : T(int(1)) / (pg1 + g1[g1.size() - 1]) - g0[g0.size() - 1];
     return (max(- M, min(M, pg0)) + max(- M, min(M, (isfinite(pg1) ? pg1 : pg0)) )) / T(int(2));
   }
   feed0 f0;
