@@ -3045,8 +3045,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     // N.B. test for linear ones:
     // A.row(i).setVector(0, tayl(size, in[i].size()) * in[i]);
   }
-  const auto Q(A.QR());
-        auto Pt(Q);
+        auto Pt(A.QR());
         auto Ptb(Pt);
   const auto R(Pt * A);
         Vec  one(Pt.cols());
@@ -3098,7 +3097,9 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     if(size0 < 0) fix[pidx[iidx]] = true;
   }
   cut = R.solve(Pt * one);
-  auto test(Q.transpose() * cut);
+  auto cutn(sqrt(cut.dot(cut)));
+  if(cutn != T(int(0))) cut /= cutn;
+  auto test(A * cut);
   vector<T> testv;
   testv.reserve(test.size());
   for(int i = 0; i < test.size(); i ++) testv.emplace_back(abs(test[i]));
@@ -3302,7 +3303,10 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
 
 
 template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1, const int& r = 1) {
-  return taylor(size * r, T(step * r < 0 ? step * r : (size + step) * r - 1));
+  auto work(taylor(size * r, T(step * r < 0 ? step * r : (size + step) * r - 1)));
+  for(int i = 1; i < r; i ++)
+    work += taylor(size * r, T(step * r < 0 ? step * r + i : (size + step) * r - 1 - i));
+  return (dft<T>(- size * r).subMatrix(0, 0, size * r, size) * dft<T>(size)).template real<T>().transpose() * work;
 }
 
 template <typename T> SimpleVector<T> minsq(const int& size) {
@@ -3326,7 +3330,7 @@ template <typename T> const SimpleVector<T>& pnextcacher(const int& size, const 
   if(cp[size][step].size() <= r)
     cp[size][step].resize(r + 1, SimpleVector<T>());
   if(cp[size][step][r].size()) return cp[size][step][r];
-  return cp[size][step][r] = (dft<T>(- size * r).subMatrix(0, 0, size * r, size) * dft<T>(size)).template real<T>().transpose() * pnext<T>(size, step, r);
+  return cp[size][step][r] = pnext<T>(size, step, r);
 }
 
 template <typename T> const SimpleVector<T>& mscache(const int& size) {
@@ -3351,7 +3355,7 @@ template <typename T> const SimpleMatrix<complex<T> >& dftcache(const int& size)
   return cidft[abs(size)] = dft<T>(size);
 }
 
-template <typename T, int r = 2> class P0 {
+template <typename T, int r = 4> class P0 {
 public:
   inline P0(const int& step = 1) {
     this->step = step;
@@ -3585,7 +3589,6 @@ public:
   inline Prange(const int& status) {
     assert(0 < status);
     p1 = P1I<T>(int(max(T(int(2)), sqrt(T(status)) )) );
-    p2 = P012L<T>(int(max(T(int(2)), pow(T(status), T(int(1)) / T(int(3)) ))) );
     this->status = status;
   }
   inline ~Prange() { ; }
@@ -3600,12 +3603,10 @@ public:
     for(int i = 0; i < f0.res.size(); i ++) M = max(M, abs(f0.res[i]));
     return max(- M, min(M, (
       max(- M, min(M, p0.next(f1.res))) +
-      max(- M, min(M, p1.next(f1.res))) +
-      max(- M, min(M, p2.next(f1.res))) ) / T(int(3)) * T(int(2)) ));
+      max(- M, min(M, p1.next(f1.res))) ) / T(int(2)) ));
   }
   P0maxRank<T> p0;
   P1I<T> p1;
-  P012L<T> p2;
   int status;
 };
 
@@ -3636,12 +3637,66 @@ public:
   T M;
 };
 
-template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in) {
-  vector<PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > > > p0;
+template <typename T, typename P> class Prand {
+public:
+  inline Prand() { ; }
+  inline Prand(P&& p, const int& len = 0) {
+    r.resize(abs(len));
+    det = (0 <= len);
+    for(int i = 0; i < r.size(); i ++) r[i] = myrand();
+    this->p.resize(max(int(1), abs(len)), p);
+  }
+  inline ~Prand() { ; }
+  inline T next(const T& d) {
+    T res(int(0));
+    if(! r.size()) return p[0].next(d);
+    for(int i = 0; i < p.size(); i ++) {
+      res += p[i].next(d * r[i]);
+      r[i] = myrand();
+    }
+    return res /= T(int(p.size()));
+  }
+  inline T myrand() {
+    static uint64_t t(1);
+    if(! det)
+      return max(T(int(0)), min(T(int(1)), T(int(arc4random())) / T(int(~ uint32_t(0))) ));
+    assert(t && "rng() should not be periodical.");
+    myuint res(int(0));
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+    {
+#if defined(_FLOAT_BITS_)
+      for(int i = 0; i < _FLOAT_BITS_ / sizeof(uint32_t) / 8; i ++) {
+#else
+      for(int i = 0; i < 2; i ++) {
+#endif
+        res <<= sizeof(uint32_t) * 8;
+#if defined(_FLOAT_BITS_)
+        typedef SimpleFloat<uint64_t, unsigned __int128, 64, int64_t> thisfl;
+#else
+        typedef long double thisfl;
+#endif
+        auto buf(sin(thisfl(t ++)) * pow(thisfl(int(2)), thisfl(int(32))));
+        buf  -= floor(buf);
+        res  |= uint32_t(int(buf * pow(thisfl(int(2)), thisfl(int(32)) )));
+#undef thisfl
+        // res |= uint32_t(rd());
+      }
+    }
+    return max(T(int(0)), min(T(int(1)), T(res) / T(~ myuint(0)) ));
+  }
+  bool det;
+  vector<T> r;
+  vector<P> p;
+};
+
+template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in, const int& rr = 0) {
+  vector<Prand<T, PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > > > > p0;
   for(int ext = 0; ext < in.size() / 2; ext ++) {
     const int status(in.size() / (ext + 1) - 1);
     if(status < 5) break;
-    p0.emplace_back(PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > >(Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >(status), status));
+    p0.emplace_back(Prand<T, PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > > >(PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > >(Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >(status), status), rr));
     auto pp(p0[ext]);
     for(int i = 0; i < status * 2 + 4; i ++)
       pp.next(T(i + 1) / T(status * 2 + 5) - T(int(1)) / T(int(2)));
