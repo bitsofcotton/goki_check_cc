@@ -3637,66 +3637,12 @@ public:
   T M;
 };
 
-template <typename T, typename P> class Prand {
-public:
-  inline Prand() { ; }
-  inline Prand(P&& p, const int& len = 0) {
-    r.resize(abs(len));
-    det = (0 <= len);
-    for(int i = 0; i < r.size(); i ++) r[i] = myrand();
-    this->p.resize(max(int(1), abs(len)), p);
-  }
-  inline ~Prand() { ; }
-  inline T next(const T& d) {
-    T res(int(0));
-    if(! r.size()) return p[0].next(d);
-    for(int i = 0; i < p.size(); i ++) {
-      res += p[i].next(d * r[i]);
-      r[i] = myrand();
-    }
-    return res /= T(int(p.size()));
-  }
-  inline T myrand() {
-    static uint64_t t(1);
-    if(! det)
-      return max(T(int(0)), min(T(int(1)), T(int(arc4random())) / T(int(~ uint32_t(0))) ));
-    assert(t && "rng() should not be periodical.");
-    myuint res(int(0));
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-    {
-#if defined(_FLOAT_BITS_)
-      for(int i = 0; i < _FLOAT_BITS_ / sizeof(uint32_t) / 8; i ++) {
-#else
-      for(int i = 0; i < 2; i ++) {
-#endif
-        res <<= sizeof(uint32_t) * 8;
-#if defined(_FLOAT_BITS_)
-        typedef SimpleFloat<uint64_t, unsigned __int128, 64, int64_t> thisfl;
-#else
-        typedef long double thisfl;
-#endif
-        auto buf(sin(thisfl(t ++)) * pow(thisfl(int(2)), thisfl(int(32))));
-        buf  -= floor(buf);
-        res  |= uint32_t(int(buf * pow(thisfl(int(2)), thisfl(int(32)) )));
-#undef thisfl
-        // res |= uint32_t(rd());
-      }
-    }
-    return max(T(int(0)), min(T(int(1)), T(res) / T(~ myuint(0)) ));
-  }
-  bool det;
-  vector<T> r;
-  vector<P> p;
-};
-
-template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in, const int& rr = 0) {
-  vector<Prand<T, PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > > > > p0;
+template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in) {
+  vector<PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > > > p0;
   for(int ext = 0; ext < in.size() / 2; ext ++) {
     const int status(in.size() / (ext + 1) - 1);
     if(status < 5) break;
-    p0.emplace_back(Prand<T, PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > > >(PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > >(Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >(status), status), rr));
+    p0.emplace_back(PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > >(Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >(status), status) );
     auto pp(p0[ext]);
     for(int i = 0; i < status * 2 + 4; i ++)
       pp.next(T(i + 1) / T(status * 2 + 5) - T(int(1)) / T(int(2)));

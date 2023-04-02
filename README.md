@@ -51,4 +51,5 @@ Searching the Internet more...
 2023/03/19 add per depth predbit command, after close #2.
 2023/03/20 elim predbit, add bit cmd, after close #3.
 2023/03/24 code clean, after close #4.
+2023/04/02 merge catg fix.
 
