@@ -2745,130 +2745,6 @@ private:
   int  t;
 };
 
-template <typename T, typename feeder> class sumFeeder {
-public:
-  inline sumFeeder() { full = false; }
-  inline sumFeeder(const int& size) {
-    f = feeder(size);
-    res.resize(size);
-    res.O();
-    full = false;
-  }
-  inline ~sumFeeder() { ; }
-  inline const SimpleVector<T>& next(const T& in) {
-    const auto& buf(f.next(in));
-    full = f.full;
-    res[0] = buf[0];
-    for(int i = 1; i < res.size(); i ++)
-      res[i] = res[i - 1] + buf[i];
-    return res;
-  }
-  SimpleVector<T> res;
-  bool full;
-private:
-  feeder f;
-};
-
-template <typename T, typename feeder> class deltaFeeder {
-public:
-  inline deltaFeeder() { full = false; }
-  inline deltaFeeder(const int& size) {
-    f = feeder(size);
-    res.resize(size);
-    res.O();
-    full = false;
-  }
-  inline ~deltaFeeder() { ; }
-  inline const SimpleVector<T>& next(const T& in) {
-    const auto& buf(f.next(in));
-    assert(buf.size() == res.size());
-    full = f.full;
-    res[0] = T(int(0));
-    for(int i = 1; i < res.size(); i ++)
-      res[i] = buf[i] - buf[i - 1];
-    return res;
-  }
-  SimpleVector<T> res;
-  bool full;
-private:
-  feeder f;
-};
-
-template <typename T, typename feeder> class arctanFeeder {
-public:
-  inline arctanFeeder() { full = false; }
-  inline arctanFeeder(const int& size) {
-    res.resize(size);
-    for(int i = 0; i < res.size(); i ++)
-      res[i] = T(int(0));
-    f = feeder(1 + int(ceil(T(int(1)) / tan(T(int(1)) * atan(T(int(1))) / T(res.size() - 1)))));
-    full = false;
-  }
-  inline ~arctanFeeder() { ; }
-  inline const SimpleVector<T>& next(const T& in) {
-    const auto& buf(f.next(in));
-    full = f.full;
-    for(int i = 0; i < res.size(); i ++)
-      res[res.size() - i - 1] = buf[buf.size() - 1 - int(tan(T(i) * atan(T(int(1))) / T(res.size() - 1)) / tan(T(int(1)) * atan(T(int(1))) / T(res.size() - 1)))];
-    return res;
-  }
-  SimpleVector<T> res;
-  bool full;
-private:
-  feeder f;
-};
-
-template <typename T, typename feeder> class cbrtFeeder {
-public:
-  inline cbrtFeeder() { full = false; }
-  inline cbrtFeeder(const int& size) {
-    res.resize(size);
-    for(int i = 0; i < res.size(); i ++)
-      res[i] = T(int(0));
-    f = feeder(1 + int(ceil(T(size - 1) / (pow(T(size + 1), T(int(2)) / T(int(3)) ) - pow(T(size), T(int(2)) / T(int(3)) ) )) ) );
-    full = false;
-  }
-  inline ~cbrtFeeder() { ; }
-  inline const SimpleVector<T>& next(const T& in) {
-    const auto& g(f.next(in));
-    if(! (full = f.full) ) return res;
-    for(int i = 0; i < res.size(); i ++)
-      res[i] = g[int(ceil(T(i) / (pow(T(res.size() + 1), T(int(2)) / T(int(3)) ) - pow(T(res.size()), T(int(2)) / T(int(3)) ) )) )];
-    full = false;
-    return res;
-  }
-  SimpleVector<T> res;
-  bool full;
-private:
-  feeder f;
-};
-
-template <typename T, typename feeder> class invFeeder {
-public:
-  inline invFeeder() { full = false; }
-  inline invFeeder(const int& size) {
-    res.resize(size);
-    for(int i = 0; i < res.size(); i ++)
-      res[i] = T(int(0));
-    f = feeder(size);
-    full = false;
-  }
-  inline ~invFeeder() { ; }
-  inline const SimpleVector<T>& next(const T& in) {
-    static const T zero(int(0));
-    static const T one(int(1));
-    const auto& buf(f.next(in));
-    if(! (full = f.full) ) return res;
-    for(int i = 0; i < buf.size(); i ++)
-      res[i] = buf[i] == zero ? buf[i] : one / buf[i];
-    return res;
-  }
-  SimpleVector<T> res;
-  bool full;
-private:
-  feeder f;
-};
-
 template <typename T> const T& sgn(const T& x) {
   static const T zero(0);
   static const T one(1);
@@ -3528,11 +3404,17 @@ public:
   // N.B. plain complex form.
   typedef P0maxRank0<T> p0_0t;
   typedef northPole<T, p0_0t>  p0_1t;
+/*
   typedef northPole<T, p0_1t> p0_2t;
   typedef logChain<T, p0_2t>  p0_3t;
   typedef logChain<T, p0_3t>  p0_4t;
   typedef sumChain<T, p0_4t>  p0_5t;
   typedef sumChain<T, p0_5t, true> p0_t;
+*/
+  // N.B. we only handle lebesgue measurable and R(finite)-valued functions.
+  //      so worse structures are handled by P1I.
+  typedef sumChain<T, p0_1t>  p0_2t;
+  typedef sumChain<T, p0_2t, true> p0_t;
   p0_t p;
 };
 
@@ -3583,7 +3465,7 @@ private:
 };
 
 // N.B. persistent raw prediction.
-template <typename T, typename feed0, typename feed1> class Prange {
+template <typename T> class Prange {
 public:
   inline Prange() { ; }
   inline Prange(const int& status) {
@@ -3593,56 +3475,45 @@ public:
   }
   inline ~Prange() { ; }
   inline T next(const SimpleVector<T>& in) {
-    feed0 f0(status);
-    feed1 f1(status);
-    for(int i = 0; i < in.size(); i ++) {
-      f0.next(in[i]);
-      f1.next(in[i]);
-    }
     T M(int(1));
-    for(int i = 0; i < f0.res.size(); i ++) M = max(M, abs(f0.res[i]));
+    for(int i = 0; i < in.size(); i ++) M = max(M, abs(in[i]));
     return max(- M, min(M, (
-      max(- M, min(M, p0.next(f1.res))) +
-      max(- M, min(M, p1.next(f1.res))) ) / T(int(2)) ));
+      max(- M, min(M, p0.next(in))) +
+      max(- M, min(M, p1.next(in))) ) / T(int(2)) ));
   }
   P0maxRank<T> p0;
   P1I<T> p1;
   int status;
 };
 
-template <typename T, typename P, typename feed0, typename feed1> class PBond {
+// N.B. we omit high frequency part (1/f(x) input) to be treated better in P.
+template <typename T, typename P> class PBond {
 public:
   inline PBond() { ; }
   inline PBond(P&& p, const int& status) {
     assert(0 < status);
     this->p = p;
-    f0 = feed0(status);
-    f1 = feed1(status);
-    M  = T(int(1));
+    f = idFeeder<T>(status);
+    M = T(int(1));
   }
   inline ~PBond() { ; }
   inline T next(const T& in) {
     M = max(M, abs(in));
-    const auto& g0(f0.next(in));
-    const auto& g1(f1.next(in));
-    if(! (f0.full && f1.full)) return T(int(0));
-    const auto  pg0(p.next(g0));
-          auto  pg1(p.next(g1));
-    pg1 = pg1 == - g1[g1.size() - 1] ? pg0 : T(int(1)) / (pg1 + g1[g1.size() - 1]) - g0[g0.size() - 1];
-    return (max(- M, min(M, pg0)) + max(- M, min(M, (isfinite(pg1) ? pg1 : pg0)) )) / T(int(2));
+    const auto& g(f.next(in));
+    if(! f.full) return T(int(0));
+    return max(- M, min(M, p.next(g) ));
   }
-  feed0 f0;
-  feed1 f1;
+  idFeeder<T> f;
   P p;
   T M;
 };
 
 template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in) {
-  vector<PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > > > p0;
+  vector<PBond<T, Prange<T> > > p0;
   for(int ext = 0; ext < in.size() / 2; ext ++) {
     const int status(in.size() / (ext + 1) - 1);
     if(status < 5) break;
-    p0.emplace_back(PBond<T, Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >, sumFeeder<T, idFeeder<T> >, invFeeder<T, sumFeeder<T, idFeeder<T> > > >(Prange<T, deltaFeeder<T, idFeeder<T> >, deltaFeeder<T, idFeeder<T> > >(status), status) );
+    p0.emplace_back(PBond<T, Prange<T> >(Prange<T>(status), status));
     auto pp(p0[ext]);
     for(int i = 0; i < status * 2 + 4; i ++)
       pp.next(T(i + 1) / T(status * 2 + 5) - T(int(1)) / T(int(2)));
