@@ -3516,9 +3516,8 @@ public:
 template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in) {
   int p0(0);
   for( ; p0 < in.size() / 2; p0 ++) {
-    const int status(in.size() / (p0 + 1));
-    if(status < 3 || int(sqrt(T(int(in.size()) / (p0 + 1)))) - 1 < 1) break;
-    const auto& pn(pnextcacher<T>(in.size(), p0 + 1, 2));
+    if(int(sqrt(T(int(in.size()) - (p0 + 1)))) < 1) break;
+    const auto& pn(pnextcacher<T>(in.size(), p0 + 1, 4));
     if(T(int(in.size())) < pn.dot(pn)) break;
   }
   vector<SimpleVector<T> > invariant;
@@ -3533,6 +3532,7 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
       pow(inv.second, ceil(- log(SimpleMatrix<T>().epsilon()) ));
   }
   vector<SimpleVector<T> > p;
+  if(in.size() < 3) return make_pair(p, p);
   p.resize(p0);
   auto q(p);
   for(int i = 0; i < p0; i ++) {
@@ -3541,25 +3541,25 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
     q[i].resize(invariant[0].size());
     p[i].O();
     q[i].O();
+  }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-    for(int j = 0; j < p[i].size(); j ++) {
-      idFeeder<T> pf(p0);
-      idFeeder<T> pb(p0);
+  for(int j = 0; j < invariant[0].size(); j ++) {
+    idFeeder<T> pb(invariant.size());
+    idFeeder<T> pf(invariant.size());
+    for(int k = 0; k < invariant.size(); k ++)
+      pb.next(invariant[invariant.size() - k - 1][j]);
+    for(int k = 0; k < invariant.size(); k ++)
+      pf.next(invariant[k][j]);
+    for(int i = 0; i < p0; i ++) {
       northPole<T, P0maxRank0<T> > q0(P0maxRank0<T>(i + 1));
-      P1I<T> q1(int(sqrt(T(int(invariant.size()) / (i + 1)))) - 1, i + 1);
-      for(int k = 0; k < invariant.size() / (i + 1); k ++)
-        pb.next(invariant[(invariant.size() / (i + 1) -
-          (k + 1)) * (i + 1)][j]);
-      try{
+      P1I<T> q1(int(sqrt(T(int(invariant.size()) - (i + 1)))), i + 1);
+      try {
         q[i][j] = (q0.next(pb.res) + q1.next(pb.res)) / T(int(2));
       } catch(const char* e) {
         q[i][j] = T(int(0));
       }
-      for(int k = 0; k < invariant.size() / (i + 1); k ++)
-        pf.next(invariant[invariant.size() - 1 -
-          (invariant.size() / (i + 1) - (k + 1)) * (i + 1)][j]);
       try {
         p[i][j] = (q0.next(pf.res) + q1.next(pf.res)) / T(int(2));
       } catch(const char* e) {
