@@ -94,9 +94,6 @@ template <typename T> bool saveobj(const vector<SimpleVector<T> >& data, const T
     if(lfs) lfs ++;
     output << "mtllib " << &filename[lfs] << ".mtl" << endl;
     output << "usemtl material0" << endl;
-    T lz(1);
-    for(int i = 0; i < data.size(); i ++)
-      lz = min(data[i][2], lz);
     for(int i = 0; i < data.size(); i ++)
       output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
     for(int i = 0; i < data.size(); i ++)

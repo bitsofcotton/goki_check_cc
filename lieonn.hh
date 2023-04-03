@@ -2736,7 +2736,7 @@ public:
         res[i - 1] = move(res[i]);
       res[res.size() - 1] = in;
     }
-    if(res.size() <= t ++) full = true;
+    if(res.size() <= ++ t) full = true;
     return res;
   }
   SimpleVector<T> res;
@@ -3356,7 +3356,10 @@ public:
 
 template <typename T> class P0maxRank0 {
 public:
-  inline P0maxRank0() { ; }
+  inline P0maxRank0(const int& step = 1) {
+    p = p0_0t(P0<T>(step));
+    q = p0_i0t(p0_0t(P0<T>(step)));
+  }
   inline ~P0maxRank0() { ; }
   inline T next(const SimpleVector<T>& in) {
     return (p.next(in) + q.next(in)) / T(int(2));
@@ -3378,7 +3381,9 @@ public:
 
 template <typename T> class P0maxRank {
 public:
-  inline P0maxRank() { ; }
+  inline P0maxRank(const int& step = 1) {
+    p = p0_t(p0_2t(p0_1t(p0_0t(step))));
+  }
   inline ~P0maxRank() { ; }
   inline T next(const SimpleVector<T>& in) {
     return p.next(in);
@@ -3470,7 +3475,7 @@ public:
   inline Prange() { ; }
   inline Prange(const int& status) {
     assert(0 < status);
-    p1 = P1I<T>(int(max(T(int(2)), sqrt(T(status)) )) );
+    p1 = P1I<T>(int(sqrt(T(status))) );
     this->status = status;
   }
   inline ~Prange() { ; }
@@ -3509,15 +3514,12 @@ public:
 };
 
 template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in) {
-  vector<PBond<T, Prange<T> > > p0;
-  for(int ext = 0; ext < in.size() / 2; ext ++) {
-    const int status(in.size() / (ext + 1) - 1);
-    if(status < 5) break;
-    p0.emplace_back(PBond<T, Prange<T> >(Prange<T>(status), status));
-    auto pp(p0[ext]);
-    for(int i = 0; i < status * 2 + 4; i ++)
-      pp.next(T(i + 1) / T(status * 2 + 5) - T(int(1)) / T(int(2)));
-    cerr << "(volatile dummy:)" << pp.next(T(int(0))) << endl;
+  int p0(0);
+  for( ; p0 < in.size() / 2; p0 ++) {
+    const int status(in.size() / (p0 + 1));
+    if(status < 3 || int(sqrt(T(int(in.size()) / (p0 + 1)))) - 1 < 1) break;
+    const auto& pn(pnextcacher<T>(in.size(), p0 + 1, 2));
+    if(T(int(in.size())) < pn.dot(pn)) break;
   }
   vector<SimpleVector<T> > invariant;
   invariant.resize(in.size());
@@ -3531,10 +3533,10 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
       pow(inv.second, ceil(- log(SimpleMatrix<T>().epsilon()) ));
   }
   vector<SimpleVector<T> > p;
-  p.resize(p0.size());
+  p.resize(p0);
   auto q(p);
-  for(int i = 0; i < p0.size(); i ++) {
-    cerr << i << " / " << p0.size() << endl;
+  for(int i = 0; i < p0; i ++) {
+    cerr << i << " / " << p0 << endl;
     p[i].resize(invariant[0].size());
     q[i].resize(invariant[0].size());
     p[i].O();
@@ -3543,19 +3545,23 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
 #pragma omp parallel for schedule(static, 1)
 #endif
     for(int j = 0; j < p[i].size(); j ++) {
-      auto pf(p0[i]);
-      auto pb(p0[i]);
-      try {
-        for(int k = 0; k < invariant.size() / (i + 1); k ++)
-          q[i][j] = pb.next(invariant[(invariant.size() / (i + 1) -
-            (k + 1)) * (i + 1)][j]);
+      idFeeder<T> pf(p0);
+      idFeeder<T> pb(p0);
+      northPole<T, P0maxRank0<T> > q0(P0maxRank0<T>(i + 1));
+      P1I<T> q1(int(sqrt(T(int(invariant.size()) / (i + 1)))) - 1, i + 1);
+      for(int k = 0; k < invariant.size() / (i + 1); k ++)
+        pb.next(invariant[(invariant.size() / (i + 1) -
+          (k + 1)) * (i + 1)][j]);
+      try{
+        q[i][j] = (q0.next(pb.res) + q1.next(pb.res)) / T(int(2));
       } catch(const char* e) {
         q[i][j] = T(int(0));
       }
+      for(int k = 0; k < invariant.size() / (i + 1); k ++)
+        pf.next(invariant[invariant.size() - 1 -
+          (invariant.size() / (i + 1) - (k + 1)) * (i + 1)][j]);
       try {
-        for(int k = 0; k < invariant.size() / (i + 1); k ++)
-          p[i][j] = pf.next(invariant[invariant.size() - 1 -
-              (invariant.size() / (i + 1) - (k + 1)) * (i + 1)][j]);
+        p[i][j] = (q0.next(pf.res) + q1.next(pf.res)) / T(int(2));
       } catch(const char* e) {
         p[i][j] = T(int(0));
       }
