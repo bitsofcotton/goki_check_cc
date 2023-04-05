@@ -239,12 +239,15 @@ int main(int argc, const char* argv[]) {
     const string fn(argv[5]);
     if(!loadp2or3<num_t>(bump, argv[6]))
       return - 2;
-    const auto diag(sqrt(num_t(int(bump[0].rows() * bump[0].rows() +
-      bump[0].cols() * bump[0].cols()))));
-    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1),
-      shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP)),
+    bump[0] = shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP));
+    num_t z0(int(0));
+    for(int i = 0; i < bump[0].rows(); i ++)
+      for(int j = 0; j < bump[0].cols(); j ++)
+        z0 += bump[0](i, j);
+    z0 /= num_t(bump[0].rows() * bump[0].cols());
+    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
       strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
-        tiltprep<num_t>(data[0], index, Mindex, psi, diag / num_t(int(2))),
+        tiltprep<num_t>(data[0], index, Mindex, psi, z0),
       strcmp(argv[1], "sbox") == 0 ?
         num_t(index) / num_t(Mindex) *
           num_t(min(data[0].rows(), data[0].cols())) :
