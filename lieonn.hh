@@ -3152,11 +3152,11 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
     Mat pw(cat[i].first.size(), cat[i].first[0].size() + 1);
     auto mp(makeProgramInvariant<T>(cat[i].first[0]));
     pw.row(0) = move(mp.first);
-    auto avg(pw.row(0) *= pow(mp.second, ceil(- log(pw.epsilon()) )) );
+    auto avg(pw.row(0) *= pow(mp.second, ceil(- log(pw.epsilon()) / T(int(2)) )) );
     for(int j = 1; j < pw.rows(); j ++) {
       auto mp(makeProgramInvariant<T>(cat[i].first[j]));
       pw.row(j) = move(mp.first);
-      avg += (pw.row(j) *= pow(mp.second, ceil(- log(pw.epsilon()) )) );
+      avg += (pw.row(j) *= pow(mp.second, ceil(- log(pw.epsilon()) / T(int(2)) )) );
     }
     avg /= T(int(pw.rows()));
     const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? Vec() : linearInvariant<T>(pw));
@@ -3166,8 +3166,8 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
         - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1])
         / q[varlen - 1] / T(int(q.size())), vdp.second) ) ) :
       revertProgramInvariant<T>(make_pair(avg[varlen - 1] /=
-        pow(vdp.second, ceil(- log(pw.epsilon() ))) * T(int(avg.size())),
-        vdp.second)) );
+        pow(vdp.second, ceil(- log(pw.epsilon() / T(int(2)) ))) *
+          T(int(avg.size())), vdp.second)) );
     T score(0);
     for(int j = 0; j < work.size(); j ++)
       score += work[j] * revertProgramInvariant<T>(make_pair(avg[j] /= pow(vdp.second, ceil(- log(pw.epsilon() ))) * T(int(avg.size())), vdp.second));
@@ -3450,7 +3450,7 @@ public:
       auto mp(makeProgramInvariant<T>(move(work),
                 T(i + 1) / T(toeplitz.rows() + 1)));
       toeplitz.row(i)  = move(mp.first);
-      toeplitz.row(i) *= pow(mp.second, ceil(- log(toeplitz.epsilon()) ));
+      toeplitz.row(i) *= pow(mp.second, ceil(- log(toeplitz.epsilon()) / T(int(2)) ));
     }
     const auto invariant(linearInvariant<T>(toeplitz));
     if(invariant[varlen - 1] == zero) return zero;
@@ -3529,14 +3529,14 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
     auto inv(makeProgramInvariant<T>(in[i]));
     invariant[i]  = move(inv.first);
     invariant[i] *=
-      pow(inv.second, ceil(- log(SimpleMatrix<T>().epsilon()) ));
+      pow(inv.second, ceil(- log(SimpleMatrix<T>().epsilon()) / T(int(2)) ));
+    invariant[i][invariant[i].size() - 1] = sqrt(in[i].dot(in[i]));
   }
   vector<SimpleVector<T> > p;
   if(in.size() < 3) return make_pair(p, p);
   p.resize(p0);
   auto q(p);
   for(int i = 0; i < p0; i ++) {
-    cerr << i << " / " << p0 << endl;
     p[i].resize(invariant[0].size());
     q[i].resize(invariant[0].size());
     p[i].O();
@@ -3546,6 +3546,7 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < invariant[0].size(); j ++) {
+    cerr << j << " / " << invariant[0].size() << endl;
     idFeeder<T> pb(invariant.size());
     idFeeder<T> pf(invariant.size());
     for(int k = 0; k < invariant.size(); k ++)
@@ -3566,6 +3567,26 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
         p[i][j] = T(int(0));
       }
     }
+  }
+  for(int i = 0; i < p.size(); i ++) {
+    const auto norm(p[i][p[i].size() - 1]);
+    p[i][p[i].size() - 1] = T(int(0));
+    const auto normp(sqrt(p[i].dot(p[i])));
+    if(normp != T(int(0))) p[i] *= norm / normp;
+    const auto pp(p[i]);
+    p[i].resize(in[0].size());
+    for(int j = 0; j < p[i].size(); j ++)
+      p[i][j] = abs(pp[j]);
+  }
+  for(int i = 0; i < q.size(); i ++) {
+    const auto norm(q[i][q[i].size() - 1]);
+    q[i][q[i].size() - 1] = T(int(0));
+    const auto normq(sqrt(q[i].dot(q[i])));
+    if(normq != T(int(0))) q[i] *= norm / normq;
+    const auto qq(q[i]);
+    q[i].resize(in[0].size());
+    for(int j = 0; j < q[i].size(); j ++)
+      q[i][j] = abs(qq[j]);
   }
   return make_pair(move(p), move(q));
 }
