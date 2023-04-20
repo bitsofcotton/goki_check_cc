@@ -24,13 +24,13 @@ Searching the Internet more...
     gokibin (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (cat|catr) <output.ppm> <input0.ppm> ...
     gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
-    gokibin obj   <rot> <input.ppm> <output.obj>
+    gokibin (obj|obj+) <rot> <input.ppm> <output.obj>
     gokibin match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokibin recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokibin recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokibin habit <in0.obj> <in1.obj> <out.obj>
-    python2 test.py ./gokibin (sharpen|bump|enlarge|denlarge|denlarge+|flarge|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit) <param> input0.png ...
+    python2 test.py ./gokibin (sharpen|bump|enlarge|denlarge|denlarge+|flarge|represent|jps|tilt|obj|obj+|sbox|prep|presq|nop|limit|bit) <param> input0.png ...
     python2 test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
     python2 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python2 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
@@ -54,4 +54,5 @@ Searching the Internet more...
 2023/04/02 merge catg fix.
 2023/04/03 merge.
 2023/04/05 improve accuracy stability.
+2023/04/20 obj+ command.
 

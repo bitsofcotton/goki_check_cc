@@ -2706,21 +2706,32 @@ template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvarian
   res[in.size()] = T(int(1));
   if(T(int(0)) <= index)
     res[in.size() + 1] = T(index);
-  T   lsum(0);
+  T ratio(0);
   for(int i = 0; i < res.size(); i ++) {
-    assert(- T(int(1)) <= res[i] && res[i] <= T(int(1)));
+    res[i]  = atan(res[i]) / atan(T(int(1))) / T(int(2));
     res[i] += T(int(1));
-    if(res[i] != T(int(0))) lsum += log(res[i]);
+    res[i] /= T(int(2));
+    assert(T(int(0)) < res[i] && res[i] <= T(int(1)));
+    ratio  += (res[i] = log(res[i]));
   }
-  T ratio(1);
   // N.B. x_1 ... x_n == 1.
   // <=> x_1 / (x_1 ... x_n)^(1/n) ... == 1.
-  if(lsum != T(int(0))) res /= ratio = exp(lsum / T(res.size() - 1));
+  res /= ratio /= T(res.size());
   return make_pair(res, ratio);
 }
 
 template <typename T> static inline T revertProgramInvariant(const pair<T, T>& in) {
-  return max(T(int(0)), min(T(int(2)), abs(in.first * in.second) )) - T(int(1));
+  return tan((exp(- abs(in.first * in.second) ) * T(int(2)) - T(int(1)) ) * T(int(2)) * atan(T(int(1))) );
+}
+
+template <typename T> static inline SimpleVector<T> revertProgramInvariant(const SimpleVector<T>& in) {
+  auto M(abs(in[0]));
+  for(int i = 1; i < in.size(); i ++) M = max(M, abs(in[i]));
+  if(M == T(int(0))) M = T(int(1));
+  auto res(in / M);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = revertProgramInvariant<T>(make_pair(res[i], T(int(1)) ));
+  return res;
 }
 
 template <typename T> class idFeeder {
@@ -2876,37 +2887,32 @@ template <typename T> using SimpleSparseTensor = SimpleSparseVector<SimpleSparse
 
 template <typename T> class CatG {
 public:
-  typedef SimpleVector<T> Vec;
-  typedef SimpleMatrix<T> Mat;
   inline CatG() { ; }
-  inline CatG(const int& size0, const vector<Vec>& in);
+  inline CatG(const int& size0, const vector<SimpleVector<T> >& in);
   inline ~CatG() { ; }
-  inline T score(const Vec& in) {
+  inline T score(const SimpleVector<T>& in) {
     const auto size(cut.size() - 2);
     assert(0 < size);
-    auto  work(makeProgramInvariant(tayl(size, in.size()) * in));
-    auto& sv(work.first);
-    sv *= pow(abs(work.second), ceil(- log(SimpleMatrix<T>().epsilon()) / T(int(2)) ));
-    return abs(sv.dot(cut)) - origin;
+    return makeProgramInvariant<T>(tayl(size, in.size()) * in).first.dot(cut) - origin;
   }
-  const Mat& tayl(const int& size, const int& in) {
-    static vector<Mat> t;
+  const SimpleMatrix<T>& tayl(const int& size, const int& in) {
+    static vector<SimpleMatrix<T> > t;
     if(in < t.size()) {
       if(t[in].rows() && t[in].cols())
         return t[in];
     } else
-      t.resize(in + 1, Mat());
+      t.resize(in + 1, SimpleMatrix<T>());
     t[in].resize(size, in);
     for(int i = 0; i < size; i ++)
       t[in].row(i) = taylor<T>(in, T(i) * T(in) / T(size));
     return t[in];
   }
-  Vec cut;
+  SimpleVector<T> cut;
   T   distance;
   T   origin;
 };
 
-template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& in) {
+template <typename T> inline CatG<T>::CatG(const int& size0, const vector<SimpleVector<T> >& in) {
   const auto size(abs(size0));
   SimpleMatrix<T> A(in.size(), size + 1);
   for(int i = 0; i < in.size(); i ++)
@@ -2914,17 +2920,14 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < in.size(); i ++) {
-    auto work(makeProgramInvariant(tayl(size, in[i].size()) * in[i]));
-    A.row(i)  = move(work.first);
-    A.row(i) *= pow(abs(work.second), ceil(- log(A.epsilon()) / T(int(2)) ));
+  for(int i = 0; i < in.size(); i ++)
+    A.row(i) = makeProgramInvariant(tayl(size, in[i].size()) * in[i]).first;
     // N.B. test for linear ones:
     // A.row(i).setVector(0, tayl(size, in[i].size()) * in[i]);
-  }
         auto Pt(A.QR());
         auto Ptb(Pt);
   const auto R(Pt * A);
-        Vec  one(Pt.cols());
+  SimpleVector<T>   one(Pt.cols());
   SimpleVector<int> fix(one.size());
   one.I(T(int(1)));
   fix.I(false);
@@ -2972,17 +2975,17 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Vec>& 
     fix[iidx] = true;
     if(size0 < 0) fix[pidx[iidx]] = true;
   }
-  cut = R.solve(Pt * one);
+  auto ptone(Pt * one);
+  if(ptone.dot(ptone) <= Pt.epsilon())
+    ptone = Ptb * one;
+  cut = R.solve(ptone);
   auto cutn(sqrt(cut.dot(cut)));
   if(cutn != T(int(0))) cut /= cutn;
-  auto test(A * cut);
-  vector<T> testv;
-  testv.reserve(test.size());
-  for(int i = 0; i < test.size(); i ++) testv.emplace_back(abs(test[i]));
+  auto testv((A * cut).entity);
   std::sort(testv.begin(), testv.end());
   distance = T(int(0));
   for(int i = 1; i < testv.size(); i ++)
-    if(distance < testv[i] - testv[i - 1]) {
+    if(distance <= testv[i] - testv[i - 1]) {
       distance =  testv[i] - testv[i - 1];
       origin   = (testv[i] + testv[i - 1]) / T(int(2));
     }
@@ -2993,16 +2996,12 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
   assert(0 <= count);
   vector<pair<vector<SimpleVector<T> >, vector<int> > > result;
   if(! v.size() || !v[0].size()) return result;
-  auto MM(v[0].dot(v[0]));
-  for(int i = 1; i < v.size(); i ++)
-    MM = max(MM, v[i].dot(v[i]));
-  MM = sqrt(MM) * T(int(2));
   int t(0);
   result.emplace_back(pair<vector<SimpleVector<T> >, vector<int> >());
   result[0].first.reserve(v.size());
   result[0].second.reserve(v.size());
   for(int i = 0; i < v.size(); i ++) {
-    result[0].first.emplace_back(v[i] / MM);
+    result[0].first.emplace_back(v[i]);
     result[0].second.emplace_back(i);
   }
   vector<pair<T, pair<int, bool> > > sidx;
@@ -3054,9 +3053,6 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
       sidx[iidx].second.second = true;
     }
   }
-  for(int i = 0; i < result.size(); i ++)
-    for(int j = 0; j < result[i].first.size(); j ++)
-      result[i].first[j] *= MM;
   return result;
 }
 
@@ -3109,8 +3105,6 @@ template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector
 
 template <typename T> class P012L {
 public:
-  typedef SimpleVector<T> Vec;
-  typedef SimpleMatrix<T> Mat;
   inline P012L() { varlen = 0; }
   inline P012L(const int& var, const int& step = 1) {
     assert(1 < var && 0 < step);
@@ -3131,35 +3125,30 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
     if(! isfinite(d[i])) return zero;
     M = max(M, abs(d[i]));
   }
-  M *= T(int(2));
   if(M <= zero) return zero;
   vector<SimpleVector<T> > cache;
   cache.reserve(d.size() - varlen + 2);
   for(int i = 0; i < d.size() - varlen - step + 2; i ++) {
-    cache.emplace_back(d.subVector(i, varlen) / M);
-    cache[cache.size() - 1][varlen - 1] = d[i + varlen + step - 2] / M;
+    cache.emplace_back(d.subVector(i, varlen));
+    cache[cache.size() - 1][varlen - 1] = d[i + varlen + step - 2];
   }
   const auto cat(crush<T>(cache));
   SimpleVector<T> work(varlen);
   for(int i = 1; i < work.size(); i ++)
-    work[i - 1] = d[i - work.size() + d.size()] / M;
+    work[i - 1] = d[i - work.size() + d.size()];
   work[work.size() - 1] = zero;
   const auto vdp(makeProgramInvariant<T>(work));
         auto res(zero);
         auto sscore(zero);
   for(int i = 0; i < cat.size(); i ++) {
     if(! cat[i].first.size()) continue;
-    Mat pw(cat[i].first.size(), cat[i].first[0].size() + 1);
-    auto mp(makeProgramInvariant<T>(cat[i].first[0]));
-    pw.row(0) = move(mp.first);
-    auto avg(pw.row(0) *= pow(mp.second, ceil(- log(pw.epsilon()) / T(int(2)) )) );
-    for(int j = 1; j < pw.rows(); j ++) {
-      auto mp(makeProgramInvariant<T>(cat[i].first[j]));
-      pw.row(j) = move(mp.first);
-      avg += (pw.row(j) *= pow(mp.second, ceil(- log(pw.epsilon()) / T(int(2)) )) );
-    }
+    SimpleMatrix<T> pw(cat[i].first.size(), cat[i].first[0].size() + 1);
+    pw.row(0) = makeProgramInvariant<T>(cat[i].first[0]).first;
+    auto avg(pw.row(0));
+    for(int j = 1; j < pw.rows(); j ++)
+      avg += (pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first);
     avg /= T(int(pw.rows()));
-    const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? Vec() : linearInvariant<T>(pw));
+    const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? SimpleVector<T>() : linearInvariant<T>(pw));
     work[work.size() - 1] = (q.size() ?
       (q[varlen - 1] == zero ? zero :
        revertProgramInvariant<T>(make_pair(
@@ -3170,11 +3159,11 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
           T(int(avg.size())), vdp.second)) );
     T score(0);
     for(int j = 0; j < work.size(); j ++)
-      score += work[j] * revertProgramInvariant<T>(make_pair(avg[j] /= pow(vdp.second, ceil(- log(pw.epsilon() ))) * T(int(avg.size())), vdp.second));
+      score += work[j] * revertProgramInvariant<T>(make_pair(avg[j] /= T(int(avg.size())), vdp.second));
     res += q.size() ? abs(score) * work[work.size() - 1] : score * work[work.size() - 1];
     sscore += abs(score);
   }
-  return sscore == zero ? sscore : res * M / sscore;
+  return sscore == zero ? sscore : res / sscore;
 }
 
 
@@ -3428,8 +3417,6 @@ public:
 // cf. bitsofcotton/randtools .
 template <typename T> class P1I {
 public:
-  typedef SimpleVector<T> Vec;
-  typedef SimpleMatrix<T> Mat;
   inline P1I() { varlen = 0; }
   inline P1I(const int& var, const int& step = 1) {
     assert(0 < var && 0 < step);
@@ -3445,24 +3432,22 @@ public:
     if(! isfinite(nin) || nin == zero) return zero;
     SimpleMatrix<T> toeplitz(in.size() - varlen - step + 2, varlen + 2);
     for(int i = 0; i < toeplitz.rows(); i ++) {
-      auto work(in.subVector(i, varlen) / nin);
-      work[work.size() - 1] = in[i + varlen + step - 2] / nin;
-      auto mp(makeProgramInvariant<T>(move(work),
-                T(i + 1) / T(toeplitz.rows() + 1)));
-      toeplitz.row(i)  = move(mp.first);
-      toeplitz.row(i) *= pow(mp.second, ceil(- log(toeplitz.epsilon()) / T(int(2)) ));
+      auto work(in.subVector(i, varlen));
+      work[work.size() - 1] = in[i + varlen + step - 2];
+      toeplitz.row(i) = makeProgramInvariant<T>(move(work),
+        T(i + 1) / T(toeplitz.rows() + 1) ).first;
     }
     const auto invariant(linearInvariant<T>(toeplitz));
     if(invariant[varlen - 1] == zero) return zero;
     SimpleVector<T> work(varlen);
     for(int i = 1; i < work.size(); i ++)
-      work[i - 1] = in[i - work.size() + in.size()] / nin;
+      work[i - 1] = in[i - work.size() + in.size()];
     work[work.size() - 1] = zero;
     const auto work2(makeProgramInvariant<T>(work, T(1)));
     return revertProgramInvariant<T>(make_pair(
              - (invariant.dot(work2.first) -
                     invariant[varlen - 1] * work2.first[varlen - 1]) /
-               invariant[varlen - 1], work2.second)) * nin;
+               invariant[varlen - 1], work2.second));
   }
 private:
   int varlen;
@@ -3526,10 +3511,7 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < in.size(); i ++) {
-    auto inv(makeProgramInvariant<T>(in[i]));
-    invariant[i]  = move(inv.first);
-    invariant[i] *=
-      pow(inv.second, ceil(- log(SimpleMatrix<T>().epsilon()) / T(int(2)) ));
+    invariant[i] = makeProgramInvariant<T>(in[i]).first;
     invariant[i][invariant[i].size() - 1] = sqrt(in[i].dot(in[i]));
   }
   vector<SimpleVector<T> > p;
@@ -3571,22 +3553,16 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
   for(int i = 0; i < p.size(); i ++) {
     const auto norm(p[i][p[i].size() - 1]);
     p[i][p[i].size() - 1] = T(int(0));
+    p[i] = revertProgramInvariant<T>(p[i]);
     const auto normp(sqrt(p[i].dot(p[i])));
     if(normp != T(int(0))) p[i] *= norm / normp;
-    const auto pp(p[i]);
-    p[i].resize(in[0].size());
-    for(int j = 0; j < p[i].size(); j ++)
-      p[i][j] = abs(pp[j]);
   }
   for(int i = 0; i < q.size(); i ++) {
     const auto norm(q[i][q[i].size() - 1]);
     q[i][q[i].size() - 1] = T(int(0));
+    q[i] = revertProgramInvariant<T>(q[i]);
     const auto normq(sqrt(q[i].dot(q[i])));
     if(normq != T(int(0))) q[i] *= norm / normq;
-    const auto qq(q[i]);
-    q[i].resize(in[0].size());
-    for(int j = 0; j < q[i].size(); j ++)
-      q[i][j] = abs(qq[j]);
   }
   return make_pair(move(p), move(q));
 }

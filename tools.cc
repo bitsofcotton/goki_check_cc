@@ -207,7 +207,8 @@ int main(int argc, const char* argv[]) {
     }
     if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac)))
       return - 1;
-  } else if(strcmp(argv[1], "obj") == 0) {
+  } else if(strcmp(argv[1], "obj") == 0 ||
+            strcmp(argv[1], "obj+") == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
     if(argc < 5) {
       usage(argv[0]);
@@ -215,7 +216,7 @@ int main(int argc, const char* argv[]) {
     }
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
-          auto sd(shrinkd<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2]))));
+    auto sd(shrinkd<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2])), argv[1][strlen("obj")]) );
     const auto rows(sd.rows());
     const auto cols(sd.cols());
     const auto points(getTileVec<num_t>(std::move(sd)));

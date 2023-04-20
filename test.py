@@ -148,8 +148,8 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "denlarge+" or argv[2] == "diffraw" or argv[2] == "bump" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "obj"):
-      subprocess.call([argv[1], "obj", str(rot), root + "-bump.ppm", root + ".obj"])
+    elif(argv[2] == "obj" or argv[2] == "obj+"):
+      subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps"):
       subprocess.call([argv[1], "tilt", "1", "4", str(  psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
       subprocess.call([argv[1], "tilt", "1", "4", str(- psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
