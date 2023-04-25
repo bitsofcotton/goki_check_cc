@@ -224,7 +224,9 @@ int main(int argc, const char* argv[]) {
                    mesh2<num_t>(points), argv[4]);
     saveMTL<num_t>(argv[4], (string(argv[4]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
-            strcmp(argv[1], "sbox") == 0) {
+            strcmp(argv[1], "tilt+") == 0 ||
+            strcmp(argv[1], "sbox") == 0 ||
+            strcmp(argv[1], "sbox+") == 0) {
     if(argc < 8) {
       usage(argv[0]);
       return - 1;
@@ -240,7 +242,8 @@ int main(int argc, const char* argv[]) {
     const string fn(argv[5]);
     if(!loadp2or3<num_t>(bump, argv[6]))
       return - 2;
-    bump[0] = shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP));
+    assert(strlen("tilt") == strlen("sbox"));
+    bump[0] = shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP), argv[1][strlen("tilt")]);
     num_t z0(int(0));
     for(int i = 0; i < bump[0].rows(); i ++)
       for(int j = 0; j < bump[0].cols(); j ++)
@@ -258,7 +261,8 @@ int main(int argc, const char* argv[]) {
       data[j] = pullRefMatrix<num_t>(tilt0, 1, data[j]);
     if(!savep2or3<num_t>(argv[7], data))
       return - 1;
-  } else if(strcmp(argv[1], "match") == 0) {
+  } else if(strcmp(argv[1], "match") == 0 ||
+            strcmp(argv[1], "match+") == 0) {
     if(argc < 10) {
       usage(argv[0]);
       return - 1;
@@ -278,8 +282,8 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const string outbase(argv[10]);
     const auto shape0(vboxdst < 0
-      ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP)), abs(vboxdst))
-      : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP)), abs(vboxdst)));
+      ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP), argv[1][strlen("match")]), abs(vboxdst))
+      : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP), argv[1][strlen("match")]), abs(vboxdst)));
     const auto shape1(vboxsrc < 0
       ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP)), abs(vboxsrc))
       : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP)), abs(vboxsrc)));

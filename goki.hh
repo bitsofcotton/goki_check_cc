@@ -711,8 +711,8 @@ template <typename T> SimpleMatrix<T> shrinkd(const SimpleMatrix<T>& in, const c
   return res;
 }
 
-template <typename T> SimpleMatrix<T> shrinkde(const SimpleMatrix<T>& in) {
-  auto sd(shrinkd<T>(in));
+template <typename T> SimpleMatrix<T> shrinkde(const SimpleMatrix<T>& in, const char& m = '\0') {
+  auto sd(shrinkd<T>(in, m));
   return (dft<T>(- in.rows()).subMatrix(0, 0, in.rows(), sd.rows()) * dft<T>(sd.rows())).template real<T>() * sd * (dft<T>(- in.cols()).subMatrix(0, 0, in.cols(), sd.cols()) * dft<T>(sd.cols())).template real<T>().transpose();
 }
 
