@@ -378,6 +378,9 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 
 template <typename T> static inline SimpleMatrix<T> flip(const SimpleMatrix<T>& d) {
   auto res(d);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < d.rows(); i ++)
     res.row(res.rows() - 1 - i) = d.row(i);
   return res;
@@ -385,6 +388,9 @@ template <typename T> static inline SimpleMatrix<T> flip(const SimpleMatrix<T>& 
 
 template <typename T> static inline SimpleMatrix<T> flop(const SimpleMatrix<T>& d) {
   auto res(d);
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < d.cols(); i ++)
     res.setCol(res.cols() - 1 - i, d.col(i));
   return res;
@@ -615,14 +621,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             // N.B. curvature theirselves and divide by sqrt(range).
             //      division is needed because we compair same norm.
             const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv) / (fu * fu + fv * fv + T(int(1))))) / sqrt(T(int(Dop0.size()))));
-#if defined(_OPENMP)
-#pragma omp critical
-#endif
-            {
-              if(zscore(i, j) <= lscore) {
-                result(i, j) = T(zi + 1) / T(dratio);
-                zscore(i, j) = lscore;
-              }
+            if(zscore(i, j) <= lscore) {
+              result(i, j) = T(zi + 1) / T(dratio);
+              zscore(i, j) = lscore;
             }
           }
       }
@@ -1389,7 +1390,10 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const Simp
   auto points(getTileVec<T>(bump));
   auto facets(mesh2<T>(points));
   vector<triangles_t<T> > triangles;
-  triangles.reserve(facets.size());
+  triangles.resize(facets.size());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < facets.size(); i ++) {
     triangles_t<T> work;
     for(int j = 0; j < 3; j ++) {
@@ -1416,7 +1420,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const Simp
                   int(points[facets[i][0]][1]));
     else
       work.c = T(0);
-    triangles.emplace_back(work.solveN());
+    triangles[i] = move(work.solveN());
   }
   return tilt<T>(in, triangles, depth);
 }
@@ -1424,7 +1428,10 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const Simp
 template <typename T> SimpleMatrix<T> draw(const SimpleMatrix<T>& img, const vector<SimpleVector<T> >& shape, const vector<SimpleVector<T> >& emph, const vector<SimpleVector<int> >& hull) {
   assert(shape.size() == emph.size());
   vector<triangles_t<T> > tris;
-  tris.reserve(hull.size());
+  tris.resize(hull.size());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
   for(int i = 0; i < hull.size(); i ++) {
     assert(hull[i].size() == 3);
     assert(0 <= hull[i][0] && hull[i][0] < shape.size());
@@ -1437,7 +1444,7 @@ template <typename T> SimpleMatrix<T> draw(const SimpleMatrix<T>& img, const vec
                    int(shape[hull[i][0]][0]))),
                  max(int(0), min(int(img.cols() - 1),
                    int(shape[hull[i][0]][1]))));
-    tris.emplace_back(work.solveN());
+    tris[i] = move(work.solveN());
   }
   return tilt<T>(img * T(0), tris);
 }
