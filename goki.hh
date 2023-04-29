@@ -650,12 +650,20 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       auto c(col[0]);
       for(int i = 1; i < row.size(); i ++) r += row[i];
       for(int i = 1; i < col.size(); i ++) c += col[i];
-      r /= T(int(row.size())) * T(int(row.size() - 1)) / T(int(2));
-      c /= T(int(col.size())) * T(int(col.size() - 1)) / T(int(2));
+      r  /= T(int(row.size())) * T(int(row.size() - 1)) / T(int(2));
+      c  /= T(int(col.size())) * T(int(col.size() - 1)) / T(int(2));
+      row = data.row(data.rows() - 1) - data.row(0);
+      col = data.col(data.cols() - 1) - data.col(0);
+      auto rd(row[0]);
+      auto cd(col[0]);
+      for(int i = 1; i < row.size(); i ++) rd += row[i];
+      for(int i = 1; i < col.size(); i ++) cd += col[i];
+      rd /= T(int(row.size())) * T(int(data.rows()));
+      cd /= T(int(col.size())) * T(int(data.cols()));
       result = data;
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) -= r * T(i) + c * T(j);
+          result(i, j) += (rd - r) * T(i) + (cd - c) * T(j);
       result = normalize<T>(result);
     }
     break;
@@ -1251,7 +1259,7 @@ template <typename T> static inline vector<SimpleVector<int> > mesh2(const vecto
 template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>& in, const int& vbox = 1) {
   vector<SimpleVector<T> > geoms;
   geoms.reserve((in.rows() / vbox + 1) * (in.cols() / vbox + 1));
-  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())) / T(int(2)));
+  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())));
   for(int i = 0; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
@@ -1288,7 +1296,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   const auto xx(in * diff<T>(in.cols()).transpose() * diff<T>(in.cols()).transpose());
   const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()).transpose());
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
-  const auto diag(sqrt(T(int(in.rows() * in.rows() + in.cols() * in.cols()))) / T(int(2)));
+  const auto diag(sqrt(T(int(in.rows() * in.rows() + in.cols() * in.cols()))));
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)

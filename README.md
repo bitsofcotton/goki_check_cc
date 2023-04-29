@@ -55,4 +55,5 @@ Searching the Internet more...
 2023/04/03 merge.
 2023/04/05 improve accuracy stability.
 2023/04/20 obj+ command.
+2023/04/29 theoretical fix and their close on bump, afterbump, gettilevec chain.
 
