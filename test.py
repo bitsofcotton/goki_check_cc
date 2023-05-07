@@ -95,15 +95,14 @@ elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or a
 elif(argv[2] == "tile"):
   idx = 3
   try:
-    pixels = int(argv[3])
+    pixels = argv[3]
     idx += 1
   except:
     pass
-  for t in range(0, int((pow(len(argv) - idx, .5) + pixels) / pixels)):
-    cmd = ["montage"]
-    cmd.extend(argv[t * pixels * pixels + idx: min((t + 1) * pixels * pixels + idx, len(argv))])
-    cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tile-" + str(t) + ".png"])
-    subprocess.call(cmd)
+  cmd = ["montage"]
+  cmd.extend(argv[idx:])
+  cmd.extend(["-tile", pixels, "-geometry", "+0+0", "tile.png"])
+  subprocess.call(cmd)
 elif(argv[2] == "apply"):
   sz = 1
   with open(argv[1] + ".txt") as f:
@@ -150,34 +149,42 @@ else:
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "obj" or argv[2] == "obj+"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
-    elif(argv[2] == "jps" or argv[2] == "jps+"):
-      if(argv[2] == "jps"):
-        tt = "tilt"
-      else:
-        tt = "tilt+"
-      subprocess.call([argv[1], tt, "1", "4", str(  psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-      subprocess.call([argv[1], tt, "1", "4", str(- psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+    elif(argv[2] == "objr" or argv[2] == "objr+"):
+      subprocess.call([argv[1], argv[2], str(rot), root + "-bumps.ppm", root + ".obj"])
+    elif(argv[2] == "jps" or argv[2] == "jps+" or argv[2] == "jpsr" or argv[2] == "jpsr+"):
+      tt = "tilt" + argv[2][len("jps"):]
+      bb = root + "-bump.ppm"
+      if(argv[2][len("jps")] == 'r'):
+        bb = root + "-bumps.ppm"
+      subprocess.call([argv[1], tt, "1", "4", str(  psi), root + ".ppm", bb, root + "-L.ppm"])
+      subprocess.call([argv[1], tt, "1", "4", str(- psi), root + ".ppm", bb, root + "-R.ppm"])
       subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", root + "-R.png"])
       subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", root + "-L.png"])
       subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])
       subprocess.call(["montage", root + "-L.png", root + "-R.png", "-geometry", "100%x100%", root + "-stereoR.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
       subprocess.call(["montage", root + "-stereoR.jps", "-geometry", "100%x100%", root + "-stereoR.png"])
-    elif(argv[2] == "tilt" or argv[2] == "tilt+"):
+    elif(argv[2] == "tilt" or argv[2] == "tilt+" or argv[2] == "tiltr" or argv[2] == "tiltr+"):
+      bb = root + "-bump.ppm"
+      if(argv[2][len("tilt")] == 'r'):
+        bb = root + "-bumps.ppm"
       w = h = 0
-      with open(root + "-bump.ppm") as f:
+      with open(bb) as f:
         f.readline()
         a = f.readline().split(" ")
         w = int(a[0])
         h = int(a[1])
       for s in range(0, pixels * 2):
-        subprocess.call([argv[1], argv[2], "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + "-bump.ppm", root + "-tilt-" + str(s) + ".ppm"])
+        subprocess.call([argv[1], argv[2], "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", bb, root + "-tilt-" + str(s) + ".ppm"])
         subprocess.call(["mogrify", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-tilt-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-tilt-" + str(s) + ".ppm", root + "-tilt-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + ".mp4"])
-    elif(argv[2] == "sbox"):
+    elif(argv[2] == "sbox" or argv[2] == "sbox+" or argv[2] == "sboxr" or argv[2] == "sboxr+"):
+      bb = root + "-bump.ppm"
+      if(argv[2][len("sbox")] == 'r'):
+        bb = root + "-bumps.ppm"
       for s in range(0, pixels):
-        subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), "0", root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(pixels - s) + ".ppm"])
+        subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), "0", root + ".ppm", bb, root + "-sbox-" + str(pixels - s) + ".ppm"])
     elif(argv[2] == "sboxb2w"):
       subprocess.call([argv[1], "b2w", root + "-sbox-1.ppm", root + "-sbox-bw-1.ppm", "1"])
       for s in range(1, pixels):
