@@ -3462,28 +3462,6 @@ private:
   int step;
 };
 
-// N.B. persistent raw prediction.
-template <typename T> class Prange {
-public:
-  inline Prange() { ; }
-  inline Prange(const int& status) {
-    assert(0 < status);
-    p1 = P1I<T>(int(sqrt(T(status))) );
-    this->status = status;
-  }
-  inline ~Prange() { ; }
-  inline T next(const SimpleVector<T>& in) {
-    T M(int(1));
-    for(int i = 0; i < in.size(); i ++) M = max(M, abs(in[i]));
-    return max(- M, min(M, (
-      max(- M, min(M, p0.next(in))) +
-      max(- M, min(M, p1.next(in))) ) / T(int(2)) ));
-  }
-  P0maxRank<T> p0;
-  P1I<T> p1;
-  int status;
-};
-
 // N.B. we omit high frequency part (1/f(x) input) to be treated better in P.
 template <typename T, typename P> class PBond {
 public:
@@ -3497,9 +3475,20 @@ public:
   inline ~PBond() { ; }
   inline T next(const T& in) {
     M = max(M, abs(in));
-    const auto& g(f.next(in));
+    auto g(f.next(in));
     if(! f.full) return T(int(0));
-    return max(- M, min(M, p.next(g) ));
+    // N.B. with 1-norm normalized input:
+    T m(g[0] /= M);
+    for(int i = 1; i < g.size(); i ++) m = min(m, g[i] /= M);
+    // N.B. offset const.
+    m -= T(int(1));
+    // N.B. 0 < v, normalize with v's orthogonality:
+    T mavg(log(g[0] - m));
+    for(int i = 1; i < g.size(); i ++) mavg += log(g[i] - m);
+    mavg /= T(int(g.size()));
+    mavg  = exp(mavg);
+    // N.B. we need nonlinear prediction, so * M before to predict.
+    return max(- M, min(M, p.next(g / mavg * M) * mavg));
   }
   idFeeder<T> f;
   P p;
@@ -3509,9 +3498,9 @@ public:
 template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in) {
   int p0(0);
   for( ; p0 < in.size() / 2; p0 ++) {
-    if(int(sqrt(T(int(in.size()) - (p0 + 1)))) < 1) break;
-    const auto& pn(pnextcacher<T>(in.size(), p0 + 1, 4));
-    if(T(int(in.size())) < pn.dot(pn)) break;
+    if(max(int(in.size()) - 2 * (6 + (p0 + 1)), int(sqrt(T(int(in.size()) - (p0 + 1))))) < 1) break;
+    const auto& pn(pnextcacher<T>(min(int(11) * (p0 + 1), int(in.size())), p0 + 1, 4));
+    if(T(min(int(11) * (p0 + 1), int(in.size()))) < pn.dot(pn)) break;
   }
   vector<SimpleVector<T> > invariant;
   invariant.resize(in.size());
@@ -3532,27 +3521,41 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
     p[i].O();
     q[i].O();
   }
+  const auto one65536(T(int(1)) / T(int(65536)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < invariant[0].size(); j ++) {
     cerr << j << " / " << invariant[0].size() << endl;
-    idFeeder<T> pb(invariant.size());
+    idFeeder<T> pb(min(int(11) * (j + 1), int(invariant.size())));
     idFeeder<T> pf(invariant.size());
     for(int k = 0; k < invariant.size(); k ++)
       pb.next(invariant[invariant.size() - k - 1][j]);
     for(int k = 0; k < invariant.size(); k ++)
       pf.next(invariant[k][j]);
+    // N.B. normalize with 0 < v 's maximum orthogonality:
+    T Mb(log(pb.res[0] + one65536));
+    T Mf(log(pf.res[0] + one65536));
+    for(int k = 1; k < pb.res.size(); k ++)
+      Mb += log(pb.res[k] + one65536);
+    for(int k = 1; k < pf.res.size(); k ++)
+      Mf += log(pf.res[k] + one65536);
+    Mb /= T(int(pb.res.size()));
+    Mf /= T(int(pf.res.size()));
+    Mb  = - exp(Mb);
+    Mf  = - exp(Mf);
+    pb.res /= Mb;
+    pf.res /= Mf;
     for(int i = 0; i < p0; i ++) {
       northPole<T, P0maxRank0<T> > q0(P0maxRank0<T>(i + 1));
-      P1I<T> q1(int(sqrt(T(int(invariant.size()) - (i + 1)))), i + 1);
+      P1I<T> q1(min(int(6), int(sqrt(T(int(invariant.size()) - (i + 1))))), i + 1);
       try {
-        q[i][j] = (q0.next(pb.res) + q1.next(pb.res)) / T(int(2));
+        q[i][j] = (q0.next(pb.res) + q1.next(pb.res)) / T(int(2)) * Mb;
       } catch(const char* e) {
         q[i][j] = T(int(0));
       }
       try {
-        p[i][j] = (q0.next(pf.res) + q1.next(pf.res)) / T(int(2));
+        p[i][j] = (q0.next(pf.res) + q1.next(pf.res)) / T(int(2)) * Mf;
       } catch(const char* e) {
         p[i][j] = T(int(0));
       }

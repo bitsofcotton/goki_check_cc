@@ -154,7 +154,7 @@ else:
     elif(argv[2] == "jps" or argv[2] == "jps+" or argv[2] == "jpsr" or argv[2] == "jpsr+"):
       tt = "tilt" + argv[2][len("jps"):]
       bb = root + "-bump.ppm"
-      if(argv[2][len("jps")] == 'r'):
+      if(len("jps") < len(argv[2]) and argv[2][len("jps")] == 'r'):
         bb = root + "-bumps.ppm"
       subprocess.call([argv[1], tt, "1", "4", str(  psi), root + ".ppm", bb, root + "-L.ppm"])
       subprocess.call([argv[1], tt, "1", "4", str(- psi), root + ".ppm", bb, root + "-R.ppm"])
