@@ -379,7 +379,7 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 template <typename T> static inline SimpleMatrix<T> flip(const SimpleMatrix<T>& d) {
   auto res(d);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int i = 0; i < d.rows(); i ++)
     res.row(res.rows() - 1 - i) = d.row(i);
@@ -389,7 +389,7 @@ template <typename T> static inline SimpleMatrix<T> flip(const SimpleMatrix<T>& 
 template <typename T> static inline SimpleMatrix<T> flop(const SimpleMatrix<T>& d) {
   auto res(d);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int i = 0; i < d.cols(); i ++)
     res.setCol(res.cols() - 1 - i, d.col(i));
@@ -412,7 +412,7 @@ template <typename T> vector<SimpleMatrix<T> > autoLevel(const vector<SimpleMatr
   sort(res.begin(), res.end());
   auto result(data);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int k = 0; k < data.size(); k ++)
     for(int i = 0; i < data[k].rows(); i ++)
@@ -599,7 +599,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         const auto DDop0((DDop.row(int(y0) / 2) + DDop.row(int(y0) / 2 + 1)) / T(2));
         // N.B. curvature matrix det == EG - F^2, we see only \< relation.
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
         for(int i = 0; i < data.rows(); i ++)
           for(int j = 0; j < data.cols(); j ++) {
@@ -1357,7 +1357,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
   zbuf.resize(triangles.size(), make_pair(T(0), triangles_t<T>()));
   assert(zbuf.size() == triangles.size());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int j = 0; j < triangles.size(); j ++) {
           auto& tri(triangles[j]);
@@ -1400,7 +1400,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const Simp
   vector<triangles_t<T> > triangles;
   triangles.resize(facets.size());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int i = 0; i < facets.size(); i ++) {
     triangles_t<T> work;
@@ -1438,7 +1438,7 @@ template <typename T> SimpleMatrix<T> draw(const SimpleMatrix<T>& img, const vec
   vector<triangles_t<T> > tris;
   tris.resize(hull.size());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int i = 0; i < hull.size(); i ++) {
     assert(hull[i].size() == 3);
@@ -1484,7 +1484,7 @@ template <typename T> SimpleMatrix<T> draw(const SimpleMatrix<T>& img, const vec
 template <typename T> static inline vector<SimpleVector<T> > takeShape(const vector<SimpleVector<T> >& dst, const vector<SimpleVector<T> >& src, const match_t<T>& match, const T& ratio) {
   auto result(dst);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int i = 0; i < match.src.size(); i ++)
     result[match.dst[i]] += (match.transform(src[match.src[i]]) - dst[match.dst[i]]) * ratio;
@@ -1494,7 +1494,7 @@ template <typename T> static inline vector<SimpleVector<T> > takeShape(const vec
 template <typename T> static inline SimpleMatrix<T> showMatch(const SimpleMatrix<T>& dstimg, const vector<SimpleVector<T> >& dst, const vector<SimpleVector<int> >& hull, const T& emph = T(1)) {
   auto map(dstimg);
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int k = 0; k < hull.size(); k ++) {
     drawMatchLine<T>(map, dst[hull[k][0]], dst[hull[k][1]], emph);
@@ -1507,7 +1507,7 @@ template <typename T> static inline SimpleMatrix<T> showMatch(const SimpleMatrix
 template <typename T> static inline SimpleMatrix<T> makeRefMatrix(const SimpleMatrix<T>& orig, const int& start) {
   SimpleMatrix<T> result(orig.rows(), orig.cols());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int i = 0; i < orig.rows() * orig.cols(); i ++)
     result(i % orig.rows(), i / orig.rows()) = i + start;
@@ -1519,7 +1519,7 @@ template <typename T> static inline SimpleMatrix<T> pullRefMatrix(const SimpleMa
   SimpleMatrix<T> result(ref.rows(), ref.cols());
   result.O();
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int i = 0; i < ref.rows() * ref.cols(); i ++) {
     const int ly(i % ref.rows());
@@ -1760,7 +1760,7 @@ template <typename T> static inline SimpleMatrix<T> rgb2d(const vector<SimpleMat
   auto xyz(rgb2xyz<T>(rgb));
   SimpleMatrix<T> result(rgb[0].rows(), rgb[0].cols());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
+#pragma omp parallel for schedule(dynamic, 1)
 #endif
   for(int j = 0; j < rgb[0].rows(); j ++) {
     for(int k = 0; k < rgb[0].cols(); k ++)

@@ -147,6 +147,16 @@ else:
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
     if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "denlarge+" or argv[2] == "diffraw" or argv[2] == "bump" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
+    elif(argv[2] == "bumps"):
+      subprocess.call(["python3", argv[0], argv[1], "bump", line])
+      subprocess.call(["python3", argv[0], argv[1], "jps", line])
+      subprocess.call(["gokicvs", root])
+      subprocess.call(["python3", argv[0], argv[1], "nop", root + "-bumps.png"])
+      subprocess.call(["python3", argv[0], argv[1], "jpsr", line])
+      subprocess.call(["gokicvs", root])
+      subprocess.call(["python3", argv[0], argv[1], "nop", root + "-bumps.png"])
+      subprocess.call(["python3", argv[0], argv[1], "objr", line])
+      subprocess.call(["python3", argv[0], argv[1], "jpsr", line])
     elif(argv[2] == "obj" or argv[2] == "obj+"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "objr" or argv[2] == "objr+"):
@@ -166,7 +176,7 @@ else:
       subprocess.call(["montage", root + "-stereoR.jps", "-geometry", "100%x100%", root + "-stereoR.png"])
     elif(argv[2] == "tilt" or argv[2] == "tilt+" or argv[2] == "tiltr" or argv[2] == "tiltr+"):
       bb = root + "-bump.ppm"
-      if(argv[2][len("tilt")] == 'r'):
+      if(len("tilt") < len(argv[2]) and argv[2][len("tilt")] == 'r'):
         bb = root + "-bumps.ppm"
       w = h = 0
       with open(bb) as f:
