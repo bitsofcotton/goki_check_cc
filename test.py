@@ -207,8 +207,12 @@ else:
       subprocess.call(["convert", line, "-equalize", root + "-equalize.png"])
     elif(argv[2] == "nurie"):
       subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
+    elif(argv[2] == "nurier"):
+      subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bumps.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
+    elif(argv[2] == "illustr"):
+      subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bumps.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "edge"):
       subprocess.call(["convert", root + "-collect.ppm", "-type", "GrayScale", "-negate", "-compress", "none", root + "-collect-negate.ppm"])
       subprocess.call(["convert", line, root + "-collect-negate.ppm", "-compose", "multiply", "-composite", root + "-edge.png"])

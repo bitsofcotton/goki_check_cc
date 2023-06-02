@@ -49,8 +49,11 @@ using std::stringstream;
 using std::istringstream;
 using std::ifstream;
 using std::ofstream;
+using std::istream;
+using std::ostream;
 
 using std::string;
+using std::to_string;
 using std::cerr;
 using std::endl;
 using std::flush;
@@ -305,7 +308,7 @@ public:
   T e[2];
 };
 
-template <typename T, int bits> std::ostream&  operator << (std::ostream& os, DUInt<T,bits> v) {
+template <typename T, int bits> ostream&  operator << (ostream& os, DUInt<T,bits> v) {
   static const char table[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
     '9', 'a', 'b', 'c', 'd', 'e', 'f'};
   vector<char> buf;
@@ -321,7 +324,7 @@ template <typename T, int bits> std::ostream&  operator << (std::ostream& os, DU
   return os << '0';
 }
 
-template <typename T, int bits> std::istream&  operator >> (std::istream& is, DUInt<T,bits>& v) {
+template <typename T, int bits> istream&  operator >> (istream& is, DUInt<T,bits>& v) {
   v ^= v;
   // skip white spaces.
   while(! is.eof()) {
@@ -381,7 +384,7 @@ public:
   }
 };
 
-template <typename T, int bits> std::ostream& operator << (std::ostream& os, Signed<T,bits> v) {
+template <typename T, int bits> ostream& operator << (ostream& os, Signed<T,bits> v) {
   const static Signed<T,bits> zero(0);
   if(v < zero) {
     os << '-';
@@ -723,8 +726,8 @@ private:
   const vector<SimpleFloat<T,W,bits,U> >& invexparray() const;
 /*
 friend:
-  std::ostream&    operator << (std::ostream& os, const SimpleFloat<T,W,bits,U>& v);
-  std::istream&    operator >> (std::istream& is, SimpleFloat<T,W,bits,U>& v);
+  ostream&    operator << (ostream& os, const SimpleFloat<T,W,bits,U>& v);
+  istream&    operator >> (istream& is, SimpleFloat<T,W,bits,U>& v);
 */
 };
 
@@ -989,7 +992,7 @@ template <typename T, typename W, int bits, typename U> inline SimpleFloat<T,W,b
   return (res + *this / res) >> U(1);
 }
 
-template <typename T, typename W, int bits, typename U> std::ostream& operator << (std::ostream& os, const SimpleFloat<T,W,bits,U>& v) {
+template <typename T, typename W, int bits, typename U> ostream& operator << (ostream& os, const SimpleFloat<T,W,bits,U>& v) {
   static const U uzero(int(0));
   if(isnan(v))
     return os << "NaN ";
@@ -998,7 +1001,7 @@ template <typename T, typename W, int bits, typename U> std::ostream& operator <
   return os << (const char*)(v.s & (1 << v.SIGN) ? "-" : "") << std::hex << T(v.m) << "*2^" << (const char*)(v.e < uzero ? "-" : "") << (v.e < uzero ? U(- v.e) : v.e) << " " << std::dec;
 }
 
-template <typename T, typename W, int bits, typename U> std::istream& operator >> (std::istream& is, SimpleFloat<T,W,bits,U>& v) {
+template <typename T, typename W, int bits, typename U> istream& operator >> (istream& is, SimpleFloat<T,W,bits,U>& v) {
   const static SimpleFloat<T,W,bits,U> two(2);
                SimpleFloat<T,W,bits,U> e(0);
   bool mode(false);
@@ -1340,11 +1343,11 @@ public:
   T _imag;
 };
 
-template <typename T> std::ostream& operator << (std::ostream& os, const Complex<T>& v) {
+template <typename T> ostream& operator << (ostream& os, const Complex<T>& v) {
   return os << v.real() << "+i" << v.imag();
 }
 
-template <typename T> std::istream& operator >> (std::istream& is, Complex<T>& v) {
+template <typename T> istream& operator >> (istream& is, Complex<T>& v) {
   is >> v._real;
   if('+' != is.get()) {
     is.unget();
@@ -1648,10 +1651,10 @@ public:
     return *this;
   }
   
-  std::vector<T> entity;
+  vector<T> entity;
 };
 
-template <typename T> std::ostream& operator << (std::ostream& os, const SimpleVector<T>& v) {
+template <typename T> ostream& operator << (ostream& os, const SimpleVector<T>& v) {
   SimpleVector<string> buf(v.size());
   int M(0);
 #if defined(_OPENMP)
@@ -1679,7 +1682,7 @@ template <typename T> std::ostream& operator << (std::ostream& os, const SimpleV
   return os;
 }
 
-template <typename T> std::istream& operator >> (std::istream& is, SimpleVector<T>& v) {
+template <typename T> istream& operator >> (istream& is, SimpleVector<T>& v) {
   int s;
   is >> s;
   if(s <= 0) return is;
@@ -2000,12 +2003,12 @@ public:
     return eps;
   }
 
-  // friend std::ostream& operator << (std::ostream& os, const SimpleVector<T>& v);
-  // friend std::istream& operator >> (std::istream& os, SimpleVector<T>& v);
+  // friend ostream& operator << (ostream& os, const SimpleVector<T>& v);
+  // friend istream& operator >> (istream& os, SimpleVector<T>& v);
 
 private:
   // this isn't better idea for faster calculations.
-  std::vector<SimpleVector<T> > entity;
+  vector<SimpleVector<T> > entity;
   int ecols;
 };
 
@@ -2314,7 +2317,7 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::inner(const Simple
   return res *= t;
 }
 
-template <typename T> std::ostream& operator << (std::ostream& os, const SimpleMatrix<T>& v) {
+template <typename T> ostream& operator << (ostream& os, const SimpleMatrix<T>& v) {
   SimpleMatrix<string> buf(v.rows(), v.cols());
   int M(0);
 #if defined(_OPENMP)
@@ -2349,7 +2352,7 @@ template <typename T> std::ostream& operator << (std::ostream& os, const SimpleM
   return os;
 }
 
-template <typename T> std::istream& operator >> (std::istream& is, SimpleMatrix<T>& v) {
+template <typename T> istream& operator >> (istream& is, SimpleMatrix<T>& v) {
   while(! is.eof() && ! is.bad()) {
     const auto c(is.get());
     if(c == ' ' || c == '\t' || c == '\n') continue;
@@ -2512,11 +2515,11 @@ template <typename T> SimpleMatrix<complex<T> > dft(const int& size0) {
   }
   SimpleMatrix<complex<T> > edft( size, size);
   SimpleMatrix<complex<T> > eidft(size, size);
-  const auto file(std::string("./.cache/lieonn/dft-") + std::to_string(size) +
+  const auto file(string("./.cache/lieonn/dft-") + to_string(size) +
 #if defined(_FLOAT_BITS_)
-    std::string("-") + std::to_string(_FLOAT_BITS_)
+    string("-") + to_string(_FLOAT_BITS_)
 #else
-    std::string("-ld")
+    string("-ld")
 #endif
   );
   ifstream cache(file.c_str());
@@ -2554,11 +2557,11 @@ template <typename T> SimpleMatrix<T> diff(const int& size0) {
   }
   SimpleMatrix<T> dd;
   SimpleMatrix<T> ii;
-  const auto file(std::string("./.cache/lieonn/diff-") + std::to_string(size) +
+  const auto file(string("./.cache/lieonn/diff-") + to_string(size) +
 #if defined(_FLOAT_BITS_)
-    std::string("-") + std::to_string(_FLOAT_BITS_)
+    string("-") + to_string(_FLOAT_BITS_)
 #else
-    std::string("-ld")
+    string("-ld")
 #endif
   );
   ifstream cache(file.c_str());
@@ -2620,11 +2623,11 @@ template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
   }
   SimpleMatrix<T> dd;
   SimpleMatrix<T> ii;
-  const auto file(std::string("./.cache/lieonn/diffrecur-") + std::to_string(size) +
+  const auto file(string("./.cache/lieonn/diffrecur-") + to_string(size) +
 #if defined(_FLOAT_BITS_)
-    std::string("-") + std::to_string(_FLOAT_BITS_)
+    string("-") + to_string(_FLOAT_BITS_)
 #else
-    std::string("-ld")
+    string("-ld")
 #endif
   );
   ifstream cache(file.c_str());
@@ -2988,7 +2991,7 @@ template <typename T> inline CatG<T>::CatG(const int& size0, const vector<Simple
   auto cutn(sqrt(cut.dot(cut)));
   if(cutn != T(int(0))) cut /= cutn;
   auto testv((A * cut).entity);
-  std::sort(testv.begin(), testv.end());
+  sort(testv.begin(), testv.end());
   distance = T(int(0));
   for(int i = 1; i < testv.size(); i ++)
     if(distance <= testv[i] - testv[i - 1]) {
@@ -3083,7 +3086,7 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
         wbuf.reserve(buf.size());
         for(int k = 0; k < buf.size(); k ++)
           wbuf.emplace_back(buf[k]);
-        std::sort(wbuf.begin(), wbuf.end());
+        sort(wbuf.begin(), wbuf.end());
         for(int k = 0; k < buf.size(); k ++)
           buf[k] = wbuf[k];
       }
@@ -3165,7 +3168,7 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
     T score(0);
     for(int j = 0; j < work.size(); j ++)
       score += work[j] * revertProgramInvariant<T>(make_pair(avg[j] /= T(int(avg.size())), vdp.second));
-    res += q.size() ? abs(score) * work[work.size() - 1] : score * work[work.size() - 1];
+    res += q.size() ? (M - abs(score)) * work[work.size() - 1] : score * work[work.size() - 1];
     sscore += abs(score);
   }
   return sscore == zero ? sscore : res / sscore;
@@ -3527,35 +3530,45 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
 #endif
   for(int j = 0; j < invariant[0].size(); j ++) {
     cerr << j << " / " << invariant[0].size() << endl;
-    idFeeder<T> pb(min(int(11) * (j + 1), int(invariant.size())));
-    idFeeder<T> pf(invariant.size());
-    for(int k = 0; k < invariant.size(); k ++)
-      pb.next(invariant[invariant.size() - k - 1][j]);
-    for(int k = 0; k < invariant.size(); k ++)
-      pf.next(invariant[k][j]);
+    idFeeder<T> pb0(min(int(11) * (j + 1), int(invariant.size())));
+    idFeeder<T> pf0(min(int(11) * (j + 1), int(invariant.size())));
+    idFeeder<T> pb1(invariant.size());
+    idFeeder<T> pf1(invariant.size());
+    for(int k = 0; k < invariant.size(); k ++) {
+      pb0.next(invariant[invariant.size() - k - 1][j]);
+      pb1.next(invariant[invariant.size() - k - 1][j]);
+    }
+    for(int k = 0; k < invariant.size(); k ++) {
+      pf0.next(invariant[k][j]);
+      pf1.next(invariant[k][j]);
+    }
     // N.B. normalize with 0 < v 's maximum orthogonality:
-    T Mb(log(pb.res[0] + one65536));
-    T Mf(log(pf.res[0] + one65536));
-    for(int k = 1; k < pb.res.size(); k ++)
-      Mb += log(pb.res[k] + one65536);
-    for(int k = 1; k < pf.res.size(); k ++)
-      Mf += log(pf.res[k] + one65536);
-    Mb /= T(int(pb.res.size()));
-    Mf /= T(int(pf.res.size()));
-    Mb  = - exp(Mb);
-    Mf  = - exp(Mf);
-    pb.res /= Mb;
-    pf.res /= Mf;
+    T Mb0(log(pb0.res[0] + one65536));
+    T Mb1(log(pb1.res[0] + one65536));
+    T Mf0(log(pf0.res[0] + one65536));
+    T Mf1(log(pf1.res[0] + one65536));
+    for(int k = 1; k < pb0.res.size(); k ++)
+      Mb0 += log(pb0.res[k] + one65536);
+    for(int k = 1; k < pb1.res.size(); k ++)
+      Mb1 += log(pb1.res[k] + one65536);
+    for(int k = 1; k < pf0.res.size(); k ++)
+      Mf0 += log(pf0.res[k] + one65536);
+    for(int k = 1; k < pf1.res.size(); k ++)
+      Mf1 += log(pf1.res[k] + one65536);
+    pb0.res /= (Mb0 = - exp(Mb0 / T(int(pb0.res.size())) ) );
+    pb1.res /= (Mb1 = - exp(Mb1 / T(int(pb1.res.size())) ) );
+    pf0.res /= (Mf0 = - exp(Mf0 / T(int(pf0.res.size())) ) );
+    pf1.res /= (Mf1 = - exp(Mf1 / T(int(pf1.res.size())) ) );
     for(int i = 0; i < p0; i ++) {
       northPole<T, P0maxRank0<T> > q0(P0maxRank0<T>(i + 1));
       P1I<T> q1(min(int(6), int(sqrt(T(int(invariant.size()) - (i + 1))))), i + 1);
       try {
-        q[i][j] = (q0.next(pb.res) + q1.next(pb.res)) / T(int(2)) * Mb;
+        q[i][j] = (q0.next(pb0.res) * Mb0 + q1.next(pb1.res) * Mb1) / T(int(2));
       } catch(const char* e) {
         q[i][j] = T(int(0));
       }
       try {
-        p[i][j] = (q0.next(pf.res) + q1.next(pf.res)) / T(int(2)) * Mf;
+        p[i][j] = (q0.next(pf0.res) * Mf0 + q1.next(pf1.res) * Mf1) / T(int(2));
       } catch(const char* e) {
         p[i][j] = T(int(0));
       }
@@ -3602,10 +3615,10 @@ template <typename T> SimpleMatrix<T> concat(const SimpleMatrix<T>& m0, const Si
         lwork(lwork.rows() - j, work0.cols() - k) = work0(j, k);
     for(int j = 0; j < lwork.rows() / 2; j ++)
       for(int k = 0; k < lwork.cols(); k ++)
-        std::swap(lwork(j, k), lwork(lwork.rows() - j, k));
+        swap(lwork(j, k), lwork(lwork.rows() - j, k));
     for(int j = 0; j < lwork.rows(); j ++)
       for(int k = 0; k < lwork.cols() / 2; k ++)
-        std::swap(lwork(j, k), lwork(j, lwork.cols() - k));
+        swap(lwork(j, k), lwork(j, lwork.cols() - k));
     // LDLt:
 /*
     auto L();
@@ -3613,10 +3626,10 @@ template <typename T> SimpleMatrix<T> concat(const SimpleMatrix<T>& m0, const Si
     auto Linv();
     for(int j = 0; j < L.rows() / 2; j ++)
       for(int k = 0; k < L.cols(); k ++)
-        std::swap(L(j, k), L(L.rows() - j, k));
+        swap(L(j, k), L(L.rows() - j, k));
     for(int j = 0; j < Linv.rows(); j ++)
       for(int k = 0; k < Linv.cols() / 2; k ++)
-        std::swap(Linv(j, k), Linv(j, Linv.cols() - k));
+        swap(Linv(j, k), Linv(j, Linv.cols() - k));
 */
     // factor apply res, work0, work1:
   }
@@ -3675,9 +3688,9 @@ public:
     this->size = size;
   }
   inline ~Decompose() { ; }
-  const std::vector<Mat>& A() {
-    static std::vector<std::vector<Mat> > mA;
-    if(mA.size() <= size) mA.resize(size + 1, std::vector<Mat>());
+  const vector<Mat>& A() {
+    static vector<vector<Mat> > mA;
+    if(mA.size() <= size) mA.resize(size + 1, vector<Mat>());
     auto& a(mA[size]);
     if(a.size() < size) {
       a.reserve(size);
@@ -3687,10 +3700,10 @@ public:
           const auto jj(T(j) * T(i + 2) / T(size + 1));
           AA.row(j) = taylor<T>(AA.cols(), (jj - floor(jj)) * T(size - 1));
         }
-        a.emplace_back(std::move(AA));
+        a.emplace_back(move(AA));
       }
       for(int i = 1; i < a.size(); i ++)
-        std::swap(a[a.size() - i], a[a.size() - i - 1]);
+        swap(a[a.size() - i], a[a.size() - i - 1]);
     }
     return a;
   }
@@ -3720,7 +3733,7 @@ public:
     return res;
   }
   inline Vec  mother(const Vec& in) {
-    std::vector<Mat> A0;
+    vector<Mat> A0;
     if(A0.size() <= size) A0.resize(size + 1, Mat());
     auto& a0(A0[size]);
     if(a0.rows() != size || a0.cols() != size) {
@@ -3793,9 +3806,9 @@ private:
 
 template <typename T> typename Decompose<T>::Vec Decompose<T>::enlarge(const Vec& in, const int& r) {
   assert(0 < r && size == in.size());
-  static std::vector<std::vector<Mat> > p;
+  static vector<vector<Mat> > p;
   if(p.size() <= size)
-    p.resize(size + 1, std::vector<Mat>());
+    p.resize(size + 1, vector<Mat>());
   if(p[size].size() <= r)
     p[size].resize(r + 1, Mat());
   auto& pp(p[size][r]);
@@ -3823,7 +3836,7 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::represent(const M
   for(int i = size; i < img.rows() - size; i ++) {
     Mat w0(img.cols() - size * 2, size);
     for(int j = size; j < img.cols() - size; j ++) {
-      std::vector<Vec> w1;
+      vector<Vec> w1;
       for(int r = size;
               r < min(min(i, j),
                     min(img.rows() - i - 1, img.cols() - j - 1));
@@ -3841,18 +3854,18 @@ template <typename T> typename Decompose<T>::Mat Decompose<T>::represent(const M
         work = mother(work);
         // N.B. enlarging specific bias.
         //      recursive on them.
-        w1.emplace_back(std::move(work /= sqrt(work.dot(work))));
+        w1.emplace_back(move(work /= sqrt(work.dot(work))));
       }
       if(! w1.size())
         for(int k = 0; k < w0.cols(); k ++)
           w0(j - size, k) = T(1) / sqrt(T(w0.cols()));
       else if(w1.size() == 1)
         // N.B. line intensity.
-        w0.row(j - size) = std::move(w1[0]);
+        w0.row(j - size) = move(w1[0]);
       else {
         Mat w1m(w1.size(), size);
         for(int i = 0; i < w1m.rows(); i ++)
-          w1m.row(i) = std::move(w1[i]);
+          w1m.row(i) = move(w1[i]);
         w1m = w1m.transpose();
         const auto left(w1m.SVD() * w1m);
         for(int k = 0; k < left.rows(); k ++)
