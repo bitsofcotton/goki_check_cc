@@ -157,9 +157,9 @@ else:
       subprocess.call(["python3", argv[0], argv[1], "nop", root + "-bumps.png"])
       subprocess.call(["python3", argv[0], argv[1], "objr", line])
       subprocess.call(["python3", argv[0], argv[1], "jpsr", line])
-    elif(argv[2] == "obj" or argv[2] == "obj+"):
+    elif(argv[2] == "obj" or argv[2] == "Obj" or argv[2] == "obj+" or argv[2] == "Obj+"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
-    elif(argv[2] == "objr" or argv[2] == "objr+"):
+    elif(argv[2] == "objr" or argv[2] == "Objr" or argv[2] == "objr+" or argv[2] == "Objr+"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bumps.ppm", root + ".obj"])
     elif(argv[2] == "jps" or argv[2] == "jps+" or argv[2] == "jpsr" or argv[2] == "jpsr+"):
       tt = "tilt" + argv[2][len("jps"):]

@@ -39,7 +39,7 @@ void usage(const char* en) {
   cout << en << " (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox)r? <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << en << " objr?+? <rot> <input.ppm> <output.obj>" << endl;
+  cout << en << " [oO]bjr?+? <rot> <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
@@ -112,7 +112,7 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "represent") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), REPRESENT, recur);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = autoLevel<num_t>(filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot), data[0].rows() + data[0].cols());
+      data[0] = data[1] = data[2] = autoLevel<num_t>(filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot), 4 * (data[0].rows() + data[0].cols()) );
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -208,9 +208,13 @@ int main(int argc, const char* argv[]) {
     if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac)))
       return - 1;
   } else if(strcmp(argv[1], "obj" ) == 0 ||
+            strcmp(argv[1], "Obj" ) == 0 ||
             strcmp(argv[1], "obj+") == 0 ||
+            strcmp(argv[1], "Obj+") == 0 ||
             strcmp(argv[1], "objr") == 0 ||
-            strcmp(argv[1], "objr+") == 0) {
+            strcmp(argv[1], "Objr") == 0 ||
+            strcmp(argv[1], "objr+") == 0 ||
+            strcmp(argv[1], "Objr+") == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
     if(argc < 5) {
       usage(argv[0]);
@@ -224,7 +228,9 @@ int main(int argc, const char* argv[]) {
       shrinkd<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2])), argv[1][strlen("obj")]) );
     const auto rows(sd.rows());
     const auto cols(sd.cols());
-    const auto points(getTileVec<num_t>(std::move(sd)));
+          auto points(getTileVec<num_t>(std::move(sd)));
+    if(argv[1][0] == 'O')
+      for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
                    mesh2<num_t>(points), argv[4]);
     saveMTL<num_t>(argv[4], (string(argv[4]) + string(".mtl")).c_str());

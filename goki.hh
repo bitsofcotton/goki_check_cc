@@ -95,7 +95,7 @@ template <typename T> bool saveobj(const vector<SimpleVector<T> >& data, const T
     output << "mtllib " << &filename[lfs] << ".mtl" << endl;
     output << "usemtl material0" << endl;
     for(int i = 0; i < data.size(); i ++)
-      output << "v " << data[i][1] << " " << - data[i][0] << " " << - data[i][2] << endl;
+      output << "v " << data[i][1] << " " << - data[i][0] << " " << data[i][2] << endl;
     for(int i = 0; i < data.size(); i ++)
       output << "vt " << data[i][1] / T(Mh) / T(2) << " " << T(1) - data[i][0] / T(Mw) / T(2) << endl;
     // xchg with clockwise/counter clockwise.
@@ -132,7 +132,6 @@ template <typename T> bool loadobj(vector<SimpleVector<T> >& data, vector<Simple
         sub >> buf[0];
         sub >> buf[2];
         buf[0] = - buf[0];
-        buf[2] = - buf[2];
         data.emplace_back(move(buf));
       } else if(i + 1 < work.size() && work[i] == 'f' && work[i + 1] == ' ') {
         stringstream sub(work.substr(i + 2, work.size() - (i + 2)));
