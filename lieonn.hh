@@ -4099,7 +4099,7 @@ template <typename T> static inline SimpleVector<T> autoLevel(const SimpleVector
   b.resize(1);
   b[0].resize(1, data.size());
   b[0].row(0) = data;
-  return autoLevel<T>(b)[0].row(0);
+  return autoLevel<T>(b, count)[0].row(0);
 }
 
 #define _SIMPLELIN_

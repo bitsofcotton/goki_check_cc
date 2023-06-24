@@ -152,10 +152,7 @@ else:
       subprocess.call(["python3", argv[0], argv[1], "jps", line])
       subprocess.call(["gokicvs", root])
       subprocess.call(["python3", argv[0], argv[1], "nop", root + "-bumps.png"])
-      subprocess.call(["python3", argv[0], argv[1], "jpsr", line])
-      subprocess.call(["gokicvs", root])
-      subprocess.call(["python3", argv[0], argv[1], "nop", root + "-bumps.png"])
-      subprocess.call(["python3", argv[0], argv[1], "objr", line])
+      subprocess.call(["python3", argv[0], argv[1], "Objr", line])
       subprocess.call(["python3", argv[0], argv[1], "jpsr", line])
     elif(argv[2] == "obj" or argv[2] == "Obj" or argv[2] == "obj+" or argv[2] == "Obj+"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])

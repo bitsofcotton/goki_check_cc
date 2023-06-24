@@ -112,7 +112,7 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "represent") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), REPRESENT, recur);
     else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = autoLevel<num_t>(filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot), 4 * (data[0].rows() + data[0].cols()) );
+      data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -165,7 +165,8 @@ int main(int argc, const char* argv[]) {
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
-        strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0
+        strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0 &&
+        strcmp(argv[1], "bump") != 0
         ? normalize<num_t>(data) : data,
         strcmp(argv[1], "limit") == 0 ? recur : 65535) )
       return - 1;
@@ -223,8 +224,7 @@ int main(int argc, const char* argv[]) {
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
     auto sd(argv[1][strlen("obj")] == 'r' ?
-      shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("objr")]) /
-        sqrt(sqrt(num_t(data[0].rows() * data[0].rows() + data[0].cols() * data[0].cols()) )) :
+      shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("objr")]) :
       shrinkd<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2])), argv[1][strlen("obj")]) );
     const auto rows(sd.rows());
     const auto cols(sd.cols());
@@ -260,8 +260,7 @@ int main(int argc, const char* argv[]) {
     assert(strlen("tilt" ) == strlen("sbox" ));
     assert(strlen("tiltr") == strlen("sboxr"));
     bump[0] = argv[1][strlen("tilt")] == 'r' ?
-      shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tiltr")]) /
-        sqrt(sqrt(num_t(bump[0].rows() * bump[0].rows() + bump[0].cols() * bump[0].cols()) )) :
+      shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tiltr")]) :
       shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP), argv[1][strlen("tilt")]);
     num_t z0(int(0));
     for(int i = 0; i < bump[0].rows(); i ++)
