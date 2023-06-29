@@ -224,7 +224,7 @@ int main(int argc, const char* argv[]) {
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
     auto sd(argv[1][strlen("obj")] == 'r' ?
-      shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("objr")]) :
+      shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("objr")]) / num_t(int(2)) :
       shrinkd<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2])), argv[1][strlen("obj")]) );
     const auto rows(sd.rows());
     const auto cols(sd.cols());
@@ -260,7 +260,7 @@ int main(int argc, const char* argv[]) {
     assert(strlen("tilt" ) == strlen("sbox" ));
     assert(strlen("tiltr") == strlen("sboxr"));
     bump[0] = argv[1][strlen("tilt")] == 'r' ?
-      shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tiltr")]) :
+      shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tiltr")]) / num_t(int(2)) :
       shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP), argv[1][strlen("tilt")]);
     num_t z0(int(0));
     for(int i = 0; i < bump[0].rows(); i ++)

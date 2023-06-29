@@ -615,7 +615,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       resb += flop<T>(filter<T>(flop<T>(result), INTEGRAW_BOTH));
       cerr << "i" << flush;
       resb += flip<T>(flop<T>(filter<T>(flip<T>(flop<T>(result)), INTEGRAW_BOTH)));
-      result = - (move(resb) /= T(int(4)));
+      result = (move(resb) /= T(int(4)));
       T m(result(0, 0));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
@@ -1245,7 +1245,7 @@ template <typename T> static inline vector<SimpleVector<int> > mesh2(const vecto
 template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>& in, const int& vbox = 1) {
   vector<SimpleVector<T> > geoms;
   geoms.reserve((in.rows() / vbox + 1) * (in.cols() / vbox + 1));
-  const auto diag(sqrt(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols()))));
+  const auto diag(sqrt(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols()))) );
   for(int i = 0; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
@@ -1282,7 +1282,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   const auto xx(in * diff<T>(in.cols()).transpose() * diff<T>(in.cols()).transpose());
   const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()).transpose());
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
-  const auto diag(sqrt(sqrt(T(int(in.rows() * in.rows() + in.cols() * in.cols())))));
+  const auto diag(sqrt(sqrt(T(int(in.rows() * in.rows() + in.cols() * in.cols())))) );
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)

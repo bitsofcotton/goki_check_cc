@@ -58,4 +58,5 @@ Searching the Internet more...
 2023/04/29 theoretical fix and their close on bump, afterbump, gettilevec chain.
 2023/05/07 add functions around cvstereo.py.
 2023/06/24 fix around z-axis scale on afterbump, get...vec, obj, tilt, sbox commands.
+2023/06/29 fix same place z-axis with reasonable.
 
