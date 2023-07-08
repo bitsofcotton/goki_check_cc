@@ -309,8 +309,7 @@ public:
 };
 
 template <typename T, int bits> ostream&  operator << (ostream& os, DUInt<T,bits> v) {
-  static const char table[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
-    '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+  static const char* table = "0123456789abcdef";
   vector<char> buf;
   while(v) {
     buf.emplace_back(table[int(v) & 0x0f]);
@@ -3502,9 +3501,9 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
   int p0(0);
   if(msz < 0) msz = in.size();
   for( ; p0 < min(int(in.size() / 2), msz); p0 ++) {
-    if(max(int(in.size()) - 2 * (6 + (p0 + 1)), int(sqrt(T(int(in.size()) - (p0 + 1))))) < 1) break;
-    const auto& pn(pnextcacher<T>(min(int(11) * (p0 + 1), int(in.size())), p0 + 1, 4));
-    if(T(min(int(11) * (p0 + 1), int(in.size()))) < pn.dot(pn)) break;
+    if(max(int(in.size()) - 2 * (4 + (p0 + 1)), int(sqrt(T(int(in.size()) - (p0 + 1))))) < 1) break;
+    const auto& pn(pnextcacher<T>(min(int(7) * (p0 + 1), int(in.size())), p0 + 1, 4));
+    if(T(min(int(7) * (p0 + 1), int(in.size()))) < pn.dot(pn)) break;
   }
   vector<SimpleVector<T> > invariant;
   invariant.resize(in.size());
@@ -3531,8 +3530,8 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
 #endif
   for(int j = 0; j < invariant[0].size(); j ++) {
     cerr << j << " / " << invariant[0].size() << endl;
-    idFeeder<T> pb0(min(int(11) * (j + 1), int(invariant.size())));
-    idFeeder<T> pf0(min(int(11) * (j + 1), int(invariant.size())));
+    idFeeder<T> pb0(min(int(7) * (j + 1), int(invariant.size())));
+    idFeeder<T> pf0(min(int(7) * (j + 1), int(invariant.size())));
     idFeeder<T> pb1(invariant.size());
     idFeeder<T> pf1(invariant.size());
     for(int k = 0; k < invariant.size(); k ++) {
@@ -3562,7 +3561,7 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
     pf1.res /= (Mf1 = - exp(Mf1 / T(int(pf1.res.size())) ) );
     for(int i = 0; i < p0; i ++) {
       northPole<T, P0maxRank0<T> > q0(P0maxRank0<T>(i + 1));
-      P1I<T> q1(min(int(6), int(sqrt(T(int(invariant.size()) - (i + 1))))), i + 1);
+      P1I<T> q1(min(int(4), int(sqrt(T(int(invariant.size()) - (i + 1))))), i + 1);
       try {
         q[i][j] = (q0.next(pb0.res) * Mb0 + q1.next(pb1.res) * Mb1) / T(int(2));
       } catch(const char* e) {

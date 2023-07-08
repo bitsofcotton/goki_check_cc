@@ -103,19 +103,6 @@ elif(argv[2] == "tile"):
   cmd.extend(argv[idx:])
   cmd.extend(["-tile", pixels, "-geometry", "+0+0", "tile.png"])
   subprocess.call(cmd)
-elif(argv[2] == "apply"):
-  sz = 1
-  with open(argv[1] + ".txt") as f:
-    sz = int(f.readline())
-  list = []
-  for line in argv[3:]:
-    subprocess.call(["convert", line, "-resize", str(sz) + "x" + str(sz) + "!", "-compress", "none", line + "-genl.ppm"])
-    list.append(line + "-genl.ppm")
-  subprocess.call(["sh", "-c", argv[1] + " - " + " ".join(list) + " < " + argv[1] + ".txt"])
-elif(argv[2] == "getcontext"):
-  cmd = [argv[1], "+"]
-  cmd.extend(argv[3:])
-  subprocess.call(["sh", "-c", " ".join(cmd) + " > " + argv[1] + ".txt"])
 elif(argv[2] == "i2i"):
   idx = 3
   try:
@@ -150,7 +137,13 @@ else:
     elif(argv[2] == "bumps"):
       subprocess.call(["python3", argv[0], argv[1], "bump", line])
       subprocess.call(["python3", argv[0], argv[1], "jps", line])
-      subprocess.call(["gokicvs", root])
+      import cv2
+      img0 = cv2.imread(root + ".ppm", 0)
+      imgL = cv2.resize(cv2.imread(root + "-L.png", 0), (img0.shape[1], img0.shape[0]))
+      imgR = cv2.resize(cv2.imread(root + "-R.png", 0), (img0.shape[1], img0.shape[0]))
+      stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
+      depth  = stereo.compute(imgL, imgR)
+      cv2.imwrite(root + "-bumps.png", cv2.resize(depth, (img0.shape[1], img0.shape[0])))
       subprocess.call(["python3", argv[0], argv[1], "nop", root + "-bumps.png"])
       subprocess.call(["python3", argv[0], argv[1], "Objr", line])
       subprocess.call(["python3", argv[0], argv[1], "jpsr", line])
