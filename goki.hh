@@ -1044,31 +1044,10 @@ template <typename T> static inline vector<match_t<T> > matchPartial(const vecto
 
 template <typename T> class triangles_t {
 public:
-  typedef SimpleMatrix<T> Mat;
-  typedef SimpleVector<T> Vec;
-  Mat p;
-  Vec n;
-  T   c;
-  T   z;
+  SimpleMatrix<T> p;
+  T c;
   inline triangles_t() {
-    p = Mat(3, 3);
-    n = Vec(3);
-  }
-  inline triangles_t<T>& rotate(const Mat& R, const Vec& origin) {
-    for(int i = 0; i < 3; i ++)
-      p.row(i) = R * (p.row(i) - origin) + origin;
-    return *this;
-  }
-  inline triangles_t<T>& solveN() {
-    const auto pq(p.row(1) - p.row(0));
-    const auto pr(p.row(2) - p.row(0));
-    n[0] =   (pq[1] * pr[2] - pq[2] * pr[1]);
-    n[1] = - (pq[0] * pr[2] - pq[2] * pr[0]);
-    n[2] =   (pq[0] * pr[1] - pq[1] * pr[0]);
-    if(n.dot(n) > T(0))
-      n /= sqrt(n.dot(n));
-    z = n.dot(p.row(0));
-    return *this;
+    p = SimpleMatrix<T>(3, 3);
   }
 };
 
@@ -1338,7 +1317,6 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
   SimpleVector<T> vz(3);
   result.O();
   vz.ek(2);
-  // XXX: patent???
   vector<pair<T, triangles_t<T>> > zbuf;
   zbuf.resize(triangles.size(), make_pair(T(0), triangles_t<T>()));
   assert(zbuf.size() == triangles.size());
@@ -1346,31 +1324,21 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < triangles.size(); j ++) {
-          auto& tri(triangles[j]);
-    const auto& p0(tri.p.row(0));
-    const auto& p1(tri.p.row(1));
-    const auto& p2(tri.p.row(2));
-          auto  camera((p0 + p1 + p2) / T(3));
-    camera[2] = T(0);
-    const auto nvz(tri.n.dot(vz));
-    if(nvz == T(int(0))) zbuf[j].first = depth;
-    else {
-      const auto t((tri.z - tri.n.dot(camera)) / nvz);
-      zbuf[j].first  = - (camera[2] + vz[2] * t);
-      // XXX: clang++ bug, isfinite after substituting nan immediately.
-      if(! isfinite(zbuf[j].first)) zbuf[j].first = depth;
-    }
+    auto& tri(triangles[j]);
+    // N.B. /= 3 isn't needed because only the order is the matter.
+    zbuf[j].first = tri.p(0, 2) + tri.p(1, 2) + tri.p(2, 2);
     zbuf[j].second = move(tri);
   }
   sort(zbuf.begin(), zbuf.end(), lessf<pair<T, triangles_t<T> > >);
   int i;
+  // XXX: patent???
+  // N.B. we could avoid with this because no z-buffer matrix on them,
+  //      but this is obscure.
   for(i = 0; i < zbuf.size() && zbuf[i].first < depth; i ++) ;
   for( ; i < zbuf.size(); i ++) {
     const auto& zbi(zbuf[i].second);
     drawMatchTriangle<T>(result, zbi.p.row(0), zbi.p.row(1), zbi.p.row(2), zbi.c);
   }
-  // XXX:
-  result(0, 0) = T(int(0));
   return result;
 }
 
@@ -1414,7 +1382,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const Simp
                   int(points[facets[i][0]][1]));
     else
       work.c = T(0);
-    triangles[i] = move(work.solveN());
+    triangles[i] = move(work);
   }
   return tilt<T>(in, triangles, depth);
 }
@@ -1438,7 +1406,7 @@ template <typename T> SimpleMatrix<T> draw(const SimpleMatrix<T>& img, const vec
                    int(shape[hull[i][0]][0]))),
                  max(int(0), min(int(img.cols() - 1),
                    int(shape[hull[i][0]][1]))));
-    tris[i] = move(work.solveN());
+    tris[i] = move(work);
   }
   return tilt<T>(img * T(0), tris);
 }

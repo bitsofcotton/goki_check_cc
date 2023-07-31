@@ -141,11 +141,11 @@ else:
       img0 = cv2.imread(root + ".ppm", 0)
       imgL = cv2.resize(cv2.imread(root + "-L.png", 0), (img0.shape[1], img0.shape[0]))
       imgR = cv2.resize(cv2.imread(root + "-R.png", 0), (img0.shape[1], img0.shape[0]))
-      stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
+      stereo = cv2.StereoBM_create(numDisparities=32, blockSize=31)
       depth  = stereo.compute(imgL, imgR)
       cv2.imwrite(root + "-bumps.png", cv2.resize(depth, (img0.shape[1], img0.shape[0])))
       subprocess.call(["python3", argv[0], argv[1], "nop", root + "-bumps.png"])
-      subprocess.call(["python3", argv[0], argv[1], "Objr", line])
+      subprocess.call(["python3", argv[0], argv[1], "objr", line])
       subprocess.call(["python3", argv[0], argv[1], "jpsr", line])
     elif(argv[2] == "obj" or argv[2] == "Obj" or argv[2] == "obj+" or argv[2] == "Obj+"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
