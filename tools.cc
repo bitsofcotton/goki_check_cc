@@ -224,8 +224,8 @@ int main(int argc, const char* argv[]) {
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
     auto sd(argv[1][strlen("obj")] == 'r' ?
-      shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("objr")]) / num_t(int(2)) :
-      shrinkd<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2])), argv[1][strlen("obj")]) );
+      shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("objr")]) :
+      shrinkd<num_t>(autoLevel<num_t>(filter<num_t>(rgb2d<num_t>(data), AFTERBUMP, 2, std::atoi(argv[2])), (data[0].rows() + data[0].cols()) * 4), argv[1][strlen("obj")]) );
     const auto rows(sd.rows());
     const auto cols(sd.cols());
           auto points(getTileVec<num_t>(std::move(sd)));
@@ -260,8 +260,8 @@ int main(int argc, const char* argv[]) {
     assert(strlen("tilt" ) == strlen("sbox" ));
     assert(strlen("tiltr") == strlen("sboxr"));
     bump[0] = argv[1][strlen("tilt")] == 'r' ?
-      shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tiltr")]) / num_t(int(2)) :
-      shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP), argv[1][strlen("tilt")]);
+      shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tiltr")]) :
+      shrinkde<num_t>(autoLevel<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP), (bump[0].rows() + bump[0].cols()) * 4), argv[1][strlen("tilt")]);
     num_t z0(int(0));
     for(int i = 0; i < bump[0].rows(); i ++)
       for(int j = 0; j < bump[0].cols(); j ++)
@@ -303,8 +303,8 @@ int main(int argc, const char* argv[]) {
       ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP), argv[1][strlen("match")]), abs(vboxdst))
       : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump0), AFTERBUMP), argv[1][strlen("match")]), abs(vboxdst)));
     const auto shape1(vboxsrc < 0
-      ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP)), abs(vboxsrc))
-      : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP)), abs(vboxsrc)));
+      ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP), argv[1][strlen("match")]), abs(vboxsrc))
+      : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP), argv[1][strlen("match")]), abs(vboxsrc)));
     const auto m(matchPartial<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);

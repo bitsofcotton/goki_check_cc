@@ -1314,9 +1314,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
 template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<triangles_t<T> >& triangles, const T& depth = - T(10000)) {
   cerr << "t" << flush;
   SimpleMatrix<T> result(in.rows(), in.cols());
-  SimpleVector<T> vz(3);
   result.O();
-  vz.ek(2);
   vector<pair<T, triangles_t<T>> > zbuf;
   zbuf.resize(triangles.size(), make_pair(T(0), triangles_t<T>()));
   assert(zbuf.size() == triangles.size());
@@ -1326,7 +1324,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
   for(int j = 0; j < triangles.size(); j ++) {
     auto& tri(triangles[j]);
     // N.B. /= 3 isn't needed because only the order is the matter.
-    zbuf[j].first = tri.p(0, 2) + tri.p(1, 2) + tri.p(2, 2);
+    zbuf[j].first  = - (tri.p(0, 2) + tri.p(1, 2) + tri.p(2, 2));
     zbuf[j].second = move(tri);
   }
   sort(zbuf.begin(), zbuf.end(), lessf<pair<T, triangles_t<T> > >);
