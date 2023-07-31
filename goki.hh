@@ -1067,7 +1067,7 @@ public:
     n[2] =   (pq[0] * pr[1] - pq[1] * pr[0]);
     if(n.dot(n) > T(0))
       n /= sqrt(n.dot(n));
-    z = n.dot(p.col(0));
+    z = n.dot(p.row(0));
     return *this;
   }
 };

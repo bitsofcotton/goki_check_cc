@@ -3497,102 +3497,6 @@ public:
   T M;
 };
 
-template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in, int msz = - 1) {
-  int p0(0);
-  if(msz < 0) msz = in.size();
-  for( ; p0 < min(int(in.size() / 2), msz); p0 ++) {
-    if(max(int(in.size()) - 2 * (4 + (p0 + 1)), int(sqrt(T(int(in.size()) - (p0 + 1))))) < 1) break;
-    const auto& pn(pnextcacher<T>(min(int(7) * (p0 + 1), int(in.size())), p0 + 1, 4));
-    if(T(min(int(7) * (p0 + 1), int(in.size()))) < pn.dot(pn)) break;
-  }
-  vector<SimpleVector<T> > invariant;
-  invariant.resize(in.size());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < in.size(); i ++) {
-    invariant[i] = makeProgramInvariant<T>(in[i]).first;
-    invariant[i][invariant[i].size() - 1] = sqrt(in[i].dot(in[i]));
-  }
-  vector<SimpleVector<T> > p;
-  if(in.size() < 3) return make_pair(p, p);
-  p.resize(p0);
-  auto q(p);
-  for(int i = 0; i < p0; i ++) {
-    p[i].resize(invariant[0].size());
-    q[i].resize(invariant[0].size());
-    p[i].O();
-    q[i].O();
-  }
-  const auto one65536(T(int(1)) / T(int(65536)));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int j = 0; j < invariant[0].size(); j ++) {
-    cerr << j << " / " << invariant[0].size() << endl;
-    idFeeder<T> pb0(min(int(7) * (j + 1), int(invariant.size())));
-    idFeeder<T> pf0(min(int(7) * (j + 1), int(invariant.size())));
-    idFeeder<T> pb1(invariant.size());
-    idFeeder<T> pf1(invariant.size());
-    for(int k = 0; k < invariant.size(); k ++) {
-      pb0.next(invariant[invariant.size() - k - 1][j]);
-      pb1.next(invariant[invariant.size() - k - 1][j]);
-    }
-    for(int k = 0; k < invariant.size(); k ++) {
-      pf0.next(invariant[k][j]);
-      pf1.next(invariant[k][j]);
-    }
-    // N.B. normalize with 0 < v 's maximum orthogonality:
-    T Mb0(log(pb0.res[0] + one65536));
-    T Mb1(log(pb1.res[0] + one65536));
-    T Mf0(log(pf0.res[0] + one65536));
-    T Mf1(log(pf1.res[0] + one65536));
-    for(int k = 1; k < pb0.res.size(); k ++)
-      Mb0 += log(pb0.res[k] + one65536);
-    for(int k = 1; k < pb1.res.size(); k ++)
-      Mb1 += log(pb1.res[k] + one65536);
-    for(int k = 1; k < pf0.res.size(); k ++)
-      Mf0 += log(pf0.res[k] + one65536);
-    for(int k = 1; k < pf1.res.size(); k ++)
-      Mf1 += log(pf1.res[k] + one65536);
-    pb0.res /= (Mb0 = - exp(Mb0 / T(int(pb0.res.size())) ) );
-    pb1.res /= (Mb1 = - exp(Mb1 / T(int(pb1.res.size())) ) );
-    pf0.res /= (Mf0 = - exp(Mf0 / T(int(pf0.res.size())) ) );
-    pf1.res /= (Mf1 = - exp(Mf1 / T(int(pf1.res.size())) ) );
-    for(int i = 0; i < p0; i ++) {
-      northPole<T, P0maxRank0<T> > q0(P0maxRank0<T>(i + 1));
-      P1I<T> q1(min(int(4), int(sqrt(T(int(invariant.size()) - (i + 1))))), i + 1);
-      try {
-        q[i][j] = (q0.next(pb0.res) * Mb0 + q1.next(pb1.res) * Mb1) / T(int(2));
-      } catch(const char* e) {
-        q[i][j] = T(int(0));
-      }
-      try {
-        p[i][j] = (q0.next(pf0.res) * Mf0 + q1.next(pf1.res) * Mf1) / T(int(2));
-      } catch(const char* e) {
-        p[i][j] = T(int(0));
-      }
-    }
-  }
-  for(int i = 0; i < p.size(); i ++) {
-    const auto norm(p[i][p[i].size() - 1]);
-    p[i][p[i].size() - 1] = T(int(0));
-    p[i] = revertProgramInvariant<T>(p[i]);
-    p[i][p[i].size() - 1] = T(int(0));
-    const auto normp(sqrt(p[i].dot(p[i])));
-    if(normp != T(int(0))) p[i] *= norm / normp;
-  }
-  for(int i = 0; i < q.size(); i ++) {
-    const auto norm(q[i][q[i].size() - 1]);
-    q[i][q[i].size() - 1] = T(int(0));
-    q[i] = revertProgramInvariant<T>(q[i]);
-    q[i][q[i].size() - 1] = T(int(0));
-    const auto normq(sqrt(q[i].dot(q[i])));
-    if(normq != T(int(0))) q[i] *= norm / normq;
-  }
-  return make_pair(move(p), move(q));
-}
-
 // N.B. invariant gathers some of the group on the input pattern.
 template <typename T> SimpleMatrix<T> concat(const SimpleMatrix<T>& m0, const SimpleMatrix<T>& m1) {
   // det diag result = det diag m0 + det diag m1
@@ -4099,6 +4003,69 @@ template <typename T> static inline SimpleVector<T> autoLevel(const SimpleVector
   b[0].resize(1, data.size());
   b[0].row(0) = data;
   return autoLevel<T>(b, count)[0].row(0);
+}
+
+template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in, int msz = - 1) {
+  int p0(0);
+  if(msz < 0) msz = in.size();
+  for( ; p0 < min(int(in.size()), msz); p0 ++)
+    if(in.size() - 4 - p0 - 1 + 2 < 4 + 2) break;
+  p0 /= 2;
+  vector<SimpleVector<T> > invariant;
+  invariant.resize(in.size());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int i = 0; i < in.size(); i ++) {
+    invariant[i] = makeProgramInvariant<T>(in[i]).first;
+  }
+  T norm(int(0));
+  for(int i = 0; i < in.size(); i ++)
+    norm += invariant[i].dot(invariant[i]);
+  norm = sqrt(norm / T(int(in.size())));
+  vector<SimpleVector<T> > p;
+  if(p0 < 1) return make_pair(p, p);
+  p.resize(p0);
+  auto q(p);
+  for(int i = 0; i < p0; i ++) {
+    p[i].resize(invariant[0].size());
+    q[i].resize(invariant[0].size());
+    p[i].O();
+    q[i].O();
+  }
+  const auto one65536(T(int(1)) / T(int(65536)));
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = 0; j < invariant[0].size(); j ++) {
+    cerr << j << " / " << invariant[0].size() << endl;
+    idFeeder<T> pb(invariant.size());
+    idFeeder<T> pf(invariant.size());
+    for(int k = 0; k < invariant.size(); k ++) {
+      pb.next(invariant[invariant.size() - k - 1][j]);
+      pf.next(invariant[k][j]);
+    }
+    for(int i = 0; i < p0; i ++) {
+      P1I<T> pq(4, i + 1);
+      q[i][j] = pq.next(pb.res);
+      p[i][j] = pq.next(pf.res);
+    }
+  }
+  for(int i = 0; i < p.size(); i ++) {
+    p[i][p[i].size() - 1] = T(int(0));
+    p[i] = revertProgramInvariant<T>(p[i]);
+    p[i][p[i].size() - 1] = T(int(0));
+    const auto normp(sqrt(p[i].dot(p[i])));
+    if(normp != T(int(0))) p[i] *= norm / normp;
+  }
+  for(int i = 0; i < q.size(); i ++) {
+    q[i][q[i].size() - 1] = T(int(0));
+    q[i] = revertProgramInvariant<T>(q[i]);
+    q[i][q[i].size() - 1] = T(int(0));
+    const auto normq(sqrt(q[i].dot(q[i])));
+    if(normq != T(int(0))) q[i] *= norm / normq;
+  }
+  return make_pair(move(p), move(q));
 }
 
 #define _SIMPLELIN_
