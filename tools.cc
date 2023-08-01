@@ -229,6 +229,7 @@ int main(int argc, const char* argv[]) {
     const auto rows(sd.rows());
     const auto cols(sd.cols());
           auto points(getTileVec<num_t>(std::move(sd)));
+    for(int i = 0; i < points.size(); i ++) points[i][2] /= num_t(int(2));
     if(argv[1][0] == 'O')
       for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
@@ -265,7 +266,7 @@ int main(int argc, const char* argv[]) {
     num_t z0(int(0));
     for(int i = 0; i < bump[0].rows(); i ++)
       for(int j = 0; j < bump[0].cols(); j ++)
-        z0 += (bump[0](i, j) *= num_t(int(2)) );
+        z0 += bump[0](i, j);
     z0 /= num_t(bump[0].rows() * bump[0].cols());
     const auto tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
       triangles<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],

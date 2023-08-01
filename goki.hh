@@ -48,6 +48,8 @@ template <typename T> static inline bool lessf(const T& x, const T& y) {
   return x.first < y.first;
 }
 
+template <typename T> using triangles_t = pair<SimpleMatrix<T>, T>;
+
 typedef enum {
   SHARPEN_X,
   SHARPEN_Y,
@@ -631,8 +633,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       auto col(data.col(0));
       for(int i = 1; i < data.rows(); i ++) row += data.row(i);
       for(int i = 1; i < data.cols(); i ++) col += data.col(i);
-      row /= T(int(data.rows()));
-      col /= T(int(data.cols()));
       auto r(row[0]);
       auto c(col[0]);
       for(int i = 1; i < row.size(); i ++) r += row[i];
@@ -643,14 +643,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       auto cd(col[0]);
       for(int i = 1; i < row.size(); i ++) rd += row[i];
       for(int i = 1; i < col.size(); i ++) cd += col[i];
-      r  /= T(int(row.size())) * T(int(row.size() - 1)) / T(int(2));
-      c  /= T(int(col.size())) * T(int(col.size() - 1)) / T(int(2));
+      r  /= T(int(row.size())) * T(int(row.size() - 1)) * T(int(data.rows())) / T(int(2));
+      c  /= T(int(col.size())) * T(int(col.size() - 1)) * T(int(data.cols())) / T(int(2));
       rd /= T(int(row.size())) * T(int(row.size() - 1)) * T(int(data.rows())) / T(int(2));
       cd /= T(int(col.size())) * T(int(col.size() - 1)) * T(int(data.cols())) / T(int(2));
+      r   = rd - r;
+      c   = cd - c;
       result = data;
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) += (rd - r) * T(i) + (cd - c) * T(j);
+          result(i, j) += r * T(i) + c * T(j);
     }
     break;
   case BLINK_Y:
@@ -1042,15 +1044,6 @@ template <typename T> static inline vector<match_t<T> > matchPartial(const vecto
 }
 
 
-template <typename T> class triangles_t {
-public:
-  SimpleMatrix<T> p;
-  T c;
-  inline triangles_t() {
-    p = SimpleMatrix<T>(3, 3);
-  }
-};
-
 template <typename T> void drawMatchLine(SimpleMatrix<T>& map, const SimpleVector<T>& lref0, const SimpleVector<T>& lref1, const T& c) {
   int idxm(0);
   int idxM(1);
@@ -1224,7 +1217,7 @@ template <typename T> static inline vector<SimpleVector<int> > mesh2(const vecto
 template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>& in, const int& vbox = 1) {
   vector<SimpleVector<T> > geoms;
   geoms.reserve((in.rows() / vbox + 1) * (in.cols() / vbox + 1));
-  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())) / T(int(2)) );
+  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())));
   for(int i = 0; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
@@ -1261,7 +1254,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   const auto xx(in * diff<T>(in.cols()).transpose() * diff<T>(in.cols()).transpose());
   const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()).transpose());
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
-  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())) / T(int(2)) );
+  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())));
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)
@@ -1323,8 +1316,9 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
 #endif
   for(int j = 0; j < triangles.size(); j ++) {
     auto& tri(triangles[j]);
+    assert(tri.first.rows() == tri.first.cols() && tri.first.rows() == 3);
     // N.B. /= 3 isn't needed because only the order is the matter.
-    zbuf[j].first  = - (tri.p(0, 2) + tri.p(1, 2) + tri.p(2, 2));
+    zbuf[j].first  = - (tri.first(0, 2) + tri.first(1, 2) + tri.first(2, 2));
     zbuf[j].second = move(tri);
   }
   sort(zbuf.begin(), zbuf.end(), lessf<pair<T, triangles_t<T> > >);
@@ -1335,7 +1329,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, vector<tri
   for(i = 0; i < zbuf.size() && zbuf[i].first < depth; i ++) ;
   for( ; i < zbuf.size(); i ++) {
     const auto& zbi(zbuf[i].second);
-    drawMatchTriangle<T>(result, zbi.p.row(0), zbi.p.row(1), zbi.p.row(2), zbi.c);
+    drawMatchTriangle<T>(result, zbi.first.row(0), zbi.first.row(1), zbi.first.row(2), zbi.second);
   }
   return result;
 }
@@ -1356,30 +1350,31 @@ template <typename T> vector<triangles_t<T> > triangles(const SimpleMatrix<T>& i
 #endif
   for(int i = 0; i < facets.size(); i ++) {
     triangles_t<T> work;
+    work.first = SimpleMatrix<T>(3, 3);
     for(int j = 0; j < 3; j ++) {
       assert(0 <= facets[i][j] && facets[i][j] < points.size());
-      work.p.row(j) = m.transform(points[facets[i][j]]);
+      work.first.row(j) = m.transform(points[facets[i][j]]);
     }
     for(int j = 0; j < 2; j ++) {
-      if(work.p(0, j) <= work.p(1, j) && work.p(0, j) <= work.p(2, j))
-        work.p(0, j) = floor(work.p(0, j));
-      else if(work.p(1, j) <= work.p(0, j) && work.p(1, j) <= work.p(2, j))
-        work.p(1, j) = floor(work.p(1, j));
-      else if(work.p(2, j) <= work.p(0, j) && work.p(2, j) <= work.p(1, j))
-        work.p(2, j) = floor(work.p(2, j));
-      if(work.p(1, j) <= work.p(0, j) && work.p(2, j) <= work.p(0, j))
-        work.p(0, j) = ceil(work.p(0, j));
-      else if(work.p(0, j) <= work.p(1, j) && work.p(2, j) <= work.p(1, j))
-        work.p(1, j) = ceil(work.p(1, j));
-      else if(work.p(0, j) <= work.p(2, j) && work.p(1, j) <= work.p(2, j))
-        work.p(2, j) = ceil(work.p(2, j));
+      if(work.first(0, j) <= work.first(1, j) && work.first(0, j) <= work.first(2, j))
+        work.first(0, j) = floor(work.first(0, j));
+      else if(work.first(1, j) <= work.first(0, j) && work.first(1, j) <= work.first(2, j))
+        work.first(1, j) = floor(work.first(1, j));
+      else if(work.first(2, j) <= work.first(0, j) && work.first(2, j) <= work.first(1, j))
+        work.first(2, j) = floor(work.first(2, j));
+      if(work.first(1, j) <= work.first(0, j) && work.first(2, j) <= work.first(0, j))
+        work.first(0, j) = ceil(work.first(0, j));
+      else if(work.first(0, j) <= work.first(1, j) && work.first(2, j) <= work.first(1, j))
+        work.first(1, j) = ceil(work.first(1, j));
+      else if(work.first(0, j) <= work.first(2, j) && work.first(1, j) <= work.first(2, j))
+        work.first(2, j) = ceil(work.first(2, j));
     }
     if(T(0) <= points[facets[i][0]][0] && points[facets[i][0]][0] < T(in.rows()) &&
        T(0) <= points[facets[i][0]][1] && points[facets[i][0]][1] < T(in.cols()))
-      work.c = in(int(points[facets[i][0]][0]),
-                  int(points[facets[i][0]][1]));
+      work.second = in(int(points[facets[i][0]][0]),
+                       int(points[facets[i][0]][1]));
     else
-      work.c = T(0);
+      work.second = T(0);
     triangles[i] = move(work);
   }
   return triangles;
@@ -1398,12 +1393,13 @@ template <typename T> SimpleMatrix<T> draw(const SimpleMatrix<T>& img, const vec
     assert(0 <= hull[i][1] && hull[i][1] < shape.size());
     assert(0 <= hull[i][2] && hull[i][2] < shape.size());
     triangles_t<T> work;
+    work.first = SimpleMatrix<T>(3, 3);
     for(int j = 0; j < 3; j ++)
-      work.p.row(j) = emph[hull[i][j]];
-    work.c = img(max(int(0), min(int(img.rows() - 1),
-                   int(shape[hull[i][0]][0]))),
-                 max(int(0), min(int(img.cols() - 1),
-                   int(shape[hull[i][0]][1]))));
+      work.first.row(j) = emph[hull[i][j]];
+    work.second = img(max(int(0), min(int(img.rows() - 1),
+                          int(shape[hull[i][0]][0]))),
+                      max(int(0), min(int(img.cols() - 1),
+                          int(shape[hull[i][0]][1]))));
     tris[i] = move(work);
   }
   return tilt<T>(img * T(0), tris);
