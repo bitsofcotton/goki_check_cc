@@ -637,16 +637,16 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       auto c(col[0]);
       for(int i = 1; i < row.size(); i ++) r += row[i];
       for(int i = 1; i < col.size(); i ++) c += col[i];
-      r  /= T(int(row.size())) * T(int(row.size() - 1)) / T(int(2));
-      c  /= T(int(col.size())) * T(int(col.size() - 1)) / T(int(2));
       row = data.row(data.rows() - 1) - data.row(0);
       col = data.col(data.cols() - 1) - data.col(0);
       auto rd(row[0]);
       auto cd(col[0]);
       for(int i = 1; i < row.size(); i ++) rd += row[i];
       for(int i = 1; i < col.size(); i ++) cd += col[i];
-      rd /= T(int(row.size())) * T(int(data.rows()));
-      cd /= T(int(col.size())) * T(int(data.cols()));
+      r  /= T(int(row.size())) * T(int(row.size() - 1)) / T(int(2));
+      c  /= T(int(col.size())) * T(int(col.size() - 1)) / T(int(2));
+      rd /= T(int(row.size())) * T(int(row.size() - 1)) * T(int(data.rows())) / T(int(2));
+      cd /= T(int(col.size())) * T(int(col.size() - 1)) * T(int(data.cols())) / T(int(2));
       result = data;
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
@@ -1224,7 +1224,7 @@ template <typename T> static inline vector<SimpleVector<int> > mesh2(const vecto
 template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>& in, const int& vbox = 1) {
   vector<SimpleVector<T> > geoms;
   geoms.reserve((in.rows() / vbox + 1) * (in.cols() / vbox + 1));
-  const auto diag(sqrt(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols()))) );
+  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())) / T(int(2)) );
   for(int i = 0; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
@@ -1261,7 +1261,7 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   const auto xx(in * diff<T>(in.cols()).transpose() * diff<T>(in.cols()).transpose());
   const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()).transpose());
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
-  const auto diag(sqrt(sqrt(T(int(in.rows() * in.rows() + in.cols() * in.cols())))) );
+  const auto diag(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols())) / T(int(2)) );
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)
@@ -1345,7 +1345,7 @@ template <typename T> static inline SimpleMatrix<T> tilt(const SimpleMatrix<T>& 
   return tilt<T>(in, tris, depth);
 }
 
-template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const SimpleMatrix<T>& bump, const match_t<T>& m, const T& depth = - T(10000)) {
+template <typename T> vector<triangles_t<T> > triangles(const SimpleMatrix<T>& in, const SimpleMatrix<T>& bump, const match_t<T>& m) {
   assert(in.rows() == bump.rows() && in.cols() == bump.cols());
   auto points(getTileVec<T>(bump));
   auto facets(mesh2<T>(points));
@@ -1382,7 +1382,7 @@ template <typename T> SimpleMatrix<T> tilt(const SimpleMatrix<T>& in, const Simp
       work.c = T(0);
     triangles[i] = move(work);
   }
-  return tilt<T>(in, triangles, depth);
+  return triangles;
 }
 
 template <typename T> SimpleMatrix<T> draw(const SimpleMatrix<T>& img, const vector<SimpleVector<T> >& shape, const vector<SimpleVector<T> >& emph, const vector<SimpleVector<int> >& hull) {

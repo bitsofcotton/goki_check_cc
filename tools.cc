@@ -265,11 +265,12 @@ int main(int argc, const char* argv[]) {
     num_t z0(int(0));
     for(int i = 0; i < bump[0].rows(); i ++)
       for(int j = 0; j < bump[0].cols(); j ++)
-        z0 += bump[0](i, j);
+        z0 += (bump[0](i, j) *= num_t(int(2)) );
     z0 /= num_t(bump[0].rows() * bump[0].cols());
-    const auto tilt0(tilt<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
-      strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
-        tiltprep<num_t>(data[0], index, Mindex, psi, z0),
+    const auto tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
+      triangles<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
+        strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
+          tiltprep<num_t>(data[0], index, Mindex, psi, z0) ),
       strcmp(argv[1], "sbox") == 0 ?
         num_t(index) / num_t(Mindex) *
           num_t(min(data[0].rows(), data[0].cols())) :
