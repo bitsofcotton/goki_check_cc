@@ -229,7 +229,6 @@ int main(int argc, const char* argv[]) {
     const auto rows(sd.rows());
     const auto cols(sd.cols());
           auto points(getTileVec<num_t>(std::move(sd)));
-    for(int i = 0; i < points.size(); i ++) points[i][2] /= num_t(int(2));
     if(argv[1][0] == 'O')
       for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
