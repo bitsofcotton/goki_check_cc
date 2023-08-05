@@ -263,15 +263,10 @@ int main(int argc, const char* argv[]) {
     bump[0] = argv[1][strlen("tilt")] == 'r' ?
       shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tiltr")]) :
       shrinkde<num_t>(autoLevel<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP), (bump[0].rows() + bump[0].cols()) * 4), argv[1][strlen("tilt")]);
-    num_t z0(int(0));
-    for(int i = 0; i < bump[0].rows(); i ++)
-      for(int j = 0; j < bump[0].cols(); j ++)
-        z0 += bump[0](i, j);
-    z0 /= num_t(bump[0].rows() * bump[0].cols());
     const auto tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
       triangles<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
         strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
-          tiltprep<num_t>(data[0], index, Mindex, psi, z0) ),
+          tiltprep<num_t>(data[0], index, Mindex, psi) ),
       strcmp(argv[1], "sbox") == 0 ?
         num_t(index) / num_t(Mindex) *
           num_t(min(data[0].rows(), data[0].cols())) :

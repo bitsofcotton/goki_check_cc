@@ -3038,6 +3038,8 @@ template <typename T> vector<pair<vector<SimpleVector<T> >, vector<int> > > crus
       (score < T(int(0)) ? lidx : ridx).emplace_back(move(result[t].second[i]));
     }
     if(left.size() && right.size()) {
+      left.reserve(left.size());
+      right.reserve(right.size());
       if(left.size() < right.size()) {
         swap(left, right);
         swap(lidx, ridx);
@@ -3140,7 +3142,7 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
     cache.emplace_back(d.subVector(i, varlen));
     cache[cache.size() - 1][varlen - 1] = d[i + varlen + step - 2];
   }
-  const auto cat(crush<T>(cache));
+  const auto cat(crush<T>(cache, cache[0].size(), cache.size()));
   SimpleVector<T> work(varlen);
   for(int i = 1; i < work.size(); i ++)
     work[i - 1] = d[i - work.size() + d.size()];
@@ -3150,24 +3152,18 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
         auto sscore(zero);
   for(int i = 0; i < cat.size(); i ++) {
     if(! cat[i].first.size()) continue;
-    SimpleMatrix<T> pw(cat[i].first.size(), cat[i].first[0].size() + 1);
-    pw.row(0) = makeProgramInvariant<T>(cat[i].first[0]).first;
-    auto avg(pw.row(0));
-    for(int j = 1; j < pw.rows(); j ++)
-      avg += (pw.row(j) = makeProgramInvariant<T>(cat[i].first[j]).first);
-    avg /= T(int(pw.rows()));
-    const auto q(pw.rows() <= pw.cols() || ! pw.rows() ? SimpleVector<T>() : linearInvariant<T>(pw));
-    work[work.size() - 1] = (q.size() ?
-      (q[varlen - 1] == zero ? zero :
-       revertProgramInvariant<T>(make_pair(
-        - (q.dot(vdp.first) - q[varlen - 1] * vdp.first[varlen - 1])
-        / q[varlen - 1] / T(int(q.size())), vdp.second) ) ) :
+    if(! (cat[i].first.size() <= cat[i].first[0].size() + 1)) cerr << "!" << flush;
+    SimpleVector<T> avg(cat[i].first[0].size() + 1);
+    for(int j = 0; j < cat[i].first.size(); j ++)
+      avg += makeProgramInvariant<T>(cat[i].first[j]).first;
+    avg *= sqrt(vdp.first.dot(vdp.first) / avg.dot(avg));
+    work[work.size() - 1] =
       revertProgramInvariant<T>(make_pair(avg[varlen - 1] /
-          T(int(avg.size())), vdp.second)) );
+          T(int(avg.size())), vdp.second));
     T score(0);
     for(int j = 0; j < work.size(); j ++)
-      score += work[j] * revertProgramInvariant<T>(make_pair(avg[j] /= T(int(avg.size())), vdp.second));
-    res += q.size() ? (M - abs(score)) * work[work.size() - 1] : score * work[work.size() - 1];
+      score += work[j] * revertProgramInvariant<T>(make_pair(avg[j], vdp.second));
+    res += score * work[work.size() - 1];
     sscore += abs(score);
   }
   return sscore == zero ? sscore : res / sscore;

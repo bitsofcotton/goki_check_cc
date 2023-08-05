@@ -629,30 +629,35 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case AFTERBUMP:
     {
-      auto row(data.row(0));
-      auto col(data.col(0));
-      for(int i = 1; i < data.rows(); i ++) row += data.row(i);
-      for(int i = 1; i < data.cols(); i ++) col += data.col(i);
+      result = data;
+      T avg(int(0));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          avg += result(i, j);
+      avg /= T(int(result.rows() * result.cols()));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) -= avg;
+      auto row(result.row(0));
+      auto col(result.col(0));
+      for(int i = 1; i < result.rows(); i ++) row += result.row(i);
+      for(int i = 1; i < result.cols(); i ++) col += result.col(i);
       auto r(row[0]);
       auto c(col[0]);
       for(int i = 1; i < row.size(); i ++) r += row[i];
       for(int i = 1; i < col.size(); i ++) c += col[i];
-      row = data.row(data.rows() - 1) - data.row(0);
-      col = data.col(data.cols() - 1) - data.col(0);
+      row = result.row(result.rows() - 1) - result.row(0);
+      col = result.col(result.cols() - 1) - result.col(0);
       auto rd(row[0]);
       auto cd(col[0]);
       for(int i = 1; i < row.size(); i ++) rd += row[i];
       for(int i = 1; i < col.size(); i ++) cd += col[i];
-      r  /= T(int(row.size())) * T(int(row.size() - 1)) * T(int(data.rows())) / T(int(2));
-      c  /= T(int(col.size())) * T(int(col.size() - 1)) * T(int(data.cols())) / T(int(2));
-      rd /= T(int(row.size())) * T(int(row.size() - 1)) * T(int(data.rows())) / T(int(2));
-      cd /= T(int(col.size())) * T(int(col.size() - 1)) * T(int(data.cols())) / T(int(2));
-      r   = rd - r;
-      c   = cd - c;
-      result = data;
+      r = (rd - r) / (T(int(row.size())) * T(int(row.size() - 1)) * T(int(result.rows())) / T(int(2)));
+      c = (cd - c) / (T(int(col.size())) * T(int(col.size() - 1)) * T(int(result.cols())) / T(int(2)));
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) += r * T(i) + c * T(j);
+      assert(result.rows() == data.rows() && result.cols() == data.cols());
     }
     break;
   case BLINK_Y:
