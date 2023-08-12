@@ -634,9 +634,18 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       //   (i)  C == - S S z2 dx dy, this is to subtract average.
       //   (ii) C == 0, this is to take original input with
       //                integration value half.
-      //   we select (ii) case to get global tilt on last output.
-      //   selecting (i)  causes flat enough in global output.
+      //   selecting (ii) case to get global tilt on last output.
+      //   we select (i)  causes flat enough in global output.
+      //                  this better works with contjps command.
       result = data;
+      T avg(int(0));
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          avg += result(i, j);
+      avg /= T(result.rows() * result.cols());
+      for(int i = 0; i < result.rows(); i ++)
+        for(int j = 0; j < result.cols(); j ++)
+          result(i, j) -= avg;
       auto row(result.row(0));
       auto col(result.col(0));
       for(int i = 1; i < result.rows(); i ++) row += result.row(i);
@@ -651,8 +660,12 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       auto cd(col[0]);
       for(int i = 1; i < row.size(); i ++) rd += row[i];
       for(int i = 1; i < col.size(); i ++) cd += col[i];
+      r = (rd - r) / (T(int(row.size())) * T(int(row.size() - 1)) * T(int(result.rows())) / T(int(2)));
+      c = (cd - c) / (T(int(col.size())) * T(int(col.size() - 1)) * T(int(result.cols())) / T(int(2)));
+/*
       r = (rd - r) / (T(int(row.size())) * T(int(row.size() - 1)) * T(int(result.rows())) / T(int(2))) / T(int(2));
       c = (cd - c) / (T(int(col.size())) * T(int(col.size() - 1)) * T(int(result.cols())) / T(int(2))) / T(int(2));
+*/
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) += r * T(i) + c * T(j);

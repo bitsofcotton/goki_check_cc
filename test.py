@@ -151,13 +151,38 @@ else:
       subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "objr" or argv[2] == "Objr" or argv[2] == "objr+" or argv[2] == "Objr+"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bumps.ppm", root + ".obj"])
+    elif(argv[2] == "contjps"):
+      w = h = 0
+      with open(root + ".ppm") as f:
+        f.readline()
+        a = f.readline().split(" ")
+        w = int(a[0])
+        h = int(a[1])
+      subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
+      subprocess.call([argv[1], "tilt",  "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "-1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+      subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", root + "-R.png"])
+      subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", root + "-L.png"])
+      subprocess.call(["convert", root + "-R.png", "-compress", "none", "-format", "ppm", root + "-R.ppm"])
+      subprocess.call(["convert", root + "-L.png", "-compress", "none", "-format", "ppm", root + "-L.ppm"])
+      for t in range(0, pixels):
+        subprocess.call([argv[1], "bump", root + "-L.ppm", root + "-L-bump.ppm"])
+        subprocess.call([argv[1], "bump", root + "-R.ppm", root + "-R-bump.ppm"])
+        subprocess.call([argv[1], "tilt",  "1", "4", str(psi), root + "-L.ppm", root + "-L-bump.ppm", root + "-L.ppm"])
+        subprocess.call([argv[1], "tilt", "-1", "4", str(psi), root + "-R.ppm", root + "-R-bump.ppm", root + "-R.ppm"])
+        subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", root + "-R.png"])
+        subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", root + "-L.png"])
+        subprocess.call(["convert", root + "-R.png", "-compress", "none", "-format", "ppm", root + "-R.ppm"])
+        subprocess.call(["convert", root + "-L.png", "-compress", "none", "-format", "ppm", root + "-L.ppm"])
+        subprocess.call(["cp", root + "-R.png", root + "-R-" + str(t) + ".png"])
+        subprocess.call(["cp", root + "-L.png", root + "-L-" + str(t) + ".png"])
     elif(argv[2] == "jps" or argv[2] == "jps+" or argv[2] == "jpsr" or argv[2] == "jpsr+"):
       tt = "tilt" + argv[2][len("jps"):]
       bb = root + "-bump.ppm"
       if(len("jps") < len(argv[2]) and argv[2][len("jps")] == 'r'):
         bb = root + "-bumps.ppm"
-      subprocess.call([argv[1], tt, "1", "4", str(  psi), root + ".ppm", bb, root + "-L.ppm"])
-      subprocess.call([argv[1], tt, "1", "4", str(- psi), root + ".ppm", bb, root + "-R.ppm"])
+      subprocess.call([argv[1], tt,  "1", "4", str(psi), root + ".ppm", bb, root + "-L.ppm"])
+      subprocess.call([argv[1], tt, "-1", "4", str(psi), root + ".ppm", bb, root + "-R.ppm"])
       subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", root + "-R.png"])
       subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", root + "-L.png"])
       subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])
