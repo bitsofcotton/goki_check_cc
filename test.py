@@ -139,8 +139,8 @@ else:
       subprocess.call(["python3", argv[0], argv[1], "jps", line])
       import cv2
       img0 = cv2.imread(root + ".ppm", 0)
-      imgL = cv2.resize(cv2.imread(root + "-L.png", 0), (img0.shape[1], img0.shape[0]))
-      imgR = cv2.resize(cv2.imread(root + "-R.png", 0), (img0.shape[1], img0.shape[0]))
+      imgL = cv2.resize(cv2.imread(root + "-L.ppm", 0), (img0.shape[1], img0.shape[0]))
+      imgR = cv2.resize(cv2.imread(root + "-R.ppm", 0), (img0.shape[1], img0.shape[0]))
       stereo = cv2.StereoBM_create(numDisparities=32, blockSize=31)
       depth  = stereo.compute(imgL, imgR)
       cv2.imwrite(root + "-bumps.png", cv2.resize(depth, (img0.shape[1], img0.shape[0])))
@@ -159,49 +159,32 @@ else:
         w = int(a[0])
         h = int(a[1])
       subprocess.call([argv[1], "bump", root + ".ppm", root + "-bump.ppm"])
-      subprocess.call([argv[1], "tilt",  "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-      subprocess.call([argv[1], "tilt", "-1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
-      subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", root + "-R.png"])
-      subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", root + "-L.png"])
-      subprocess.call(["convert", root + "-R.png", "-compress", "none", "-format", "ppm", root + "-R.ppm"])
-      subprocess.call(["convert", root + "-L.png", "-compress", "none", "-format", "ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "Tilt",  "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "Tilt", "-1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
       for t in range(0, pixels):
         subprocess.call([argv[1], "bump", root + "-L.ppm", root + "-L-bump.ppm"])
         subprocess.call([argv[1], "bump", root + "-R.ppm", root + "-R-bump.ppm"])
-        subprocess.call([argv[1], "tilt",  "1", "4", str(psi), root + "-L.ppm", root + "-L-bump.ppm", root + "-L.ppm"])
-        subprocess.call([argv[1], "tilt", "-1", "4", str(psi), root + "-R.ppm", root + "-R-bump.ppm", root + "-R.ppm"])
-        subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", root + "-R.png"])
-        subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", root + "-L.png"])
-        subprocess.call(["convert", root + "-R.png", "-compress", "none", "-format", "ppm", root + "-R.ppm"])
-        subprocess.call(["convert", root + "-L.png", "-compress", "none", "-format", "ppm", root + "-L.ppm"])
-        subprocess.call(["cp", root + "-R.png", root + "-R-" + str(t) + ".png"])
-        subprocess.call(["cp", root + "-L.png", root + "-L-" + str(t) + ".png"])
+        subprocess.call([argv[1], "Tilt",  "1", "4", str(psi), root + "-L.ppm", root + "-L-bump.ppm", root + "-L.ppm"])
+        subprocess.call([argv[1], "Tilt", "-1", "4", str(psi), root + "-R.ppm", root + "-R-bump.ppm", root + "-R.ppm"])
+        subprocess.call(["cp", root + "-R.ppm", root + "-R-" + str(t) + ".ppm"])
+        subprocess.call(["cp", root + "-L.ppm", root + "-L-" + str(t) + ".ppm"])
     elif(argv[2] == "jps" or argv[2] == "jps+" or argv[2] == "jpsr" or argv[2] == "jpsr+"):
-      tt = "tilt" + argv[2][len("jps"):]
+      tt = "Tilt" + argv[2][len("jps"):]
       bb = root + "-bump.ppm"
       if(len("jps") < len(argv[2]) and argv[2][len("jps")] == 'r'):
         bb = root + "-bumps.ppm"
       subprocess.call([argv[1], tt,  "1", "4", str(psi), root + ".ppm", bb, root + "-L.ppm"])
       subprocess.call([argv[1], tt, "-1", "4", str(psi), root + ".ppm", bb, root + "-R.ppm"])
-      subprocess.call(["convert", root + "-R.ppm", "-define", "trim:edges=east,west", "-trim", root + "-R.png"])
-      subprocess.call(["convert", root + "-L.ppm", "-define", "trim:edges=east,west", "-trim", root + "-L.png"])
-      subprocess.call(["montage", root + "-R.png", root + "-L.png", "-geometry", "100%x100%", root + "-stereo.jps"])
-      subprocess.call(["montage", root + "-L.png", root + "-R.png", "-geometry", "100%x100%", root + "-stereoR.jps"])
+      subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
+      subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereoR.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
       subprocess.call(["montage", root + "-stereoR.jps", "-geometry", "100%x100%", root + "-stereoR.png"])
     elif(argv[2] == "tilt" or argv[2] == "tilt+" or argv[2] == "tiltr" or argv[2] == "tiltr+"):
       bb = root + "-bump.ppm"
       if(len("tilt") < len(argv[2]) and argv[2][len("tilt")] == 'r'):
         bb = root + "-bumps.ppm"
-      w = h = 0
-      with open(bb) as f:
-        f.readline()
-        a = f.readline().split(" ")
-        w = int(a[0])
-        h = int(a[1])
       for s in range(0, pixels * 2):
-        subprocess.call([argv[1], argv[2], "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", bb, root + "-tilt-" + str(s) + ".ppm"])
-        subprocess.call(["mogrify", "-define", "trim:edges=east,west", "-trim", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", root + "-tilt-" + str(s) + ".ppm"])
+        subprocess.call([argv[1], "T" + argv[2][1:], "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", bb, root + "-tilt-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-tilt-" + str(s) + ".ppm", root + "-tilt-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + ".mp4"])
     elif(argv[2] == "sbox" or argv[2] == "sbox+" or argv[2] == "sboxr" or argv[2] == "sboxr+"):

@@ -238,10 +238,18 @@ int main(int argc, const char* argv[]) {
             strcmp(argv[1], "tilt+") == 0 ||
             strcmp(argv[1], "tiltr") == 0 ||
             strcmp(argv[1], "tiltr+") == 0 ||
+            strcmp(argv[1], "Tilt") == 0 ||
+            strcmp(argv[1], "Tilt+") == 0 ||
+            strcmp(argv[1], "Tiltr") == 0 ||
+            strcmp(argv[1], "Tiltr+") == 0 ||
             strcmp(argv[1], "sbox") == 0 ||
             strcmp(argv[1], "sbox+") == 0 ||
             strcmp(argv[1], "sboxr") == 0 ||
-            strcmp(argv[1], "sboxr+") == 0) {
+            strcmp(argv[1], "sboxr+") == 0 ||
+            strcmp(argv[1], "Sbox") == 0 ||
+            strcmp(argv[1], "Sbox+") == 0 ||
+            strcmp(argv[1], "Sboxr") == 0 ||
+            strcmp(argv[1], "Sboxr+") == 0) {
     if(argc < 8) {
       usage(argv[0]);
       return - 1;
@@ -264,16 +272,35 @@ int main(int argc, const char* argv[]) {
       shrinkde<num_t>(autoLevel<num_t>(filter<num_t>(rgb2d<num_t>(bump), AFTERBUMP), (bump[0].rows() + bump[0].cols()) * 4), argv[1][strlen("tilt")]);
     const auto tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
       triangles<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
-        strcmp(argv[1], "sbox") == 0 ? match_t<num_t>() :
+        strncmp(argv[1], "sbox", strlen("sbox")) == 0 ?
+          match_t<num_t>() :
           tiltprep<num_t>(data[0], index, Mindex, psi) ),
-      strcmp(argv[1], "sbox") == 0 ?
-        num_t(index) / num_t(Mindex) *
-          num_t(min(data[0].rows(), data[0].cols())) :
-        - num_t(1000000)
+        strncmp(argv[1], "sbox", strlen("sbox")) == 0 ?
+          num_t(index) / num_t(Mindex) *
+            num_t(min(data[0].rows(), data[0].cols())) :
+          - num_t(1000000)
       ));
+    int yh(0);
+    int xw(0);
+    if(argv[1][0] == 'T' || argv[1][0] == 'S') {
+      SimpleVector<num_t> v(3);
+      v.O();
+      v = tiltprep<num_t>(data[0], index, Mindex, psi).transform(v);
+      yh = int(abs(v[0]));
+      xw = int(abs(v[1]));
+    }
     for(int j = 0; j < data.size(); j ++)
       data[j] = pullRefMatrix<num_t>(tilt0, 1, data[j]);
-    if(!savep2or3<num_t>(argv[7], data))
+    auto resd(data);
+    for(int k = 0; k < resd.size(); k ++)
+      for(int i = 0; i < resd[k].rows(); i ++)
+        for(int j = 0; j < resd[k].cols(); j ++)
+          resd[k](i, j) =
+            data[k](min(yh + i * (resd[k].rows() - yh * 2) / resd[k].rows(),
+                      resd[k].rows() - 1),
+                    min(xw + j * (resd[k].cols() - xw * 2) / resd[k].cols(),
+                      resd[k].cols() - 1) );
+    if(!savep2or3<num_t>(argv[7], resd))
       return - 1;
   } else if(strcmp(argv[1], "match") == 0 ||
             strcmp(argv[1], "match+") == 0) {
@@ -301,7 +328,7 @@ int main(int argc, const char* argv[]) {
     const auto shape1(vboxsrc < 0
       ? getHesseVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP), argv[1][strlen("match")]), abs(vboxsrc))
       : getTileVec<num_t>(shrinkde<num_t>(filter<num_t>(rgb2d<num_t>(bump1), AFTERBUMP), argv[1][strlen("match")]), abs(vboxsrc)));
-    const auto m(matchPartial<num_t>(shape0, shape1, nsub));
+    const auto m(matchPartialR<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);
     const auto rin0(makeRefMatrix<num_t>(in0[0], 1));
@@ -410,7 +437,7 @@ int main(int argc, const char* argv[]) {
       Mx = max(num_t(Mx), abs(psrc[i][1]));
     }
     saveobj<num_t>(takeShape<num_t>(pdst, psrc,
-      matchPartial<num_t>(pdst, psrc)[0],
+      matchPartialR<num_t>(pdst, psrc)[0],
       num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
   } else if(strcmp(argv[1], "omake") == 0) {
     vector<vector<num_t> > data;

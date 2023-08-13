@@ -23,14 +23,14 @@ Searching the Internet more...
     
     gokibin (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (cat|catr) <output.ppm> <input0.ppm> ...
-    gokibin (tilt|sbox)r?+? <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
+    gokibin ([Tt]ilt|[Ss]box)r?+? <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
     gokibin objr?+? <rot> <input.ppm> <output.obj>
     gokibin match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokibin recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokibin recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokibin habit <in0.obj> <in1.obj> <out.obj>
-    python2 test.py ./gokibin (sharpen|bump|enlarge|denlarge|denlarge+|flarge|represent|jps|jps+|jpsr|jpsr+|tilt|tilt+|tiltr|tiltr+|obj|obj+|objr|objr+|sbox|prep|presq|nop|limit|bit) <param> input0.png ...
+    python2 test.py ./gokibin (sharpen|bump|enlarge|denlarge|denlarge+|flarge|represent|contjps|jps|jps+|jpsr|jpsr+|[Tt]ilt|[Tt]ilt+|[Tt]iltr|[Tt]iltr+|obj|obj+|objr|objr+|[Ss]box|prep|presq|nop|limit|bit) <param> input0.png ...
     python2 test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
     python2 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python2 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
