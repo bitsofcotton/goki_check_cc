@@ -7,7 +7,7 @@ import subprocess
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 3.
-rot    = 3
+rot    = 0
 
 if(len(argv) < 4):
   print("no much argments.")

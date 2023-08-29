@@ -539,7 +539,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     }
     break;
   case INTEGRAW_BOTH:
-    result = (diffRecur<T>(- data.rows()) * data + data * diffRecur<T>(- data.cols()).transpose()) / T(int(2));
+    // N.B. from some of the numerical test,
+    //      shrink with shrinken doesn't need this.
+    //      but numerical test for what is only to ease our mind.
+    // result = (diffRecur<T>(- data.rows()) * data + data * diffRecur<T>(- data.cols()).transpose()) / T(int(2));
+    result = (diff<T>(- data.rows()) * data + data * diff<T>(- data.cols()).transpose()) / T(int(2));
     break;
   case DIFFRAW_BOTH:
     {

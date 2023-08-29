@@ -1997,7 +1997,9 @@ public:
 #if defined(_FLOAT_BITS_)
     static const auto eps(myfloat(int(1)) >> myint(_FLOAT_BITS_ - 1));
 #else
-    static const auto eps(std::numeric_limits<myfloat>::epsilon());
+    // N.B. conservative.
+    static const auto eps(sqrt(std::numeric_limits<myfloat>::epsilon()));
+    // static const auto eps(std::numeric_limits<myfloat>::epsilon());
 #endif
     return eps;
   }
@@ -4016,8 +4018,7 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
     invariant[i] = makeProgramInvariant<T>(in[i]).first;
   }
   T norm(int(0));
-  for(int i = 0; i < in.size(); i ++)
-    norm += invariant[i].dot(invariant[i]);
+  for(int i = 0; i < in.size(); i ++) norm += in[i].dot(in[i]);
   norm = sqrt(norm / T(int(in.size())));
   vector<SimpleVector<T> > p;
   if(p0 < 1) return make_pair(p, p);
@@ -4042,9 +4043,8 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
       pf.next(invariant[k][j]);
     }
     for(int i = 0; i < p0; i ++) {
-      P1I<T> pq(4, i + 1);
-      q[i][j] = pq.next(pb.res);
-      p[i][j] = pq.next(pf.res);
+      q[i][j] = P1I<T>(4, i + 1).next(pb.res);
+      p[i][j] = P1I<T>(4, i + 1).next(pf.res);
     }
   }
   for(int i = 0; i < p.size(); i ++) {
