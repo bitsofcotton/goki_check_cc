@@ -67,7 +67,6 @@ typedef enum {
   DIFFRAW_BOTH,
   COLLECT_BOTH,
   BUMP_BOTH,
-  AFTERBUMP,
   BLINK_X,
   BLINK_Y,
   BLINK_BOTH,
@@ -539,10 +538,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     }
     break;
   case INTEGRAW_BOTH:
-    // N.B. from some of the numerical test,
-    //      shrink with shrinken doesn't need this.
-    //      but numerical test for what is only to ease our mind.
-    // result = (diffRecur<T>(- data.rows()) * data + data * diffRecur<T>(- data.cols()).transpose()) / T(int(2));
     result = (diff<T>(- data.rows()) * data + data * diff<T>(- data.cols()).transpose()) / T(int(2));
     break;
   case DIFFRAW_BOTH:
@@ -613,43 +608,18 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
           }
       }
-      cerr << "i" << flush;
-      auto resb(filter<T>(result, INTEGRAW_BOTH));
-      cerr << "i" << flush;
-      resb += flip<T>(filter<T>(flip<T>(result), INTEGRAW_BOTH));
-      cerr << "i" << flush;
-      resb += flop<T>(filter<T>(flop<T>(result), INTEGRAW_BOTH));
-      cerr << "i" << flush;
-      resb += flip<T>(flop<T>(filter<T>(flip<T>(flop<T>(result)), INTEGRAW_BOTH)));
-      result = (move(resb) /= T(int(4)));
-      T m(result(0, 0));
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          m = min(m, result(i, j));
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) -= m;
-    }
-    break;
-  case AFTERBUMP:
-    {
+      // N.B. for here, collecting each pixel with shrinkd causes
+      //      enough better result on global without tilt itself.
+      //      Tilt itself is ignored because of each focus behaves as diff ones.
+      //      So we add the tilt by each edge line information with
+      //      subtracting and adding global tilt.
       // N.B. S S z dx dy == z2 + C.
       //   we can select 2 of choises, 
-      //   (i)  C == - S S z2 dx dy, this is to subtract average.
+      //   (i)  C == - S S z dx dy, this is to subtract average.
       //   (ii) C == 0, this is to take original input with
       //                integration value half.
-      //   selecting (ii) case to get global tilt on last output.
-      //   we select (i)  causes flat enough in global output.
-      //                  this better works with contjps command.
-      result = data;
-      T avg(int(0));
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          avg += result(i, j);
-      avg /= T(result.rows() * result.cols());
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) -= avg;
+      //   we select (i)  case to get global tilt on last output.
+      //   selecting (ii) causes flat enough in global output.
       auto row(result.row(0));
       auto col(result.col(0));
       for(int i = 1; i < result.rows(); i ++) row += result.row(i);
@@ -664,12 +634,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       auto cd(col[0]);
       for(int i = 1; i < row.size(); i ++) rd += row[i];
       for(int i = 1; i < col.size(); i ++) cd += col[i];
-      r = (rd - r) / (T(int(row.size())) * T(int(row.size() - 1)) * T(int(result.rows())) / T(int(2)));
-      c = (cd - c) / (T(int(col.size())) * T(int(col.size() - 1)) * T(int(result.cols())) / T(int(2)));
-/*
+      // N.B. we only need last / 2 operator in (i) case.
       r = (rd - r) / (T(int(row.size())) * T(int(row.size() - 1)) * T(int(result.rows())) / T(int(2))) / T(int(2));
       c = (cd - c) / (T(int(col.size())) * T(int(col.size() - 1)) * T(int(result.cols())) / T(int(2))) / T(int(2));
-*/
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
           result(i, j) += r * T(i) + c * T(j);
@@ -717,12 +684,10 @@ template <typename T> SimpleMatrix<T> shrinkd(const SimpleMatrix<T>& in, const c
     for(int j = 0; j < res.cols(); j ++) {
       int cnt(0);
       for(int ii  = i * in.rows() / res.rows();
-              ii <= min((i + 1) * in.rows() / res.rows(),
-                        in.rows() - 1);
+              ii < min((i + 1) * in.rows() / res.rows(), in.rows());
               ii ++)
         for(int jj  = j * in.cols() / res.cols();
-                jj <= min((j + 1) * in.cols() / res.cols(),
-                          in.cols() - 1);
+                jj < min((j + 1) * in.cols() / res.cols(), in.cols());
                 jj ++, cnt ++) res(i, j) += in(ii, jj);
       if(cnt) res(i, j) /= T(cnt);
     }
@@ -731,7 +696,7 @@ template <typename T> SimpleMatrix<T> shrinkd(const SimpleMatrix<T>& in, const c
 
 template <typename T> SimpleMatrix<T> shrinkde(const SimpleMatrix<T>& in, const char& m = '\0') {
   auto sd(shrinkd<T>(in, m));
-  return (dft<T>(- in.rows()).subMatrix(0, 0, in.rows(), sd.rows()) * dft<T>(sd.rows())).template real<T>() * sd * (dft<T>(- in.cols()).subMatrix(0, 0, in.cols(), sd.cols()) * dft<T>(sd.cols())).template real<T>().transpose();
+  return (dft<T>(- in.rows()).subMatrix(0, 0, in.rows(), sd.rows()) * dft<T>(sd.rows())).template real<T>() * sd * (dft<T>(- in.cols()).subMatrix(0, 0, in.cols(), sd.cols()) * dft<T>(sd.cols())).template real<T>().transpose() * T(in.rows() * in.cols()) / T(sd.rows() * sd.cols());
 }
 
 template <typename T> class match_t {
@@ -1238,7 +1203,8 @@ template <typename T> static inline vector<SimpleVector<int> > mesh2(const vecto
 template <typename T> vector<SimpleVector<T> > getTileVec(const SimpleMatrix<T>& in, const int& vbox = 1) {
   vector<SimpleVector<T> > geoms;
   geoms.reserve((in.rows() / vbox + 1) * (in.cols() / vbox + 1));
-  const auto diag(sqrt(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols()))));
+  // N.B. align with BUMP_BOTH z-axis rxy.
+  const auto diag(sqrt(sqrt(T(min(in.rows(), in.cols())) )) );
   for(int i = 0; i < in.rows() / vbox + 1; i ++)
     for(int j = 0; j < in.cols() / vbox + 1; j ++) {
       if(in.rows() < (i + 1) * vbox ||
@@ -1275,7 +1241,8 @@ template <typename T> vector<SimpleVector<T> > getHesseVec(const SimpleMatrix<T>
   const auto xx(in * diff<T>(in.cols()).transpose() * diff<T>(in.cols()).transpose());
   const auto xy(diff<T>(in.rows()) * in * diff<T>(in.cols()).transpose());
   const auto yy(diff<T>(in.rows()) * diff<T>(in.rows()) * in);
-  const auto diag(sqrt(sqrt(T(in.rows() * in.rows() + in.cols() * in.cols()))));
+  // N.B. align with BUMP_BOTH z-axis rxy.
+  const auto diag(sqrt(sqrt(T(min(in.rows(), in.cols())) )) );
   vector<pair<T, pair<int, int> > > score;
   score.reserve(in.rows() * in.cols());
   for(int i = 0; i < in.rows(); i ++)
