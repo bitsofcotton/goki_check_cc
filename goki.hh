@@ -608,6 +608,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             }
           }
       }
+      // N.B. local to global, has a glitch with some singular point.
+      result = filter<T>(diff<T>(- result.rows()) * result * diff<T>(- result.cols()).transpose(), COLLECT_BOTH);
       // N.B. for here, collecting each pixel with shrinkd causes
       //      enough better result on global without tilt itself.
       //      Tilt itself is ignored because of each focus behaves as diff ones.

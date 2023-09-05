@@ -59,4 +59,5 @@ Searching the Internet more...
 2023/06/29 fix same place z-axis with reasonable.
 2023/07/08 integrate gokicvs to test.py.
 2023/09/04 large fix around bump/obj/jps, better reasonable on logic.
+2023/09/06 bump local/global algorithm strategy change.
 

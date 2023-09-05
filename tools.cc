@@ -222,10 +222,11 @@ int main(int argc, const char* argv[]) {
     }
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
-    auto sd(shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("obj")]));
+    auto sd(shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("obj")]) / num_t(int(5)));
     const auto rows(sd.rows());
     const auto cols(sd.cols());
           auto points(getTileVec<num_t>(std::move(sd)));
+    // XXX: after equalize.
     if(argv[1][0] == 'O')
       for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
@@ -255,7 +256,7 @@ int main(int argc, const char* argv[]) {
     if(!loadp2or3<num_t>(bump, argv[6]))
       return - 2;
     assert(strlen("tilt" ) == strlen("sbox" ));
-    bump[0] = shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tilt")]);
+    bump[0] = shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tilt")]) / num_t(int(5));
     const auto tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
       triangles<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
         strncmp(argv[1], "sbox", strlen("sbox")) == 0 ?
@@ -309,11 +310,11 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const string outbase(argv[10]);
     const auto shape0(vboxdst < 0
-      ? getHesseVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump0), argv[1][strlen("match")]), abs(vboxdst))
-      : getTileVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump0), argv[1][strlen("match")]), abs(vboxdst)));
+      ? getHesseVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump0), argv[1][strlen("match")]) / num_t(int(5)), abs(vboxdst))
+      : getTileVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump0), argv[1][strlen("match")]) / num_t(int(5)), abs(vboxdst)));
     const auto shape1(vboxsrc < 0
-      ? getHesseVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump1), argv[1][strlen("match")]), abs(vboxsrc))
-      : getTileVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump1), argv[1][strlen("match")]), abs(vboxsrc)));
+      ? getHesseVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump1), argv[1][strlen("match")]) / num_t(int(5)), abs(vboxsrc))
+      : getTileVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump1), argv[1][strlen("match")]) / num_t(int(5)), abs(vboxsrc)));
     const auto m(matchPartialR<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);
