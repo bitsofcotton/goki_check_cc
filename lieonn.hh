@@ -4003,12 +4003,12 @@ template <typename T> static inline SimpleVector<T> autoLevel(const SimpleVector
   return autoLevel<T>(b, count)[0].row(0);
 }
 
-template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in, int msz = - 1) {
+template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv0(const vector<SimpleVector<T> >& in, int msz = - 1) {
   int p0(0);
   if(msz < 0) msz = in.size();
   for( ; p0 < min(int(in.size()), msz); p0 ++)
     if(in.size() - 4 - p0 - 1 + 2 < 4 + 2) break;
-  p0 /= 2;
+  p0 /= 4;
   vector<SimpleVector<T> > invariant;
   invariant.resize(in.size());
 #if defined(_OPENMP)
@@ -4062,6 +4062,174 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
     if(normq != T(int(0))) q[i] *= norm / normq;
   }
   return make_pair(move(p), move(q));
+}
+
+template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in0, int msz = - 1) {
+  vector<SimpleVector<T> > in;
+  in.reserve(in0.size() * 2 - 1);
+  for(int i = 0; i < in0.size(); i ++)  {
+    if(i) in.emplace_back((in0[i - 1] + in0[i]) / T(int(2)));
+    in.emplace_back(in0[i]);
+  }
+  auto res(predv0<T>(in, msz));
+  T M(int(0));
+  for(int i = 0; i < in.size(); i ++) {
+    int ok_cnt(0);
+    for(int j = 0; j < in0.size(); j ++) {
+      const auto ga(revertProgramInvariant<T>(make_pair(makeProgramInvariant<T>(in[j * 2]).second, T(int(1)) )) );
+      M = max(M, abs(ga));
+      if(abs(ga) <= M * sqrt(SimpleMatrix<T>().epsilon()) ) ok_cnt ++;
+      else cerr << "Geometric average " << ga << " is still large." << endl;
+      for(int k = 0; k < in[j * 2].size(); k ++) in[j * 2][k] -= ga;
+      if(j) in[j * 2 - 1] = (in[j * 2] + in[j * 2 - 2]) / T(int(2));
+    }
+    if(in0.size() <= ok_cnt) break;
+    cerr << "loop # " << i << endl;
+    auto q(predv0<T>(in, msz));
+    for(int j = 0; j < q.first.size();  j ++) res.first[j]  += q.first[j];
+    for(int j = 0; j < q.second.size(); j ++) res.second[j] += q.second[j];
+  }
+  return res;
+}
+
+template <typename T> pair<vector<vector<SimpleVector<T> > >, vector<vector<SimpleVector<T> > > > predvResizeVec(const vector<vector<SimpleVector<T> > >& in0, int msz = - 1) {
+  const int  rsize(T(int(in0.size() * 2 - 1)) / T(int(in0[0].size())) );
+  const auto resize((dft<T>(- rsize).subMatrix(0, 0, rsize, min(rsize, in0[0][0].size())) * dft<T>(in0[0][0].size()).subMatrix(0, 0, min(rsize, in0[0][0].size()), in0[0][0].size()) ).template real<T>() * T(rsize) / T(int(in0[0][0].size())) );
+  const auto reverse((dft<T>(- in0[0][0].size()).subMatrix(0, 0, in0[0][0].size(), min(rsize, in0[0][0].size())) * dft<T>(rsize).subMatrix(0, 0, min(rsize, in0[0][0].size()), rsize) ).template real<T>() * T(int(in0[0][0].size())) / T(rsize) );
+  cerr << "Resize into " << rsize << endl;
+  vector<SimpleVector<T> > in;
+  in.resize(in0.size());
+  for(int i = 0; i < in0.size(); i ++) {
+    assert(in0[i].size() == in0[0].size() &&
+           in0[i][0].size() == in0[0][0].size());
+    in[i].resize(rsize * in0[i].size());
+    for(int j = 0; j < in0[i].size(); j ++) {
+      assert(in0[i][j].size() == in0[i][0].size());
+      const auto work(resize * in0[i][j]);
+      in[i].setVector(j * work.size(), work);
+    }
+  }
+  const auto p(predv<T>(in, msz));
+  pair<vector<vector<SimpleVector<T> > >, vector<vector<SimpleVector<T> > > > res;
+  res.first.resize( p.first.size()  / 2);
+  res.second.resize(p.second.size() / 2);
+  for(int i = 1; i < p.first.size(); i += 2) {
+    res.first[i / 2].resize(in0[i / 2].size());
+    for(int j = 0; j < res.first[i / 2].size(); j ++)
+      res.first[i / 2][j] = reverse * p.first[i].subVector(j * rsize, rsize);
+    res.second[i / 2].resize(in0[i / 2].size());
+    for(int j = 0; j < res.second[i / 2].size(); j ++)
+      res.second[i / 2][j] = reverse * p.second[i].subVector(j * rsize, rsize);
+  }
+  return res;
+}
+
+template <typename T> pair<vector<vector<SimpleMatrix<T> > >, vector<vector<SimpleMatrix<T> > > > predvResizeMat(const vector<vector<SimpleMatrix<T> > >& in0, int msz = - 1) {
+  const auto pixels(T(int(in0.size() * 2 - 1)) / T(int(in0[0].size())) );
+  const int  ry(pixels * T(int(in0[0][0].rows())) * sqrt(T(int(in0[0][0].rows() * in0[0][0].rows() + in0[0][0].cols() * in0[0][0].cols() ))) / T(int(in0[0][0].rows() * in0[0][0].cols() )) );
+  const int  rx(pixels * T(int(in0[0][0].cols())) * sqrt(T(int(in0[0][0].rows() * in0[0][0].rows() + in0[0][0].cols() * in0[0][0].cols() ))) / T(int(in0[0][0].rows() * in0[0][0].cols() )) );
+  const auto resizeL((dft<T>(- ry).subMatrix(0, 0, ry, min(ry, in0[0][0].rows())) * dft<T>(in0[0][0].rows()).subMatrix(0, 0, min(ry, in0[0][0].rows()), in0[0][0].rows()) ).template real<T>() * T(ry) / T(int(in0[0][0].rows())) );
+  const auto resizeR((dft<T>(- rx).subMatrix(0, 0, rx, min(rx, in0[0][0].cols())) * dft<T>(in0[0][0].cols()).subMatrix(0, 0, min(rx, in0[0][0].cols()), in0[0][0].cols()) ).template real<T>().transpose() * T(rx) / T(int(in0[0][0].cols())) );
+  const auto reverseL((dft<T>(- in0[0][0].rows()).subMatrix(0, 0, in0[0][0].rows(), min(ry, in0[0][0].rows())) * dft<T>(ry).subMatrix(0, 0, min(ry, in0[0][0].rows()), ry) ).template real<T>() * T(int(in0[0][0].rows())) / T(ry) );
+  const auto reverseR((dft<T>(- in0[0][0].cols()).subMatrix(0, 0, in0[0][0].cols(), min(rx, in0[0][0].cols())) * dft<T>(rx).subMatrix(0, 0, min(rx, in0[0][0].cols()), rx) ).template real<T>().transpose() * T(int(in0[0][0].cols())) / T(rx) );
+  cerr << "Resize into (" << ry << ", " << rx << ")" << endl;
+  vector<SimpleVector<T> > in;
+  in.resize(in0.size());
+  for(int i = 0; i < in0.size(); i ++) {
+    assert(in0[i].size() == in0[0].size());
+    in[i].resize(ry * rx * in0[i].size());
+    for(int j = 0; j < in0[i].size(); j ++) {
+      const auto work(resizeL * in0[i][j] * resizeR);
+      for(int k = 0; k < work.rows(); k ++)
+        in[i].setVector(j * ry * rx + k * rx, work.row(k));
+    }
+  }
+  const auto p(predv<T>(in, msz));
+  pair<vector<vector<SimpleMatrix<T> > >, vector<vector<SimpleMatrix<T> > > > res;
+  res.first.resize( p.first.size()  / 2);
+  res.second.resize(p.second.size() / 2);
+  for(int i = 1; i < p.first.size(); i += 2) {
+    res.first[i / 2].resize(in0[i / 2].size());
+    for(int j = 0; j < res.first[i / 2].size(); j ++) {
+      SimpleMatrix<T> work(ry, rx);
+      for(int k = 0; k < work.rows(); k ++)
+        work.row(k) = p.first[i].subVector(j * ry * rx + k * rx, rx);
+      res.first[i / 2][j] = reverseL * work * reverseR;
+    }
+    res.second[i / 2].resize(in0[i / 2].size());
+    for(int j = 0; j < res.second[i / 2].size(); j ++) {
+      SimpleMatrix<T> work(ry, rx);
+      for(int k = 0; k < work.rows(); k ++)
+        work.row(k) = p.second[i].subVector(j * ry * rx + k * rx, rx);
+      res.second[i / 2][j] = reverseL * work * reverseR;
+    }
+  }
+  return res;
+}
+
+template <typename T> pair<vector<SimpleSparseTensor<T> >, vector<SimpleSparseTensor<T> > > predvResizeSTen(const vector<SimpleSparseTensor<T> >& in0, const vector<int>& idx, int msz = - 1) {
+  const int  rsize(pow(T(int(in0.size() * 2 - 1) ), T(int(1)) / T(int(3)) ) );
+  const auto resize((dft<T>(- rsize).subMatrix(0, 0, rsize, min(rsize, int(idx.size()))) * dft<T>(int(idx.size())).subMatrix(0, 0, min(rsize, int(idx.size())), int(idx.size())) ).template real<T>() * T(rsize) / T(int(idx.size())) );
+  const auto reverse((dft<T>(- int(idx.size()) ).subMatrix(0, 0, int(idx.size()), min(rsize, int(idx.size())) ) * dft<T>(rsize).subMatrix(0, 0, min(rsize, int(idx.size())), rsize) ).template real<T>() * T(int(idx.size())) / T(rsize) );
+  cerr << "Resize into " << rsize << endl;
+  vector<SimpleVector<T> > in;
+  in.resize(in0.size());
+  for(int i = 0; i < in0.size(); i ++) {
+    in[i].resize(rsize * rsize * rsize);
+    vector<SimpleMatrix<T> > tensor;
+    tensor.reserve(idx.size());
+    for(int j = 0; j < idx.size(); j ++) {
+      SimpleMatrix<T> work(idx.size(), idx.size());
+      for(int k = 0; k < idx.size(); k ++)
+        for(int m = 0; m < idx.size(); m ++)
+          work(k, m) = in0[i][idx[j]][idx[k]][idx[m]];
+      tensor.emplace_back(resize * work * resize.transpose());
+    }
+    for(int k = 0; k < rsize; k ++)
+      for(int m = 0; m < rsize; m ++) {
+        SimpleVector<T> work(idx.size());
+        for(int j = 0; j < idx.size(); j ++)
+          work[j] = tensor[j](k, m);
+        work = resize * work;
+        for(int j = 0; j < rsize; j ++)
+          in[i][k * rsize * rsize + m * rsize + j] = work[j];
+      }
+  }
+  const auto p(predv<T>(in, msz));
+  pair<vector<SimpleSparseTensor<T> >, vector<SimpleSparseTensor<T> > > res;
+  res.first.resize( p.first.size()  / 2);
+  res.second.resize(p.second.size() / 2);
+  for(int i = 1; i < p.first.size(); i += 2) {
+    vector<SimpleMatrix<T> > tf;
+    vector<SimpleMatrix<T> > tb;
+    tf.resize(idx.size(), SimpleMatrix<T>(rsize, rsize));
+    tb.resize(idx.size(), SimpleMatrix<T>(rsize, rsize));
+    for(int k = 0; k < rsize; k ++)
+      for(int m = 0; m < rsize; m ++) {
+        SimpleVector<T> workf(rsize);
+        SimpleVector<T> workb(rsize);
+        for(int j = 0; j < rsize; j ++) {
+          workf[j] = p.first[ i / 2][k * rsize * m * rsize + j];
+          workb[j] = p.second[i / 2][k * rsize * m * rsize + j];
+        }
+        workf = reverse * workf;
+        workb = reverse * workb;
+        for(int j = 0; j < idx.size(); j ++) {
+          tf[j](k, m) = workf[j];
+          tb[j](k, m) = workb[j];
+        }
+      }
+    for(int j = 0; j < idx.size(); j ++) {
+      const auto workf(reverse * (tf[j]) * reverse.transpose());
+      const auto workb(reverse * (tb[j]) * reverse.transpose());
+      for(int k = 0; k < idx.size(); k ++)
+        for(int m = 0; m < idx.size(); m ++) {
+          res.first[i / 2][idx[j]][idx[k]][idx[m]]  = workf(k, m);
+          res.second[i / 2][idx[j]][idx[k]][idx[m]] = workb(k, m);
+        }
+    }
+  }
+  return res;
 }
 
 #define _SIMPLELIN_
