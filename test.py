@@ -72,6 +72,18 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
+elif(argv[2] == "move"):
+  src = argv[3].split("%")
+  dst = argv[4].split("%")
+  try:
+    subprocess.call(["mv", src[0] + "0" + src[1], dst[0] + "0" + dst[1]])
+  except:
+    pass
+  try:
+    for t in range(1, int(argv[5])):
+      subprocess.call(["mv", src[0] + str(t) + src[1], dst[0] + str(t) + dst[1]])
+  except:
+    pass
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
