@@ -149,7 +149,7 @@ else:
     elif(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
       subprocess.call(["mogrify", "-equalize", "-compress", "none", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "obj" or argv[2] == "Obj" or argv[2] == "obj+" or argv[2] == "Obj+"):
+    elif(argv[2] == "obj" or argv[2] == "Obj" or argv[2] == "obj+" or argv[2] == "Obj+" or argv[2] == "obj0" or argv[2] == "Obj0"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps" or argv[2] == "jps+"):
       tt = "Tilt" + argv[2][len("jps"):]

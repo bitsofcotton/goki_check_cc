@@ -530,11 +530,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       result = SimpleMatrix<T>(data.rows(), data.cols()).O();
       for(int i = 0; i < result.rows(); i ++)
         for(int j = 0; j < result.cols(); j ++)
-          result(i, j) = sqrt(abs(
+          // N.B. thanks to https://en.wikipedia.org/wiki/Gaussian_curvature .
+          result(i, j) = abs(
             (zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j)) /
-            ((T(int(1)) + zx(i, j)) * (T(int(1)) + zy(i, j)) -
-             zx(i, j) * zy(i, j)) /
-            (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) ));
+            (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) /
+            (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) );
     }
     break;
   case INTEGRAW_BOTH:
@@ -578,7 +578,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         const auto Dop0((Dop.row(int(y0) / 2) + Dop.row(int(y0) / 2 + 1)) / T(2));
         const auto DDop(Dop * Dop);
         const auto DDop0((DDop.row(int(y0) / 2) + DDop.row(int(y0) / 2 + 1)) / T(2));
-        // N.B. curvature matrix det == EG - F^2, we see only \< relation.
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -599,50 +598,18 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
                   data(getImgPt<int>(i + kk - Dop0.size() / 2, data.rows()),
                        getImgPt<int>(j + ll - Dop0.size() / 2, data.cols()));
             }
-            // N.B. curvature theirselves and divide by sqrt(range).
-            //      division is needed because we compair same norm.
-            const auto lscore(sqrt(abs((L * N - M * M) / ((T(int(1)) + fu) * (T(int(1)) + fv) - fu * fv) / (fu * fu + fv * fv + T(int(1))))) / sqrt(T(int(Dop0.size()))));
+            // N.B. thanks to https://en.wikipedia.org/wiki/Gaussian_curvature .
+            const auto lscore(abs((L * N - M * M) / (fu * fu + fv * fv + T(int(1))) / (fu * fu + fv * fv + T(int(1))) ));
             if(zscore(i, j) <= lscore) {
               result(i, j) = T(zi + 1) / T(dratio);
               zscore(i, j) = lscore;
             }
           }
       }
-      // N.B. local to global, has a glitch with some singular point.
-      result = filter<T>(diff<T>(- result.rows()) * result * diff<T>(- result.cols()).transpose(), COLLECT_BOTH);
-      // N.B. for here, collecting each pixel with shrinkd causes
-      //      enough better result on global without tilt itself.
-      //      Tilt itself is ignored because of each focus behaves as diff ones.
-      //      So we add the tilt by each edge line information with
-      //      subtracting and adding global tilt.
-      // N.B. S S z dx dy == z2 + C.
-      //   we can select 2 of choises, 
-      //   (i)  C == - S S z dx dy, this is to subtract average.
-      //   (ii) C == 0, this is to take original input with
-      //                integration value half.
-      //   we select (i)  case to get global tilt on last output.
-      //   selecting (ii) causes flat enough in global output.
-      auto row(result.row(0));
-      auto col(result.col(0));
-      for(int i = 1; i < result.rows(); i ++) row += result.row(i);
-      for(int i = 1; i < result.cols(); i ++) col += result.col(i);
-      auto r(row[0]);
-      auto c(col[0]);
-      for(int i = 1; i < row.size(); i ++) r += row[i];
-      for(int i = 1; i < col.size(); i ++) c += col[i];
-      row = result.row(result.rows() - 1) - result.row(0);
-      col = result.col(result.cols() - 1) - result.col(0);
-      auto rd(row[0]);
-      auto cd(col[0]);
-      for(int i = 1; i < row.size(); i ++) rd += row[i];
-      for(int i = 1; i < col.size(); i ++) cd += col[i];
-      // N.B. we only need last / 2 operator in (i) case.
-      r = (rd - r) / (T(int(row.size())) * T(int(row.size() - 1)) * T(int(result.rows())) / T(int(2))) / T(int(2));
-      c = (cd - c) / (T(int(col.size())) * T(int(col.size() - 1)) * T(int(result.cols())) / T(int(2))) / T(int(2));
-      for(int i = 0; i < result.rows(); i ++)
-        for(int j = 0; j < result.cols(); j ++)
-          result(i, j) += r * T(i) + c * T(j);
+      // N.B. we don't need local to global with correct gaussian curvature.
       assert(result.rows() == data.rows() && result.cols() == data.cols());
+      // XXX: don't know why /= 8 works well.
+      result /= T(int(8));
     }
     break;
   case BLINK_Y:

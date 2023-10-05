@@ -24,7 +24,7 @@ Searching the Internet more...
     gokibin (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (cat|catr) <output.ppm> <input0.ppm> ...
     gokibin ([Tt]ilt|[Ss]box)+? <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
-    gokibin obj+? <rot> <input.ppm> <output.obj>
+    gokibin obj\[+0\]? <rot> <input.ppm> <output.obj>
     gokibin match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokibin recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
@@ -61,4 +61,5 @@ Searching the Internet more...
 2023/09/04 large fix around bump/obj/jps, better reasonable on logic.
 2023/09/06 bump local/global algorithm strategy change.
 2023/10/05 update lieonn to latest one.
+2023/10/06 curvature fix, also don't need to local to global trans in bump_both.
 

@@ -39,7 +39,7 @@ void usage(const char* en) {
   cout << en << " (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|integraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << en << " [oO]bj+? <rot> <input.ppm> <output.obj>" << endl;
+  cout << en << " [oO]bj[0+]? <rot> <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
@@ -214,7 +214,9 @@ int main(int argc, const char* argv[]) {
   } else if(strcmp(argv[1], "obj" ) == 0 ||
             strcmp(argv[1], "Obj" ) == 0 ||
             strcmp(argv[1], "obj+") == 0 ||
-            strcmp(argv[1], "Obj+") == 0) {
+            strcmp(argv[1], "Obj+") == 0 ||
+            strcmp(argv[1], "obj0") == 0 ||
+            strcmp(argv[1], "Obj0") == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
     if(argc < 5) {
       usage(argv[0]);
@@ -222,11 +224,12 @@ int main(int argc, const char* argv[]) {
     }
     if(!loadp2or3<num_t>(data, argv[3]))
       return - 1;
-    auto sd(shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("obj")]) / num_t(int(5)));
+    auto sd(argv[1][strlen("obj")] == '0' ? rgb2d<num_t>(data) :
+      shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("obj")]) );
     const auto rows(sd.rows());
     const auto cols(sd.cols());
           auto points(getTileVec<num_t>(std::move(sd)));
-    // XXX: after equalize.
+    // N.B. after equalize.
     if(argv[1][0] == 'O')
       for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
