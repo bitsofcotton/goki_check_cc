@@ -142,13 +142,10 @@ else:
       continue
     except:
       root, ext = os.path.splitext(line)
-    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
+    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq" and argv[2] != "clean"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "denlarge+" or argv[2] == "diffraw" or argv[2] == "integraw" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
+    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "denlarge+" or argv[2] == "diffraw" or argv[2] == "integraw" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-      subprocess.call(["mogrify", "-equalize", "-compress", "none", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "obj" or argv[2] == "Obj" or argv[2] == "obj+" or argv[2] == "Obj+" or argv[2] == "obj0" or argv[2] == "Obj0"):
       subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps" or argv[2] == "jps+"):
@@ -186,4 +183,9 @@ else:
       subprocess.call(["convert", line, root + "-collect-negate.ppm", "-compose", "multiply", "-composite", root + "-edge.png"])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
+    elif(argv[2] == "clean"):
+      # Thanks:
+      # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
+      # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
+      subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(100. / pixels) + "%", "-colorspace", "sRGB", "-colorspace", "RGB", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(100 * pixels) + "%", "-sigmoidal-contrast", "7.5", "-colorspace", "sRGB", root + "-clean.png"])
 
