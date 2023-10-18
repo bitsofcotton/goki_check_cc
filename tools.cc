@@ -36,8 +36,8 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|diffraw|integraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
-  cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (cat|catr) <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
@@ -67,8 +67,6 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
-     strcmp(argv[1], "diffraw") == 0 ||
-     strcmp(argv[1], "integraw") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
@@ -88,12 +86,6 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], COLLECT_BOTH, recur, rot);
-    else if(strcmp(argv[1], "diffraw") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], DIFFRAW_BOTH, recur, rot);
-    else if(strcmp(argv[1], "integraw") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], INTEGRAW_BOTH, recur, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
@@ -329,17 +321,17 @@ int main(int argc, const char* argv[]) {
     }
   } else if(strcmp(argv[1], "cat") == 0 ||
             strcmp(argv[1], "catr") == 0) {
-    if(argc < 4) {
+    if(argc < 3) {
       usage(argv[0]);
       return - 1;
     }
     vector<vector<SimpleMatrix<num_t> > > in;
-    in.resize(argc - 3);
-    for(int i = 3; i < argc; i ++) {
+    in.resize(argc - 2);
+    for(int i = 2; i < argc; i ++) {
       vector<SimpleMatrix<num_t> > ibuf;
       if(!loadp2or3<num_t>(ibuf, argv[i]))
         return - 2;
-      in[i - 3] = std::move(ibuf);
+      in[i - 2] = std::move(ibuf);
     }
     const auto idx(in.size() - 1);
     vector<SimpleMatrix<num_t> > out;
@@ -366,7 +358,7 @@ int main(int argc, const char* argv[]) {
       const auto cat(catImage<num_t>(glay));
       for(int i = 0; i < cat.size(); i ++) {
         for(int j = 0; j < cat[i].size(); j ++)
-          std::cout << argv[3 + (strcmp(argv[1], "catr") == 0 ? cat[i][j]
+          std::cout << argv[2 + (strcmp(argv[1], "catr") == 0 ? cat[i][j]
                          : cat[i][j] / min(in00sz, 1 + 5 + 1)) ] << std::endl;
         std::cout << std::endl;
       }

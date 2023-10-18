@@ -21,10 +21,10 @@ Searching the Internet more...
 # Usage
     make gokibin
     
-    gokibin (collect|sharpen|bump|enlarge|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
-    gokibin (cat|catr) <output.ppm> <input0.ppm> ...
+    gokibin (collect|sharpen|bump|enlarge|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
+    gokibin (cat|catr) <input0.ppm> ...
     gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
-    gokibin obj <rot> <input.ppm> <output.obj>
+    gokibin obj <input.ppm> <output.obj>
     gokibin match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokibin recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
@@ -63,5 +63,5 @@ Searching the Internet more...
 2023/10/05 update lieonn to latest one.
 2023/10/06 curvature fix, also don't need to local to global trans in bump_both.
 2023/10/07 test.py bump command change, add clean command. update readme.
-2023/10/18 update around bump, we had should to cleansq after bump. really close around bump with this, this is the reasonable one for one picture condition.
+2023/10/18 update around bump, we had should to cleansq after bump. really close around bump with this, this is the reasonable one for one picture condition. code clean.
 

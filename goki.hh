@@ -63,8 +63,6 @@ typedef enum {
   BLUR_X,
   BLUR_Y,
   BLUR_BOTH,
-  INTEGRAW_BOTH,
-  DIFFRAW_BOTH,
   COLLECT_BOTH,
   BUMP_BOTH,
   BLINK_X,
@@ -535,20 +533,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
             (zxx(i, j) * zyy(i, j) - zxy(i, j) * zxy(i, j)) /
             (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) /
             (zx(i, j) * zx(i, j) + zy(i, j) * zy(i, j) + T(int(1))) );
-    }
-    break;
-  case INTEGRAW_BOTH:
-    result = (diff<T>(- data.rows()) * data + data * diff<T>(- data.cols()).transpose()) / T(int(2));
-    break;
-  case DIFFRAW_BOTH:
-    {
-      auto avgdiffL(dft<T>(data.rows()));
-      auto avgdiffR(dft<T>(data.cols()));
-      for(int i = 1; i < avgdiffL.rows(); i ++)
-        avgdiffL.row(i) *= complex<T>(T(int(0)), - T(int(2))) * Pi * T(int(i)) / T(int(avgdiffL.rows()));
-      for(int i = 1; i < avgdiffR.rows(); i ++)
-        avgdiffR.row(i) *= complex<T>(T(int(0)), - T(int(2))) * Pi * T(int(i)) / T(int(avgdiffR.rows()));
-      result = ((dft<T>(- data.rows()) * avgdiffL).template real<T>() * data + data * (dft<T>(- data.cols()) * avgdiffR).template real<T>().transpose()) / T(int(2));
     }
     break;
   case BUMP_BOTH:

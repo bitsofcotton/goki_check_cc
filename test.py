@@ -29,10 +29,8 @@ elif(argv[2] == "cat" or argv[2] == "catr" or argv[2] == "catb" or argv[2] == "c
   cmd = [argv[1], argv[2]]
   if(argv[2] == "cat" or argv[2] == "catb"):
     cmd[1] = "catr"
-    cmd.append("dummy")
   elif(argv[2] == "catr" or argv[2] == "catbr"):
     cmd[1] = "cat"
-    cmd.append("dummy")
   for s in argv[3:]:
     r, e = os.path.splitext(s)
     if(e != ".ppm"):
@@ -144,7 +142,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq" and argv[2] != "cleansq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "diffraw" or argv[2] == "integraw" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
+    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
