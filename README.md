@@ -21,20 +21,20 @@ Searching the Internet more...
 # Usage
     make gokibin
     
-    gokibin (collect|sharpen|bump|enlarge|denlarge+?|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
+    gokibin (collect|sharpen|bump|enlarge|diffraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (cat|catr) <output.ppm> <input0.ppm> ...
-    gokibin ([Tt]ilt|[Ss]box)+? <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
-    gokibin [Oo]bj[+0]? <rot> <input.ppm> <output.obj>
+    gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
+    gokibin obj <rot> <input.ppm> <output.obj>
     gokibin match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokibin recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokibin recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokibin habit <in0.obj> <in1.obj> <out.obj>
-    python[23] test.py ./gokibin (sharpen|bump|enlarge|denlarge+?|flarge|represent|jps+?|[Tt]ilt+?|[Oo]bj[+0]?|[Ss]box|prep|presq|nop|limit|bit|clean) <param> input0.png ...
-    python[23] test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
-    python[23] test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
-    python[23] test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
-    python[23] test.py ./gokibin i2i <param> img0.png ...
+    python3 test.py ./gokibin (sharpen|bump|enlarge|flarge|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit|cleansq) <param> input0.png ...
+    python3 test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
+    python3 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
+    python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
+    python3 test.py ./gokibin i2i <param> img0.png ...
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -63,4 +63,5 @@ Searching the Internet more...
 2023/10/05 update lieonn to latest one.
 2023/10/06 curvature fix, also don't need to local to global trans in bump_both.
 2023/10/07 test.py bump command change, add clean command. update readme.
+2023/10/18 update around bump, we had should to cleansq after bump. really close around bump with this, this is the reasonable one for one picture condition.
 

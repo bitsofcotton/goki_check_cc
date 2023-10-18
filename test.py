@@ -142,26 +142,29 @@ else:
       continue
     except:
       root, ext = os.path.splitext(line)
-    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq" and argv[2] != "clean"):
+    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq" and argv[2] != "cleansq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "denlarge" or argv[2] == "denlarge+" or argv[2] == "diffraw" or argv[2] == "integraw" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "bump"):
+    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "diffraw" or argv[2] == "integraw" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "obj" or argv[2] == "Obj" or argv[2] == "obj+" or argv[2] == "Obj+" or argv[2] == "obj0" or argv[2] == "Obj0"):
-      subprocess.call([argv[1], argv[2], str(rot), root + "-bump.ppm", root + ".obj"])
-    elif(argv[2] == "jps" or argv[2] == "jps+"):
-      tt = "Tilt" + argv[2][len("jps"):]
-      subprocess.call([argv[1], tt,  "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-      subprocess.call([argv[1], tt, "-1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+    elif(argv[2] == "bump"):
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
+      subprocess.call(["python3", argv[0], argv[1], "cleansq", root + "-bump0.ppm"])
+      subprocess.call(["convert", root + "-bump0-cleansq.png", "-format", "ppm", "-compress", "none", root + "-bump.ppm"])
+    elif(argv[2] == "obj"):
+      subprocess.call([argv[1], argv[2], root + "-bump.ppm", root + ".obj"])
+    elif(argv[2] == "jps"):
+      subprocess.call([argv[1], "tilt",  "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "-1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
       subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
       subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereoR.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
       subprocess.call(["montage", root + "-stereoR.jps", "-geometry", "100%x100%", root + "-stereoR.png"])
-    elif(argv[2] == "tilt" or argv[2] == "tilt+"):
+    elif(argv[2] == "tilt"):
       for s in range(0, pixels * 2):
-        subprocess.call([argv[1], "T" + argv[2][1:], "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + "-bump.ppm", root + "-tilt-" + str(s) + ".ppm"])
+        subprocess.call([argv[1], argv[2], "1", "4", str((s - pixels) / float(pixels) * psi), root + ".ppm", root + "-bump.ppm", root + "-tilt-" + str(s) + ".ppm"])
         subprocess.call(["cp", root + "-tilt-" + str(s) + ".ppm", root + "-tilt-" + str(pixels * 4 - s - 1) + ".ppm"])
       subprocess.call(["ffmpeg", "-loop", "1", "-i", root + "-tilt-%d.ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "60", root + ".mp4"])
-    elif(argv[2] == "sbox" or argv[2] == "sbox+"):
+    elif(argv[2] == "sbox"):
       for s in range(0, pixels):
         subprocess.call([argv[1], argv[2], str(int(s - (pixels + 1) / 2.)), str(pixels * 2), "0", root + ".ppm", root + "-bump.ppm", root + "-sbox-" + str(pixels - s) + ".ppm"])
     elif(argv[2] == "sboxb2w"):
@@ -183,9 +186,15 @@ else:
       subprocess.call(["convert", line, root + "-collect-negate.ppm", "-compose", "multiply", "-composite", root + "-edge.png"])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "clean"):
+    elif(argv[2] == "cleansq"):
+      w = h = 0
+      with open(root + ".ppm") as f:
+        f.readline()
+        a = f.readline().split(" ")
+        w = int(a[0])
+        h = int(a[1])
       # Thanks:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
-      subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(100. / pixels) + "%", "-colorspace", "sRGB", "-colorspace", "RGB", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(100 * pixels) + "%", "-sigmoidal-contrast", "7.5", "-colorspace", "sRGB", root + "-clean.png"])
+      subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25)) + "%", "-colorspace", "sRGB", "-colorspace", "RGB", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", "-colorspace", "sRGB", root + "-cleansq.png"])
 

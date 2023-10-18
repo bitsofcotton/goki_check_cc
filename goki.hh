@@ -608,8 +608,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       }
       // N.B. we don't need local to global with correct gaussian curvature.
       assert(result.rows() == data.rows() && result.cols() == data.cols());
-      // XXX: don't know why /= 8 works well.
-      result /= T(int(8));
     }
     break;
   case BLINK_Y:
@@ -639,33 +637,6 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     assert(0 && "unknown command in filter (should not be reached.)");
   }
   return result;
-}
-
-template <typename T> SimpleMatrix<T> shrinkd(const SimpleMatrix<T>& in, const char& m = '\0') {
-  const auto sx(sqrt(T(in.rows())));
-  const auto sy(sqrt(T(in.cols())));
-  const auto lx(T(in.rows()) / log(T(in.rows())) * log(T(int(2))));
-  const auto ly(T(in.cols()) / log(T(in.cols())) * log(T(int(2))));
-  SimpleMatrix<T> res(m ? max(sx, lx) : min(sx, lx),
-                      m ? max(sy, ly) : min(sy, ly));
-  res.O();
-  for(int i = 0; i < res.rows(); i ++)
-    for(int j = 0; j < res.cols(); j ++) {
-      int cnt(0);
-      for(int ii  = i * in.rows() / res.rows();
-              ii < min((i + 1) * in.rows() / res.rows(), in.rows());
-              ii ++)
-        for(int jj  = j * in.cols() / res.cols();
-                jj < min((j + 1) * in.cols() / res.cols(), in.cols());
-                jj ++, cnt ++) res(i, j) += in(ii, jj);
-      if(cnt) res(i, j) /= T(cnt);
-    }
-  return res;
-}
-
-template <typename T> SimpleMatrix<T> shrinkde(const SimpleMatrix<T>& in, const char& m = '\0') {
-  auto sd(shrinkd<T>(in, m));
-  return (dft<T>(- in.rows()).subMatrix(0, 0, in.rows(), sd.rows()) * dft<T>(sd.rows())).template real<T>() * sd * (dft<T>(- in.cols()).subMatrix(0, 0, in.cols(), sd.cols()) * dft<T>(sd.cols())).template real<T>().transpose() * T(in.rows() * in.cols()) / T(sd.rows() * sd.cols());
 }
 
 template <typename T> class match_t {

@@ -36,10 +36,10 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|denlarge|denlarge+|diffraw|integraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|diffraw|integraw|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <output.ppm> <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << en << " [oO]bj[0+]? <rot> <input.ppm> <output.obj>" << endl;
+  cout << en << " obj <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
@@ -70,8 +70,6 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "diffraw") == 0 ||
      strcmp(argv[1], "integraw") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
-     strcmp(argv[1], "denlarge") == 0 ||
-     strcmp(argv[1], "denlarge+") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
      strcmp(argv[1], "represent") == 0 ||
@@ -99,10 +97,6 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
-    else if(strcmp(argv[1], "denlarge") == 0 ||
-            strcmp(argv[1], "denlarge+") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(filter<num_t>(shrinkd<num_t>(data[i], argv[1][strlen("denlarge")]), ENLARGE_BOTH, recur, rot), CLIP);
     else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
@@ -169,8 +163,8 @@ int main(int argc, const char* argv[]) {
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
-        strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0
-        ? normalize<num_t>(data) : data,
+        strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0 &&
+        strcmp(argv[1], "bump") != 0 ? normalize<num_t>(data) : data,
         strcmp(argv[1], "limit") == 0 ? recur : 65535) )
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
@@ -211,38 +205,25 @@ int main(int argc, const char* argv[]) {
     }
     if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac)))
       return - 1;
-  } else if(strcmp(argv[1], "obj" ) == 0 ||
-            strcmp(argv[1], "Obj" ) == 0 ||
-            strcmp(argv[1], "obj+") == 0 ||
-            strcmp(argv[1], "Obj+") == 0 ||
-            strcmp(argv[1], "obj0") == 0 ||
-            strcmp(argv[1], "Obj0") == 0) {
+  } else if(strcmp(argv[1], "obj" ) == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
-    if(argc < 5) {
+    if(argc < 4) {
       usage(argv[0]);
       return - 1;
     }
-    if(!loadp2or3<num_t>(data, argv[3]))
+    if(!loadp2or3<num_t>(data, argv[2]))
       return - 1;
-    auto sd(argv[1][strlen("obj")] == '0' ? rgb2d<num_t>(data) :
-      shrinkd<num_t>(rgb2d<num_t>(data), argv[1][strlen("obj")]) );
+    auto sd(rgb2d<num_t>(data));
     const auto rows(sd.rows());
     const auto cols(sd.cols());
           auto points(getTileVec<num_t>(std::move(sd)));
-    // N.B. after equalize.
     if(argv[1][0] == 'O')
       for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
-                   mesh2<num_t>(points), argv[4]);
-    saveMTL<num_t>(argv[4], (string(argv[4]) + string(".mtl")).c_str());
+                   mesh2<num_t>(points), argv[3]);
+    saveMTL<num_t>(argv[3], (string(argv[3]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
-            strcmp(argv[1], "tilt+") == 0 ||
-            strcmp(argv[1], "Tilt") == 0 ||
-            strcmp(argv[1], "Tilt+") == 0 ||
-            strcmp(argv[1], "sbox") == 0 ||
-            strcmp(argv[1], "sbox+") == 0 ||
-            strcmp(argv[1], "Sbox") == 0 ||
-            strcmp(argv[1], "Sbox+") == 0) {
+            strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) {
       usage(argv[0]);
       return - 1;
@@ -259,7 +240,7 @@ int main(int argc, const char* argv[]) {
     if(!loadp2or3<num_t>(bump, argv[6]))
       return - 2;
     assert(strlen("tilt" ) == strlen("sbox" ));
-    bump[0] = shrinkde<num_t>(rgb2d<num_t>(bump), argv[1][strlen("tilt")]) / num_t(int(5));
+    bump[0] = rgb2d<num_t>(bump);
     const auto tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
       triangles<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
         strncmp(argv[1], "sbox", strlen("sbox")) == 0 ?
@@ -270,30 +251,11 @@ int main(int argc, const char* argv[]) {
             num_t(min(data[0].rows(), data[0].cols())) :
           - num_t(1000000)
       ));
-    int yh(0);
-    int xw(0);
-    if(argv[1][0] == 'T' || argv[1][0] == 'S') {
-      SimpleVector<num_t> v(3);
-      v.O();
-      v = tiltprep<num_t>(data[0], index, Mindex, psi).transform(v);
-      yh = int(abs(v[0]));
-      xw = int(abs(v[1]));
-    }
     for(int j = 0; j < data.size(); j ++)
       data[j] = pullRefMatrix<num_t>(tilt0, 1, data[j]);
-    auto resd(data);
-    for(int k = 0; k < resd.size(); k ++)
-      for(int i = 0; i < resd[k].rows(); i ++)
-        for(int j = 0; j < resd[k].cols(); j ++)
-          resd[k](i, j) =
-            data[k](min(yh + i * (resd[k].rows() - yh * 2) / resd[k].rows(),
-                      resd[k].rows() - 1),
-                    min(xw + j * (resd[k].cols() - xw * 2) / resd[k].cols(),
-                      resd[k].cols() - 1) );
-    if(!savep2or3<num_t>(argv[7], resd))
+    if(! savep2or3<num_t>(argv[7], data))
       return - 1;
-  } else if(strcmp(argv[1], "match") == 0 ||
-            strcmp(argv[1], "match+") == 0) {
+  } else if(strcmp(argv[1], "match") == 0) {
     if(argc < 10) {
       usage(argv[0]);
       return - 1;
@@ -313,11 +275,11 @@ int main(int argc, const char* argv[]) {
       return - 2;
     const string outbase(argv[10]);
     const auto shape0(vboxdst < 0
-      ? getHesseVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump0), argv[1][strlen("match")]) / num_t(int(5)), abs(vboxdst))
-      : getTileVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump0), argv[1][strlen("match")]) / num_t(int(5)), abs(vboxdst)));
+      ? getHesseVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst))
+      : getTileVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst)));
     const auto shape1(vboxsrc < 0
-      ? getHesseVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump1), argv[1][strlen("match")]) / num_t(int(5)), abs(vboxsrc))
-      : getTileVec<num_t>(shrinkde<num_t>(rgb2d<num_t>(bump1), argv[1][strlen("match")]) / num_t(int(5)), abs(vboxsrc)));
+      ? getHesseVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc))
+      : getTileVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc)));
     const auto m(matchPartialR<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);

@@ -1,4 +1,4 @@
-CXX=	/usr/local/bin/clang++
+CXX=	clang++
 #CXX=	eg++
 
 # compiler flags.
