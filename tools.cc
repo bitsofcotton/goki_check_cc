@@ -309,7 +309,7 @@ int main(int argc, const char* argv[]) {
       reref.O();
       for(int i = 0; i < m.size(); i ++) {
         const auto rd(draw<num_t>(rin1, shape1,
-          takeShape<num_t>(shape1, shape0, ~ m[i], iemph), mhull1[i]));
+          takeShape<num_t>(shape1, shape0, m[i], iemph), mhull1[i]));
         for(int j = 0; j < min(reref.rows(), rd.rows()); j ++)
           for(int k = 0; k < min(reref.cols(), rd.cols()); k ++)
             if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);
