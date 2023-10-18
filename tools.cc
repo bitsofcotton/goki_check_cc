@@ -289,20 +289,20 @@ int main(int argc, const char* argv[]) {
       out[0] += showMatch<num_t>(draw<num_t>(in0[0] * num_t(0),
                      shape0, mhull0[i]), shape0, mhull0[i]);
     out[1] = out[2] = out[0];
-    savep2or3<num_t>((outbase + string("-repl0.ppm")).c_str(), normalize<num_t>(out), false);
+    savep2or3<num_t>((outbase + string("-repl0.ppm")).c_str(), normalize<num_t>(out) );
     out[0] = SimpleMatrix<num_t>(in1[0].rows(), in1[0].cols()).O();
     for(int i = 0; i < m.size(); i ++)
       out[0] += showMatch<num_t>(draw<num_t>(in1[0] * num_t(0),
                    shape1, mhull1[i]), shape1, mhull1[i]);
     out[1] = out[2] = out[0];
-    savep2or3<num_t>((outbase + string("-repl1.ppm")).c_str(), normalize<num_t>(out), false);
+    savep2or3<num_t>((outbase + string("-repl1.ppm")).c_str(), normalize<num_t>(out) );
     out[0] = SimpleMatrix<num_t>(in0[0].rows(), in0[0].cols()).O();
     for(int i = 0; i < m.size(); i ++)
       out[0] += showMatch<num_t>(draw<num_t>(in0[0] * num_t(0),
                    m[i].transform(shape1), mhull1[i]),
                    m[i].transform(shape1), mhull1[i]);
     out[1] = out[2] = out[0];
-    savep2or3<num_t>((outbase + string("-repl2.ppm")).c_str(), normalize<num_t>(out), false);
+    savep2or3<num_t>((outbase + string("-repl2.ppm")).c_str(), normalize<num_t>(out) );
     for(int i = 0; i < nemph; i ++) {
       const auto iemph(num_t(i) / num_t(nemph));
       SimpleMatrix<num_t> reref(rin1.rows(), rin1.cols());
@@ -317,7 +317,7 @@ int main(int argc, const char* argv[]) {
       for(int idx = 0; idx < out.size(); idx ++)
         out[idx] = pullRefMatrix<num_t>(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
       savep2or3<num_t>((outbase + string("-") + to_string(i) + string("-") +
-                       to_string(nemph) + string(".ppm")).c_str(), out, false);
+                       to_string(nemph) + string(".ppm")).c_str(), out);
     }
   } else if(strcmp(argv[1], "cat") == 0 ||
             strcmp(argv[1], "catr") == 0) {
