@@ -500,20 +500,11 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         cerr << "e" << flush;
         eop.resize((size - 1) * recur + 1, size);
         for(int j = 0; j < eop.rows(); j ++)
-          eop.row(j) = taylor<T>(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
-        // N.B. sampling th. hack. (nyquist freq).
-        eop = eop * (dft<T>(- eop.cols()).subMatrix(0, 0, eop.cols(), eop.cols() / 2) * dft<T>(eop.cols()).subMatrix(0, 0, eop.cols() / 2, eop.cols()) ).template real<T>().transpose();
+          // N.B. sampling th. hack. (nyquist freq).
+          eop.row(j) = (dft<T>(- eop.cols()) * dft<T>(eop.cols() * 2).subMatrix(0, 0, eop.cols(), eop.cols() * 2)).template real<T>() * taylor<T>(eop.cols() * 2, T(j * 2) / T(eop.rows() - 1) * T(eop.cols() - 1)) / T(int(2));
       }
      eopi:
       result = Eop[size][recur] * data;
-      auto work(data);
-      for(int i = 0; i < work.rows(); i ++)
-        for(int j = 0; j < work.cols(); j ++)
-          work(i, j) = T(int(1)) / (T(int(1)) / T(int(65536)) + data(i, j));
-      work = Eop[size][recur] * work;
-      for(int i = 0; i < work.rows(); i ++)
-        for(int j = 0; j < work.cols(); j ++)
-          result(i, j) = sqrt(max(T(int(0)), result(i, j)) / (T(int(1)) / T(int(65536)) + max(T(int(0)), work(i, j))) );
     }
     break;
   case FLARGE_Y:
