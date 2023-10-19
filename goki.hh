@@ -501,6 +501,8 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         eop.resize((size - 1) * recur + 1, size);
         for(int j = 0; j < eop.rows(); j ++)
           eop.row(j) = taylor<T>(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
+        // N.B. sampling th. hack. (nyquist freq).
+        eop = eop * (dft<T>(- eop.cols()).subMatrix(0, 0, eop.cols(), eop.cols() / 2) * dft<T>(eop.cols()).subMatrix(0, 0, eop.cols() / 2, eop.cols()) ).template real<T>().transpose();
       }
      eopi:
       result = Eop[size][recur] * data;

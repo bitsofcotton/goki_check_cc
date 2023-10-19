@@ -64,4 +64,5 @@ Searching the Internet more...
 2023/10/06 curvature fix, also don't need to local to global trans in bump_both.
 2023/10/07 test.py bump command change, add clean command. update readme.
 2023/10/18 update around bump, we had should to cleansq after bump. really close around bump with this, this is the reasonable one for one picture condition. code clean.
+2023/10/20 enlarge cmd improve.
 
