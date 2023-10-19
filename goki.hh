@@ -506,6 +506,14 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
       }
      eopi:
       result = Eop[size][recur] * data;
+      auto work(data);
+      for(int i = 0; i < work.rows(); i ++)
+        for(int j = 0; j < work.cols(); j ++)
+          work(i, j) = T(int(1)) / (T(int(1)) / T(int(65536)) + data(i, j));
+      work = Eop[size][recur] * work;
+      for(int i = 0; i < work.rows(); i ++)
+        for(int j = 0; j < work.cols(); j ++)
+          result(i, j) = sqrt(max(T(int(0)), result(i, j)) / (T(int(1)) / T(int(65536)) + max(T(int(0)), work(i, j))) );
     }
     break;
   case FLARGE_Y:

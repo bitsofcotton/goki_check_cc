@@ -88,7 +88,9 @@ int main(int argc, const char* argv[]) {
         data[i] = filter<num_t>(data[i], COLLECT_BOTH, recur, rot);
     else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
+        try {
+          data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
+        } catch(const char* e) { cerr << e << endl; }
     else if(strcmp(argv[1], "flarge") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
