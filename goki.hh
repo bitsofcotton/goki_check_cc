@@ -296,6 +296,7 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
     cache >> s;
     cache.close();
   } else {
+/*
     if(2 < size) {
       const auto s0(sharpen<T>(size - 1) * T(size - 1));
       s = SimpleMatrix<T>(size, size).O().setMatrix(0, 0, s0);
@@ -305,6 +306,7 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
       s /= T(2);
     } else
       s  = SimpleMatrix<T>(size, size).O();
+*/
     auto dfts(dft<T>(size));
     static const auto Pi(atan(T(1)) * T(4));
     dfts.row(0) *= complex<T>(T(0));
@@ -317,9 +319,11 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
       //      series, and both picture of dft is same, them, pick {x0, x1, ...}.
       dfts.row(i) /= exp(complex<T>(T(0), Pi * T(i) / T(dfts.rows()))) - complex<T>(T(1));
     }
-    s += (dft<T>(- size) * dfts).template real<T>() / T(size - 1);
+    s = (dft<T>(- size) * dfts).template real<T>() / T(size - 1);
+/*
     if(2 < size)
       s /= T(size);
+*/
     ofstream ocache(file.c_str());
     ocache << s;
     ocache.close();
@@ -474,13 +478,7 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     }
     break;
   case SHARPEN_Y:
-    {
-      const auto shp(sharpen<T>(int(data.rows())) * data);
-      result = data;
-      for(int i = 0; i < data.rows(); i ++)
-        result.row(i) -= shp.row(i);
-      result = filter<T>(result, CLIP);
-    }
+    result = filter(data - sharpen<T>(int(data.rows())) * data, CLIP);
     break;
   case ENLARGE_Y:
     {

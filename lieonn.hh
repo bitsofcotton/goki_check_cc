@@ -65,7 +65,9 @@ using std::getline;
   using namespace std;
   typedef uint64_t myuint;
   typedef int64_t  myint;
-  typedef long double myfloat;
+  // XXX:
+  // typedef long double myfloat;
+  typedef float myfloat;
 #else
 
 // Double int to new int class.
@@ -4041,7 +4043,8 @@ template <typename T> pair<vector<SimpleVector<T> >, vector<SimpleVector<T> > > 
     if(in.size() - 4 - p0 - 1 + 2 < 4 + 2) break;
 */
   assert(0 < skip);
-  auto p0(int(in.size() - 4 - 1 + 2 - 4 - 2) / skip);
+  // const auto p0(int(in.size() - 4 - 1 + 2 - 4 - 2) / skip);
+  const int p0(ceil(sqrt(T(int(in.size() - 4 - 1 + 2 - 4 - 2) / skip) )) );
   vector<SimpleVector<T> > invariant;
   invariant.resize(in.size());
 #if defined(_OPENMP)

@@ -35,6 +35,7 @@ Searching the Internet more...
     python3 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python3 test.py ./gokibin i2i <param> img0.png ...
+    python3 test.py qredg pextend <pixels> in.png
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -65,4 +66,5 @@ Searching the Internet more...
 2023/10/07 test.py bump command change, add clean command. update readme.
 2023/10/18 update around bump, we had should to cleansq after bump. really close around bump with this, this is the reasonable one for one picture condition. code clean.
 2023/10/20 enlarge cmd improve and fix.
+2023/10/24 pextend command retry.
 
