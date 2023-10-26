@@ -134,19 +134,22 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
       subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i--02.ppm", "-.02"])
 elif(argv[2] == "pextend"):
-  pixels = int(argv[3])
-  root, ext = os.path.splitext(argv[4])
-  subprocess.call(["convert", argv[4], "-compress", "none", root + "-pext.ppm"])
-  for recur in range(0, pixels):
+  for line in argv[3:]:
+    root, ext = os.path.splitext(line)
+    subprocess.call(["convert", line, "-compress", "none", root + "-pext.ppm"])
     w = h = 0
     with open(root + "-pext.ppm") as f:
       f.readline()
       a = f.readline().split(" ")
       w = int(a[0])
       h = int(a[1])
-    subprocess.call(["mogrify", "-resize", str(w * w) + "x" + str(h * h) + "!", "-compress", "none", root + "-pext.ppm"])
+    subprocess.call(["mogrify", "-resize", str(w * w) + "x" + str(h) + "!", "-compress", "none", root + "-pext.ppm"])
     subprocess.call([argv[1], root + "-pext.ppm"])
-    subprocess.call(["mogrify", "-resize", str(w) + "x" + str(h + int(pow(h * h - 4 - 1 + 2 - 4 - 2, .25) + .999) * 2) + "!", "-compress", "none", root + "-pext.ppm"])
+    with open(root + "-pext.ppm") as f:
+      f.readline()
+      a = f.readline().split(" ")
+      h = int(a[1])
+    subprocess.call(["mogrify", "-resize", str(w) + "x" + str(h) + "!", "-format", "png", root + "-pext.ppm"])
 else:
   for line in argv[3:]:
     try:
