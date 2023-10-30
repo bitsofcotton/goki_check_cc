@@ -68,4 +68,5 @@ Searching the Internet more...
 2023/10/20 enlarge cmd improve and fix.
 2023/10/24 pextend command retry.
 2023/10/27 pextend command close. prepare to all close.
+2023/10/30 copy structure reliably with randtools meaning.
 
