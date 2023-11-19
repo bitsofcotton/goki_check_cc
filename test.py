@@ -150,6 +150,30 @@ elif(argv[2] == "pextend"):
       a = f.readline().split(" ")
       h = int(a[1])
     subprocess.call(["mogrify", "-resize", str(w) + "x" + str(h) + "!", "-format", "png", root + "-pext.ppm"])
+elif(argv[2] == "pred"):
+  w = h = 0
+  for line in argv[4:]:
+    root, ext = os.path.splitext(line)
+    subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
+    with open(root + ".ppm") as f:
+      f.readline()
+      a = f.readline().split(" ")
+      w0 = int(a[0])
+      h0 = int(a[1])
+      if(w == 0): w = w0
+      if(h == 0): h = h0
+      if(w != w0): sys.exit(- 1)
+      if(h != h0): sys.exit(- 1)
+  r  = pow((pow(len(argv[4:]) / int(argv[3]), 4.) / 3.) / w / h, .5)
+  w *= r
+  h *= r
+  w  = int(w)
+  h  = int(h)
+  cmd = [argv[1]]
+  for line in argv[4:]:
+    subprocess.call(["mogrify", "-compress", "none", "-resize", str(w) + "x" + str(h) + "!", root + ".ppm"])
+    cmd.append(root + ".ppm")
+  subprocess.call(cmd)
 else:
   for line in argv[3:]:
     try:

@@ -36,6 +36,7 @@ Searching the Internet more...
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python3 test.py ./gokibin i2i <param> img0.png ...
     python3 test.py qredg pextend in.png
+    python3 test.py predg pred in0.png ...
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -69,4 +70,5 @@ Searching the Internet more...
 2023/10/24 pextend command retry.
 2023/10/27 pextend command close. prepare to all close.
 2023/10/30 copy structure reliably with randtools meaning.
+2023/11/19 add pred command.
 
