@@ -171,6 +171,7 @@ elif(argv[2] == "pred"):
   h  = int(h)
   cmd = [argv[1]]
   for line in argv[4:]:
+    root, ext = os.path.splitext(line)
     subprocess.call(["mogrify", "-compress", "none", "-resize", str(w) + "x" + str(h) + "!", root + ".ppm"])
     cmd.append(root + ".ppm")
   subprocess.call(cmd)
