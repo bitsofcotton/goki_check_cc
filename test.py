@@ -150,31 +150,6 @@ elif(argv[2] == "pextend"):
       a = f.readline().split(" ")
       h = int(a[1])
     subprocess.call(["mogrify", "-resize", str(w) + "x" + str(h) + "!", "-format", "png", root + "-pext.ppm"])
-elif(argv[2] == "pred"):
-  w = h = 0
-  for line in argv[4:]:
-    root, ext = os.path.splitext(line)
-    subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    with open(root + ".ppm") as f:
-      f.readline()
-      a = f.readline().split(" ")
-      w0 = int(a[0])
-      h0 = int(a[1])
-      if(w == 0): w = w0
-      if(h == 0): h = h0
-      if(w != w0): sys.exit(- 1)
-      if(h != h0): sys.exit(- 1)
-  r  = pow((pow(len(argv[4:]) / int(argv[3]), 4.) / 3.) / w / h, .5)
-  w *= r
-  h *= r
-  w  = int(w)
-  h  = int(h)
-  cmd = [argv[1]]
-  for line in argv[4:]:
-    root, ext = os.path.splitext(line)
-    subprocess.call(["mogrify", "-compress", "none", "-resize", str(w) + "x" + str(h) + "!", root + ".ppm"])
-    cmd.append(root + ".ppm")
-  subprocess.call(cmd)
 else:
   for line in argv[3:]:
     try:
@@ -226,7 +201,7 @@ else:
       subprocess.call(["convert", line, root + "-collect-negate.ppm", "-compose", "multiply", "-composite", root + "-edge.png"])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "cleans" or argv[2] == "cleansq"):
+    elif(argv[2] == "cleans" or argv[2] == "cleans2" or argv[2] == "cleansq"):
       w = h = 0
       with open(root + ".ppm") as f:
         f.readline()
@@ -238,6 +213,8 @@ else:
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
       if(argv[2][- 1] == "q"):
         subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25)) + "%", "-colorspace", "sRGB", "-colorspace", "RGB", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", "-colorspace", "sRGB", root + "-cleansq.png"])
+      elif(argv[2][- 1] == "2"):
+        subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25) * 2.) + "%", "-colorspace", "sRGB", root + "-cleans2.png"])
       else:
         subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25)) + "%", "-colorspace", "sRGB", root + "-cleans.png"])
 
