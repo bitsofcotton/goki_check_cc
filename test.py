@@ -158,10 +158,16 @@ elif(argv[2] == "shrinklearn"):
     for line in argv[4:]:
       subprocess.call(["convert", line, "-compress", "none", "-resize", str(100. / pow(2., float(t + 1))) + "%", line + "-orig.ppm"])
       subprocess.call(["gokibin", "separate", line + "-orig.ppm"])
+      with open(line + "-orig.ppm-in.ppm") as f:
+        f.readline()
+        a = f.readline().split(" ")
+        w = int(a[0])
+        h = int(a[1])
+      subprocess.call(["convert", line, "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", line + "-orig.ppm-in.ppm"])
       for idx in range(0, 12):
         cmds[idx][- 1] += line + "-orig.ppm-in.ppm " + line + "-orig.ppm-" + str(idx) + ".pgm "
     for idx in range(0, len(cmds)):
-      cmds[idx][- 1] += " > shrinklean-" + str(t) + "-" + str(idx) + ".txt"
+      cmds[idx][- 1] += " > shrinklearn-" + str(t) + "-" + str(idx) + ".txt"
       subprocess.call(cmds[idx])
 elif(argv[2] == "shrinkapply"):
   for t in range(0, int(argv[3])):
@@ -180,7 +186,7 @@ elif(argv[2] == "shrinkapply"):
       subprocess.call(["gokibin", "separate", line + "-orig.ppm"])
       for idx in range(0, 12):
         cmds[idx][- 1] += line + "-orig.ppm-" + str(idx) + ".pgm "
-      cmds[idx][- 1] += " < shrinklean-" + str(t) + "-" + str(idx) + ".txt"
+      cmds[idx][- 1] += " < shrinklearn-" + str(t) + "-" + str(idx) + ".txt"
       subprocess.call(["gokibin", "integrate", line + "-orig.ppm"])
 else:
   for line in argv[3:]:

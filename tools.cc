@@ -477,7 +477,7 @@ int main(int argc, const char* argv[]) {
       }
       assert(ibuf.size() == 3);
       for(int j = 0; j < ibuf.size(); j ++) {
-        auto shrink((dft<num_t>(- (ibuf[j].rows() / 2)) * dft<num_t>(ibuf[j].rows()).subMatrix(0, 0, ibuf[j].rows() / 2, ibuf[j].rows())).template real<num_t>() * ibuf[j] * (dft<num_t>(- (ibuf[j].cols() / 2)) * dft<num_t>(ibuf[j].cols()).subMatrix(0, 0, ibuf[j].cols() / 2, ibuf[j].cols())).template real<num_t>().transpose() / num_t(int(4)));
+        auto shrink((dft<num_t>(- (ibuf[j].rows() / 2)) * dft<num_t>(ibuf[j].rows()).subMatrix(0, 0, ibuf[j].rows() / 2, ibuf[j].rows())).template real<num_t>() * ibuf[j] * (dft<num_t>(- (ibuf[j].cols() / 2)) * dft<num_t>(ibuf[j].cols()).subMatrix(0, 0, ibuf[j].cols() / 2, ibuf[j].cols())).template real<num_t>().transpose() / num_t(int(2)));
         for(int k = 0; k < 4; k ++) {
           SimpleMatrix<num_t> m(ibuf[j].rows() / 2, ibuf[j].cols() / 2);
           for(int ii = 0; ii < m.rows(); ii ++)
