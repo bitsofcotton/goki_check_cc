@@ -150,6 +150,38 @@ elif(argv[2] == "pextend"):
       a = f.readline().split(" ")
       h = int(a[1])
     subprocess.call(["mogrify", "-resize", str(w) + "x" + str(h) + "!", "-format", "png", root + "-pext.ppm"])
+elif(argv[2] == "shrinklearn"):
+  for t in range(0, int(argv[3])):
+    cmds = []
+    for s in range(0, 3 * 4):
+      cmds.append(["sh", "-c", argv[1] + " + "])
+    for line in argv[4:]:
+      subprocess.call(["convert", line, "-compress", "none", "-resize", str(100. / pow(2., float(t + 1))) + "%", line + "-orig.ppm"])
+      subprocess.call(["gokibin", "separate", line + "-orig.ppm"])
+      for idx in range(0, 12):
+        cmds[idx][- 1] += line + "-orig.ppm-in.ppm " + line + "-orig.ppm-" + str(idx) + ".pgm "
+    for idx in range(0, len(cmds)):
+      cmds[idx][- 1] += " > shrinklean-" + str(t) + "-" + str(idx) + ".txt"
+      subprocess.call(cmds[idx])
+elif(argv[2] == "shrinkapply"):
+  for t in range(0, int(argv[3])):
+    for line in argv[4:]:
+      cmds = []
+      for s in range(0, 3 * 4):
+        cmds.append(["sh", "-c", argv[1] + " - "])
+      subprocess.call(["convert", line, "-compress", "none", "-resize", str(100. / pow(2., float(int(argv[3]) - t))) + "%", line + "-orig.ppm"])
+      if(t != 0):
+        with open(line + "-orig.ppm") as f:
+          f.readline()
+          a = f.readline().split(" ")
+          w = int(a[0])
+          h = int(a[1])
+        subprocess.call(["convert", line + "-orig.ppm-out.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", line + "-orig.ppm"])
+      subprocess.call(["gokibin", "separate", line + "-orig.ppm"])
+      for idx in range(0, 12):
+        cmds[idx][- 1] += line + "-orig.ppm-" + str(idx) + ".pgm "
+      cmds[idx][- 1] += " < shrinklean-" + str(t) + "-" + str(idx) + ".txt"
+      subprocess.call(["gokibin", "integrate", line + "-orig.ppm"])
 else:
   for line in argv[3:]:
     try:
@@ -159,7 +191,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
+    if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])

@@ -57,6 +57,9 @@ typedef enum {
   ENLARGE_X,
   ENLARGE_Y,
   ENLARGE_BOTH,
+  SHRINK_X,
+  SHRINK_Y,
+  SHRINK_BOTH,
   FLARGE_X,
   FLARGE_Y,
   FLARGE_BOTH,
@@ -433,6 +436,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
   case ENLARGE_BOTH:
     result = filter<T>(filter<T>(data, ENLARGE_X, recur), ENLARGE_Y, recur);
     break;
+  case SHRINK_BOTH:
+    result = filter<T>(filter<T>(data, SHRINK_X, recur), SHRINK_Y, recur);
+    break;
   case FLARGE_BOTH:
     result = filter<T>(filter<T>(data, FLARGE_X, recur), FLARGE_Y, recur);
     break;
@@ -447,6 +453,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
     break;
   case ENLARGE_X:
     result = filter<T>(data.transpose(), ENLARGE_Y, recur).transpose();
+    break;
+  case SHRINK_X:
+    result = filter<T>(data.transpose(), SHRINK_Y, recur).transpose();
     break;
   case FLARGE_X:
     result = filter<T>(data.transpose(), FLARGE_Y, recur).transpose();
@@ -502,6 +511,30 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
           eop.row(j) = taylor<T>(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
       }
      eopi:
+      result = Eop[size][recur] * data;
+    }
+    break;
+  case SHRINK_Y:
+    {
+      assert(2 <= data.rows());
+      static vector<vector<SimpleMatrix<T> > > Eop;
+      const auto& size(data.rows());
+      if(Eop.size() <= size)
+        Eop.resize(size + 1, vector<SimpleMatrix<T> >());
+      else if(recur < Eop[size].size())
+        goto sopi;
+      if(Eop[size].size() <= recur)
+        Eop[size].resize(recur + 1, SimpleMatrix<T>());
+      {
+        auto& eop(Eop[size][recur]);
+        if(eop.cols() == size)
+          goto sopi;
+        cerr << "e" << flush;
+        eop.resize(size / recur - 1, size);
+        for(int j = 0; j < eop.rows(); j ++)
+          eop.row(j) = taylor<T>(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
+      }
+     sopi:
       result = Eop[size][recur] * data;
     }
     break;
