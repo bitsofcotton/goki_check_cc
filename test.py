@@ -133,61 +133,6 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", "2.5"])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
       subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i--02.ppm", "-.02"])
-elif(argv[2] == "pextend"):
-  for line in argv[3:]:
-    root, ext = os.path.splitext(line)
-    subprocess.call(["convert", line, "-compress", "none", root + "-pext.ppm"])
-    w = h = 0
-    with open(root + "-pext.ppm") as f:
-      f.readline()
-      a = f.readline().split(" ")
-      w = int(a[0])
-      h = int(a[1])
-    subprocess.call(["mogrify", "-resize", str(w * w) + "x" + str(h) + "!", "-compress", "none", root + "-pext.ppm"])
-    subprocess.call([argv[1], root + "-pext.ppm"])
-    with open(root + "-pext.ppm") as f:
-      f.readline()
-      a = f.readline().split(" ")
-      h = int(a[1])
-    subprocess.call(["mogrify", "-resize", str(w) + "x" + str(h) + "!", "-format", "png", root + "-pext.ppm"])
-elif(argv[2] == "shrinklearn"):
-  for t in range(0, int(argv[3])):
-    cmds = []
-    for s in range(0, 3 * 4):
-      cmds.append(["sh", "-c", argv[1] + " + "])
-    for line in argv[4:]:
-      subprocess.call(["convert", line, "-compress", "none", "-resize", str(100. / pow(2., float(t + 1))) + "%", line + "-orig.ppm"])
-      subprocess.call(["gokibin", "separate", line + "-orig.ppm"])
-      with open(line + "-orig.ppm-in.ppm") as f:
-        f.readline()
-        a = f.readline().split(" ")
-        w = int(a[0])
-        h = int(a[1])
-      subprocess.call(["convert", line, "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", line + "-orig.ppm-in.ppm"])
-      for idx in range(0, 12):
-        cmds[idx][- 1] += line + "-orig.ppm-in.ppm " + line + "-orig.ppm-" + str(idx) + ".pgm "
-    for idx in range(0, len(cmds)):
-      cmds[idx][- 1] += " > shrinklearn-" + str(t) + "-" + str(idx) + ".txt"
-      subprocess.call(cmds[idx])
-elif(argv[2] == "shrinkapply"):
-  for t in range(0, int(argv[3])):
-    for line in argv[4:]:
-      subprocess.call(["convert", line, "-compress", "none", "-resize", str(100. / pow(2., float(int(argv[3]) - t))) + "%", line + "-orig.ppm"])
-      if(t != 0):
-        with open(line + "-orig.ppm") as f:
-          f.readline()
-          a = f.readline().split(" ")
-          w = int(a[0])
-          h = int(a[1])
-        subprocess.call(["convert", line + "-orig.ppm-out.ppm", "-resize", str(w) + "x" + str(h) + "!", "-compress", "none", line + "-orig.ppm"])
-      for idx in range(0, 12):
-        subprocess.call(["cp", line + "-orig.ppm", line + "-orig.ppm-" + str(idx) + ".ppm"])
-        cmd = ["sh", "-c", argv[1] + " - "]
-        cmd[- 1] += line + "-orig.ppm-" + str(idx) + ".ppm "
-        cmd[- 1] += " < shrinklearn-" + str(int(argv[3]) - t - 1) + "-" + str(idx) + ".txt"
-        subprocess.call(cmd)
-        subprocess.call(["convert", line + "-orig.ppm-" + str(idx) + ".ppm", "-compress", "none", line + "-orig.ppm-" + str(idx) + ".pgm"])
-      subprocess.call(["gokibin", "integrate", line + "-orig.ppm"])
 else:
   for line in argv[3:]:
     try:
@@ -228,15 +173,10 @@ else:
       subprocess.call(["convert", line, "-resize", str(pixels) + "x>", "-resize", "x" + str(pixels) + ">", root + "-prep.png"])
     elif(argv[2] == "prepsq"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "x" + str(pixels) + "!", root + "-prepsq.png"])
-    elif(argv[2] == "equalize"):
-      subprocess.call(["convert", line, "-equalize", root + "-equalize.png"])
     elif(argv[2] == "nurie"):
       subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
-    elif(argv[2] == "edge"):
-      subprocess.call(["convert", root + "-collect.ppm", "-type", "GrayScale", "-negate", "-compress", "none", root + "-collect-negate.ppm"])
-      subprocess.call(["convert", line, root + "-collect-negate.ppm", "-compose", "multiply", "-composite", root + "-edge.png"])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
     elif(argv[2] == "cleans" or argv[2] == "cleansq"):

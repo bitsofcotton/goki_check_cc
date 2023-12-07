@@ -36,7 +36,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (collect|sharpen|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj <input.ppm> <output.obj>" << endl;
@@ -442,55 +442,6 @@ int main(int argc, const char* argv[]) {
       for(int j = 1; j < data.size(); j ++)
         cout << (i < data[j].size() ? data[j][i] / M : num_t(0)) << " ";
       cout << endl;
-    }
-  } else if(strcmp(argv[1], "integrate") == 0) {
-    for(int i = 2; i < argc; i ++) {
-      vector<SimpleMatrix<num_t> > obuf;
-      obuf.resize(3);
-      vector<SimpleMatrix<num_t> > work;
-      for(int j = 0; j < obuf.size(); j ++) {
-        for(int k = 0; k < 4; k ++) {
-          if(!loadp2or3<num_t>(work,
-               (string(argv[i]) + "-" + to_string(j * 4 + k)
-                + string(".pgm")).c_str()) ) {
-            cerr << "NG: " << argv[i] << endl;
-            continue;
-          }
-          assert(work.size() == 1);
-          if(obuf[j].rows() == 0 || obuf[j].cols() == 0) {
-            obuf[j].resize(work[0].rows() * 2, work[0].cols() * 2);
-            obuf[j].O();
-          }
-          for(int ii = 0; ii < work[0].rows(); ii ++)
-            for(int jj = 0; jj < work[0].cols(); jj ++)
-              obuf[j](ii * 2 + (k & 1), jj * 2 + ((k >> 1) & 1)) = work[0](ii, jj);
-        }
-      } 
-      savep2or3<num_t>((string(argv[i]) + "-out.ppm").c_str(), obuf);
-    }
-  } else if(strcmp(argv[1], "separate") == 0) {
-    for(int i = 2; i < argc; i ++) {
-      vector<SimpleMatrix<num_t> > ibuf;
-      if(!loadp2or3<num_t>(ibuf, argv[i])) {
-        cerr << "Cannot load : " << argv[i] << endl;
-        continue;
-      }
-      assert(ibuf.size() == 3);
-      for(int j = 0; j < ibuf.size(); j ++) {
-        auto shrink((dft<num_t>(- (ibuf[j].rows() / 2)) * dft<num_t>(ibuf[j].rows()).subMatrix(0, 0, ibuf[j].rows() / 2, ibuf[j].rows())).template real<num_t>() * ibuf[j] * (dft<num_t>(- (ibuf[j].cols() / 2)) * dft<num_t>(ibuf[j].cols()).subMatrix(0, 0, ibuf[j].cols() / 2, ibuf[j].cols())).template real<num_t>().transpose() / num_t(int(2)));
-        for(int k = 0; k < 4; k ++) {
-          SimpleMatrix<num_t> m(ibuf[j].rows() / 2, ibuf[j].cols() / 2);
-          for(int ii = 0; ii < m.rows(); ii ++)
-            for(int jj = 0; jj < m.cols(); jj ++)
-              m(ii, jj) = ibuf[j](ii * 2 + (k & 1), jj * 2 + ((k >> 1) & 1));
-          vector<SimpleMatrix<num_t> > mm;
-          mm.emplace_back(move(m));
-          savep2or3<num_t>((string(argv[i]) + "-" + to_string(j * 4 + k)
-                           + string(".pgm")).c_str(), mm);
-        }
-        ibuf[j] = move(shrink);
-      }
-      savep2or3<num_t>((string(argv[i]) + "-in.ppm").c_str(), ibuf);
     }
   } else {
     usage(argv[0]);
