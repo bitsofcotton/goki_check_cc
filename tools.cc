@@ -74,7 +74,9 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "represent") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
-     strcmp(argv[1], "b2wd")    == 0) {
+     strcmp(argv[1], "b2wd")    == 0 ||
+     strcmp(argv[1], "rgb2xyz") == 0 ||
+     strcmp(argv[1], "xyz2rgb") == 0) {
     if(argc < 3) {
       usage(argv[0]);
       return 0;
@@ -111,6 +113,10 @@ int main(int argc, const char* argv[]) {
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), REPRESENT, recur);
     else if(strcmp(argv[1], "bump") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
+    else if(strcmp(argv[1], "rgb2xyz") == 0)
+      data = rgb2xyz<num_t>(data);
+    else if(strcmp(argv[1], "xyz2rgb") == 0)
+      data = xyz2rgb<num_t>(data);
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)

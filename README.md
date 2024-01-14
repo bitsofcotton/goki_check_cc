@@ -73,4 +73,5 @@ Searching the Internet more...
 2023/11/21 re-delete cleans2.
 2023/12/06 add command shrinklearn, shrinkapply.
 2023/12/08 purge unuseful commands. realclose.
+2024/01/14 add rgb2xyz, xyz2rgb test.py command.
 
