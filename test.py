@@ -190,7 +190,7 @@ else:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
       if(argv[2][- 1] == "q"):
-        subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25)) + "%", "-colorspace", "sRGB", "-colorspace", "RGB", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", "-colorspace", "sRGB", root + "-cleansq.png"])
+        subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(50. * pow(w * h, - .25)) + "%", "-colorspace", "sRGB", "-colorspace", "RGB", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", "-colorspace", "sRGB", root + "-cleansq.png"])
       else:
-        subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25)) + "%", "-colorspace", "sRGB", root + "-cleans.png"])
+        subprocess.call(["convert", line, "-colorspace", "RGB", "-filter", "LanczosRadius", "-distort", "Resize", str(200. * pow(w * h, - .25)) + "%", "-colorspace", "sRGB", root + "-cleans.png"])
 
