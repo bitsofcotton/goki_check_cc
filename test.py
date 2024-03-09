@@ -186,20 +186,20 @@ else:
         a = f.readline().split(" ")
         w = int(a[0])
         h = int(a[1])
+      import numpy
       # Thanks:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
-      # N.B. we only think up to 1:2 ratio on original input.
+      # N.B.
+      #   We cannot bet even this scale around ddpmopt/predg uncontinuous case
+      #   and after bump shrink case.
+      #   However, this is one of the most conservative one with a little
+      #   practicable capable size.
+      # N.B. This needs exp scale input size, so extra small to small image
+      #      size is the upper bound we can get with the method around
+      #      the computation resource we can get easily.
       if(argv[2][- 1] == "q"):
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(.5, .25) * pow(w * h, - .25)) + "%", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * numpy.log(w * h) / pow(w * h, .5)) + "%", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
       else:
-        # N.B.
-        # We cannot bet even this scale around ddpmopt/predg uncontinuous case.
-        # However, this is one of the most conservative one with a little
-        # practicable capable size.
-        # N.B. This needs exp scale input size, so extra small to small image
-        #      size is the upper bound we can get with the method around
-        #      the computation resource we can get easily.
-        import numpy
         subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * numpy.log(w * h) / pow(w * h, .5)) + "%", "-equalize", "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", "1000%", "-sigmoidal-contrast", "7.5", root + "-cleans.png"])
 
