@@ -179,7 +179,7 @@ else:
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "cleans" or argv[2] == "cleansq"):
+    elif(argv[2] == "cleans" or argv[2] == "cleanst" or argv[2] == "cleansq"):
       w = h = 0
       with open(root + ".ppm") as f:
         f.readline()
@@ -201,6 +201,8 @@ else:
       if(argv[2][- 1] == "q"):
         # N.B. 2x size
         subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * numpy.log(w * h) / pow(w * h, .5)) + "%", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
+      elif(argv[2][- 1] == "t"):
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. / pow(3., .5)) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", "-scale", "300%", root + "-cleanst.png"])
       else:
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. / pow(3., .5)) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", "-scale", "300%", root + "-cleans.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25)) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", "-scale", "300%", root + "-cleans.png"])
 
