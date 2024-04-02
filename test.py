@@ -199,7 +199,8 @@ else:
       #      size is the upper bound we can get with the method around
       #      the computation resource we can get easily.
       if(argv[2][- 1] == "q"):
+        # N.B. 2x size
         subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * numpy.log(w * h) / pow(w * h, .5)) + "%", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
       else:
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * numpy.log(w * h) / pow(w * h, .5)) + "%", "-equalize", "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", "1000%", "-sigmoidal-contrast", "7.5", root + "-cleans.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. / pow(3., .5)) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", "-scale", "300%", root + "-cleans.png"])
 
