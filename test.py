@@ -202,7 +202,7 @@ else:
         # N.B. 2x size
         subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * numpy.log(w * h) / pow(w * h, .5)) + "%", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
       elif(argv[2][- 1] == "t"):
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. / pow(3., .5)) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", "-scale", "300%", root + "-cleanst.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(2 * numpy.log(2.), .5) / pow((numpy.log(w * h) + numpy.log(numpy.log(w * h))) / numpy.log(numpy.log(w * h) + numpy.log(numpy.log(w * h))), .5) ) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleanst.png"])
       else:
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25)) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", "-scale", "300%", root + "-cleans.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * (2 * numpy.log(2.)) / (numpy.log(w * h) + numpy.log(numpy.log(w * h))) / numpy.log(numpy.log(w * h) + numpy.log(numpy.log(w * h))) ) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleans.png"])
 
