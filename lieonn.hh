@@ -4021,7 +4021,7 @@ template <typename T> static inline vector<vector<SimpleMatrix<T> > > normalize(
     for(int k = 0; k < data[kk].size(); k ++)
       for(int i = 0; i < data[kk][k].rows(); i ++)
         for(int j = 0; j < data[kk][k].cols(); j ++) {
-          if(isfinite(result[k][k](i, j)) && ! isinf(data[kk][k](i, j)) && ! isnan(result[kk][k](i, j)))
+          if(isfinite(result[kk][k](i, j)) && ! isinf(data[kk][k](i, j)) && ! isnan(result[kk][k](i, j)))
             result[kk][k](i, j) -= mm;
           else
             result[kk][k](i, j)  = T(0);
