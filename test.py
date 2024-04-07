@@ -204,5 +204,5 @@ else:
       elif(argv[2][- 1] == "t"):
         subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(2 * numpy.log(2.), .5) / pow((numpy.log(w * h) + numpy.log(numpy.log(w * h))) / numpy.log(numpy.log(w * h) + numpy.log(numpy.log(w * h))), .5) ) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleanst.png"])
       else:
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * (2 * numpy.log(2.)) / (numpy.log(w * h) + numpy.log(numpy.log(w * h))) / numpy.log(numpy.log(w * h) + numpy.log(numpy.log(w * h))) ) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleans.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25) ) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleans.png"])
 

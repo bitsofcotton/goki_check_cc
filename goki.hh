@@ -1595,59 +1595,6 @@ template <typename T> vector<vector<int> > catImage(const vector<SimpleMatrix<T>
   return res;
 }
 
-template <typename T> static inline vector<SimpleMatrix<T> > rgb2xyz(const vector<SimpleMatrix<T> >& rgb) {
-  // CIE 1931 XYZ from wikipedia.org
-  SimpleMatrix<T> mRGB2XYZ(3, 3);
-  mRGB2XYZ(0, 0) = T(49000);
-  mRGB2XYZ(0, 1) = T(31000);
-  mRGB2XYZ(0, 2) = T(20000);
-  mRGB2XYZ(1, 0) = T(17697);
-  mRGB2XYZ(1, 1) = T(81240);
-  mRGB2XYZ(1, 2) = T( 1063);
-  mRGB2XYZ(2, 0) = T(0);
-  mRGB2XYZ(2, 1) = T( 1000);
-  mRGB2XYZ(2, 2) = T(99000);
-  mRGB2XYZ /= T(17697);
-  assert(rgb.size() == 3);
-  assert(rgb[0].rows() == rgb[1].rows() && rgb[1].rows() == rgb[2].rows());
-  assert(rgb[0].cols() == rgb[1].cols() && rgb[1].cols() == rgb[2].cols());
-  auto xyz(rgb);
-  xyz[0] = rgb[0] * mRGB2XYZ(0, 0) + rgb[1] * mRGB2XYZ(0, 1) + rgb[2] * mRGB2XYZ(0, 2);
-  xyz[1] = rgb[0] * mRGB2XYZ(1, 0) + rgb[1] * mRGB2XYZ(1, 1) + rgb[2] * mRGB2XYZ(1, 2);
-  xyz[2] = rgb[0] * mRGB2XYZ(2, 0) + rgb[1] * mRGB2XYZ(2, 1) + rgb[2] * mRGB2XYZ(2, 2);
-  assert(xyz.size() == 3);
-  assert(xyz[0].rows() == xyz[1].rows() && xyz[1].rows() == xyz[2].rows());
-  assert(xyz[0].cols() == xyz[1].cols() && xyz[1].cols() == xyz[2].cols());
-  return xyz;
-}
-
-template <typename T> static inline vector<SimpleMatrix<T> > xyz2rgb(const vector<SimpleMatrix<T> >& xyz) {
-  // CIE 1931 XYZ from wikipedia.org
-  SimpleMatrix<T> mRGB2XYZ(3, 3);
-  mRGB2XYZ(0, 0) = T(49000);
-  mRGB2XYZ(0, 1) = T(31000);
-  mRGB2XYZ(0, 2) = T(20000);
-  mRGB2XYZ(1, 0) = T(17697);
-  mRGB2XYZ(1, 1) = T(81240);
-  mRGB2XYZ(1, 2) = T( 1063);
-  mRGB2XYZ(2, 0) = T(0);
-  mRGB2XYZ(2, 1) = T( 1000);
-  mRGB2XYZ(2, 2) = T(99000);
-  mRGB2XYZ /= T(17697);
-  const auto mXYZ2RGB(mRGB2XYZ.inverse());
-  assert(xyz.size() == 3);
-  assert(xyz[0].rows() == xyz[1].rows() && xyz[1].rows() == xyz[2].rows());
-  assert(xyz[0].cols() == xyz[1].cols() && xyz[1].cols() == xyz[2].cols());
-  auto rgb(xyz);
-  rgb[0] = xyz[0] * mXYZ2RGB(0, 0) + xyz[1] * mXYZ2RGB(0, 1) + xyz[2] * mXYZ2RGB(0, 2);
-  rgb[1] = xyz[0] * mXYZ2RGB(1, 0) + xyz[1] * mXYZ2RGB(1, 1) + xyz[2] * mXYZ2RGB(1, 2);
-  rgb[2] = xyz[0] * mXYZ2RGB(2, 0) + xyz[1] * mXYZ2RGB(2, 1) + xyz[2] * mXYZ2RGB(2, 2);
-  assert(rgb.size() == 3);
-  assert(rgb[0].rows() == rgb[1].rows() && rgb[1].rows() == rgb[2].rows());
-  assert(rgb[0].cols() == rgb[1].cols() && rgb[1].cols() == rgb[2].cols());
-  return rgb;
-}
-
 template <typename T> static inline SimpleMatrix<T> rgb2d(const vector<SimpleMatrix<T> > rgb) {
   auto xyz(rgb2xyz<T>(rgb));
   SimpleMatrix<T> result(rgb[0].rows(), rgb[0].cols());
