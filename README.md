@@ -78,4 +78,5 @@ Searching the Internet more...
 2024/04/02 compatible with latest ddpmopt.
 2024/04/07 compatible with latest ddpmopt, it's obscure cleans size, so do half of the size.
 2024/04/09 fix lieonn some functions, merge from ddpmopt.
+2024/04/10 fit ddpmopt/README.md's function entropy size with cleans... command.
 

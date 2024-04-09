@@ -186,23 +186,16 @@ else:
         a = f.readline().split(" ")
         w = int(a[0])
         h = int(a[1])
-      import numpy
+      # N.B.
+      # With ddpmopt/README.md, we have 2500bit upper limit on function entropy.
+      sz = str(int(pow(2500., .5) * w / h)) + "x" + str(int(pow(2500., .5) * h / w))
       # Thanks:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
-      # N.B.
-      #   We cannot bet even this scale around ddpmopt/predg uncontinuous case
-      #   and after bump shrink case.
-      #   However, this is one of the most conservative one with a little
-      #   practicable capable size.
-      # N.B. This needs exp scale input size, so extra small to small image
-      #      size is the upper bound we can get with the method around
-      #      the computation resource we can get easily.
       if(argv[2][- 1] == "q"):
-        # N.B. 2x size
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * numpy.log(w * h) / pow(w * h, .5)) + "%", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", sz, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
       elif(argv[2][- 1] == "t"):
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(2 * numpy.log(2.), .5) / pow((numpy.log(w * h) + numpy.log(numpy.log(w * h))) / numpy.log(numpy.log(w * h) + numpy.log(numpy.log(w * h))), .5) ) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleanst.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(int(pow(2500., .5))) + "x>", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleanst.png"])
       else:
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(100. * pow(w * h, - .25) ) + "%", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleans.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", sz, "-equalize", root + "-cleans.png"])
 
