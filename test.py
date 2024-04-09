@@ -188,14 +188,15 @@ else:
         h = int(a[1])
       # N.B.
       # With ddpmopt/README.md, we have 2500bit upper limit on function entropy.
-      sz = str(int(pow(2500., .5) * w / h)) + "x" + str(int(pow(2500., .5) * h / w))
+      # We expect 4 bit color for each pixel.
+      sz = str(int(pow(2500. / 4., .5) * w / h)) + "x" + str(int(pow(2500. / 4., .5) * h / w))
       # Thanks:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
       if(argv[2][- 1] == "q"):
         subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", sz, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
       elif(argv[2][- 1] == "t"):
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(int(pow(2500., .5))) + "x>", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleanst.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(int(pow(2500. / 4., .5))) + "x>", "-despeckle", "-despeckle", "-equalize", "-despeckle", "-despeckle", root + "-cleanst.png"])
       else:
         subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", sz, "-equalize", root + "-cleans.png"])
 
