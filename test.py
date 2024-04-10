@@ -187,7 +187,7 @@ else:
         w = int(a[0])
         h = int(a[1])
       # N.B.
-      # With ddpmopt/README.md, we have 2500bit upper limit on function entropy.
+      # With ddpmopt/README.md, we have 20kbit upper limit on function entropy.
       # We expect 6 bit color for each pixel.
       upix = 19683 / 6.
       sz = str(int(pow(upix, .5) * w / h) + 1) + "x" + str(int(pow(upix, .5) * h / w) + 1)
