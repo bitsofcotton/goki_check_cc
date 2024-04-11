@@ -179,7 +179,7 @@ else:
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "cleans" or argv[2] == "cleanst" or argv[2] == "cleansl" or argv[2] == "cleansm" or argv[2] == "cleansq"):
+    elif(argv[2] == "cleans" or argv[2] == "cleanst" or argv[2] == "cleansl" or argv[2] == "cleansm" or argv[2] == "cleansq" or argv[2] == "cleansc"):
       w = h = 0
       with open(root + ".ppm") as f:
         f.readline()
@@ -189,8 +189,10 @@ else:
       # N.B.
       # With ddpmopt/README.md, we have 20kbit upper limit on function entropy.
       # We expect 8 bit color for each pixel.
+      # In practical, 2 bit from MSB expecting input is enough.
       upix  = pow(19683 / 8., .5)
       upixr = upix / pow(w * h, .5)
+      if(argv[2][- 1] == "c"): upixr /= pow(3., .5)
       sz = str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1)
       # N.B.
       # refering en.wikipedia.org/wiki/Condorcet's-jury-theorem
@@ -208,7 +210,7 @@ else:
       elif(argv[2][- 1] == "m"):
         subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-resize", str(int(cj * cj * upixr * w) + 1) + "x" + str(int(upixr * h) + 1) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansm.png"])
       elif(argv[2][- 1] == "t"):
-        subprocess.call(["convert", line, "-resize", str(int(w / cj / cj)) + "x" + str(h) + "!", "-despeckle", "-equalize", "-despeckle", root + "-cleanst.png"])
+        subprocess.call(["convert", line, "-despeckle", "-resize", str(int(w / cj / cj)) + "x" + str(h) + "!", "-despeckle", "-equalize", "-despeckle", root + "-cleanst.png"])
       else:
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "-equalize", "-despeckle", root + "-cleans.png"])
+        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "-equalize", "-despeckle", root + "-cleans.png"])
 
