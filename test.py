@@ -190,25 +190,29 @@ else:
       # With ddpmopt/README.md, we have 20kbit upper limit on function entropy.
       # We expect 8 bit color for each pixel.
       # In practical, 2 bit from MSB expecting input is enough.
-      upix  = pow(19683 / 8., .5)
-      upixr = upix / pow(w * h, .5)
+      upix   = pow(19683 / 8., .5)
+      upixr  = upix / pow(w * h, .5)
       if(argv[2][- 1] == "c"): upixr /= pow(3., .5)
-      sz = str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1)
+      sz     = str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1)
       # N.B.
       # refering en.wikipedia.org/wiki/Condorcet's-jury-theorem
       # n ~ 11 to get .95 from 2/3 probability.
       # This is enough if it's from probability based concerns.
       # However, in deterministic meaning, we might use cj == upix as well.
-      cj    = int(pow(11, .5) + 1)
+      cj     = int(pow(11, .5) + 1)
+      # N.B.
+      # The imagemagick binary we have cannot handle larger than 16k index
+      # on width/height. So we must shrink them some of the ratio.
+      mratio = 3.
       # Thanks:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
       if(argv[2][- 1] == "q"):
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
+        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
       elif(argv[2][- 1] == "l"):
         subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(int(cj * upixr * w + 1)) + "x" + str(int(cj * upixr * h + 1)), "-sigmoidal-contrast", "7.5", root + "-cleansl.png"])
       elif(argv[2][- 1] == "m"):
-        subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-resize", str(int(cj * cj * upixr * w) + 1) + "x" + str(int(upixr * h) + 1) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansm.png"])
+        subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-resize", str(int(cj * cj * upix * upixr * w / mratio) + 1) + "x" + str(int(upix * upixr * h / mratio) + 1) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansm.png"])
       elif(argv[2][- 1] == "t"):
         subprocess.call(["convert", line, "-despeckle", "-resize", str(int(w / cj / cj)) + "x" + str(h) + "!", "-despeckle", "-equalize", "-despeckle", root + "-cleanst.png"])
       else:

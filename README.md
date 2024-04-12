@@ -80,4 +80,5 @@ Searching the Internet more...
 2024/04/09 fix lieonn some functions, merge from ddpmopt.
 2024/04/10 fit ddpmopt/README.md's function entropy size with cleans... command.
 2024/04/11 make around .95 probability on best case with cleans... .
+2024/04/12 ok on cleanm, cleant to have the size supported by imagemagick call.
 
