@@ -18,6 +18,14 @@ By searching with some word that is not common, there exists the article https:/
 From some news, there exists the normal vector of the light based method that is making 3D model from single picture condition with some machine learning.  
 Searching the Internet more...
 
+# Preparing size for bump command
+We should use resize input with cleansl before to bump, resize output with cleans after doing bump.
+This is because original image don't have enough information for depth, so we should complement them by some of the internal status or function entropy.
+We're doing this only with function entropy, so sup of the image pixels they are meaningful exists.
+
+We can do better size with multiple layered and no equity on each pixel method.
+Please refer bitsofcotton/p8 for this.
+
 # Usage
     make gokibin
     
