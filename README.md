@@ -38,7 +38,7 @@ Please refer bitsofcotton/p8 for this.
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokibin recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokibin habit <in0.obj> <in1.obj> <out.obj>
-    python3 test.py ./gokibin (sharpen|bump|enlarge|shrink|flarge|blink|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit|illust|nurie|gray|cleans[tlmqc]?) <param> input0.png ...
+    python3 test.py ./gokibin (sharpen|bump|enlarge|shrink|flarge|blink|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit|illust|nurie|gray|cleans[lqc]?) <param> input0.png ...
     python3 test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
     python3 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
@@ -89,4 +89,5 @@ Please refer bitsofcotton/p8 for this.
 2024/04/10 fit ddpmopt/README.md's function entropy size with cleans... command.
 2024/04/11 make around .95 probability on best case with cleans... .
 2024/04/12 ok on cleanm, cleant to have the size supported by imagemagick call.
+2024/04/14 elim cleans[tm], merge latest lieonn.
 

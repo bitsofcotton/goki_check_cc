@@ -179,7 +179,7 @@ else:
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "cleans" or argv[2] == "cleanst" or argv[2] == "cleansl" or argv[2] == "cleansm" or argv[2] == "cleansq" or argv[2] == "cleansc"):
+    elif(argv[2] == "cleans" or argv[2] == "cleansl" or argv[2] == "cleansq" or argv[2] == "cleansc"):
       w = h = 0
       with open(root + ".ppm") as f:
         f.readline()
@@ -200,10 +200,6 @@ else:
       # This is enough if it's from probability based concerns.
       # However, in deterministic meaning, we might use cj == upix as well.
       cj     = int(pow(11, .5) + 1)
-      # N.B.
-      # The imagemagick binary we have cannot handle larger than 16k index
-      # on width/height. So we must shrink them some of the ratio.
-      mratio = 3.
       # Thanks:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
@@ -211,10 +207,6 @@ else:
         subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
       elif(argv[2][- 1] == "l"):
         subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(int(cj * upixr * w + 1)) + "x" + str(int(cj * upixr * h + 1)), "-sigmoidal-contrast", "7.5", root + "-cleansl.png"])
-      elif(argv[2][- 1] == "m"):
-        subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-resize", str(int(cj * cj * upix * upixr * w / mratio) + 1) + "x" + str(int(upix * upixr * h / mratio) + 1) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansm.png"])
-      elif(argv[2][- 1] == "t"):
-        subprocess.call(["convert", line, "-despeckle", "-resize", str(int(w / cj / cj)) + "x" + str(h) + "!", "-despeckle", "-equalize", "-despeckle", root + "-cleanst.png"])
       else:
-        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "-equalize", "-despeckle", root + "-cleans.png"])
+        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "-equalize", "-despeckle", root + "-" + argv[2] + ".png"])
 

@@ -74,15 +74,6 @@ typedef enum {
   REPRESENT,
   CLIP } direction_t;
 
-template <typename T> static inline T getImgPt(const T& y, const T& h) {
-  auto yy(y % (2 * h));
-  if(yy < 0)
-    yy = - yy;
-  if(yy >= h)
-    yy = h - (yy - h);
-  return yy % h;
-}
-
 template <typename T> bool saveobj(const vector<SimpleVector<T> >& data, const T& Mw0, const T& Mh0, const vector<SimpleVector<int> >& polys, const char* filename) {
   ofstream output;
   output.open(filename, std::ios::out);
