@@ -9,7 +9,7 @@ pixels = 4
 psi    = 1. / 3.
 rot    = 0
 
-if(len(argv) < 4):
+if(len(argv) < 4 and (argv[2] != "move")):
   print("no much argments.")
 elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
@@ -71,17 +71,22 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2] == "move"):
-  src = argv[3].split("%")
-  dst = argv[4].split("%")
-  try:
-    subprocess.call(["mv", src[0] + "0" + src[1], dst[0] + "0" + dst[1]])
-  except:
-    pass
-  try:
-    for t in range(1, int(argv[5])):
-      subprocess.call(["mv", src[0] + str(t) + src[1], dst[0] + str(t) + dst[1]])
-  except:
-    pass
+  curdir = os.path.basename(os.getcwd())
+  s = 0
+  while(True):
+    t = 1
+    while(True):
+      try:
+        b = subprocess.call(["mv", "predg-backward-" + str(s) + "-" + str(t) + ".ppm", curdir + "-b" + str(s) + "-" + str(t) + ".ppm"])
+        f = subprocess.call(["mv", "predg-forward-" + str(s) + "-" + str(t) + ".ppm", curdir + "-f" + str(s) + "-" + str(t) + ".ppm"])
+        if(b != 0 or f != 0):
+          if(t == 1): exit(0)
+          break
+        t += 1
+      except:
+        if(t == 1): exit(0)
+        break
+    s += 1
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
