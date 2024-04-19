@@ -3188,20 +3188,33 @@ template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1
   typedef pnext_uint512_t pnext_uint;
   typedef pnext_int512_t  pnext_int;
   typedef SimpleFloat<pnext_uint, DUInt<pnext_uint, 512>, 512, pnext_int> pnext_float;
-  auto work(taylor<pnext_float>(size * r, pnext_float(step * r < 0 ? step * r : (size + step) * r - 1)));
-  for(int i = 1; i < r; i ++)
-    work += taylor<pnext_float>(size * r, pnext_float(step * r < 0 ? step * r + i : (size + step) * r - 1 - i));
-  const auto pn((dft<pnext_float>(- size * r).subMatrix(0, 0, size * r, size) * dft<pnext_float>(size)).template real<pnext_float>().transpose() * work);
-  SimpleVector<T> res(pn.size());
-  for(int i = 0; i < res.size(); i ++) {
-    auto abspni(abs(pn[i]));
-    res[i] = T(abspni.operator int());
-    for(int j = 0; j < 512 / 16; j ++) {
-      abspni -= floor(abspni);
-      abspni *= pnext_float(int(65536));
-      res[i] += T(abspni.operator int()) / pow(T(int(65536)), T(int(j + 1)) );
+  SimpleVector<T> res;
+  const auto file(string("./.cache/lieonn/pnextadv-") + to_string(size) +
+    string("-") + to_string(step) + string("-") + to_string(r));
+  ifstream cache(file.c_str());
+  if(cache.is_open()) {
+    cache >> res;
+    cache.close();
+  } else {
+    cerr << "." << flush;
+    auto work(taylor<pnext_float>(size * r, pnext_float(step * r < 0 ? step * r : (size + step) * r - 1)));
+    for(int i = 1; i < r; i ++)
+      work += taylor<pnext_float>(size * r, pnext_float(step * r < 0 ? step * r + i : (size + step) * r - 1 - i));
+    const auto pn((dft<pnext_float>(- size * r).subMatrix(0, 0, size * r, size) * dft<pnext_float>(size)).template real<pnext_float>().transpose() * work);
+    res.resize(pn.size());
+    for(int i = 0; i < res.size(); i ++) {
+      auto abspni(abs(pn[i]));
+      res[i] = T(abspni.operator int());
+      for(int j = 0; j < 512 / 16; j ++) {
+        abspni -= floor(abspni);
+        abspni *= pnext_float(int(65536));
+        res[i] += T(abspni.operator int()) / pow(T(int(65536)), T(int(j + 1)) );
+      }
+      if(pn[i] < pnext_float(int(0))) res[i] = - res[i];
     }
-    if(pn[i] < pnext_float(int(0))) res[i] = - res[i];
+    ofstream ocache(file.c_str());
+    ocache << res;
+    ocache.close();
   }
   return res;
 #else

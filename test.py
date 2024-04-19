@@ -151,8 +151,8 @@ else:
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call(["python3", argv[0], argv[1], "cleansq", root + "-bump0.ppm"])
-      subprocess.call(["convert", root + "-bump0-cleansq.png", "-format", "ppm", "-compress", "none", root + "-bump.ppm"])
+      subprocess.call(["python3", argv[0], argv[1], "cleanq", root + "-bump0.ppm"])
+      subprocess.call(["convert", root + "-bump0-cleanq.png", "-format", "ppm", "-compress", "none", root + "-bump.ppm"])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], argv[2], root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps"):
@@ -184,7 +184,7 @@ else:
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "cleans" or argv[2] == "cleansl" or argv[2] == "cleansq" or argv[2] == "cleansc"):
+    elif(argv[2] == "cleanl" or argv[2] == "cleanq" or argv[2] == "cleanc" or argv[2] == "cleanC"):
       w = h = 0
       with open(root + ".ppm") as f:
         f.readline()
@@ -198,6 +198,7 @@ else:
       upix   = pow(19683 / 8., .5)
       upixr  = upix / pow(w * h, .5)
       if(argv[2][- 1] == "c"): upixr /= pow(3., .5)
+      elif(argv[2][- 1] == "C"): upixr /= 3.
       sz     = str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1)
       # N.B.
       # refering en.wikipedia.org/wiki/Condorcet's-jury-theorem
@@ -209,9 +210,13 @@ else:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
       if(argv[2][- 1] == "q"):
-        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleansq.png"])
+        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleanq.png"])
       elif(argv[2][- 1] == "l"):
-        subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(int(cj * upixr * w + 1)) + "x" + str(int(cj * upixr * h + 1)), "-sigmoidal-contrast", "7.5", root + "-cleansl.png"])
+        subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(int(cj * upixr * w + 1)) + "x" + str(int(cj * upixr * h + 1)), "-sigmoidal-contrast", "7.5", root + "-cleanl.png"])
+      elif(argv[2][- 1] == "c" or argv[2][- 1] == "C"):
+        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "-compress", "none", root + "-" + argv[2] + ".ppm"])
+        subprocess.call([argv[1], "enlarge", root + "-" + argv[2] + ".ppm", root + "-" + argv[2] + "e.ppm", "2", str(pixels)])
+        subprocess.call(["convert", root + "-" + argv[2] + "e.ppm", "-equalize", "-despeckle", root + "-" + argv[2] + "e.png"])
       else:
-        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "-equalize", "-despeckle", root + "-" + argv[2] + ".png"])
+        print("unknown command: ", argv[2])
 
