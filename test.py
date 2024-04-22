@@ -138,6 +138,113 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", "2.5"])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
       subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i--02.ppm", "-.02"])
+elif(argv[2] == "predC"):
+  upix = upixr = sz = sz2 = w = h = 0
+  for argn in argv[3:]:
+    with open(argn) as f:
+      f.readline()
+      a = f.readline().split(" ")
+      w = int(a[0])
+      h = int(a[1])
+    upix   = pow(19683 / 8., .5)
+    upixr  = upix / pow(w * h, .5)
+    upixr /= 3.
+    sz     = str(int(upixr * w)) + "x" + str(int(upixr * h))
+    sz2    = str(int(upixr * w) * int(upixr * w)) + "x" + str(int(upixr * h) * int(upixr * h))
+    subprocess.call(["convert", argn, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-sigmoidal-contrast", "7.5", "-compress", "none", argn + "-root.ppm"])
+    for x in range(0, int(upixr * w) ):
+      for y in range(0, int(upixr * h) ):
+        subprocess.call(["convert", argn, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", sz2, "-sigmoidal-contrast", "7.5", "-crop", sz + "+" + str(int(upixr * w) * x) + "+" + str(int(upixr * h) * y), "-compress", "none", argn + "-" + str(x) + "-" + str(y) + ".ppm"])
+  cmd = ["predgmp"]
+  for argn in argv[3:]:
+    cmd.append(argn + "-root.ppm")
+  subprocess.call(cmd)
+  s = 0
+  loop = True
+  while(loop):
+    t = 1
+    while(True):
+      try:
+        b  = subprocess.call(["mogrify", "-despeckle", "-compress", "none", "predg-backward-" + str(s) + "-" + str(t) + ".ppm"])
+        b2 = subprocess.call(["gokibinmp", "enlarge", "predg-backward-" + str(s) + "-" + str(t) + ".ppm", "predg-backward-root-" + str(s) + "-" + str(t) + ".ppm", "2", "12"])
+        f  = subprocess.call(["mogrify", "-despeckle", "-compress", "none", "predg-forward-" + str(s) + "-" + str(t) + ".ppm"])
+        f2 = subprocess.call(["gokibinmp", "enlarge", "predg-forward-" + str(s) + "-" + str(t) + ".ppm", "predg-forward-root-" + str(s) + "-" + str(t) + ".ppm", "2", "12"])
+        if(b != 0 or f != 0):
+          if(t == 1): loop = False
+          break
+        t += 1
+      except:
+        if(t == 1): loop = False
+        break
+    s += 1
+  for x in range(0, int(upixr * w) ):
+    for y in range(0, int(upixr * h) ):
+      cmd = ["predgmp"]
+      for argn in argv[3:]:
+        cmd.append(argn + "-" + str(x) + "-" + str(y) + ".ppm")
+      subprocess.call(cmd)
+      s = 0
+      loop = True
+      while(loop):
+        t = 1
+        while(True):
+          try:
+            b  = subprocess.call(["mogrify", "-despeckle", "-compress", "none", "predg-backward-" + str(s) + "-" + str(t) + ".ppm"])
+            b2 = subprocess.call(["gokibinmp", "enlarge", "predg-backward-" + str(s) + "-" + str(t) + ".ppm", "predg-backward-" + str(x) + "-" + str(y) + "-" + str(s) + "-" + str(t) + ".ppm", "2", "12"])
+            f  = subprocess.call(["mogrify", "-despeckle", "-compress", "none", "predg-forward-" + str(s) + "-" + str(t) + ".ppm"])
+            f2 = subprocess.call(["gokibinmp", "enlarge", "predg-forward-" + str(s) + "-" + str(t) + ".ppm", "predg-forward-" + str(x) + "-" + str(y) + "-" + str(s) + "-" + str(t) + ".ppm", "2", "12"])
+            if(b != 0 or b2 != 0 or f != 0 or f2 != 0):
+              if(t == 1): loop = False
+              break
+            t += 1
+          except:
+            if(t == 1): loop = False
+            break
+        s += 1
+elif(argv[2] == "predCbond"):
+  # XXX: LD_PRELOAD=... allocator python calls ksh causes imagemagick
+  #      noerror exit.
+  upix = upixr = sz = sz2 = w = h = 0
+  for argn in argv[3:]:
+    with open(argn) as f:
+      f.readline()
+      a = f.readline().split(" ")
+      w = int(a[0])
+      h = int(a[1])
+    upix   = pow(19683 / 8., .5)
+    upixr  = upix / pow(w * h, .5)
+    upixr /= 3.
+    sz     = str(int(upixr * w)) + "x" + str(int(upixr * h))
+    sz2    = str(int(upixr * w) * int(upixr * w)) + "x" + str(int(upixr * h) * int(upixr * h))
+  curdir = os.path.basename(os.getcwd())
+  s = 0
+  loop = True
+  while(loop):
+    t = 1
+    while(True):
+      try:
+        cmd = ["montage"]
+        for y in range(0, int(upixr * h)):
+          for x in range(0, int(upixr * w)):
+            cmd.append("predg-backward-" + str(x) + "-" + str(y) + "-" + str(s) + "-" + str(t) + ".ppm")
+        cmd.extend(["-tile", str(int(upixr * w)) + "x" + str(int(upixr * h)), "-geometry", "+0+0", "predg-backward-extend-" + str(s) + "-" + str(t) + ".png"])
+        bb = subprocess.call(cmd)
+        b  = subprocess.call(["convert", "predg-backward-root-" + str(s) + "-" + str(t) + ".ppm", "-resize", sz2, "predg-backward-extend-" + str(s) + "-" + str(t) + ".png", "-resize", sz2, "-compose", "multiply", "-composite", curdir + "-b" + str(s) + "-" + str(t) + ".png"])
+        cmd = ["montage"]
+        for y in range(0, int(upixr * h)):
+          for x in range(0, int(upixr * w)):
+            cmd.append("predg-forward-" + str(x) + "-" + str(y) + "-" + str(s) + "-" + str(t) + ".ppm")
+        cmd.extend(["-tile", str(int(upixr * w)) + "x" + str(int(upixr * h)), "-geometry", "+0+0", "predg-forward-extend-" + str(s) + "-" + str(t) + ".png"])
+        ff = subprocess.call(cmd)
+        f  = subprocess.call(["convert", "predg-forward-root-" + str(s) + "-" + str(t) + ".ppm", "-resize", sz2, "predg-forward-extend-" + str(s) + "-" + str(t) + ".png", "-resize", sz2, "-compose", "multiply", "-composite", curdir + "-f" + str(s) + "-" + str(t) + ".png"])
+        if(b != 0 or bb != 0 or f != 0 or ff != 0):
+          if(t == 1): loop = False
+          break
+        t += 1
+      except:
+        if(t == 1): loop = False
+        break
+    s += 1
 else:
   for line in argv[3:]:
     try:

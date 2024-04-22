@@ -44,6 +44,7 @@ Please refer bitsofcotton/p8 for this.
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python3 test.py ./gokibin i2i <param> img0.png ...
     python3 test.py ./gokibin move
+    python3 test.py dummy (predC|predCbond) input0.ppm ...
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -93,4 +94,5 @@ Please refer bitsofcotton/p8 for this.
 2024/04/14 elim cleans[tm], merge latest lieonn.
 2024/04/16 move command chg, no arguments, with ddpmopt:[pq]redg.
 2024/04/19 add cleansc additional command, change synonim cleans... to clean... , eliminate cleans command.
+2024/04/23 add predC, predCbond command.
 
