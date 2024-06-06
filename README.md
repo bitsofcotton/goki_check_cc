@@ -95,4 +95,6 @@ Please refer bitsofcotton/p8 for this.
 2024/04/16 move command chg, no arguments, with ddpmopt:[pq]redg.
 2024/04/19 add cleansc additional command, change synonim cleans... to clean... , eliminate cleans command.
 2024/04/23 add predC, predCbond command.
+2024/05/29 cleanC, cleanc change.
+2024/06/07 fix comment on test.py.
 

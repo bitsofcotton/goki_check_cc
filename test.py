@@ -300,8 +300,8 @@ else:
         h = int(a[1])
       # N.B.
       # With ddpmopt/README.md, we have 20kbit upper limit on function entropy.
-      # We expect 8 bit color for each pixel.
       # In practical, 2 bit from MSB expecting input is enough.
+      # However, we expect 8 bit color for each pixel.
       upix   = pow(19683 / 8., .5)
       upixr  = upix / pow(w * h, .5)
       if(argv[2][- 1] == "c"): upixr /= pow(3., .5)
