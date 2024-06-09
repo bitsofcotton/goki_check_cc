@@ -74,19 +74,15 @@ elif(argv[2] == "move"):
   curdir = os.path.basename(os.getcwd())
   s = 0
   while(True):
-    t = 1
-    while(True):
-      try:
-        b = subprocess.call(["mv", "predg-backward-" + str(s) + "-" + str(t) + ".ppm", curdir + "-b" + str(s) + "-" + str(t) + ".ppm"])
-        f = subprocess.call(["mv", "predg-forward-" + str(s) + "-" + str(t) + ".ppm", curdir + "-f" + str(s) + "-" + str(t) + ".ppm"])
-        if(b != 0 or f != 0):
-          if(t == 1): exit(0)
-          break
-        t += 1
-      except:
-        if(t == 1): exit(0)
+    try:
+      b = subprocess.call(["mv", "predg-backward-" + str(s) + ".ppm", curdir + "-b" + str(s) + ".ppm"])
+      f = subprocess.call(["mv", "predg-forward-" + str(s) + ".ppm", curdir + "-f" + str(s) + ".ppm"])
+      if(b != 0 or f != 0):
+        exit(0)
         break
-    s += 1
+    except:
+      exit(0)
+      break
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
@@ -302,11 +298,10 @@ else:
       # With ddpmopt/README.md, we have 20kbit upper limit on function entropy.
       # In practical, 2 bit from MSB expecting input is enough.
       # However, we expect 8 bit color for each pixel.
-      upix   = pow(19683 / 8., .5)
-      upixr  = upix / pow(w * h, .5)
-      if(argv[2][- 1] == "c"): upixr /= pow(3., .5)
-      elif(argv[2][- 1] == "C"): upixr /= 3.
-      sz     = str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1)
+      upix  = pow(19683 / 8., .5)
+      upixr = upix / pow(w * w + h * h, .5)
+      if(argv[2][- 1] == "C"): upixr /= pow(3. , .5)
+      sz    = str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1)
       # N.B.
       # refering en.wikipedia.org/wiki/Condorcet's-jury-theorem
       # n ~ 11 to get .95 from 2/3 probability.

@@ -2733,7 +2733,8 @@ template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvarian
 
 template <typename T> static inline T revertProgramInvariant(const pair<T, T>& in, const bool& on01 = false) {
   const auto r0(in.first * in.second);
-  const auto r(T(int(0)) < r0 ? r0 - floor(r0) : ceil(- r0) + r0);
+  const auto r1(T(int(0)) < r0 ? r0 - floor(r0) : ceil(- r0) + r0);
+  const auto r(T(int(0)) == r1 ? T(int(1)) : r1);
   return on01 ? r :
       - tan(max(- T(int(1)) + sqrt(SimpleMatrix<T>().epsilon()),
             min(  T(int(1)) - sqrt(SimpleMatrix<T>().epsilon()),
@@ -3911,7 +3912,7 @@ template <typename T> static inline bool loadstub(ifstream& input, const int& nm
       continue;
     } else if(mode) {
       mode = false;
-      datas[k](j, i) = T(work) / T(nmax);
+      datas[k](j, i) = T(work + 1) / (T(nmax) + T(int(1)));
       work = 0;
       if(++ k >= ncolor) {
         if(++ i >= datas[0].cols()) {
@@ -3997,10 +3998,10 @@ template <typename T> bool savep2or3(const char* filename, const vector<SimpleMa
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
           if(data.size() == 1)
-            output << int(data[0](i, j) * T(depth)) << "\n";
+            output << max(int(0), int(data[0](i, j) * (T(depth) + T(int(1)))) - int(1)) << "\n";
           else
             for(int k = 0; k < 3; k ++)
-              output << int(data[k](i, j) * T(depth)) << "\n";
+              output << max(int(0), int(data[k](i, j) * (T(depth) + T(int(1)))) - int(1)) << "\n";
     } catch (...) {
       cerr << "An error has occured while writing file." << endl;
     }
@@ -4235,7 +4236,7 @@ template <typename T> pair<vector<vector<SimpleVector<T> > >, vector<vector<Simp
 
 template <typename T> pair<vector<vector<SimpleMatrix<T> > >, vector<vector<SimpleMatrix<T> > > > predMat(const vector<vector<SimpleMatrix<T> > >& in0, const int& skip = 1, const int& cj = 11) {
   assert(0 < skip && in0.size() / skip && in0[0].size() && in0[0][0].rows() && in0[0][0].cols());
-  const int ccj(ceil(sqrt(T(cj))));
+  const auto ccj(int(ceil(sqrt(T(cj)))) | int(1));
   assert(0 < ccj);
   if(ccj * ccj * 19683 < in0[0].size() * in0[0][0].rows() * in0[0][0].cols())
     cerr << "predMat : elements larger than 19683, exceeds function entropy." << endl;
@@ -4316,6 +4317,7 @@ template <typename T> pair<vector<SimpleSparseTensor<T> >, vector<SimpleSparseTe
             goto next;
         absent.emplace_back(make_pair(i, make_pair(j, k)));
        next:
+        ;
       }
   sort(absent.begin(), absent.end());
   if(19683 < idx.size() * idx.size() * idx.size() - absent.size())

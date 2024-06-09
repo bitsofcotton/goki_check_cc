@@ -97,4 +97,5 @@ Please refer bitsofcotton/p8 for this.
 2024/04/23 add predC, predCbond command.
 2024/05/29 cleanC, cleanc change.
 2024/06/07 fix comment on test.py.
+2024/06/09 compat with latest ddpmopt.
 
