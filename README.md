@@ -44,7 +44,6 @@ Please refer bitsofcotton/p8 for this.
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python3 test.py ./gokibin i2i <param> img0.png ...
     python3 test.py ./gokibin move
-    python3 test.py dummy (predC|predCbond) input0.ppm ...
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -98,4 +97,5 @@ Please refer bitsofcotton/p8 for this.
 2024/05/29 cleanC, cleanc change.
 2024/06/07 fix comment on test.py.
 2024/06/09 compat with latest ddpmopt.
+2024/06/11 elim nouse commands.
 
