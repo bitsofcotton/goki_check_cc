@@ -1648,6 +1648,15 @@ public:
       (*this)[ii] = ii == i ? r : zero;
     return *this;
   }
+  inline       SimpleVector<T>  reverse() {
+    SimpleVector<T> res(entity.size());
+#if defined(_OPENMP)
+#pragma omp simd
+#endif
+    for(int i = 0; i < res.size(); i ++)
+      res[i] = entity[entity.size() - 1 - i];
+    return res;
+  }
   
   vector<T> entity;
 };
@@ -2726,7 +2735,7 @@ template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvarian
                             T(int(1)), on01));
   // N.B. x_1 ... x_n == 1.
   // <=> x_1 / (x_1 ... x_n)^(1/n) ... == 1.
-  ratio = exp(ratio / T(res.size()));
+  ratio = isfinite(ratio) ? exp(ratio / T(res.size())) : T(int(1));
   for(int i = 0; i < res.size(); i ++) res[i] /= ratio;
   return make_pair(res, ratio);
 }
@@ -3158,6 +3167,8 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
     work[work.size() - 1] = T(int(0));
     const auto avg0(avg);
           auto last(sqrt(work.dot(work)));
+    const auto navg(avg.dot(avg));
+    if(! isfinite(navg) || navg == zero) continue;
     for(int ii = 0;
             ii < 2 * int(- log(SimpleMatrix<T>().epsilon()) / log(T(int(2))) )
             && sqrt(work.dot(work) * SimpleMatrix<T>().epsilon()) <
@@ -3562,6 +3573,173 @@ public:
   P p;
   T M;
 };
+
+template <typename T, typename P> class Pprogression {
+public:
+  inline Pprogression() { ; }
+  inline Pprogression(const P& p, const int& loop0 = 1) {
+    assert(loop0);
+    const auto loop(abs(loop0));
+    (this->p).resize(loop);
+    for(int i = 0; i < (this->p).size(); i ++)
+      (this->p)[i].resize(i + 1, p);
+    h  = idFeeder<T>(loop);
+    {
+      vector<int> ph0;
+      ph0.resize(loop, 0);
+      ph.resize(loop, ph0);
+      vector<T> eh0;
+      eh0.resize(loop, T(int(0)));
+      eh.resize(loop, eh0);
+    }
+    addp = 0 < loop0;
+    bb.reserve(loop);
+    for(int i = 0; i < loop; i ++)
+      bb.emplace_back(idFeeder<T>(addp ? i + 1 : 1));
+    t ^= t;
+  }
+  inline ~Pprogression() { ; }
+  inline const T& progression(const SimpleVector<T>& h, const int& idx, const int& count) {
+    assert(0 <= idx && 0 <= count);
+    if(! count) return h[idx];
+    if(ph[idx][count]) return eh[idx][count];
+    ph[idx][count] = 1;
+    return (eh[idx][count] = progression(h, idx, count - 1) - progression(h, idx - 1, count - 1));
+  }
+  inline T next(const T& in) {
+    static const T zero(int(0));
+    for(int i = 0; i < ph.size(); i ++)
+      for(int j = 0; j < ph[i].size(); j ++)
+        ph[i][j] = 0;
+    const auto& hh(h.next(in));
+    auto M(zero);
+    if(! h.full) return M;
+    for(int i = 0; i < p.size(); i ++)
+      bb[i].next(p[i][t % p[i].size()].next(progression(hh, hh.size() - 1, i)));
+    t ++;
+    for(int i = 0; i < p.size(); i ++)
+      M += bb[i].res[0] + (i && addp ? progression(hh, hh.size() - 2, i - 1) : zero);
+    return addp ? M /= T(int(p.size())) : M;
+  }
+  inline SimpleVector<T> getAll() {
+    static const T zero(int(0));
+    if(! addp) return SimpleVector<T>();
+    const auto& hh(h.res);
+    SimpleVector<T> res(bb.size());
+    for(int i = 0; i < res.size(); i ++) {
+      res[i] = zero;
+      for(int j = i; j < res.size(); j ++)
+        res[i] += bb[j].res[i] +
+          (j ? progression(hh, hh.size() - 2, j - 1) : zero);
+      res[i] /= T(int(res.size() - i));
+    }
+    return res;
+  }
+  vector<vector<P> > p;
+  idFeeder<T> h;
+  vector<vector<int> > ph;
+  vector<vector<T> > eh;
+  vector<idFeeder<T> > bb;
+  int t;
+  bool addp;
+};
+
+template <typename T, typename P> class PprogressionOnce010n {
+public:
+  inline PprogressionOnce010n() { ; }
+  inline PprogressionOnce010n(const P& p, const int& p0, const int& len) {
+    const auto& loop(p0);
+    assert(0 < loop);
+    (this->p).resize(loop);
+    for(int i = 0; i < (this->p).size(); i ++)
+      (this->p)[i].resize(i + 1, p);
+    h  = idFeeder<T>(loop);
+    {
+      vector<int> ph0;
+      ph0.resize(loop, 0);
+      ph.resize(loop, ph0);
+      vector<T> eh0;
+      eh0.resize(loop, T(int(0)));
+      eh.resize(loop, eh0);
+    }
+    bb.reserve(loop);
+    for(int i = 0; i < loop; i ++)
+      bb.emplace_back(idFeeder<T>(i + 1));
+    t ^= t;
+    plen = len;
+  }
+  inline ~PprogressionOnce010n() { ; }
+  inline const T& progression(const SimpleVector<T>& h, const int& idx, const int& count) {
+    assert(0 <= idx && 0 <= count);
+    if(! count) return h[idx];
+    if(ph[idx][count]) return eh[idx][count];
+    ph[idx][count] = 1;
+    return (eh[idx][count] = progression(h, idx, count - 1) - progression(h, idx - 1, count - 1));
+  }
+  inline SimpleVector<T> next(const T& in) {
+    static const T zero(int(0));
+    for(int i = 0; i < ph.size(); i ++)
+      for(int j = 0; j < ph[i].size(); j ++)
+        ph[i][j] = 0;
+    const auto& hh(h.next(in));
+    t ++;
+    if(! h.full) return SimpleVector<T>();
+    for(int i = 0; i < p.size(); i ++)
+      if((p.size() - 1 - t) / plen / (i + 1) <= 1)
+        bb[i].next(p[i][t % p[i].size()].next(progression(hh, hh.size() - 1, i)));
+    SimpleVector<T> res(bb.size());
+    for(int i = 0; i < res.size(); i ++) {
+      res[i] = zero;
+      for(int j = i; j < res.size(); j ++)
+        res[i] += bb[j].res[i] +
+          (j ? progression(hh, hh.size() - 2, j - 1) : zero);
+      res[i] /= T(int(res.size() - i));
+    }
+    return res;
+  }
+  vector<vector<P> > p;
+  idFeeder<T> h;
+  vector<vector<int> > ph;
+  vector<vector<T> > eh;
+  vector<idFeeder<T> > bb;
+  int plen;
+  int p0;
+  int t;
+};
+
+template <typename T, typename P, typename Q> class PAthenB {
+public:
+  inline PAthenB() { ; }
+  inline PAthenB(P&& p, Q&& q) { this->p = p; this->q = q; M = T(int(0)); }
+  inline ~PAthenB() { ; }
+  inline T next(const T& in) {
+    const auto M2(q.next(in * M));
+    return M2 * (M = p.next(in));
+  }
+  P p;
+  Q q;
+  T M;
+};
+
+template <typename T> using P10 =
+   PAthenB<T, Pprogression<T, PBond<T, P01<T> > >,
+     Pprogression<T, PBond<T, P0maxRank<T> > >  >;
+template <typename T> using P210 =
+   PAthenB<T, Pprogression<T, PBond<T, P012L<T> > >, P10<T> >;
+
+template <typename T> SimpleVector<T> P010nOneshot(const SimpleVector<T>& in, const int& p0) {
+  PprogressionOnce010n<T, PBond<T, P01<T> > > p(PBond<T, P01<T> >(P01<T>(4), 5 * 5 - 4 + 2), p0, 5 * 5 - 4 + 2);
+  PprogressionOnce010n<T, PBond<T, P0maxRank<T> > > q(PBond<T, P0maxRank<T> >(P0maxRank<T>(), 3), p0, 3);
+  SimpleVector<T> rp;
+  SimpleVector<T> rq;
+  for(int i = 0; i < in.size(); i ++) {
+    if(rp.size()) rq = q.next(rp[0] * in[i]);
+    rp = p.next(in[i]);
+  }
+  for(int i = 0; i < rq.size(); i ++)
+    rq[i] *= rp[i];
+  return rq;
+}
 
 // N.B. invariant gathers some of the group on the input pattern.
 template <typename T> SimpleMatrix<T> concat(const SimpleMatrix<T>& m0, const SimpleMatrix<T>& m1) {
@@ -4118,74 +4296,55 @@ template <typename T> static inline T getImgPt(const T& y, const T& h) {
   return yy % h;
 }
 
-template <typename T> pair<pair<vector<SimpleVector<T> >, vector<T> >, pair<vector<SimpleVector<T> >, vector<T> > > predv(const vector<SimpleVector<T> >& in, const int& skip = 1) {
-  assert(0 < skip);
+template <typename T> pair<pair<vector<SimpleVector<T> >, SimpleVector<T> >, pair<vector<SimpleVector<T> >, SimpleVector<T> > > predv(const vector<SimpleVector<T> >& in) {
   // N.B. we need to initialize p0 vector.
   SimpleVector<T> init(3);
   for(int i = 0; i < init.size(); i ++)
     init[i] = T(int(i));
   cerr << "P0 initialize: " << P0maxRank0<T>(1).next(init) << endl;
-  // N.B. we need rich internal status.
-  auto p0(min(int(floor(sqrt(T(int(in.size() - 4 - 1 + 2 - 4 - 2 - 3)) ) / T(skip) )), int(in.size() - 2) / skip / 26));
+  // N.B. we need p10 because of short internal states length.
+  //      in fact, we need p210 for them.
+  const auto p0(int(in.size()) / (5 * 5 - 4 + 2) / 3);
   vector<SimpleVector<T> > p;
-  vector<T> psec;
-  if(p0 < 1) return make_pair(make_pair(p, psec), make_pair(p, psec));
-  SimpleVector<T> secondsf(in.size());
-  secondsf.O();
+  if(p0 < 2) return make_pair(make_pair(p, SimpleVector<T>()),
+    make_pair(p, SimpleVector<T>()));
+  SimpleVector<T> seconds(in.size());
+  seconds.O();
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < in.size(); i ++)  {
-    secondsf[i] = makeProgramInvariant<T>(in[i], - T(int(1)), true).second;
+    seconds[i] = makeProgramInvariant<T>(in[i], - T(int(1)), true).second;
   }
-  SimpleVector<T> secondsb(secondsf.size());
-  secondsb.O();
-  for(int i = 0; i < secondsf.size(); i ++)
-    secondsb[i] = secondsf[secondsf.size() - 1 - i];
   p.resize(p0);
-  psec.resize(p0);
   auto q(p);
-  auto qsec(psec);
   for(int i = 0; i < p0; i ++) {
     p[i].resize(in[0].size());
     q[i].resize(in[0].size());
     p[i].O();
     q[i].O();
-    psec[i] = qsec[i] = T(int(0));
   }
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < in[0].size(); j ++) {
     cerr << j << " / " << in[0].size() << endl;
-    idFeeder<T> pb(secondsf.size());
-    idFeeder<T> pf(secondsf.size());
+    SimpleVector<T> buf(in.size());
     for(int i = 0; i < in.size(); i ++)
-      pf.next(makeProgramInvariantPartial<T>(in[i][j], secondsf[i], true));
-    assert(pf.full);
-    for(int k = 0; k < pf.res.size(); k ++)
-      pb.next(pf.res[pf.res.size() - 1 - k]);
-    assert(pb.full);
-    for(int i = 0; i < p0; i ++) {
-      q[i][j] = P01<T, false>(4, i + 1).next(pb.res, skip);
-      p[i][j] = P01<T, false>(4, i + 1).next(pf.res, skip);
+      buf[i] = makeProgramInvariantPartial<T>(in[i][j], seconds[i], true);
+    auto pf(P010nOneshot<T>(buf, p0));
+    auto pb(P010nOneshot<T>(buf.reverse(), p0));
+    for(int i = 0; i < p.size(); i ++) {
+      p[i][j] = move(pf[i]);
+      q[i][j] = move(pb[i]);
     }
   }
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < p.size(); i ++) {
-    qsec[i] = P01<T, false>(4, i + 1).next(secondsb, skip);
-    psec[i] = P01<T, false>(4, i + 1).next(secondsf, skip);
-    // p[i][j] = revertProgramInvariant<T>(make_pair(rres[5], psec), true);
-    // q[i][j] = revertProgramInvariant<T>(make_pair(rres[5], qsec), true);
-  }
-  return make_pair(make_pair(move(p), move(psec)),
-                   make_pair(move(q), move(qsec)));
+  return make_pair(make_pair(move(p), P010nOneshot<T>(seconds, p0)),
+                   make_pair(move(q), P010nOneshot<T>(seconds.reverse(), p0)) );
 }
 
-template <typename T> pair<vector<vector<SimpleVector<T> > >, vector<vector<SimpleVector<T> > > > predVec(const vector<vector<SimpleVector<T> > >& in0, const int& skip = 1, const int& cj = 11) {
-  assert(0 < skip && in0.size() / skip && in0[0].size() && in0[0][0].size() && 0 < cj);
+template <typename T> pair<vector<vector<SimpleVector<T> > >, vector<vector<SimpleVector<T> > > > predVec(const vector<vector<SimpleVector<T> > >& in0, const int& cj = 11) {
+  assert(in0.size() && in0[0].size() && in0[0][0].size() && 0 < cj);
   if(19683 * cj < in0[0].size() * in0[0][0].size())
     cerr << "predVec : elements larger than 19683, exceeds function entropy." << endl;
   vector<SimpleVector<T> > in;
@@ -4199,7 +4358,7 @@ template <typename T> pair<vector<vector<SimpleVector<T> > >, vector<vector<Simp
       in[i].setVector(j * in0[i][0].size(), in0[i][j]);
     }
   }
-  const auto p(predv<T>(in, skip));
+  const auto p(predv<T>(in));
   pair<vector<vector<SimpleVector<T> > >, vector<vector<SimpleVector<T> > > > res;
   res.first.resize( p.first.first.size() );
   res.second.resize(p.second.first.size());
@@ -4234,8 +4393,8 @@ template <typename T> pair<vector<vector<SimpleVector<T> > >, vector<vector<Simp
   return res;
 }
 
-template <typename T> pair<vector<vector<SimpleMatrix<T> > >, vector<vector<SimpleMatrix<T> > > > predMat(const vector<vector<SimpleMatrix<T> > >& in0, const int& skip = 1, const int& cj = 11) {
-  assert(0 < skip && in0.size() / skip && in0[0].size() && in0[0][0].rows() && in0[0][0].cols());
+template <typename T> pair<vector<vector<SimpleMatrix<T> > >, vector<vector<SimpleMatrix<T> > > > predMat(const vector<vector<SimpleMatrix<T> > >& in0, const int& cj = 11) {
+  assert(in0.size() && in0[0].size() && in0[0][0].rows() && in0[0][0].cols());
   const auto ccj(int(ceil(sqrt(T(cj)))) | int(1));
   assert(0 < ccj);
   if(ccj * ccj * 19683 < in0[0].size() * in0[0][0].rows() * in0[0][0].cols())
@@ -4253,7 +4412,7 @@ template <typename T> pair<vector<vector<SimpleMatrix<T> > >, vector<vector<Simp
                         k * in0[i][0].cols(), in0[i][j].row(k));
     }
   }
-  const auto p(predv<T>(in, skip));
+  const auto p(predv<T>(in));
   pair<vector<vector<SimpleMatrix<T> > >, vector<vector<SimpleMatrix<T> > > > res;
   res.first.resize( p.first.first.size() );
   res.second.resize(p.second.first.size());
@@ -4265,7 +4424,6 @@ template <typename T> pair<vector<vector<SimpleMatrix<T> > >, vector<vector<Simp
     for(int j = 0; j < res.first[i].size(); j ++) {
       res.first[i][j].resize(in0[0][0].rows(), in0[0][0].cols());
       res.second[i][j].resize(in0[0][0].rows(), in0[0][0].cols());
-      
       for(int k = 0; k < in0[0][0].rows(); k ++)
         for(int m = 0; m < in0[0][0].cols(); m ++) {
           for(int kk = 0; kk < ccj; kk ++)
@@ -4299,8 +4457,8 @@ template <typename T> pair<vector<vector<SimpleMatrix<T> > >, vector<vector<Simp
   return res;
 }
 
-template <typename T> pair<vector<SimpleSparseTensor<T> >, vector<SimpleSparseTensor<T> > > predSTen(const vector<SimpleSparseTensor<T> >& in0, const vector<int>& idx, const int& skip = 1) {
-  assert(idx.size() && 0 < skip && in0.size() / skip);
+template <typename T> pair<vector<SimpleSparseTensor<T> >, vector<SimpleSparseTensor<T> > > predSTen(const vector<SimpleSparseTensor<T> >& in0, const vector<int>& idx) {
+  assert(idx.size() && in0.size());
   // N.B. we don't do input scaling.
   // N.B. the data we target is especially string stream corpus.
   //      they are incontinuous one, so complementing with continuous stream
@@ -4332,7 +4490,7 @@ template <typename T> pair<vector<SimpleSparseTensor<T> >, vector<SimpleSparseTe
             in[i][cnt ++] =
               (in0[i][idx[j]][idx[k]][idx[m]] + T(int(1))) / T(int(2));
   }
-  auto p(predv<T>(in, skip));
+  auto p(predv<T>(in));
   in.resize(0);
   pair<vector<SimpleSparseTensor<T> >, vector<SimpleSparseTensor<T> > > res;
   res.first.resize( p.first.first.size() );
