@@ -176,7 +176,7 @@ else:
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "cleanl" or argv[2] == "cleanq" or argv[2] == "cleanc" or argv[2] == "cleanC"):
+    elif(argv[2] == "cleanq"):
       w = h = 0
       with open(root + ".ppm") as f:
         f.readline()
@@ -200,14 +200,5 @@ else:
       # Thanks:
       # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
-      if(argv[2][- 1] == "q"):
-        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleanq.png"])
-      elif(argv[2][- 1] == "l"):
-        subprocess.call(["convert", line, "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(int(cj * upixr * w + 1)) + "x" + str(int(cj * upixr * h + 1)), "-sigmoidal-contrast", "7.5", root + "-cleanl.png"])
-      elif(argv[2][- 1] == "c" or argv[2][- 1] == "C"):
-        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "-compress", "none", root + "-" + argv[2] + ".ppm"])
-        subprocess.call([argv[1], "enlarge", root + "-" + argv[2] + ".ppm", root + "-" + argv[2] + "e.ppm", "2", str(pixels)])
-        subprocess.call(["convert", root + "-" + argv[2] + "e.ppm", "-despeckle", "-equalize", root + "-" + argv[2] + "e.png"])
-      else:
-        print("unknown command: ", argv[2])
+      subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleanq.png"])
 

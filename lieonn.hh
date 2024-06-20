@@ -3621,20 +3621,6 @@ public:
       M += bb[i].res[0] + (i && addp ? progression(hh, hh.size() - 2, i - 1) : zero);
     return addp ? M /= T(int(p.size())) : M;
   }
-  inline SimpleVector<T> getAll() {
-    static const T zero(int(0));
-    if(! addp) return SimpleVector<T>();
-    const auto& hh(h.res);
-    SimpleVector<T> res(bb.size());
-    for(int i = 0; i < res.size(); i ++) {
-      res[i] = zero;
-      for(int j = i; j < res.size(); j ++)
-        res[i] += bb[j].res[i] +
-          (j ? progression(hh, hh.size() - 2, j - 1) : zero);
-      res[i] /= T(int(res.size() - i));
-    }
-    return res;
-  }
   vector<vector<P> > p;
   idFeeder<T> h;
   vector<vector<int> > ph;
@@ -3644,16 +3630,15 @@ public:
   bool addp;
 };
 
-template <typename T, typename P> class PprogressionOnce010n {
+template <typename T> class PprogressionOnce {
 public:
-  inline PprogressionOnce010n() { ; }
-  inline PprogressionOnce010n(const P& p, const int& p0, const int& len) {
-    const auto& loop(p0);
-    assert(0 < loop);
-    (this->p).resize(loop);
-    for(int i = 0; i < (this->p).size(); i ++)
-      (this->p)[i].resize(i + 1, p);
-    h  = idFeeder<T>(loop);
+  inline PprogressionOnce() { ; }
+  inline PprogressionOnce(const int& loop, const int& len) {
+    assert(0 < loop && 0 < len);
+    p.reserve(loop);
+    for(int i = 0; i < loop; i ++)
+      p.emplace_back(PBond<T, P01<T> >(P01<T>(4, i + 1), (len - loop * 2) / 2));
+    h = idFeeder<T>(loop);
     {
       vector<int> ph0;
       ph0.resize(loop, 0);
@@ -3666,15 +3651,15 @@ public:
     for(int i = 0; i < loop; i ++)
       bb.emplace_back(idFeeder<T>(i + 1));
     t ^= t;
-    plen = len;
   }
-  inline ~PprogressionOnce010n() { ; }
+  inline ~PprogressionOnce() { ; }
   inline const T& progression(const SimpleVector<T>& h, const int& idx, const int& count) {
     assert(0 <= idx && 0 <= count);
     if(! count) return h[idx];
     if(ph[idx][count]) return eh[idx][count];
     ph[idx][count] = 1;
-    return (eh[idx][count] = progression(h, idx, count - 1) - progression(h, idx - 1, count - 1));
+    return (eh[idx][count] = progression(h, idx, count - 1) -
+                             progression(h, idx - 1, count - 1));
   }
   inline SimpleVector<T> next(const T& in) {
     static const T zero(int(0));
@@ -3682,28 +3667,37 @@ public:
       for(int j = 0; j < ph[i].size(); j ++)
         ph[i][j] = 0;
     const auto& hh(h.next(in));
-    t ++;
     if(! h.full) return SimpleVector<T>();
     for(int i = 0; i < p.size(); i ++)
-      if((p.size() - 1 - t) / plen / (i + 1) <= 1)
-        bb[i].next(p[i][t % p[i].size()].next(progression(hh, hh.size() - 1, i)));
-    SimpleVector<T> res(bb.size());
+      if(p.size() - t - i <= 1)
+        bb[i].next(p[i].next(progression(hh, hh.size() - 1, i)));
+    t ++;
+    // N.B. we bet 4 dimension the original bitstream have.
+    //      if there's some regression, this fails however hardly occurs.
+    //      betting 4 dimension is from bitsofcotton/p1 condition.
+    //      so hardly tuned bitwise functions has core 3. ... dimension but
+    //      some of the eigen vectors the stream depend which we cannot get
+    //      them by this function.
+    // N.B. on another perspective, (x,f(x)) has 2 dimension,
+    //      this can also work.
+    static const int avglen(4);
+    // static const int avglen(2);
+    SimpleVector<T> res(max(int(1), int(bb.size()) - avglen));
     for(int i = 0; i < res.size(); i ++) {
+      const auto rhe(min(int(res.size()), i + avglen));
       res[i] = zero;
-      for(int j = i; j < res.size(); j ++)
+      for(int j = i; j < rhe; j ++)
         res[i] += bb[j].res[i] +
           (j ? progression(hh, hh.size() - 2, j - 1) : zero);
-      res[i] /= T(int(res.size() - i));
+      res[i] /= T(int(rhe - i));
     }
     return res;
   }
-  vector<vector<P> > p;
+  vector<PBond<T, P01<T> > > p;
   idFeeder<T> h;
   vector<vector<int> > ph;
   vector<vector<T> > eh;
   vector<idFeeder<T> > bb;
-  int plen;
-  int p0;
   int t;
 };
 
@@ -3726,20 +3720,6 @@ template <typename T> using P10 =
      Pprogression<T, PBond<T, P0maxRank<T> > >  >;
 template <typename T> using P210 =
    PAthenB<T, Pprogression<T, PBond<T, P012L<T> > >, P10<T> >;
-
-template <typename T> SimpleVector<T> P010nOneshot(const SimpleVector<T>& in, const int& p0) {
-  PprogressionOnce010n<T, PBond<T, P01<T> > > p(PBond<T, P01<T> >(P01<T>(4), 5 * 5 - 4 + 2), p0, 5 * 5 - 4 + 2);
-  PprogressionOnce010n<T, PBond<T, P0maxRank<T> > > q(PBond<T, P0maxRank<T> >(P0maxRank<T>(), 3), p0, 3);
-  SimpleVector<T> rp;
-  SimpleVector<T> rq;
-  for(int i = 0; i < in.size(); i ++) {
-    if(rp.size()) rq = q.next(rp[0] * in[i]);
-    rp = p.next(in[i]);
-  }
-  for(int i = 0; i < rq.size(); i ++)
-    rq[i] *= rp[i];
-  return rq;
-}
 
 // N.B. invariant gathers some of the group on the input pattern.
 template <typename T> SimpleMatrix<T> concat(const SimpleMatrix<T>& m0, const SimpleMatrix<T>& m1) {
@@ -4090,7 +4070,7 @@ template <typename T> static inline bool loadstub(ifstream& input, const int& nm
       continue;
     } else if(mode) {
       mode = false;
-      datas[k](j, i) = T(work + 1) / (T(nmax) + T(int(1)));
+      datas[k](j, i) = T(work) / (T(nmax) + T(int(1)));
       work = 0;
       if(++ k >= ncolor) {
         if(++ i >= datas[0].cols()) {
@@ -4176,10 +4156,10 @@ template <typename T> bool savep2or3(const char* filename, const vector<SimpleMa
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
           if(data.size() == 1)
-            output << max(int(0), int(data[0](i, j) * (T(depth) + T(int(1)))) - int(1)) << "\n";
+            output << min(int(depth), int(data[0](i, j) * (T(depth) + T(int(1)))) ) << "\n";
           else
             for(int k = 0; k < 3; k ++)
-              output << max(int(0), int(data[k](i, j) * (T(depth) + T(int(1)))) - int(1)) << "\n";
+              output << min(int(depth), int(data[k](i, j) * (T(depth) + T(int(1)))) ) << "\n";
     } catch (...) {
       cerr << "An error has occured while writing file." << endl;
     }
@@ -4301,10 +4281,10 @@ template <typename T> pair<pair<vector<SimpleVector<T> >, SimpleVector<T> >, pai
   SimpleVector<T> init(3);
   for(int i = 0; i < init.size(); i ++)
     init[i] = T(int(i));
-  cerr << "P0 initialize: " << P0maxRank0<T>(1).next(init) << endl;
-  // N.B. we need p10 because of short internal states length.
+  cerr << "Coherent: P0: " << P0maxRank0<T>().next(init) << endl;
+  // N.B. we need p10 like method because of short internal states length.
   //      in fact, we need p210 for them.
-  const auto p0(int(in.size()) / (5 * 5 - 4 + 2) / 3);
+  const auto p0((in.size() - (5 * 5 - 4 + 2) * 2) / 2);
   vector<SimpleVector<T> > p;
   if(p0 < 2) return make_pair(make_pair(p, SimpleVector<T>()),
     make_pair(p, SimpleVector<T>()));
@@ -4316,31 +4296,73 @@ template <typename T> pair<pair<vector<SimpleVector<T> >, SimpleVector<T> >, pai
   for(int i = 0; i < in.size(); i ++)  {
     seconds[i] = makeProgramInvariant<T>(in[i], - T(int(1)), true).second;
   }
-  p.resize(p0);
+  p.resize(p0 + 1, SimpleVector<T>(in[0].size()).O());
   auto q(p);
-  for(int i = 0; i < p0; i ++) {
-    p[i].resize(in[0].size());
-    q[i].resize(in[0].size());
-    p[i].O();
-    q[i].O();
-  }
+  auto pfsz(p0);
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int j = 0; j < in[0].size(); j ++) {
     cerr << j << " / " << in[0].size() << endl;
-    SimpleVector<T> buf(in.size());
-    for(int i = 0; i < in.size(); i ++)
-      buf[i] = makeProgramInvariantPartial<T>(in[i][j], seconds[i], true);
-    auto pf(P010nOneshot<T>(buf, p0));
-    auto pb(P010nOneshot<T>(buf.reverse(), p0));
-    for(int i = 0; i < p.size(); i ++) {
-      p[i][j] = move(pf[i]);
-      q[i][j] = move(pb[i]);
+    PprogressionOnce<T> ppf(p0, in.size());
+    PprogressionOnce<T> ppb(p0, in.size());
+    // N.B. our computer is infected, so out of the control could tell us
+    //      predict and destroy by this way is correct ones.
+    //      also we need to implant the input data itself into source code
+    //      when not only pipe but also the file io is infected condition.
+    idFeeder<T> pf((in.size() - p0 * 2) / 2);
+    idFeeder<T> pb((in.size() - p0 * 2) / 2);
+    SimpleVector<T> qf;
+    SimpleVector<T> qb;
+    for(int i = 0; i < in.size(); i ++) {
+      const auto fwd(makeProgramInvariantPartial<T>(in[i][j], seconds[i], true));
+      const auto bwd(makeProgramInvariantPartial<T>(in[in.size() - i - 1][j], seconds[seconds.size() - i - 1], true));
+      const auto& p0f(pf.next(fwd));
+      const auto& q0f(pb.next(bwd));
+      p[0][j] = q[0][j] = T(int(0));
+      for(int k = 1; k < p0f.size(); k ++) {
+        p[0][j] += p0f[k];
+        q[0][j] += q0f[k];
+      }
+      p[0][j] = - p[0][j];
+      q[0][j] = - q[0][j];
+      qf = ppf.next(fwd);
+      qb = ppb.next(bwd);
     }
+    for(int i = 0; i < qf.size(); i ++) {
+      p[i + 1][j] = move(qf[i]);
+      q[i + 1][j] = move(qb[i]);
+    }
+    pfsz = qf.size() + 1;
   }
-  return make_pair(make_pair(move(p), P010nOneshot<T>(seconds, p0)),
-                   make_pair(move(q), P010nOneshot<T>(seconds.reverse(), p0)) );
+  p.resize(pfsz);
+  q.resize(pfsz);
+  SimpleVector<T> rp(pfsz);
+  SimpleVector<T> rq(pfsz);
+  PprogressionOnce<T> ppf(p0, in.size());
+  PprogressionOnce<T> ppb(p0, in.size());
+  idFeeder<T> pf((in.size() - p0 * 2) / 2);
+  idFeeder<T> pb((in.size() - p0 * 2) / 2);
+  SimpleVector<T> qf;
+  SimpleVector<T> qb;
+  for(int i = 0; i < in.size(); i ++) {
+    const auto& p0f(pf.next(seconds[i]));
+    const auto& q0f(pb.next(seconds[seconds.size() - i - 1]));
+    rp[0] = rq[0] = T(int(0));
+    for(int k = 1; k < p0f.size(); k ++) {
+      rp[0] += p0f[k];
+      rq[0] += q0f[k];
+    }
+    rp[0] = - rp[0];
+    rq[0] = - rq[0];
+    qf = ppf.next(seconds[i]);
+    qb = ppb.next(seconds[seconds.size() - i - 1]);
+  }
+  for(int i = 0; i < qf.size(); i ++) {
+    rp[i + 1] = qf[i];
+    rq[i + 1] = qb[i];
+  }
+  return make_pair(make_pair(move(p), move(rp)), make_pair(move(q), move(rq)));
 }
 
 template <typename T> pair<vector<vector<SimpleVector<T> > >, vector<vector<SimpleVector<T> > > > predVec(const vector<vector<SimpleVector<T> > >& in0, const int& cj = 11) {
