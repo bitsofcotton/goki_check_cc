@@ -38,7 +38,7 @@ Please refer bitsofcotton/p8 for this.
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokibin recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokibin habit <in0.obj> <in1.obj> <out.obj>
-    python3 test.py ./gokibin (sharpen|bump|enlarge|shrink|flarge|blink|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit|illust|nurie|gray|cleanq) <param> input0.png ...
+    python3 test.py ./gokibin (sharpen|bump|enlarge|shrink|flarge|blink|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit|illust|nurie|gray|cleanq|clean[Ll]c?) <param> input0.png ...
     python3 test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
     python3 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
@@ -98,5 +98,5 @@ Please refer bitsofcotton/p8 for this.
 2024/06/07 fix comment on test.py.
 2024/06/09 compat with latest ddpmopt.
 2024/06/11 elim nouse commands.
-2024/06/21 merge latest lieonn.
+2024/06/21 merge latest lieonn. re-add clean\[lL\]c? commands.
 
