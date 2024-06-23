@@ -326,52 +326,6 @@ template <typename T> SimpleMatrix<T> sharpen(const int& size) {
   return s;
 }
 
-
-
-template <typename T> SimpleMatrix<T> rotate(const SimpleMatrix<T>& d, const T& theta) {
-  assert(abs(theta) < atan(T(1)));
-  const auto c(cos(theta));
-  const auto s(sin(theta));
-  const auto h0(abs(int(c * T(d.rows()) - s * T(d.cols()))));
-  const auto h1(h0 + abs(int(s * T(d.cols()))) * 2);
-  const auto w0(abs(int(s * T(d.rows()) + c * T(d.cols()))));
-  const auto w1(w0 + abs(int(s * T(d.rows()))) * 2);
-  SimpleMatrix<T> res(h0 < d.rows() ? h1 : h0,
-                      w0 < d.cols() ? w1 : w0);
-  const T offy(h0 < d.rows() ? abs(int(s * T(d.cols()))) : 0);
-  const T offx(w0 < d.cols() ? abs(int(s * T(d.rows()))) : 0);
-  res.O();
-  const auto diag(int(sqrt(res.rows() * res.rows() +
-                           res.cols() * res.cols())) + 1);
-  for(int j = - diag; j < diag; j ++)
-    for(int k = - diag; k < diag; k ++) {
-      const int yy(c * T(j) - s * T(k) + offy);
-      const int xx(s * T(j) + c * T(k) + offx);
-      if(0 <= yy && yy < res.rows() &&
-         0 <= xx && xx < res.cols()) {
-        const auto dyy(getImgPt<int>(j, d.rows()));
-        const auto dxx(getImgPt<int>(k, d.cols()));
-        {
-          res(yy, xx) = res(min(yy + 1, int(res.rows()) - 1), xx) =
-            res(yy, min(xx + 1, int(res.cols()) - 1)) =
-            res(min(yy + 1, int(res.rows()) - 1),
-                min(xx + 1, int(res.cols()) - 1)) =
-              d(dyy, dxx);
-        }
-      }
-    }
-  return res;
-}
-
-template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>& dr, const SimpleMatrix<T>& d) {
-  SimpleMatrix<T> res(d.rows(), d.cols());
-  for(int i = 0; i < res.rows(); i ++)
-    for(int j = 0; j < res.cols(); j ++)
-      res(i, j) = dr(max(0, min(i + (dr.rows() - d.rows()) / 2, dr.rows() - 1)),
-                     max(0, min(j + (dr.cols() - d.cols()) / 2, dr.cols() - 1)));
-  return res;
-}
-
 template <typename T> static inline SimpleMatrix<T> flip(const SimpleMatrix<T>& d) {
   auto res(d);
 #if defined(_OPENMP)

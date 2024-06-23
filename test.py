@@ -142,9 +142,7 @@ else:
     if(argv[2] == "represent" or argv[2] == "collect" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "rgb2xyz" or argv[2] == "xyz2rgb"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "bump"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + "0.ppm", str(pixels), str(rot)])
-      subprocess.call(["python3", argv[0], argv[1], "cleanq", root + "-bump0.ppm"])
-      subprocess.call(["convert", root + "-bump0-cleanq.png", "-format", "ppm", "-compress", "none", root + "-bump.ppm"])
+      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], argv[2], root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps"):
@@ -176,7 +174,7 @@ else:
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "cleanl" or argv[2] == "cleanlc" or argv[2] == "cleanL" or argv[2] == "cleanLc" or argv[2] == "cleanq"):
+    elif(argv[2] == "cleanl" or argv[2] == "cleanlc" or argv[2] == "cleanL" or argv[2] == "cleanLc"):
       w = h = 0
       with open(root + ".ppm") as f:
         f.readline()
@@ -186,10 +184,10 @@ else:
       # N.B.
       # With ddpmopt/README.md, we have 20kbit upper limit on function entropy.
       # In practical, 2 bit from MSB expecting input is enough.
-      upix  = pow(19683 / 2., .5)
+      # However, working with bump command, we use 8 bit for each.
+      upix  = pow(19683 / 8., .5)
       upixr = upix / pow(w * h, .5)
       if(argv[2][- 1] == "c"): upixr /= pow(3., .5)
-      sz    = str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1)
       # N.B.
       # refering en.wikipedia.org/wiki/Condorcet's-jury-theorem
       # n ~ 11 to get .95 from 2/3 probability.
@@ -201,8 +199,6 @@ else:
       # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
       if(argv[2] == "cleanL" or argv[2] == "cleanLc"):
         subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(int(upixr * w * cj) + 1) + "x" + str(int(upixr * h * cj) + 1), root + "-" + argv[2] + ".png"])
-      elif(argv[2] == "cleanl" or argv[2] == "cleanlc"):
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", sz, root + "-" + argv[2] + ".png"])
       else:
-        subprocess.call(["convert", line, "-despeckle", "-filter", "LanczosRadius", "-distort", "Resize", sz, "-despeckle", "+sigmoidal-contrast", "7.5", "-filter", "LanczosRadius", "-distort", "Resize", str(w) + "x" + str(h) + "!", "-sigmoidal-contrast", "7.5", root + "-cleanq.png"])
+        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1), root + "-" + argv[2] + ".png"])
 
