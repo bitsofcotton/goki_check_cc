@@ -74,8 +74,8 @@ elif(argv[2] == "move"):
   curdir = os.path.basename(os.getcwd())
   s = 0
   while(True):
-    b = subprocess.call(["mv", "predg-backward-" + str(s) + ".ppm", curdir + "-b" + str(s) + ".ppm"])
-    f = subprocess.call(["mv", "predg-forward-" + str(s) + ".ppm", curdir + "-f" + str(s) + ".ppm"])
+    b = subprocess.call(["mv", "predg-b" + str(s) + ".ppm", curdir + "-b" + str(s) + ".ppm"])
+    f = subprocess.call(["mv", "predg-f" + str(s) + ".ppm", curdir + "-f" + str(s) + ".ppm"])
     s += 1
     if(b != 0 or f != 0):
       break
