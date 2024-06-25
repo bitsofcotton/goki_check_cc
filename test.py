@@ -174,31 +174,4 @@ else:
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "cleanl" or argv[2] == "cleanlc" or argv[2] == "cleanL" or argv[2] == "cleanLc"):
-      w = h = 0
-      with open(root + ".ppm") as f:
-        f.readline()
-        a = f.readline().split(" ")
-        w = int(a[0])
-        h = int(a[1])
-      # N.B.
-      # With ddpmopt/README.md, we have 20kbit upper limit on function entropy.
-      # In practical, 2 bit from MSB expecting input is enough.
-      # However, working with bump command, we use 8 bit for each.
-      upix  = pow(19683 / 8., .5)
-      upixr = upix / pow(w * h, .5)
-      if(argv[2][- 1] == "c"): upixr /= pow(3., .5)
-      # N.B.
-      # refering en.wikipedia.org/wiki/Condorcet's-jury-theorem
-      # n ~ 11 to get .95 from 2/3 probability.
-      # This is enough if it's from probability based concerns.
-      # However, in deterministic meaning, we might use cj == upix as well.
-      cj     = pow(11, .5)
-      # Thanks:
-      # R.B. https://www.imagemagick.org/Usage/filter/nicolas/#downsample
-      # From googling, via https://qiita.com/yoya/items/b1590de289b623f18639 .
-      if(argv[2] == "cleanL" or argv[2] == "cleanLc"):
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(int(upixr * w * cj) + 1) + "x" + str(int(upixr * h * cj) + 1), root + "-" + argv[2] + ".png"])
-      else:
-        subprocess.call(["convert", line, "-filter", "LanczosRadius", "-distort", "Resize", str(int(upixr * w) + 1) + "x" + str(int(upixr * h) + 1), root + "-" + argv[2] + ".png"])
 
