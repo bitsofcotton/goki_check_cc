@@ -44,6 +44,8 @@ Please refer bitsofcotton/p8 for this.
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python3 test.py ./gokibin i2i <param> img0.png ...
     python3 test.py ./gokibin move
+    python3 test.py predg-bin predg <num> in0.ppm ...
+    python3 test.py qredg-bin qredg <num> inout0.ppm ...
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -105,4 +107,5 @@ Please refer bitsofcotton/p8 for this.
 2024/06/24 merge latest lieonn.
 2024/06/26 merge latest lieonn.
 2024/06/27 merge latest lieonn.
+2024/06/29 add predg, qredg command for recursive use.
 

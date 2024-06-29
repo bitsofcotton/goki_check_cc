@@ -79,6 +79,23 @@ elif(argv[2] == "move"):
     s += 1
     if(b != 0 or f != 0):
       break
+elif(argv[2] == "predg"):
+  curdir = os.path.basename(os.getcwd())
+  for k in range(0, int(argv[3])):
+    cmd = [argv[1]]
+    for kk in range(0, k):
+      cmd.append(curdir + "-b" + str(k - kk - 1) + ".ppm")
+    cmd.extend(argv[4:])
+    for kk in range(0, k):
+      cmd.append(curdir + "-f" + str(kk) + ".ppm")
+    subprocess.call(cmd)
+    subprocess.call(["mv", "predg-b0.ppm", curdir + "-b" + str(k) + ".ppm"])
+    subprocess.call(["mv", "predg-f0.ppm", curdir + "-f" + str(k) + ".ppm"])
+elif(argv[2] == "qredg"):
+  for k in range(0, int(argv[3])):
+    cmd = [argv[1]]
+    cmd.extend(argv[4:])
+    subprocess.call(cmd)
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
