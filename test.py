@@ -142,23 +142,6 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", "2.5"])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
       subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i--02.ppm", "-.02"])
-elif(argv[2] == "predprep" or argv[2] == "predprep2"):
-  root, ext = os.path.splitext(argv[3])
-  subprocess.call(["convert", argv[3], "-compress", "none", root + "-pp.ppm"])
-  with open(root + "-pp.ppm") as f:
-    f.readline()
-    a = f.readline().split(" ")
-    w = int(a[0])
-    h = int(a[1])
-  # pixels ~ (input numbers)^2 / 2
-  upix = len(argv[3:]) / pow(w * h, .5)
-  if(argv[2][- 1] == "p"):
-    upix /= pow(2., .5)
-  w *= upix
-  h *= upix
-  for line in argv[3:]:
-    root, ext = os.path.splitext(line)
-    subprocess.call(["convert", line, "-resize", str(int(w)) + "x" + str(int(h)), "-compress", "none", root + "-pp.ppm"])
 else:
   for line in argv[3:]:
     try:
