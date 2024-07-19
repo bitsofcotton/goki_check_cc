@@ -18,18 +18,10 @@ By searching with some word that is not common, there exists the article https:/
 From some news, there exists the normal vector of the light based method that is making 3D model from single picture condition with some machine learning.  
 Searching the Internet more...
 
-# Preparing size for bump command
-We should use resize input with cleanl before to bump, resize output with cleanc after doing bump.
-This is because original image don't have enough information for depth, so we should complement them by some of the internal status or function entropy.
-We're doing this only with function entropy, so sup of the image pixels they are meaningful exists.
-
-We can do better size with multiple layered and no equity on each pixel method.
-Please refer bitsofcotton/p8 for this.
-
 # Usage
     make gokibin
     
-    gokibin (collect|sharpen|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
+    gokibin (collect|sharpen|bump|blur|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (cat|catr) <input0.ppm> ...
     gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
     gokibin obj <input.ppm> <output.obj>
@@ -38,7 +30,7 @@ Please refer bitsofcotton/p8 for this.
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokibin recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
     gokibin habit <in0.obj> <in1.obj> <out.obj>
-    python3 test.py ./gokibin (sharpen|bump|enlarge|shrink|flarge|blink|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit|illust|nurie|gray|cleanq|clean[Ll]c?) <param> input0.png ...
+    python3 test.py ./gokibin (sharpen|bump|blur|enlarge|shrink|flarge|blink|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit|illust|nurie|gray|cleanq|clean[Ll]c?) <param> input0.png ...
     python3 test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
     python3 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
@@ -110,4 +102,5 @@ Please refer bitsofcotton/p8 for this.
 2024/06/29 add predg, qredg command for recursive use.
 2024/06/30 merge latest lieonn.
 2024/07/07 merge latest lieonn, no affects.
+2024/07/20 add blur command useful for monochrome predg results, update readme.
 

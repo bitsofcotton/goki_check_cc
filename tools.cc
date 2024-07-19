@@ -36,7 +36,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (collect|sharpen|blur|blurr|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj <input.ppm> <output.obj>" << endl;
@@ -66,6 +66,8 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "bit") == 0 ||
      strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
+     strcmp(argv[1], "blur") == 0 ||
+     strcmp(argv[1], "blurr") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "shrink") == 0 ||
@@ -109,8 +111,9 @@ int main(int argc, const char* argv[]) {
       for(int ii = 0; ii < (recur < 1 ? 1 : recur); ii ++)
         for(int i = 0; i < data.size(); i ++)
           data[i] = filter<num_t>(data[i], SHARPEN_BOTH, 1, rot);
-    else if(strcmp(argv[1], "represent") == 0)
-      data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), REPRESENT, recur);
+    else if(strcmp(argv[1], "blur") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = filter<num_t>(data[i], BLUR_BOTH, recur, rot);
     else if(strcmp(argv[1], "bump") == 0)
       data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
     else if(strcmp(argv[1], "rgb2xyz") == 0)
