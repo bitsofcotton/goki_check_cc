@@ -19,7 +19,6 @@
 #define int int32_t
 #include "lieonn.hh"
 typedef myfloat num_t;
-#include "goki.hh"
 
 using std::cout;
 using std::cerr;
@@ -36,7 +35,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|blur|blurr|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj <input.ppm> <output.obj>" << endl;
@@ -67,7 +66,6 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "blur") == 0 ||
-     strcmp(argv[1], "blurr") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "shrink") == 0 ||
