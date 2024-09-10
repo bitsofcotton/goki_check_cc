@@ -104,4 +104,6 @@ Searching the Internet more...
 2024/07/07 merge latest lieonn, no affects.
 2024/07/20 add blur command useful for monochrome predg results, update readme.
 2024/07/24 goki.hh will no change, so integrated into lieonn.hh, also leave here.
+2024/09/09 merge ddpmopt result with command predg, move.
+2024/09/10 merge ddpmopt result with command predg, move.
 

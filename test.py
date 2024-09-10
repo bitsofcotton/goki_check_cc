@@ -72,20 +72,16 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2] == "move"):
   curdir = os.path.basename(os.getcwd())
-  b = subprocess.call(["mv", "predg-b.ppm", curdir + "-b.ppm"])
-  f = subprocess.call(["mv", "predg-f.ppm", curdir + "-f.ppm"])
+  f = subprocess.call(["mv", "predg.ppm", curdir + ".ppm"])
 elif(argv[2] == "predg"):
   curdir = os.path.basename(os.getcwd())
   for k in range(0, int(argv[3])):
     cmd = [argv[1]]
-    for kk in range(0, k):
-      cmd.append(curdir + "-b" + str(k - kk - 1) + ".ppm")
     cmd.extend(argv[4:])
     for kk in range(0, k):
       cmd.append(curdir + "-f" + str(kk) + ".ppm")
     subprocess.call(cmd)
-    subprocess.call(["mv", "predg-b.ppm", curdir + "-b" + str(k) + ".ppm"])
-    subprocess.call(["mv", "predg-f.ppm", curdir + "-f" + str(k) + ".ppm"])
+    subprocess.call(["mv", "predg.ppm", curdir + str(k) + ".ppm"])
 elif(argv[2] == "qredg"):
   for k in range(0, int(argv[3])):
     cmd = [argv[1]]
