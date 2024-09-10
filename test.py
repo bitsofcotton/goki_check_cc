@@ -79,7 +79,7 @@ elif(argv[2] == "predg"):
     cmd = [argv[1]]
     cmd.extend(argv[4:])
     for kk in range(0, k):
-      cmd.append(curdir + "-f" + str(kk) + ".ppm")
+      cmd.append(curdir + str(kk) + ".ppm")
     subprocess.call(cmd)
     subprocess.call(["mv", "predg.ppm", curdir + str(k) + ".ppm"])
 elif(argv[2] == "qredg"):
