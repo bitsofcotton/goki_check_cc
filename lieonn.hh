@@ -2032,7 +2032,6 @@ public:
   // friend ostream& operator << (ostream& os, const SimpleVector<T>& v);
   // friend istream& operator >> (istream& os, SimpleVector<T>& v);
 
-private:
   // this isn't better idea for faster calculations.
   vector<SimpleVector<T> > entity;
   int ecols;
@@ -6893,15 +6892,10 @@ template <typename T, typename U> ostream& predTOC(ostream& os, const U& input, 
       break;
     }
   }
-  auto p(predSTen<T>(in, idx));
-  vector<string> hist;
   corpus<T, U> pstats;
-  pstats.corpust = move(p.second);
+  pstats.corpust = predSTen<T>(in, idx);
   getAbbreved<T>(pstats, detailtitle, detail, delimiter);
-  os << pstats.simpleThresh(threshin).serialize() << input;
-  pstats.corpust = move(p.first);
-  getAbbreved<T>(pstats, detailtitle, detail, delimiter);
-  return os << pstats.simpleThresh(threshin).serialize() << endl;
+  return os << input << pstats.simpleThresh(threshin).serialize();
 }
 
 #define _SIMPLELIN_

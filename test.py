@@ -87,6 +87,12 @@ elif(argv[2] == "qredg"):
     cmd = [argv[1]]
     cmd.extend(argv[4:])
     subprocess.call(cmd)
+elif(argv[2] == "mprep"):
+  for line in argv[4:]:
+    subprocess.call(["sh", "-c", argv[1] + " - " + line + " < " + argv[3]])
+elif(argv[2] == "mapply"):
+  for line in argv[4:]:
+    subprocess.call(["sh", "-c", argv[1] + " i " + line + " < " + argv[3]])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
