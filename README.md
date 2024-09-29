@@ -35,7 +35,7 @@ Searching the Internet more...
     python3 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python3 test.py ./gokibin i2i <param> img0.png ...
-    python3 test.py ./gokibin move <param>
+    python3 test.py ./gokibin move
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
