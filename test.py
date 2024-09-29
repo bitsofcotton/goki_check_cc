@@ -75,7 +75,7 @@ elif(argv[2] == "move"):
   subprocess.call(["mv", "predg.ppm", curdir + ".ppm"])
   s = 0
   while(True):
-    b = subprocess.call(["mv", "predg-" + str(s) + ".ppm", curdir + "-" + str(s) + ".ppm"])
+    f = subprocess.call(["mv", "predg-" + str(s) + ".ppm", curdir + "-" + str(s) + ".ppm"])
     s += 1
     if(f != 0):
       break
