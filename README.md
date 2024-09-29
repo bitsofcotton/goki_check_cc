@@ -35,9 +35,7 @@ Searching the Internet more...
     python3 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python3 test.py ./gokibin i2i <param> img0.png ...
-    python3 test.py ./gokibin move
-    python3 test.py predg-bin predg <num> in0.ppm ...
-    python3 test.py qredg-bin qredg <num> inout0.ppm ...
+    python3 test.py ./gokibin move <param>
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -107,4 +105,5 @@ Searching the Internet more...
 2024/09/09 merge ddpmopt result with command predg, move.
 2024/09/10 merge ddpmopt result with command predg, move.
 2024/09/28 merge latest lieonn, move command compat, predg, qredg cmd remove.
+2024/09/29 update readme.
 
