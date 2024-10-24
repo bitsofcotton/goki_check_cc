@@ -35,7 +35,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj <input.ppm> <output.obj>" << endl;
@@ -63,6 +63,7 @@ int main(int argc, const char* argv[]) {
   if(strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "limit") == 0 ||
      strcmp(argv[1], "bit") == 0 ||
+     strcmp(argv[1], "nbit") == 0 ||
      strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "blur") == 0 ||
@@ -156,15 +157,19 @@ int main(int argc, const char* argv[]) {
                 pow(num_t(int(2)), num_t(int(m + 1))) ) );
         swap(work, data[i]);
       }
-    } else if(strcmp(argv[1], "bit") == 0 && recur < 0) {
+    } else if((strcmp(argv[1], "bit") == 0 && recur < 0) || strcmp(argv[1], "nbit") == 0) {
       for(int i = 0; i < data.size(); i ++) {
         SimpleMatrix<num_t> work(data[i].rows() / abs(recur), data[i].cols());
         work.O();
         for(int j = 0; j < work.rows(); j ++)
           for(int k = 0; k < work.cols(); k ++)
             for(int m = 0; m < abs(recur); m ++)
-              work(j, k) += data[i](j * abs(recur) + m, k) /
-                pow(num_t(int(2)), num_t(int(m + 1)));
+              work(j, k) += strcmp(argv[1], "nbit") == 0 ?
+                (sgn<num_t>(data[i](j * abs(recur) + m, k) -
+                  num_t(int(1)) / num_t(int(2))) + num_t(int(1))) /
+                    pow(num_t(int(2)), num_t(int(m + 1))) :
+                data[i](j * abs(recur) + m, k) /
+                  pow(num_t(int(2)), num_t(int(m + 1)));
         swap(work, data[i]);
       }
     }

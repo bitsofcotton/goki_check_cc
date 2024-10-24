@@ -145,15 +145,15 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "represent" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "rgb2xyz" or argv[2] == "xyz2rgb"):
+    if(argv[2] == "represent" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "rgb2xyz" or argv[2] == "xyz2rgb"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "bump" or argv[2] == "blur" or argv[2] == "collect"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], argv[2], root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps"):
-      subprocess.call([argv[1], "tilt",  "1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
-      subprocess.call([argv[1], "tilt", "-1", "4", str(psi), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
+      subprocess.call([argv[1], "tilt",  "1", "4", str(psi / 2.), root + ".ppm", root + "-bump.ppm", root + "-L.ppm"])
+      subprocess.call([argv[1], "tilt", "-1", "4", str(psi / 2.), root + ".ppm", root + "-bump.ppm", root + "-R.ppm"])
       subprocess.call(["montage", root + "-R.ppm", root + "-L.ppm", "-geometry", "100%x100%", root + "-stereo.jps"])
       subprocess.call(["montage", root + "-L.ppm", root + "-R.ppm", "-geometry", "100%x100%", root + "-stereoR.jps"])
       subprocess.call(["montage", root + "-stereo.jps", "-geometry", "100%x100%", root + "-stereo.png"])
