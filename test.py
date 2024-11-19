@@ -81,10 +81,40 @@ elif(argv[2] == "move"):
       break
 elif(argv[2] == "mprep"):
   for line in argv[4:]:
-    subprocess.call(["sh", "-c", argv[1] + " - " + line + " < " + argv[3]])
+    subprocess.call(["sh", "-c", argv[1] + " - '" + line + "' < " + argv[3]])
 elif(argv[2] == "mapply"):
   for line in argv[4:]:
-    subprocess.call(["sh", "-c", argv[1] + " i " + line + " < " + argv[3]])
+    subprocess.call(["sh", "-c", argv[1] + " i '" + line + "' < " + argv[3]])
+elif(argv[2] == "mspecpixel"):
+  for line in argv[4:]:
+    subprocess.call(["sh", "-c", argv[1] + " 4 '" + line + "' < " + argv[3]])
+elif(argv[2] == "mmovegle"):
+  score = 0.
+  for t in range(3, len(argv) - 4):
+    cmd = [argv[1], "t"]
+    cmd.extend(argv[t:t + 4])
+    score += abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
+  score /= (len(argv) - 4) - 3 + 1
+  list  = [argv[3], argv[4], argv[5] ]
+  for t in range(6, len(argv)):
+    cmd = [argv[1], "t"]
+    cmd.extend(list[- 4:])
+    cmd.append(argv[t])
+    lscore = abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
+    if(score <= lscore):
+      list.append(argv[t])
+  list.reverse()
+  rlist = []
+  for t in range(len(list) - 8, len(list)):
+    cmd = [argv[1], "t"]
+    cmd.extend(list[t:t + 4])
+    lscore = abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
+    if(score <= lscore):
+      rlist.append(list[t])
+  list = list[:- 8]
+  list.extend(rlist)
+  list.reverse()
+  print(" ".join(list))
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]

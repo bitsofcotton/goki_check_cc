@@ -106,4 +106,5 @@ Searching the Internet more...
 2024/09/10 merge ddpmopt result with command predg, move.
 2024/09/28 merge latest lieonn, move command compat, predg, qredg cmd remove.
 2024/09/29 update readme.
+2024/11/20 add mmovegle command. merge latest lieonn.
 
