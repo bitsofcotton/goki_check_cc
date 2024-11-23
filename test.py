@@ -79,15 +79,6 @@ elif(argv[2] == "move"):
     s += 1
     if(f != 0):
       break
-elif(argv[2] == "mprep"):
-  for line in argv[4:]:
-    subprocess.call(["sh", "-c", argv[1] + " - '" + line + "' < " + argv[3]])
-elif(argv[2] == "mapply"):
-  for line in argv[4:]:
-    subprocess.call(["sh", "-c", argv[1] + " i '" + line + "' < " + argv[3]])
-elif(argv[2] == "mspecpixel"):
-  for line in argv[4:]:
-    subprocess.call(["sh", "-c", argv[1] + " 4 '" + line + "' < " + argv[3]])
 elif(argv[2] == "mmovegle"):
   list0 = argv[3:]
   while(True):
@@ -107,7 +98,7 @@ elif(argv[2] == "mmovegle"):
         list.append(list0[t])
     list.reverse()
     rlist = []
-    for t in range(len(list) - 8, len(list)):
+    for t in range(max(0, len(list) - 8), len(list)):
       cmd = [argv[1], "t"]
       cmd.extend(list[t:t + 4])
       lscore = abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
@@ -118,6 +109,8 @@ elif(argv[2] == "mmovegle"):
     list.reverse()
     if(len(list) <= len(argv[3:]) / 2): break
     list0 = list
+  #for idx in range(0, len(list)):
+  #  list[idx] = "\"" + list[idx] + "\""
   print(" ".join(list))
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
