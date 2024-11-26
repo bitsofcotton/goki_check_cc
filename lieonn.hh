@@ -2794,24 +2794,32 @@ template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
   return size0 < 0 ? ii : dd;
 }
 
-template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step) {
+template <typename T, bool next = false> static inline SimpleVector<T> taylor(const int& size, const T& step) {
   const int  step00(max(int(0), min(size - 1, int(floor(step)))));
   const auto residue0(step - T(step00));
   const auto step0(step00 == size - 1 || abs(residue0) <= T(int(1)) / T(int(2)) ? step00 : step00 + 1);
   const auto residue(step - T(step0));
   if(residue == T(int(0))) return SimpleVector<T>(size).ek(step0);
+  const auto residuem(residue - T(int(1)));
   // N.B. following code is equivalent to exp each dft.
   //      this improves both accuracy and speed.
   // N.B. We don't need to matter which sign dft/idft uses till the sign
   //      we multiply is bonded to the transformation.
-  auto res(dft<T>(size));
   static const auto Pi(T(int(4)) * atan2(T(int(1)), T(int(1)) ));
+  auto res(dft<T>(- size).row(step0));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < res.rows(); i ++)
-    res.row(i) *= exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(res.rows()) ));
-  return (res.transpose() * dft<T>(- size).row(step0)).template real<T>();
+  for(int i = 0; i < res.size(); i ++)
+    res[i] *=
+      next ? (i ?
+        exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residue / T(res.size()) ))
+          / complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(res.size()) )
+      - exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residuem / T(res.size()) ))
+          / complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(res.size()) ) :
+        complex<T>(T(int(0))) )
+      : exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residue / T(res.size()) ));
+  return (dft<T>(size).transpose() * res).template real<T>();
 /*
   SimpleVector<T> res(size);
   res.ek(step0);
@@ -3331,11 +3339,8 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
 }
 
 
-template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1, const int& r = 1) {
-  auto work(taylor(size * r, T(step * r < 0 ? step * r : (size + step) * r - 1)));
-  for(int i = 1; i < r; i ++)
-    work += taylor(size * r, T(step * r < 0 ? step * r + i : (size + step) * r - 1 - i));
-  return (dft<T>(- size * r).subMatrix(0, 0, size * r, size) * dft<T>(size)).template real<T>().transpose() * work;
+template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1) {
+  return taylor<T, true>(size, T(step < 0 ? step : size + step - 1));
 }
 
 template <typename T> SimpleVector<T> minsq(const int& size) {
@@ -3349,17 +3354,15 @@ template <typename T> SimpleVector<T> minsq(const int& size) {
   return s;
 }
 
-template <typename T> const SimpleVector<T>& pnextcacher(const int& size, const int& step, const int& r) {
-  assert(0 < size && 0 <= step && 0 < r);
-  static vector<vector<vector<SimpleVector<T> > > > cp;
+template <typename T> const SimpleVector<T>& pnextcacher(const int& size, const int& step) {
+  assert(0 < size && 0 <= step);
+  static vector<vector<SimpleVector<T> > > cp;
   if(cp.size() <= size)
-    cp.resize(size + 1, vector<vector<SimpleVector<T> > >());
+    cp.resize(size + 1, vector<SimpleVector<T> >());
   if(cp[size].size() <= step)
-    cp[size].resize(step + 1, vector<SimpleVector<T> >());
-  if(cp[size][step].size() <= r)
-    cp[size][step].resize(r + 1, SimpleVector<T>());
-  if(cp[size][step][r].size()) return cp[size][step][r];
-  return cp[size][step][r] = pnext<T>(size, step, r);
+    cp[size].resize(step + 1, SimpleVector<T>());
+  if(cp[size][step].size()) return cp[size][step];
+  return cp[size][step] = pnext<T>(size, step);
 }
 
 template <typename T> const SimpleVector<T>& mscache(const int& size) {
@@ -3384,14 +3387,14 @@ template <typename T> const SimpleMatrix<complex<T> >& dftcache(const int& size)
   return cidft[abs(size)] = dft<T>(size);
 }
 
-template <typename T, int r = 8> class P0 {
+template <typename T> class P0 {
 public:
   inline P0(const int& step = 1) {
     this->step = step;
   }
   inline ~P0() { ; };
   inline T next(const SimpleVector<T>& in, const int& sute = 0) {
-    return pnextcacher<T>(in.size(), ((step - 1) % in.size()) + 1, r).dot(in);
+    return pnextcacher<T>(in.size(), ((step - 1) % in.size()) + 1).dot(in);
   }
   int step;
 };
