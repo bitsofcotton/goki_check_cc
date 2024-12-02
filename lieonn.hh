@@ -2794,12 +2794,12 @@ template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
   return size0 < 0 ? ii : dd;
 }
 
-template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step, const T& stepw) {
+template <typename T> static inline SimpleVector<complex<T> > taylorc(const int& size, const T& step, const T& stepw) {
   const int  step00(max(int(0), min(size - 1, int(floor(step)))));
   const auto residue0(step - T(step00));
   const auto step0(step00 == size - 1 || abs(residue0) <= T(int(1)) / T(int(2)) ? step00 : step00 + 1);
   const auto residue(step - T(step0));
-  if(residue == T(int(0))) return SimpleVector<T>(size).ek(step0);
+  if(residue == T(int(0))) return SimpleVector<complex<T> >(size).ek(step0);
   const auto residuem(residue - (step - stepw));
   // N.B. following code is equivalent to exp each dft.
   //      this improves both accuracy and speed.
@@ -2811,35 +2811,18 @@ template <typename T> static inline SimpleVector<T> taylor(const int& size, cons
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < res.size(); i ++)
-    res[i] *= step == stepw ? 
+    res[i] *= step != stepw ? 
       (i ? exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residue / T(res.size()) ))
           / complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(res.size()) )
       - exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residuem / T(res.size()) ))
           / complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(res.size()) ) :
         complex<T>(T(int(0))) )
       : exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residue / T(res.size()) ));
-  return (dft<T>(size).transpose() * res).template real<T>();
-/*
-  SimpleVector<T> res(size);
-  res.ek(step0);
-  if(residue == T(int(0))) return res;
-  const auto Dt(diff<T>(size).transpose());
-        auto dt(Dt.col(step0) * residue);
-  // N.B.
-  // if we deal with (D *= r, residue /= r), it is identical with (D, residue)
-  // So ||D^n * residue^n|| / T(n!) < 1 case, this loop converges.
-  // but with n^n v.s. n!, differential of n! is faster than n^n.
-  // (n! < n^n but a^n < n! somewhere).
-  // And, we treat D * residue as a block, so Readme.md's condition 1/x^k needs
-  // to be in the series in this.
-  for(int i = 2; ; i ++) {
-    const auto last(res);
-    res += dt;
-    if(last == res) break;
-    dt   = Dt * dt * residue / T(i);
-  }
-  return res;
-*/
+  return dft<T>(size).transpose() * res;
+}
+
+template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step, const T& stepw) {
+  return taylorc<T>(size, step, stepw).template real<T>();
 }
 
 template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step) {
@@ -3073,8 +3056,8 @@ public:
     t[in].resize(size, in);
     for(int i = 0; i < size; i ++)
       t[in].row(i) = taylor<T>(in,
-        (T(i) * T(in) + T(int(1)) / T(int(2))) / T(size),
-        (T(i) * T(in) - T(int(1)) / T(int(2))) / T(size));
+        (T(i) + T(int(1)) / T(int(2))) * T(in) / T(size),
+        (T(i) - T(int(1)) / T(int(2))) * T(in) / T(size));
     return t[in];
   }
   SimpleVector<T> cut;
@@ -3363,7 +3346,7 @@ template <typename T> const SimpleVector<T>& pnextcacher(const int& size, const 
   if(cp[size].size() <= step)
     cp[size].resize(step + 1, SimpleVector<T>());
   if(cp[size][step].size()) return cp[size][step];
-  return cp[size][step] = (dft<T>(- size) * dft<T>(size * 2).subMatrix(0, 0, size, size * 2)).template real<T>() * taylor<T>(size * 2, T(step < 0 ? step * 2 : (size + step) * 2 - 1), T(step < 0 ? step * 2 + 2 : (size + step) * 2 - 3));
+  return cp[size][step] = (dft<T>(- size) * (dft<T>(size * 2).subMatrix(0, 0, size, size * 2) * taylorc<T>(size * 2, T(step < 0 ? step * 2 : (size + step) * 2 - 1), T(step < 0 ? step * 2 + 2 : (size + step) * 2 - 3)) )).template real<T>();
 }
 
 template <typename T> const SimpleVector<T>& mscache(const int& size) {
@@ -3940,8 +3923,8 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::enlarge(const Vec
     pp.resize(size * r, size);
     for(int i = 0; i < pp.rows(); i ++)
       pp.row(i) = taylor<T>(size,
-        (T(i) * T(size - 1) + T(int(1)) / T(int(2))) / T(pp.rows() - 1),
-        (T(i) * T(size - 1) - T(int(1)) / T(int(2))) / T(pp.rows() - 1) );
+        (T(i) + T(int(1)) / T(int(2))) * T(size - 1) / T(pp.rows() - 1),
+        (T(i) - T(int(1)) / T(int(2))) * T(size - 1) / T(pp.rows() - 1) );
   }
   const auto m(mother(in));
   const auto f2(freq(m, in));
