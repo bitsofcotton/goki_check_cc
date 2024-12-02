@@ -109,4 +109,5 @@ Searching the Internet more...
 2024/09/29 update readme.
 2024/11/20 add mmovegle command. merge latest lieonn.
 2024/11/24 mmovegle command strategy change only to have half of input filename stream.
+2024/12/02 taylor function improvement, affects enlarge, flarge commands.
 

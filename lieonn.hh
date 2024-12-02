@@ -2794,13 +2794,13 @@ template <typename T> SimpleMatrix<T> diffRecur(const int& size0) {
   return size0 < 0 ? ii : dd;
 }
 
-template <typename T, bool next = false> static inline SimpleVector<T> taylor(const int& size, const T& step) {
+template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step, const T& stepw) {
   const int  step00(max(int(0), min(size - 1, int(floor(step)))));
   const auto residue0(step - T(step00));
   const auto step0(step00 == size - 1 || abs(residue0) <= T(int(1)) / T(int(2)) ? step00 : step00 + 1);
   const auto residue(step - T(step0));
   if(residue == T(int(0))) return SimpleVector<T>(size).ek(step0);
-  const auto residuem(residue - T(int(1)));
+  const auto residuem(residue - (step - stepw));
   // N.B. following code is equivalent to exp each dft.
   //      this improves both accuracy and speed.
   // N.B. We don't need to matter which sign dft/idft uses till the sign
@@ -2811,9 +2811,8 @@ template <typename T, bool next = false> static inline SimpleVector<T> taylor(co
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < res.size(); i ++)
-    res[i] *=
-      next ? (i ?
-        exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residue / T(res.size()) ))
+    res[i] *= step == stepw ? 
+      (i ? exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residue / T(res.size()) ))
           / complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(res.size()) )
       - exp(complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) * residuem / T(res.size()) ))
           / complex<T>(T(int(0)), - T(int(2)) * Pi * T(i) / T(res.size()) ) :
@@ -2841,6 +2840,10 @@ template <typename T, bool next = false> static inline SimpleVector<T> taylor(co
   }
   return res;
 */
+}
+
+template <typename T> static inline SimpleVector<T> taylor(const int& size, const T& step) {
+  return taylor<T>(size, step, step);
 }
 
 template <typename T> static inline SimpleVector<T> linearInvariant(const SimpleMatrix<T>& in) {
@@ -3069,7 +3072,9 @@ public:
       t.resize(in + 1, SimpleMatrix<T>());
     t[in].resize(size, in);
     for(int i = 0; i < size; i ++)
-      t[in].row(i) = taylor<T>(in, T(i) * T(in) / T(size));
+      t[in].row(i) = taylor<T>(in,
+        (T(i) * T(in) + T(int(1)) / T(int(2))) / T(size),
+        (T(i) * T(in) - T(int(1)) / T(int(2))) / T(size));
     return t[in];
   }
   SimpleVector<T> cut;
@@ -3339,10 +3344,6 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
 }
 
 
-template <typename T> SimpleVector<T> pnext(const int& size, const int& step = 1) {
-  return taylor<T, true>(size, T(step < 0 ? step : size + step - 1));
-}
-
 template <typename T> SimpleVector<T> minsq(const int& size) {
   assert(1 < size);
   const T xsum(size * (size - 1) / 2);
@@ -3362,7 +3363,7 @@ template <typename T> const SimpleVector<T>& pnextcacher(const int& size, const 
   if(cp[size].size() <= step)
     cp[size].resize(step + 1, SimpleVector<T>());
   if(cp[size][step].size()) return cp[size][step];
-  return cp[size][step] = pnext<T>(size, step);
+  return cp[size][step] = (dft<T>(- size) * dft<T>(size * 2).subMatrix(0, 0, size, size * 2)).template real<T>() * taylor<T>(size * 2, T(step < 0 ? step * 2 : (size + step) * 2 - 1), T(step < 0 ? step * 2 + 2 : (size + step) * 2 - 3));
 }
 
 template <typename T> const SimpleVector<T>& mscache(const int& size) {
@@ -3938,7 +3939,9 @@ template <typename T> typename Decompose<T>::Vec Decompose<T>::enlarge(const Vec
   if(pp.rows() < size * r) {
     pp.resize(size * r, size);
     for(int i = 0; i < pp.rows(); i ++)
-      pp.row(i) = taylor<T>(size, T(i) * T(size - 1) / T(pp.rows() - 1));
+      pp.row(i) = taylor<T>(size,
+        (T(i) * T(size - 1) + T(int(1)) / T(int(2))) / T(pp.rows() - 1),
+        (T(i) * T(size - 1) - T(int(1)) / T(int(2))) / T(pp.rows() - 1) );
   }
   const auto m(mother(in));
   const auto f2(freq(m, in));
@@ -5197,7 +5200,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         eop.resize((size - 1) * recur + 1, size);
         for(int j = 0; j < eop.rows(); j ++)
           // N.B. sampling th. hack isn't work well.
-          eop.row(j) = taylor<T>(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
+          eop.row(j) = taylor<T>(eop.cols(),
+            (T(j) + T(int(1)) / T(int(2))) / T(eop.rows() - 1) * T(eop.cols() - 1),
+            (T(j) - T(int(1)) / T(int(2))) / T(eop.rows() - 1) * T(eop.cols() - 1));
       }
      eopi:
       result = Eop[size][recur] * data;
@@ -5221,7 +5226,9 @@ template <typename T> SimpleMatrix<T> filter(const SimpleMatrix<T>& data, const 
         cerr << "e" << flush;
         eop.resize(size / recur - 1, size);
         for(int j = 0; j < eop.rows(); j ++)
-          eop.row(j) = taylor<T>(eop.cols(), T(j) / T(eop.rows() - 1) * T(eop.cols() - 1));
+          eop.row(j) = taylor<T>(eop.cols(),
+            (T(j) + T(int(1)) / T(int(2))) / T(eop.rows() - 1) * T(eop.cols() - 1),
+            (T(j) - T(int(1)) / T(int(2))) / T(eop.rows() - 1) * T(eop.cols() - 1));
       }
      sopi:
       result = Eop[size][recur] * data;
