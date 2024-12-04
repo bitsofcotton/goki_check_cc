@@ -207,4 +207,6 @@ else:
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
     elif(argv[2] == "gray"):
       subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
+    elif(argv[2] == "sbit"):
+      subprocess.call(["convert", line, "-gravity", "northwest", "-crop", "100%x100%+0+1", root + "-sbit.png"])
 
