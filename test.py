@@ -79,15 +79,15 @@ elif(argv[2] == "move"):
     s += 1
     if(f != 0):
       break
-elif(argv[2] == "mmovegle"):
-  list0 = argv[3:]
+elif(argv[2] == "egeppred"):
+  list0 = argv[5:]
   while(True):
     score = 0.
     for t in range(0, len(list0) - 4):
       cmd = [argv[1], "t"]
       cmd.extend(list0[t:t + 4])
       score += abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
-    score /= (len(list0) - 4) - 3 + 1
+    score /= len(list0) - 4
     list = [list0[0], list0[1], list0[2] ]
     for t in range(3, len(list0)):
       cmd = [argv[1], "t"]
@@ -107,11 +107,33 @@ elif(argv[2] == "mmovegle"):
     list = list[:- 8]
     list.extend(rlist)
     list.reverse()
-    if(len(list) <= len(argv[3:]) / 2): break
+    if(len(list) <= len(argv[5:]) / 2): break
     list0 = list
-  #for idx in range(0, len(list)):
-  #  list[idx] = "\"" + list[idx] + "\""
-  print(" ".join(list))
+  ncwd = os.path.basename(os.getcwd()) + "p"
+  subprocess.check_output(["mkdir", ncwd])
+  for idx in range(0, len(list)):
+    subprocess.check_output(["mv", list[idx], ncwd])
+  subprocess.check_output(["sh", "-c", "cd " + ncwd + " && " + argv[1] + " c " + " ".join(list)])
+  c3list = []
+  for idx in range(0, len(list)):
+    c3list.append(list[idx] + "-c3.ppm")
+  subprocess.check_output(["sh", "-c", "cd " + ncwd + " && python3 "  + argv[0] + " " + argv[3] + " bit " + str(int(argv[4])) + " ".join(c3list)])
+  c3blist = []
+  for idx in range(0, len(list)):
+    c3blist.append(list[idx] + "-c3-bit.ppm")
+  subprocess.check_output(["sh", "-c", "cd " + ncwd + " && " + argv[1] + " p " + " ".join(c3blist)])
+  subprocess.check_output(["sh", "-c", "cd " + ncwd + " && python3 "  + argv[0] + " " + argv[3] + " move"])
+elif(argv[2] == "wgpred"):
+  subprocess.call(["sh", "-c", argv[1] + " + " + " ".join(argv[4:]) + " > wgL.txt"])
+  subprocess.call(["sh", "-c", argv[1] + " - " + " ".join(argv[4:]) + " < wgL.txt"])
+  list4 = []
+  listw = []
+  for l in argv[4:]:
+    list4.append(l + "-4.ppm")
+    listw.append(l)
+    listw.append(l + "-4.ppm")
+  subprocess.call(["sh", "-c", argv[3] + " p " + " ".join(list4)])
+  subprocess.call(["sh", "-c", argv[3] + " w " + " ".join(listw)])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
