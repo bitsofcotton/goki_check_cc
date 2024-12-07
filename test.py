@@ -81,20 +81,21 @@ elif(argv[2] == "move"):
       break
 elif(argv[2] == "egeppred"):
   list0 = argv[5:]
+  loopb = 0
   while(True):
-    score = 0.
+    score = []
     for t in range(0, len(list0) - 4):
       cmd = [argv[1], "t"]
       cmd.extend(list0[t:t + 4])
-      score += abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
-    score /= len(list0) - 4
+      score.append(abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0])) )
+    score = sorted(score)[int(len(score) * 2. / 3.)]
     list = [list0[0], list0[1], list0[2] ]
     for t in range(3, len(list0)):
       cmd = [argv[1], "t"]
       cmd.extend(list[- 4:])
       cmd.append(list0[t])
       lscore = abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
-      if(score <= lscore):
+      if(score < lscore):
         list.append(list0[t])
     list.reverse()
     rlist = []
@@ -102,27 +103,27 @@ elif(argv[2] == "egeppred"):
       cmd = [argv[1], "t"]
       cmd.extend(list[t:t + 4])
       lscore = abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
-      if(score <= lscore):
-        rlist.append(list[t])
-    list = list[:- 8]
+      if(score < lscore):
+        rlist.append(list[t + 3])
+    list = list[:- 4]
     list.extend(rlist)
     list.reverse()
-    if(len(list) <= len(argv[5:]) / 2): break
+    if(len(list) <= len(argv[5:]) / 2 or len(list) == loopb): break
+    print(len(list))
     list0 = list
-  ncwd = os.path.basename(os.getcwd()) + "p"
-  subprocess.check_output(["mkdir", ncwd])
+    loopb = len(list)
+  cmd = [argv[1], "c"]
+  cmd.extend(list)
+  subprocess.check_output(cmd)
+  cmd = ["python3", argv[0], argv[3], "bit", str(int(argv[4]))]
   for idx in range(0, len(list)):
-    subprocess.check_output(["mv", list[idx], ncwd])
-  subprocess.check_output(["sh", "-c", "cd " + ncwd + " && " + argv[1] + " c " + " ".join(list)])
-  c3list = []
+    cmd.append(list[idx] + "-c3.ppm")
+  subprocess.check_output(cmd)
+  cmd = [argv[1], "p"]
   for idx in range(0, len(list)):
-    c3list.append(list[idx] + "-c3.ppm")
-  subprocess.check_output(["sh", "-c", "cd " + ncwd + " && python3 "  + argv[0] + " " + argv[3] + " bit " + str(int(argv[4])) + " ".join(c3list)])
-  c3blist = []
-  for idx in range(0, len(list)):
-    c3blist.append(list[idx] + "-c3-bit.ppm")
-  subprocess.check_output(["sh", "-c", "cd " + ncwd + " && " + argv[1] + " p " + " ".join(c3blist)])
-  subprocess.check_output(["sh", "-c", "cd " + ncwd + " && python3 "  + argv[0] + " " + argv[3] + " move"])
+    cmd.append(list[idx] + "-c3-bit.ppm")
+  subprocess.check_output(cmd)
+  subprocess.check_output(["python3", argv[0], argv[3], "move"])
 elif(argv[2] == "wgpred"):
   subprocess.call(["sh", "-c", argv[1] + " + " + " ".join(argv[4:]) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[1] + " - " + " ".join(argv[4:]) + " < wgL.txt"])
