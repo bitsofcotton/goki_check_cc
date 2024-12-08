@@ -73,12 +73,8 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
 elif(argv[2] == "move"):
   curdir = os.path.basename(os.getcwd())
   subprocess.call(["mv", "predg.ppm", curdir + ".ppm"])
-  s = 0
-  while(True):
-    f = subprocess.call(["mv", "predg-" + str(s) + ".ppm", curdir + "-" + str(s) + ".ppm"])
-    s += 1
-    if(f != 0):
-      break
+  subprocess.call(["mv", "predgw.ppm", curdir + "w.ppm"])
+  subprocess.call(["mv", "predgw4.ppm", curdir + "w4.ppm"])
 elif(argv[2] == "egeppred"):
   list0 = argv[5:]
   loopb = 0
