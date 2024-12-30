@@ -138,10 +138,10 @@ elif(argv[2] == "wgpred" or argv[2] == "wgpredg"):
     pxs = int(len(argv[6:]) / int(argv[5]))
     ext = "pgm"
   else:
-    pxs = int(len(argv[6:]) / float(int(argv[5])) / 3.)
+    pxs = int(len(argv[6:]) / float(int(argv[5])) / 3)
     ext = "ppm"
   for l in argv[6:]:
-    subprocess.call(["convert", l, "-resize", str(pxs) + "@", "-compress", "none", l + "-wg." + ext])
+    subprocess.call(["convert", l, "-resize", str(pxs) + "@^", "-compress", "none", l + "-wg." + ext])
     subprocess.call([argv[1], "bit", l + "-wg." + ext, l + "-wg-bit." + ext, str(int(argv[5])), "0"])
   list0 = []
   for l in argv[6:]:
