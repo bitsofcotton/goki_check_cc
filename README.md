@@ -113,4 +113,5 @@ Searching the Internet more...
 2024/12/02 taylor function improvement, affects enlarge, flarge commands.
 2024/12/03 add sbit command to slide bit.
 2024/12/30 brush up wgpred, egeppred command.
+2025/01/06 improve wgpred, add crossarg command.
 

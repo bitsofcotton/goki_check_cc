@@ -2,7 +2,7 @@
 /*
 BSD 3-Clause License
 
-Copyright (c) 2013-2024, bitsofcotton (kazunobu watatsu)
+Copyright (c) 2013-2025, bitsofcotton (kazunobu watatsu)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -2292,7 +2292,6 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::zeroFix(const Simp
         cerr << "zeroFix: invariant should be 0 but there's no information." <<
           endl << "         so we choice the invariant one loop before." << endl;
       }
-      *this = Pb;
       break;
     }
     // N.B. rank(*this) on call is max rank normally, should not be singular.
@@ -2317,6 +2316,10 @@ template <typename T> inline SimpleVector<T> SimpleMatrix<T>::zeroFix(const Simp
       i -= rfidxsz - fidx.size();
     }
     i ++;
+  }
+  {
+    const auto on(projectionPt(one));
+    if(sqrt(on.dot(on)) < sqrt(one.dot(one)) * epsilon()) *this = move(Pb);
   }
   // N.B. now we have fix indexes that to be P R [x 1] * t == 0.
   return R.solve((*this) * one);

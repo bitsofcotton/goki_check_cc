@@ -177,6 +177,26 @@ elif(argv[2] == "wgpred" or argv[2] == "wgpredg"):
   curdir = os.path.basename(os.getcwd())
   subprocess.call([argv[1], "bit", curdir + "w.ppm", curdir + "w-bit.ppm", str(- int(argv[5])), "1"])
   subprocess.call([argv[1], "bit", curdir + "w4r.ppm", curdir + "w4r-bit.ppm", str(- int(argv[5])), "1"])
+elif(argv[2] == "crossarg"):
+  step = int(argv[3])
+  spl  = 0
+  for idx in range(4, len(argv)):
+    if(argv[idx] == ","):
+      spl = idx
+      break
+  if(spl == 0):
+    print("ERR")
+  else:
+    arg1 = argv[4:spl]
+    arg2 = argv[spl + 1:]
+    sw   = 1
+    for s in range(0, min(len(arg1), len(arg2)) * 2):
+      if(s % step == 0):
+        sw = - sw
+      if(0 < sw):
+        print(arg1[int(s / step / 2) * step + (s % step) - min(len(arg1), len(arg2))])
+      else:
+        print(arg2[int(s / step / 2) * step + (s % step) - min(len(arg1), len(arg2))])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
