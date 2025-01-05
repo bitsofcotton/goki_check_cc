@@ -75,6 +75,7 @@ elif(argv[2] == "move"):
   subprocess.call(["mv", "predg.ppm", curdir + ".ppm"])
   subprocess.call(["mv", "predgw.ppm", curdir + "w.ppm"])
   subprocess.call(["mv", "predgw4.ppm", curdir + "w4.ppm"])
+  subprocess.call(["mv", "predgw4r.ppm", curdir + "w4r.ppm"])
 elif(argv[2] == "pred" or argv[2] == "predg"):
   cmd = ["python3", argv[0], argv[4], "egeppred", argv[1], argv[5]]
   cmd.extend(argv[6:])
@@ -135,31 +136,47 @@ elif(argv[2] == "egeppred"):
   subprocess.call([argv[3], "bit", curdir + ".ppm", curdir + "-bit.ppm", str(- int(argv[4])), "1"])
 elif(argv[2] == "wgpred" or argv[2] == "wgpredg"):
   if(argv[2][- 1] == "g"):
-    pxs = int(len(argv[6:]) / int(argv[5]))
+    pxs = int(len(argv[7:]) / int(argv[5]))
+    lsz = int(argv[6])
     ext = "pgm"
   else:
-    pxs = int(len(argv[6:]) / float(int(argv[5])) / 3)
+    pxs = int(len(argv[7:]) / float(int(argv[5])) / 3)
+    lsz = int(argv[6])
     ext = "ppm"
-  for l in argv[6:]:
+  for l in argv[7:]:
     subprocess.call(["convert", l, "-resize", str(pxs) + "@^", "-compress", "none", l + "-wg." + ext])
+    subprocess.call(["convert", l, "-resize", str(lsz) + "x>", "-resize", "x" + str(lsz) + ">", "-compress", "none", l + "-wgL." + ext])
     subprocess.call([argv[1], "bit", l + "-wg." + ext, l + "-wg-bit." + ext, str(int(argv[5])), "0"])
+    subprocess.call([argv[1], "bit", l + "-wgL." + ext, l + "-wgL-bit." + ext, str(int(argv[5])), "0"])
   list0 = []
-  for l in argv[6:]:
+  list1 = []
+  for l in argv[7:]:
     list0.append(l + "-wg-bit." + ext)
+    list1.append(l + "-wgL-bit." + ext)
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list0) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[3] + " - " + " ".join(list0) + " < wgL.txt"])
   list4 = []
-  listw = []
+  listl = []
+  listr = []
   for l in list0:
     list4.append(l + "-4.ppm")
-    listw.append(l)
-    listw.append(l + "-4.ppm")
+  for idx in range(0, len(list1)):
+    listl.append(list1[idx])
+    listl.append(list0[idx] + "-4.ppm")
+  for idx in range(0, len(list1) - 1):
+    listr.append(list1[idx])
+    listr.append(list0[idx + 1] + "-4.ppm")
+  listr.append(list1[- 1])
+  listr.append("predgw4.ppm")
   subprocess.call(["sh", "-c", argv[4] + " p " + " ".join(list4)])
   subprocess.call(["mv", "predg.ppm", "predgw4.ppm"])
-  subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listw)])
+  subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listr)])
+  subprocess.call(["mv", "predgw.ppm", "predgw4r.ppm"])
+  subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listl)])
   subprocess.call(["python3", argv[0], argv[2], "move"])
   curdir = os.path.basename(os.getcwd())
   subprocess.call([argv[1], "bit", curdir + "w.ppm", curdir + "w-bit.ppm", str(- int(argv[5])), "1"])
+  subprocess.call([argv[1], "bit", curdir + "w4r.ppm", curdir + "w4r-bit.ppm", str(- int(argv[5])), "1"])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
   pixels = int(argv[3])
   cmd = ["montage"]
