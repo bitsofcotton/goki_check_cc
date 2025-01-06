@@ -9,6 +9,39 @@ pixels = 4
 psi    = 1. / 3.
 rot    = 0
 
+def ifloat(x, offset = 0):
+  try:
+    return float(x)
+  except:
+    try:
+      b = x.split("*")
+      n = e = 0.
+      tbl = {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, \
+        '8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15, \
+        ' ': -1, '\t': -1, '\n': -1, '-': 16}
+      m = False
+      for ff in b[0]:
+        if(tbl[ff] < 0): continue
+        if(tbl[ff] == 16):
+          m = True
+          continue
+        n *= 16
+        n += tbl[ff]
+      if(m): n = - n
+      m = False
+      for ff in b[1][2:]:
+        if(tbl[ff] < 0): continue
+        if(tbl[ff] == 16):
+          m = True
+          continue
+        e *= 16
+        e += tbl[ff]
+      if(m): e = - e
+      return n * pow(2., e - offset)
+    except:
+      pass
+  return 0.
+
 if(len(argv) < 4 and (argv[2] != "move")):
   print("no much argments.")
 elif(argv[2] == "match"):
@@ -70,113 +103,98 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2] == "move"):
-  curdir = os.path.basename(os.getcwd())
-  subprocess.call(["mv", "predg.ppm", curdir + ".ppm"])
-  subprocess.call(["mv", "predgw.ppm", curdir + "w.ppm"])
-  subprocess.call(["mv", "predgw4.ppm", curdir + "w4.ppm"])
-  subprocess.call(["mv", "predgw4r.ppm", curdir + "w4r.ppm"])
-elif(argv[2] == "pred" or argv[2] == "predg"):
-  cmd = ["python3", argv[0], argv[4], "egeppred", argv[1], argv[5]]
-  cmd.extend(argv[6:])
-  subprocess.call(cmd)
-  cmd = argv[0:2]
-  if(argv[2][- 1] == "g"):
-    cmd.append("wgpredg")
+elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] == "predgq"):
+  if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
+    pxs = int(len(argv[7:]) / int(argv[5]))
+    ext = "pgm"
   else:
-    cmd.append("wgpred")
-  cmd.extend(argv[3:])
-  subprocess.call(cmd)
-elif(argv[2] == "egeppred"):
-  list0 = argv[5:]
+    pxs = int(len(argv[7:]) / float(int(argv[5])) / 3)
+    ext = "ppm"
+  if(argv[2][- 1] == 'q'):
+    mode = 1
+  else:
+    mode = 0
+  lsz = int(argv[6])
+  for f in argv[7:]:
+    if(mode == 1):
+      subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wgL." + ext])
+    else:
+      subprocess.call(["convert", f, "-resize", str(lsz) + "x>", "-resize", "x" + str(lsz) + ">", "-compress", "none", f + "-wgL." + ext])
+  list0 = []
+  for f in argv[7:]:
+    list0.append(f + "-wgL." + ext)
+  list  = []
   loopb = 0
   while(True):
     score = []
     for t in range(0, len(list0) - 4):
-      cmd = [argv[1], "t"]
+      cmd = [argv[4], "t"]
       cmd.extend(list0[t:t + 4])
-      score.append(abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0])) )
+      score.append(abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0])) )
     score = sorted(score)[int(len(score) / 6.)]
     list = [list0[0], list0[1], list0[2] ]
     for t in range(3, len(list0)):
-      cmd = [argv[1], "t"]
+      cmd = [argv[4], "t"]
       cmd.extend(list[- 3:])
       cmd.append(list0[t])
-      lscore = abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
+      lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
       if(score < lscore):
         list.append(list0[t])
     list.reverse()
     rlist = []
     for t in range(max(0, len(list) - 7), len(list)):
-      cmd = [argv[1], "t"]
+      cmd = [argv[4], "t"]
       cmd.extend(list[t:t + 4])
-      lscore = abs(float(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
+      lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
       if(score < lscore):
         rlist.append(list[t + 3])
     list = list[:- 4]
     list.extend(rlist)
     list.reverse()
-    if(len(list) <= len(argv[5:]) / 2 or len(list) == loopb): break
+    if(len(list) <= len(argv[7:]) / 2 or len(list) == loopb): break
     print(len(list))
     list0 = list
     loopb = len(list)
-  cmd = [argv[1], "c"]
+  cmd = [argv[4], "c"]
   cmd.extend(list)
   subprocess.check_output(cmd)
-  cmd = ["python3", argv[0], argv[3], "bit", str(int(argv[4]))]
-  for idx in range(0, len(list)):
-    cmd.append(list[idx] + "-c3.ppm")
-  subprocess.check_output(cmd)
-  cmd = [argv[1], "p"]
-  for idx in range(0, len(list)):
-    cmd.append(list[idx] + "-c3-bit.ppm")
-  subprocess.check_output(cmd)
-  subprocess.check_output(["python3", argv[0], argv[3], "move"])
-  curdir = os.path.basename(os.getcwd())
-  subprocess.call([argv[3], "bit", curdir + ".ppm", curdir + "-bit.ppm", str(- int(argv[4])), "1"])
-elif(argv[2] == "wgpred" or argv[2] == "wgpredg"):
-  if(argv[2][- 1] == "g"):
-    pxs = int(len(argv[7:]) / int(argv[5]))
-    lsz = int(argv[6])
-    ext = "pgm"
-  else:
-    pxs = int(len(argv[7:]) / float(int(argv[5])) / 3)
-    lsz = int(argv[6])
-    ext = "ppm"
-  for l in argv[7:]:
-    subprocess.call(["convert", l, "-resize", str(pxs) + "@^", "-compress", "none", l + "-wg." + ext])
-    subprocess.call(["convert", l, "-resize", str(lsz) + "x>", "-resize", "x" + str(lsz) + ">", "-compress", "none", l + "-wgL." + ext])
-    subprocess.call([argv[1], "bit", l + "-wg." + ext, l + "-wg-bit." + ext, str(int(argv[5])), "0"])
-    subprocess.call([argv[1], "bit", l + "-wgL." + ext, l + "-wgL-bit." + ext, str(int(argv[5])), "0"])
-  list0 = []
   list1 = []
-  for l in argv[7:]:
-    list0.append(l + "-wg-bit." + ext)
-    list1.append(l + "-wgL-bit." + ext)
-  subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list0) + " > wgL.txt"])
-  subprocess.call(["sh", "-c", argv[3] + " - " + " ".join(list0) + " < wgL.txt"])
+  for f in list:
+    list1.append(f + "-c3.ppm")
+  list2 = []
+  list3 = []
+  for f in list1:
+    subprocess.call(["convert", f, "-resize", str(pxs) + "@^", "-compress", "none", f + "-wg." + ext])
+    subprocess.call([argv[1], "bit", f + "-wg." + ext, f + "-wg-bit." + ext, str(int(argv[5])), "0"])
+    subprocess.call([argv[1], "bit", f, f + "-wgL-bit." + ext, str(int(argv[5])), "0"])
+    list2.append(f + "-wg-bit." + ext)
+    list3.append(f + "-wgL-bit." + ext)
+  cmd = [argv[4], "p"]
+  cmd.extend(list3)
+  subprocess.check_output(cmd)
+  curdir = os.path.basename(os.getcwd())
+  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", str(- int(argv[5])), "1"])
+  subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
+  subprocess.call(["sh", "-c", argv[3] + " - " + " ".join(list2) + " < wgL.txt"])
   list4 = []
   listl = []
   listr = []
-  for l in list0:
+  for l in list2:
     list4.append(l + "-4.ppm")
-  for idx in range(0, len(list1)):
-    listl.append(list1[idx])
-    listl.append(list0[idx] + "-4.ppm")
-  for idx in range(0, len(list1) - 1):
-    listr.append(list1[idx])
-    listr.append(list0[idx + 1] + "-4.ppm")
-  listr.append(list1[- 1])
+  for idx in range(0, len(list3)):
+    listl.append(list3[idx])
+    listl.append(list2[idx] + "-4.ppm")
+  for idx in range(0, len(list3) - 1):
+    listr.append(list3[idx])
+    listr.append(list2[idx + 1] + "-4.ppm")
+  listr.append(list3[- 1])
   listr.append("predgw4.ppm")
   subprocess.call(["sh", "-c", argv[4] + " p " + " ".join(list4)])
   subprocess.call(["mv", "predg.ppm", "predgw4.ppm"])
   subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listr)])
-  subprocess.call(["mv", "predgw.ppm", "predgw4r.ppm"])
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w4-bit.ppm", str(- int(argv[5])), "1"])
   subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listl)])
-  subprocess.call(["python3", argv[0], argv[2], "move"])
-  curdir = os.path.basename(os.getcwd())
-  subprocess.call([argv[1], "bit", curdir + "w.ppm", curdir + "w-bit.ppm", str(- int(argv[5])), "1"])
-  subprocess.call([argv[1], "bit", curdir + "w4r.ppm", curdir + "w4r-bit.ppm", str(- int(argv[5])), "1"])
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w-bit.ppm", str(- int(argv[5])), "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0
