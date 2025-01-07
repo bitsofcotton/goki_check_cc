@@ -44,6 +44,11 @@ def ifloat(x, offset = 0):
 
 if(len(argv) < 4 and (argv[2] != "move")):
   print("no much argments.")
+elif(argv[2] == "move"):
+  import numpy
+  f = "{0:0" + str(int(numpy.ceil(numpy.log(float(int(len(argv[3:])))) / numpy.log(10.)))) + "d}"
+  for idx in range(0, len(argv[3:])):
+    subprocess.call(["mv", argv[idx + 3], argv[1] + f.format(idx) + os.path.splitext(argv[idx + 3])[1] ])
 elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
@@ -105,10 +110,10 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] == "predgq"):
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
-    pxs = int(len(argv[7:]) / int(argv[5]))
+    pxs = int(len(argv[7:]) / float(int(argv[5])) / 4.)
     ext = "pgm"
   else:
-    pxs = int(len(argv[7:]) / float(int(argv[5])) / 3)
+    pxs = int(len(argv[7:]) / float(int(argv[5])) / 3 / 4.)
     ext = "ppm"
   if(argv[2][- 1] == 'q'):
     mode = 1
