@@ -35,7 +35,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit|nbit|slide|nslide) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj <input.ppm> <output.obj>" << endl;
@@ -64,6 +64,8 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "limit") == 0 ||
      strcmp(argv[1], "bit") == 0 ||
      strcmp(argv[1], "nbit") == 0 ||
+     strcmp(argv[1], "slide") == 0 ||
+     strcmp(argv[1], "nslide") == 0 ||
      strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "blur") == 0 ||
@@ -172,11 +174,28 @@ int main(int argc, const char* argv[]) {
                   pow(num_t(int(2)), num_t(int(m + 1)));
         swap(work, data[i]);
       }
+    } else if(strcmp(argv[1], "slide") == 0 && 0 < recur)
+      for(int i = 0; i < data.size(); i ++)
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++)
+            data[i](j, k) = num_t((int(data[i](j, k) * num_t(int(256))) << recur) & 0xff) +
+              num_t(int(data[i](j, k) * num_t(int(256))) >> (8 - recur));
+    else if((strcmp(argv[1], "slide") == 0 && recur < 0) || strcmp(argv[1], "nslide") == 0)
+      for(int i = 0, ns = ! strcmp(argv[1], "nslide"); i < data.size(); i ++)
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++)
+            data[i](j, k) = num_t(ns ? 0 : (int(data[i](j, k) * num_t(int(256))) << (8 - (- recur))) & 0xff) +
+              num_t(int(data[i](j, k) * num_t(int(256))) >> (- recur));
+    if(strcmp(argv[1], "nslide") == 0) {
+      data = normalize<num_t>(data);
+      for(int i = 0; i < data.size(); i ++)
+        data[i] *= pow(num_t(int(2)), - num_t(abs(recur)));
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
         strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0 &&
-        strcmp(argv[1], "bump") != 0 ? normalize<num_t>(data) : data,
+        strcmp(argv[1], "bump") != 0 && strcmp(argv[1], "nslide") != 0 ?
+        normalize<num_t>(data) : data,
         strcmp(argv[1], "limit") == 0 ? recur : 65535) )
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||

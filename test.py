@@ -110,23 +110,25 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] == "predgq"):
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
-    pxs = int(len(argv[7:]) / float(int(argv[5])) / 4.)
-    ext = "pgm"
+    bits = min(8, int(len(argv[6:]) / 4))
+    pxs  = int(len(argv[6:]) / bits / 4)
+    ext  = "pgm"
   else:
-    pxs = int(len(argv[7:]) / float(int(argv[5])) / 3 / 4.)
-    ext = "ppm"
+    bits = min(8, int(len(argv[6:]) / 3 / 4))
+    pxs  = int(len(argv[6:]) / bits / 3 / 4)
+    ext  = "ppm"
   if(argv[2][- 1] == 'q'):
     mode = 1
   else:
     mode = 0
-  lsz = int(argv[6])
-  for f in argv[7:]:
+  lsz = int(argv[5])
+  for f in argv[6:]:
     if(mode == 1):
       subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wgL." + ext])
     else:
       subprocess.call(["convert", f, "-resize", str(lsz) + "x>", "-resize", "x" + str(lsz) + ">", "-compress", "none", f + "-wgL." + ext])
   list0 = []
-  for f in argv[7:]:
+  for f in argv[6:]:
     list0.append(f + "-wgL." + ext)
   list  = []
   loopb = 0
@@ -136,6 +138,7 @@ elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] ==
       cmd = [argv[4], "t"]
       cmd.extend(list0[t:t + 4])
       score.append(abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0])) )
+    # XXX: magic number, ideally, is [1] but too slow to run.
     score = sorted(score)[int(len(score) / 6.)]
     list = [list0[0], list0[1], list0[2] ]
     for t in range(3, len(list0)):
@@ -147,7 +150,7 @@ elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] ==
         list.append(list0[t])
     list.reverse()
     rlist = []
-    for t in range(max(0, len(list) - 7), len(list)):
+    for t in range(max(0, len(list) - 6), len(list)):
       cmd = [argv[4], "t"]
       cmd.extend(list[t:t + 4])
       lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
@@ -156,7 +159,7 @@ elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] ==
     list = list[:- 4]
     list.extend(rlist)
     list.reverse()
-    if(len(list) <= len(argv[7:]) / 2 or len(list) == loopb): break
+    if(len(list) <= len(argv[6:]) / 2 or len(list) == loopb): break
     print(len(list))
     list0 = list
     loopb = len(list)
@@ -170,15 +173,16 @@ elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] ==
   list3 = []
   for f in list1:
     subprocess.call(["convert", f, "-resize", str(pxs) + "@^", "-compress", "none", f + "-wg." + ext])
-    subprocess.call([argv[1], "bit", f + "-wg." + ext, f + "-wg-bit." + ext, str(int(argv[5])), "0"])
-    subprocess.call([argv[1], "bit", f, f + "-wgL-bit." + ext, str(int(argv[5])), "0"])
+    subprocess.call([argv[1], "bit", f + "-wg." + ext, f + "-wg-bit." + ext, str(bits), "0"])
+    subprocess.call([argv[1], "bit", f, f + "-wgL-bit." + ext, str(bits), "0"])
     list2.append(f + "-wg-bit." + ext)
     list3.append(f + "-wgL-bit." + ext)
   cmd = [argv[4], "p"]
   cmd.extend(list3)
   subprocess.check_output(cmd)
   curdir = os.path.basename(os.getcwd())
-  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", str(- int(argv[5])), "1"])
+  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", str(- bits), "1"])
+  subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-nbit.ppm", str(- bits), "1"])
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[3] + " - " + " ".join(list2) + " < wgL.txt"])
   list4 = []
@@ -197,9 +201,11 @@ elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] ==
   subprocess.call(["sh", "-c", argv[4] + " p " + " ".join(list4)])
   subprocess.call(["mv", "predg.ppm", "predgw4.ppm"])
   subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listr)])
-  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w4-bit.ppm", str(- int(argv[5])), "1"])
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w4-bit.ppm", str(- bits), "1"])
+  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w4-nbit.ppm", str(- bits), "1"])
   subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listl)])
-  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w-bit.ppm", str(- int(argv[5])), "1"])
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w-bit.ppm", str(- bits), "1"])
+  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w-nbit.ppm", str(- bits), "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0
@@ -280,7 +286,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "represent" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "rgb2xyz" or argv[2] == "xyz2rgb"):
+    if(argv[2] == "represent" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "slide" or argv[2] == "nslide" or argv[2] == "rgb2xyz" or argv[2] == "xyz2rgb"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "bump" or argv[2] == "blur" or argv[2] == "collect"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
