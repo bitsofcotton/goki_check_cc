@@ -108,27 +108,34 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] == "predgq"):
-  if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
-    bits = min(8, int(len(argv[6:]) / 4 / 4))
-    pxs  = int(len(argv[6:]) / bits / 4)
-    ext  = "pgm"
-  else:
-    bits = min(8, int(len(argv[6:]) / 3 / 4 / 4))
-    pxs  = int(len(argv[6:]) / bits / 3 / 4)
-    ext  = "ppm"
-  if(argv[2][- 1] == 'q'):
+elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] == "predg" or argv[2] == "predg+" or argv[2] == "predg++" or argv[2] == "predq" or argv[2] == "predq+" or argv[2] == "predq++" or argv[2] == "predgq" or argv[2] == "predgq+" or argv[2] == "predgq++"):
+  if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q' or argv[2][- 3] == 'q'):
     mode = 1
   else:
     mode = 0
-  lsz = int(argv[5])
-  for f in argv[6:]:
+  lsz = 345171
+  if(argv[2][- 2] == '+'):
+    lsz *= 11 * 11
+  elif(argv[2][- 1] == '+'):
+    lsz *= 11
+  if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g' or argv[2][- 3] == 'g' or argv[2][- 4] == 'g'):
+    bits = max(1, min(8, int(len(argv[5:]) / 4 / 4)))
+    pxs  = int(len(argv[5:]) / bits / 4)
+    ext  = "pgm"
+  else:
+    bits = max(1, min(8, int(len(argv[5:]) / 3 / 4 / 4)))
+    pxs  = int(len(argv[5:]) / bits / 3 / 4)
+    ext  = "ppm"
+    lsz  = int(lsz / 3.)
+  if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q' or argv[2][- 3] == 'q'):
+    lsz  = int(pow(lsz, .5))
+  for f in argv[5:]:
     if(mode == 1):
       subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wgL." + ext])
     else:
-      subprocess.call(["convert", f, "-resize", str(lsz) + "x>", "-resize", "x" + str(lsz) + ">", "-compress", "none", f + "-wgL." + ext])
+      subprocess.call(["convert", f, "-resize", str(lsz) + "@", "-compress", "none", f + "-wgL." + ext])
   list0 = []
-  for f in argv[6:]:
+  for f in argv[5:]:
     list0.append(f + "-wgL." + ext)
   list  = []
   loopb = 0
@@ -139,7 +146,7 @@ elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] ==
       cmd.extend(list0[t:t + 4])
       score.append(abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0])) )
     # XXX: magic number, ideally, is [1] but too slow to run.
-    score = sorted(score)[int(len(score) / 6.)]
+    score = sorted(score)[int(len(score) / 5.)]
     list = [list0[0], list0[1], list0[2] ]
     for t in range(3, len(list0)):
       cmd = [argv[4], "t"]
@@ -150,7 +157,7 @@ elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] ==
         list.append(list0[t])
     list.reverse()
     rlist = []
-    for t in range(max(0, len(list) - 6), len(list)):
+    for t in range(max(0, len(list) - 5), len(list)):
       cmd = [argv[4], "t"]
       cmd.extend(list[t:t + 4])
       lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
@@ -159,7 +166,7 @@ elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] ==
     list = list[:- 4]
     list.extend(rlist)
     list.reverse()
-    if(len(list) <= len(argv[6:]) / 2 or len(list) == loopb): break
+    if(len(list) <= len(argv[5:]) / 2 or len(list) == loopb): break
     print(len(list))
     list0 = list
     loopb = len(list)
