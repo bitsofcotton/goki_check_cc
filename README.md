@@ -114,5 +114,5 @@ Searching the Internet more...
 2024/12/30 brush up wgpred, egeppred command.
 2025/01/06 improve wgpred, add crossarg command.
 2025/01/06 elim wgpred, egeppred command, add predg?q? command to integrate them.
-2025/02/18 elim bit operand from pred... command.
+2025/02/18 elim bit operand from pred... command. also fix bits auto calculation on them.
 

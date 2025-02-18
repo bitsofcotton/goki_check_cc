@@ -110,11 +110,11 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2] == "pred" or argv[2] == "predg" or argv[2] == "predq" or argv[2] == "predgq"):
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
-    bits = min(8, int(len(argv[6:]) / 4))
+    bits = min(8, int(len(argv[6:]) / 4 / 4))
     pxs  = int(len(argv[6:]) / bits / 4)
     ext  = "pgm"
   else:
-    bits = min(8, int(len(argv[6:]) / 3 / 4))
+    bits = min(8, int(len(argv[6:]) / 3 / 4 / 4))
     pxs  = int(len(argv[6:]) / bits / 3 / 4)
     ext  = "ppm"
   if(argv[2][- 1] == 'q'):
