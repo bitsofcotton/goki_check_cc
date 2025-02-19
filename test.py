@@ -116,7 +116,7 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
   # N.B. upper bound for #f(x,y,z) when completely separatable {x, y, z}
   #      however, {x,y,z,w} is too large to exist without internal relations.
   #      we count them as a operation, so we take output  each result pixels.
-  lsz  = pow(pow(pow(3., 3.), 3.), .5)
+  lsz  = pow(pow(3., pow(3., 3.)), .5)
   # N.B. however, with predictions, only 1/3 will be warranted to get
   #      results as in use.
   lsz /= 3.
