@@ -113,22 +113,22 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
     mode = 1
   else:
     mode = 0
-  # N.B. upper bound for #f(x,y,z) when completely separatable {x, y, z}
-  #      however, {x,y,z,w} is too large to exist without internal relations.
-  #      we count them as a operation, so we take output  each result pixels.
-  lsz  = pow(pow(3., pow(3., 3.)), .5)
-  # N.B. however, with predictions, only 1/3 will be warranted to get
-  #      results as in use.
-  lsz /= 3.
-  # N.B. however, we take Condorcet jury th. to get ~>.9 probability.
-  #      with some of numerical tests on our infected machine,
-  #      this isn't needed for us.
+  # N.B. Condorcet jury doesn't work on our sample run.
+  # N.B. 
   if(argv[2][- 2] == '+'):
-    # N.B. each of x, y axises.
-    lsz *= 11 * 11
+    # N.B. upper bound for #f(x,y,z) when completely separatable {x, y, z}
+    #      however, {x,y,z,w} is too large to exist without internal relations.
+    #      we count them as a operation, so we take output each result pixels.
+    lsz  = pow(pow(3., pow(3., 3.)), .5)
+    # N.B. however, with predictions, only 1/3 will be warranted to get
+    #      results as in use.
+    lsz /= 3.
   elif(argv[2][- 1] == '+'):
-    # N.B. each of pixels.
-    lsz *= 11
+    # N.B. f(x, y) == 0, #f pure function case.
+    lsz  = 19683
+  else:
+    # N.B. context saturation case.
+    lsz  = 768
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g' or argv[2][- 3] == 'g' or argv[2][- 4] == 'g'):
     bits = max(1, min(8, int(len(argv[5:]) / 4 / 4)))
     pxs  = int(len(argv[5:]) / bits / 4)
@@ -137,9 +137,10 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
     bits = max(1, min(8, int(len(argv[5:]) / 3 / 4 / 4)))
     pxs  = int(len(argv[5:]) / bits / 3 / 4)
     ext  = "ppm"
-    lsz  = int(lsz / 3.)
+    lsz /= 3.
   if(mode == 1):
-    lsz  = int(pow(lsz, .5))
+    lsz  = pow(lsz, .5)
+  lsz = int(lsz)
   for f in argv[5:]:
     if(mode == 1):
       subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wgL." + ext])
