@@ -4421,7 +4421,7 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 // template <typename T> using PP0 = PdeltaOnce<T, P01<T, P01delim<T>, true> >;
 // N.B. we are targetting the structure they appears additional states after
 //      additional states on given input range. so we don't use PdeltaOnce.
-// N.B. we get almost same broken result between following PSVD and raw P01.
+// N.B. we can avoid timing-related prediction fails with following PSVD class.
 // template <typename T> using PP0 = PSVD<T, P01<T, P0maxRank<T>, true> >;
 template <typename T> using PP0 = P01<T, P01delim<T>, true>;
 
@@ -4438,10 +4438,7 @@ template <typename T, int nprogress = 20> SimpleVector<T> predv0(const vector<Si
     seconds[i] = makeProgramInvariant<T>(in[i], - T(int(1)), true).second;
   }
   // N.B. not in use, we use whole in.size() with PP0.
-  // N.B. with PSVD we use sz / 3.
-  // const int unit(sz / 3);
-  // N.B. otherwise we use sz / 2.
-  const int unit(sz / 2);
+  const int unit(sz / 3);
   SimpleVector<T> p(in[0].size());
   p.O();
 #if defined(_OPENMP)
