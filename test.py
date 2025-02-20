@@ -114,7 +114,6 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
   else:
     mode = 0
   # N.B. Condorcet jury doesn't work on our sample run.
-  # N.B. 
   if(argv[2][- 2] == '+'):
     # N.B. upper bound for #f(x,y,z) when completely separatable {x, y, z}
     #      however, {x,y,z,w} is too large to exist without internal relations.
@@ -129,6 +128,8 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
   else:
     # N.B. context saturation case.
     lsz  = 768
+  # N.B. we treat each bit condition to them.
+  lsz /= 8.
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g' or argv[2][- 3] == 'g' or argv[2][- 4] == 'g'):
     bits = max(1, min(8, int(len(argv[5:]) / 4 / 4)))
     pxs  = int(len(argv[5:]) / bits / 4)
