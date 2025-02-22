@@ -117,4 +117,5 @@ Searching the Internet more...
 2025/02/18 elim bit operand from pred... command. also fix bits auto calculation on them.
 2025/02/19 elim size operand from pred... command.
 2025/02/20 param opt on pred... command. re opt them.
+2025/02/22 fix some sh commands but is still insecure with delimiter, whitespace filenames.
 

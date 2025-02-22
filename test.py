@@ -203,11 +203,12 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
   curdir = os.path.basename(os.getcwd())
   subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", str(- bits), "1"])
   subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-nbit.ppm", str(- bits), "1"])
+  # XXX: white space, delimiter, should use Popen with pipe.
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[3] + " - " + " ".join(list2) + " < wgL.txt"])
-  list4 = []
-  listl = []
-  listr = []
+  list4 = [argv[4], "p"]
+  listl = [argv[4], "w"]
+  listr = [argv[4], "w"]
   for l in list2:
     list4.append(l + "-4.ppm")
   for idx in range(0, len(list3)):
@@ -218,12 +219,12 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
     listr.append(list2[idx + 1] + "-4.ppm")
   listr.append(list3[- 1])
   listr.append("predgw4.ppm")
-  subprocess.call(["sh", "-c", argv[4] + " p " + " ".join(list4)])
+  subprocess.call(list4)
   subprocess.call(["mv", "predg.ppm", "predgw4.ppm"])
-  subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listr)])
+  subprocess.call(listr)
   subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w4-bit.ppm", str(- bits), "1"])
   subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w4-nbit.ppm", str(- bits), "1"])
-  subprocess.call(["sh", "-c", argv[4] + " w " + " ".join(listl)])
+  subprocess.call(listl)
   subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w-bit.ppm", str(- bits), "1"])
   subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w-nbit.ppm", str(- bits), "1"])
 elif(argv[2] == "crossarg"):
