@@ -3326,7 +3326,7 @@ template <typename T> inline T P012L<T>::next(const SimpleVector<T>& d) {
     for(int j = 0; j < work.size(); j ++)
       score += work[j] * revertProgramInvariant<T>(make_pair(avg[j], vdp.second));
     res += score * work[work.size() - 1];
-    sscore += abs(score);
+    sscore += abs(score * sqrt(work.dot(work)));
   }
   return sscore == zero ? sscore : res / sscore;
 }
@@ -4459,191 +4459,6 @@ template <typename T, int nprogress = 20> SimpleVector<T> predv0(const vector<Si
       PP0<T>(step).next(seconds / nseconds, unit) * nseconds), true);
 }
 
-// N.B. start p2/persistent.cc
-template <typename T> static inline T pseudoerfscale(const T& x) {
-  return sgn<T>(x) == T(int(0)) ? x : sgn<T>(x) * exp(- x * x);
-}
-
-template <typename T> static inline T pseudoierfscale(const T& y) {
-  return sgn<T>(y) == T(int(0)) ? y : sgn<T>(y) * sqrt(abs(- log(abs(y))));
-}
-
-template <typename T> static inline T expscale(const T& x) {
-  return sgn<T>(x) * (exp(abs(x)) - T(int(1)));
-}
-
-template <typename T> static inline T logscale(const T& x) {
-  return sgn<T>(x) * log(abs(x) + T(int(1)));
-}
-
-template <typename T> static inline T plainrecurPersistent(T x, const int& r, const vector<T>& Mp, const vector<T>& Mq) {
-  assert(Mp.size() == Mq.size() && r <= Mp.size());
-  for(int i = 0; i < r; i ++) {
-    x = pseudoierfscale<T>((x - Mp[i]) / T(int(2)) );
-    x = pseudoerfscale< T>((x - Mq[i]) * T(int(2)) );
-  }
-  return x;
-}
-
-template <typename T> static inline vector<T> samplerecurPersistent(const vector<T>& d, const vector<T>& Mp, const vector<T>& Mq, const int& interval = 1024) {
-  assert(d.size() == Mp.size() && Mp.size() == Mq.size() && 0 < interval);
-  vector<T> res;
-  res.reserve(d.size());
-  for(int i = 0; i < d.size(); i ++) {
-    vector<pair<T, T> > samples;
-    samples.resize(interval);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int j = 0; j < interval; j ++) {
-      const auto x(T(j * 2) / T(interval - 1) - T(int(1)));
-      samples[j] = make_pair(abs(plainrecurPersistent<T>(x, i + 1, Mp, Mq)), x);
-    }
-    sort(samples.begin(), samples.end());
-    res.emplace_back(samples[0].second);
-  }
-  return res;
-}
-
-template <typename T> static inline void nextPersistent(vector<T>& d, vector<T>& Mp, vector<T>& Mq, vector<idFeeder<SimpleVector<T> > >& fp, vector<idFeeder<T> >& fq) {
-  assert(d.size() == Mp.size() && Mp.size() == Mq.size() &&
-         Mq.size() == fp.size() && fp.size() == fq.size());
-  for(int i = 0; i < fp.size(); i ++) {
-    auto fpn(fp[i].res[fp[i].res.size() - 1]);
-    for(int i = 1; i < fpn.size(); i ++)
-      fpn[fpn.size() - i] = fpn[fpn.size() - i - 1];
-    fpn[0] = (d[i] + T(int(1))) / T(int(2));
-    fp[i].next(fpn);
-    try {
-      auto work(predv0<T, 0>(fp[i].res.entity, string(""), fp[i].res.entity.size()));
-      fq[i].next(pseudoierfscale<T>((d[i] - Mp[i]) / T(int(2)) ));
-      d[i]  = pseudoerfscale<T>((fq[i].res[fq[i].res.size() - 1] - Mq[i]) * T(int(2)) );
-      Mp[i] = work[0] * T(int(2)) - T(int(1));
-      Mq[i] = P0maxRank<T>().next(fq[i].res);
-      if(i + 1 < d.size()) d[i + 1] = d[i];
-    } catch(void* e) {
-      for(int j = i; j < Mp.size(); j ++) Mp[i] = Mq[i] = d[j] = T(int(0));
-      return;
-    }
-  }
-}
-
-template <typename T> static inline vector<T> nextdPersistent(vector<T>& d, vector<T>& Mp, vector<T>& Mq, vector<idFeeder<SimpleVector<T> > >& fp, vector<idFeeder<T> >& fq) {
-  assert(d.size() == Mp.size() && Mp.size() == Mq.size() &&
-         Mq.size() == fp.size() && fp.size() == fq.size());
-  nextPersistent<T>(d, Mp, Mq, fp, fq);
-  auto lMp(Mp);
-  auto lMq(Mq);
-  auto lfp(fp);
-  auto lfq(fq);
-  auto dd(d);
-  dd[0] = T(int(0));
-  nextPersistent<T>(dd, lMp, lMq, lfp, lfq);
-  const auto nsr(samplerecurPersistent<T>(dd, lMp, lMq));
-  vector<T> res;
-  res.reserve(d.size());
-  const auto sr(samplerecurPersistent<T>(d, Mp, Mq));
-  assert(nsr.size() == dd.size() && sr.size() == d.size() && d.size() == dd.size());
-  for(int i = 0; i < d.size(); i ++)
-    res.emplace_back(abs(nsr[i]) == T(int(1)) || abs(sr[i]) == T(int(1)) ? T(int(0)) : sr[i]);
-  return res;
-}
-
-template <typename T> static inline vector<vector<T> > nextdfPersistent(vector<vector<T> >& d, vector<vector<T> >& Mp, vector<vector<T> >& Mq, vector<vector<idFeeder<SimpleVector<T> > > >& fp, vector<vector<idFeeder<T> > >& fq) {
-  assert(d.size() == Mp.size() && Mp.size() == Mq.size() &&
-         Mq.size() == fp.size() && fp.size() == fq.size());
-  vector<vector<T> > res;
-  res.reserve(d.size());
-  for(int i = 0; i < d.size(); i ++)
-    res.emplace_back(nextdPersistent<T>(d[i], Mp[i], Mq[i], fp[i], fq[i]));
-  return res;
-}
-
-template <typename T> class Persistent {
-public:
-  inline Persistent(const int& stat = 80) {
-    this->stat = stat;
-    for(int j = 0; j < sizeof(feeds) / sizeof(feeds[0]); j ++) {
-      idFeeder<SimpleVector<T> > workfp(stat);
-      for(int i = 0; i < stat; i ++)
-        workfp.next(SimpleVector<T>(feeds[j]).O());
-      vector<idFeeder<SimpleVector<T> > > wwfp;
-      wwfp.resize(1, workfp);
-      fp.emplace_back(wwfp);
-      mfp.emplace_back(wwfp);
-    }
-    {
-      vector<idFeeder<T> > wfq;
-      wfq.resize(1, idFeeder<T>(stat));
-      fq.resize(fp.size(), wfq);
-      mfq.resize(fp.size(), wfq);
-    }
-    {
-      vector<T> wm;
-      wm.resize(1, T(int(0)));
-      Mp.resize(fp.size(), wm);
-      Mq.resize(fp.size(), wm);
-      mMp.resize(fp.size(), wm);
-      mMq.resize(fp.size(), wm);
-      d.resize(fp.size(), wm);
-      md.resize(fp.size(), wm);
-    }
-    t ^= t;
-  }
-  inline T next(const T& d0) {
-    for(int i = 0; i < d.size(); i ++) md[i][0] = - (d[i][0] = d0);
-    const auto MMp(nextdfPersistent<T>(d, Mp, Mq, fp, fq));
-    const auto MMm(nextdfPersistent<T>(md, mMp, mMq, mfp, mfq));
-    T M(int(0));
-    int cnt(0);
-    for(int j = 0; j < sizeof(feeds) / sizeof(feeds[0]); j ++)
-      for(int i = d[j].size() - 2; 0 <= i; i --) {
-        if(! isfinite(MMp[j][i]) || ! isfinite(MMm[j][i])) continue;
-        auto lMM(MMp[j][i] == T(int(0)) || MMm[j][i] == T(int(0)) ? T(int(0)) : (MMp[j][i] - MMm[j][i] < T(int(0)) ? (MMp[j][i] < - MMm[j][i] ? - MMm[j][i] : MMp[j][i]) : (- MMm[j][i] < MMp[j][i] ? - MMm[j][i] : MMp[j][i]) ));
-        if(abs(lMM) != T(int(1)) ) {
-          M += lMM;
-          cnt ++;
-          break;
-        }
-      }
-    if(cnt) M /= T(cnt);
-    if(! ((++ t) % ((stat + 8) * 2)))
-      for(int j = 0; j < sizeof(feeds) / sizeof(feeds[0]); j ++) {
-        {
-          idFeeder<SimpleVector<T> > workfp(stat);
-          for(int i = 0; i < stat; i ++)
-            workfp.next(SimpleVector<T>(feeds[j]).O());
-          fp[j].emplace_back(workfp);
-          mfp[j].emplace_back(workfp);
-        }
-        fq[j].emplace_back(idFeeder<T>(stat));
-        mfq[j].emplace_back(idFeeder<T>(stat));
-        Mp[j].emplace_back(T(int(0)));
-        Mq[j].emplace_back(T(int(0)));
-        mMp[j].emplace_back(T(int(0)));
-        mMq[j].emplace_back(T(int(0)));
-        d[j].emplace_back(T(int(0)));
-        md[j].emplace_back(T(int(0)));
-      }
-    return M;
-  }
-  int t;
-  int stat;
-  int feeds[4] = {4, 2, 1, 8};
-  vector<vector<T> > d;
-  vector<vector<T> > md;
-  vector<vector<T> > Mp;
-  vector<vector<T> > Mq;
-  vector<vector<T> > mMp;
-  vector<vector<T> > mMq;
-  vector<vector<idFeeder<SimpleVector<T> > > > fp;
-  vector<vector<idFeeder<SimpleVector<T> > > > mfp;
-  vector<vector<idFeeder<T> > > fq;
-  vector<vector<idFeeder<T> > > mfq;
-};
-
-// N.B. start (restart) ddpmopt
-
 // N.B. as p8:README.md, predv once is enough for finite combinations
 //      except for upper cardinals. If we're lucky enough, the original stream
 //      is made from Lie algebra with tangent, we reduce combination on them,
@@ -4668,15 +4483,14 @@ public:
 //      some of the PRNG test meaning broken. so revert them.
 //      (changed p1/pp3.cc predv call to predv0 call causes split predictions
 //       however the command line chain meaning unchanged.)
-template <typename T, int nprogress = 20> static inline SimpleVector<T> predv(const vector<SimpleVector<T> >& in, const int& step = 1) {
+template <typename T, int nprogress = 20> static inline SimpleVector<T> predv(vector<SimpleVector<T> >& in, const int& step = 1) {
   assert(0 < step && in.size() && 1 < in[0].size());
   // N.B. we use whole width to get better result in average.
-  //      this is equivalent to the command: p1 1 | p0 1 :
+  //      this is equivalent to the command: p1 | p0 :
   //      enough prediction with integer-float classes (SimpleFloat<...>)
   //      takes O(length^2) to get the result in their cases,
   //      however with CPU implemented float they can have some unknown errors,
-  //      we should use at least p1 0 | p0 1 in their case
-  //      they takes O(length^3) to get such condition for each pixel.
+  //      we should use at least p1-... | p0-... in their case.
   // XXX: If we implement loop hard optimizer, we can use them with
   //      O((length*pixel*accuracy)^2) for each pixel bit even also any of
   //      the contexts they can have implementation.
@@ -4700,70 +4514,48 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv(co
 #endif
   for(int i = start + step; i < ip.rows(); i ++) {
     for(int j = 0; j < ip.cols(); j ++)
-      ip(i, j) = in[i - ip.rows() + in.size()][j] - 
-         p[i - ip.rows() + p.size() - step][j];
+      ip(i, j) =
+        (in[i - ip.rows() + in.size()][j] * T(int(2)) - T(int(1)) ) *
+        (p[i - ip.rows() + p.size() - step][j] * T(int(2)) - T(int(1)) );
   }
-  // N.B. we need gamma complement after this.
-  //      dftcache need to be single thread on first call.
+  // N.B. dftcache need to be single thread on first call.
   // N.B. we bet combination subtracted series is continuous.
-  res[0] = ( (P0maxRank0<T>(step).next(ip.col(0)) + p[p.size() - 1][0]) +
-    T(int(4)) ) / T(int(8));
+  // N.B. once we used differences prediction, but now, we only bet their signs.
+  //      so the result is: pred2(in * pred(in)) * pred(in) ~
+  //        sgn(pred3(in)) * alpha.
+  // N.B. either, diferrences prediction is better friendly to upper layer
+  //      monte-carlo methods, however, with some of the test we have isn't
+  //      get better result them (only returns last one image), so they're
+  //      eliminated.
+  res[0] = (P0maxRank0<T>(step).next(ip.col(0)) *
+    (p[p.size() - 1][0] * T(int(2)) - T(int(1)) ) +
+      T(int(1)) ) / T(int(2));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 1; i < res.size(); i ++) {
     if(nprogress && ! (i % max(int(1), int(res.size() / nprogress))) )
       cerr << i << " / " << res.size() << endl;
-    res[i] = ( (P0maxRank0<T>(step).next(ip.col(i)) + p[p.size() - 1][i]) +
-      T(int(4)) ) / T(int(8));
+    res[i] = (P0maxRank0<T>(step).next(ip.col(i)) *
+      (p[p.size() - 1][i] * T(int(2)) - T(int(1)) ) +
+        T(int(1)) ) / T(int(2));
   }
+  in.resize(0);
   return res;
 }
 
 // N.B. predv only returns last one picture on some of our tests with real
 //      data, but is effective returns better results with PRNG tests.
 //      so with real data, we only apply P0maxRank to each pixel.
-template <typename T, int nprogress = 20> static inline SimpleVector<T> predvp0(const vector<SimpleVector<T> >& in, const int& step = 1) {
-  assert(0 < step && in.size() && 1 < in[0].size());
-  SimpleVector<T> seconds(in.size());
-  seconds.O();
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < seconds.size(); i ++)  {
-    seconds[i] = makeProgramInvariant<T>(in[i], - T(int(1)), true).second;
-  }
-  SimpleVector<T> p(in[0].size());
-  p.O();
-  // N.B. we need first call single threaded.
-  {
-    const int j(0);
-    if(nprogress && ! (j % max(int(1), int(in[0].size() / nprogress))) )
-      cerr << j << " / " << in[0].size() << endl;
-    idFeeder<T> buf(seconds.size());
-    for(int i = 0; i < seconds.size(); i ++)
-      buf.next(makeProgramInvariantPartial<T>(in[i][j], seconds[i], true));
-    assert(buf.full);
-    p[j] = P0maxRank<T>(step).next(buf.res);
-  }
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int j = 1; j < in[0].size(); j ++) {
-    if(nprogress && ! (j % max(int(1), int(in[0].size() / nprogress))) )
-      cerr << j << " / " << in[0].size() << endl;
-    idFeeder<T> buf(seconds.size());
-    for(int i = 0; i < seconds.size(); i ++)
-      buf.next(makeProgramInvariantPartial<T>(in[i][j], seconds[i], true));
-    assert(buf.full);
-    p[j] = P0maxRank<T>(step).next(buf.res);
-  }
-  const auto nseconds(sqrt(seconds.dot(seconds)));
-  return revertProgramInvariant<T>(make_pair(
-    makeProgramInvariant<T>(normalize<T>(p), - T(int(1)), true).first,
-      P0maxRank<T>(step).next(seconds / nseconds) * nseconds), true);
-}
-
+// N.B. eliminated below. this is because: our test is well done with the
+//      3 of combinations candidates normally with PRNGs:
+//      {catgp | p1 | p0, p1 | p0, p0} so these are 3 of the measurable
+//      conditions we suppose. So we're targetting only stable entropy feed
+//      after and after stream, so we make hypothesis Riemann-Stieljes cond.
+//      Otherwise, enough continuous datas have Riemann measurable cond.
+//      Either, enough complex datas have non Lebesgue measurable cond
+//      (No unique pure functions cond nor no non entropy phenomenon cond.).
+// N.B. we also eliminated above:
 // N.B. instead of recursive doing sliding input length (they hardly depends
 //      on first some steps), we use montecarlo method.
 //      recur == 11 is enough to get probability around .9 when we're using
@@ -4774,6 +4566,7 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predvp0(
 //      series of a PRNG tests.
 
 // N.B. predv4 is for masp generated -4.ppm predictors.
+//      mostly with slight speed hacks.
 template <typename T, int nprogress = 6> static inline SimpleVector<T> predv4(vector<SimpleVector<T> >& in) {
   assert(1 < in.size() && (in[in.size() - 1].size() == 4 ||
                            in[in.size() - 1].size() == 12) );
@@ -4845,20 +4638,24 @@ template <typename T, int nprogress = 6> static inline SimpleVector<T> predv4(ve
   // N.B. imported from predv1.
   for(int i = 0; i < gwork1.rows(); i ++)
     for(int j = 9; j < gwork1.cols(); j ++)
-      gwork1(i, j) = in[(j - gwork1.cols()) * 2 + in.size()][i] -
-        gwork0(i, j - 1);
-  res[0] = (P0maxRank0<T>().next(gwork1.row(0)) + gwork0(0, gwork0.cols() - 1) +
-    T(int(4)) ) / T(int(8));
+      gwork1(i, j) =
+        (in[(j - gwork1.cols()) * 2 + in.size()][i] * T(int(2)) - T(int(1)) ) *
+        (gwork0(i, j - 1) * T(int(2)) - T(int(1)) );
+  // N.B. same logic as predv, we bet only the sign of them.
+  res[0] = (P0maxRank0<T>().next(gwork1.row(0)) *
+    (gwork0(0, gwork0.cols() - 1) * T(int(2)) - T(int(1)) ) +
+      T(int(1)) ) / T(int(2));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 1; i < res.size(); i ++)
-    res[i] = (P0maxRank0<T>().next(gwork1.row(i)) +
-      gwork0(i, gwork0.cols() - 1) + T(int(4)) ) / T(int(8));
+    res[i] = (P0maxRank0<T>().next(gwork1.row(i)) *
+      (gwork0(i, gwork0.cols() - 1) * T(int(2)) - T(int(1)) ) +
+        T(int(1)) ) / T(int(2));
   return res;
 }
 
-template <typename T, bool use_p0 = false> vector<SimpleVector<T> > predVec(vector<vector<SimpleVector<T> > >& in0, const int& step = 1) {
+template <typename T> vector<SimpleVector<T> > predVec(vector<vector<SimpleVector<T> > >& in0, const int& step = 1) {
   assert(in0.size() && in0[0].size() && in0[0][0].size());
   vector<SimpleVector<T> > in;
   in.resize(in0.size());
@@ -4874,7 +4671,7 @@ template <typename T, bool use_p0 = false> vector<SimpleVector<T> > predVec(vect
   const auto size0(in0[0].size());
   const auto size1(in0[0][0].size());
   in0.resize(0);
-  auto p(use_p0 ? predvp0<T>(in, step) : predv<T>(in, step));
+  auto p(predv<T>(in, step));
   vector<SimpleVector<T> > res;
   res.resize(size0);
   for(int j = 0; j < res.size(); j ++)
@@ -4882,8 +4679,23 @@ template <typename T, bool use_p0 = false> vector<SimpleVector<T> > predVec(vect
   return res;
 }
 
-template <typename T, bool use_p0 = false> vector<SimpleMatrix<T> > predMat(vector<vector<SimpleMatrix<T> > >& in0, const int& step = 1) {
-  assert(in0.size() && in0[0].size() && in0[0][0].rows() && in0[0][0].cols());
+// N.B. once we have audo en/decoder which is DFT image[n] DFT with 
+//      input prediction direction sliding DFT also doing bit-wise separation
+//      giving into predv, however they only returns left-top white point and
+//      black outed image or only yellow outed images for a result.
+//      so we reverted to original plain predictions.
+// N.B. we also did them with result sgn middle stage predv result conversion,
+//      however they aren't changed result.
+// N.B. original DFT image[n] DFT conversion looks better with continuous
+//      input converted into discrete variables, however, our predictor isn't
+//      get 100% result, so some probability they slips, so their slips
+//      effects whole result graphics in IDFT.
+// N.B. sliding prediction direction DFT can have explicit relations to
+//      many much more on input graphics, they should works well but not for us.
+//      this either can be caused by prediction errors as a predv output.
+//      monte-carlo 11*11 times isn't changed this situation.
+template <typename T> vector<SimpleMatrix<T> > predMat(vector<vector<SimpleMatrix<T> > >& in0, const int& step = 1) {
+assert(in0.size() && in0[0].size() && in0[0][0].rows() && in0[0][0].cols());
   vector<SimpleVector<T> > in;
   in.resize(in0.size());
   for(int i = 0; i < in0.size(); i ++) {
@@ -4901,7 +4713,7 @@ template <typename T, bool use_p0 = false> vector<SimpleMatrix<T> > predMat(vect
   const auto rows(in0[0][0].rows());
   const auto cols(in0[0][0].cols());
   in0.resize(0);
-  auto p(use_p0 ? predvp0<T>(in, step) : predv<T>(in, step));
+  auto p(predv<T>(in, step));
   vector<SimpleMatrix<T> > res;
   res.resize(size);
   for(int j = 0; j < res.size(); j ++) {
@@ -4918,6 +4730,8 @@ template <typename T> SimpleSparseTensor<T> predSTen(vector<SimpleSparseTensor<T
   // N.B. the data we target is especially string stream corpus.
   //      they are incontinuous one, so complementing with continuous stream
   //      shouldn't improve outputs.
+  // N.B. we should use each bit extended input stream but not now.
+  //      they uses large enough memory we cannot comput on our machines.
   vector<SimpleVector<T> > in;
   vector<pair<int, pair<int, int> > > attend;
   in.resize(in0.size());
@@ -7238,6 +7052,28 @@ template <typename T, typename U> ostream& predTOC(ostream& os, const U& input, 
   os << pstats.simpleThresh(threshin).serialize();
   return os;
 }
+
+// N.B. start p2/persistent.cc
+template <typename T> static inline T pseudoerfscale(const T& x) {
+  return sgn<T>(x) == T(int(0)) ? x : sgn<T>(x) * exp(- x * x);
+}
+
+template <typename T> static inline T pseudoierfscale(const T& y) {
+  return sgn<T>(y) == T(int(0)) ? y : sgn<T>(y) * sqrt(abs(- log(abs(y))));
+}
+
+template <typename T> static inline T expscale(const T& x) {
+  return sgn<T>(x) * (exp(abs(x)) - T(int(1)));
+}
+
+template <typename T> static inline T logscale(const T& x) {
+  return sgn<T>(x) * log(abs(x) + T(int(1)));
+}
+
+// N.B. eliminated Persistent class and their functions.
+//      we cannot avoid such a error recusrive prediction's white noise with
+//      the method we once have. it's only accuracy limit dependant but reverse
+//      of them doesn't work.
 
 #define _SIMPLELIN_
 #endif
