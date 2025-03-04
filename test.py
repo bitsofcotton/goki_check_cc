@@ -108,16 +108,6 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2] == "sp" or argv[2] == "sT"):
-  # N.B. mogrify -format bmp -crop ...%x...% ...
-  for t in range(0, 10000):
-    cmd = [argv[1], argv[2][1]]
-    for s in argv[3:]:
-      cmd.append(os.path.splitext(s)[0] + "-" + str(t) + os.path.splitext(s)[1])
-    subprocess.call(cmd)
-    if(argv[2][1] == 'p'):
-      subprocess.call(["mv", "predg.ppm", "p-" + str(t) + ".ppm"])
-  # N.B. montage p-[0-9].ppm p-[0-9][0-9].ppm ... -tile ... -geometry ...x...+0+0 out.png
 elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] == "predg" or argv[2] == "predg+" or argv[2] == "predg++" or argv[2] == "predq" or argv[2] == "predq+" or argv[2] == "predq++" or argv[2] == "predgq" or argv[2] == "predgq+" or argv[2] == "predgq++"):
   if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q' or argv[2][- 3] == 'q'):
     mode = 1
@@ -212,7 +202,9 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
   subprocess.check_output(cmd)
   curdir = os.path.basename(os.getcwd())
   subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgc.ppm", curdir + "-cbit.ppm", "-8", "1"])
   subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-nbit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgc.ppm", curdir + "-cnbit.ppm", "-8", "1"])
   # XXX: white space, delimiter, should use Popen with pipe.
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[3] + " - " + " ".join(list2) + " < wgL.txt"])
@@ -233,10 +225,14 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
   subprocess.call(["mv", "predg.ppm", "predgw4.ppm"])
   subprocess.call(listr)
   subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w4-bit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgwc.ppm", curdir + "w4-cbit.ppm", "-8", "1"])
   subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w4-nbit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgwc.ppm", curdir + "w4-cnbit.ppm", "-8", "1"])
   subprocess.call(listl)
   subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w-bit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgwc.ppm", curdir + "w-cbit.ppm", "-8", "1"])
   subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w-nbit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgwc.ppm", curdir + "w-cnbit.ppm", "-8", "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0
