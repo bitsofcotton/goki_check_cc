@@ -108,7 +108,7 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] == "predg" or argv[2] == "predg+" or argv[2] == "predg++" or argv[2] == "predq" or argv[2] == "predq+" or argv[2] == "predq++" or argv[2] == "predgq" or argv[2] == "predgq+" or argv[2] == "predgq++"):
+elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
   if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q' or argv[2][- 3] == 'q'):
     mode = 1
   else:
@@ -152,43 +152,47 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
     list0.append(f + "-wgL." + ext)
   list  = []
   loopb = 0
-  while(True):
-    score = []
-    for t in range(0, len(list0) - 4):
-      cmd = [argv[4], "t"]
-      cmd.extend(list0[t:t + 4])
-      score.append(abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0])) )
-    # XXX: magic number, ideally, is [1] but too slow to run.
-    score = sorted(score)[int(len(score) / 5.)]
-    list = [list0[0], list0[1], list0[2] ]
-    for t in range(3, len(list0)):
-      cmd = [argv[4], "t"]
-      cmd.extend(list[- 3:])
-      cmd.append(list0[t])
-      lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
-      if(score < lscore):
-        list.append(list0[t])
-    list.reverse()
-    rlist = []
-    for t in range(max(0, len(list) - 5), len(list)):
-      cmd = [argv[4], "t"]
-      cmd.extend(list[t:t + 4])
-      lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
-      if(score < lscore):
-        rlist.append(list[t + 3])
-    list = list[:- 4]
-    list.extend(rlist)
-    list.reverse()
-    if(len(list) <= len(argv[5:]) / 2 or len(list) == loopb): break
-    print(len(list))
-    list0 = list
-    loopb = len(list)
-  cmd = [argv[4], "c"]
-  cmd.extend(list)
-  subprocess.check_output(cmd)
-  list1 = []
-  for f in list:
-    list1.append(f + "-c3.ppm")
+  if(argv[2][0] == 'q'):
+    while(True):
+      score = []
+      for t in range(0, len(list0) - 4):
+        cmd = [argv[4], "t"]
+        cmd.extend(list0[t:t + 4])
+        score.append(abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0])) )
+      # XXX: magic number, ideally, is [1] but too slow to run.
+      score = sorted(score)[int(len(score) / 5.)]
+      list = [list0[0], list0[1], list0[2] ]
+      for t in range(3, len(list0)):
+        cmd = [argv[4], "t"]
+        cmd.extend(list[- 3:])
+        cmd.append(list0[t])
+        lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
+        if(score < lscore):
+          list.append(list0[t])
+      list.reverse()
+      rlist = []
+      for t in range(max(0, len(list) - 5), len(list)):
+        cmd = [argv[4], "t"]
+        cmd.extend(list[t:t + 4])
+        lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
+        if(score < lscore):
+          rlist.append(list[t + 3])
+      list = list[:- 4]
+      list.extend(rlist)
+      list.reverse()
+      if(len(list) <= len(argv[5:]) / 2 or len(list) == loopb): break
+      print(len(list))
+      list0 = list
+      loopb = len(list)
+    cmd = [argv[4], "c"]
+    cmd.extend(list)
+    subprocess.check_output(cmd)
+    list1 = []
+    for f in list:
+      list1.append(f + "-c3.ppm")
+  else:
+    list  = list0
+    list1 = list0
   list2 = []
   list3 = []
   for f in list1:
@@ -201,10 +205,10 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
   cmd.extend(list3)
   subprocess.check_output(cmd)
   curdir = os.path.basename(os.getcwd())
-  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "bit", "predgc.ppm", curdir + "-cbit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-nbit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgc.ppm", curdir + "-cnbit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit0.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgc.ppm", curdir + "-bit1.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-bit2.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgc.ppm", curdir + "-bit3.ppm", "-8", "1"])
   # XXX: white space, delimiter, should use Popen with pipe.
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[3] + " - " + " ".join(list2) + " < wgL.txt"])
@@ -224,15 +228,15 @@ elif(argv[2] == "pred" or argv[2] == "pred+" or argv[2] == "pred++" or argv[2] =
   subprocess.call(list4)
   subprocess.call(["mv", "predg.ppm", "predgw4.ppm"])
   subprocess.call(listr)
-  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w4-bit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "bit", "predgwc.ppm", curdir + "w4-cbit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w4-nbit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgwc.ppm", curdir + "w4-cnbit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w4-bit0.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgwc.ppm", curdir + "w4-bit1.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w4-bit2.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgwc.ppm", curdir + "w4-bit3.ppm", "-8", "1"])
   subprocess.call(listl)
-  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w-bit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "bit", "predgwc.ppm", curdir + "w-cbit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w-nbit.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgwc.ppm", curdir + "w-cnbit.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w-bit0.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgwc.ppm", curdir + "w-bit1.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w-bit2.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgwc.ppm", curdir + "w-bit3.ppm", "-8", "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0
@@ -254,6 +258,7 @@ elif(argv[2] == "crossarg"):
       else:
         print(arg2[int(s / step / 2) * step + (s % step) - min(len(arg1), len(arg2))])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatr" or argv[2] == "tilecatbr"):
+
   pixels = int(argv[3])
   cmd = ["montage"]
   t   = 0
