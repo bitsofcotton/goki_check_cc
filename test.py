@@ -209,6 +209,12 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
   subprocess.call([argv[1], "bit", "predgc.ppm", curdir + "-bit1.ppm", "-8", "1"])
   subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-bit2.ppm", "-8", "1"])
   subprocess.call([argv[1], "nbit", "predgc.ppm", curdir + "-bit3.ppm", "-8", "1"])
+  cmd[1] = "P"
+  subprocess.check_output(cmd)
+  subprocess.call([argv[1], "bit", "qredg.ppm", curdir + "-bit4.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "qredgc.ppm", curdir + "-bit5.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "qredg.ppm", curdir + "-bit6.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "qredgc.ppm", curdir + "-bit7.ppm", "-8", "1"])
   # XXX: white space, delimiter, should use Popen with pipe.
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[3] + " - " + " ".join(list2) + " < wgL.txt"])
