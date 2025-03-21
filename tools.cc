@@ -155,8 +155,9 @@ int main(int argc, const char* argv[]) {
         for(int j = 0; j < data[i].rows(); j ++)
           for(int k = 0; k < data[i].cols(); k ++)
             for(int m = 0; m < recur; m ++)
-              work(j * recur + m, k) = num_t(1 & int(data[i](j, k) *
-                pow(num_t(int(2)), num_t(int(m + 1))) ) );
+              work(j + m * data[i].rows(), k) =
+                num_t(1 & int(data[i](j, k) *
+                  pow(num_t(int(2)), num_t(int(m + 1))) ) );
         swap(work, data[i]);
       }
     } else if((strcmp(argv[1], "bit") == 0 && recur < 0) || strcmp(argv[1], "nbit") == 0) {
@@ -167,10 +168,10 @@ int main(int argc, const char* argv[]) {
           for(int k = 0; k < work.cols(); k ++)
             for(int m = 0; m < abs(recur); m ++)
               work(j, k) += strcmp(argv[1], "nbit") == 0 ?
-                (sgn<num_t>(data[i](j * abs(recur) + m, k) -
+                (sgn<num_t>(data[i](j + m * data[i].rows() / abs(recur), k) -
                   num_t(int(1)) / num_t(int(2))) + num_t(int(1))) /
                     pow(num_t(int(2)), num_t(int(m + 1))) :
-                data[i](j * abs(recur) + m, k) /
+                data[i](j + m * data[i].rows() / abs(recur), k) /
                   pow(num_t(int(2)), num_t(int(m + 1)));
         swap(work, data[i]);
       }

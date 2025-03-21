@@ -119,4 +119,5 @@ Searching the Internet more...
 2025/02/20 param opt on pred... command. re opt them.
 2025/02/22 fix some sh commands but is still insecure with delimiter, whitespace filenames.
 2025/03/06 change pred... meaning, original is moved into qred... .
+2025/03/22 bit command conversion change friendly to shrink.
 
