@@ -35,7 +35,7 @@ using std::make_pair;
 
 void usage(const char* en) {
   cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|represent|nop|limit|bit|nbit|slide|nslide) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit|slide|nslide) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << en << " (cat|catr) <input0.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj <input.ppm> <output.obj>" << endl;
@@ -74,7 +74,6 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "shrink") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
-     strcmp(argv[1], "represent") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
      strcmp(argv[1], "b2wd")    == 0 ||
