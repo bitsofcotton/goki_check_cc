@@ -36,7 +36,7 @@ using std::make_pair;
 void usage(const char* en) {
   cout << "Usage:" << endl;
   cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit|slide|nslide) <input.ppm> <output.ppm> <recur> <rot>" << endl;
-  cout << en << " (cat|catr) <input0.ppm> ..." << endl;
+  cout << en << " cat <input0-4.ppm> ..." << endl;
   cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << en << " obj <input.ppm> <output.obj>" << endl;
   cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
@@ -358,8 +358,7 @@ int main(int argc, const char* argv[]) {
       savep2or3<num_t>((outbase + string("-") + to_string(i) + string("-") +
                        to_string(nemph) + string(".ppm")).c_str(), out);
     }
-  } else if(strcmp(argv[1], "cat") == 0 ||
-            strcmp(argv[1], "catr") == 0) {
+  } else if(strcmp(argv[1], "cat") == 0) {
     if(argc < 3) {
       usage(argv[0]);
       return - 1;
@@ -373,34 +372,15 @@ int main(int argc, const char* argv[]) {
       in[i - 2] = std::move(ibuf);
     }
     const auto idx(in.size() - 1);
-    vector<SimpleMatrix<num_t> > out;
-    out.resize(3);
-    if(strcmp(argv[1], "cat") == 0 ||
-       strcmp(argv[1], "catr") == 0) {
-      vector<SimpleMatrix<num_t> > glay;
-      glay.reserve(strcmp(argv[1], "catr") == 0 ? in.size()
-                    : in.size() * min(int(in[0][0].rows()), 1 + 5 + 1));
-      const auto& in00sz(in[0][0].rows());
-      for(int i = 0; i < in.size(); i ++) {
-        if(strcmp(argv[1], "catr") == 0)
-          glay.emplace_back(rgb2d<num_t>(in[i]));
-        else {
-          auto work(rgb2d<num_t>(in[i]));
-          assert(work.rows() == in00sz);
-          for(int j = 0; j < min(int(work.rows()), 1 + 5 + 1); j ++) {
-            SimpleMatrix<num_t> rr(1, work.cols());
-            rr.row(0) = std::move(work.row(j));
-            glay.emplace_back(rr);
-          }
-        }
-      }
-      const auto cat(catImage<num_t>(glay));
-      for(int i = 0; i < cat.size(); i ++) {
-        for(int j = 0; j < cat[i].size(); j ++)
-          std::cout << argv[2 + (strcmp(argv[1], "catr") == 0 ? cat[i][j]
-                         : cat[i][j] / min(in00sz, 1 + 5 + 1)) ] << std::endl;
-        std::cout << std::endl;
-      }
+    vector<SimpleMatrix<num_t> > glay;
+    glay.reserve(in.size());
+    for(int i = 0; i < in.size(); i ++)
+      glay.emplace_back(in[i].size() == 1 ? in[i][0] : rgb2d<num_t>(in[i]));
+    const auto cat(catImage<num_t>(glay, 4));
+    for(int i = 0; i < cat.size(); i ++) {
+      for(int j = 0; j < cat[i].size(); j ++)
+        std::cout << argv[2 + cat[i][j]] << std::endl;
+      std::cout << std::endl;
     }
   } else if(strcmp(argv[1], "habit") == 0) {
     vector<SimpleVector<num_t> > pdst, psrc;

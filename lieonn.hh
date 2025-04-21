@@ -1483,6 +1483,16 @@ template <typename T> using complex = Complex<T>;
   typedef uint1024_t myuint;
   typedef int1024_t  myint;
   typedef SimpleFloat<myuint, DUInt<myuint, 1024>, 1024, myint> myfloat;
+#elif _FLOAT_BITS_ == 2048
+  typedef DUInt<uint64_t, 64> uint128_t;
+  typedef DUInt<uint128_t, 128> uint256_t;
+  typedef DUInt<uint256_t, 256> uint512_t;
+  typedef DUInt<uint512_t, 512> uint1024_t;
+  typedef DUInt<uint1024_t, 1024> uint2048_t;
+  typedef Signed<uint2048_t, 2048> int2048_t;
+  typedef uint2048_t myuint;
+  typedef int2048_t  myint;
+  typedef SimpleFloat<myuint, DUInt<myuint, 2048>, 2048, myint> myfloat;
 #else
 # error cannot handle float
 #endif
@@ -3158,7 +3168,7 @@ template <typename T> const SimpleVector<T>& mscache(const int& size) {
   return ms[size] = minsq<T>(size);
 }
 
-#if !defined(_PNEXT_ON_MEMORY_)
+#if defined(_PNEXT_NOT_ON_MEMORY_)
 template <typename T> SimpleVector<T> pnextcacher(const int& size, const int& step) {
   assert(0 < size && 0 <= step);
   static SimpleVector<T> nonthreadsafe;
@@ -6259,7 +6269,7 @@ template <typename T> static inline vector<vector<int> > catImage(const vector<S
     for(int j = 0; j < imgs[i].rows(); j ++)
       work[i].setVector(imgs[i].cols() * j, imgs[i].row(j));
   }
-  auto cg(crush<T>(work, cs, 0));
+  auto cg(crush<T>(work, cs, work.size()));
   vector<vector<int> > res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++)
