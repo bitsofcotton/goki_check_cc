@@ -376,7 +376,7 @@ int main(int argc, const char* argv[]) {
     glay.reserve(in.size());
     for(int i = 0; i < in.size(); i ++)
       glay.emplace_back(in[i].size() == 1 ? in[i][0] : rgb2d<num_t>(in[i]));
-    const auto cat(catImage<num_t>(glay, 4));
+    const auto cat(catImage<num_t>(glay));
     for(int i = 0; i < cat.size(); i ++) {
       for(int j = 0; j < cat[i].size(); j ++)
         std::cout << argv[2 + cat[i][j]] << std::endl;

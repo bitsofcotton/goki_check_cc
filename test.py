@@ -73,6 +73,8 @@ elif(argv[2] == "cat" or argv[2] == "catb" or argv[2] == "catc" or argv[2] == "c
       cmd.append(r + ".ppm-4.ppm")
     elif(argv[2] == "catc"):
       cmd.append(r + ".ppm-m2c4.ppm")
+    elif(argv[2] == "catd"):
+      cmd.append(r + ".ppm-m2c4t.ppm")
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)
@@ -272,6 +274,8 @@ elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or a
       cmd.append(line[:- 1 - len(".ppm-wg-bit.ppm-4.ppm")] + ".ppm")
     elif(argv[2] == "tilecatc"):
       cmd.append(line[:- 1 - len(".ppm-wg-bit.ppm-m2c4.ppm")] + ".ppm")
+    elif(argv[2] == "tilecatd"):
+      cmd.append(line[:- 1 - len(".ppm-wg-bit.ppm-m2c4t.ppm")] + ".ppm")
     else:
       cmd.append(line[:- 1])
   cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tilecat-" + str(t) + ".png"])

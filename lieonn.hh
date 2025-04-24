@@ -6257,7 +6257,7 @@ template <typename T> static inline SimpleMatrix<T> reColor(const SimpleMatrix<T
   return res;
 }
 
-template <typename T> static inline vector<vector<int> > catImage(const vector<SimpleMatrix<T> >& imgs, const int& cs = 40) {
+template <typename T> static inline vector<vector<int> > catImage(const vector<SimpleMatrix<T> >& imgs) {
   for(int i = 1; i < imgs.size(); i ++) {
     assert(imgs[i].rows() == imgs[0].rows());
     assert(imgs[i].cols() == imgs[0].cols());
@@ -6269,7 +6269,7 @@ template <typename T> static inline vector<vector<int> > catImage(const vector<S
     for(int j = 0; j < imgs[i].rows(); j ++)
       work[i].setVector(imgs[i].cols() * j, imgs[i].row(j));
   }
-  auto cg(crush<T>(work, cs, work.size()));
+  auto cg(crush<T>(work, work[0].size(), work.size()));
   vector<vector<int> > res;
   res.reserve(cg.size());
   for(int i = 0; i < cg.size(); i ++)
