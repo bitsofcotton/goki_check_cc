@@ -371,7 +371,6 @@ int main(int argc, const char* argv[]) {
         return - 2;
       in[i - 2] = std::move(ibuf);
     }
-    const auto idx(in.size() - 1);
     vector<SimpleMatrix<num_t> > glay;
     glay.reserve(in.size());
     for(int i = 0; i < in.size(); i ++)
