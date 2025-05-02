@@ -215,12 +215,12 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list2) + " < wgL.txt"])
   if(ext != "pgm"):
-    for idx in range(0, list2):
-      subprocess.call(["convert", "-compress", "none", list2[idx] + "-m2c4.pgm", list2[idx] + "-m2c4." + ext])
+    for f in list2:
+      subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
   list4 = [argv[4], "p"]
   listr = [argv[4], "w"]
   for l in list2:
-    list4.append(l + "-4.ppm")
+    list4.append(l + "-m2c4." + ext)
   for idx in range(0, len(list3) - 1):
     listr.append(list3[idx])
     listr.append(list2[idx + 1] + "-m2c4." + ext)
