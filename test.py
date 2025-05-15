@@ -202,15 +202,11 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
   subprocess.check_output(cmd)
   curdir = os.path.basename(os.getcwd())
   subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit0.ppm", "-8", "1"])
-  subprocess.call([argv[1], "bit", "predgc.ppm", curdir + "-bit1.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-bit2.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgc.ppm", curdir + "-bit3.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-bit1.ppm", "-8", "1"])
   cmd[1] = "P"
   subprocess.check_output(cmd)
-  subprocess.call([argv[1], "bit", "qredg.ppm", curdir + "-bit4.ppm", "-8", "1"])
-  subprocess.call([argv[1], "bit", "qredgc.ppm", curdir + "-bit5.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "qredg.ppm", curdir + "-bit6.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "qredgc.ppm", curdir + "-bit7.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "qredg.ppm", curdir + "-bit2.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "qredg.ppm", curdir + "-bit3.ppm", "-8", "1"])
   # XXX: white space, delimiter, should use Popen with pipe.
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list2) + " < wgL.txt"])
@@ -227,12 +223,9 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
   listr.append(list3[- 1])
   listr.append("predgw4.ppm")
   subprocess.call(list4)
-  subprocess.call(["mv", "predg.ppm", "predgw4.ppm"])
   subprocess.call(listr)
-  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "w4-bit0.ppm", "-8", "1"])
-  subprocess.call([argv[1], "bit", "predgwc.ppm", curdir + "w4-bit1.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "w4-bit2.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgwc.ppm", curdir + "w4-bit3.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit4.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-bit5.ppm", "-8", "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0

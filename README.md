@@ -122,4 +122,5 @@ Searching the Internet more...
 2025/03/22 bit command conversion change friendly to shrink.
 2025/04/19 merge latest lieonn, eliminate represent.
 2025/05/02 pqred subcommand now uses masp2catg.
+2025/05/16 merge latest ddpmopt option on pred... command.
 
