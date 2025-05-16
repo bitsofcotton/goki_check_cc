@@ -221,11 +221,11 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
     listr.append(list3[idx])
     listr.append(list2[idx + 1] + "-m2c4." + ext)
   listr.append(list3[- 1])
-  listr.append("predgw4.ppm")
+  listr.append("predg.ppm")
   subprocess.call(list4)
   subprocess.call(listr)
-  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit4.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-bit5.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit4.ppm", "-8", "1"])
+  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "-bit5.ppm", "-8", "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0
