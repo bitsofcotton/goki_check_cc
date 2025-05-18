@@ -2991,8 +2991,16 @@ template <typename T> static inline SimpleVector<T> binMargin(const SimpleVector
   return res;
 }
 
+template <typename T> static inline T offsetHalf(const T& in) {
+  return (in + T(int(1))) / T(int(2));
+}
+
+template <typename T> static inline T unOffsetHalf(const T& in) {
+  return in * T(int(2)) - T(int(1));
+}
+
 template <typename T> static inline T R2bin(const T& in) {
-  return ((atan(- in) / atan(T(int(1))) / T(int(2))) + T(int(1))) / T(int(2));
+  return offsetHalf<T>(atan(- in) / atan(T(int(1))) / T(int(2)));
 }
 
 template <typename T> static inline SimpleVector<T> R2bin(const SimpleVector<T>& in) {
@@ -3005,8 +3013,7 @@ template <typename T> static inline SimpleVector<T> R2bin(const SimpleVector<T>&
 template <typename T> static inline T bin2R(const T& in) {
   return - tan(max(- T(int(1)) + sqrt(SimpleMatrix<T>().epsilon()),
                min(  T(int(1)) - sqrt(SimpleMatrix<T>().epsilon()),
-                 in * T(int(2)) - T(int(1)) ))
-                    * atan(T(int(1))) * T(int(2)) );
+                 unOffsetHalf<T>(in) )) * atan(T(int(1))) * T(int(2)) );
 }
 
 template <typename T> static inline SimpleVector<T> bin2R(const SimpleVector<T>& in) {
@@ -3139,6 +3146,140 @@ template <typename T> static inline SimpleVector<T> revertProgramInvariant(const
   for(int i = 0; i < in.first.size(); i ++)
     res[i] = revertProgramInvariant<T>(make_pair(in.first[i], in.second));
   return res;
+}
+
+template <typename T> static inline SimpleVector<T> offsetHalf(const SimpleVector<T>& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = offsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline SimpleVector<T> unOffsetHalf(const SimpleVector<T>& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = unOffsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline SimpleMatrix<T> offsetHalf(const SimpleMatrix<T>& in) {
+  auto res(in);
+  for(int i = 0; i < res.rows(); i ++)
+    res.row(i) = offsetHalf<T>(res.row(i));
+  return res;
+}
+
+template <typename T> static inline SimpleMatrix<T> unOffsetHalf(const SimpleMatrix<T>& in) {
+  auto res(in);
+  for(int i = 0; i < res.rows(); i ++)
+    res.row(i) = unOffsetHalf<T>(res.row(i));
+  return res;
+}
+
+template <typename T> static inline vector<SimpleVector<T> > offsetHalf(const vector<SimpleVector<T> >& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = offsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline vector<SimpleVector<T> > unOffsetHalf(const vector<SimpleVector<T> >& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = unOffsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline vector<SimpleMatrix<T> > offsetHalf(const vector<SimpleMatrix<T> >& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = offsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline vector<SimpleMatrix<T> > unOffsetHalf(const vector<SimpleMatrix<T> >& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = unOffsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline vector<vector<SimpleVector<T> > > offsetHalf(const vector<vector<SimpleVector<T> > >& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = offsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline vector<vector<SimpleVector<T> > > unOffsetHalf(const vector<vector<SimpleVector<T> > >& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = unOffsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline vector<vector<SimpleMatrix<T> > > offsetHalf(const vector<vector<SimpleMatrix<T> > >& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = offsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline vector<vector<SimpleMatrix<T> > > unOffsetHalf(const vector<vector<SimpleMatrix<T> > >& in) {
+  auto res(in);
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = unOffsetHalf<T>(res[i]);
+  return res;
+}
+
+template <typename T> static inline vector<SimpleMatrix<T> > delta(vector<SimpleMatrix<T> >& in) {
+  for(int i = 1; i < in.size(); i ++)
+    in[i - 1] = in[i] - in[i - 1];
+  in.resize(in.size() - 1);
+  return in;
+}
+
+template <typename T> static inline vector<SimpleMatrix<T> > delta(const vector<SimpleMatrix<T> >& in) {
+  auto res(in);
+  return delta<T>(res);
+}
+
+template <typename T> static inline vector<vector<SimpleMatrix<T> > > delta(vector<vector<SimpleMatrix<T> > >& in) {
+  for(int i = 1; i < in.size(); i ++)
+    for(int j = 0; j < in[i].size(); j ++)
+      in[i - 1][j] = in[i][j] - in[i - 1][j];
+  in.resize(in.size() - 1);
+  return in;
+}
+
+template <typename T> static inline vector<vector<SimpleMatrix<T> > > delta(const vector<vector<SimpleMatrix<T> > >& in) {
+  auto res(in);
+  return delta<T>(res);
+}
+
+template <typename T> static inline vector<SimpleVector<T> > delta(vector<SimpleVector<T> >& in) {
+  for(int i = 1; i < in.size(); i ++)
+    in[i - 1] = in[i] - in[i - 1];
+  in.resize(in.size() - 1);
+  return in;
+}
+
+template <typename T> static inline vector<SimpleVector<T> > delta(const vector<SimpleVector<T> >& in) {
+  auto res(in);
+  return delta<T>(res);
+}
+
+template <typename T> static inline vector<vector<SimpleVector<T> > > delta(vector<vector<SimpleVector<T> > >& in) {
+  for(int i = 1; i < in.size(); i ++)
+    for(int j = 0; j < in[i].size(); j ++)
+      in[i - 1][j] = in[i][j] - in[i - 1][j];
+  in.resize(in.size() - 1);
+  return in;
+}
+
+template <typename T> static inline vector<vector<SimpleVector<T> > > delta(const vector<vector<SimpleVector<T> > >& in) {
+  auto res(in);
+  return delta<T>(res);
 }
 
 static inline int ind2vd(const int& indim) {
@@ -3609,7 +3750,7 @@ template <typename T, T (*f)(const SimpleVector<T>&, const int&), const bool non
   //      many of the exhaust of the calculation resource can be cached
   //      and unstable result, this might means invariant continuity
   //      improves when length == 3 also we have prediction direction on them.
-  SimpleMatrix<T> invariants(f == p0maxNext<T> ? 3
+  SimpleMatrix<T> invariants(f == p0maxNext<T> || f == p0max0next<T> ? 3
     : (f == p01delimNext<T> ? 1 : in.size() - unit),
       nonlinear ? varlen + 2 : varlen);
   invariants.O();
@@ -3741,37 +3882,62 @@ template <typename T> static inline SimpleVector<SimpleVector<T> > arctanFeeder(
 }
 
 // N.B. we omit high frequency part (1/f(x) input) to be treated better in P.
-template <typename T, T (*p)(const SimpleVector<T>&, const int&), bool arctanF = false> class PBond {
-public:
-  inline PBond(const int& status = 0) {
-    assert(0 <= status);
-    f = idFeeder<T>(status);
-    M = T(int(1));
-  }
-  inline ~PBond() { ; }
-  inline T next(const T& in) {
-    M = max(M, abs(in));
-    auto g(arctanF ? arctanFeeder<T>(f.next(in)) : f.next(in));
-    if(! f.full || g.size() <= 1) return T(int(0));
-    // N.B. with 1-norm normalized input:
-    T m(g[0] /= M);
-    for(int i = 1; i < g.size(); i ++) m = min(m, g[i] /= M);
-    // N.B. offset const.
-    m -= T(int(1));
-    // N.B. 0 < v, normalize with v's orthogonality:
-    T mavg(log(g[0] - m));
-    for(int i = 1; i < g.size(); i ++) mavg += log(g[i] - m);
-    mavg /= T(int(g.size()));
-    mavg  = exp(mavg);
-    // N.B. we need nonlinear prediction, so * M before to predict.
-    return max(- M, min(M, p(g / mavg * M, 0) * mavg));
-  }
-  idFeeder<T> f;
-  T M;
-};
+template <typename T, T (*p)(const SimpleVector<T>&, const int&)> static inline T pbond(SimpleVector<T> in) {
+  if(in.size() <= 1) return T(int(0));
+  auto M(abs(in[0]));
+  for(int i = 1; i < in.size(); i ++)
+    M = max(M, in[i]);
+  // N.B. with 1-norm normalized input:
+  T m(in[0] /= M);
+  for(int i = 1; i < in.size(); i ++) m = min(m, in[i] /= M);
+  // N.B. offset const.
+  m -= T(int(1));
+  // N.B. 0 < v, normalize with v's orthogonality:
+  T mavg(log(in[0] - m));
+  for(int i = 1; i < in.size(); i ++) mavg += log(in[i] - m);
+  mavg /= T(int(in.size()));
+  mavg  = exp(mavg);
+  // N.B. we need nonlinear prediction, so * M before to predict.
+  return max(- M, min(M, p((in *= M) /= mavg, 0) * mavg));
+}
 
-template <typename T, bool atf = false> using PBond0 = PBond<T, p0maxNext<T>, atf>;
-template <typename T, bool atf = false> using PBond012 = PBond<T, p012next<T>, atf>;
+template <typename T, T (*p)(const SimpleVector<T>&, const int&)> static inline T p0p(const SimpleVector<T>& in, const int& unit = 3) {
+  if(in.size() < 7) return T(int(0));
+  SimpleMatrix<T> depth(1, 3);
+  depth(0, 0) = T(int(0));
+  depth(0, 1) = offsetHalf<T>(in[0]);
+  depth(0, 2) = offsetHalf<T>(in[1]);
+  for(int i = 2; i < in.size(); i ++) {
+    if(depth.rows() < i / 3) depth.entity.emplace_back(SimpleVector<T>(3).O());
+    bool chain(false);
+    T    sign(int(1));
+    auto d(in[i]);
+    depth.row(0).setVector(1, in.subVector(0, 2));
+    for(int j = 1; j < depth.rows(); j ++, chain = ! chain) {
+      depth(j - 1, 0) = depth(j - 1, 1);
+      depth(j - 1, 1) = depth(j - 1, 2);
+      if(! chain) {
+        depth(j - 1, 2) = d = (d + sign) / T(int(2));
+        depth(j, depth.cols() - 1) = d *= p(depth.row(j - 1), unit);
+      } else {
+        depth(j - 1, 2) = d = d * T(int(2)) - sign;
+        depth(j, depth.cols() - 1) = d -= p(depth.row(j - 1), unit);
+        sign = - sign;
+      }
+    }
+  }
+  if(depth.rows() < 2) return T(int(0));
+  T sign(depth.rows() / 2 & 1 ? - T(int(1)) : T(int(1)));
+  T M(int(0));
+  for(int j = depth.rows() - (depth.rows() & 1) - 1; 0 <= j; j --) {
+    if(j & 1) M += depth(j, 2) * sign;
+    else {
+      M *= depth(j, 2);
+      sign = - sign;
+    }
+  }
+  return M;
+}
 
 // N.B. if we use each progression for average into input one, they can
 //      improve the result. however, if prediction is almost linear,
@@ -4127,10 +4293,10 @@ template <typename T> bool savep2or3(const char* filename, const vector<SimpleMa
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
           if(data.size() == 1)
-            output << min(int(depth), int(data[0](i, j) * (T(depth) + T(int(1)))) ) << "\n";
+            output << getImgPt(int(data[0](i, j) * T(depth)), depth + 1) << "\n";
           else
             for(int k = 0; k < 3; k ++)
-              output << min(int(depth), int(data[k](i, j) * (T(depth) + T(int(1)))) ) << "\n";
+              output << getImgPt(int(data[k](i, j) * T(depth)), depth + 1) << "\n";
     } catch (...) {
       cerr << "An error has occured while writing file." << endl;
     }
@@ -4183,17 +4349,30 @@ template <typename T> static inline vector<vector<SimpleMatrix<T> > > normalize(
   return result;
 }
 
-template <typename T> static inline vector<SimpleMatrix<T> > normalize(const vector<SimpleMatrix<T> >& data, const T& upper = T(1)) {
-  vector<vector<SimpleMatrix<T> > > w;
-  w.emplace_back(data);
-  return normalize<T>(w, upper)[0];
+template <typename T> static inline vector<SimpleMatrix<T> > normalize(vector<SimpleMatrix<T> >& data, const T& upper = T(1)) {
+  vector<vector<SimpleMatrix<T> > > work;
+  work.emplace_back(move(data));
+  auto res(normalize<T>(work, upper)[0]);
+  data = move(work[0]);
+  return res;
+}
+
+template <typename T> static inline vector<SimpleMatrix<T> > normalize(const vector<SimpleMatrix<T> >& in, const T& upper = T(1)) {
+  auto d(in);
+  return normalize<T>(d, upper);
+}
+
+template <typename T> static inline SimpleMatrix<T> normalize(SimpleMatrix<T>& data, const T& upper = T(1)) {
+  vector<SimpleMatrix<T> > work;
+  work.emplace_back(move(data));
+  auto res(normalize<T>(work, upper)[0]);
+  data = move(work[0]);
+  return res;
 }
 
 template <typename T> static inline SimpleMatrix<T> normalize(const SimpleMatrix<T>& in, const T& upper = T(1)) {
-  vector<vector<SimpleMatrix<T> > > w;
-  w.resize(1);
-  w[0].resize(1, in);
-  return normalize<T>(w, upper)[0][0];
+  auto d(in);
+  return normalize<T>(d, upper);
 }
 
 template <typename T> static inline vector<vector<SimpleVector<T> > > normalize(const vector<vector<SimpleVector<T> > >& in, const T& upper = T(1)) {
@@ -4214,14 +4393,6 @@ template <typename T> static inline vector<vector<SimpleVector<T> > > normalize(
       v[i][j] = res[i][j].row(0);
   }
   return v;
-}
-
-template <typename T> static inline SimpleMatrix<T> normalize(SimpleMatrix<T>& data, const T& upper = T(1)) {
-  vector<SimpleMatrix<T> > work;
-  work.emplace_back(move(data));
-  auto res(normalize<T>(work, upper)[0]);
-  data = move(work[0]);
-  return res;
 }
 
 template <typename T> static inline SimpleVector<T> normalize(const SimpleVector<T>& in, const T& upper = T(1)) {
@@ -4362,13 +4533,13 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 //      we suppose first. so we eliminated them.
 // N.B. with using predv with PRNG, we can apply before applying PP0 P012L.
 //      our tests on PRNG can improves the result.
+// N.B. if we're in result is in control condition, we need to output at least
+//      a pair on the prediction, however, we discontinue such a implementation.
+// N.B. as ddpmopt:README.md, PP3 is least and enough normally.
 template <typename T> static inline T PP0(const SimpleVector<T>& in, const int& ratio) {
   return p01next<T, p01delimNext<T>, true>(in, ratio);
-  // N.B. our test either goes better with this, don't know why.
-  // return p0max0next<T>(in.subVector(in.size() - 3, 3), ratio);
 }
 
-// N.B. as ddpmopt:README.md, PP3 is least and enough normally.
 template <typename T, int nprogress = 20> static inline SimpleVector<T> predv0(const vector<SimpleVector<T> >& in, const int& sz, const string& strloop = string("")) {
   assert(0 < sz && sz <= in.size());
   // N.B. we need to initialize p0 vector.
@@ -4402,7 +4573,6 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv0(c
       PP0<T>(seconds / nseconds, unit) * nseconds) );
 }
 
-// N.B. we maybe in invariant controlled condition, so return 2 of candidates.
 template <typename T, int nprogress = 20> static inline SimpleVector<T> predv1(vector<SimpleVector<T> >& in) {
   static const auto step(1);
   assert(0 < step && 10 + step * 2 <= in.size() && 1 < in[0].size());
@@ -4417,7 +4587,6 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv1(v
   //      the contexts they can have implementation.
   SimpleVector<SimpleVector<T> > p;
   SimpleVector<T> res(in[0].size());
-  SimpleVector<T> resc(in[0].size());
   p.entity.reserve(in.size());
   // N.B. optimal with PP0
   const auto start(8 + step);
@@ -4425,52 +4594,39 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv1(v
     p.entity.emplace_back(SimpleVector<T>(in[0].size()).O());
   for(int i = start; i <= in.size(); i ++)
     p.entity.emplace_back(predv0<T, nprogress>(in, i, to_string(i) + string(" / ") + to_string(in.size())));
-  SimpleMatrix<T> ip(p.size(), res.size());
-  for(int i = 0; i < start + step; i ++)
-    ip.row(i).O();
+  SimpleMatrix<T> ip(res.size(), p.size());
+  ip.O();
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = start + step; i < ip.rows(); i ++) {
-    for(int j = 0; j < ip.cols(); j ++)
-      ip(i, j) = in[i - ip.rows() + in.size()][j] *
-        p[i - ip.rows() + p.size() - step][j];
-  }
-  auto ipp(ip);
-  ipp.O();
-  for(int i = 3; i < ip.rows(); i ++) {
-    cerr << "pnext: " << i << " / " << ip.rows() << endl;
-    ipp(i, 0) = p0max0next<T>(ip.col(0).subVector(0, i + 1));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int j = 1; j < ip.cols(); j ++)
-      ipp(i, j) = p0max0next<T>(ip.col(j).subVector(0, i + 1));
+  for(int i = start + step; i < p.size(); i ++) {
+    for(int j = 0; j < res.size(); j ++)
+      ip(j, i) = unOffsetHalf<T>(in[i - p.size() + in.size()][j]) *
+        unOffsetHalf<T>(p[i - step][j]);
   }
   // N.B. dftcache need to be single thread on first call.
-  // N.B. we bet combination subtracted series is continuous.
-  // N.B. once we used differences prediction, but now, we only bet their signs.
-  //      so the result is: pred2(in * pred(in)) * pred(in) ~
-  //        sgn(pred3(in)) * alpha.
-  // N.B. either, diferrences prediction is better friendly to upper layer
+  // N.B. either, differences prediction is better friendly to upper layer
   //      monte-carlo methods, however, with some of the test we have isn't
   //      get better result them (only returns last one image), so they're
   //      eliminated.
-  // N.B. we're in invariant controlled condition.
-  //      so raw real invariant is res, but we return {res, resc} for
-  //      res == 0 controlled conditions.
-  //      we can use delta input, sum output instead of this,
-  //      however we select resc condition because of P01 4 dimension condition.
-  //      if we do them with this hack, 4 dimensions we returns.
-  res[0] = p0max0next<T>(ipp.col(0)) * p[p.size() - 1][0];
+  // N.B. we bet orthogonal function phenomenon causes measurement condition
+  //      increase (0 <= vector condition with prediction walk).
+  // N.B. however, in this condition, we need scattered last input graphics
+  //      average to complete gray.
+  // N.B. revert to original walk conditions, our sample non PRNG result
+  //      works well with this.
+  res[0] =
+  res[0] = offsetHalf<T>(p0maxNext<T>(ip.row(0)) *
+    unOffsetHalf<T>(p[p.size() - 1][0]) );
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 1; i < res.size(); i ++) {
-    res[i] = p0max0next<T>(ipp.col(i)) * p[p.size() - 1][i];
+    res[i] = offsetHalf<T>(p0maxNext<T>(ip.row(i)) *
+      unOffsetHalf<T>(p[p.size() - 1][i]) );
   }
   in.resize(0);
-  return normalize<T>(res);
+  return res;
 }
 
 // N.B. we apply PRNGs before to predict each of prediction in general.
@@ -4486,10 +4642,11 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv1(v
 //      structure enough with ours.
 //      in the most of the cases, we don't need P012L with better PRNGs.
 //      we suppose phase period doesn't connected to the original structures.
+// N.B. practically, nrecur == 0 works well with ddpmopt T cmd, we use this.
+//      we don't select better nrecur == 11 * 11 we need huge computation time.
 template <typename T, int nrecur = 0, int nprogress = 20> static inline SimpleVector<T> predv(vector<SimpleVector<T> >& in) {
   if(! nrecur) return predv1<T, nprogress>(in);
-  SimpleVector<T> res;
-  res.resize(in[0].size());
+  SimpleVector<T> res(in[0].size());
   res.O();
   for(int i = 0; i < nrecur; i ++) {
     auto rin(in);
@@ -4598,28 +4755,20 @@ template <typename T, int nprogress = 6> static inline SimpleVector<T> predv4(ve
   for(int i = 0; i < gwork1.rows(); i ++)
     for(int j = 9; j < gwork1.cols(); j ++)
       gwork1(i, j) =
-        in[(j - gwork1.cols()) * 2 + in.size()][i] * gwork0(i, j - 1);
-  auto gwork2(gwork1);
-  gwork2.O();
-  for(int i = 3; i < gwork2.cols(); i ++) {
-    cerr << "pnext: " << i << " / " << gwork2.cols() << endl;
-    gwork2(0, i) = p0max0next<T>(gwork1.row(0).subVector(0, i + 1));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int j = 1; j < gwork2.rows(); j ++)
-      gwork2(j, i) = p0max0next<T>(gwork1.row(j).subVector(0, i + 1));
-  }
+        unOffsetHalf<T>(in[(j - gwork1.cols()) * 2 + in.size()][i]) *
+        unOffsetHalf<T>(gwork0(i, j - 1));
   // N.B. dftcache need to be single thread on first call.
   // N.B. same logic as predv, we bet only the sign of them.
-  res[0] = p0max0next<T>(gwork2.row(0)) * gwork0(0, gwork0.cols() - 1);
+  res[0] = offsetHalf<T>(p0maxNext<T>(gwork1.row(0)) *
+    unOffsetHalf<T>(gwork0(0, gwork0.cols() - 1)) );
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 1; i < res.size(); i ++) {
-    res[i] = p0max0next<T>(gwork1.row(i)) * gwork0(i, gwork0.cols() - 1);
+    res[i] = offsetHalf<T>(p0maxNext<T>(gwork1.row(i)) *
+      unOffsetHalf<T>(gwork0(i, gwork0.cols() - 1)) );
   }
-  return normalize<T>(res);
+  return res;
 }
 
 template <typename T> vector<SimpleVector<T> > predVec(vector<vector<SimpleVector<T> > >& in0) {
@@ -4644,6 +4793,11 @@ template <typename T> vector<SimpleVector<T> > predVec(vector<vector<SimpleVecto
   for(int j = 0; j < res.size(); j ++)
     res[j]  = p.subVector(size1 * j, size1);
   return res;
+}
+
+template <typename T> vector<SimpleVector<T> > predVec(const vector<vector<SimpleVector<T> > >& in0) {
+  auto res(in0);
+  return predVec<T>(res);
 }
 
 // N.B. original DFT image[n] DFT conversion looks better with continuous
@@ -4684,6 +4838,11 @@ template <typename T> vector<SimpleMatrix<T> > predMat(vector<vector<SimpleMatri
   return res;
 }
 
+template <typename T> vector<SimpleMatrix<T> > predMat(const vector<vector<SimpleMatrix<T> > >& in0) {
+  auto res(in0);
+  return predMat<T>(res);
+}
+
 template <typename T> SimpleSparseTensor<T> predSTen(vector<SimpleSparseTensor<T> >& in0, const vector<int>& idx) {
   assert(idx.size() && in0.size());
   // N.B. we don't do input scaling.
@@ -4711,8 +4870,7 @@ template <typename T> SimpleSparseTensor<T> predSTen(vector<SimpleSparseTensor<T
         for(int m = 0; m < idx.size(); m ++)
           if(binary_search(attend.begin(), attend.end(),
               make_pair(j, make_pair(k, m))))
-            in[i][cnt ++] =
-              (in0[i][idx[j]][idx[k]][idx[m]] + T(int(1))) / T(int(2));
+            in[i][cnt ++] = offsetHalf<T>(in0[i][idx[j]][idx[k]][idx[m]]);
   }
   in0.resize(0);
   auto p(predv<T>(in));
@@ -4722,7 +4880,7 @@ template <typename T> SimpleSparseTensor<T> predSTen(vector<SimpleSparseTensor<T
       for(int m = 0; m < idx.size(); m ++)
         if(binary_search(attend.begin(), attend.end(),
              make_pair(j, make_pair(k, m))))
-          res[idx[j]][idx[k]][idx[m]] = p[cnt ++] * T(int(2)) - T(int(1));
+          res[idx[j]][idx[k]][idx[m]] = unOffsetHalf<T>(p[cnt ++]);
   return res;
 }
 
