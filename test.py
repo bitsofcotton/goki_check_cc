@@ -104,7 +104,8 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
+elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
+     argv[2][:len("Pred")] == "Pred" or argv[2][:len("Qred")] == "Qred"):
   if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q' or argv[2][- 3] == 'q'):
     mode = 1
   else:
@@ -148,7 +149,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
     list0.append(f + "-wgL." + ext)
   list  = []
   loopb = 0
-  if(argv[2][0] == 'q'):
+  if(argv[2][0] == 'q' or argv[2][0] == 'Q'):
     while(True):
       score = []
       for t in range(0, len(list0) - 4):
@@ -182,7 +183,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
       loopb = len(list)
     cmd = [argv[4], "c"]
     cmd.extend(list)
-    subprocess.check_output(cmd)
+    subprocess.call(cmd)
     list1 = []
     for f in list:
       list1.append(f + "-c3.ppm")
@@ -199,33 +200,31 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
     list3.append(f + "-wgL-bit." + ext)
   cmd = [argv[4], "p"]
   cmd.extend(list3)
-  subprocess.check_output(cmd)
+  subprocess.call(cmd)
   curdir = os.path.basename(os.getcwd())
-  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit0.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predg.ppm", curdir + "-bit1.ppm", "-8", "1"])
-  cmd[1] = "P"
-  subprocess.check_output(cmd)
-  subprocess.call([argv[1], "bit", "qredg.ppm", curdir + "-bit2.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "qredg.ppm", curdir + "-bit3.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predg0.ppm", curdir + "-bit0.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predg1.ppm", curdir + "-bit1.ppm", "-8", "1"])
+  subprocess.call([argv[1], "bit", "predg2.ppm", curdir + "-bit2.ppm", "-8", "1"])
   # XXX: white space, delimiter, should use Popen with pipe.
-  subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
-  subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list2) + " < wgL.txt"])
-  if(ext != "pgm"):
-    for f in list2:
-      subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
-  list4 = [argv[4], "p"]
-  listr = [argv[4], "w"]
-  for l in list2:
-    list4.append(l + "-m2c4." + ext)
-  for idx in range(0, len(list3) - 1):
-    listr.append(list3[idx])
-    listr.append(list2[idx + 1] + "-m2c4." + ext)
-  listr.append(list3[- 1])
-  listr.append("predg.ppm")
-  subprocess.call(list4)
-  subprocess.call(listr)
-  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit4.ppm", "-8", "1"])
-  subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "-bit5.ppm", "-8", "1"])
+  if(argv[2][0] == 'P' or argv[2][0] == 'Q'):
+    subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
+    subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list2) + " < wgL.txt"])
+    if(ext != "pgm"):
+      for f in list2:
+        subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
+    list4 = [argv[4], "p"]
+    listr = [argv[4], "w"]
+    for l in list2:
+      list4.append(l + "-m2c4." + ext)
+    for idx in range(0, len(list3) - 1):
+      listr.append(list3[idx])
+      listr.append(list2[idx + 1] + "-m2c4." + ext)
+    listr.append(list3[- 1])
+    listr.append("predg2.ppm")
+    subprocess.call(list4)
+    subprocess.call(listr)
+    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit4.ppm", "-8", "1"])
+    subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "-bit5.ppm", "-8", "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0
