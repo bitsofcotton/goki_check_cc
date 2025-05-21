@@ -4707,91 +4707,60 @@ template <typename T, int nrecur = 0, int nprogress = 20> static inline SimpleVe
 
 // N.B. predv4 is for masp generated -4.ppm predictors.
 //      mostly with slight speed hacks.
-template <typename T, int nprogress = 6> static inline SimpleVector<T> predv4(vector<SimpleVector<T> >& in) {
+template <typename T, int nprogress = 20> static inline SimpleVector<T> predv4(vector<SimpleVector<T> >& in) {
   assert(1 < in.size() && (in[in.size() - 1].size() == 4 ||
                            in[in.size() - 1].size() == 12) );
+  assert(in.size() & 1);
   static const T zero(0);
   static const T one(1);
   static const T two(2);
-  SimpleVector<T> res(in[in.size() - 2].size());
+  SimpleVector<T> res(in[1].size());
   vector<SimpleVector<T> > inw;
   inw.reserve(in.size());
   SimpleVector<T> nwork(in.size());
   for(int i = 0; i < in.size(); i ++) {
     auto inww(makeProgramInvariant<T>(in[i]));
-    inw.emplace_back(inww.first);
+    inw.emplace_back(move(inww.first));
     nwork[i] = inww.second;
   }
-  SimpleMatrix<T> gwork0(res.size(), inw.size() / 2 - 1);
-  gwork0.O();
+  const auto nseconds(sqrt(nwork.dot(nwork)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < gwork0.rows(); i ++) {
+  for(int i = 0; i < res.size(); i ++) {
+    if(nprogress && ! (i % max(int(1), int(res.size() / nprogress))) )
+      cerr << i << " / " << res.size() << endl;
     // N.B. imported from P01 class.
-    SimpleMatrix<T> toeplitz0(gwork0.cols(), 7);
-    for(int j = 0; j < toeplitz0.rows(); j ++) {
+    SimpleMatrix<T> toeplitz(in.size() / 2, 7);
+    for(int j = 0; j < toeplitz.rows(); j ++) {
       SimpleVector<T> vw(5);
       vw.O();
-      vw.setVector(0, inw[j * 2 + 1].subVector(0, 4));
-      // XXX: following throws floating point exception, non zero divide.
-      //  1 + ((i / (in[in.size() - 2].size() / in[in.size() - 1].size())) & (~ 0x03)), 4));
-      vw[4] = inw[j * 2 + 2][i];
-      toeplitz0.row(j) =
-        makeProgramInvariant<T>(R2bin<T>(vw), T(j) / T(int(toeplitz0.rows() + 1)) ).first;
+      vw.setVector(0, inw[j * 2].subVector(0, 4));
+      vw[4] = inw[j * 2 + 1][i];
+      toeplitz.row(j) =
+        makeProgramInvariant<T>(R2bin<T>(vw), T(j) / T(int(toeplitz.rows() + 1)) ).first;
     }
-    for(int i1 = 9; i1 <= toeplitz0.rows(); i1 ++) {
-      if(nprogress && ! (i1 % max(int(1), int(toeplitz0.rows() / nprogress))) )
-        cerr << i1 << " / " << toeplitz0.rows() << " : " << i << " / " << in[0].size() << endl;
-      SimpleMatrix<T> toeplitz(i1, toeplitz0.cols());
-      for(int j = 0; j < toeplitz.rows(); j ++)
-        toeplitz.row(j) = toeplitz0.row(j);
-      const auto invariant(linearInvariant<T>(toeplitz));
-      SimpleVector<T> work(5);
-      work.O();
-      work.setVector(0, inw[(i1 - toeplitz0.rows()) * 2 + inw.size() - 1].subVector(0, 4));
-      work[work.size() - 1] = zero;
-      auto last(sqrt(work.dot(work)));
-      for(int ii = 0;
-              ii < 2 * int(- log(SimpleMatrix<T>().epsilon()) / log(two) )
-              && sqrt(work.dot(work) * SimpleMatrix<T>().epsilon()) <
-                 abs(work[work.size() - 1] - last); ii ++) {
-        last = work[work.size() - 1];
-        const auto work2(makeProgramInvariant<T>(R2bin<T>(work), one));
-        work[work.size() - 1] = bin2R<T>(revertProgramInvariant<T>(make_pair(
-          - (invariant.dot(work2.first) - invariant[4] * work2.first[4]) /
+    const auto invariant(linearInvariant<T>(toeplitz));
+    SimpleVector<T> work(5);
+    work.O();
+    work.setVector(0, inw[inw.size() - 1].subVector(0, 4));
+    work[work.size() - 1] = zero;
+    auto last(sqrt(work.dot(work)));
+    for(int ii = 0;
+            ii < 2 * int(- log(SimpleMatrix<T>().epsilon()) / log(two) )
+            && sqrt(work.dot(work) * SimpleMatrix<T>().epsilon()) <
+               abs(work[work.size() - 1] - last); ii ++) {
+      last = work[work.size() - 1];
+      const auto work2(makeProgramInvariant<T>(R2bin<T>(work), one));
+      work[work.size() - 1] = bin2R<T>(revertProgramInvariant<T>(make_pair(
+        - (invariant.dot(work2.first) - invariant[4] * work2.first[4]) /
           invariant[4], work2.second)) );
-      }
-      gwork0(i, i1 - 1) = work[work.size() - 1];
     }
+    res[i] = work[work.size() - 1];
   }
-  for(int i1 = 9; i1 < gwork0.cols(); i1 ++) {
-    const auto nnwork(nwork.subVector(0, i1));
-    const auto nseconds(sqrt(nnwork.dot(nnwork)));
-    gwork0.setCol(i1, revertProgramInvariant<T>(make_pair(
-      makeProgramInvariant<T>(normalize<T>(gwork0.col(i1))).first,
-        PP0<T>(nnwork / nseconds, 0) * nseconds)).subVector(0, gwork0.rows()) );
-  }
-  auto gwork1(gwork0);
-  gwork1.O();
-  // N.B. imported from predv1.
-  for(int i = 0; i < gwork1.rows(); i ++)
-    for(int j = 9; j < gwork1.cols(); j ++)
-      gwork1(i, j) =
-        unOffsetHalf<T>(in[(j - gwork1.cols()) * 2 + in.size()][i]) *
-        unOffsetHalf<T>(gwork0(i, j - 1));
-  // N.B. dftcache need to be single thread on first call.
-  // N.B. same logic as predv, we bet only the sign of them.
-  res[0] = offsetHalf<T>(p0maxNext<T>(gwork1.row(0)) *
-    unOffsetHalf<T>(gwork0(0, gwork0.cols() - 1)) );
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 1; i < res.size(); i ++) {
-    res[i] = offsetHalf<T>(p0maxNext<T>(gwork1.row(i)) *
-      unOffsetHalf<T>(gwork0(i, gwork0.cols() - 1)) );
-  }
-  return res;
+  return revertProgramInvariant<T>(make_pair(
+    makeProgramInvariant<T>(normalize<T>(res)).first,
+      PP0<T>(nwork / nseconds, 0) * nseconds));
 }
 
 template <typename T> vector<vector<SimpleVector<T> > > predVec(vector<vector<SimpleVector<T> > >& in0) {
@@ -4894,7 +4863,8 @@ template <typename T> vector<vector<SimpleMatrix<T> > > predMat(vector<vector<Si
     }
   }
   auto p(predv<T>(in = offsetHalf<T>(in)));
-  for(int j = 0; j < res.size(); j ++) {
+  res[2].resize(size);
+  for(int j = 0; j < res[2].size(); j ++) {
     res[2][j].resize(rows, cols);
     for(int k = 0; k < rows; k ++)
       res[2][j].row(k) = p.subVector(j * rows * cols + k * cols, cols);

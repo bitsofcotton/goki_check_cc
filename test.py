@@ -205,8 +205,8 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   subprocess.call([argv[1], "bit", "predg0.ppm", curdir + "-bit0.ppm", "-8", "1"])
   subprocess.call([argv[1], "bit", "predg1.ppm", curdir + "-bit1.ppm", "-8", "1"])
   subprocess.call([argv[1], "bit", "predg2.ppm", curdir + "-bit2.ppm", "-8", "1"])
-  # XXX: white space, delimiter, should use Popen with pipe.
   if(argv[2][0] == 'P' or argv[2][0] == 'Q'):
+    # XXX: white space, delimiter, should use Popen with pipe.
     subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
     subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list2) + " < wgL.txt"])
     if(ext != "pgm"):
@@ -214,17 +214,20 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
         subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
     list4 = [argv[4], "p"]
     listr = [argv[4], "w"]
-    for l in list2:
-      list4.append(l + "-m2c4." + ext)
-    for idx in range(0, len(list3) - 1):
+    for idx in range(0, len(list2)):
+      list4.append(list2[idx] + "-m2c4." + ext)
+      listr.append(list2[idx] + "-m2c4." + ext)
       listr.append(list3[idx])
-      listr.append(list2[idx + 1] + "-m2c4." + ext)
-    listr.append(list3[- 1])
-    listr.append("predg2.ppm")
+    listr.append("predg0.ppm")
     subprocess.call(list4)
     subprocess.call(listr)
+    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit3.ppm", "-8", "1"])
+    listr[- 1] = "predg1.ppm"
+    subprocess.call(listr)
     subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit4.ppm", "-8", "1"])
-    subprocess.call([argv[1], "nbit", "predgw.ppm", curdir + "-bit5.ppm", "-8", "1"])
+    listr[- 1] = "predg2.ppm"
+    subprocess.call(listr)
+    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit5.ppm", "-8", "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0
