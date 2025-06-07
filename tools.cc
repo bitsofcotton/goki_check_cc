@@ -23,30 +23,14 @@ typedef myfloat num_t;
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::move;
 using std::atoi;
 using std::string;
 using std::to_string;
 using std::vector;
 using std::sort;
-using std::binary_search;
-using std::make_pair;
 
 #include <stdlib.h>
-
-void usage(const char* en) {
-  cout << "Usage:" << endl;
-  cout << en << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit|slide|nslide) <input.ppm> <output.ppm> <recur> <rot>" << endl;
-  cout << en << " cat <input0-4.ppm> ..." << endl;
-  cout << en << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << en << " obj <input.ppm> <output.obj>" << endl;
-  cout << en << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
-  cout << en << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << en << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
-  cout << en << " recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
-  cout << en << " recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
-  cout << en << " habit <in0.obj> <in1.obj> <out.obj>" << endl;
-  return;
-}
 
 static inline num_t myatof(const char* v) {
   return num_t(int(std::atof(v) * 10000)) / num_t(int(10000));
@@ -56,10 +40,7 @@ static inline num_t myatof(const char* v) {
 int main(int argc, const char* argv[]) {
 //#define int int64_t
 #define int int32_t
-  if(argc < 2) {
-    usage(argv[0]);
-    return 0;
-  }
+  if(argc < 2) goto usage;
   if(strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "limit") == 0 ||
      strcmp(argv[1], "bit") == 0 ||
@@ -79,10 +60,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "b2wd")    == 0 ||
      strcmp(argv[1], "rgb2xyz") == 0 ||
      strcmp(argv[1], "xyz2rgb") == 0) {
-    if(argc < 3) {
-      usage(argv[0]);
-      return 0;
-    }
+    if(argc < 3) goto usage;
     const auto recur(4 < argc ? atoi(argv[4]) : 1);
     const auto rot(5 < argc ? atoi(argv[5]) : 0);
     vector<SimpleMatrix<num_t> > data;
@@ -202,10 +180,7 @@ int main(int argc, const char* argv[]) {
             strcmp(argv[1], "recolor") == 0 ||
             strcmp(argv[1], "recolor2") == 0 ||
             strcmp(argv[1], "recolor3") == 0) {
-    if(argc < 6) {
-      usage(argv[0]);
-      return 0;
-    }
+    if(argc < 6) goto usage;
     const auto count(atoi(argv[2]));
     vector<SimpleMatrix<num_t> > datac, datas;
     if(!loadp2or3<num_t>(datac, argv[3]))
@@ -238,16 +213,13 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "obj" ) == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
-    if(argc < 4) {
-      usage(argv[0]);
-      return - 1;
-    }
+    if(argc < 4) goto usage;
     if(!loadp2or3<num_t>(data, argv[2]))
       return - 1;
     auto sd(rgb2d<num_t>(data));
     const auto rows(sd.rows());
     const auto cols(sd.cols());
-          auto points(getTileVec<num_t>(std::move(sd)));
+          auto points(getTileVec<num_t>(move(sd)));
     if(argv[1][0] == 'O')
       for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
@@ -255,10 +227,7 @@ int main(int argc, const char* argv[]) {
     saveMTL<num_t>(argv[3], (string(argv[3]) + string(".mtl")).c_str());
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
-    if(argc < 8) {
-      usage(argv[0]);
-      return - 1;
-    }
+    if(argc < 8) goto usage;
     const auto index(atoi(argv[2]));
     const auto Mindex(atoi(argv[3]));
     auto psi(myatof(argv[4]));
@@ -287,10 +256,7 @@ int main(int argc, const char* argv[]) {
     if(! savep2or3<num_t>(argv[7], data))
       return - 1;
   } else if(strcmp(argv[1], "match") == 0) {
-    if(argc < 10) {
-      usage(argv[0]);
-      return - 1;
-    }
+    if(argc < 10) goto usage;
     const auto nsub(atoi(argv[2]));
     const auto nemph(atoi(argv[3]));
     const auto vboxdst(atoi(argv[4]));
@@ -359,17 +325,14 @@ int main(int argc, const char* argv[]) {
                        to_string(nemph) + string(".ppm")).c_str(), out);
     }
   } else if(strcmp(argv[1], "cat") == 0) {
-    if(argc < 3) {
-      usage(argv[0]);
-      return - 1;
-    }
+    if(argc < 3) goto usage;
     vector<vector<SimpleMatrix<num_t> > > in;
     in.resize(argc - 2);
     for(int i = 2; i < argc; i ++) {
       vector<SimpleMatrix<num_t> > ibuf;
       if(!loadp2or3<num_t>(ibuf, argv[i]))
         return - 2;
-      in[i - 2] = std::move(ibuf);
+      in[i - 2] = move(ibuf);
     }
     vector<SimpleMatrix<num_t> > glay;
     glay.reserve(in.size());
@@ -378,17 +341,14 @@ int main(int argc, const char* argv[]) {
     const auto cat(catImage<num_t>(glay));
     for(int i = 0; i < cat.size(); i ++) {
       for(int j = 0; j < cat[i].size(); j ++)
-        std::cout << argv[2 + cat[i][j]] << std::endl;
-      std::cout << std::endl;
+        cout << argv[2 + cat[i][j]] << endl;
+      cout << endl;
     }
   } else if(strcmp(argv[1], "habit") == 0) {
     vector<SimpleVector<num_t> > pdst, psrc;
     vector<SimpleVector<int>   > poldst, polsrc;
     if(argc < 5 || !loadobj<num_t>(pdst, poldst, argv[2]) ||
-                   !loadobj<num_t>(psrc, polsrc, argv[3])) {
-      usage(argv[0]);
-      return - 2;
-    }
+                   !loadobj<num_t>(psrc, polsrc, argv[3])) goto usage;
     num_t Mx(0), My(0);
     for(int i = 0; i < pdst.size(); i ++) {
       My = max(num_t(My), abs(pdst[i][0]));
@@ -453,10 +413,20 @@ int main(int argc, const char* argv[]) {
         cout << (i < data[j].size() ? data[j][i] / M : num_t(0)) << " ";
       cout << endl;
     }
-  } else {
-    usage(argv[0]);
-    return - 1;
-  }
+  } else goto usage;
   return 0;
+ usage:
+  cout << "Usage:" << endl;
+  cout << argv[0] << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit|slide|nslide) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << argv[0] << " cat <input0-4.ppm> ..." << endl;
+  cout << argv[0] << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
+  cout << argv[0] << " obj <input.ppm> <output.obj>" << endl;
+  cout << argv[0] << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
+  cout << argv[0] << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << argv[0] << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
+  cout << argv[0] << " recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
+  cout << argv[0] << " recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << argv[0] << " habit <in0.obj> <in1.obj> <out.obj>" << endl;
+  return - 3;
 }
 

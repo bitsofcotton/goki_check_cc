@@ -123,4 +123,5 @@ Searching the Internet more...
 2025/04/19 merge latest lieonn, eliminate represent.
 2025/05/02 pqred subcommand now uses masp2catg.
 2025/05/16 merge latest ddpmopt option on pred... command.
+2025/06/08 merge latest lieonn.
 
