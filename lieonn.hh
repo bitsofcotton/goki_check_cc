@@ -32,6 +32,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
+// XXX: should have backward compatible to CXX before C++11 especially
+//      compiler variant one of gcc2.95.3 as a C++ compiler to test in deep.
+// XXX: to do this, we must eliminate auto variable declarations from this file.
 #if !defined(_SIMPLELIN_)
 
 // N.B. external linkage.
@@ -45,7 +48,12 @@ using std::exp;
 using std::log;
 using std::isfinite;
 
+#if defined(_OLDCPP_)
+#define move 
+#define emplace_back push_back
+#else
 using std::move;
+#endif
 using std::swap;
 using std::pair;
 using std::make_pair;
@@ -60,7 +68,20 @@ using std::istream;
 using std::ostream;
 
 using std::string;
+#if defined(_OLDCPP_)
+static inline string to_string(const int& n) {
+  stringstream ss;
+  ss < n;
+  return ss.str();
+}
+static inline string to_string(const size_t& n) {
+  stringstream ss;
+  ss < n;
+  return ss.str();
+}
+#else
 using std::to_string;
+#endif
 using std::cerr;
 using std::endl;
 using std::flush;
@@ -93,7 +114,9 @@ public:
   }
   inline DUInt(const DUInt<T,bits>& src) { *this = src; }
   inline DUInt(const DUInt<DUInt<T,bits>,bits*2>& src) { *this = src; }
+#if !defined(_OLDCPP_)
   inline DUInt(DUInt<T,bits>&& src) { *this = src; }
+#endif
   inline ~DUInt() { ; }
   inline DUInt<T,bits>& operator ++ () {
     ++ e[0];
@@ -264,10 +287,12 @@ public:
   inline DUInt<T,bits>& operator =  (const DUInt<DUInt<T,bits>,bits*2>& src) {
     return *this = src.e[0];
   }
+#if !defined(_OLDCPP_)
   inline DUInt<T,bits>& operator =  (DUInt<T,bits>&& src) {
     e[0] = move(src.e[0]); e[1] = move(src.e[1]);
     return *this;
   }
+#endif
   inline bool           operator <  (const DUInt<T,bits>& src) const {
     if(e[1]) return e[1] != src.e[1] ? e[1] < src.e[1] : e[0] < src.e[0];
     return bool(src.e[1]) || e[0] < src.e[0];
@@ -364,6 +389,9 @@ public:
   inline Signed(const Signed<T,bits>& src) {
     *this = src;
   }
+  inline bool operator != (const Signed<T,bits>& src) const {
+    return dynamic_cast<const T&>(*this) != dynamic_cast<const T&>(src);
+  }
   inline bool operator <  (const Signed<T,bits>& src) const {
     const auto mthis(int(*this >> (bits - 1)));
     const auto msrc( int(src   >> (bits - 1)));
@@ -409,7 +437,9 @@ public:
     ensureFlag();
   }
   inline SimpleFloat(const SimpleFloat<T,W,bits,U>& src) { *this = src; }
+#if !defined(_OLDCPP_)
   inline SimpleFloat(SimpleFloat<T,W,bits,U>&& src) { *this = src; }
+#endif
   inline ~SimpleFloat() { ; }
   inline SimpleFloat<T,W,bits,U>  operator -  () const {
     auto work(*this);
@@ -540,12 +570,14 @@ public:
     m = src.m;
     return *this;
   }
+#if !defined(_OLDCPP_)
   inline SimpleFloat<T,W,bits,U>& operator =  (SimpleFloat<T,W,bits,U>&& src) {
     s = move(src.s);
     e = move(src.e);
     m = move(src.m);
     return *this;
   }
+#endif
   inline bool             operator == (const SimpleFloat<T,W,bits,U>& src) const {
     return ! (*this != src);
   }
@@ -647,11 +679,11 @@ public:
     return vuzero;
   }
   const SimpleFloat<T,W,bits,U>& zero()   const {
-    const static SimpleFloat<T,W,bits,U> vzero(0);
+    const static SimpleFloat<T,W,bits,U> vzero(T(int(0)));
     return vzero;
   }
   const SimpleFloat<T,W,bits,U>& one()    const {
-    const static SimpleFloat<T,W,bits,U> vone(1);
+    const static SimpleFloat<T,W,bits,U> vone(T(int(1)));
     return vone;
   }
   const SimpleFloat<T,W,bits,U>& two()    const {
@@ -728,12 +760,12 @@ private:
     return os << (const char*)(v.s & (1 << v.SIGN) ? "-" : "") << std::hex << T(v.m) << "*2^" << (const char*)(v.e < uzero ? "-" : "") << (v.e < uzero ? U(- v.e) : v.e) << " " << std::dec;
   }
   friend istream& operator >> (istream& is, SimpleFloat<T,W,bits,U>& v) {
-    const static SimpleFloat<T,W,bits,U> two(2);
-                 SimpleFloat<T,W,bits,U> e(0);
+    const static SimpleFloat<T,W,bits,U> two(T(int(2)));
+                 SimpleFloat<T,W,bits,U> e(T(int(0)));
     bool mode(false);
     bool sign(false);
     bool fsign(false);
-    v = SimpleFloat<T,W,bits,U>(0);
+    v = SimpleFloat<T,W,bits,U>(T(int(0)));
     while(! is.eof() && ! is.bad()) {
       const auto buf(is.get());
       if(buf != ' ' && buf != '\t' && buf != '\n') {
@@ -776,20 +808,20 @@ private:
       case '5': case '6': case '7': case '8': case '9':
         if(mode) {
           e <<= U(int(4));
-          e  += SimpleFloat<T,W,bits,U>(int(buf - '0'));
+          e  += SimpleFloat<T,W,bits,U>(T(int(buf - '0')));
         } else {
           v <<= U(int(4));
-          v  += SimpleFloat<T,W,bits,U>(int(buf - '0'));
+          v  += SimpleFloat<T,W,bits,U>(T(int(buf - '0')));
         }
         fsign = true;
         break;
       case 'a': case'b': case 'c': case 'd': case 'e': case 'f':
         if(mode) {
           e <<= U(int(4));
-          e  += SimpleFloat<T,W,bits,U>(int(buf - 'a' + 10));
+          e  += SimpleFloat<T,W,bits,U>(T(int(buf - 'a' + 10)));
         } else {
           v <<= U(int(4));
-          v  += SimpleFloat<T,W,bits,U>(int(buf - 'a' + 10));
+          v  += SimpleFloat<T,W,bits,U>(T(int(buf - 'a' + 10)));
         }
         fsign = true;
         break;
@@ -1173,6 +1205,7 @@ public:
     _real = real; _imag = imag;
   }
   inline Complex(const Complex<T>& s) { *this = s; }
+#if !defined(_OLDCPP_)
   inline Complex(Complex<T>&& s) { *this = s; }
   inline Complex(T&& real) {
     const static T zero(0);
@@ -1183,6 +1216,7 @@ public:
     _real = move(real);
     _imag = move(imag);
   }
+#endif
   inline ~Complex() { ; }
   inline Complex<T>  operator ~  ()                    const {
     return Complex<T>(  _real, - _imag);
@@ -1286,11 +1320,13 @@ public:
     _imag = s._imag;
     return *this;
   }
+#if !defined(_OLDCPP_)
   inline Complex<T>& operator =  (Complex<T>&& s) {
     _real = move(s._real);
     _imag = move(s._imag);
     return *this;
   }
+#endif
   inline T&          operator [] (const size_t& i) {
     assert(0 <= i && i < 2);
     if(i) return _imag;
@@ -1403,72 +1439,90 @@ template <typename T> static inline T ccot(const T& s) {
 
 template <typename T> using complex = Complex<T>;
 
-#if !defined(_FLOAT_BITS_)
-  #include <cmath>
-  using namespace std;
-  typedef uint64_t myuint;
-  typedef int64_t  myint;
-  // XXX:
-  typedef long double myfloat;
-  //typedef double myfloat;
-#elif _FLOAT_BITS_ == 8
-  typedef uint8_t myuint;
-  typedef int8_t  myint;
-  typedef SimpleFloat<myuint, uint16_t, 8, myint> myfloat;
-#elif _FLOAT_BITS_ == 16
-  typedef uint16_t myuint;
-  typedef int16_t  myint;
-  typedef SimpleFloat<myuint, uint32_t, 16, myint> myfloat;
-#elif _FLOAT_BITS_ == 32
-  typedef uint32_t myuint;
-  typedef int32_t  myint;
-  typedef SimpleFloat<myuint, uint64_t, 32, myint> myfloat;
-#elif _FLOAT_BITS_ == 64
-  typedef uint64_t myuint;
-  typedef int64_t  myint;
-  typedef SimpleFloat<myuint, unsigned __int128, 64, myint> myfloat;
-#elif _FLOAT_BITS_ == 128
-  typedef DUInt<uint64_t, 64> uint128_t;
-  typedef Signed<uint128_t, 128> int128_t;
-  typedef uint128_t myuint;
-  typedef int128_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 128>, 128, myint> myfloat;
-#elif _FLOAT_BITS_ == 256
-  typedef DUInt<uint64_t, 64> uint128_t;
-  typedef DUInt<uint128_t, 128> uint256_t;
-  typedef Signed<uint256_t, 256> int256_t;
-  typedef uint256_t myuint;
-  typedef int256_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 256>, 256, myint> myfloat;
-#elif _FLOAT_BITS_ == 512
-  typedef DUInt<uint64_t, 64> uint128_t;
-  typedef DUInt<uint128_t, 128> uint256_t;
-  typedef DUInt<uint256_t, 256> uint512_t;
-  typedef Signed<uint512_t, 512> int512_t;
-  typedef uint512_t myuint;
-  typedef int512_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 512>, 512, myint> myfloat;
-#elif _FLOAT_BITS_ == 1024
-  typedef DUInt<uint64_t, 64> uint128_t;
-  typedef DUInt<uint128_t, 128> uint256_t;
-  typedef DUInt<uint256_t, 256> uint512_t;
-  typedef DUInt<uint512_t, 512> uint1024_t;
-  typedef Signed<uint1024_t, 1024> int1024_t;
-  typedef uint1024_t myuint;
-  typedef int1024_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 1024>, 1024, myint> myfloat;
-#elif _FLOAT_BITS_ == 2048
-  typedef DUInt<uint64_t, 64> uint128_t;
-  typedef DUInt<uint128_t, 128> uint256_t;
-  typedef DUInt<uint256_t, 256> uint512_t;
-  typedef DUInt<uint512_t, 512> uint1024_t;
-  typedef DUInt<uint1024_t, 1024> uint2048_t;
-  typedef Signed<uint2048_t, 2048> int2048_t;
-  typedef uint2048_t myuint;
-  typedef int2048_t  myint;
-  typedef SimpleFloat<myuint, DUInt<myuint, 2048>, 2048, myint> myfloat;
+#if defined(_PERSISTENT_)
+# if _FLOAT_BITS_ == 16
+    typedef DUInt<uint8_t> myuint;
+    typedef Signed<myuint, 16> myint;
+    typedef SimpleFloat<myuint, DUInt<myuint, 16>, 16, myint> myfloat;
+# elif _FLOAT_BITS_ == 32
+    typedef DUInt<uint16_t, 16> myuint;
+    typedef Signed<myuint, 32> myint;
+    typedef SimpleFloat<myuint, DUInt<myuint, 32>, 32, myint> myfloat;
+# elif _FLOAT_BITS_ == 64
+    typedef DUInt<uint32_t, 32> myuint;
+    typedef Signed<myuint, 64> myint;
+    typedef SimpleFloat<myuint, DUInt<myuint, 64>, 64, myint> myfloat;
+# else
+#   error cannot handle float
+# endif
 #else
-# error cannot handle float
+# if !defined(_FLOAT_BITS_)
+    #include <cmath>
+    using namespace std;
+    typedef uint64_t myuint;
+    typedef int64_t  myint;
+    // XXX:
+    typedef long double myfloat;
+    //typedef double myfloat;
+# elif _FLOAT_BITS_ == 8
+    typedef uint8_t myuint;
+    typedef int8_t  myint;
+    typedef SimpleFloat<myuint, uint16_t, 8, myint> myfloat;
+# elif _FLOAT_BITS_ == 16
+    typedef uint16_t myuint;
+    typedef int16_t  myint;
+    typedef SimpleFloat<myuint, uint32_t, 16, myint> myfloat;
+# elif _FLOAT_BITS_ == 32
+    typedef uint32_t myuint;
+    typedef int32_t  myint;
+    typedef SimpleFloat<myuint, uint64_t, 32, myint> myfloat;
+# elif _FLOAT_BITS_ == 64
+    typedef uint64_t myuint;
+    typedef int64_t  myint;
+    typedef SimpleFloat<myuint, unsigned __int128, 64, myint> myfloat;
+# elif _FLOAT_BITS_ == 128
+    typedef DUInt<uint64_t, 64> uint128_t;
+    typedef Signed<uint128_t, 128> int128_t;
+    typedef uint128_t myuint;
+    typedef int128_t  myint;
+    typedef SimpleFloat<myuint, DUInt<myuint, 128>, 128, myint> myfloat;
+# elif _FLOAT_BITS_ == 256
+    typedef DUInt<uint64_t, 64> uint128_t;
+    typedef DUInt<uint128_t, 128> uint256_t;
+    typedef Signed<uint256_t, 256> int256_t;
+    typedef uint256_t myuint;
+    typedef int256_t  myint;
+    typedef SimpleFloat<myuint, DUInt<myuint, 256>, 256, myint> myfloat;
+# elif _FLOAT_BITS_ == 512
+    typedef DUInt<uint64_t, 64> uint128_t;
+    typedef DUInt<uint128_t, 128> uint256_t;
+    typedef DUInt<uint256_t, 256> uint512_t;
+    typedef Signed<uint512_t, 512> int512_t;
+    typedef uint512_t myuint;
+    typedef int512_t  myint;
+    typedef SimpleFloat<myuint, DUInt<myuint, 512>, 512, myint> myfloat;
+# elif _FLOAT_BITS_ == 1024
+    typedef DUInt<uint64_t, 64> uint128_t;
+    typedef DUInt<uint128_t, 128> uint256_t;
+    typedef DUInt<uint256_t, 256> uint512_t;
+    typedef DUInt<uint512_t, 512> uint1024_t;
+    typedef Signed<uint1024_t, 1024> int1024_t;
+    typedef uint1024_t myuint;
+    typedef int1024_t  myint;
+    typedef SimpleFloat<myuint, DUInt<myuint, 1024>, 1024, myint> myfloat;
+#e lif _FLOAT_BITS_ == 2048
+    typedef DUInt<uint64_t, 64> uint128_t;
+    typedef DUInt<uint128_t, 128> uint256_t;
+    typedef DUInt<uint256_t, 256> uint512_t;
+    typedef DUInt<uint512_t, 512> uint1024_t;
+    typedef DUInt<uint1024_t, 1024> uint2048_t;
+    typedef Signed<uint2048_t, 2048> int2048_t;
+    typedef uint2048_t myuint;
+    typedef int2048_t  myint;
+    typedef SimpleFloat<myuint, DUInt<myuint, 2048>, 2048, myint> myfloat;
+# else
+#   error cannot handle float
+# endif
 #endif
 
 
@@ -1481,7 +1535,9 @@ public:
     this->entity.resize(size);
   }
   inline SimpleVector(const SimpleVector<T>& other) { *this = other; }
+#if !defined(_OLDCPP_)
   inline SimpleVector(SimpleVector<T>&& other) { *this = other; }
+#endif
   inline ~SimpleVector() { ; }
   inline       SimpleVector<T>  operator -  () const {
     SimpleVector<T> res(entity.size());
@@ -1540,10 +1596,12 @@ public:
     entity = other.entity;
     return *this;
   }
+#if !defined(_OLDCPP_)
   inline       SimpleVector<T>& operator =  (SimpleVector<T>&& other) {
     entity = move(other.entity);
     return *this;
   }
+#endif
   inline       bool             operator == (const SimpleVector<T>& other) const {
     return ! (*this != other);
   }
@@ -1737,7 +1795,9 @@ public:
     ecols = cols;
   }
   inline SimpleMatrix(const SimpleMatrix<T>& other) { *this = other; }
+#if !defined(_OLDCPP_)
   inline SimpleMatrix(SimpleMatrix<T>&& other) { *this = other; }
+#endif
   inline ~SimpleMatrix() { ; }
   inline       SimpleMatrix<T>  operator -  () const {
     SimpleMatrix<T> res(entity.size(), ecols);
@@ -1825,11 +1885,13 @@ public:
     entity = other.entity;
     return *this;
   }
+#if !defined(_OLDCPP_)
   inline       SimpleMatrix<T>& operator =  (SimpleMatrix<T>&& other) {
     ecols  = move(other.ecols);
     entity = move(other.entity);
     return *this;
   }
+#endif
   inline       bool             operator == (const SimpleMatrix<T>& other) const {
     return ! (*this != other);
   }
@@ -2567,7 +2629,7 @@ template <typename T> static inline SimpleMatrix<T> exp(const SimpleMatrix<T>& m
   auto mm(exp01(m / T(myint(p))));
   auto res(m);
   for(res.I(); p; mm *= mm, p >>= 1)
-    if(bool(p & myuint(myint(int(1)))))
+    if(bool(p & myuint(int(1))))
       res *= mm;
   return res;
 }
@@ -2769,7 +2831,9 @@ public:
   inline SimpleSparseVector() { ; }
   inline SimpleSparseVector(const int& sute) { assert(sute == 0); }
   inline SimpleSparseVector(const SimpleSparseVector<T>& other) { *this = other; }
+#if !defined(_OLDCPP_)
   inline SimpleSparseVector(SimpleSparseVector<T>&& other) { *this = other; }
+#endif
   inline ~SimpleSparseVector() { ; }
   inline SimpleSparseVector<T>  operator -  () const {
     auto res(*this);
@@ -2821,10 +2885,12 @@ public:
     entity = other.entity;
     return *this;
   }
+#if !defined(_OLDCPP_)
   inline       SimpleSparseVector<T>& operator =  (SimpleSparseVector<T>&& other) {
     entity = move(other.entity);
     return *this;
   }
+#endif
   inline       bool                   operator != (const SimpleSparseVector<T>& other) const {
     for(auto itr(entity.begin()); itr != entity.end(); ++ itr)
       if(itr->second != other[itr->first])
@@ -3491,6 +3557,7 @@ template <typename T> static inline T p012next(const SimpleVector<T>& d) {
   if(M <= zero) return zero;
   const auto varlen(ind2vd(d.size()));
   vector<SimpleVector<T> > cache;
+  if(d.size() - varlen + 2 < 0) return zero;
   cache.reserve(d.size() - varlen + 2);
   for(int i = 0; i < d.size() - varlen - step + 2; i ++) {
     cache.emplace_back(d.subVector(i, varlen));
@@ -3527,7 +3594,7 @@ template <typename T> static inline T p012next(const SimpleVector<T>& d) {
              T(int(avg.size())), vdp.second)) );
     }
     const auto vdp(makeProgramInvariant<T>(R2bin<T>(work)));
-    T score(0);
+    T score(int(0));
     for(int j = 0; j < work.size(); j ++)
       score += work[j] *
         bin2R<T>(revertProgramInvariant<T>(make_pair(avg[j], vdp.second)));
@@ -3764,15 +3831,6 @@ template <typename T, T (*p)(const SimpleVector<T>&)> static inline T deep(const
   return M;
 }
 
-// N.B. unit for prediction bricks.
-template <typename T> static inline vector<T> pbullet2(const SimpleVector<T>& in) {
-  vector<T> M;
-  M.reserve(2);
-  M.emplace_back(  deep<T, p0maxNext<T> >(  in, 3));
-  M.emplace_back(- deep<T, p0maxNext<T> >(- in, 3));
-  return M;
-}
-
 // N.B. jammer to the predictor to make grip or lose grip.
 //      we want to use this jammer to lose usual grip on predictor.
 template <typename T> static inline pair<T, T> pSubesube(const T& d0, const pair<vector<T>, vector<T> >& j, const int& t, const vector<int>& idx = vector<int>()) {
@@ -3800,73 +3858,72 @@ template <typename T> static inline pair<T, T> pSubesube(const T& d0, const pair
 
 template <typename T> class pslip_t {
 public:
-  inline pslip_t() {
-    pipe.resize(3 * 3 * 3 - 1);
-    {
-      vector<T> lM;
-      lM.resize(2, T(int(0)));
-      lastM.resize(27, lM);
-    }
-    pipe.resize(3 * 3 * 3 - 1);
-    std::random_device seed_gen;
-    std::mt19937 engine(seed_gen());
-    shf.resize(0);
-    shf.reserve(2);
-    for(int i = 0; i < 2; i ++)
-      shf.emplace_back(i);
-    std::shuffle(shf.begin(), shf.end(), engine);
+  inline pslip_t(const int& len = 0) {
+    pipe.resize(3 * 3 * 3 - 1, idFeeder<T>(len));
+    M.resize(27 * 2);
+    M.O();
+    shf.resize(2, 0);
+#if defined(_ARCFOUR_)
+    shf[arc4random() & 1] = 1;
+#else
+    shf[random() & 1] = 1;
+#endif
     nshf = shf;
   }
   vector<idFeeder<T> > pipe;
-  vector<vector<T> > lastM;
+  SimpleVector<T> M;
   vector<int> shf;
   vector<int> nshf;
 };
 
-// N.B. one of the bricks stack condition, so not unique and verbose to impl.
-// N.B. this aims to kill 'jammer-like-behaviour on input stream feedback'.
-template <typename T> static inline T pSlipJamQuad3(const SimpleVector<T>& in, vector<idFeeder<T> >& pipe, vector<vector<T> >& lastM, vector<int>& shf, vector<int>& nshf, const int& t) {
-  vector<vector<T> > apb;
+// N.B. persistent attack to jammer in deep p0maxNext short 3 layermeaning.
+//      this often efffects output streams' prediction gulf result
+//      to be shifted ones.
+template <typename T> static inline T pSlipGulf0short(const SimpleVector<T>& in, pslip_t<T>& slip, const int& t) {
+  SimpleVector<T> apb;
   vector<pair<T, T> > aq;
-  apb.reserve(3 * 3 * 3);
   aq.reserve(3 * 3 * 3);
+  apb.resize(3 * 3 * 3 * 2);
+  apb.O();
 
   auto t0(t);
 #define UPDPSJQ3(inp,qinp,sec,i) \
-  apb.emplace_back(pbullet2(inp)); \
-  for(int k = 0; k < apb[(i)].size(); k ++) apb[(i)][k] *= (sec); \
-  aq.emplace_back(pSubesube<T>((qinp), make_pair(lastM[(i)], apb[(i)]), t0 = t));
+  apb[(i) * 2]     =   deep<T, p0maxNext<T> >(  (inp), 3) * (sec); \
+  apb[(i) * 2 + 1] = - deep<T, p0maxNext<T> >(- (inp), 3) * (sec); \
+  aq.emplace_back(pSubesube<T>((qinp), \
+    make_pair(slip.M.subVector((i) * 2, 2).entity, \
+      apb.subVector((i) * 2, 2).entity), t0 = t));
 
-  UPDPSJQ3(in,in[in.size()-1],T(1),0);
+  UPDPSJQ3(in,in[in.size()-1],T(int(1)),0);
   
-  pipe[0].next(aq[0].first);
-  UPDPSJQ3(pipe[0].res,aq[0].first,aq[0].second,1);
+  slip.pipe[0].next(aq[0].first);
+  UPDPSJQ3(slip.pipe[0].res,aq[0].first,aq[0].second,1);
   aq[1].second *= aq[0].second;
   
-  pipe[1].next(aq[1].first);
-  UPDPSJQ3(pipe[1].res,in[in.size()-1],aq[1].second,2);
+  slip.pipe[1].next(aq[1].first);
+  UPDPSJQ3(slip.pipe[1].res,in[in.size()-1],aq[1].second,2);
   
-  pipe[2].next(aq[2].first);
-  UPDPSJQ3(pipe[2].res,aq[2].first,aq[2].second,3);
+  slip.pipe[2].next(aq[2].first);
+  UPDPSJQ3(slip.pipe[2].res,aq[2].first,aq[2].second,3);
   aq[3].second *= aq[2].second;
   
-  pipe[3].next(aq[3].first);
-  UPDPSJQ3(pipe[3].res,aq[3].first,aq[3].second,4);
+  slip.pipe[3].next(aq[3].first);
+  UPDPSJQ3(slip.pipe[3].res,aq[3].first,aq[3].second,4);
   aq[4].second *= aq[3].second;
   
-  pipe[4].next(aq[4].first);
-  UPDPSJQ3(pipe[4].res,in[in.size()-1],aq[4].second,5);
+  slip.pipe[4].next(aq[4].first);
+  UPDPSJQ3(slip.pipe[4].res,in[in.size()-1],aq[4].second,5);
   
-  pipe[5].next(aq[5].first);
-  UPDPSJQ3(pipe[5].res,aq[5].first,aq[5].second,6);
+  slip.pipe[5].next(aq[5].first);
+  UPDPSJQ3(slip.pipe[5].res,aq[5].first,aq[5].second,6);
   aq[6].second *= aq[5].second;
   
-  pipe[6].next(aq[6].first);
-  UPDPSJQ3(pipe[6].res,aq[6].first,aq[6].second,7);
+  slip.pipe[6].next(aq[6].first);
+  UPDPSJQ3(slip.pipe[6].res,aq[6].first,aq[6].second,7);
   aq[7].second *= aq[6].second;
 
-  pipe[7].next(aq[7].first);
-  UPDPSJQ3(pipe[7].res,in[in.size()-1],aq[7].second,8);
+  slip.pipe[7].next(aq[7].first);
+  UPDPSJQ3(slip.pipe[7].res,in[in.size()-1],aq[7].second,8);
   
 #if defined(_ARCFOUR_)
   const auto tridx(arc4random() & 1);
@@ -3875,106 +3932,111 @@ template <typename T> static inline T pSlipJamQuad3(const SimpleVector<T>& in, v
 #endif
 #undef UPDPSJQ3
 #define UPDPSJQ3(inp,qinp,sec,i) \
-  apb.emplace_back(pbullet2(inp)); \
-  for(int k = 0; k < apb[(i)].size(); k ++) apb[(i)][k] *= (sec); \
-  aq.emplace_back(pSubesube<T>((qinp), make_pair(lastM[(i)], apb[(i)]), tridx));
+  apb[(i) * 2]     =   deep<T, p0maxNext<T> >(  (inp), 3) * (sec); \
+  apb[(i) * 2 + 1] = - deep<T, p0maxNext<T> >(- (inp), 3) * (sec); \
+  aq.emplace_back(pSubesube<T>((qinp), \
+    make_pair(slip.M.subVector((i) * 2, 2).entity, \
+      apb.subVector((i) * 2, 2).entity), tridx));
 
-  pipe[8].next(aq[8].first);
-  UPDPSJQ3(pipe[8].res,aq[8].first,aq[8].second,9);
+  slip.pipe[8].next(aq[8].first);
+  UPDPSJQ3(slip.pipe[8].res,aq[8].first,aq[8].second,9);
   aq[9].second *= aq[8].second;
 
-  pipe[9].next(aq[9].first);
-  UPDPSJQ3(pipe[9].res,aq[9].first,aq[9].second,10);
+  slip.pipe[9].next(aq[9].first);
+  UPDPSJQ3(slip.pipe[9].res,aq[9].first,aq[9].second,10);
   aq[10].second *= aq[9].second;
 
-  pipe[10].next(aq[10].first);
-  UPDPSJQ3(pipe[10].res,aq[8].first,aq[10].second,11);
+  slip.pipe[10].next(aq[10].first);
+  UPDPSJQ3(slip.pipe[10].res,aq[8].first,aq[10].second,11);
   aq[11].second *= aq[8].second;
 
   
-  pipe[11].next(aq[11].first);
-  UPDPSJQ3(pipe[11].res,aq[11].first,aq[11].second,12);
+  slip.pipe[11].next(aq[11].first);
+  UPDPSJQ3(slip.pipe[11].res,aq[11].first,aq[11].second,12);
   aq[12].second *= aq[11].second;
 
-  pipe[12].next(aq[12].first);
-  UPDPSJQ3(pipe[12].res,aq[12].first,aq[12].second,13);
+  slip.pipe[12].next(aq[12].first);
+  UPDPSJQ3(slip.pipe[12].res,aq[12].first,aq[12].second,13);
   aq[13].second *= aq[12].second;
 
-  pipe[13].next(aq[13].first);
-  UPDPSJQ3(pipe[13].res,aq[8].first,aq[13].second,14);
+  slip.pipe[13].next(aq[13].first);
+  UPDPSJQ3(slip.pipe[13].res,aq[8].first,aq[13].second,14);
   aq[14].second *= aq[8].second;
 
 
-  pipe[14].next(aq[14].first);
-  UPDPSJQ3(pipe[14].res,aq[14].first,aq[14].second,15);
+  slip.pipe[14].next(aq[14].first);
+  UPDPSJQ3(slip.pipe[14].res,aq[14].first,aq[14].second,15);
   aq[15].second *= aq[14].second;
 
-  pipe[15].next(aq[15].first);
-  UPDPSJQ3(pipe[15].res,aq[15].first,aq[15].second,16);
+  slip.pipe[15].next(aq[15].first);
+  UPDPSJQ3(slip.pipe[15].res,aq[15].first,aq[15].second,16);
   aq[16].second *= aq[15].second;
 
-  pipe[16].next(aq[16].first);
-//  UPDPSJQ3(pipe[16].res,aq[8].first,aq[16].second,17);
+  slip.pipe[16].next(aq[16].first);
+//  UPDPSJQ3(slip.pipe[16].res,aq[8].first,aq[16].second,17);
 //  aq[17].second *= aq[8].second;
-  UPDPSJQ3(pipe[16].res,in[in.size() - 1],aq[16].second,17);
+  UPDPSJQ3(slip.pipe[16].res,in[in.size() - 1],aq[16].second,17);
 
    
-  shf[(t + 1) % shf.size()] = nshf[(t + 1) % shf.size()];
-  if(! ((t + 2) % shf.size()) ) {
-    for(int i = 0; i < nshf.size(); i ++) nshf[i] = i;
-    std::random_device seed_gen;
-    std::mt19937 engine(seed_gen());
-    std::shuffle(nshf.begin(), nshf.end(), engine);
+  slip.shf[(t + 1) % slip.shf.size()] = slip.nshf[(t + 1) % slip.shf.size()];
+  if(! ((t + 2) % slip.shf.size()) ) {
+    slip.nshf[0] = slip.nshf[1] = 0;
+#if defined(_ARCFOUR_)
+    slip.nshf[arc4random() & 1] = 1;
+#else
+    slip.nshf[random() & 1] = 1;
+#endif
   }
 #undef UPDPSJQ3
 #define UPDPSJQ3(inp,qinp,sec,i) \
-  apb.emplace_back(pbullet2(inp)); \
-  for(int k = 0; k < apb[(i)].size(); k ++) apb[(i)][k] *= (sec); \
-  aq.emplace_back(pSubesube<T>((qinp), make_pair(lastM[(i)], apb[(i)]), t0 = t, shf));
+  apb[(i) * 2]     =   deep<T, p0maxNext<T> >(  (inp), 3) * (sec); \
+  apb[(i) * 2 + 1] = - deep<T, p0maxNext<T> >(- (inp), 3) * (sec); \
+  aq.emplace_back(pSubesube<T>((qinp), \
+    make_pair(slip.M.subVector((i) * 2, 2).entity, \
+      apb.subVector((i) * 2, 2).entity), t0 = t, slip.shf));
 
-  pipe[17].next(aq[17].first);
-  UPDPSJQ3(pipe[17].res,aq[17].first,aq[17].second,18);
+  slip.pipe[17].next(aq[17].first);
+  UPDPSJQ3(slip.pipe[17].res,aq[17].first,aq[17].second,18);
   aq[18].second *= aq[17].second;
 
-  pipe[18].next(aq[18].first);
-  UPDPSJQ3(pipe[18].res,aq[18].first,aq[18].second,19);
+  slip.pipe[18].next(aq[18].first);
+  UPDPSJQ3(slip.pipe[18].res,aq[18].first,aq[18].second,19);
   aq[19].second *= aq[18].second;
   
-  pipe[19].next(aq[19].first);
-  UPDPSJQ3(pipe[19].res,aq[17].first,aq[19].second,20);
+  slip.pipe[19].next(aq[19].first);
+  UPDPSJQ3(slip.pipe[19].res,aq[17].first,aq[19].second,20);
   aq[20].second *= aq[17].second;
 
 
-  pipe[20].next(aq[20].first);
-  UPDPSJQ3(pipe[20].res,aq[20].first,aq[20].second,21);
+  slip.pipe[20].next(aq[20].first);
+  UPDPSJQ3(slip.pipe[20].res,aq[20].first,aq[20].second,21);
   aq[21].second *= aq[20].second;
   
-  pipe[21].next(aq[21].first);
-  UPDPSJQ3(pipe[21].res,aq[21].first,aq[21].second,22);
+  slip.pipe[21].next(aq[21].first);
+  UPDPSJQ3(slip.pipe[21].res,aq[21].first,aq[21].second,22);
   aq[22].second *= aq[21].second;
 
-  pipe[22].next(aq[22].first);
-  UPDPSJQ3(pipe[22].res,aq[17].first,aq[22].second,23);
+  slip.pipe[22].next(aq[22].first);
+  UPDPSJQ3(slip.pipe[22].res,aq[17].first,aq[22].second,23);
   aq[23].second *= aq[17].second;
 
 
-  pipe[23].next(aq[23].first);
-  UPDPSJQ3(pipe[23].res,aq[23].first,aq[23].second,24);
+  slip.pipe[23].next(aq[23].first);
+  UPDPSJQ3(slip.pipe[23].res,aq[23].first,aq[23].second,24);
   aq[24].second *= aq[23].second;
 
-  pipe[24].next(aq[24].first);
-  UPDPSJQ3(pipe[24].res,aq[24].first,aq[24].second,25);
+  slip.pipe[24].next(aq[24].first);
+  UPDPSJQ3(slip.pipe[24].res,aq[24].first,aq[24].second,25);
   aq[25].second *= aq[24].second;
 
-  pipe[25].next(aq[25].first);
-//  UPDPSJQ3(pipe[25].res,aq[17].first,aq[25].second,26);
+  slip.pipe[25].next(aq[25].first);
+//  UPDPSJQ3(slip.pipe[25].res,aq[17].first,aq[25].second,26);
 //  aq[26].second *= aq[17].second;
-  UPDPSJQ3(pipe[25].res,in[in.size()-1],aq[25].second,26);
+  UPDPSJQ3(slip.pipe[25].res,in[in.size()-1],aq[25].second,26);
   
 #undef UPDPSJQ3
 
-  assert(apb.size() == aq.size());
-  lastM = move(apb);
+  slip.M = move(apb);
   return aq[aq.size() - 1].second;
 }
 
@@ -4572,7 +4634,7 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv0(c
       p01next<T>(seconds / nseconds) * nseconds) );
 }
 
-template <typename T, int nprogress = 20> static inline SimpleVector<T> predvp(const vector<SimpleVector<T> >& in) {
+template <typename T, int nprogress = 20> static inline SimpleVector<T> predvp(const vector<SimpleVector<T> >& in, const string& strloop) {
   SimpleVector<T> p(in[0].size());
   idFeeder<T> buf(in.size());
   for(int i = 0; i < in.size(); i ++)
@@ -4584,7 +4646,7 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predvp(c
 #endif
   for(int j = 1; j < in[0].size(); j ++) {
     if(nprogress && ! (j % max(int(1), int(in[0].size() / nprogress))) )
-      cerr << j << " / " << in[0].size() << endl;
+      cerr << j << " / " << in[0].size() << strloop << endl;
     idFeeder<T> buf(in.size());
     for(int i = 0; i < in.size(); i ++)
       buf.next(in[i][j]);
@@ -4594,7 +4656,7 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predvp(c
   return p;
 }
 
-template <typename T, int nprogress = 20> static inline SimpleVector<T> predv1(vector<SimpleVector<T> >& in) {
+template <typename T, int nprogress = 20> static inline SimpleVector<T> predvq(const vector<SimpleVector<T> >& in, const string& strloop) {
   static const auto step(1);
   assert(0 < step && 10 + step * 2 <= in.size() && 1 < in[0].size());
   // N.B. we use whole width to get better result in average.
@@ -4609,7 +4671,7 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv1(v
   for(int i = 1; i < start; i ++)
     p.entity.emplace_back(SimpleVector<T>(in[0].size()).O());
   for(int i = start; i <= in.size(); i ++)
-    p.entity.emplace_back(predv0<T, nprogress>(in, i, to_string(i) + string(" / ") + to_string(in.size())));
+    p.entity.emplace_back(predv0<T, nprogress>(in, i, to_string(i) + string(" / ") + to_string(in.size()) + strloop));
   SimpleMatrix<T> ip(res.size(), p.size());
   ip.O();
 #if defined(_OPENMP)
@@ -4632,7 +4694,6 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv1(v
     res[i] = offsetHalf<T>(p0maxNext<T>(ip.row(i)) *
       unOffsetHalf<T>(p[p.size() - 1][i]) );
   }
-  in.resize(0);
   return res;
 }
 
@@ -4651,8 +4712,8 @@ template <typename T, int nprogress = 20> static inline SimpleVector<T> predv1(v
 //      we suppose phase period doesn't connected to the original structures.
 // N.B. practically, nrecur == 0 works well with ddpmopt T cmd, we use this.
 //      we don't select better nrecur == 11 * 11 we need huge computation time.
-template <typename T, int nrecur = 0, int nprogress = 20> static inline SimpleVector<T> predv(vector<SimpleVector<T> >& in) {
-  if(! nrecur) return predv1<T, nprogress>(in);
+template <typename T, SimpleVector<T> (*p)(const vector<SimpleVector<T> >&, const string&), int nrecur = 121, int nprogress = 20> static inline SimpleVector<T> predv(const vector<SimpleVector<T> >& in) {
+  if(! nrecur) return p(in, string(", 0 / 1"));
   SimpleVector<T> res(in[0].size());
   res.O();
   for(int i = 0; i < nrecur; i ++) {
@@ -4665,7 +4726,7 @@ template <typename T, int nrecur = 0, int nprogress = 20> static inline SimpleVe
         rin[i][j] = (rin[i][j] + T(random() % 0x20000) / T(0x20000 - 1)) / T(int(2));
 #endif
     // N.B. PRNG parts going to gray + small noise with large enough nrecur.
-    res += predv1<T, nprogress>(rin);
+    res += p(rin, string(", ") + to_string(i) + string(" / ") + to_string(nrecur));
   }
   return res /= T(nrecur);
 }
@@ -4750,7 +4811,7 @@ template <typename T> vector<vector<SimpleVector<T> > > predVec(vector<vector<Si
   vector<vector<SimpleVector<T> > > res;
   res.resize(3);
   {
-    auto p(predvp<T>(in));
+    auto p(predv<T, predvp<T> >(in));
     res[0].resize(size0);
     for(int j = 0; j < res[0].size(); j ++)
       res[0][j] = offsetHalf<T>(- p.subVector(size1 * j, size1));
@@ -4758,12 +4819,12 @@ template <typename T> vector<vector<SimpleVector<T> > > predVec(vector<vector<Si
   for(int i = 0; i < in.size(); i ++)
     in[i] = - in[i];
   {
-    auto p(predvp<T>(in));
+    auto p(predv<T, predvp<T> >(in));
     res[1].resize(size0);
     for(int j = 0; j < res[1].size(); j ++)
       res[1][j] = offsetHalf<T>(p.subVector(size1 * j, size1));
   }
-  auto p(predv<T>(in = offsetHalf<T>(in)));
+  auto p(predv<T, predvq<T> >(in = offsetHalf<T>(in)));
   res[2].resize(size0);
   for(int j = 0; j < res[2].size(); j ++)
     res[2][j]  = p.subVector(size1 * j, size1);
@@ -4808,7 +4869,7 @@ template <typename T> vector<vector<SimpleMatrix<T> > > predMat(vector<vector<Si
   vector<vector<SimpleMatrix<T> > > res;
   res.resize(3);
   {
-    auto p(predvp<T>(in));
+    auto p(predv<T, predvp<T> >(in));
     res[0].resize(size);
     for(int j = 0; j < res[0].size(); j ++) {
       res[0][j].resize(rows, cols);
@@ -4819,7 +4880,7 @@ template <typename T> vector<vector<SimpleMatrix<T> > > predMat(vector<vector<Si
   for(int i = 0; i < in.size(); i ++)
     in[i] = - in[i];
   {
-    auto p(predvp<T>(in));
+    auto p(predv<T, predvp<T> >(in));
     res[1].resize(size);
     for(int j = 0; j < res[1].size(); j ++) {
       res[1][j].resize(rows, cols);
@@ -4827,7 +4888,7 @@ template <typename T> vector<vector<SimpleMatrix<T> > > predMat(vector<vector<Si
         res[1][j].row(k) = offsetHalf<T>(p.subVector(j * rows * cols + k * cols, cols));
     }
   }
-  auto p(predv<T>(in = offsetHalf<T>(in)));
+  auto p(predv<T, predvq<T> >(in = offsetHalf<T>(in)));
   res[2].resize(size);
   for(int j = 0; j < res[2].size(); j ++) {
     res[2][j].resize(rows, cols);
@@ -4878,7 +4939,7 @@ template <typename T> vector<SimpleSparseTensor<T> > predSTen(vector<SimpleSpars
   for(int i = 0; i < in.size(); i ++)
     in[i] = - in[i];
   {
-    auto p(predvp<T>(in));
+    auto p(predv<T, predvp<T> >(in));
     for(int j = 0, cnt = 0; j < idx.size(); j ++)
       for(int k = 0; k < idx.size(); k ++)
         for(int m = 0; m < idx.size(); m ++)
@@ -4889,7 +4950,7 @@ template <typename T> vector<SimpleSparseTensor<T> > predSTen(vector<SimpleSpars
   for(int i = 0; i < in.size(); i ++)
     in[i] = - in[i];
   {
-    auto p(predvp<T>(in));
+    auto p(predv<T, predvp<T> >(in));
     for(int j = 0, cnt = 0; j < idx.size(); j ++)
       for(int k = 0; k < idx.size(); k ++)
         for(int m = 0; m < idx.size(); m ++)
@@ -4897,7 +4958,7 @@ template <typename T> vector<SimpleSparseTensor<T> > predSTen(vector<SimpleSpars
                make_pair(j, make_pair(k, m))))
             res[1][idx[j]][idx[k]][idx[m]] = p[cnt ++];
   }
-  auto p(predv<T>(in = offsetHalf<T>(in)));
+  auto p(predv<T, predvq<T> >(in = offsetHalf<T>(in)));
   for(int j = 0, cnt = 0; j < idx.size(); j ++)
     for(int k = 0; k < idx.size(); k ++)
       for(int m = 0; m < idx.size(); m ++)
@@ -6732,7 +6793,9 @@ public:
   corpus(const U& input, const vector<U>& delimiter);
   inline corpus() { ; }
   inline corpus(const corpus<T, U>& other) { *this = other; }
+#if !defined(_OLDCPP_)
   inline corpus(corpus<T, U>&& other) { *this = other; }
+#endif
   inline ~corpus() { ; }
   inline U getAttributed(const vector<U>& highlight) const {
     U   result;
@@ -6805,11 +6868,13 @@ public:
     orig    = other.orig;
     return *this;
   }
+#if !defined(_OLDCPP_)
   inline corpus<T, U>& operator =  (corpus<T, U>&& other) {
     corpust = move(other.corpust);
     orig    = move(other.orig);
     return *this;
   }
+#endif
   inline bool          operator == (const corpus<T, U>& other) const {
     return ! (*this != other);
   }
