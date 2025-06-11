@@ -124,4 +124,5 @@ Searching the Internet more...
 2025/05/02 pqred subcommand now uses masp2catg.
 2025/05/16 merge latest ddpmopt option on pred... command.
 2025/06/08 merge latest lieonn.
+2025/06/11 compat compile option to gcc4.2.1.
 

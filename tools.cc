@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -60,8 +61,8 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "rgb2xyz") == 0 ||
      strcmp(argv[1], "xyz2rgb") == 0) {
     if(argc < 3) goto usage;
-    const auto recur(4 < argc ? atoi(argv[4]) : 1);
-    const auto rot(5 < argc ? atoi(argv[5]) : 0);
+    const int recur(4 < argc ? atoi(argv[4]) : 1);
+    const int rot(5 < argc ? atoi(argv[5]) : 0);
     vector<SimpleMatrix<num_t> > data;
     if(!loadp2or3<num_t>(data, argv[2]))
       return - 1;
@@ -180,7 +181,7 @@ int main(int argc, const char* argv[]) {
             strcmp(argv[1], "recolor2") == 0 ||
             strcmp(argv[1], "recolor3") == 0) {
     if(argc < 6) goto usage;
-    const auto count(atoi(argv[2]));
+    const int count(atoi(argv[2]));
     vector<SimpleMatrix<num_t> > datac, datas;
     if(!loadp2or3<num_t>(datac, argv[3]))
       return - 1;
@@ -190,7 +191,7 @@ int main(int argc, const char* argv[]) {
        ! loadp2or3<num_t>(datas, argv[4]))
       return - 1;
     if(strcmp(argv[1], "reshape") == 0) {
-      const auto datav(rgb2d<num_t>(datas));
+      const SimpleMatrix<num_t> datav(rgb2d<num_t>(datas));
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reShape<num_t>(datac[i], datav, count, myatof(argv[6]) );
     } else if(strcmp(argv[1], "recolor2") == 0)
@@ -200,8 +201,8 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reColor3<num_t>(datac[i], datas[i], count);
     else {
-      auto xyzc(rgb2xyz<num_t>(datac));
-      auto xyzs(rgb2xyz<num_t>(datas));
+      vector<SimpleMatrix<num_t> > xyzc(rgb2xyz<num_t>(datac));
+      vector<SimpleMatrix<num_t> > xyzs(rgb2xyz<num_t>(datas));
       for(int i = 0; i < xyzc.size(); i ++)
         xyzc[i] = strcmp(argv[1], "recolor") == 0 ?
           reColor<num_t>(xyzc[i], xyzs[i], count, myatof(argv[6])) :
@@ -215,10 +216,10 @@ int main(int argc, const char* argv[]) {
     if(argc < 4) goto usage;
     if(!loadp2or3<num_t>(data, argv[2]))
       return - 1;
-    auto sd(rgb2d<num_t>(data));
-    const auto rows(sd.rows());
-    const auto cols(sd.cols());
-          auto points(getTileVec<num_t>(move(sd)));
+    SimpleMatrix<num_t> sd(rgb2d<num_t>(data));
+    const int rows(sd.rows());
+    const int cols(sd.cols());
+          vector<SimpleVector<num_t> > points(getTileVec<num_t>(move(sd)));
     if(argv[1][0] == 'O')
       for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
@@ -227,9 +228,9 @@ int main(int argc, const char* argv[]) {
   } else if(strcmp(argv[1], "tilt") == 0 ||
             strcmp(argv[1], "sbox") == 0) {
     if(argc < 8) goto usage;
-    const auto index(atoi(argv[2]));
-    const auto Mindex(atoi(argv[3]));
-    auto psi(myatof(argv[4]));
+    const int index(atoi(argv[2]));
+    const int Mindex(atoi(argv[3]));
+    num_t psi(myatof(argv[4]));
     vector<SimpleMatrix<num_t> > data, bump;
     vector<SimpleVector<num_t> > points;
     vector<SimpleVector<int>   > polys;
@@ -240,7 +241,7 @@ int main(int argc, const char* argv[]) {
       return - 2;
     assert(strlen("tilt" ) == strlen("sbox" ));
     bump[0] = rgb2d<num_t>(bump);
-    const auto tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
+    const SimpleMatrix<num_t> tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
       triangles<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
         strncmp(argv[1], "sbox", strlen("sbox")) == 0 ?
           match_t<num_t>() :
@@ -256,10 +257,10 @@ int main(int argc, const char* argv[]) {
       return - 1;
   } else if(strcmp(argv[1], "match") == 0) {
     if(argc < 10) goto usage;
-    const auto nsub(atoi(argv[2]));
-    const auto nemph(atoi(argv[3]));
-    const auto vboxdst(atoi(argv[4]));
-    const auto vboxsrc(atoi(argv[5]));
+    const int nsub(atoi(argv[2]));
+    const int nemph(atoi(argv[3]));
+    const int vboxdst(atoi(argv[4]));
+    const int vboxsrc(atoi(argv[5]));
     vector<SimpleMatrix<num_t> > in0, in1, bump0, bump1;
     if(!loadp2or3<num_t>(in0, argv[6]))
       return - 2;
@@ -270,17 +271,17 @@ int main(int argc, const char* argv[]) {
     if(!loadp2or3<num_t>(bump1, argv[9]))
       return - 2;
     const string outbase(argv[10]);
-    const auto shape0(vboxdst < 0
+    const vector<SimpleVector<num_t> > shape0(vboxdst < 0
       ? getHesseVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst))
       : getTileVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst)));
-    const auto shape1(vboxsrc < 0
+    const vector<SimpleVector<num_t> > shape1(vboxsrc < 0
       ? getHesseVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc))
       : getTileVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc)));
-    const auto m(matchPartialR<num_t>(shape0, shape1, nsub));
+    const vector<match_t<num_t> > m(matchPartialR<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);
-    const auto rin0(makeRefMatrix<num_t>(in0[0], 1));
-    const auto rin1(makeRefMatrix<num_t>(in1[0], 1 + rin0.rows() * rin0.cols()));
+    const SimpleMatrix<num_t> rin0(makeRefMatrix<num_t>(in0[0], 1));
+    const SimpleMatrix<num_t> rin1(makeRefMatrix<num_t>(in1[0], 1 + rin0.rows() * rin0.cols()));
     vector<vector<SimpleVector<int> > > mhull0, mhull1;
     mhull0.reserve(m.size());
     mhull1.reserve(m.size());
@@ -308,11 +309,11 @@ int main(int argc, const char* argv[]) {
     out[1] = out[2] = out[0];
     savep2or3<num_t>((outbase + string("-repl2.ppm")).c_str(), normalize<num_t>(out) );
     for(int i = 0; i < nemph; i ++) {
-      const auto iemph(num_t(i) / num_t(nemph));
+      const num_t iemph(num_t(i) / num_t(nemph));
       SimpleMatrix<num_t> reref(rin1.rows(), rin1.cols());
       reref.O();
       for(int i = 0; i < m.size(); i ++) {
-        const auto rd(draw<num_t>(rin1, shape1,
+        const SimpleMatrix<num_t> rd(draw<num_t>(rin1, shape1,
           takeShape<num_t>(shape1, shape0, m[i], iemph), mhull1[i]));
         for(int j = 0; j < min(reref.rows(), rd.rows()); j ++)
           for(int k = 0; k < min(reref.cols(), rd.cols()); k ++)
@@ -337,7 +338,7 @@ int main(int argc, const char* argv[]) {
     glay.reserve(in.size());
     for(int i = 0; i < in.size(); i ++)
       glay.emplace_back(in[i].size() == 1 ? in[i][0] : rgb2d<num_t>(in[i]));
-    const auto cat(catImage<num_t>(glay));
+    const vector<vector<int> > cat(catImage<num_t>(glay));
     for(int i = 0; i < cat.size(); i ++) {
       for(int j = 0; j < cat[i].size(); j ++)
         cout << argv[2 + cat[i][j]] << endl;
@@ -365,31 +366,31 @@ int main(int argc, const char* argv[]) {
     string header;
     loaddat<num_t>(argv[3], header, data);
     SimpleMatrix<num_t> buf(atoi(argv[4]), atoi(argv[4]));
-    const auto mdft(dft<num_t>(buf.rows()));
-    const auto midft(dft<num_t>(- buf.rows()));
+    const SimpleMatrix<complex(num_t)> mdft(dft<num_t>(buf.rows()));
+    const SimpleMatrix<complex(num_t)> midft(dft<num_t>(- buf.rows()));
     for(int i0 = 1; i0 < data.size(); i0 ++) {
       for(int i = 0; i <= data[i0].size() / buf.rows() / buf.rows(); i ++) {
         for(int k = 0; k < buf.cols(); k ++)
           for(int j = 0; j < buf.rows(); j ++) {
-            const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
+            const int idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
             buf(j, k) = idx < data[i0].size() ? data[i0][idx] : num_t(0);
           }
         SimpleMatrix<num_t> buf2;
         if(strcmp(argv[2], "diff") == 0)
           buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, COLLECT_BOTH).template cast<complex<num_t> >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, COLLECT_BOTH).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, COLLECT_BOTH).template cast<complex(num_t) >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, COLLECT_BOTH).template cast<complex(num_t) >() * (complex(num_t))(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "sharpen") == 0)
           buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, SHARPEN_X).template cast<complex<num_t> >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, SHARPEN_X).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, SHARPEN_X).template cast<complex(num_t) >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, SHARPEN_X).template cast<complex(num_t) >() * (complex(num_t))(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "bump") == 0)
           buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, BUMP_BOTH).template cast<complex<num_t> >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, BUMP_BOTH).template cast<complex<num_t> >() * complex<num_t>(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template real<num_t>() * buf, BUMP_BOTH).template cast<complex(num_t) >() +
+            filter<num_t>(mdft.template imag<num_t>() * buf, BUMP_BOTH).template cast<complex(num_t) >() * (complex(num_t))(num_t(0), num_t(1)) ) ).template real<num_t>();
         for(int k = 0; k < buf2.cols(); k ++)
           for(int j = 0; j < buf2.rows(); j ++) {
-            const auto idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
+            const int idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
             if(idx < data[i0].size())
               data[i0][idx] = buf2(j, k);
             else
@@ -399,7 +400,7 @@ int main(int argc, const char* argv[]) {
     }
     num_t M(0);
     for(int i = 1; i < data.size(); i ++) {
-      auto sdata(data[i]);
+      vector<num_t> sdata(data[i]);
       for(int i = 0; i < sdata.size(); i ++)
         sdata[i] = abs(sdata[i]);
       sort(sdata.begin(), sdata.end());
