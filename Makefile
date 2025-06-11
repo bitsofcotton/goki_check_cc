@@ -15,7 +15,8 @@ CXXFLAGS+=	-std=c++11
 LDFLAGS+=	-lc++ -L/usr/local/lib
 #LDFLAGS+=	-lestdc++ -L/usr/local/lib
 
-#CXXFLAGS+=	-D_OLDCPP_
+# N.B. sed -e s/static\ inline//g | sed -e s/inline//g
+#CXXFLAGS+=	-D_OLDCPP_ -ftemplate-depth-99
 
 CLEANFILES= *.o gokibin gokibin32 gokibinmp gokibin32mp
 

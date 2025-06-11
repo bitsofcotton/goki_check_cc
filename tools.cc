@@ -17,6 +17,7 @@
 
 //#define int int64_t
 #define int int32_t
+#define _COMPILE_GOKI_
 #include "lieonn.hh"
 typedef myfloat num_t;
 

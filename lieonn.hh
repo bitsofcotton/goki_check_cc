@@ -48,14 +48,16 @@ using std::isfinite;
 #if defined(_OLDCPP_)
 #define move 
 #define emplace_back push_back
-# if defined(isinf)
-#  undef isinf
-# endif
-# if defined(isnan)
-#  undef isnan
-# endif
-# if defined(isfinite)
-#  undef isfinite
+# if defined(_FLOAT_BITS_)
+#  if defined(isinf)
+#   undef isinf
+#  endif
+#  if defined(isnan)
+#   undef isnan
+#  endif
+#  if defined(isfinite)
+#   undef isfinite
+#  endif
 # endif
 #else
 using std::move;
@@ -99,6 +101,7 @@ using std::lower_bound;
 using std::unique;
 
 // --- N.B. start approximate Lie algebra on F_2^k. ---
+#if defined(_FLOAT_BITS_)
 // N.B. start ifloat
 // Double int to new int class.
 template <typename T, int bits> class DUInt {
@@ -1226,6 +1229,7 @@ template <typename T, typename W, int bits, typename U> static inline SimpleFloa
   }
   return exp(log(src) * dst);
 }
+#endif
 
 // N.B. start class complex part:
 template <typename T> class Complex {
@@ -1493,11 +1497,17 @@ template <typename T> static inline T ccot(const T& s) {
 # if !defined(_FLOAT_BITS_)
     #include <cmath>
     using namespace std;
+#  if defined(_OLDCPP_)
+    typedef unsigned int myuint;
+    typedef int myint;
+    typedef double myfloat;
+#  else
     typedef uint64_t myuint;
     typedef int64_t  myint;
     // XXX:
     // typedef long double myfloat;
     typedef double myfloat;
+#  endif
 # elif _FLOAT_BITS_ == 8
     typedef uint8_t myuint;
     typedef int8_t  myint;
@@ -2111,9 +2121,9 @@ public:
 # if defined(_OLDCPP_)
     // XXX: very rough.
     static const myfloat eps(1e-8);
-#else
+# else
     static const myfloat eps(sqrt(std::numeric_limits<myfloat>::epsilon()));
-#endif
+# endif
     // static const myfloat eps(std::numeric_limits<myfloat>::epsilon());
 #endif
     return eps;
@@ -2745,7 +2755,7 @@ template <typename T> static inline SimpleMatrix<complex(T) > dft(const int& siz
     cache >> eidft;
     cache.close();
   } else {
-    static const T Pi(T(int(4)) * atan2(T(int(1)), T(int(1))));
+    static const T Pi(T(4) * atan2(T(1), T(1)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -2791,7 +2801,7 @@ template <typename T> static inline SimpleMatrix<T> diff(const int& size0) {
     //      taylor series should be broken.
     SimpleMatrix<complex(T) > DD(dft<T>(size));
     SimpleMatrix<complex(T) > II(dft<T>(size));
-    static const T  Pi(T(int(4)) * atan2(T(int(1)), T(int(1))));
+    static const T  Pi(T(4) * atan2(T(1), T(1)));
     // N.B. we should start this loop with i == 1 on integrate(diff) or inverse.
     //      we also should start with i == 0 on taylor series.
     //      we select latter one.
@@ -2843,7 +2853,7 @@ template <typename T> static inline SimpleVector<complex(T) > taylorc(const int&
   //      this improves both accuracy and speed.
   // N.B. We don't need to matter which sign dft/idft uses till the sign
   //      we multiply is bonded to the transformation.
-  static const T Pi(T(int(4)) * atan2(T(int(1)), T(int(1)) ));
+  static const T Pi(T(4) * atan2(T(1), T(1) ));
   SimpleVector<complex(T) > res(dft<T>(- size).row(step0));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
@@ -3185,10 +3195,10 @@ template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvarian
 }
 
 template <typename T> static inline T revertProgramInvariant(const pair<T, T>& in) {
-  const T r0(in.second == T(int(0)) ?
+  const T r0(in.second == T(0) ?
     sgn<T>(in.second) / SimpleMatrix<T>().epsilon() : in.first / in.second);
-  const T r1(T(int(0)) < r0 ? r0 - floor(r0) : ceil(- r0) + r0);
-  return T(int(0)) == r1 ? T(int(1)) : r1;
+  const T r1(T(0) < r0 ? r0 - floor(r0) : ceil(- r0) + r0);
+  return T(0) == r1 ? T(1) : r1;
 }
 
 template <typename T> static inline SimpleVector<T> revertProgramInvariant(const pair<SimpleVector<T>, T>& in) {
@@ -3395,6 +3405,7 @@ template <typename T> const SimpleMatrix<complex(T) >& dftcache(const int& size)
   return cidft[abs(size)] = dft<T>(size);
 }
 
+#if defined(_COMPILE_PRED_) || defined(_COMPILE_GOKI_)
 template <typename T> class CatG {
 public:
   inline CatG() { ; }
@@ -3618,7 +3629,9 @@ template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector
 template <typename T> static inline vector<pair<vector<SimpleVector<T> >, vector<int> > > crushWithOrder(const vector<T>& v, const int& cs) {
   return crushWithOrder<T>(v, cs, max(int(2), int(sqrt(T(v.size())))));
 }
+#endif
 
+#if defined(_COMPILE_PRED_)
 template <typename T> static inline T p012next(const SimpleVector<T>& d) {
   static const int step(1);
   static const T zero(int(0));
@@ -4114,6 +4127,9 @@ template <typename T> static inline T pSlipGulf0short(const SimpleVector<T>& in,
   return aq[aq.size() - 1].second;
 }
 
+#endif
+
+#if defined(_COMPILE_DISABLED_)
 // N.B. start det diag operations.
 // N.B. invariant gathers some of the group on the input pattern.
 template <typename T> SimpleMatrix<T> concat(const SimpleMatrix<T>& m0, const SimpleMatrix<T>& m1) {
@@ -4199,6 +4215,7 @@ template <typename T> SimpleVector<T> reduce(const SimpleMatrix<T> m) {
     work = diff(work, i);
   return work.row(0);
 }
+#endif
 
 // N.B. start Decompose
 template <typename T> class Decompose {
@@ -4676,7 +4693,7 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 //      additional states on given input range.
 // N.B. if we're in result is in control condition, we need to output at least
 //      a 3 on the prediction.
-
+#if defined(_COMPILE_PRED_)
 template <typename T, int nprogress> static inline SimpleVector<T> predv0(const vector<SimpleVector<T> >& in, const int& sz, const string& strloop = string("")) {
   assert(0 < sz && sz <= in.size());
   SimpleVector<T> seconds(sz);
@@ -5040,6 +5057,7 @@ template <typename T> vector<SimpleSparseTensor(T) > predSTen(vector<SimpleSpars
           res[2][idx[j]][idx[k]][idx[m]] = unOffsetHalf<T>(p[cnt ++]);
   return res;
 }
+#endif
 
 template <typename T> static inline vector<SimpleMatrix<T> > rgb2xyz(const vector<SimpleMatrix<T> >& rgb) {
   // CIE 1931 XYZ from wikipedia.org
@@ -5112,6 +5130,7 @@ static const vector<int>& pnTinySingle(const int& upper = 1) {
 }
 
 // N.B. start isolate
+#if defined(_COMPILE_ISOLATE_)
 template <typename T> static inline SimpleMatrix<T> harmlessSymmetrizeSquare(const SimpleMatrix<T>& m) {
   assert(0 < m.rows() && 0 < m.cols() && m.cols() == m.rows());
   SimpleMatrix<T> res(m.rows() + m.cols(), m.cols() + m.rows());
@@ -5160,8 +5179,10 @@ template <typename T> static inline SimpleVector<T> powProgram(const pair<Simple
   assert(0 && "powProgram stub.");
   return m;
 }
+#endif
 
 // N.B. start goki check
+#if defined(_COMPILE_GOKI_)
 typedef enum {
   SHARPEN_X,
   SHARPEN_Y,
@@ -6661,9 +6682,10 @@ template <typename T> static inline match_t<T> tiltprep(const SimpleMatrix<T>& i
   m.ratio  = T(1);
   return m;
 }
-
+#endif
 
 // N.B. start corpus without corpus class which frequently updated.
+#if defined(_COMPILE_PUTS_)
 template <typename T> class gram_t {
 public:
   T           str;
@@ -7985,6 +8007,7 @@ template <typename T, typename U> static inline void makelword(vector<U>& words,
       if(inputs[i].size()) std::cout << inputs[i] << ", 1" << endl;
   return;
 }
+#endif
 
 // N.B. once implemented but abandoned and cleaned from this source code
 //      the reason why:
