@@ -23,10 +23,8 @@ typedef myfloat num_t;
 using std::cout;
 using std::cerr;
 using std::endl;
-using std::move;
 using std::atoi;
 using std::string;
-using std::to_string;
 using std::vector;
 using std::sort;
 
@@ -361,6 +359,7 @@ int main(int argc, const char* argv[]) {
     saveobj<num_t>(takeShape<num_t>(pdst, psrc,
       matchPartialR<num_t>(pdst, psrc)[0],
       num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
+#if !defined(_OLDCPP_)
   } else if(strcmp(argv[1], "omake") == 0) {
     vector<vector<num_t> > data;
     string header;
@@ -413,6 +412,7 @@ int main(int argc, const char* argv[]) {
         cout << (i < data[j].size() ? data[j][i] / M : num_t(0)) << " ";
       cout << endl;
     }
+#endif
   } else goto usage;
   return 0;
  usage:

@@ -48,6 +48,15 @@ using std::isfinite;
 #if defined(_OLDCPP_)
 #define move 
 #define emplace_back push_back
+# if defined(isinf)
+#  undef isinf
+# endif
+# if defined(isnan)
+#  undef isnan
+# endif
+# if defined(isfinite)
+#  undef isfinite
+# endif
 #else
 using std::move;
 #endif
@@ -326,9 +335,6 @@ public:
   }
   inline                operator T    () const {
     return e[0];
-  }
-  inline                operator DUInt<T,bits> () const {
-    return *this;
   }
   friend istream& operator >> (istream& is, DUInt<T,bits>& v) {
     v ^= v;
@@ -629,9 +635,6 @@ public:
     else if(uzero() < deci.e) deci.m <<=   int(deci.e);
     return s & (1 << SIGN) ? - deci.m : deci.m;
   }
-  inline                  operator SimpleFloat<T,W,bits,U> () const {
-    return *this;
-  }
   // XXX: absfloor, absceil implementation.
   inline SimpleFloat<T,W,bits,U>  floor() const {
     if(uzero() <= e) return *this;
@@ -671,6 +674,35 @@ public:
   } state_t;
   T m;
   U e;
+#if defined(_OLDCPP_)
+  const U uzero() const {
+    return U(0);
+  }
+  const SimpleFloat<T,W,bits,U> zero()   const {
+    return SimpleFloat<T,W,bits,U>(T(int(0)));
+  }
+  const SimpleFloat<T,W,bits,U> one()    const {
+    return SimpleFloat<T,W,bits,U>(T(int(1)));
+  }
+  const SimpleFloat<T,W,bits,U> two()    const {
+    return SimpleFloat<T,W,bits,U>(one() << U(1));
+  }
+  const SimpleFloat<T,W,bits,U> pi()     const {
+    return SimpleFloat<T,W,bits,U>(quatpi() << U(2));
+  }
+  const SimpleFloat<T,W,bits,U> halfpi() const {
+    return SimpleFloat<T,W,bits,U>(quatpi() << U(1));
+  }
+  const SimpleFloat<T,W,bits,U> quatpi() const {
+    return SimpleFloat<T,W,bits,U>(one().atan());
+  }
+  const SimpleFloat<T,W,bits,U> twopi()  const {
+    return SimpleFloat<T,W,bits,U>(quatpi() << U(3));
+  }
+  const SimpleFloat<T,W,bits,U> sqrt2()  const {
+    return SimpleFloat<T,W,bits,U>((one() << U(1)).sqrt());
+  }
+#else
   const U& uzero() const {
     const static U vuzero(0);
     return vuzero;
@@ -707,6 +739,7 @@ public:
     const static SimpleFloat<T,W,bits,U> vsqrt2((one() << U(1)).sqrt());
     return vsqrt2;
   }
+#endif
 private:
   template <typename V> inline U normalize(V& src) const {
     V   bt(int(1));
@@ -1335,10 +1368,16 @@ public:
   inline             operator T    () const {
     return this->_real;
   }
+#if defined(_OLDCPP_)
+  const Complex<T> i() const {
+    return Complex<T>(Complex<T>(T(int(0)), T(int(1))));
+  }
+#else
   const Complex<T>& i() const {
     const static Complex<T> I(Complex<T>(T(int(0)), T(int(1))));
     return I;
   }
+#endif
   inline T  abs() const {
     return sqrt(_real * _real + _imag * _imag);
   }
@@ -2069,7 +2108,12 @@ public:
     // static const myfloat eps(myfloat(int(1)) >> myint(_FLOAT_BITS_ - 1));
 #else
     // N.B. conservative.
+# if defined(_OLDCPP_)
+    // XXX: very rough.
+    static const myfloat eps(1e-8);
+#else
     static const myfloat eps(sqrt(std::numeric_limits<myfloat>::epsilon()));
+#endif
     // static const myfloat eps(std::numeric_limits<myfloat>::epsilon());
 #endif
     return eps;
@@ -3114,7 +3158,11 @@ template <typename T> using tttC =  pair<SimpleMatrix<T>, T>;
 
 static inline bool whiteline(const string& s) {
   for(string::const_iterator ss(s.begin()); ss < s.end(); ++ ss)
+#if defined(_OLDCPP_)
+    if(! (* ss == ' ' || * ss == '\t') && *ss != '\n')
+#else
     if(! std::isspace(* ss) && *ss != '\n')
+#endif
       return false;
   return true;
 }
@@ -4592,8 +4640,8 @@ template <typename T> static inline SimpleMatrix<T> rotate(const SimpleMatrix<T>
   const T offy(h0 < d.rows() ? abs(int(s * T(d.cols()))) : 0);
   const T offx(w0 < d.cols() ? abs(int(s * T(d.rows()))) : 0);
   res.O();
-  const int diag(int(sqrt(res.rows() * res.rows() +
-                          res.cols() * res.cols())) + 1);
+  const int diag(ceil(sqrt(T(res.rows() * res.rows() +
+                             res.cols() * res.cols()) )) );
   for(int j = - diag; j < diag; j ++)
     for(int k = - diag; k < diag; k ++) {
       const int yy(c * T(j) - s * T(k) + offy);
@@ -4741,7 +4789,7 @@ template <typename T, SimpleVector<T> (*p)(const vector<SimpleVector<T> >&, cons
   if(! nrecur) return p(in, string(", 0 / 1"));
   SimpleVector<T> res(in[0].size());
   res.O();
-  for(int i = 0; i < nrecur; i ++) {
+  for(int i0 = 0; i0 < nrecur; i0 ++) {
     vector<SimpleVector<T> > rin(in);
     for(int i = 0; i < rin.size(); i ++)
       for(int j = 0; j < rin[i].size(); j ++)
@@ -4751,7 +4799,7 @@ template <typename T, SimpleVector<T> (*p)(const vector<SimpleVector<T> >&, cons
         rin[i][j] = (rin[i][j] + T(random() % 0x20000) / T(0x20000 - 1)) / T(int(2));
 #endif
     // N.B. PRNG parts going to gray + small noise with large enough nrecur.
-    res += p(rin, string(", ") + to_string(i) + string(" / ") + to_string(nrecur));
+    res += p(rin, string(", ") + to_string(i0) + string(" / ") + to_string(nrecur));
   }
   return res /= T(nrecur);
 }
@@ -6379,7 +6427,8 @@ template <typename T> static inline SimpleMatrix<T> pullRefMatrix(const SimpleMa
   for(int i = 0; i < ref.rows() * ref.cols(); i ++) {
     const int ly(i % ref.rows());
     const int lx(i / ref.rows());
-    const int v(int(ref(ly, lx)) - start);
+    const int rv(ref(ly, lx));
+    const int v(rv - start);
     if(0 <= v && v < orig.rows() * orig.cols())
       result(ly, lx) = orig(v % orig.rows(), v / orig.rows());
     else
@@ -7886,7 +7935,8 @@ static inline string utf8align(const string& tob) {
 
 template <typename T, typename U> static inline void makelword(vector<U>& words, const U& input, const vector<U>& delimiter, const bool& show = false, const bool& utf8 = true, const int& limit = - 1) {
   vector<gram_t<U> > found;
-  const vector<gram_t<U> > lwords(lword<char, U>(int(log(T(int(input.size() ))) / log(T(int(2)) ) )).compute(input));
+  const int csz(log(T(int(input.size() ))) / log(T(int(2))));
+  const vector<gram_t<U> > lwords(lword<char, U>(csz).compute(input));
   for(typename vector<gram_t<U> >::const_iterator itr = lwords.begin();
       itr != lwords.end(); ++ itr) {
     if(itr->rptr.size() < 2 && itr->str.size() < 3)

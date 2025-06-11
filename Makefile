@@ -1,16 +1,21 @@
 CXX=	clang++
 #CXX=	eg++
+#CXX=	c++
 
 # compiler flags.
 CXXFLAGS+=	-Ofast -mtune=native -gfull
 #CXXFLAGS+=	-O2 -mtune=native -g3
+#CXXFLAGS+=	-O2 -g3
 #CXXFLAGS+=	-Oz -mtune=native -gfull
 MPFLAGS=	-I/usr/local/include -L/usr/local/lib -lomp -fopenmp
 #CXXFLAGS+=	-pg
 #CXXFLAGS+=	--analyze
 CXXFLAGS+=	-std=c++11
+#CXXFLAGS+=	-std=gnu++98
 LDFLAGS+=	-lc++ -L/usr/local/lib
 #LDFLAGS+=	-lestdc++ -L/usr/local/lib
+
+#CXXFLAGS+=	-D_OLDCPP_
 
 CLEANFILES= *.o gokibin gokibin32 gokibinmp gokibin32mp
 
