@@ -11,13 +11,10 @@
 #include <cctype>
 #include <assert.h>
 
-#if defined(_OPENMP)
-#include <omp.h>
-#endif
-
+#if !defined(_OLDCPP_)
 //#define int int64_t
 #define int int32_t
-#define _COMPILE_GOKI_
+#endif
 #include "lieonn.hh"
 typedef myfloat num_t;
 
@@ -35,10 +32,14 @@ static inline num_t myatof(const char* v) {
   return num_t(int(std::atof(v) * 10000)) / num_t(int(10000));
 }
 
+#if !defined(_OLDCPP_)
 #undef int
+#endif
 int main(int argc, const char* argv[]) {
+#if !defined(_OLDCPP_)
 //#define int int64_t
 #define int int32_t
+#endif
   if(argc < 2) goto usage;
   if(strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "limit") == 0 ||
@@ -379,15 +380,15 @@ int main(int argc, const char* argv[]) {
         if(strcmp(argv[2], "diff") == 0)
           buf2 = (midft * (
             filter<num_t>(mdft.template real<num_t>() * buf, COLLECT_BOTH).template cast<complex(num_t) >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, COLLECT_BOTH).template cast<complex(num_t) >() * (complex(num_t))(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template imag<num_t>() * buf, COLLECT_BOTH).template cast<complex(num_t) >() * complexctor(num_t)(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "sharpen") == 0)
           buf2 = (midft * (
             filter<num_t>(mdft.template real<num_t>() * buf, SHARPEN_X).template cast<complex(num_t) >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, SHARPEN_X).template cast<complex(num_t) >() * (complex(num_t))(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template imag<num_t>() * buf, SHARPEN_X).template cast<complex(num_t) >() * complexctor(num_t)(num_t(0), num_t(1)) ) ).template real<num_t>();
         else if(strcmp(argv[2], "bump") == 0)
           buf2 = (midft * (
             filter<num_t>(mdft.template real<num_t>() * buf, BUMP_BOTH).template cast<complex(num_t) >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, BUMP_BOTH).template cast<complex(num_t) >() * (complex(num_t))(num_t(0), num_t(1)) ) ).template real<num_t>();
+            filter<num_t>(mdft.template imag<num_t>() * buf, BUMP_BOTH).template cast<complex(num_t) >() * complexctor(num_t)(num_t(0), num_t(1)) ) ).template real<num_t>();
         for(int k = 0; k < buf2.cols(); k ++)
           for(int j = 0; j < buf2.rows(); j ++) {
             const int idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
