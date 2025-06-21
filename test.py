@@ -128,13 +128,14 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
     # N.B. context saturation case.
     lsz  = 768
   # N.B. we treat each bit condition to them.
-  lsz /= 8.
+  bitsg = 2
+  lsz  /= bitsg
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g' or argv[2][- 3] == 'g' or argv[2][- 4] == 'g'):
-    bits = max(1, min(8, int(len(argv[6:]) / 4 / 4)))
+    bits = max(1, min(bitsg, int(len(argv[6:]) / 4 / 4)))
     pxs  = int(len(argv[6:]) / bits / 4)
     ext  = "pgm"
   else:
-    bits = max(1, min(8, int(len(argv[6:]) / 3 / 4 / 4)))
+    bits = max(1, min(bitsg, int(len(argv[6:]) / 3 / 4 / 4)))
     pxs  = int(len(argv[6:]) / bits / 3 / 4)
     ext  = "ppm"
     lsz /= 3.
@@ -197,7 +198,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   for f in list1:
     subprocess.call(["convert", f, "-resize", str(pxs) + "@^", "-compress", "none", f + "-wg." + ext])
     subprocess.call([argv[1], "bit", f + "-wg." + ext, f + "-wg-bit." + ext, str(bits), "0"])
-    subprocess.call([argv[1], "bit", f, f + "-wgL-bit." + ext, "8", "0"])
+    subprocess.call([argv[1], "bit", f, f + "-wgL-bit." + ext, str(bits), "0"])
     list2.append(f + "-wg-bit." + ext)
     list3.append(f + "-wgL-bit." + ext)
   cmd = [argv[4], "p"]
@@ -206,17 +207,14 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   subprocess.call(cmd)
   curdir = os.path.basename(os.getcwd())
   if(argv[2][1] == "r"):
-    subprocess.call([argv[1], "bit", "predg0.ppm", curdir + "-bit0.ppm", "-8", "1"])
-    subprocess.call([argv[1], "bit", "predg1.ppm", curdir + "-bit1.ppm", "-8", "1"])
-    subprocess.call([argv[1], "bit", "predg2.ppm", curdir + "-bit2.ppm", "-8", "1"])
+    subprocess.call([argv[1], "bit", "predg0.ppm", curdir + "-bit0.ppm", str(- bits), "1"])
+    subprocess.call([argv[1], "bit", "predg1.ppm", curdir + "-bit1.ppm", str(- bits), "1"])
   else:
     t = 1
     while(True):
-      if(subprocess.call([argv[1], "bit", "predg" + str(t) + "-0.ppm", curdir + str(t) + "-bit0.ppm", "-8", "1"]) != 0):
+      if(subprocess.call([argv[1], "bit", "predg" + str(t) + "-0.ppm", curdir + str(t) + "-bit0.ppm", str(- bits), "1"]) != 0):
         break;
-      if(subprocess.call([argv[1], "bit", "predg" + str(t) + "-1.ppm", curdir + str(t) + "-bit1.ppm", "-8", "1"]) != 0):
-        break
-      if(subprocess.call([argv[1], "bit", "predg" + str(t) + "-2.ppm", curdir + str(t) + "-bit2.ppm", "-8", "1"]) != 0):
+      if(subprocess.call([argv[1], "bit", "predg" + str(t) + "-1.ppm", curdir + str(t) + "-bit1.ppm", str(- bits), "1"]) != 0):
         break
       t += 1
   if(argv[2][0] == 'P' or argv[2][0] == 'Q'):
@@ -235,13 +233,10 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
     listr.append("predg0.ppm")
     subprocess.call(list4)
     subprocess.call(listr)
-    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit3.ppm", "-8", "1"])
+    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit3.ppm", str(- bits), "1"])
     listr[- 1] = "predg1.ppm"
     subprocess.call(listr)
-    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit4.ppm", "-8", "1"])
-    listr[- 1] = "predg2.ppm"
-    subprocess.call(listr)
-    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit5.ppm", "-8", "1"])
+    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit4.ppm", str(- bits), "1"])
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0

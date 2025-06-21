@@ -126,4 +126,6 @@ Searching the Internet more...
 2025/06/08 merge latest lieonn.
 2025/06/11 compat compile option to gcc4.2.1.
 2025/06/12 compat compile option with one variant of gcc2.95.3.
+2025/06/21 merge latest lieonn.hh, test.py default pred depth bit change.
+2025/06/22 pqred output fix with merged ddpmopt result.
 
