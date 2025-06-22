@@ -105,9 +105,7 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
-     argv[2][:len("pRed")] == "pRed" or argv[2][:len("qRed")] == "qRed" or \
-     argv[2][:len("Pred")] == "Pred" or argv[2][:len("Qred")] == "Qred" or \
-     argv[2][:len("PRed")] == "PRed" or argv[2][:len("QRed")] == "QRed"):
+     argv[2][:len("Pred")] == "Pred" or argv[2][:len("Qred")] == "Qred"):
   if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q' or argv[2][- 3] == 'q'):
     mode = 1
   else:
@@ -206,17 +204,11 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   cmd.extend(list3)
   subprocess.call(cmd)
   curdir = os.path.basename(os.getcwd())
-  if(argv[2][1] == "r"):
-    subprocess.call([argv[1], "bit", "predg0.ppm", curdir + "-bit0.ppm", str(- bits), "1"])
-    subprocess.call([argv[1], "bit", "predg1.ppm", curdir + "-bit1.ppm", str(- bits), "1"])
-  else:
-    t = 1
-    while(True):
-      if(subprocess.call([argv[1], "bit", "predg" + str(t) + "-0.ppm", curdir + str(t) + "-bit0.ppm", str(- bits), "1"]) != 0):
-        break;
-      if(subprocess.call([argv[1], "bit", "predg" + str(t) + "-1.ppm", curdir + str(t) + "-bit1.ppm", str(- bits), "1"]) != 0):
-        break
-      t += 1
+  ctr = 0
+  while(True):
+    if(subprocess.call([argv[1], "bit", "predg" + str(ctr) + ".ppm", curdir + "-bit" + str(ctr) + ".ppm", str(- bits), "1"]) != 0):
+      break
+    ctr += 1
   if(argv[2][0] == 'P' or argv[2][0] == 'Q'):
     # XXX: white space, delimiter, should use Popen with pipe.
     subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
@@ -230,13 +222,15 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
       list4.append(list2[idx] + "-m2c4." + ext)
       listr.append(list2[idx] + "-m2c4." + ext)
       listr.append(list3[idx])
-    listr.append("predg0.ppm")
+    listr.append("")
     subprocess.call(list4)
-    subprocess.call(listr)
-    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit3.ppm", str(- bits), "1"])
-    listr[- 1] = "predg1.ppm"
-    subprocess.call(listr)
-    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bit4.ppm", str(- bits), "1"])
+    ctr = 0
+    while(True):
+      listr[- 1] = "predg" + str(ctr) + ".ppm"
+      if(subprocess.call(listr) != 0): break
+      if(subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitw" + str(ctr) + ".ppm", str(- bits), "1"]) != 0):
+        break
+      ctr += 1
 elif(argv[2] == "crossarg"):
   step = int(argv[3])
   spl  = 0
