@@ -117,13 +117,15 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   #      however, {x,y,z,w} is too large to exist without internal relations.
   #      we count them as a operation, so we take output each result pixels.
   # N.B. however, we target only binary in/output, so it's reduced.
-  lsz  = pow(2., 2. * 2. * 3.)
+  lsz = pow(2., 2. * 2. * 3.)
+  # lsz = min(lsz, float(int(len(argv[6:])))) / bits
+  # XXX: however, the size we get with them is tiny enough, so we square them.
+  lsz = min(lsz, pow(float(int(len(argv[6:]))), 2.))
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g' or argv[2][- 3] == 'g' or argv[2][- 4] == 'g'):
-    lsz = min(lsz, float(int(len(argv[6:])))) / bits
-    ext = "pgm"
+    ext  = "pgm"
   else:
-    lsz = min(lsz, float(int(len(argv[6:])))) / bits / 3.
-    ext =  "ppm"
+    lsz /= 3
+    ext  =  "ppm"
   if(mode == 1):
     lsz  = pow(lsz, .5)
   lsz = int(lsz)
