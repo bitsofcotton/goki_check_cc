@@ -110,44 +110,31 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
     mode = 1
   else:
     mode = 0
-  # N.B. Condorcet jury doesn't work on our sample run.
-  if(argv[2][- 2] == '+'):
-    # N.B. upper bound for #f(x,y,z) when completely separatable {x, y, z}
-    #      however, {x,y,z,w} is too large to exist without internal relations.
-    #      we count them as a operation, so we take output each result pixels.
-    lsz  = pow(pow(3., pow(3., 3.)), .5)
-    # N.B. however, with predictions, only 1/3 will be warranted to get
-    #      results as in use.
-    lsz /= 3.
-  elif(argv[2][- 1] == '+'):
-    # N.B. f(x, y) == 0, #f pure function case.
-    lsz  = 19683
-  else:
-    # N.B. context saturation case.
-    lsz  = 768
   # N.B. we treat each bit condition to them.
-  bitsg = 2
-  lsz  /= bitsg
+  bits = 2
+  # N.B. Condorcet jury doesn't work on our sample run.
+  # N.B. upper bound for #f(x,y,z) when completely separatable {x, y, z}
+  #      however, {x,y,z,w} is too large to exist without internal relations.
+  #      we count them as a operation, so we take output each result pixels.
+  # N.B. however, we target only binary in/output, so it's reduced.
+  lsz  = pow(2., 2. * 2. * 3.)
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g' or argv[2][- 3] == 'g' or argv[2][- 4] == 'g'):
-    bits = max(1, min(bitsg, int(len(argv[6:]) / 4 / 4)))
-    pxs  = int(len(argv[6:]) / bits / 4)
-    ext  = "pgm"
+    lsz = min(lsz, float(int(len(argv[6:])))) / bits
+    ext = "pgm"
   else:
-    bits = max(1, min(bitsg, int(len(argv[6:]) / 3 / 4 / 4)))
-    pxs  = int(len(argv[6:]) / bits / 3 / 4)
-    ext  = "ppm"
-    lsz /= 3.
+    lsz = min(lsz, float(int(len(argv[6:])))) / bits / 3.
+    ext =  "ppm"
   if(mode == 1):
     lsz  = pow(lsz, .5)
   lsz = int(lsz)
   for f in argv[6:]:
     if(mode == 1):
-      subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wgL." + ext])
+      subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wg." + ext])
     else:
-      subprocess.call(["convert", f, "-resize", str(lsz) + "@", "-compress", "none", f + "-wgL." + ext])
+      subprocess.call(["convert", f, "-resize", str(lsz) + "@", "-compress", "none", f + "-wg." + ext])
   list0 = []
   for f in argv[6:]:
-    list0.append(f + "-wgL." + ext)
+    list0.append(f + "-wg." + ext)
   list  = []
   loopb = 0
   if(argv[2][0] == 'q' or argv[2][0] == 'Q'):
@@ -192,21 +179,16 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
     list  = list0
     list1 = list0
   list2 = []
-  list3 = []
   for f in list1:
-    subprocess.call(["convert", f, "-resize", str(pxs) + "@^", "-compress", "none", f + "-wg." + ext])
-    subprocess.call([argv[1], "bit", f + "-wg." + ext, f + "-wg-bit." + ext, str(bits), "0"])
-    subprocess.call([argv[1], "bit", f, f + "-wgL-bit." + ext, str(bits), "0"])
+    subprocess.call([argv[1], "bit", f, f + "-wg-bit." + ext, str(bits), "0"])
     list2.append(f + "-wg-bit." + ext)
-    list3.append(f + "-wgL-bit." + ext)
   cmd = [argv[4], "p"]
-  if(argv[2][1] == "R"): cmd[1] = "P"
-  cmd.extend(list3)
+  cmd.extend(list2)
   subprocess.call(cmd)
   curdir = os.path.basename(os.getcwd())
   ctr = 0
   while(True):
-    if(subprocess.call([argv[1], "bit", "predg" + str(ctr) + ".ppm", curdir + "-bit" + str(ctr) + ".ppm", str(- bits), "1"]) != 0):
+    if(subprocess.call([argv[1], "bit", "predg" + str(ctr) + ".ppm", curdir + "-bit" + str(ctr) + ".ppm", str(- bits), "0"]) != 0):
       break
     ctr += 1
   if(argv[2][0] == 'P' or argv[2][0] == 'Q'):
@@ -221,7 +203,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
     for idx in range(0, len(list2)):
       list4.append(list2[idx] + "-m2c4." + ext)
       listr.append(list2[idx] + "-m2c4." + ext)
-      listr.append(list3[idx])
+      listr.append(list2[idx])
     listr.append("")
     subprocess.call(list4)
     ctr = 0
