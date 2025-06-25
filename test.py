@@ -112,15 +112,14 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
     mode = 0
   # N.B. we treat each bit condition to them.
   bits = 2
-  # N.B. Condorcet jury doesn't work on our sample run.
-  # N.B. upper bound for #f(x,y,z) when completely separatable {x, y, z}
-  #      however, {x,y,z,w} is too large to exist without internal relations.
-  #      we count them as a operation, so we take output each result pixels.
-  # N.B. however, we target only binary in/output, so it's reduced.
-  lsz = pow(2., 2. * 2. * 3.)
-  # lsz = min(lsz, float(int(len(argv[6:])))) / bits
-  # XXX: however, the size we get with them is tiny enough, so we square them.
-  lsz = min(lsz, pow(float(int(len(argv[6:]))), 2.))
+  # N.B. we only see input number to count pixels.
+  if(argv[2][0] == 'P' or argv[2][0] == 'Q'):
+    lsz = float(int(len(argv[6:])))
+  else:
+    # N.B. we need large image after to shrink.
+    lsz = float(int(len(argv[6:]))) * 16.
+  # N.B. once we had #f pixel number estimation, however we don't use them now.
+  lsz /= bits
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g' or argv[2][- 3] == 'g' or argv[2][- 4] == 'g'):
     ext  = "pgm"
   else:
@@ -184,16 +183,17 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   for f in list1:
     subprocess.call([argv[1], "bit", f, f + "-wg-bit." + ext, str(bits), "0"])
     list2.append(f + "-wg-bit." + ext)
-  cmd = [argv[4], "p"]
-  cmd.extend(list2)
-  subprocess.call(cmd)
-  curdir = os.path.basename(os.getcwd())
-  ctr = 0
-  while(True):
-    if(subprocess.call([argv[1], "bit", "predg" + str(ctr) + ".ppm", curdir + "-bit" + str(ctr) + ".ppm", str(- bits), "0"]) != 0):
-      break
-    ctr += 1
-  if(argv[2][0] == 'P' or argv[2][0] == 'Q'):
+  if(argv[2][0] != 'P' and argv[2][0] != 'Q'):
+    cmd = [argv[4], "p"]
+    cmd.extend(list2)
+    subprocess.call(cmd)
+    curdir = os.path.basename(os.getcwd())
+    ctr = 0
+    while(True):
+      if(subprocess.call([argv[1], "bit", "predg" + str(ctr) + ".ppm", curdir + "-bit" + str(ctr) + ".ppm", str(- bits), "0"]) != 0):
+        break
+      ctr += 1
+  else:
     # XXX: white space, delimiter, should use Popen with pipe.
     subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
     subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list2) + " < wgL.txt"])
