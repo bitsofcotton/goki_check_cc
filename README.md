@@ -1,9 +1,6 @@
 # Goki Check
 These program aims to implement one of a complement to ongoing other utilities.  
-And this library is written in a deterministic way.
 
-# How to use
-Please touch Makefile for libc++ enabled.  
 This program needs ascii raw ppm files to input/output.  
 We can use /dev/stdin, /dev/stdout to in/output.  
 We need imagemagick for normal use, and ffmpeg to make .mp4.  
@@ -21,22 +18,21 @@ Searching the Internet more...
 # Usage
     make gokibin
     
-    gokibin (collect|sharpen|bump|blur|enlarge|shrink|flarge|blink|represent|nop|limit|bit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
-    gokibin (cat|catr) <input0.ppm> ...
+    gokibin (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recursive_num> <rot_num>
     gokibin (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>
-    gokibin obj <input.ppm> <output.obj>
     gokibin match <num_of_match> <num_of_emph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>
     gokibin recolor  <dimension> <input.ppm> <input-copy.ppm> <output.ppm> <intensity>
     gokibin recolor2 <dimension> <input.ppm> <output.ppm> <intensity>
     gokibin recolor3 <dimension> <input.ppm> <input-shape> <output.ppm>
+    gokibin cat <input0.ppm> ...
+    gokibin obj <input.ppm> <output.obj>
     gokibin habit <in0.obj> <in1.obj> <out.obj>
-    python3 test.py ./gokibin (sharpen|bump|blur|enlarge|shrink|flarge|blink|represent|jps|tilt|obj|sbox|prep|presq|nop|limit|bit|illust|nurie|gray|sbit) <param> input0.png ...
+    python3 test.py ./gokibin (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit|jps|tilt|obj|sbox|prep|presq|illust|nurie|gray|sbit) <param> input0.png ...
     python3 test.py ./gokibin (cat|catb|catr|catbr) input0.png input1.png ...
     python3 test.py ./gokibin (tilecat|tilecatb|tilecatr|tilecatbr) <tile count> < cat.txt
     python3 test.py ./gokibin match input0.png input1.png <vboxdst> <vboxsrc> <number_of_submatches> <number_of_emphasis>
     python3 test.py ./gokibin i2i <param> img0.png ...
-    python3 test.py <base-name> move in0.png ...
-    python3 test.py ./gokibin \[pPqQ\]redg?q?+?+? masp ddpmopt masp2catg img0.png ...
+    python3 test.py ./gokibin \[pPqQ\]redg?q? masp ddpmopt masp2catg img0.png ...
 
 # Another downloads
 * https://konbu.azurewebsites.net/ (Sample Site)
@@ -130,4 +126,5 @@ Searching the Internet more...
 2025/06/22 pqred output fix with merged ddpmopt result.
 2025/06/22 pqred output fix with merged ddpmopt result (again).
 2025/06/25 mege latest ddpmopt, test.py pqred command size change to radical tiny one.
+2025/06/25 code cleaning. refactoring.
 

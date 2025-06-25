@@ -215,28 +215,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
       if(subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitw" + str(ctr) + ".ppm", str(- bits), "1"]) != 0):
         break
       ctr += 1
-elif(argv[2] == "crossarg"):
-  step = int(argv[3])
-  spl  = 0
-  for idx in range(4, len(argv)):
-    if(argv[idx] == ","):
-      spl = idx
-      break
-  if(spl == 0):
-    print("ERR")
-  else:
-    arg1 = argv[4:spl]
-    arg2 = argv[spl + 1:]
-    sw   = 1
-    for s in range(0, min(len(arg1), len(arg2)) * 2):
-      if(s % step == 0):
-        sw = - sw
-      if(0 < sw):
-        print(arg1[int(s / step / 2) * step + (s % step) - min(len(arg1), len(arg2))])
-      else:
-        print(arg2[int(s / step / 2) * step + (s % step) - min(len(arg1), len(arg2))])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or argv[2] == "tilecatd"):
-
   pixels = int(argv[3])
   cmd = ["montage"]
   t   = 0
@@ -296,9 +275,9 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "represent" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "sharpen" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "slide" or argv[2] == "nslide" or argv[2] == "rgb2xyz" or argv[2] == "xyz2rgb"):
+    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "bump" or argv[2] == "blur" or argv[2] == "collect"):
+    elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "blur" or argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], argv[2], root + "-bump.ppm", root + ".obj"])

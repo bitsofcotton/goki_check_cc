@@ -12,9 +12,20 @@
 #include <assert.h>
 
 #if !defined(_OLDCPP_)
-//#define int int64_t
-#define int int32_t
+#include <random>
+#if defined(_PERSISTENT_)
+# if !defined(_FLOAT_BITS_)
+#  define int ssize_t
+# elif _FLOAT_BITS_ == 64
+#  define int int32_t
+# elif _FLOAT_BITS_ == 128
+#  define int int64_t
+# else
+#  error Cannot handle PERSISTENT option
+# endif
 #endif
+#endif
+
 #include "lieonn.hh"
 typedef myfloat num_t;
 
@@ -36,18 +47,19 @@ static inline num_t myatof(const char* v) {
 #undef int
 #endif
 int main(int argc, const char* argv[]) {
-#if !defined(_OLDCPP_)
-//#define int int64_t
-#define int int32_t
+#if !defined(_OLDCPP_) && defined(_PERSISTENT_)
+# if !defined(_FLOAT_BITS_)
+#  define int ssize_t
+# elif _FLOAT_BITS_ == 64
+#  define int int32_t
+# elif _FLOAT_BITS_ == 128
+#  define int int64_t
+# else
+#  error Cannot handle PERSISTENT option
+# endif
 #endif
   if(argc < 2) goto usage;
-  if(strcmp(argv[1], "nop") == 0 ||
-     strcmp(argv[1], "limit") == 0 ||
-     strcmp(argv[1], "bit") == 0 ||
-     strcmp(argv[1], "nbit") == 0 ||
-     strcmp(argv[1], "slide") == 0 ||
-     strcmp(argv[1], "nslide") == 0 ||
-     strcmp(argv[1], "collect") == 0 ||
+  if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "blur") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
@@ -55,11 +67,13 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "shrink") == 0 ||
      strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
+     strcmp(argv[1], "nop") == 0 ||
+     strcmp(argv[1], "limit") == 0 ||
+     strcmp(argv[1], "bit") == 0 ||
+     strcmp(argv[1], "nbit") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
-     strcmp(argv[1], "b2wd")    == 0 ||
-     strcmp(argv[1], "rgb2xyz") == 0 ||
-     strcmp(argv[1], "xyz2rgb") == 0) {
+     strcmp(argv[1], "b2wd")    == 0) {
     if(argc < 3) goto usage;
     const int recur(4 < argc ? atoi(argv[4]) : 1);
     const int rot(5 < argc ? atoi(argv[5]) : 0);
@@ -69,22 +83,6 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], COLLECT_BOTH, recur, rot);
-    else if(strcmp(argv[1], "enlarge") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        try {
-          data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
-        } catch(const char* e) { cerr << e << endl; }
-    else if(strcmp(argv[1], "shrink") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        try {
-          data[i] = filter<num_t>(filter<num_t>(data[i], SHRINK_BOTH, recur, rot), CLIP);
-        } catch(const char* e) { cerr << e << endl; }
-    else if(strcmp(argv[1], "flarge") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
-    else if(strcmp(argv[1], "blink") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int ii = 0; ii < (recur < 1 ? 1 : recur); ii ++)
         for(int i = 0; i < data.size(); i ++)
@@ -92,12 +90,48 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "blur") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLUR_BOTH, recur, rot);
-    else if(strcmp(argv[1], "bump") == 0)
-      data[0] = data[1] = data[2] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
-    else if(strcmp(argv[1], "rgb2xyz") == 0)
-      data = rgb2xyz<num_t>(data);
-    else if(strcmp(argv[1], "xyz2rgb") == 0)
-      data = xyz2rgb<num_t>(data);
+    else if(strcmp(argv[1], "bump") == 0) {
+      data[0] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
+      data.resize(1);
+    } else if(strcmp(argv[1], "enlarge") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
+    else if(strcmp(argv[1], "shrink") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = filter<num_t>(filter<num_t>(data[i], SHRINK_BOTH, recur, rot), CLIP);
+    else if(strcmp(argv[1], "flarge") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
+    else if(strcmp(argv[1], "blink") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
+    else if(strcmp(argv[1], "bit") == 0 && 0 < recur) {
+      for(int i = 0; i < data.size(); i ++) {
+        SimpleMatrix<num_t> work(data[i].rows() * recur, data[i].cols());
+        work.O();
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++)
+            for(int m = 0; m < recur; m ++)
+              work(j + m * data[i].rows(), k) =
+                num_t(1 & int(data[i](j, k) *
+                  pow(num_t(int(2)), num_t(int(m + 1))) ) );
+        swap(work, data[i]);
+      }
+    } else if((strcmp(argv[1], "bit") == 0 && recur < 0) || strcmp(argv[1], "nbit") == 0)
+      for(int i = 0; i < data.size(); i ++) {
+        SimpleMatrix<num_t> work(data[i].rows() / abs(recur), data[i].cols());
+        work.O();
+        for(int j = 0; j < work.rows(); j ++)
+          for(int k = 0; k < work.cols(); k ++)
+            for(int m = 0; m < abs(recur); m ++)
+              work(j, k) += strcmp(argv[1], "nbit") == 0 ?
+                (sgn<num_t>(data[i](j + m * data[i].rows() / abs(recur), k) -
+                  num_t(int(1)) / num_t(int(2))) + num_t(int(1))) /
+                    pow(num_t(int(2)), num_t(int(m + 1))) :
+                data[i](j + m * data[i].rows() / abs(recur), k) /
+                  pow(num_t(int(2)), num_t(int(m + 1)));
+        swap(work, data[i]);
+      }
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
@@ -125,54 +159,11 @@ int main(int argc, const char* argv[]) {
               data[1](i, j) == ddata[1](i, j) &&
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
-    } else if(strcmp(argv[1], "bit") == 0 && 0 < recur) {
-      for(int i = 0; i < data.size(); i ++) {
-        SimpleMatrix<num_t> work(data[i].rows() * recur, data[i].cols());
-        work.O();
-        for(int j = 0; j < data[i].rows(); j ++)
-          for(int k = 0; k < data[i].cols(); k ++)
-            for(int m = 0; m < recur; m ++)
-              work(j + m * data[i].rows(), k) =
-                num_t(1 & int(data[i](j, k) *
-                  pow(num_t(int(2)), num_t(int(m + 1))) ) );
-        swap(work, data[i]);
-      }
-    } else if((strcmp(argv[1], "bit") == 0 && recur < 0) || strcmp(argv[1], "nbit") == 0) {
-      for(int i = 0; i < data.size(); i ++) {
-        SimpleMatrix<num_t> work(data[i].rows() / abs(recur), data[i].cols());
-        work.O();
-        for(int j = 0; j < work.rows(); j ++)
-          for(int k = 0; k < work.cols(); k ++)
-            for(int m = 0; m < abs(recur); m ++)
-              work(j, k) += strcmp(argv[1], "nbit") == 0 ?
-                (sgn<num_t>(data[i](j + m * data[i].rows() / abs(recur), k) -
-                  num_t(int(1)) / num_t(int(2))) + num_t(int(1))) /
-                    pow(num_t(int(2)), num_t(int(m + 1))) :
-                data[i](j + m * data[i].rows() / abs(recur), k) /
-                  pow(num_t(int(2)), num_t(int(m + 1)));
-        swap(work, data[i]);
-      }
-    } else if(strcmp(argv[1], "slide") == 0 && 0 < recur)
-      for(int i = 0; i < data.size(); i ++)
-        for(int j = 0; j < data[i].rows(); j ++)
-          for(int k = 0; k < data[i].cols(); k ++)
-            data[i](j, k) = num_t((int(data[i](j, k) * num_t(int(256))) << recur) & 0xff) +
-              num_t(int(data[i](j, k) * num_t(int(256))) >> (8 - recur));
-    else if((strcmp(argv[1], "slide") == 0 && recur < 0) || strcmp(argv[1], "nslide") == 0)
-      for(int i = 0, ns = ! strcmp(argv[1], "nslide"); i < data.size(); i ++)
-        for(int j = 0; j < data[i].rows(); j ++)
-          for(int k = 0; k < data[i].cols(); k ++)
-            data[i](j, k) = num_t(ns ? 0 : (int(data[i](j, k) * num_t(int(256))) << (8 - (- recur))) & 0xff) +
-              num_t(int(data[i](j, k) * num_t(int(256))) >> (- recur));
-    if(strcmp(argv[1], "nslide") == 0) {
-      data = normalize<num_t>(data);
-      for(int i = 0; i < data.size(); i ++)
-        data[i] *= pow(num_t(int(2)), - num_t(abs(recur)));
     }
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
         strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0 &&
-        strcmp(argv[1], "bump") != 0 && strcmp(argv[1], "nslide") != 0 ?
+        strcmp(argv[1], "bump") != 0 ?
         normalize<num_t>(data) : data,
         strcmp(argv[1], "limit") == 0 ? recur : 65535) )
       return - 1;
@@ -190,6 +181,8 @@ int main(int argc, const char* argv[]) {
         strcmp(argv[1], "reshape") == 0) &&
        ! loadp2or3<num_t>(datas, argv[4]))
       return - 1;
+    datac = rgb2xyz<num_t>(datac);
+    if(datas.size()) datas = rgb2xyz<num_t>(datas);
     if(strcmp(argv[1], "reshape") == 0) {
       const SimpleMatrix<num_t> datav(rgb2d<num_t>(datas));
       for(int i = 0; i < datac.size(); i ++)
@@ -201,15 +194,13 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reColor3<num_t>(datac[i], datas[i], count);
     else {
-      vector<SimpleMatrix<num_t> > xyzc(rgb2xyz<num_t>(datac));
-      vector<SimpleMatrix<num_t> > xyzs(rgb2xyz<num_t>(datas));
-      for(int i = 0; i < xyzc.size(); i ++)
-        xyzc[i] = strcmp(argv[1], "recolor") == 0 ?
-          reColor<num_t>(xyzc[i], xyzs[i], count, myatof(argv[6])) :
-          reColor<num_t>(xyzc[i], count, myatof(argv[5]));
-      datac = xyz2rgb<num_t>(xyzc);
+      for(int i = 0; i < datac.size(); i ++)
+        datac[i] = strcmp(argv[1], "recolor") == 0 ?
+          reColor<num_t>(datac[i], datas[i], count, myatof(argv[6])) :
+          reColor<num_t>(datac[i], count, myatof(argv[5]));
     }
-    if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5], normalize<num_t>(datac)))
+    if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5],
+        normalize<num_t>(xyz2rgb<num_t>(datac))))
       return - 1;
   } else if(strcmp(argv[1], "obj" ) == 0) {
     vector<SimpleMatrix<num_t> > data, mask;
@@ -219,7 +210,7 @@ int main(int argc, const char* argv[]) {
     SimpleMatrix<num_t> sd(rgb2d<num_t>(data));
     const int rows(sd.rows());
     const int cols(sd.cols());
-          vector<SimpleVector<num_t> > points(getTileVec<num_t>(move(sd)));
+    vector<SimpleVector<num_t> > points(getTileVec<num_t>(move(sd)));
     if(argv[1][0] == 'O')
       for(int i = 0; i < points.size(); i ++) points[i][2] = - points[i][2];
     saveobj<num_t>(points, num_t(rows), num_t(cols),
@@ -240,7 +231,7 @@ int main(int argc, const char* argv[]) {
     if(!loadp2or3<num_t>(bump, argv[6]))
       return - 2;
     assert(strlen("tilt" ) == strlen("sbox" ));
-    bump[0] = rgb2d<num_t>(bump);
+    if(1 < bump.size()) bump[0] = rgb2d<num_t>(bump);
     const SimpleMatrix<num_t> tilt0(tilt<num_t>(bump[0] * num_t(int(0)),
       triangles<num_t>(makeRefMatrix<num_t>(data[0], 1), bump[0],
         strncmp(argv[1], "sbox", strlen("sbox")) == 0 ?
@@ -271,12 +262,14 @@ int main(int argc, const char* argv[]) {
     if(!loadp2or3<num_t>(bump1, argv[9]))
       return - 2;
     const string outbase(argv[10]);
+    if(1 < bump0.size()) bump0[0] = rgb2d<num_t>(bump0);
+    if(1 < bump1.size()) bump1[0] = rgb2d<num_t>(bump1);
     const vector<SimpleVector<num_t> > shape0(vboxdst < 0
-      ? getHesseVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst))
-      : getTileVec<num_t>(rgb2d<num_t>(bump0), abs(vboxdst)));
+      ? getHesseVec<num_t>(bump0[0], abs(vboxdst))
+      : getTileVec<num_t>(bump0[0], abs(vboxdst)));
     const vector<SimpleVector<num_t> > shape1(vboxsrc < 0
-      ? getHesseVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc))
-      : getTileVec<num_t>(rgb2d<num_t>(bump1), abs(vboxsrc)));
+      ? getHesseVec<num_t>(bump1[0], abs(vboxsrc))
+      : getTileVec<num_t>(bump1[0], abs(vboxsrc)));
     const vector<match_t<num_t> > m(matchPartialR<num_t>(shape0, shape1, nsub));
     vector<SimpleMatrix<num_t> > out;
     out.resize(3);
@@ -419,15 +412,15 @@ int main(int argc, const char* argv[]) {
   return 0;
  usage:
   cout << "Usage:" << endl;
-  cout << argv[0] << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit|slide|nslide) <input.ppm> <output.ppm> <recur> <rot>" << endl;
-  cout << argv[0] << " cat <input0-4.ppm> ..." << endl;
+  cout << argv[0] << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << argv[0] << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
-  cout << argv[0] << " obj <input.ppm> <output.obj>" << endl;
   cout << argv[0] << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << argv[0] << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
   cout << argv[0] << " recolor <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm> <intensity>" << endl;
   cout << argv[0] << " recolor2 <num_shape_per_color> <input_color.ppm> <output.ppm> <intensity>" << endl;
   cout << argv[0] << " recolor3 <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
+  cout << argv[0] << " cat <input0-4.ppm> ..." << endl;
+  cout << argv[0] << " obj <input.ppm> <output.obj>" << endl;
   cout << argv[0] << " habit <in0.obj> <in1.obj> <out.obj>" << endl;
   return - 3;
 }
