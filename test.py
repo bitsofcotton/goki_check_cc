@@ -117,7 +117,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
     lsz = float(int(len(argv[6:])))
   else:
     # N.B. we need large image after to shrink.
-    lsz = float(int(len(argv[6:]))) * 16.
+    lsz = float(int(len(argv[6:]))) * 256.
   # N.B. once we had #f pixel number estimation, however we don't use them now.
   lsz /= bits
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g' or argv[2][- 3] == 'g' or argv[2][- 4] == 'g'):
@@ -183,11 +183,11 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   for f in list1:
     subprocess.call([argv[1], "bit", f, f + "-wg-bit." + ext, str(bits), "0"])
     list2.append(f + "-wg-bit." + ext)
+  curdir = os.path.basename(os.getcwd())
   if(argv[2][0] != 'P' and argv[2][0] != 'Q'):
     cmd = [argv[4], "p"]
     cmd.extend(list2)
     subprocess.call(cmd)
-    curdir = os.path.basename(os.getcwd())
     ctr = 0
     while(True):
       if(subprocess.call([argv[1], "bit", "predg" + str(ctr) + ".ppm", curdir + "-bit" + str(ctr) + ".ppm", str(- bits), "0"]) != 0):

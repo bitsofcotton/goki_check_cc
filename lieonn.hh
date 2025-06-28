@@ -1534,6 +1534,7 @@ template <typename T> static inline T ccot(const T& s) {
     typedef int64_t  myint;
     // XXX: typedef long double myfloat;
     typedef double myfloat;
+#  endif
     
     static inline myfloat absfloor(const myfloat& x) {
       if(myfloat(0) <= x) return floor(x);
@@ -1543,7 +1544,6 @@ template <typename T> static inline T ccot(const T& s) {
       if(myfloat(0) <= x) return ceil(x);
       return - ceil(- x);
     }
-#  endif
 # elif _FLOAT_BITS_ == 8
     typedef uint8_t myuint;
     typedef int8_t  myint;
@@ -2651,7 +2651,6 @@ template <typename T> static inline SimpleMatrix<T> log(const SimpleMatrix<T>& m
 }
 
 template <typename T> static inline SimpleMatrix<T> logSym(const SimpleMatrix<T>& x, const SimpleMatrix<T>& b) {
-  // XXX stub.
   assert(x.rows() == x.cols() && b.rows() == b.cols());
   assert(! (x.rows() % b.rows()) && ! (x.cols() % b.cols()));
   for(int i = 0; i < x.rows(); i ++)
@@ -2689,7 +2688,6 @@ template <typename T> static inline SimpleMatrix<T> logSym(const SimpleMatrix<T>
   Ux  = Ub.inverse()  * Ux;
   Uxt = Ubt.inverse() * Uxt;
   // N.B. Ux == Ua sqrt(diag(Lawork)) and same on right side.
-  // XXX stub:
     assert(0 && "log (symmetric matrix A, symmetric matrix B) : stub");
   return x;
 }
@@ -3112,7 +3110,11 @@ template <typename T> static inline SimpleVector<T> bin2R(const SimpleVector<T>&
   return res;
 }
 
+#if defined(_OLDCPP_)
+template <typename T> T sgn(const T& x) {
+#else
 template <typename T> const T& sgn(const T& x) {
+#endif
   static const T zero(0);
   static const T one(1);
   static const T mone(- T(int(1)));
@@ -3220,9 +3222,21 @@ template <typename T> static inline pair<SimpleVector<T>, T> makeProgramInvarian
   T ratio(0);
   for(int i = 0; i < res.size(); i ++)
     ratio += log(res[i] = binMargin<T>(res[i]));
+#if defined(_PINVARIANT_SYMMETRIC_LINEAR_)
+  // N.B. _PINVARIANT_SYMMETRIC_LINEAR_ makes invariant as a linear one
+  //      if binary input. this makes y=Ax (first digit) condition strictly.
+  //      to select this with binary input is to avoid nonlinear handling
+  //      on this.
+  for(int i = 0; i < res.size(); i ++)
+    ratio += log(T(int(1)) - res[i]);
+#endif
   // N.B. x_1 ... x_n == 1.
   // <=> x_1 / (x_1 ... x_n)^(1/n) ... == 1.
+#if defined(_PINVARIANT_SYMMETRIC_LINEAR_)
+  ratio = isfinite(ratio) ? exp(- ratio / T(2 * res.size())) : T(int(1));
+#else
   ratio = isfinite(ratio) ? exp(- ratio / T(res.size())) : T(int(1));
+#endif
   return make_pair(res *= ratio, ratio);
 }
 
@@ -3240,23 +3254,28 @@ template <typename T> static inline SimpleVector<T> revertProgramInvariant(const
   return res;
 }
 
-template <typename T, bool r2bin> static inline T revertByProgramInvariant(SimpleVector<T> work, const SimpleVector<T>& invariant, const int& idx) {
+template <typename T, bool r2bin, bool nonlinear> static inline T revertByProgramInvariant(SimpleVector<T> work, const SimpleVector<T>& invariant) {
   static const T one(int(1));
   static const T two(int(2));
+  const int idx(work.size() - 1);
   T last(sqrt(work.dot(work)));
   if(invariant[idx] == T(int(0))) return work[idx - 1];
-  for(int ii = 0;
-          ii < 2 * int(- log(SimpleMatrix<T>().epsilon()) / log(two) )
-          && sqrt(work.dot(work) * SimpleMatrix<T>().epsilon()) <
-               abs(work[work.size() - 1] - last); ii ++) {
-    last = work[idx];
-    const pair<SimpleVector<T>, T> work2(makeProgramInvariant<T>(r2bin ? R2bin<T>(work) : work, one));
-    work[idx] = r2bin ? bin2R<T>(revertProgramInvariant<T>(make_pair(
-      - (invariant.dot(work2.first) - invariant[idx] * work2.first[idx]) /
-        invariant[idx], work2.second)) ) :
-      revertProgramInvariant<T>(make_pair(
+  if(nonlinear) {
+    for(int ii = 0;
+            ii < 2 * int(- log(SimpleMatrix<T>().epsilon()) / log(two) )
+            && sqrt(work.dot(work) * SimpleMatrix<T>().epsilon()) <
+                 abs(work[idx] - last); ii ++) {
+      last = work[idx];
+      const pair<SimpleVector<T>, T> work2(makeProgramInvariant<T>(r2bin ? R2bin<T>(work) : work, one));
+      work[idx] = revertProgramInvariant<T>(make_pair(
         - (invariant.dot(work2.first) - invariant[idx] * work2.first[idx]) /
           invariant[idx], work2.second));
+      if(r2bin) work[idx] = R2bin<T>(work[idx]);
+    }
+  } else {
+    work[idx] = - (invariant.dot(work) -
+      invariant[idx] * work[idx]) / invariant[idx];
+    if(r2bin) work[idx] = R2bin<T>(work[idx]);
   }
   return work[idx];
 }
@@ -3398,7 +3417,7 @@ template <typename T> static inline vector<vector<SimpleVector<T> > > delta(cons
 // N.B. F_2 case #f fixation on R^indim into R^result fixation.
 //      if we object F_3 or more accuracy, we need to increase the result.
 // N.B. there's also analogy to this as {0,1}^m*n operator orthogonalization
-//      invariant maximum dimensions.
+//      invariant residue maximum dimensions. (sqrt(3!) <~ (#{0,1})^2).
 // N.B. also the binary 2 operand opereator is described in R^4 vector
 //      as a invariant.
 static inline int ind2vd(const int& indim) {
@@ -3768,7 +3787,7 @@ template <typename T> static inline T p012next(const SimpleVector<T>& d) {
   return sscore == zero ? sscore : res / sscore;
 }
 
-// N.B. f in C1 case, F(z,theta) := complex(f(z+~z),f(z-~z))*tan(theta) in C1,
+// N.B. f in C1 case, F(z,theta) := complex(f(z+~z),f(z-~z)*tan(theta)) in C1,
 //      z in C. For each theta, exists F: holomorphic function at some axis
 //      that real axis is same as f. so |theta-pi/4|<=epsilon case,
 //      we have a area, with guzmer's inequation and edit integrate path.
@@ -3780,8 +3799,8 @@ template <typename T> static inline T p012next(const SimpleVector<T>& d) {
 //      also we use weak differential taylor series on them.
 //
 // N.B. we can calculate real F as
-//   exp(Sum log(z-|z|cis(pi/4+t_k)))*
-//     (Sum((f(z+~z)+i*f(z-~z)*tan(pi/4+t_k))/(z-|z|cis(pi/4+t_k))
+//   exp(Sum log(z-|z|cis(pi/4+t_k)))
+//     Sum((f(z+~z)+i*f(z-~z)*tan(pi/4+t_k))/(z-|z|cis(pi/4+t_k)))
 //   =: f(z+~z)*g(z)+f(z-~z)*h(z)
 //   so replace on (1+i)t, F(x):=(f(x)*real(g(x))-f(x)*imag(h(x))) + imaginary
 //   F is holomorphic on some small range (f in C0) and
@@ -3791,7 +3810,7 @@ template <typename T> static inline T p012next(const SimpleVector<T>& d) {
 //   some small area.
 // N.B. we can add some of the conditions on x_next := integrate^x f(x_now)
 //   form with x'_next := integrate^x (f_x'now - alpha) + beta transforms.
-// N.B. also this is left differential one and periodical right differentia one
+// N.B. also this is left differential one and periodical right differential one
 //   average.
 // N.B. there can be 0 invariant chain, so they can be caused by move average
 //   they caused return to average works very well.
@@ -3806,7 +3825,7 @@ template <typename T> static inline T p012next(const SimpleVector<T>& d) {
 //   2^y:=A*(2^x) A in R^(N*N), 2^x in {0,1}^N.
 //   this concludes the recursive structure as:
 //     Sum A_k*cosh(a_k x)+B_k*sinh(b_k x) because A^n calculation.
-template <typename T> T p0next(const SimpleVector<T>& in) {
+template <typename T> static inline T p0next(const SimpleVector<T>& in) {
   static const int step(1);
   return pnextcacher<T>(in.size(), ((step - 1) % in.size()) + 1).dot(in);
 }
@@ -3823,7 +3842,7 @@ template <typename T, T (*f)(const SimpleVector<T>&)> static inline T invNext(co
 }
 
 // N.B. some of the essential point hack.
-template <typename T, T (*f)(const SimpleVector<T>&)> T northPoleNext(const SimpleVector<T>& in) {
+template <typename T, T (*f)(const SimpleVector<T>&)> static inline T northPoleNext(const SimpleVector<T>& in) {
   static const T zero(int(0));
   static const T one(int(1));
   static const T M(atan(one / sqrt(SimpleMatrix<T>().epsilon())));
@@ -3845,7 +3864,7 @@ template <typename T, T (*f)(const SimpleVector<T>&)> T northPoleNext(const Simp
   return in[in.size() - 1];
 }
 
-template <typename T, bool avg, T (*f)(const SimpleVector<T>&)> T sumCNext(const SimpleVector<T>& in) {
+template <typename T, bool avg, T (*f)(const SimpleVector<T>&)> static inline T sumCNext(const SimpleVector<T>& in) {
   SimpleVector<T> ff(in);
   for(int i = 1; i < ff.size(); i ++)
     ff[i] += ff[i - 1];
@@ -3872,7 +3891,7 @@ template <typename T, T (*f)(const SimpleVector<T>&)> static inline T logCNext(c
   return f(gg) * ff[ff.size() - 1];
 }
 
-template <typename T> T p0max0next(const SimpleVector<T>& in) {
+template <typename T> static inline T p0max0next(const SimpleVector<T>& in) {
   // N.B. on existing taylor series.
   //      if the sampling frequency is not enough, middle range of the original
   //      function frequency (enough large bands) will effect prediction fail.
@@ -3885,7 +3904,7 @@ template <typename T> T p0max0next(const SimpleVector<T>& in) {
     invNext<T, sumCNext<T, true, p0next<T> > >(in)) / T(int(2));
 }
 
-template <typename T> T p0maxNext(const SimpleVector<T>& in) {
+template <typename T> static inline T p0maxNext(const SimpleVector<T>& in) {
   // N.B. we only handle lebesgue measurable and R(finite)-valued functions.
   //      so worse structures are handled by p01next.
   // N.B. this is o-minimal
@@ -3893,45 +3912,41 @@ template <typename T> T p0maxNext(const SimpleVector<T>& in) {
   //      continuous structure causes dim K == 1,2,4,8 real closed field
   //      if they're semi-ordered one.
   return sumCNext<T, true, sumCNext<T, false, northPoleNext<T, p0max0next<T> > > >(in);
-  // N.B. plain complex form.
+  // N.B. plain complex form doesn't improve enough result.
   // return sumCNext<T, true, sumCNext<T, false, logCNext<T, logCNext<T, northPoleNext<T, p0max0next<T> > > > > >(in);
   // N.B. we need only once P0DFT in general because associative condition
   //      is necessary for input ordering even we work with sedenion.
-  // N.B. however, with linear prediction, P0DFT's moving coefficient prediction
-  //      is equivalent to original one.
-  // N.B. we eliminated them. we're better to handle their structures than here.
+  //      also this eliminates one dimension per each of complex-formed input
+  //      on f as a continuous thing.
   // N.B. on any R to R into reasonable C^omega.
   // N.B. we treat periodical part as non aligned complex arg part.
-  // N.B. we make the prediction on (delta) summation.
-  // N.B. we take average as origin of input.
-  // N.B. this needs huge memory to run.
+  // N.B. we make the prediction on (delta) summation also take average as
+  //      origin of input.
   // N.B. either there's plenty of a space to extend this with
   //      uparrow, downarrow operations they causes the result in H\C if second
-  //      operand is in C\R, also they causes 3-variable function causes
-  //      f(x,f(x),states) handled but states isn't continuous enough in general.
-  //      however, they can cause only symmetric matrices P0DFT prediction
-  //      variant.
+  //      operand is in C\R.
+  // N.B. this needs huge memory to run.
   // return sumCNext<T, true, sumCNext<T, false, logCNext<T, logCNext<T, P0DFT<T, p0max0next<T> > > > > >(in);
 }
 
 // Get invariant structure that
 // R-register computer with deterministic calculation with nonlinear == true.
 // cf. bitsofcotton/randtools .
-// N.B. with cultivated == true condition, we feed root of the description
-//      we can use to id. data amount. we need at most 3 depth in normal.
-// N.B. we select deep enough one because of the timing related attack jammer
-//      exists they can select arbitrary timing also such of the stream exists.
-//      this isn't avoid completely the condition, so it's only to ease
-//      our mind with much of input stream size in probable.
+// N.B. with persistent == true condition, we feed root of the description
+//      we can use to id. data amount. if the stream is cultivated enough
+//      we sentry with this option but this can slips because we decompose
+//      each by R^4 invariant, so they'll result clustered eigen vectors.
+//      with digging depth enough, we try to avoid them but not so if the
+//      input stream isn't have structural continuity.
 // N.B. if input stream is something sparse with jammer generated, the varlen
 //      we need is far larger than this. this condition can be eliminated with
 //      in/output (de)?compression ask shirks the result of algorithms to some
 //      of the upper cardinals.
-// N.B. if the original tream doesn't have Lebesgue measureable condition in
-//      discrete, the description f(x):=<a,x> mod p has the hyperbolic
-//      triangular function complemented region.
+// N.B. if the original stream doesn't have Lebesgue measureable condition in
+//      discrete, the description f(x):=<a,x> first p-adic digit has the
+//      hyperboblic triangular function complemented region.
 // N.B. this is the analogy to toeplitz matrix inveresion with singular one.
-// N.B. if the unction has internal states variable that to be projected into
+// N.B. if the function has internal states variable that to be projected into
 //      series, they're looked as <a,x>+<b,y>==<a,x>==0, y is internal states.
 //      so this causes A*x==B*y, so increasing dimension causes ok result.
 //      however, we're in invariant condition (de)?compression destroys,
@@ -3943,7 +3958,7 @@ template <typename T> T p0maxNext(const SimpleVector<T>& in) {
 //      ||Ax-1*x'||<epsilon condition.
 // N.B. the worse structures are handled by skipX concerns or long enough p012
 //      preprocess.
-template <typename T, const bool cultivated, const bool nonlinear> T p01next(const SimpleVector<T>& in) {
+template <typename T, const bool nonlinear, const bool persistent> T p01next(const SimpleVector<T>& in) {
   static const int step(1);
   static const T zero(0);
   static const T one(1);
@@ -3951,9 +3966,9 @@ template <typename T, const bool cultivated, const bool nonlinear> T p01next(con
   // N.B. division accuracy glitch.
   const T nin(sqrt(in.dot(in) * (one + SimpleMatrix<T>().epsilon())));
   if(! isfinite(nin) || nin == zero) return zero;
-  const int varlen(ind2vd(in.size()));
+  const int varlen(nonlinear ? ind2vd(in.size()) : ind2vd(in.size()) * 2);
   // N.B. we use whole data information size on each single layer's size.
-  SimpleMatrix<T> invariants(cultivated ?
+  SimpleMatrix<T> invariants(persistent ?
       (in.size() / (varlen + 1) < 8 + step ? 1 : in.size() / (varlen + 1)) : 1,
       nonlinear ? varlen + 2 : varlen);
   invariants.O();
@@ -3966,6 +3981,10 @@ template <typename T, const bool cultivated, const bool nonlinear> T p01next(con
       toeplitz.row(i - i0) = nonlinear ? makeProgramInvariant<T>(R2bin<T>(work),
         T(i + 1) / T(toeplitz.rows() + i0 + 1) ).first : binMargin<T>(work);
     }
+    // N.B. this untangles input stream into invariant but the accuracy
+    //      we make the hypothesis:
+    //      ||invariant made stream||_sup <~ ||f||_sup / varlen!.
+    //      this is because it's toeplitz made stream.
     invariants.row(i0) = linearInvariant<T>(toeplitz);
   }
   SimpleVector<T> invariant(invariants.cols());
@@ -3974,7 +3993,7 @@ template <typename T, const bool cultivated, const bool nonlinear> T p01next(con
   else {
     invariant.O();
     for(int i = 0; i < invariants.cols(); i ++)
-      invariant[i] = p01next<T, cultivated, nonlinear>(invariants.col(i));
+      invariant[i] = p01next<T, true, persistent>(invariants.col(i));
   }
   if(invariant[varlen - 1] == zero)
     return in[in.size() - 1];
@@ -3982,9 +4001,7 @@ template <typename T, const bool cultivated, const bool nonlinear> T p01next(con
   for(int i = 1; i < work.size(); i ++)
     work[i - 1] = in[i - work.size() + in.size()];
   work[work.size() - 1] = zero;
-  if(nonlinear)
-    return revertByProgramInvariant<T, true>(work, invariant, work.size() - 1);
-  return - invariant.dot(work) / invariant[varlen - 1];
+  return revertByProgramInvariant<T, nonlinear, nonlinear>(work, invariant);
 }
 
 // N.B. class-capsules for serial stream.
@@ -4539,7 +4556,7 @@ template <typename T> static inline bool loadstub(istream& input, const int& nma
   return true;
 }
 
-template <typename T> bool loadp2or3(vector<SimpleMatrix<T> >& data, istream& input) {
+template <typename T> static inline bool loadp2or3(vector<SimpleMatrix<T> >& data, istream& input) {
   string line;
   string line2;
   string line3;
@@ -4586,7 +4603,7 @@ template <typename T> bool loadp2or3(vector<SimpleMatrix<T> >& data, istream& in
   return true;
 }
 
-template <typename T> bool loadp2or3(vector<SimpleMatrix<T> >& data, const char* filename) {
+template <typename T> static inline bool loadp2or3(vector<SimpleMatrix<T> >& data, const char* filename) {
   ifstream input;
   input.open(filename);
   if(input.is_open()) {
@@ -4602,7 +4619,7 @@ template <typename T> bool loadp2or3(vector<SimpleMatrix<T> >& data, const char*
   return true;
 }
 
-template <typename T> bool savep2or3(const char* filename, const vector<SimpleMatrix<T> >& data, const int& depth = 65535) {
+template <typename T> static inline bool savep2or3(const char* filename, const vector<SimpleMatrix<T> >& data, const int& depth = 65535) {
   ofstream output;
   output.open(filename);
   if(output.is_open()) {
@@ -4836,7 +4853,9 @@ template <typename T> static inline SimpleMatrix<T> center(const SimpleMatrix<T>
 //      additional states on given input range.
 // N.B. if we're in result is in control condition, we need to output at least
 //      a 3 on the prediction.
-template <typename T> static inline vector<SimpleVector<T> > pFeedTranspose(const vector<SimpleVector<T> >& in0) {
+
+// for speed purpose.
+template <typename T> static inline vector<SimpleVector<T> > static inline pFeedTranspose(const vector<SimpleVector<T> >& in0) {
   assert(in0.size());
   vector<SimpleVector<T> > in;
   in.resize(in0[0].size());
@@ -4876,7 +4895,7 @@ template <typename T, int nprogress> static inline SimpleVector<T> predv0(const 
 #pragma omp parallel for schedule(static, 1)
 #endif
   for(int i = 0; i < sz; i ++)  {
-    pair<SimpleVector<T>, T>  work(makeProgramInvariant<T>(in[i]));
+    pair<SimpleVector<T>, T> work(makeProgramInvariant<T>(in[i]));
     dupin.emplace_back(work.first.subVector(0, in[i].size()));
     seconds[i] = work.second;
   }
@@ -4923,7 +4942,7 @@ template <typename T, int nprogress> vector<SimpleVector<T> > predvq(const vecto
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
-  for(int i = 0; i < seconds.size(); i ++)  {
+  for(int i = 0; i < in.size(); i ++)  {
     pair<SimpleVector<T>, T> work(makeProgramInvariant<T>(in[i]));
     intran.emplace_back(work.first.subVector(0, in[i].size()));
     seconds[i] = work.second;
@@ -4933,12 +4952,11 @@ template <typename T, int nprogress> vector<SimpleVector<T> > predvq(const vecto
   res.resize(in.size() - (start + step), SimpleVector<T>(in[0].size()).O());
   SimpleVector<SimpleVector<T> > p;
   p.entity.reserve(in.size());
-  vector<SimpleVector<T> > intranbuf(pFeedTranspose<T>(intran));
-  intran = move(intranbuf);
+  intran = pFeedTranspose<T>(intran);
   for(int i = 1; i < start; i ++)
     p.entity.emplace_back(SimpleVector<T>(in[0].size()).O());
   for(int i = start; i <= in.size(); i ++)
-    p.entity.emplace_back(predv00<T, nprogress>(intran, i, seconds, to_string(i) + string(" / ") + to_string(in.size()) + strloop));
+    p.entity.emplace_back(predv00<T, nprogress>(intran, i, seconds, to_string(i) + string(" / ") + to_string(in.size()) + strloop) );
   SimpleMatrix<T> ip(res[0].size(), p.size());
   intran.resize(0);
   ip.O();
@@ -5087,7 +5105,7 @@ template <typename T, vector<SimpleVector<T> > (*p)(const vector<SimpleVector<T>
 }
 
 // N.B. for given static input stream with the unique one function recursion
-//      hypothesis, also if there's timint-related attacks, we intend to shuffle
+//      hypothesis, also if there's timing-related attacks, we intend to shuffle
 //      the structure by skipping p-steps to reorder some structures they might
 //      have the intension to attack our predictor.
 // N.B. for n-markov generated input, n*n < in.size() works better with us.
@@ -5131,7 +5149,6 @@ template <typename T, int nprogress> static inline SimpleVector<T> predv4(vector
     inw.emplace_back(move(inww.first));
     nwork[i] = inww.second;
   }
-  const T nseconds(sqrt(nwork.dot(nwork)));
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -5146,15 +5163,16 @@ template <typename T, int nprogress> static inline SimpleVector<T> predv4(vector
       vw.setVector(0, inw[j * 2].subVector(0, 4));
       vw[4] = inw[j * 2 + 1][i];
       toeplitz.row(j) =
-        makeProgramInvariant<T>(R2bin<T>(vw), T(j) / T(int(toeplitz.rows() + 1)) ).first;
+        makeProgramInvariant<T>(R2bin<T>(vw), T(j + 1) / T(int(toeplitz.rows() + 1)) ).first;
     }
     SimpleVector<T> work(5);
     work.O();
     work.setVector(0, inw[inw.size() - 1].subVector(0, 4));
     work[work.size() - 1] = zero;
-    res[i] = revertByProgramInvariant<T, true>(work,
-      linearInvariant<T>(toeplitz), 4);
+    res[i] = revertByProgramInvariant<T, true, true>(work,
+      linearInvariant<T>(toeplitz));
   }
+  const T nseconds(sqrt(nwork.dot(nwork)));
   return revertProgramInvariant<T>(make_pair(
     makeProgramInvariant<T>(normalize<T>(res)).first,
       p01next<T, true, true>(nwork / nseconds) * nseconds));
@@ -5183,19 +5201,20 @@ template <typename T, int nprogress> static inline SimpleVector<T> predv4(vector
 //       | num_t::operator *,/         | 14 | 1 | in         |
 //       | num_t::operator +,-         | 15 | 1 | in         |
 //       | num_t::bit operation        | 16 | 1 | in         |
-// (1)   | divide by program invariant | 3  | w | in         |
-//       | recursive                   | 4+ | w | in * recur |
-//       | makeProgramInvariant        | 5+ | p | in         |
+// (1)   | after burn with p0next      | 3  | w | in         |
+//       | divide by program invariant | 4  | w | in         |
+//       | recursive                   | 6  | w | in * recur |
+//       | makeProgramInvariant        | 7  | p | in         |
 //       | linearInvariant             | -  | - | -          |
-//       |   - QR decomposition        | 8+* | s | > in * 4   |
-//       |   - orthogonalization       | 11+*| p | > in*4*3/2 |
-//       |   - solve                   | 14+*| p | > (4 * 4)  |
-//       | num_t::operator *,/         | 15+ | 1 | in         |
-//       | num_t::operator +,-         | 16+ | 1 | in         |
-//       | num_t::bit operation        | 17+ | 1 | in         |
-// N.B. so total layer is {16, 17, > 17+recur} from logical boolean operation
+//       |   - QR decomposition        | 9* | s | > in * 4!  |
+//       |   - orthogonalization       | 11*| p | > in * 4!  |
+//       |   - solve                   | 13*| p | > (4 * 4)  |
+//       | num_t::operator *,/         | 14 | 1 | in         |
+//       | num_t::operator +,-         | 15 | 1 | in         |
+//       | num_t::bit operation        | 16 | 1 | in         |
+// N.B. so total layer is 16~17 from logical boolean operation
 //      explicitly stacked including if-them operation. also the data amount
-//      is: (p^-1(in) * PRNG) * in + {2*3+10, > 15+recur} * in
+//      is: (p^-1(in) * PRNG) * 2 * {2*3+10, > 7+recur+4!*2} * in.
 // N.B. the data amount used as internal calculation copied 3*in for 2nd order
 //      saturation, 6 layers for multiple layer algebraic copying structure
 //      saturation, 9 layers for enough to decompose inverse of them.
@@ -5203,10 +5222,9 @@ template <typename T, int nprogress> static inline SimpleVector<T> predv4(vector
 //      first input stream has worse high complexity or some of the tanglement
 //      number based accuracy reason exists case.
 // N.B. the #f counting maximum compressed f(in,out,states,unobserved) has
-//      12~16 bit entropy, so recur == 1 causes layer# exceeds the structure
-//      so we only needs 12*{1,2,4} + alpha inputs whole in the case.
-//      (recount done, orthogonalization needs non O(1) layer also non O(n)
-//       data amount. (*): we calculate matrix operation layer as O(n^2) to be
+//      12~16 bit entropy, they causes layer# exceeds the structure
+//      so we only needs 26 inputs whole in the case.
+//      (recount twice, (*): we calculate matrix operation layer as O(mn) to be
 //       a unit and lineary plain counting. this is because 2nd order of vector
 //       operation counting. overall this is counting (2^p)^(n*n) layers.
 //       so they causes f-fixation layer counting.)
@@ -5215,9 +5233,10 @@ template <typename T, int nprogress> static inline SimpleVector<T> predv4(vector
 //      so our function in another words some measureable condition is targetted
 //      in discrete condition, the best result we can get through this predictor
 //      is 2/3 probability.
-// N.B. otherwise, the static input stream can have 1 a.e. output as some of the//      shrinked output theirselves.
+// N.B. otherwise, the static input stream can have 1 a.e. output as some of the
+//      shrinked output theirselves.
 // N.B. we need to shirk internal states upper bound size into graphics size
-//      before to compute. we're doing this with goki_check_cc:test.py pred+?+?
+//      before to compute. we're doing this with goki_check_cc:test.py pred
 //      command before to calculate. this is to omit what bitstream next in
 //      surface.
 // N.B. after of all, the dynamic jammer can be avoided if the predictor entropy
@@ -5238,22 +5257,21 @@ template <typename T, int nprogress> static inline SimpleVector<T> predv4(vector
 //      so jammers can attack our predictors' any of the layer, so we should
 //      output each layer apply/not apply cases but this causes combination
 //      explode.
-//      this is also be able to verified by x+ := A x mod 2, x in {0,1}^n,
-//      A in (2^p)^(n*n) operation runs any of the input causes sign bit result
-//      can be {1/3,1/3,1/3} in the best.
+//      this is also be able to verified by x+ := A x (first binary digit),
+//      x in {0,1}^n, A in (2^p)^(n*n) operation runs any of the input causes 
+//      sign bit result can be {1/3,1/3,1/3} in the best.
 // N.B. so the input stream has the meaning payload to the datastream.
 //      ongoing neural networks mimics them as plausible one formatter so they
 //      stands on the first intension as tunable ones.
 //      our predictor stands on measureable condition satisfied or not.
 // N.B. also we close all of the entropy is from input stream itself condition
 //      predictor with this but there might be many another concepts nor
-//      implementations. so we should fight with computation speed matter next.
+//      implementations.
 //      the masp2catg or goki_check_cc:test.py [PQ]redg doing one of this but
-//      not optimal ones.
-// N.B. we want to backport bitsofcotton/specific into here, but implementation
-//      isn't now.
+//      not optimal ones. also we want to backport bitsofcotton/specific into
+//      here, but implementation isn't now.
 
-template <typename T, bool skipx = false> vector<vector<SimpleVector<T> > > predVec(vector<vector<SimpleVector<T> > >& in0) {
+template <typename T, bool skipx> vector<vector<SimpleVector<T> > > predVec(vector<vector<SimpleVector<T> > >& in0) {
   assert(in0.size() && in0[0].size() && in0[0][0].size());
   vector<SimpleVector<T> > in;
   in.resize(in0.size());
@@ -5283,12 +5301,12 @@ template <typename T, bool skipx = false> vector<vector<SimpleVector<T> > > pred
   return move(res);
 }
 
-template <typename T> static inline vector<vector<SimpleVector<T> > > predVec(const vector<vector<SimpleVector<T> > >& in0) {
+template <typename T, bool skipx> static inline vector<vector<SimpleVector<T> > > predVec(const vector<vector<SimpleVector<T> > >& in0) {
   vector<vector<SimpleVector<T> > > res(in0);
-  return predVec<T>(res);
+  return predVec<T, skipx>(res);
 }
 
-template <typename T, bool skipx = false> vector<vector<SimpleMatrix<T> > > predMat(vector<vector<SimpleMatrix<T> > >& in0) {
+template <typename T, bool skipx> vector<vector<SimpleMatrix<T> > > predMat(vector<vector<SimpleMatrix<T> > >& in0) {
   assert(in0.size() && in0[0].size() && in0[0][0].rows() && in0[0][0].cols());
   vector<SimpleVector<T> > in;
   in.resize(in0.size());
@@ -5325,12 +5343,12 @@ template <typename T, bool skipx = false> vector<vector<SimpleMatrix<T> > > pred
   return move(res);
 }
 
-template <typename T> static inline vector<vector<SimpleMatrix<T> > > predMat(const vector<vector<SimpleMatrix<T> > >& in0) {
+template <typename T, bool skipx> static inline vector<vector<SimpleMatrix<T> > > predMat(const vector<vector<SimpleMatrix<T> > >& in0) {
   vector<vector<SimpleMatrix<T> > > res(in0);
-  return predMat<T>(res);
+  return predMat<T, skipx>(res);
 }
 
-template <typename T, bool skipx = false> vector<SimpleSparseTensor(T) > predSTen(vector<SimpleSparseTensor(T) >& in0, const vector<int>& idx) {
+template <typename T, bool skipx> vector<SimpleSparseTensor(T) > predSTen(vector<SimpleSparseTensor(T) >& in0, const vector<int>& idx) {
   assert(idx.size() && in0.size());
   // N.B. we don't do input scaling.
   // N.B. we should use each bit extended input stream but not now.
@@ -5486,7 +5504,7 @@ template <typename T> bool saveobj(const vector<SimpleVector<T> >& data, const T
   return true;
 }
 
-template <typename T> bool loadobj(vector<SimpleVector<T> >& data, vector<SimpleVector<int> >& polys, const char* filename) {
+template <typename T> static inline bool loadobj(vector<SimpleVector<T> >& data, vector<SimpleVector<int> >& polys, const char* filename) {
   ifstream input;
   input.open(filename);
   if(input.is_open()) {
@@ -7190,8 +7208,8 @@ template <typename T, typename U> vector<gram_t<U> > lword<T, U>::compute(const 
 //   class. however this also needs uniqueness of the descriptor condition.
 //   we need materials and tables to make brand-new data from input.
 //   this needs entity space and glues other than dictating.
-// undone: we can focus K^{4x4} (as aa symbol) :=
-//   { {A|#A<infty},N,R,{f|f in 2^$}}^4 as a description base.
+// undone: we can focus K^{4x4} (as a symbol) :=
+//   { {A|#A<infty},N,R,{f|f in 2^R}}^4 as a description base.
 //   this leads {K^{4x4},K^{4x4},f,t}^n for series of input.
 //   there'a a analogy {category,relation,geometry} ~
 //   {intention start/end, binary op on intention to intention,
@@ -7294,7 +7312,7 @@ public:
   inline bool          operator != (const corpus<T, U>& other) const {
     return corpust != other.corpust;
   }
-  T             cdot(const corpus<T, U>& other) const {
+  inline T cdot(const corpus<T, U>& other) const {
     T res(0);
     const map<int, SimpleSparseVector<SimpleSparseVector<T> > >& oi0(
       other.corpust.iter());
@@ -7313,7 +7331,7 @@ public:
     }
     return res;
   }
-  T             absmax() const {
+  inline T absmax() const {
     T res(0);
     const map<int, SimpleSparseVector<SimpleSparseVector<T> > >& ci0(
       corpust.iter());
@@ -7329,7 +7347,7 @@ public:
     }
     return res;
   }
-  corpus<T, U>& reDig(const T& ratio) {
+  inline corpus<T, U>& reDig(const T& ratio) {
     map<int, SimpleSparseVector<SimpleSparseVector<T> > >& ci0(corpust.iter());
     for(typename map<int, SimpleSparseVector<SimpleSparseVector<T> > >::iterator
           itr0(ci0.begin()); itr0 != ci0.end(); ++ itr0) {
@@ -7343,7 +7361,7 @@ public:
     }
     return *this;
   }
-  corpus<T, U> simpleThresh(const T& ratio) const {
+  inline corpus<T, U> simpleThresh(const T& ratio) const {
     assert(T(int(0)) <= ratio);
     const T thisabsmax(absmax());
     const vector<int> okidx(countIdx(ratio * thisabsmax));
@@ -7371,7 +7389,7 @@ public:
       w[i] = sqrt(SV.row(i).dot(SV.row(i)));
     return w;
   }
-  vector<int>  countIdx(const T& thresh = T(0)) const {
+  inline vector<int> countIdx(const T& thresh = T(0)) const {
     vector<int> okidx;
     const map<int, SimpleSparseVector<SimpleSparseVector<T> > >& ci0(
       corpust.iter());
@@ -7430,17 +7448,132 @@ public:
     corpus<T, U> plus(*this);
     return plus.absfy().serializeSub(plus.countIdx(T(int(0))));
   }
+  inline corpus<T, U>& absfy() {
+    const map<int, SimpleSparseVector<SimpleSparseVector<T> > >& pi0(
+      corpust.iter());
+    for(typename map<int, SimpleSparseVector<SimpleSparseVector<T> > >::const_iterator
+          itr0(pi0.begin()); itr0 != pi0.end(); ++ itr0) {
+      const map<int, SimpleSparseVector<T> >& pi1(itr0->second.iter());
+      for(typename map<int, SimpleSparseVector<T> >::const_iterator itr1(pi1.begin());
+          itr1 != pi1.end(); ++ itr1) {
+        const map<int, T>& pi2(itr1->second.iter());
+        for(typename map<int, T>::const_iterator itr2(pi2.begin()); itr2 != pi2.end(); ++ itr2)
+          if(itr2->second < T(0)) {
+            // N.B. we estimate minus sign on the tensor as to be reverse order.
+            corpust[itr1->first][itr0->first][itr2->first] -= itr2->second;
+            corpust[itr0->first][itr1->first][itr2->first]  = T(int(0));
+          }
+      }
+    }
+    return *this = simpleThresh(T(int(0)));
+  }
+  inline pair<T, T> compareStructure(const corpus<T, U>& src, const T& thresh = T(1e-4), const T& thresh2 = T(.125)) const {
+    // get H-SVD singular values for each of them and sort:
+    const SimpleVector<T> s0(singularValues()), s1(src.singularValues());
+    // get compared.
+    pair<T, T> result;
+    result.first = result.second = T(0);
+    SimpleMatrix<T> S0(s0.size(), s0.size());
+    SimpleMatrix<T> S1(s1.size(), s1.size());
+    for(int i = 0; i < S0.rows(); i ++)
+      for(int j = 0; j < S0.cols(); j ++) {
+        S0(i, j) = s0[i] / s0[j];
+        if(!isfinite(S0(i, j)) || T(1) / thresh < abs(S0(i, j)))
+          S0(i, j) = T(0);
+      }
+    for(int i = 0; i < S1.rows(); i ++)
+      for(int j = 0; j < S1.cols(); j ++) {
+        S1(i, j) = s1[i] / s1[j];
+        if(!isfinite(S1(i, j)) || T(1) / thresh < abs(S1(i, j)))
+          S1(i, j) = T(0);
+      }
+    const SimpleVector<T> ss0(singularValues(S0));
+    const SimpleVector<T> ss1(singularValues(S1));
+    int i(0), j(0);
+    for( ; i < ss0.size() && j < ss1.size(); )
+      if(abs(ss0[i] - ss1[j]) / max(abs(ss0[i]), abs(ss1[i])) < thresh2) {
+        result.first  += ss0[i] * ss0[i] + ss1[j] * ss1[j];
+        i ++, j ++;
+      } else {
+        result.second += ss0[i] * ss0[i] + ss1[j] * ss1[j];
+        if(ss0[i] > ss1[j])
+          i ++;
+        else
+          j ++;
+      }
+    for( ; i < ss0.size(); i ++)
+      result.second += ss0[i] * ss0[i];
+    for( ; j < ss1.size(); j ++)
+      result.second += ss1[j] * ss1[j];
+    return result;
+  }
   corpus<T, U>  withDetail(const U& word, const corpus<T, U>& other, const T& thresh = T(0)) const;
   // N.B. should be inverse of withDetail but not so.
   corpus<T, U>  abbrev(const U& word, const corpus<T, U>& work, const T& thresh = T(0)) const;
-  pair<T, T>    compareStructure(const corpus<T, U>& src, const T& thresh = T(1e-4), const T& thresh2 = T(.125)) const;
-  corpus<T, U>& absfy();
 
   // N.B. this should not be dense, if dense, they say nothing without dictation.
   Tensor corpust;
 private:
-  SimpleVector<T> singularValues() const;
-  U     serializeSub(const vector<int>& idxs) const;
+  inline SimpleVector<T> singularValues() const {
+    SimpleMatrix<T> planes(words.size(), words.size());
+    for(int i = 0; i < words.size(); i ++) {
+      SimpleMatrix<T> buf(words.size(), words.size());
+      for(int j = 0; j < words.size(); j ++) {
+        for(int k = 0; k < words.size(); k ++)
+          if(isfinite((const_cast<const Tensor&>(corpust))[i][j][k]))
+            buf(k, j) = (const_cast<const Tensor&>(corpust))[i][j][k];
+          else {
+            cerr << "nan" << flush;
+            buf(k, j) = T(0);
+          }
+        for(int k = words.size(); k < buf.rows(); k ++)
+          buf(k, j) = T(0);
+      }
+      planes.col(i) = singularValues(buf);
+    }
+    return singularValues(planes);
+  }
+  inline U serializeSub(const vector<int>& idxs) const {
+    cerr << "." << flush;
+    if(idxs.size() <= 1) {
+      if(idxs.size())
+        return words[idxs[0]];
+      return U();
+    }
+    vector<pair<int, int> > score;
+    score.reserve(idxs.size());
+    // N.B. i0 - i1 - i2 is stored in corpust[i0][i2][i1].
+    for(int i = 0; i < idxs.size(); i ++) {
+      int lscore(0);
+      for(int j = 0; j < idxs.size(); j ++)
+        if(const_cast<const Tensor&>(corpust)[idxs[j]].iter().size()) {
+          for(int k = 0; k < idxs.size(); k ++)
+            if(const_cast<const Tensor&>(corpust)[idxs[j]][idxs[i]][idxs[k]] != T(0))
+              lscore --;
+        }
+      const map<int, SimpleSparseVector<T> >& ii(
+        const_cast<const Tensor&>(corpust)[idxs[i]].iter());
+      if(ii.size()) for(int j = 0; j < idxs.size(); j ++)
+        if(const_cast<const Tensor&>(corpust)[idxs[i]][idxs[j]].iter().size()) {
+          for(int k = 0; k < idxs.size(); k ++)
+            if(const_cast<const Tensor&>(corpust)[idxs[i]][idxs[j]][idxs[k]] != T(0))
+              lscore ++;
+        }
+      // N.B. middle data ignored.
+      score.emplace_back(make_pair(lscore, idxs[i]));
+    }
+    sort(score.begin(), score.end());
+    vector<int> left, right;
+    left.reserve(idxs.size());
+    right.reserve(idxs.size());
+    int i(0);
+    // N.B.: we only focus orders itself.
+    for( ; i < score.size() / 2; i ++)
+      left.emplace_back(score[i].second);
+    for( ; i < score.size(); i ++)
+      right.emplace_back(score[i].second);
+    return serializeSub(left) + serializeSub(right);
+  }
   inline void  merge5(Tensor& d, const int& i, const int& ki, const int& kk, const int& kj, const int& j, const T& intensity) const {
     if(intensity == T(0)) return;
     d[ i][kk][ki] += intensity;
@@ -7455,7 +7588,7 @@ private:
     d[kk][ j][kj] += intensity;
     return;
   }
-  U     orig;
+  U orig;
 };
 
 template <typename T, typename U> corpus<T,U>::corpus(const U& input, const vector<U>& delimiter) {
@@ -7546,7 +7679,6 @@ template <typename T, typename U> corpus<T,U>::corpus(const U& input, const vect
       for(typename vector<int>::const_iterator itr2(itr1); itr2 != uptrs.end(); ++ itr2) {
         const int k(*itr2);
         if(!ptrs[k].size()) continue;
-        // XXX checkme:
         if(words[i] == U("$") || words[j] == U("$") || words[k] == U("$") ||
            words[i] == U("^") || words[j] == U("^") || words[k] == U("^"))
           continue;
@@ -7589,129 +7721,6 @@ template <typename T, typename U> corpus<T,U>::corpus(const U& input, const vect
       }
     }
   }
-}
-
-template <typename T, typename U> corpus<T, U>& corpus<T, U>::absfy() {
-  const map<int, SimpleSparseVector<SimpleSparseVector<T> > >& pi0(
-    corpust.iter());
-  for(typename map<int, SimpleSparseVector<SimpleSparseVector<T> > >::const_iterator
-        itr0(pi0.begin()); itr0 != pi0.end(); ++ itr0) {
-    const map<int, SimpleSparseVector<T> >& pi1(itr0->second.iter());
-    for(typename map<int, SimpleSparseVector<T> >::const_iterator itr1(pi1.begin());
-        itr1 != pi1.end(); ++ itr1) {
-      const map<int, T>& pi2(itr1->second.iter());
-      for(typename map<int, T>::const_iterator itr2(pi2.begin()); itr2 != pi2.end(); ++ itr2)
-        if(itr2->second < T(0)) {
-          // N.B. we estimate minus sign on the tensor as to be reverse order.
-          corpust[itr1->first][itr0->first][itr2->first] -= itr2->second;
-          corpust[itr0->first][itr1->first][itr2->first]  = T(int(0));
-        }
-    }
-  }
-  return *this = simpleThresh(T(int(0)));
-}
-
-template <typename T, typename U> U corpus<T, U>::serializeSub(const vector<int>& idxs) const {
-  cerr << "." << flush;
-  if(idxs.size() <= 1) {
-    if(idxs.size())
-      return words[idxs[0]];
-    return U();
-  }
-  vector<pair<int, int> > score;
-  score.reserve(idxs.size());
-  // N.B. i0 - i1 - i2 is stored in corpust[i0][i2][i1].
-  for(int i = 0; i < idxs.size(); i ++) {
-    int lscore(0);
-    for(int j = 0; j < idxs.size(); j ++)
-      if(const_cast<const Tensor&>(corpust)[idxs[j]].iter().size()) {
-        for(int k = 0; k < idxs.size(); k ++)
-          if(const_cast<const Tensor&>(corpust)[idxs[j]][idxs[i]][idxs[k]] != T(0))
-            lscore --;
-      }
-    const map<int, SimpleSparseVector<T> >& ii(
-      const_cast<const Tensor&>(corpust)[idxs[i]].iter());
-    if(ii.size()) for(int j = 0; j < idxs.size(); j ++)
-      if(const_cast<const Tensor&>(corpust)[idxs[i]][idxs[j]].iter().size()) {
-        for(int k = 0; k < idxs.size(); k ++)
-          if(const_cast<const Tensor&>(corpust)[idxs[i]][idxs[j]][idxs[k]] != T(0))
-            lscore ++;
-      }
-    // N.B. middle data ignored.
-    score.emplace_back(make_pair(lscore, idxs[i]));
-  }
-  sort(score.begin(), score.end());
-  vector<int> left, right;
-  left.reserve(idxs.size());
-  right.reserve(idxs.size());
-  int i(0);
-  // N.B.: we only focus orders itself.
-  for( ; i < score.size() / 2; i ++)
-    left.emplace_back(score[i].second);
-  for( ; i < score.size(); i ++)
-    right.emplace_back(score[i].second);
-  return serializeSub(left) + serializeSub(right);
-}
-
-template <typename T, typename U> pair<T, T> corpus<T, U>::compareStructure(const corpus<T, U>& src, const T& thresh, const T& thresh2) const {
-  // get H-SVD singular values for each of them and sort:
-  const SimpleVector<T> s0(singularValues()), s1(src.singularValues());
-  // get compared.
-  pair<T, T> result;
-  result.first = result.second = T(0);
-  SimpleMatrix<T> S0(s0.size(), s0.size());
-  SimpleMatrix<T> S1(s1.size(), s1.size());
-  for(int i = 0; i < S0.rows(); i ++)
-    for(int j = 0; j < S0.cols(); j ++) {
-      S0(i, j) = s0[i] / s0[j];
-      if(!isfinite(S0(i, j)) || T(1) / thresh < abs(S0(i, j)))
-        S0(i, j) = T(0);
-    }
-  for(int i = 0; i < S1.rows(); i ++)
-    for(int j = 0; j < S1.cols(); j ++) {
-      S1(i, j) = s1[i] / s1[j];
-      if(!isfinite(S1(i, j)) || T(1) / thresh < abs(S1(i, j)))
-        S1(i, j) = T(0);
-    }
-  const SimpleVector<T> ss0(singularValues(S0));
-  const SimpleVector<T> ss1(singularValues(S1));
-  int i(0), j(0);
-  for( ; i < ss0.size() && j < ss1.size(); )
-    if(abs(ss0[i] - ss1[j]) / max(abs(ss0[i]), abs(ss1[i])) < thresh2) {
-      result.first  += ss0[i] * ss0[i] + ss1[j] * ss1[j];
-      i ++, j ++;
-    } else {
-      result.second += ss0[i] * ss0[i] + ss1[j] * ss1[j];
-      if(ss0[i] > ss1[j])
-        i ++;
-      else
-        j ++;
-    }
-  for( ; i < ss0.size(); i ++)
-    result.second += ss0[i] * ss0[i];
-  for( ; j < ss1.size(); j ++)
-    result.second += ss1[j] * ss1[j];
-  return result;
-}
-
-template <typename T, typename U> SimpleVector<T> corpus<T, U>::singularValues() const {
-  SimpleMatrix<T> planes(words.size(), words.size());
-  for(int i = 0; i < words.size(); i ++) {
-    SimpleMatrix<T> buf(words.size(), words.size());
-    for(int j = 0; j < words.size(); j ++) {
-      for(int k = 0; k < words.size(); k ++)
-        if(isfinite((const_cast<const Tensor&>(corpust))[i][j][k]))
-          buf(k, j) = (const_cast<const Tensor&>(corpust))[i][j][k];
-        else {
-          cerr << "nan" << flush;
-          buf(k, j) = T(0);
-        }
-      for(int k = words.size(); k < buf.rows(); k ++)
-        buf(k, j) = T(0);
-    }
-    planes.col(i) = singularValues(buf);
-  }
-  return singularValues(planes);
 }
 
 template <typename T, typename U> corpus<T, U> corpus<T, U>::withDetail(const U& word, const corpus<T, U>& other, const T& thresh) const {
@@ -8393,11 +8402,29 @@ template <typename T, typename U> static inline void makelword(vector<U>& words,
 //      bore first chase. if both side is enthusiastic not to bore first,
 //      the input stream will be saturated to whole of the stream isn't
 //      have unique function generation, so this is analogy to the manually
-//      manipulate function switching.
+//      manipulate function switching. however, we can increase n-markov's
+//      n variable in such of a case.
+//
+// N.B. first condition of the prediction structure we should have to have.
+//      we should make hypothesis on some of the continuity on some layer
+//      because we calculate prediction stream from input stream only
+//      also to have some of the reosnance, we should calculate them also
+//      the same way. so pred(Vec|Mat|STen) uses such of the measureablity
+//      condition.
+// N.B. the saturated condition.
+//      we should increase the prediction dimension also remake worse large
+//      n for n-markov for input stream also we should decompose them as
+//      eigen decomposition. so the most of the first digit concerns concludes
+//      eigen vector matrix (usually m*n formed) fixation.
+//      this is also to make dynamic dictionary to the input stream on such
+//      of a layer. so ddpmopt [+-] also the masp + is intended to make this but
+//      this is obscure.
 //
 // N.B. another variants of the predictors fight with 2*3*2 pattern of #f
 //      fixation. (however, we don't use initial internal states, it's only 4).
 //      (00), (01), (02) is already implemented p01?2?next.
+//      either, pred(Vec|Mat|STen) prediction untangles twice by two candidates
+//      so we perhaps don't need them.
 // (10) with taking multiplication invariant on f,
 //      S f(x) dx = S det(J((1,g0,...)/(1,x0,...)) dx0 ...
 //      retaking their addition invariant as det(...) == 0, the given function
@@ -8409,7 +8436,7 @@ template <typename T, typename U> static inline void makelword(vector<U>& words,
 //      one by one causes Wavelet(Wavelet(Fourier+Discrete)+Discrete)+Discrete
 //      causes only a combination ordinal.
 // (13) (de)?compress after/before to out/input some of the range.
-// (14) brute orce (de)?compressed out/input into internal states/output
+// (14) brute force (de)?compressed out/input into internal states/output
 //      function number. this needs 19,683*19,683 table size we cannot treat
 //      on our machine. this shirks F_2^4 #f all of the generic i/o table
 //      then we brute force function listing.
