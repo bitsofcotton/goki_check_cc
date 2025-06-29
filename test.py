@@ -105,9 +105,7 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
-     argv[2][:len("pRed")] == "pRed" or argv[2][:len("qRed")] == "qRed" or \
-     argv[2][:len("Pred")] == "Pred" or argv[2][:len("Qred")] == "Qred" or \
-     argv[2][:len("PRed")] == "PRed" or argv[2][:len("QRed")] == "QRed"):
+     argv[2][:len("Pred")] == "Pred" or argv[2][:len("Qred")] == "Qred"):
   if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q'):
     mode = 1
   else:
@@ -188,7 +186,6 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   curdir = os.path.basename(os.getcwd())
   if(argv[2][0] != 'P' and argv[2][0] != 'Q'):
     cmd = [argv[4], "p"]
-    if(argv[2][1] == 'R'): cmd[1] = "P"
     cmd.extend(list2)
     subprocess.call(cmd)
     ctr = 0
@@ -204,7 +201,6 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
       for f in list2:
         subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
     list4 = [argv[4], "p"]
-    if(argv[2][1] == 'R'): list4[1] = "P"
     listr = [argv[4], "w"]
     for idx in range(0, len(list2)):
       list4.append(list2[idx] + "-m2c4." + ext)

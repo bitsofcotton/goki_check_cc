@@ -128,4 +128,5 @@ Searching the Internet more...
 2025/06/25 mege latest ddpmopt, test.py pqred command size change to radical tiny one.
 2025/06/25 code cleaning. refactoring.
 2025/06/28 refactor and fix around lieonn, re-compat with gcc2953.
+2025/06/29-30 merge latest ddpmopt change.
 
