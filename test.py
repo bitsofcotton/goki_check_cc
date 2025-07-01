@@ -104,8 +104,7 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
-     argv[2][:len("Pred")] == "Pred" or argv[2][:len("Qred")] == "Qred"):
+elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
   if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q'):
     mode = 1
   else:
@@ -113,7 +112,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
   # N.B. we treat each bit condition to them.
   bits = 2
   # N.B. we only see input number to count pixels.
-  if(argv[2][0] == 'P' or argv[2][0] == 'Q'):
+  if(argv[2][0] == 'q'):
     lsz = float(int(len(argv[6:])))
   else:
     # N.B. we need large image after to shrink.
@@ -133,66 +132,19 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
       subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wg." + ext])
     else:
       subprocess.call(["convert", f, "-resize", str(lsz) + "@", "-compress", "none", f + "-wg." + ext])
-  list0 = []
-  for f in argv[6:]:
-    list0.append(f + "-wg." + ext)
   list  = []
-  loopb = 0
-  if(argv[2][0] == 'q' or argv[2][0] == 'Q'):
-    while(True):
-      score = []
-      for t in range(0, len(list0) - 4):
-        cmd = [argv[4], "t"]
-        cmd.extend(list0[t:t + 4])
-        score.append(abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0])) )
-      # XXX: magic number, ideally, is [1] but too slow to run.
-      score = sorted(score)[int(len(score) / 5.)]
-      list = [list0[0], list0[1], list0[2] ]
-      for t in range(3, len(list0)):
-        cmd = [argv[4], "t"]
-        cmd.extend(list[- 3:])
-        cmd.append(list0[t])
-        lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
-        if(score < lscore):
-          list.append(list0[t])
-      list.reverse()
-      rlist = []
-      for t in range(max(0, len(list) - 5), len(list)):
-        cmd = [argv[4], "t"]
-        cmd.extend(list[t:t + 4])
-        lscore = abs(ifloat(subprocess.check_output(cmd, encoding="utf-8").split(",")[0]))
-        if(score < lscore):
-          rlist.append(list[t + 3])
-      list = list[:- 4]
-      list.extend(rlist)
-      list.reverse()
-      if(len(list) <= len(argv[6:]) / 2 or len(list) == loopb): break
-      print(len(list))
-      list0 = list
-      loopb = len(list)
-    cmd = [argv[4], "c"]
-    cmd.extend(list)
-    subprocess.call(cmd)
-    list1 = []
-    for f in list:
-      list1.append(f + "-c3.ppm")
-  else:
-    list  = list0
-    list1 = list0
   list2 = []
-  for f in list1:
+  for f in argv[6:]:
+    list.append(f + "-wg." + ext)
+  for f in list:
     subprocess.call([argv[1], "bit", f, f + "-wg-bit." + ext, str(bits), "0"])
     list2.append(f + "-wg-bit." + ext)
   curdir = os.path.basename(os.getcwd())
-  if(argv[2][0] != 'P' and argv[2][0] != 'Q'):
+  if(argv[2][0] == 'p'):
     cmd = [argv[4], "p"]
     cmd.extend(list2)
     subprocess.call(cmd)
-    ctr = 0
-    while(True):
-      if(subprocess.call([argv[1], "bit", "predg" + str(ctr) + ".ppm", curdir + "-bit" + str(ctr) + ".ppm", str(- bits), "0"]) != 0):
-        break
-      ctr += 1
+    subprocess.call([argv[1], "bit", "predg0.ppm", curdir + "-bit.ppm", str(- bits), "0"])
   else:
     # XXX: white space, delimiter, should use Popen with pipe.
     subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
@@ -200,21 +152,16 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred" or \
     if(ext != "pgm"):
       for f in list2:
         subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
-    list4 = [argv[4], "p"]
+    list3 = [argv[4], "p"]
     listr = [argv[4], "w"]
     for idx in range(0, len(list2)):
-      list4.append(list2[idx] + "-m2c4." + ext)
+      list3.append(list2[idx] + "-m2c4." + ext)
       listr.append(list2[idx] + "-m2c4." + ext)
       listr.append(list2[idx])
-    listr.append("")
-    subprocess.call(list4)
-    ctr = 0
-    while(True):
-      listr[- 1] = "predg" + str(ctr) + ".ppm"
-      if(subprocess.call(listr) != 0): break
-      if(subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitw" + str(ctr) + ".ppm", str(- bits), "1"]) != 0):
-        break
-      ctr += 1
+    subprocess.call(list3)
+    listr.append("predg0.ppm")
+    subprocess.call(listr)
+    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitw.ppm", str(- bits), "1"])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or argv[2] == "tilecatd"):
   pixels = int(argv[3])
   cmd = ["montage"]
