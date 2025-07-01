@@ -129,4 +129,5 @@ Searching the Internet more...
 2025/06/25 code cleaning. refactoring.
 2025/06/28 refactor and fix around lieonn, re-compat with gcc2953.
 2025/06/29-30 merge latest ddpmopt change.
+2025/07/01 merge latest ddpmopt change.
 
