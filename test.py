@@ -144,7 +144,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
     cmd = [argv[4], "p"]
     cmd.extend(list2)
     subprocess.call(cmd)
-    subprocess.call([argv[1], "bit", "predg0.ppm", curdir + "-bit.ppm", str(- bits), "0"])
+    subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", str(- bits), "0"])
   else:
     # XXX: white space, delimiter, should use Popen with pipe.
     subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
@@ -159,7 +159,7 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
       listr.append(list2[idx] + "-m2c4." + ext)
       listr.append(list2[idx])
     subprocess.call(list3)
-    listr.append("predg0.ppm")
+    listr.append("predg.ppm")
     subprocess.call(listr)
     subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitw.ppm", str(- bits), "1"])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or argv[2] == "tilecatd"):
