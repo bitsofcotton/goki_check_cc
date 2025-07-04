@@ -126,39 +126,35 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
     ext  =  "ppm"
   if(mode == 1):
     lsz  = pow(lsz, .5)
-  lsz = int(lsz)
+  lsz  = int(lsz)
+  list = []
   for f in argv[6:]:
     if(mode == 1):
       subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wg." + ext])
     else:
       subprocess.call(["convert", f, "-resize", str(lsz) + "@", "-compress", "none", f + "-wg." + ext])
-  list  = []
-  list2 = []
-  for f in argv[6:]:
-    list.append(f + "-wg." + ext)
-  for f in list:
-    subprocess.call([argv[1], "bit", f, f + "-wg-bit." + ext, str(bits), "0"])
-    list2.append(f + "-wg-bit." + ext)
+    subprocess.call([argv[1], "bit", f + "-wg." + ext, f + "-wg-bit." + ext, str(bits), "0"])
+    list.append(f + "-wg-bit." + ext)
   curdir = os.path.basename(os.getcwd())
   if(argv[2][0] == 'p'):
     cmd = [argv[4], "p"]
-    cmd.extend(list2)
+    cmd.extend(list)
     subprocess.call(cmd)
     subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", str(- bits), "0"])
   else:
     # XXX: white space, delimiter, should use Popen with pipe.
-    subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list2) + " > wgL.txt"])
-    subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list2) + " < wgL.txt"])
+    subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list) + " > wgL.txt"])
+    subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list) + " < wgL.txt"])
     if(ext != "pgm"):
-      for f in list2:
+      for f in list:
         subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
-    list3 = [argv[4], "p"]
+    list2 = [argv[4], "p"]
     listr = [argv[4], "w"]
-    for idx in range(0, len(list2)):
-      list3.append(list2[idx] + "-m2c4." + ext)
-      listr.append(list2[idx] + "-m2c4." + ext)
-      listr.append(list2[idx])
-    subprocess.call(list3)
+    for idx in range(0, len(list)):
+      list2.append(list[idx] + "-m2c4." + ext)
+      listr.append(list[idx] + "-m2c4." + ext)
+      listr.append(list[idx])
+    subprocess.call(list2)
     listr.append("predg.ppm")
     subprocess.call(listr)
     subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitw.ppm", str(- bits), "1"])
