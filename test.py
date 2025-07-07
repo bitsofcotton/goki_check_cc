@@ -115,8 +115,8 @@ elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
   if(argv[2][0] == 'q'):
     lsz = float(int(len(argv[6:])))
   else:
-    # N.B. we need large image after to shrink align one of a longest edge.
-    lsz = float(int(len(argv[6:]))) * float(int(len(argv[6:]))) / 2.
+    # N.B. instead of using input length, we use status dimension upper bound.
+    lsz = 19683
   # N.B. once we had #f pixel number estimation, however we don't use them now.
   lsz /= bits
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
