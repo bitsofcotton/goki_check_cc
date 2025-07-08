@@ -11,6 +11,10 @@
 #include <cctype>
 #include <assert.h>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
 #if !defined(_OLDCPP_)
 #include <random>
 #if defined(_PERSISTENT_)
