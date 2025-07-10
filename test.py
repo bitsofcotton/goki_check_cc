@@ -9,39 +9,6 @@ pixels = 4
 psi    = 1. / 3.
 rot    = 0
 
-def ifloat(x, offset = 0):
-  try:
-    return float(x)
-  except:
-    try:
-      b = x.split("*")
-      n = e = 0.
-      tbl = {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, \
-        '8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15, \
-        ' ': -1, '\t': -1, '\n': -1, '-': 16}
-      m = False
-      for ff in b[0]:
-        if(tbl[ff] < 0): continue
-        if(tbl[ff] == 16):
-          m = True
-          continue
-        n *= 16
-        n += tbl[ff]
-      if(m): n = - n
-      m = False
-      for ff in b[1][2:]:
-        if(tbl[ff] < 0): continue
-        if(tbl[ff] == 16):
-          m = True
-          continue
-        e *= 16
-        e += tbl[ff]
-      if(m): e = - e
-      return n * pow(2., e - offset)
-    except:
-      pass
-  return 0.
-
 if(len(argv) < 4 and (argv[2] != "move")):
   print("no much argments.")
 elif(argv[2] == "move"):
@@ -252,8 +219,4 @@ else:
       subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):
       subprocess.call([argv[1], "reshape", str(pixels), root + ".ppm", root + "-bump.ppm", root + "-illust.ppm", str(pow(float(pixels), - .5))])
-    elif(argv[2] == "gray"):
-      subprocess.call(["convert", line, "-colorspace", "Gray", "-separate", "-average", root + "-gray.png"])
-    elif(argv[2] == "sbit"):
-      subprocess.call(["convert", line, "-gravity", "northwest", "-crop", "100%x100%+0+1", root + "-sbit.png"])
 
