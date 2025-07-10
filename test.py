@@ -104,60 +104,61 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2][:len("pred")] == "pred" or argv[2][:len("qred")] == "qred"):
+elif(argv[2][:len("pred")] == "pred"):
   if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q'):
     mode = 1
   else:
     mode = 0
   # N.B. we treat each bit condition to them.
   bits = 2
-  # N.B. we only see input number to count pixels.
-  if(argv[2][0] == 'q'):
-    lsz = float(int(len(argv[6:])))
-  else:
-    # N.B. instead of using input length, we use status dimension upper bound.
-    lsz = 19683
-  # N.B. once we had #f pixel number estimation, however we don't use them now.
-  lsz /= bits
+  # we balance calculation orders (between for pixels and for input length.)
+  lszp  = pow(float(int(len(argv[6:]))), 2.5)
+  lszq  = float(int(len(argv[6:])))
+  # each bit
+  lszp /= bits
+  lszq /= bits
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
     ext  = "pgm"
   else:
-    lsz /= 3
-    ext  =  "ppm"
+    lszp /= 3
+    lszq /= 3
+    ext   =  "ppm"
   if(mode == 1):
-    lsz  = pow(lsz, .5)
-  lsz  = int(lsz)
-  list = []
+    lszp  = pow(lszp, .5)
+  lszp = int(lszp)
+  lszq = int(pow(lszq, .5))
+  listp = []
+  listq = []
   for f in argv[6:]:
+    subprocess.call(["convert", f, "-resize", str(lszq) + "@", "-compress", "none", f + "-wh." + ext])
     if(mode == 1):
-      subprocess.call(["convert", f, "-resize", str(lsz) + "x" + str(lsz) + "!", "-compress", "none", f + "-wg." + ext])
+      subprocess.call(["convert", f, "-resize", str(lszp) + "x" + str(lszp) + "!", "-compress", "none", f + "-wg." + ext])
     else:
-      subprocess.call(["convert", f, "-resize", str(lsz) + "@", "-compress", "none", f + "-wg." + ext])
+      subprocess.call(["convert", f, "-resize", str(lszp) + "@", "-compress", "none", f + "-wg." + ext])
     subprocess.call([argv[1], "bit", f + "-wg." + ext, f + "-wg-bit." + ext, str(bits), "0"])
-    list.append(f + "-wg-bit." + ext)
+    subprocess.call([argv[1], "bit", f + "-wh." + ext, f + "-wh-bit." + ext, str(bits), "0"])
+    listp.append(f + "-wg-bit." + ext)
+    listq.append(f + "-wh-bit." + ext)
   curdir = os.path.basename(os.getcwd())
-  if(argv[2][0] == 'p'):
-    cmd = [argv[4], "p"]
-    cmd.extend(list)
-    subprocess.call(cmd)
-    subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bit.ppm", str(- bits), "0"])
-  else:
-    # XXX: white space, delimiter, should use Popen with pipe.
-    subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(list) + " > wgL.txt"])
-    subprocess.call(["sh", "-c", argv[5] + " + " + " ".join(list) + " < wgL.txt"])
-    if(ext != "pgm"):
-      for f in list:
-        subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
-    list2 = [argv[4], "p"]
-    listr = [argv[4], "w"]
-    for idx in range(0, len(list)):
-      list2.append(list[idx] + "-m2c4." + ext)
-      listr.append(list[idx] + "-m2c4." + ext)
-      listr.append(list[idx])
-    subprocess.call(list2)
-    listr.append("predg.ppm")
-    subprocess.call(listr)
-    subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitw.ppm", str(- bits), "1"])
+  cmd = [argv[5], "p"]
+  cmd.extend(listp)
+  subprocess.call(cmd)
+  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bitp.ppm", str(- bits), "0"])
+  # XXX: white space, delimiter, should use Popen with pipe.
+  subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(listq) + " > wgL.txt"])
+  subprocess.call(["sh", "-c", argv[4] + " + " + " ".join(listq) + " < wgL.txt"])
+  for f in listq:
+    subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
+  list2 = [argv[5], "p"]
+  listr = [argv[5], "w"]
+  for idx in range(0, len(listq)):
+    list2.append(listq[idx] + "-m2c4." + ext)
+    listr.append(listq[idx] + "-m2c4." + ext)
+    listr.append(listq[idx])
+  subprocess.call(list2)
+  listr.append("predg.ppm")
+  subprocess.call(listr)
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitq.ppm", str(- bits), "1"])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or argv[2] == "tilecatd"):
   pixels = int(argv[3])
   cmd = ["montage"]
