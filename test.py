@@ -79,7 +79,7 @@ elif(argv[2][:len("pred")] == "pred"):
   # N.B. we treat each bit condition to them.
   bits = 2
   # we balance calculation orders (between for pixels and for input length.)
-  lszp  = pow(float(int(len(argv[6:]))), 2.5)
+  lszp  = pow(float(int(len(argv[6:]))), 2.)
   lszq  = float(int(len(argv[6:])))
   # each bit
   lszp /= bits
