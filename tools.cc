@@ -74,6 +74,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "limit") == 0 ||
      strcmp(argv[1], "bit") == 0 ||
+     strcmp(argv[1], "bitc") == 0 ||
      strcmp(argv[1], "nbit") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
@@ -109,14 +110,21 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
-    else if(strcmp(argv[1], "bit") == 0 && 0 < recur) {
+    else if((strcmp(argv[1], "bit") == 0 ||
+             strcmp(argv[1], "bitc") == 0) && 0 < recur) {
       for(int i = 0; i < data.size(); i ++) {
         SimpleMatrix<num_t> work(data[i].rows() * recur, data[i].cols());
         work.O();
         for(int j = 0; j < data[i].rows(); j ++)
           for(int k = 0; k < data[i].cols(); k ++)
-            for(int m = 0; m < recur; m ++)
-              work(j + m * data[i].rows(), k) =
+            for(int m = 0; m < recur; m ++) if(argv[1][3] == 'c') {
+              const num_t c(data[i](j, k) * pow(num_t(int(2)), num_t(int(m))) );
+#if defined(_FLOAT_BITS_) || defined(_PERSISTENT_)
+              work(j + m * data[i].rows(), k) = c - absfloor(c);
+#else
+              work(j + m * data[i].rows(), k) = c - floor(c);
+#endif
+            } else work(j + m * data[i].rows(), k) =
                 num_t(1 & int(data[i](j, k) *
                   pow(num_t(int(2)), num_t(int(m + 1))) ) );
         swap(work, data[i]);

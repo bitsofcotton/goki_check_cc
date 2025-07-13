@@ -72,45 +72,51 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
 elif(argv[2][:len("pred")] == "pred"):
+  markov = min(int(argv[6]), int(len(argv[9:])) )
+  bits   = int(argv[7])
+  lszp   = int(argv[8]) * int(argv[8])
   if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q'):
     mode = 1
   else:
     mode = 0
-  # N.B. we treat each bit condition to them.
-  bits = 2
-  # we balance calculation orders (between for pixels and for input length.)
-  lszp  = pow(float(int(len(argv[6:]))), 2.)
-  lszq  = float(int(len(argv[6:])))
-  # each bit
-  lszp /= bits
-  lszq /= bits
+  lszq  = float(int(len(argv[9:]))) / bits
   if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
     ext  = "pgm"
   else:
-    lszp /= 3
     lszq /= 3
     ext   =  "ppm"
-  if(mode == 1):
-    lszp  = pow(lszp, .5)
-  lszp = int(lszp)
-  lszq = int(pow(lszq, .5))
   listp = []
   listq = []
-  for f in argv[6:]:
+  for f in argv[9:]:
     subprocess.call(["convert", f, "-resize", str(lszq) + "@", "-compress", "none", f + "-wh." + ext])
     if(mode == 1):
       subprocess.call(["convert", f, "-resize", str(lszp) + "x" + str(lszp) + "!", "-compress", "none", f + "-wg." + ext])
     else:
       subprocess.call(["convert", f, "-resize", str(lszp) + "@", "-compress", "none", f + "-wg." + ext])
-    subprocess.call([argv[1], "bit", f + "-wg." + ext, f + "-wg-bit." + ext, str(bits), "0"])
-    subprocess.call([argv[1], "bit", f + "-wh." + ext, f + "-wh-bit." + ext, str(bits), "0"])
-    listp.append(f + "-wg-bit." + ext)
+    subprocess.call([argv[1], "bit",  f + "-wh." + ext, f + "-wh-bit." + ext, str(bits), "0"])
+    listp.append(f + "-wg." + ext)
     listq.append(f + "-wh-bit." + ext)
   curdir = os.path.basename(os.getcwd())
-  cmd = [argv[5], "p"]
-  cmd.extend(listp)
-  subprocess.call(cmd)
-  subprocess.call([argv[1], "bit", "predg.ppm", curdir + "-bitp.ppm", str(- bits), "0"])
+  n = 1
+  while(n <= int(len(argv[9:])) / markov):
+    # add 1 more measureable condition on whole.
+    cmd  = [argv[5], "d"]
+    list = []
+    for t in range(0, min(len(listp), n * markov), n):
+      list.append(listp[- t - 1])
+    list.reverse()
+    cmd.extend(list)
+    subprocess.call(cmd)
+    # predict with them.
+    cmd  = [argv[5], "p"]
+    for t in range(1, len(list)):
+      subprocess.call([argv[1], "bitc", "diff-" + str(t) + ".ppm", "diff-" + str(t) + "-bitc.ppm", str(bits), "0"])
+      cmd.append("diff-" + str(t) + "-bitc.ppm")
+    subprocess.call(cmd)
+    subprocess.call([argv[1], "nbit", "predg.ppm", "predg-nbit.ppm", str(- bits), "0"])
+    subprocess.call(["convert", "predg-nbit.ppm", listp[- 1], "-average", curdir + "-" + str(n * 2 - 2) + ".png"])
+    subprocess.call(["convert", "predg-nbit.ppm", "-negate", listp[- 1], "-average", curdir + "-" + str(n * 2 - 1) + ".png"])
+    n += 1
   # XXX: white space, delimiter, should use Popen with pipe.
   subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(listq) + " > wgL.txt"])
   subprocess.call(["sh", "-c", argv[4] + " + " + " ".join(listq) + " < wgL.txt"])
@@ -125,7 +131,7 @@ elif(argv[2][:len("pred")] == "pred"):
   subprocess.call(list2)
   listr.append("predg.ppm")
   subprocess.call(listr)
-  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-bitq.ppm", str(- bits), "1"])
+  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-q.ppm", str(- bits), "1"])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or argv[2] == "tilecatd"):
   pixels = int(argv[3])
   cmd = ["montage"]
@@ -186,7 +192,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
-    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit"):
+    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "bitc"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "blur" or argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
