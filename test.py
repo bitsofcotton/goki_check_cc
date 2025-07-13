@@ -71,67 +71,6 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   else:
     for t in range(0, ex0):
       subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2][:len("pred")] == "pred"):
-  markov = min(int(argv[6]), int(len(argv[9:])) )
-  bits   = int(argv[7])
-  lszp   = int(argv[8]) * int(argv[8])
-  if(argv[2][- 1] == 'q' or argv[2][- 2] == 'q'):
-    mode = 1
-  else:
-    mode = 0
-  lszq  = float(int(len(argv[9:]))) / bits
-  if(argv[2][- 1] == 'g' or argv[2][- 2] == 'g'):
-    ext  = "pgm"
-  else:
-    lszq /= 3
-    ext   =  "ppm"
-  listp = []
-  listq = []
-  for f in argv[9:]:
-    subprocess.call(["convert", f, "-resize", str(lszq) + "@", "-compress", "none", f + "-wh." + ext])
-    if(mode == 1):
-      subprocess.call(["convert", f, "-resize", str(lszp) + "x" + str(lszp) + "!", "-compress", "none", f + "-wg." + ext])
-    else:
-      subprocess.call(["convert", f, "-resize", str(lszp) + "@", "-compress", "none", f + "-wg." + ext])
-    subprocess.call([argv[1], "bit",  f + "-wh." + ext, f + "-wh-bit." + ext, str(bits), "0"])
-    listp.append(f + "-wg." + ext)
-    listq.append(f + "-wh-bit." + ext)
-  curdir = os.path.basename(os.getcwd())
-  n = 1
-  while(n <= int(len(argv[9:])) / markov):
-    # add 1 more measureable condition on whole.
-    cmd  = [argv[5], "d"]
-    list = []
-    for t in range(0, min(len(listp), n * markov), n):
-      list.append(listp[- t - 1])
-    list.reverse()
-    cmd.extend(list)
-    subprocess.call(cmd)
-    # predict with them.
-    cmd  = [argv[5], "p"]
-    for t in range(1, len(list)):
-      subprocess.call([argv[1], "bitc", "diff-" + str(t) + ".ppm", "diff-" + str(t) + "-bitc.ppm", str(bits), "0"])
-      cmd.append("diff-" + str(t) + "-bitc.ppm")
-    subprocess.call(cmd)
-    subprocess.call([argv[1], "nbit", "predg.ppm", "predg-nbit.ppm", str(- bits), "0"])
-    subprocess.call(["convert", "predg-nbit.ppm", listp[- 1], "-average", curdir + "-" + str(n * 2 - 2) + ".png"])
-    subprocess.call(["convert", "predg-nbit.ppm", "-negate", listp[- 1], "-average", curdir + "-" + str(n * 2 - 1) + ".png"])
-    n += 1
-  # XXX: white space, delimiter, should use Popen with pipe.
-  subprocess.call(["sh", "-c", argv[3] + " + " + " ".join(listq) + " > wgL.txt"])
-  subprocess.call(["sh", "-c", argv[4] + " + " + " ".join(listq) + " < wgL.txt"])
-  for f in listq:
-    subprocess.call(["convert", "-compress", "none", f + "-m2c4.pgm", f + "-m2c4." + ext])
-  list2 = [argv[5], "p"]
-  listr = [argv[5], "w"]
-  for idx in range(0, len(listq)):
-    list2.append(listq[idx] + "-m2c4." + ext)
-    listr.append(listq[idx] + "-m2c4." + ext)
-    listr.append(listq[idx])
-  subprocess.call(list2)
-  listr.append("predg.ppm")
-  subprocess.call(listr)
-  subprocess.call([argv[1], "bit", "predgw.ppm", curdir + "-q.ppm", str(- bits), "1"])
 elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or argv[2] == "tilecatd"):
   pixels = int(argv[3])
   cmd = ["montage"]

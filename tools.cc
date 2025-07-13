@@ -110,40 +110,15 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
-    else if((strcmp(argv[1], "bit") == 0 ||
-             strcmp(argv[1], "bitc") == 0) && 0 < recur) {
-      for(int i = 0; i < data.size(); i ++) {
-        SimpleMatrix<num_t> work(data[i].rows() * recur, data[i].cols());
-        work.O();
-        for(int j = 0; j < data[i].rows(); j ++)
-          for(int k = 0; k < data[i].cols(); k ++)
-            for(int m = 0; m < recur; m ++) if(argv[1][3] == 'c') {
-              const num_t c(data[i](j, k) * pow(num_t(int(2)), num_t(int(m))) );
-#if defined(_FLOAT_BITS_) || defined(_PERSISTENT_)
-              work(j + m * data[i].rows(), k) = c - absfloor(c);
-#else
-              work(j + m * data[i].rows(), k) = c - floor(c);
-#endif
-            } else work(j + m * data[i].rows(), k) =
-                num_t(1 & int(data[i](j, k) *
-                  pow(num_t(int(2)), num_t(int(m + 1))) ) );
-        swap(work, data[i]);
-      }
-    } else if((strcmp(argv[1], "bit") == 0 && recur < 0) || strcmp(argv[1], "nbit") == 0)
-      for(int i = 0; i < data.size(); i ++) {
-        SimpleMatrix<num_t> work(data[i].rows() / abs(recur), data[i].cols());
-        work.O();
-        for(int j = 0; j < work.rows(); j ++)
-          for(int k = 0; k < work.cols(); k ++)
-            for(int m = 0; m < abs(recur); m ++)
-              work(j, k) += strcmp(argv[1], "nbit") == 0 ?
-                (sgn<num_t>(data[i](j + m * data[i].rows() / abs(recur), k) -
-                  num_t(int(1)) / num_t(int(2))) + num_t(int(1))) /
-                    pow(num_t(int(2)), num_t(int(m + 1))) :
-                data[i](j + m * data[i].rows() / abs(recur), k) /
-                  pow(num_t(int(2)), num_t(int(m + 1)));
-        swap(work, data[i]);
-      }
+    else if(strcmp(argv[1], "bit") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i].entity = bitsG<num_t, false>(data[i].entity, recur);
+    else if(strcmp(argv[1], "bitc") == 0 && 0 < recur)
+      for(int i = 0; i < data.size(); i ++)
+        data[i].entity = bitsG<num_t, true>(data[i].entity, recur);
+    else if(strcmp(argv[1], "nbit") == 0 && recur < 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i].entity = bitsG<num_t, true>(data[i].entity, recur);
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
