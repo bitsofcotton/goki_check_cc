@@ -130,7 +130,7 @@ else:
     except:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
-      subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
+      subprocess.call(["convert", line, "-compress", "none", "-depth", "16", root + ".ppm"])
     if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "bitc"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "blur" or argv[2] == "bump"):
@@ -157,9 +157,9 @@ else:
       for s in range(1, pixels):
         subprocess.call([argv[1], "b2wd", root + "-sbox-" + str(s + 1) + ".ppm", root + "-sbox-bw-" + str(s + 1) + ".ppm", root + "-sbox-" + str(s) + ".ppm"])
     elif(argv[2] == "prep"):
-      subprocess.call(["convert", line, "-resize", str(pixels) + "x>", "-resize", "x" + str(pixels) + ">", root + "-prep.png"])
+      subprocess.call(["convert", line, "-resize", str(pixels) + "x>", "-resize", "x" + str(pixels) + ">", "-depth", "16", root + "-prep.png"])
     elif(argv[2] == "prepsq"):
-      subprocess.call(["convert", line, "-resize", str(pixels) + "x" + str(pixels) + "!", root + "-prepsq.png"])
+      subprocess.call(["convert", line, "-resize", str(pixels) + "x" + str(pixels) + "!", "-depth", "16", root + "-prepsq.png"])
     elif(argv[2] == "nurie"):
       subprocess.call(["convert", root + ".ppm", "-modulate", "50", root + "-bump.ppm", "-compose", "softlight", "-composite", "-equalize", root + "-nurie.png"])
     elif(argv[2] == "illust"):
