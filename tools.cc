@@ -74,9 +74,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "limit") == 0 ||
      strcmp(argv[1], "bit") == 0 ||
-     strcmp(argv[1], "bitc") == 0 ||
      strcmp(argv[1], "nbit") == 0 ||
-     strcmp(argv[1], "offrat") == 0 ||
      strcmp(argv[1], "w2b")     == 0 ||
      strcmp(argv[1], "b2w")     == 0 ||
      strcmp(argv[1], "b2wd")    == 0) {
@@ -114,20 +112,10 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "bit") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i].entity = bitsG<num_t, false>(data[i].entity, recur);
-    else if(strcmp(argv[1], "bitc") == 0 && 0 < recur)
-      for(int i = 0; i < data.size(); i ++)
-        data[i].entity = bitsG<num_t, true>(data[i].entity, recur);
     else if(strcmp(argv[1], "nbit") == 0 && recur < 0)
       for(int i = 0; i < data.size(); i ++)
         data[i].entity = bitsG<num_t, true>(data[i].entity, recur);
-    else if(strcmp(argv[1], "offrat") == 0) {
-      const num_t off(pow(num_t(int(2)), - num_t(recur)));
-      for(int i = 0; i < data.size(); i ++)
-        for(int j = 0; j < data[i].rows(); j ++)
-          for(int k = 0; k < data[i].cols(); k ++)
-            data[i](j, k) = offsetHalf<num_t>((num_t(int(1)) - off) *
-              (unOffsetHalf<num_t>(data[i](j, k)) + off) );
-    } else if(strcmp(argv[1], "w2b") == 0) {
+    else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
           if(data[0](i, j) == num_t(1) &&
