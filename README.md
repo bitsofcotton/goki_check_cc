@@ -143,4 +143,5 @@ Searching the Internet more...
 2025/07/25 merge latest lieonn.
 2025/07/28 merge latest lieonn. update readme.
 2025/08/01 merge latest lieonn.
+2025/08/02 obj command output change.
 
