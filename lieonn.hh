@@ -3727,8 +3727,7 @@ template <typename T> static inline T p012next(const SimpleVector<T>& d, const i
 //   this concludes the recursive structure as:
 //     Sum A_k*cosh(a_k x)+B_k*sinh(b_k x) because A^n calculation.
 template <typename T> static inline T p0next(const SimpleVector<T>& in) {
-  static const int step(1);
-  return pnextcacher<T>(in.size(), ((step - 1) % in.size()) + 1).dot(in);
+  return pnextcacher<T>(in.size(), 1).dot(in);
 }
 
 template <typename T, T (*f)(const SimpleVector<T>&)> static inline T invNext(const SimpleVector<T>& in) {
@@ -3868,22 +3867,25 @@ template <typename T> static inline T p0maxNext(const SimpleVector<T>& in) {
 //      return 1; program. this is also in the condition but the dimension
 //      easily vanished. so when we met them we use:
 //      ||Ax-1*x'||<epsilon condition with increased varlen.
-template <typename T, bool levi> T p01next(const SimpleVector<T>& in) {
-  static const int step(1);
+template <typename T, bool levi> vector<T> p01nextM(const SimpleVector<T>& in) {
   static const T zero(0);
   static const T one(1);
   static const T two(2);
   const T nin(sqrt(in.dot(in)));
-  if(! isfinite(nin) || nin == zero) return zero;
   const int varlen(ind2vd(in.size()));
+  if(! isfinite(nin) || nin == zero) {
+    vector<T> res;
+    res.resize(max(int(1), int(in.size()) - int(varlen * 2 + 1)), zero);
+    return res;
+  }
   SimpleMatrix<T> invariants(max(int(1), int(in.size()) -
-    int(varlen * 2 + step)), varlen + 2);
+    int(varlen * 2 + 1)), varlen + 2);
   invariants.O();
-  for(int i0 = varlen * 2 + step; i0 < invariants.rows(); i0 ++) {
+  for(int i0 = varlen * 2 + 1; i0 < invariants.rows(); i0 ++) {
     SimpleMatrix<T> toeplitz(i0, invariants.cols());
     for(int i = 0; i < toeplitz.rows(); i ++) {
       SimpleVector<T> work(in.subVector(i, varlen));
-      work[work.size() - 1] = in[i + varlen + step - 2];
+      work[work.size() - 1] = in[i + varlen - 1];
       if(levi) {
         // N.B. varlen == 4 case, subtract original invariant, return to avg,
         //      flip last one, we make hypothesis the residue is levi.
@@ -3905,25 +3907,35 @@ template <typename T, bool levi> T p01next(const SimpleVector<T>& in) {
     //      we make the hypothesis:
     //      ||invariant made stream||_sup <~ ||f||_sup / varlen!.
     //      this is because it's toeplitz made stream.
-    const int ii0(i0 - (varlen * 2 + step));
+    const int ii0(i0 - (varlen * 2 + 1));
     invariants.row(ii0) = linearInvariant<T>(toeplitz);
   }
-  SimpleVector<T> invariant(invariants.cols());
-  if(invariants.rows() <= 1)
-    invariant = move(invariants.row(0));
-  else {
-    // N.B. we make the hypothesis continuous invariant change.
-    //      this is equivalent to entropy feed on input stream is
-    //      enough stable or invariant is periodical case.
-    //      in normally, bored input stream's invariant is periodical.
-    invariant.O();
-    for(int i = 0; i < invariants.cols(); i ++)
-      invariant[i] = p0maxNext<T>(invariants.col(i));
+  vector<T> res;
+  res.reserve(invariants.rows());
+  for(int j = 1; j <= invariants.rows(); j ++) {
+    SimpleVector<T> invariant(invariants.cols());
+    if(invariants.rows() <= 1)
+      invariant = move(invariants.row(0));
+    else {
+      // N.B. we make the hypothesis continuous invariant change.
+      //      this is equivalent to entropy feed on input stream is
+      //      enough stable or invariant is periodical case.
+      //      in normally, bored input stream's invariant is periodical.
+      invariant.O();
+      for(int i = 0; i < invariants.cols(); i ++)
+        invariant[i] = p0maxNext<T>(invariants.col(i).subVector(0, j));
+    }
+    SimpleVector<T> work(varlen);
+    for(int i = 1; i < work.size(); i ++)
+      work[i - 1] = in[i - work.size() + in.size() + j - invariants.rows()];
+    res.emplace_back(revertByProgramInvariant<T, true>(work, invariant));
   }
-  SimpleVector<T> work(varlen);
-  for(int i = 1; i < work.size(); i ++)
-    work[i - 1] = in[i - work.size() + in.size()];
-  return revertByProgramInvariant<T, true>(work, invariant);
+  return res;
+}
+
+template <typename T, bool levi> T p01next(const SimpleVector<T>& in) {
+  vector<T> res(p01nextM<T, levi>(in));
+  return res[res.size() - 1];
 }
 
 // N.B. class-capsules for serial stream.
@@ -4460,6 +4472,7 @@ template <typename T, bool useful> static inline SimpleVector<T> bitsG(const Sim
         T shift(d[i] * pow(T(int(2)), T(j)));
         shift -= absfloor(shift);
         res[i * b + j] = useful ? shift : T(int(shift * T(int(2)) )) / T(int(2));
+        assert(T(int(0)) <= res[i * b + j] && res[i * b + j] <= T(int(1)));
       }
   }
   return res;
@@ -4472,69 +4485,15 @@ template <typename T, bool useful> static inline vector<SimpleVector<T> > bitsG(
 }
 
 // N.B. start ddpmopt
-template <typename T, int nprogress> static inline SimpleVector<T> pRS00(const vector<SimpleVector<T> >& intran, const int& sz, const SimpleVector<T>& seconds, const string& strloop = string("")) {
-  assert(0 < sz && sz <= intran[0].size());
-  SimpleVector<T> p(intran.size());
-  // N.B. p01next calls p0maxNext implicitly, this needs to be cached single
-  //      threaded process on first call.
-  p[0] = p01next<T, nprogress < 0>(intran[0].subVector(0, sz));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int j = 1; j < p.size(); j ++)
-    p[j] = p01next<T, nprogress < 0>(intran[j].subVector(0, sz));
-  const SimpleVector<T> secondssub(seconds.subVector(0, sz));
-  const T nseconds(sqrt(secondssub.dot(secondssub)));
-  return revertProgramInvariant<T>(make_pair(
-    makeProgramInvariant<T>(normalize<T>(p)).first,
-      p01next<T, nprogress < 0>(secondssub / nseconds) * nseconds)
-    ).subVector(0, intran.size());
-}
-
-// N.B. output combination untangled into continuity prediction.
-template <typename T, int nprogress> SimpleVector<T> pRS0(const vector<SimpleVector<T> >& in, const string& strloop = string("")) {
-  vector<SimpleVector<T> > intran;
-  intran.resize(in[0].size());
-  for(int i = 0; i < intran.size(); i ++) {
-    intran[i].resize(in.size());
-    for(int j = 0; j < intran[i].size(); j ++)
-      intran[i][j] = in[j][i];
-  }
-  SimpleVector<T> seconds(in.size());
-  seconds.O();
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < seconds.size(); i ++)  {
-    idFeeder<T> work0(intran.size());
-    for(int j = 0; j < intran.size(); j ++) work0.next(intran[j][i]);
-    assert(work0.full);
-    pair<SimpleVector<T>, T> work(makeProgramInvariant<T>(work0.res));
-    for(int j = 0; j < intran.size(); j ++) intran[j][i] = move(work.first[j]);
-    seconds[i] = move(work.second);
-  }
-  T M(int(0));
-  for(int i = 0; i < intran.size(); i ++)
-    for(int j = 0; j < intran[i].size(); j ++)
-      M = max(abs(intran[i][j]), M);
-  for(int i = 0; i < intran.size(); i ++) intran[i] /= M;
-  return pRS00<T, nprogress>(intran, in.size(), seconds /= M, strloop);
-}
-
-// N.B. we use whole width to get better result in average.
-//      predict with discrete pseudo Riemann-Stieljes condition.
-template <typename T, int nprogress> SimpleVector<T> pRS(const vector<SimpleVector<T> >& intran0, const string& strloop) {
-  static const int step(1);
-  SimpleVector<T> res;
-  res.resize(intran0.size());
-  res.O();
-  if(intran0[0].size() < 10 + step * 2) {
-    if(! intran0[0].size()) return SimpleVector<T>();
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = 0; i < res.size(); i ++)
-      res[i] = p0maxNext<T>(intran0[i]);
+// N.B. predict with discrete pseudo Riemann-Stieljes condition.
+template <typename T, int nprogress> vector<SimpleVector<T> > pRSshallow(const vector<SimpleVector<T> >& intran0, const string& strloop) {
+  if(intran0[0].size() < 12) {
+    if(! intran0[0].size()) return vector<SimpleVector<T> >();
+    vector<SimpleVector<T> > res;
+    res.resize(intran0[0].size(), SimpleVector<T>(intran0.size()).O());
+    for(int j = 0; j < res.size(); j ++)
+      for(int i = 0; i < res.size(); i ++)
+        res[j][i] = p0maxNext<T>(intran0[i].subVector(0, j + 1));
     return res;
   }
   SimpleVector<T> seconds(intran0[0].size());
@@ -4557,81 +4516,49 @@ template <typename T, int nprogress> SimpleVector<T> pRS(const vector<SimpleVect
       M = max(abs(intran[i][j]), M);
   for(int i = 0; i < intran.size(); i ++) intran[i] /= M;
   seconds /= M;
-  const int start(8 + step);
-  SimpleVector<SimpleVector<T> > p;
-  p.entity.reserve(intran0[0].size() - start + 1);
-  for(int i = start; i <= intran0[0].size(); i ++) {
-    if(1 < abs(nprogress) &&
-      ! (i % max(int(1), int(intran0[0].size() / abs(nprogress)))) )
-        cerr << i << "/" << intran0[0].size() << strloop << endl;
-    p.entity.emplace_back(unOffsetHalf<T>(pRS00<T, 0>(intran,
-      i, seconds, string("") )));
+  vector<SimpleVector<T> > p;
+  // N.B. p01next calls p0maxNext implicitly, this needs to be cached single
+  //      threaded process on first call.
+  vector<T> p0(p01nextM<T, nprogress < 0>(intran[0]));
+  p.resize(p0.size(), SimpleVector<T>(intran.size()).O());
+  for(int i = 0; i < p0.size(); i ++) p[i][0] = p0[i];
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(static, 1)
+#endif
+  for(int j = 1; j < p[0].size(); j ++) {
+    if(nprogress && ! (j % max(int(1), int(p[0].size() / nprogress))) )
+      cerr << j << " / " << p[0].size() << strloop << endl;
+    vector<T> pp(p01nextM<T, nprogress < 0>(intran[j]));
+    assert(pp.size() == p0.size());
+    for(int i = 0; i < pp.size(); i ++) p[i][j] = pp[i];
   }
-  intran.resize(0);
-  SimpleMatrix<T> ip(res.size(), p.size() - step);
-  ip.O();
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = step; i < p.size(); i ++)
-    for(int j = 0; j < ip.rows(); j ++)
-      ip(j, i - step) = intran0[j][i - p.size() + intran0[j].size()] *
-        p[i - step][j];
-  assert(res.size() == p[p.size() - 1].size());
-  res[0] = p[p.size() - 1][0] * p0maxNext<T>(ip.row(0));
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 1; i < res.size(); i ++)
-    res[i] = p[p.size() - 1][i] * p0maxNext<T>(ip.row(i));
-  return res;
+  const T nseconds(sqrt(seconds.dot(seconds)) );
+  const vector<T> peconds(p01nextM<T, nprogress < 0>(seconds / nseconds) );
+  assert(p.size() == peconds.size());
+  for(int i = 0; i < p.size(); i ++)
+    p[i] = unOffsetHalf<T>(revertProgramInvariant<T>(make_pair(
+      makeProgramInvariant<T>(normalize<T>(p[i])).first, peconds[i] * nseconds)
+        ).subVector(0, intran.size()) );
+  return p;
 }
 
-// N.B. we feed a large markov into prediction stream as it's on the input
-//      pattern history or not. we need this for continuous but harder
-//      input streams.
-template <typename T, int nprogress> SimpleVector<T> pCbrtMarkov(const vector<SimpleVector<T> >& intrans, const string& strloop) {
-  const int slen(max(int(4), int(exp(log(T(int(intrans[0].size()))) / T(int(3)) )) ) );
-  vector<SimpleVector<T> > pass_next;
-  SimpleVector<T> presidue(intrans.size());
-  presidue.O(T(int(1)));
-  if(intrans[0].size() <= max(slen, int(18)))
-    pass_next = unOffsetHalf<T>(intrans);
-  else {
-    pass_next.resize(intrans.size(),
-      SimpleVector<T>(intrans[0].size() - 1 - slen).O());
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int i = slen; i < intrans[0].size() - 1; i ++)
-      for(int j = 0; j < intrans.size(); j ++) {
-        if(1 < abs(nprogress) && ! (((i - slen) * intrans.size() + j) %
-          max(int(1), int((intrans[0].size() - 1 - slen) * intrans.size() /
-            abs(nprogress)))) )
-              cerr << ((i - slen) * intrans.size() + j) << "/"
-                << ((intrans[0].size() - 1 - slen) * intrans.size())
-                  << " cuttingDown " << strloop << endl;
-        pass_next[j][i - slen] = unOffsetHalf<T>(
-          p012next<T>(intrans[j].subVector(0, i + 1), slen)) *
-            unOffsetHalf<T>(intrans[j][i + 1]);
-      }
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-    for(int j = 0; j < intrans.size(); j ++)
-      presidue[j] = unOffsetHalf<T>(p012next<T>(intrans[j], slen));
+// N.B. output combination untangled into continuity prediction.
+template <typename T, int nprogress> static inline SimpleVector<T> pRS0(const vector<SimpleVector<T> >& in, const string& strloop = string("")) {
+  vector<SimpleVector<T> > intran;
+  intran.resize(in[0].size());
+  for(int i = 0; i < intran.size(); i ++) {
+    intran[i].resize(in.size());
+    for(int j = 0; j < intran[i].size(); j ++)
+      intran[i][j] = in[j][i];
   }
-  SimpleVector<T> res(pRS<T, nprogress>(pass_next, string(" feeding ") +
-    strloop));
-  assert(res.size() == intrans.size());
-  for(int j = 0; j < res.size(); j ++) res[j] *= presidue[j];
-  return offsetHalf<T>(res);
+  vector<SimpleVector<T> > res(pRSshallow<T, nprogress>(intran, strloop));
+  return res[res.size() - 1];
 }
 
 // N.B. we add some Lebesgue part by cutting input horizontal.
-template <typename T, int nprogress> SimpleVector<T> pLebesgue(const vector<SimpleVector<T> >& in, const int& horizontal, const string& strloop) {
+template <typename T, int nprogress> vector<SimpleVector<T> > pLebesgue(const vector<SimpleVector<T> >& in, const int& horizontal, const string& strloop) {
   if(in.size() <= horizontal * horizontal)
-    return SimpleVector<T>(in[0].size()).O(T(int(0)));
+    return vector<SimpleVector<T> >();
   vector<vector<SimpleVector<T> > > reform;
   reform.resize(horizontal);
   for(int i = 0; i < reform.size(); i ++) {
@@ -4663,8 +4590,7 @@ template <typename T, int nprogress> SimpleVector<T> pLebesgue(const vector<Simp
       }
     }
   }
-  SimpleVector<T> res(in[0].size());
-  res.O();
+  vector<SimpleVector<T> > res;
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static, 1)
 #endif
@@ -4678,16 +4604,16 @@ template <typename T, int nprogress> SimpleVector<T> pLebesgue(const vector<Simp
     }
     // N.B. try 3 of the context from single input stream possible enough
     //      then take arithmetic average.
-    SimpleVector<T> p0;
-    SimpleVector<T> p1;
-    SimpleVector<T> p2;
+    vector<SimpleVector<T> > p0;
+    vector<SimpleVector<T> > p1;
+    vector<SimpleVector<T> > p2;
 #if defined(_OPENMP)
 #pragma omp parallel sections
     {
 #pragma omp section
 #endif
       {
-        p0 = pCbrtMarkov<T, nprogress>(
+        p0 = pRSshallow<T, nprogress>(
           reform[i], string(" L(0/3, ") + to_string(i) + string("/") +
             to_string(reform.size()) + strloop);
       }
@@ -4695,7 +4621,7 @@ template <typename T, int nprogress> SimpleVector<T> pLebesgue(const vector<Simp
 #pragma omp section
 #endif
       {
-        p1 = logscale<T>(pCbrtMarkov<T, nprogress>(
+        p1 = logscale<T>(pRSshallow<T, nprogress>(
           expscale<T>(reform[i]), string(" L(1/3, ") + to_string(i) +
             string("/") + to_string(reform.size()) + strloop) );
       }
@@ -4703,7 +4629,7 @@ template <typename T, int nprogress> SimpleVector<T> pLebesgue(const vector<Simp
 #pragma omp section
 #endif
       {
-        p2 = expscale<T>(pCbrtMarkov<T, nprogress>(
+        p2 = expscale<T>(pRSshallow<T, nprogress>(
           logscale<T>(reform[i]), string(" L(2/3, ") + to_string(i) +
             string("/") + to_string(reform.size()) + strloop) );
       }
@@ -4711,58 +4637,70 @@ template <typename T, int nprogress> SimpleVector<T> pLebesgue(const vector<Simp
     }
 #endif
     assert(p0.size() == p1.size() && p1.size() == p2.size());
-    p0 += p1;
-    p0 += p2;
-    p0 *= T(i + 1) / T(horizontal) / T(int(3));
+    for(int i = 0; i < p0.size(); i ++) {
+      p0[i] += p1[i];
+      p0[i] += p2[i];
+      p0[i] *= T(i + 1) / T(horizontal) / T(int(3));
+    }
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
     {
-      res += p0;
+      if(! res.size()) res = move(p0);
+      else for(int i = 0; i < res.size(); i ++) res[i] += p0[i];
     }
   }
-  return res /= T(int(reform.size()));
+  for(int i = 0; i < res.size(); i ++) res[i] /= T(int(reform.size()));
+  return res;
 }
 
 // N.B. add some sectional measurement part.
-template <typename T, int nprogress> SimpleVector<T> pSectional(const vector<SimpleVector<T> >& in, const string& strloop) {
+template <typename T, int nprogress> static inline vector<SimpleVector<T> > pSectional(const vector<SimpleVector<T> >& in, const string& strloop) {
   const int n(absfloor(sqrt(max(T(int(0)), log(T(in.size())) / log(T(int(2))) )) ));
   const int range(max(int(2), n));
   const int sectional(range * range);
-  if(! in.size()) return SimpleVector<T>();
+  if(! in.size()) return vector<SimpleVector<T> >();
   if(in.size() <= sectional * 2)
     return unOffsetHalf<T>(pLebesgue<T, nprogress>(in, range, strloop));
-  SimpleVector<T> res(pLebesgue<T, nprogress>(in, range, strloop) *
-    T(sectional));
-  for(int i = 1; i < sectional; i ++) res -= in[in.size() - i];
+  vector<SimpleVector<T> > res(pLebesgue<T, nprogress>(in, range, strloop) );
+  for(int j = 0; j < res.size(); j ++) {
+    res[j] *= T(sectional);
+    for(int i = 1; i < sectional; i ++)
+      res[j] -= in[in.size() - i + j - res.size()];
+  }
   return unOffsetHalf<T>(res);
 }
 
 // N.B. the result somehow not offsetted so we offset to 0.
-template <typename T, int nprogress> SimpleVector<T> pPolish(const vector<SimpleVector<T> >& in, const string& strloop) {
+template <typename T, int nprogress> vector<SimpleVector<T> > pPolish(const vector<SimpleVector<T> >& in, const string& strloop) {
   vector<SimpleVector<T> > inm(in);
   for(int i = 0; i < inm.size(); i ++)
     inm[i] = offsetHalf<T>(- unOffsetHalf<T>(inm[i]));
-  SimpleVector<T> resp;
-  SimpleVector<T> resm;
+  vector<SimpleVector<T> > resp;
+  vector<SimpleVector<T> > resm;
 #if defined(_OPENMP)
 #pragma omp parallel sections
   {
 #pragma omp section
 #endif
     {
-      resp =   pSectional<T, nprogress>(in,  string("+)") + strloop);
+      resp = pSectional<T, nprogress>(in,  string("+)") + strloop);
     }
 #if defined(_OPENMP)
 #pragma omp section
 #endif
     {
-      resm = - pSectional<T, nprogress>(inm, string("+)") + strloop);
+      resm = pSectional<T, nprogress>(inm, string("+)") + strloop);
+      for(int i = 0; i < resm.size(); i ++) resm[i] = - resm[i];
     }
 #if defined(_OPENMP)
   }
 #endif
-  return (resp += resm) /= T(int(2));
+  for(int i = 0; i < resp.size(); i ++) {
+    resp[i] += resm[i];
+    resp[i] /= T(int(2));
+  }
+  return resp;
 }
 
 #if ! defined(_P_BIT_)
@@ -4771,45 +4709,48 @@ template <typename T, int nprogress> SimpleVector<T> pPolish(const vector<Simple
 #define _P_BIT_ 3
 #endif
 
-// N.B. to guarantee lim S f == S lim f also ||S input|| is in [0,1[-register.
-template <typename T, int nprogress> SimpleVector<T> pGuarantee(const vector<SimpleVector<T> >& in, const string& strloop) {
-  return unOffsetHalf<T>(bitsG<T, true>(
-    pPolish<T, nprogress>(bitsG<T, true>(offsetHalf<T>(
-      delta<SimpleVector<T> >(in)), abs(_P_BIT_)), strloop),
-        - abs(_P_BIT_) )) + in[in.size() - 1];
+// N.B. p01next output meaning only binary we make hypothesis.
+template <typename T, int nprogress> vector<SimpleVector<T> > pGuaranteeM(const SimpleVector<SimpleVector<T> >& in, const string& strloop) {
+  vector<SimpleVector<T> > res(pPolish<T, nprogress>(
+    bitsG<T, true>(in.entity, abs(_P_BIT_)), strloop) );
+  for(int i = 0; i < res.size(); i ++)
+    // XXX:
+    // res[i] = bitsG<T, true>(offsetHalf<T>(res[i]), - abs(_P_BIT_) );
+    res[i] = bitsG<T, true>(normalize<T>(res[i]), - abs(_P_BIT_) );
+  return res;
 }
 
-#if !defined(_P_MLEN_)
-// N.B. specify max length.
-#define _P_MLEN_ (int(13 + 3 + 4 + 1))
-#endif
+template <typename T, int nprogress> static inline SimpleVector<T> pGuarantee(const SimpleVector<SimpleVector<T> >& in, const string& strloop) {
+  vector<SimpleVector<T> > res(pGuaranteeM<T, nprogress>(in, strloop));
+  return res[res.size() - 1];
+}
 
 // N.B. pSubtractInvariant[234] takes maximum dimension prediction in R^4
 //      invariant meaning. this is for input stream hard specific 2 choices.
-template <typename T, int nprogress> static inline SimpleVector<T> pSubtractInvariant2(const SimpleVector<SimpleVector<T> >& in, const string& strloop) {
-  const int n(1);
-  const int m((in.size() - n) / 2);
-  assert(0 < m);
-  SimpleVector<SimpleVector<T> > pass;
-  pass.entity.resize(in.size() - m);
-#if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 1)
-#endif
-  for(int i = 0; i < in.size() - m; i ++)
-    // N.B. CPU float glitch causes no estimate, so double them.
-    pass[i] = offsetHalf<T>(unOffsetHalf<T>(
-      in[i + m]) - unOffsetHalf<T>(pGuarantee<T, - nprogress>(
-        in.subVector(i, m).entity, string(" ") + to_string(i) +
-          string("/P") + to_string(in.size() - m) + strloop)) / T(int(4)) );
-  return offsetHalf<T>(unOffsetHalf<T>(
-    pGuarantee<T, nprogress>(pass.subVector(pass.size() - m, m).entity,
-      string(" -") + strloop)) * T(int(4)) +  unOffsetHalf<T>(pGuarantee<T,
-        - nprogress>(in.subVector(in.size() - m, m).entity, string(" +") +
-          strloop) ) );
+template <typename T, int nprogress> static inline vector<SimpleVector<T> > pSubtractInvariant2(const SimpleVector<SimpleVector<T> >& in, const string& strloop) {
+  vector<SimpleVector<T> > pass;
+  SimpleVector<SimpleVector<T> > bpass;
+  bpass.entity = pGuaranteeM<T, - nprogress>(in, string(" P") + strloop);
+  SimpleVector<T> last(move(bpass[bpass.size() - 1]));
+  bpass.resize(bpass.size() - 1);
+  pass.reserve(bpass.size());
+  for(int i = 0; i < bpass.size(); i ++)
+    pass.emplace_back(offsetHalf<T>((unOffsetHalf<T>(
+      in[i - bpass.size() + in.size()]) -
+        unOffsetHalf<T>(bpass[i])) / T(int(4))) );
+  vector<SimpleVector<T> > res(pPolish<T, nprogress>(pass, string(" Q") +
+    strloop) );
+  for(int i = 0; i < res.size() - 1; i ++) {
+    res[i] *= T(int(4));
+    res[i] += unOffsetHalf<T>(bpass[i - (res.size() - 1) + bpass.size()]);
+  }
+  res[res.size() - 1] *= T(int(4));
+  res[res.size() - 1] += unOffsetHalf<T>(last);
+  return offsetHalf<T>(res);
 }
 
 // N.B. this subtract return to average either const. invariant.
-template <typename T, int nprogress> static inline SimpleVector<T> pSubtractInvariant3(const vector<SimpleVector<T> >& in, const string& strloop) {
+template <typename T, int nprogress> static inline vector<SimpleVector<T> > pSubtractInvariant3(const vector<SimpleVector<T> >& in, const string& strloop) {
   SimpleVector<SimpleVector<T> > pass;
   pass.entity.reserve(in.size() - 3);
   for(int i = 0; i < in.size() - 3; i ++) {
@@ -4820,88 +4761,81 @@ template <typename T, int nprogress> static inline SimpleVector<T> pSubtractInva
     pass[i] /= T(int(4));
     pass[i]  = offsetHalf<T>(pass[i]);
   }
-  return pSubtractInvariant2<T, nprogress>(pass, strloop) + in[in.size() - 1] +
-    in[in.size() - 2] + in[in.size() - 3];
+  vector<SimpleVector<T> > res(pSubtractInvariant2<T, nprogress>(pass, strloop));
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = res[i] * T(int(4)) + in[i - res.size() + in.size()] +
+      in[i - res.size() - 1 + in.size()] + in[i - res.size() - 2 + in.size()];
+  return res;
 }
 
 // N.B. this subtract trivial 1-markov invariant. whole of this is for the
-//      LoEM unstable case input stream, we don't need subtract them
+//      root of LoEM unstable case input stream, we don't need subtract them
 //      other than pGuarantee normal cases.
-template <typename T, int nprogress> SimpleVector<T> pSubtractMaxInvariant(const vector<SimpleVector<T> >& in, const string& strloop) {
+template <typename T, int nprogress> static inline vector<SimpleVector<T> > pSubtractMaxInvariant(const vector<SimpleVector<T> >& in, const string& strloop) {
   vector<SimpleVector<T> > pass;
   pass.reserve(in.size() - 1);
   for(int i = 0; i < in.size() - 1; i ++)
     pass.emplace_back(offsetHalf<T>((unOffsetHalf<T>(in[i + 1]) - 
       unOffsetHalf<T>(in[i]) ) / T(int(2))));
-  SimpleVector<T> res(
-    unOffsetHalf<T>(pSubtractInvariant3<T, nprogress>(pass, strloop)) *
-      T(int(2)) + unOffsetHalf<T>(in[in.size() - 1]) );
-  T M(abs(res[0]));
-  for(int i = 1; i < res.size(); i ++) M = max(abs(res[i]), M);
-  return T(int(1)) <= M ? res /= M : res;
+  vector<SimpleVector<T> > res(pSubtractInvariant3<T, nprogress>(pass, strloop));
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = unOffsetHalf<T>(res[i]) * T(int(2)) +
+      unOffsetHalf<T>(in[i - res.size() + in.size()]);
+  return offsetHalf<T>(res);
 }
 
-// N.B. twice twice. we add measureable condition virtually on first prediction,
-//      we do prediction to differ on them often gets better results.
-//      since we get abs value on prediction we do -(original stream) condition.
-template <typename T, int nprogress, SimpleVector<T> (*p)(const vector<SimpleVector<T> >&, const string&) > SimpleVector<T> pTwiceTwice(const SimpleVector<SimpleVector<T> >& in, const string& strloop) {
-  const SimpleVector<SimpleVector<T> > inm(offsetHalf<T>(- unOffsetHalf<T>(in) ));
-  SimpleVector<SimpleVector<T> > pp;
-  SimpleVector<SimpleVector<T> > pm;
-  const int sz(in.size() / 2);
-  pp.entity.reserve(sz + 2);
-  pm.entity.reserve(sz + 2);
+// N.B. each bit.
+template <typename T, int nprogress> vector<SimpleVector<T> > pGuaranteeMaxM(const SimpleVector<SimpleVector<T> >& in, const string& strloop) {
+  vector<SimpleVector<T> > res(pSubtractMaxInvariant<T, nprogress>(
+    bitsG<T, true>(in.entity, abs(_P_BIT_)), strloop) );
+  for(int i = 0; i < res.size(); i ++)
+    res[i] = bitsG<T, true>(normalize<T>(res[i]), - abs(_P_BIT_));
+    // res[i] = bitsG<T, true>(offsetHalf<T>(res[i]), - abs(_P_BIT_));
+  return res;
+}
+
+template <typename T, int nprogress> static inline SimpleVector<T> pGuaranteeMax(const SimpleVector<SimpleVector<T> >& in, const string& strloop) {
+  vector<SimpleVector<T> > res(pGuaranteeMaxM<T, nprogress>(in, strloop));
+  return res[res.size() - 1];
+}
+
+template <typename T, int nprogress, vector<SimpleVector<T> > (*p)(const SimpleVector<SimpleVector<T> >&, const string&) > SimpleVector<T> pWholeContext(const vector<SimpleVector<T> >& in, const string& strloop) {
 #if defined(_OPENMP)
   for(int i = 1; i < in.size(); i ++) pnextcacher<T>(i, 1);
   // N.B. comment out and use env OMP_MAX_ACTIVE_LEVELS=... to reduce
   //      memory usage.
   omp_set_max_active_levels(2);
-#pragma omp parallel
-#pragma omp for schedule(static, 1)
 #endif
-  for(int i = 0; i <= in.size() - sz; i ++)
-    pp.entity.emplace_back(p(in.subVector(i, sz).entity, string(" ") +
-      to_string(i) + string("/") + to_string(sz * 2 + 4) + strloop));
-#if defined(_OPENMP)
-#pragma omp for schedule(static, 1)
-#endif
-  for(int i = 0; i <= in.size() - sz; i ++)
-    pm.entity.emplace_back(p(inm.subVector(i, sz).entity, string(" ") +
-      to_string(i + sz) + string("/") + to_string(sz * 2 + 4) + strloop));
-  assert(pp.size() == pm.size());
-  const SimpleVector<T> ppl(move(pp[pp.size() - 1]));
-  const SimpleVector<T> pml(move(pm[pm.size() - 1]));
-  pp.resize(pp.size() - 1);
-  pm.resize(pm.size() - 1);
-  for(int i = 0; i < pp.size(); i ++) {
-    pp[i] = offsetHalf<T>((unOffsetHalf<T>(in[ i - pp.size() + in.size() ]) - pp[i]) / T(int(2)));
-    pm[i] = offsetHalf<T>((unOffsetHalf<T>(inm[i - pm.size() + inm.size()]) - pm[i]) / T(int(2)));
+  SimpleVector<SimpleVector<T> > work;
+  work.entity.reserve(in.size() * 2 - 1);
+  work.entity.emplace_back(in[0]);
+  for(int i = 1; i < in.size(); i ++) {
+    work.entity.emplace_back((in[i] + in[i - 1]) / T(int(2)));
+    work.entity.emplace_back(in[i]);
   }
-  const SimpleVector<SimpleVector<T> > pp_m(offsetHalf<T>(- unOffsetHalf<T>(pp)));
-  const SimpleVector<SimpleVector<T> > pm_m(offsetHalf<T>(- unOffsetHalf<T>(pm)));
-  const SimpleVector<T> ppp(ppl + p(pp.entity,   string(" -4") + strloop) * T(int(2)));
-  const SimpleVector<T> ppm(ppl - p(pp_m.entity, string(" -3") + strloop) * T(int(2)));
-  const SimpleVector<T> pmp(pml + p(pm.entity,   string(" -2") + strloop) * T(int(2)));
-  const SimpleVector<T> pmm(pml - p(pm_m.entity, string(" -1") + strloop) * T(int(2)));
-  SimpleVector<T> res(in[0].size());
-  for(int i = 0; i < res.size(); i ++) res[i] = abs(ppp[i] * ppm[i]) - abs(pmp[i] * pmm[i]);
+  work.entity = delta<SimpleVector<T> >(delta<SimpleVector<T> >(work.entity));
+  for(int i = 0; i < work.size(); i ++)
+    work[i] = offsetHalf<T>(work[i] /= T(int(4)) );
+  vector<SimpleVector<T> > pp(unOffsetHalf<T>(p(work, string("+") + strloop)));
+  for(int i = 1; i < pp.size(); i ++) pp[i] += pp[i - 1];
+  SimpleVector<T> res(pp[0]);
+  for(int i = 1; i < pp.size() - 1; i ++) res += pp[i];
+  SimpleVector<T> cor(res);
+  res += pp[pp.size() - 1];
+  for(int i = 0; i < res.size(); i ++)
+    res[i] *= - sgn<T>(cor[i] * unOffsetHalf<T>(in[in.size() - 1][i]));
   return res;
 }
 
 // N.B. repeat possible output whole range. also offset before/after predict.
-template <typename T, int nprogress> vector<SimpleVector<T> > pRepeat(const vector<SimpleVector<T> >& in, const string& strloop) {
-  const int length(_P_MLEN_ * 2);
-  const int cand(max(int(1), int(in.size() / (length + 1)) ));
+template <typename T, int nprogress, vector<SimpleVector<T> > (*p)(const SimpleVector<SimpleVector<T> >&, const string&) > vector<SimpleVector<T> > pRepeat(const vector<SimpleVector<T> >& in, const string& strloop) {
+  const int cand(max(int(1), int(in.size() / 4) ));
   vector<SimpleVector<T> > res;
   res.reserve(cand);
-  for(int i = 1; i <= cand; i ++) {
-    SimpleVector<SimpleVector<T> > w;
-    w.entity = skipX<SimpleVector<T> >(in, i);
-    res.emplace_back(pTwiceTwice<T, nprogress, pGuarantee<T, nprogress> >(
-      w.size() > length ? w.subVector(w.size() - length, length) : w,
-        string(" ") + to_string(i - 1) + string("/") + to_string(cand) +
-          strloop));
-  }
+  for(int i = 1; i <= cand; i ++)
+    res.emplace_back(pWholeContext<T, nprogress, p>(skipX<SimpleVector<T> >(
+      in, i), string(" ") + to_string(i - 1) + string("/") + to_string(cand) +
+        strloop));
   return offsetHalf<T>(res);
 }
 
@@ -4962,22 +4896,21 @@ template <typename T, int nprogress> SimpleVector<T> predv4(vector<SimpleVector<
 // N.B. layers:
 //       | function           | layer# | [wsp1] | data amount* | time*(***)   |
 //       +-----------------------------------------------------+--------------+
-//       | pGuarantee                  | 0   | w | bits        |
+//       | pWholeContext               | 0   | w | in          | in
+//       | pGuarantee                  | 1   | w | bits        |
 //       | pPolish                     | *   | w | 2           | 2
-//       | pSectional                  | 1   | w | range       |
-//       | pLebesgue                   | 2   | w | range^2     | range
-//       | pCbrtMarkov                 | 3   | w | +in         | +O(GL^5/3)
-//       | after burn with p0next, loop| 4++ | w | +unit       | O(L)+O(GL+L^3)
-//       | divide by program invariant | 5+  | s | +unit       | +O(GL)
-//       | burn invariant by p0next    | 6++ | s | +unit       | +O(GL+L^3)
-//       | makeProgramInvariant        | 7+  | p |             | +O(GL)
+//       | pSectional                  | 2   | w | range       |
+//       | pLebesgue                   | 3   | w | range^2     | range
+//       | divide by program invariant | 4+  | s | +unit       | +O(GL)
+//       | burn invariant by p0next    | 5++ | s | +unit       | +O(GL+L^3)
+//       | makeProgramInvariant        | 6+  | p |             | +O(GL)
 //       | linearInvariant             | -   | - | -           |
-//       |   - QR decomposition        | 9+* | s | > 4!        | O(GL)
-//       |   - orthogonalization       | 11+*| p | > 4!        | O(4!)
-//       |   - solve                   | 13* | p | +> (4 * 4)  | +O(4^3)
-//       | T::operator *,/             | 14+ | 1 |             |
-//       | T::operator +,-             | 15+ | 1 |             |
-//       | T::bit operation            | 16+ | 1 |             |
+//       |   - QR decomposition        | 8+* | s | > 4!        | O(GL)
+//       |   - orthogonalization       | 10+*| p | > 4!        | O(4!)
+//       |   - solve                   | 12* | p | +> (4 * 4)  | +O(4^3)
+//       | T::operator *,/             | 13+ | 1 |             |
+//       | T::operator +,-             | 14+ | 1 |             |
+//       | T::bit operation            | 15+ | 1 |             |
 // *(++) | sumCNext                    | +0  | s |             |
 //       | sumCNext                    | +1  | s |             |
 //       | logCNext                    | +2  | s |             |
@@ -4995,7 +4928,7 @@ template <typename T, int nprogress> SimpleVector<T> predv4(vector<SimpleVector<
 //       | T::bit operation            | +14 | 1 |             |
 // (***) time order ratio, L for input stream length, G for input vector size,
 //       stand from arithmatic operators. ind2varlen isn't considered.
-// N.B. we need O((mem region)^2) calculation time whole.
+// N.B. we need O(L^2*G) calculation time whole.
 
 template <typename T, int nprogress> vector<vector<SimpleVector<T> > > predVec(const vector<vector<SimpleVector<T> > >& in0) {
   assert(in0.size() && in0[0].size() && in0[0][0].size());
@@ -5010,7 +4943,11 @@ template <typename T, int nprogress> vector<vector<SimpleVector<T> > > predVec(c
       in[i].setVector(j * in0[i][0].size(), in0[i][j]);
     }
   }
-  vector<SimpleVector<T> > pres(pRepeat<T, nprogress>(in, string(" (predVec)")));
+  vector<SimpleVector<T> > pres(nprogress < 0 ?
+    pRepeat<T, - nprogress, pGuaranteeMaxM<T, - nprogress> >(in,
+      string(" (predVecM)")) :
+    pRepeat<T,   nprogress, pGuaranteeM<T, nprogress> >(in,
+      string(" (predVec)")) );
   vector<vector<SimpleVector<T> > > res;
   res.resize(pres.size());
   for(int i = 0; i < pres.size(); i ++) {
@@ -5036,7 +4973,11 @@ template <typename T, int nprogress> vector<vector<SimpleMatrix<T> > > predMat(c
                          k * in0[i][0].cols(), in0[i][j].row(k));
     }
   }
-  vector<SimpleVector<T> > pres(pRepeat<T, nprogress>(in, string(" (predMat)")));
+  vector<SimpleVector<T> > pres(nprogress < 0 ?
+    pRepeat<T, - nprogress, pGuaranteeMaxM<T, - nprogress> >(in,
+      string(" (predMatM)")) :
+    pRepeat<T,   nprogress, pGuaranteeM<T, nprogress> >(in,
+      string(" (predMat)")) );
   vector<vector<SimpleMatrix<T> > > res;
   res.resize(pres.size());
   for(int i = 0; i < pres.size(); i ++) {
@@ -5079,7 +5020,11 @@ template <typename T, int nprogress> vector<SimpleSparseTensor(T)> predSTen(vect
             in[i][cnt ++] = offsetHalf<T>(in0[i][idx[j]][idx[k]][idx[m]]);
   }
   in0.resize(0);
-  vector<SimpleVector<T> > pres(pRepeat<T, nprogress>(in, string(" (predSTen)")));
+  vector<SimpleVector<T> > pres(nprogress < 0 ?
+    pRepeat<T, - nprogress, pGuaranteeMaxM<T, - nprogress> >(in,
+      string(" (predSTenM)")) :
+    pRepeat<T,   nprogress, pGuaranteeM<T, nprogress> >(in,
+      string(" (predSTen)")) );
   vector<SimpleSparseTensor(T) > res;
   res.resize(pres.size());
   for(int i = 0; i < pres.size(); i ++)
@@ -8025,7 +7970,7 @@ template <typename T, typename U> static inline void makelword(vector<U>& words,
   return;
 }
 
-// N.B. numbering is last renumbered 2025/07/30:
+// N.B. renumbered 2025/08/17:
 // N.B. once implemented or not but abandoned and cleaned from this source code
 //      the reason why
 // (00) predictions via linear sum/diff based some reformation input and revert:
@@ -8104,7 +8049,17 @@ template <typename T, typename U> static inline void makelword(vector<U>& words,
 //      structures. so we drop to implement them.
 // (19) distant step prediciton. it's equivalent to skipX concerns.
 // (20) offset canceler. it's harmful to predictor behaviour.
-//
+// (21) add virtual measureable condition by predictor then predict with them.
+//      the original stream attach is better pretend than them either better
+//      adding some of the measureable conditions.
+// (22) after burn by p0maxNext pRS00 result. we add pWholeContext condition
+//      they includes the same intent.
+// (23) pCbrtMarkov feeder. we use pWholeContext instead of feeding large markov
+//      into prediction stream either it was worse harmful to the speed.
+// (24) after burn pRS p0maxNext, we need to have direction only once on a
+//      whole of prediction concerns in each micro/macro.
+// (25) any of numerical-test driven results need to be cleaned.
+//      we need to avoid PRNG dependant specific algorithms.
 // N.B. something XXX result descripton
 // (00) there might exist non Lebesgue measureable condition discrete stream.
 //      this is: there's no unique function on the range but AFTER all the
@@ -8159,29 +8114,22 @@ template <typename T, typename U> static inline void makelword(vector<U>& words,
 //      of them cannot be treated by single predictor.
 // (04) the predictor vs. jammer made stream concludes the saturated input.
 //      also the condition is the which side bore first chase.
-//      so to extend them needs the much better problem information and to get
-//      better form to the stream. either, if the saturated result we get,
-//      we should reform the transformation structure for preprocess
-//      as to separate something.
+//      if the saturated result we get, we should separate something on input.
 // (05) there can be 0 invariant chain, so they can be caused by move average
-//      they caused return to average works very well. also this is some
-//      horizontal cut concerns.
+//      they caused return to average works very well.
 //      this is because <x,a> == 0, <[x,x+],[a,0]+[0,a]> == 0 chain in rough.
 // (06) after some conversation with gemini around 2025/07, the jammers
 //      they have internal optimization calculation to output to saturate
 //      the stream intent condition or so also have the internal made intentions
 //      to jam out the stream.
-// (07) the predictor can have universal invariant for any as nonlinear one,
-//      however, once it's coded, the first digit description exists cause
-//      slipping the numerical series.
-// (08) if the predictor takes the input as a payload to the structure,
+// (07) if the predictor takes the input as a payload to the structure,
 //      the learning size needs smaller than 2^(n-markov) in trivial because
 //      they saturates end this point other than statistical ones.
-//      on the other hand, our predictor only needs (n-markov)^3, so crossing
-//      point is around after 9 input stream samples.
-//
+//      on the other hand, our predictor uses id. definition.
 // N.B. there's plenty of the room to implement the predictor which is
 //      saturating F_2^4 #f, the bra, ket condition indirect access.
+//      either Riemann-measureable conditions' smaller than |dx| counting
+//      causes whole function reference.
 
 #define _SIMPLELIN_
 #endif
