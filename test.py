@@ -135,9 +135,7 @@ else:
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "blur"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(pixels)])
-      subprocess.call(["convert", root + ".ppm", "-negate", "-format" , "ppm", "-compress", "none", root + "-neg.ppm"])
-      subprocess.call([argv[1], argv[2], root + "-neg.ppm", root + "-neg-" + argv[2] + ".ppm", str(pixels), str(pixels)])
-      subprocess.call(["mogrify", "-blur", str(pixels) + "x2", "-format", "png", root + "-" + argv[2] + ".ppm", root + "-neg-" + argv[2] + ".ppm"])
+      subprocess.call(["mogrify", "-despeckle", "-format", "png", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "blur" or argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
       if(argv[2] == "bump"):
