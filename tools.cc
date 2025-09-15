@@ -110,11 +110,17 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
     else if(strcmp(argv[1], "bit") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i].entity = bitsG<num_t, false>(data[i].entity, recur);
+      for(int i = 0; i < data.size(); i ++) {
+        std::vector<SimpleVector<num_t> > di(bitsG<num_t, false>(data[i].entity, recur));
+        data[i].resize(di.size(), di[0].size());
+        data[i].entity = move(di);
+      }
     else if(strcmp(argv[1], "nbit") == 0 && recur < 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i].entity = bitsG<num_t, true>(data[i].entity, recur);
+      for(int i = 0; i < data.size(); i ++) {
+        std::vector<SimpleVector<num_t> > di(bitsG<num_t, true>(data[i].entity, recur));
+        data[i].resize(di.size(), di[0].size());
+        data[i].entity = move(di);
+      }
     else if(strcmp(argv[1], "w2b") == 0) {
       for(int i = 0; i < data[0].rows(); i ++)
         for(int j = 0; j < data[0].cols(); j ++)
