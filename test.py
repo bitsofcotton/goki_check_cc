@@ -129,7 +129,7 @@ else:
       continue
     except:
       root, ext = os.path.splitext(line)
-    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
+    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq" and argv[2] != "blurpq"):
       subprocess.call(["convert", line, "-compress", "none", "-depth", "16", root + ".ppm"])
     if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
@@ -139,7 +139,13 @@ else:
     elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "blur" or argv[2] == "bump"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
       if(argv[2] == "bump"):
-        subprocess.call(["mogrify", "-compress", "none", "-blur", "3x3+3", root + "-" + argv[2] + ".ppm"])
+        # N.B. estimate aleph_omega bucket's 2/3 value (1/sqrt(11) as a majority logic with repeat).
+        subprocess.call(["mogrify", "-compress", "none", "-blur", "4x4+3", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "blurpq"):
+      # N.B. estimate aleph_(aleph_omega) bucket's 2/3 value (1 / 2^sqrt(11) as a majority logic with insurance repeat).
+      subprocess.call(["convert", line, "-blur", "10x10+6", root + "-" + argv[2] + ".png"])
+      subprocess.call(["convert", line, "-negate", "-blur", "10x10+3", root + "-" + argv[2] + "-neg.png"])
+      
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], argv[2], root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps"):
