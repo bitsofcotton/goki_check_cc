@@ -142,8 +142,8 @@ else:
         # N.B. estimate aleph_omega bucket's 2/3 value (1/sqrt(11) as a majority logic with repeat).
         subprocess.call(["mogrify", "-compress", "none", "-blur", "4x4+3", root + "-" + argv[2] + ".ppm"])
     elif(argv[2] == "blurpq"):
-      # N.B. estimate aleph_(aleph_omega) bucket's 2/3 value (1 / 2^sqrt(11) as a majority logic with insurance repeat).
-      subprocess.call(["convert", line, "-blur", "11x11+6", root + "-" + argv[2] + ".png"])
+      # N.B. also here.
+      subprocess.call(["convert", line, "-blur", "4x4+3", root + "-" + argv[2] + ".png"])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], argv[2], root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps"):
