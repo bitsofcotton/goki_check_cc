@@ -123,7 +123,8 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
       subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i--02.ppm", "-.02"])
 elif(argv[2] == "predg"):
-  subprocess.call(["convert", "predg.ppm", "-resize", "25%", "-equalize", "-resize", "400%", "predg.png"])
+  # cf. blurpq
+  subprocess.call(["convert", "predg.ppm", "-blur", "4x4+3", "-normalize", "predg.png"])
   subprocess.call(["convert", argv[1], "predg.png", "-average", "-equalize", "predg-out.png"])
 else:
   for line in argv[3:]:
