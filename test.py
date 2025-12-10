@@ -45,9 +45,9 @@ elif(argv[2] == "cat" or argv[2] == "catb" or argv[2] == "catc" or argv[2] == "c
     else:
       cmd.append(r + ".ppm")
   subprocess.call(cmd)
-elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
+elif(argv[2] == "seinsq" or argv[2] == "seinpdf" or argv[2] == "seinsqp" or argv[2] == "seinpdfp"):
   files = []
-  if(argv[2] == "seinsq"):
+  if(argv[2] == "seinsq" or argv[2] == "seinsqp"):
     exts = argv[4:]
   else:
     exts = ["pdf"]
@@ -64,8 +64,12 @@ elif(argv[2] == "seinsq" or argv[2] == "seinpdf"):
   except:
     pass
   ex = len(str(ex0))
-  pixels = int(pow(float(ex0) / 3., 1. / 2.))
-  if(argv[2] == "seinsq"):
+  if(argv[2][- 1] == 'p'):
+    # N.B. after to shrink.
+    pixels = int(pow(float(ex0) / 3., 1. / 2.) * 3)
+  else:
+    pixels = int(pow(float(ex0) / 3., 1. / 2.))
+  if(argv[2] == "seinsq" or argv[2] == "seinsqp"):
     for t in range(0, ex0):
       subprocess.call(["convert", files[t], "-resize", str(pixels) + "x" + str(pixels) + "!", "-compress", "none", "sein-" + str(t).zfill(ex) + ".ppm"])
   else:
