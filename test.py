@@ -2,20 +2,64 @@
 
 import os
 import sys
+import math
 import subprocess
 
 argv   = sys.argv
 pixels = 4
 psi    = 1. / 3.
 rot    = 0
+thresh = .9
 
-if(len(argv) < 4):
+if(len(argv) < 3):
   print("no much argments.")
 elif(argv[2] == "move"):
+  t = 0
+  for f in argv[3:]:
+    root, ext = os.path.splitext(f)
+    subprocess.call(["mv", f, argv[1] + str(t).zfill(len(str(len(argv[3:]))) ) + ext])
+    t += 1
+elif(argv[2].lower() == "pmove"):
+  # *16 is 2 for internal Simple... margin, 2 for mimalloc reservation,
+  # also 4 for sizeof(float)
   import numpy
-  f = "{0:0" + str(int(numpy.ceil(numpy.log(float(int(len(argv[3:])))) / numpy.log(10.)))) + "d}"
-  for idx in range(0, len(argv[3:])):
-    subprocess.call(["mv", argv[idx + 3], argv[1] + f.format(idx) + os.path.splitext(argv[idx + 3])[1] ])
+  pix0 = (1 + 4 * 3 * 4 * (1 + 2 * 3 * (1 + 2 * 2))) * 16
+  pixels  = 1024 * 1024 / pix0 / len(argv[3:]) * abs(float(int(argv[1])))
+  pixels /= numpy.log(len(argv[3:])) / numpy.log(2)
+  if(argv[2][1] == 'm'):
+    ext = ".ppm"
+    pixels /= 5. / 3.
+  else: ext = ".pgm"
+  if(argv[2][0] == 'p'): sz = str(pixels) + "@"
+  else:
+    sz = str(int(pow(pixels, .5))) + "x" + str(int(pow(pixels, .5))) + "!"
+  t = 0
+  for line in argv[3:]:
+    subprocess.call(["convert", line, "-resize", sz, "-compress", "none", str(t).zfill(len(str(len(argv[3:]))) ) + ext])
+    t += 1
+elif(argv[2] == "seinp" or argv[2] == "seinq" or argv[2] == "seinP" or argv[2] == "seinQ"):
+  files = []
+  for root, dirs, filesw in os.walk(argv[3]):
+    for f in filesw:
+      r, e = os.path.splitext(f)
+      for s in argv[4:]:
+        if(e.lower() == "." + s.lower()):
+          files.append(os.path.join(root, f))
+          break
+  if(argv[2][len("sein")] == 'p' or argv[2][len("sein")] == 'q'):
+    sz  = len(files) / 3
+    ext = ".ppm"
+  else:
+    sz  = len(files)
+    ext = ".pgm"
+  if(argv[2][len("sein")] == 'p' or argv[2][len("sein")] == 'P'):
+    rsz = str(int(sz)) + "@"
+  else:
+    sz  = pow(sz, .5)
+    rsz = str(int(sz)) + "x" + str(int(sz)) + "!"
+  ex = len(str(len(files)))
+  for idx in range(0, len(files)):
+    subprocess.call(["convert", files[idx], "-compress", "none", "-resize", rsz, "sein-" + str(idx).zfill(ex) + ext])
 elif(argv[2] == "match"):
   root0, ext0 = os.path.splitext(argv[3])
   root1, ext1 = os.path.splitext(argv[4])
@@ -30,52 +74,7 @@ elif(argv[2] == "match"):
     nemph = int(argv[8])
   subprocess.call([argv[1], argv[2], str(nsub), str(nemph), str(vboxd), str(vboxs), root0 + ".ppm", root1 + ".ppm", root0 + "-bump.ppm", root1 + "-bump.ppm", "match-" + root0 + "-" + root1])
   subprocess.call(["ffmpeg", "-loop", "1", "-i", "match-" + root0 + "-" + root1 + "-%d-" + str(nemph) + ".ppm", "-framerate", "6", "-an", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-t", "12", root0 + "-" + root1 + ".mp4"])
-elif(argv[2] == "cat" or argv[2] == "catb" or argv[2] == "catc" or argv[2] == "catd"):
-  cmd = [argv[1], argv[2][:len("cat")]]
-  for s in argv[3:]:
-    r, e = os.path.splitext(s)
-    if(e != ".ppm"):
-      subprocess.call(["convert", s, "-compress", "none", r + ".ppm"])
-    if(argv[2] == "catb"):
-      cmd.append(r + ".ppm-4.ppm")
-    elif(argv[2] == "catc"):
-      cmd.append(r + ".ppm-m2c4.ppm")
-    elif(argv[2] == "catd"):
-      cmd.append(r + ".ppm-m2c4t.ppm")
-    else:
-      cmd.append(r + ".ppm")
-  subprocess.call(cmd)
-elif(argv[2] == "seinsq" or argv[2] == "seinpdf" or argv[2] == "seinsqp" or argv[2] == "seinpdfp"):
-  files = []
-  if(argv[2] == "seinsq" or argv[2] == "seinsqp"):
-    exts = argv[4:]
-  else:
-    exts = ["pdf"]
-  for root, dirs, filesw in os.walk(argv[3]):
-    for f in filesw:
-      r, e = os.path.splitext(f)
-      for s in exts:
-        if(e.lower() == "." + s.lower()):
-          files.append(os.path.join(root, f))
-          break
-  ex0 = len(files)
-  try:
-    ex0 = min(ex0, int(argv[- 1]))
-  except:
-    pass
-  ex = len(str(ex0))
-  if(argv[2][- 1] == 'p'):
-    # N.B. after to shrink.
-    pixels = int(pow(float(ex0) / 3., 1. / 2.) * 3)
-  else:
-    pixels = int(pow(float(ex0) / 3., 1. / 2.))
-  if(argv[2] == "seinsq" or argv[2] == "seinsqp"):
-    for t in range(0, ex0):
-      subprocess.call(["convert", files[t], "-resize", str(pixels) + "x" + str(pixels) + "!", "-compress", "none", "sein-" + str(t).zfill(ex) + ".ppm"])
-  else:
-    for t in range(0, ex0):
-      subprocess.call(["pdftopng", files[t], "seinpdf-" + str(t).zfill(ex)])
-elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or argv[2] == "tilecatd"):
+elif(argv[2] == "tilecat"):
   pixels = int(argv[3])
   cmd = ["montage"]
   t   = 0
@@ -85,12 +84,6 @@ elif(argv[2] == "tilecat" or argv[2] == "tilecatb" or argv[2] == "tilecatc" or a
       subprocess.call(cmd)
       cmd = ["montage"]
       t  += 1
-    elif(argv[2] == "tilecatb"):
-      cmd.append(line[:- 1 - len(".ppm-wg-bit.ppm-4.ppm")] + ".ppm")
-    elif(argv[2] == "tilecatc"):
-      cmd.append(line[:- 1 - len(".ppm-wg-bit.ppm-m2c4.ppm")] + ".ppm")
-    elif(argv[2] == "tilecatd"):
-      cmd.append(line[:- 1 - len(".ppm-wg-bit.ppm-m2c4t.ppm")] + ".ppm")
     else:
       cmd.append(line[:- 1])
   cmd.extend(["-tile", str(pixels) + "x" + str(pixels), "-geometry", "+0+0", "tilecat-" + str(t) + ".png"])
@@ -115,7 +108,7 @@ elif(argv[2] == "i2i"):
     pass
   for line in argv[idx:]:
     root, ext = os.path.splitext(line)
-    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq"):
+    if(ext != ".ppm"):
       subprocess.call(["convert", line, "-compress", "none", root + ".ppm"])
   for linex in argv[idx:]:
     rootx, extx = os.path.splitext(linex)
@@ -126,10 +119,6 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", "2.5"])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
       subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i--02.ppm", "-.02"])
-elif(argv[2] == "predg"):
-  # cf. blurpq
-  subprocess.call(["convert", "predg.ppm", "-blur", "4x4+3", "-normalize", "predg.png"])
-  subprocess.call(["convert", argv[1], "predg.png", "-average", "-equalize", "predg-out.png"])
 else:
   for line in argv[3:]:
     try:
@@ -137,21 +126,12 @@ else:
       continue
     except:
       root, ext = os.path.splitext(line)
-    if(ext != ".ppm" and argv[2] != "prep" and argv[2] != "prepsq" and argv[2] != "blurpq"):
+    if(ext != ".ppm" and ext != ".pgm" and argv[2] != "prep" and argv[2] != "prepsq" and argv[2] != "mlev"):
       subprocess.call(["convert", line, "-compress", "none", "-depth", "16", root + ".ppm"])
-    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "flarge" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit"):
+    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "bump" or argv[2] == "normalize"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
-    elif(argv[2] == "blur"):
-      subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(pixels)])
-      subprocess.call(["mogrify", "-despeckle", "-format", "png", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "blur" or argv[2] == "bump"):
+    elif(argv[2] == "collect" or argv[2] == "sharpen" or argv[2] == "blur"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
-      if(argv[2] == "bump"):
-        # N.B. estimate aleph_omega bucket's 2/3 value (1/sqrt(11) as a majority logic with repeat).
-        subprocess.call(["mogrify", "-compress", "none", "-blur", "4x4+3", root + "-" + argv[2] + ".ppm"])
-    elif(argv[2] == "blurpq"):
-      # N.B. also here.
-      subprocess.call(["convert", line, "-blur", "4x4+3", root + "-" + argv[2] + ".png"])
     elif(argv[2] == "obj"):
       subprocess.call([argv[1], argv[2], root + "-bump.ppm", root + ".obj"])
     elif(argv[2] == "jps"):
@@ -173,6 +153,41 @@ else:
       subprocess.call([argv[1], "b2w", root + "-sbox-1.ppm", root + "-sbox-bw-1.ppm", "1"])
       for s in range(1, pixels):
         subprocess.call([argv[1], "b2wd", root + "-sbox-" + str(s + 1) + ".ppm", root + "-sbox-bw-" + str(s + 1) + ".ppm", root + "-sbox-" + str(s) + ".ppm"])
+    elif(argv[2] == "remedy"):
+      t0 = 0
+      M0 = 0
+      stat = "forward"
+      if(pixels == 0):
+        stat = "NG"
+        for t in range(1, 25):
+          subprocess.call(["convert", line, "-blur", "0x" + str(float(t)), "-compress", "none", root + "-" + argv[2] + ".ppm"])
+          MM = float(subprocess.run(["sh", "-c", argv[1] + " Y- " + root + "-" + argv[2] + ".ppm | " + argv[1] + " lc | " + argv[1] + " V | " + argv[1] + " T+ | tail -n 1 | cut -f 1 -d ,"], capture_output = True, text = True).stdout)
+          if(abs(M0) < abs(MM)):
+            t0 = float(t)
+            M0 = MM
+            if(thresh <= abs(M0)): break
+        if(thresh <= abs(M0)): stat = "OK"
+      else: t0 = pixels
+      if(M0 < 0):
+        print(- t0, ":", root, ":", stat)
+      elif(0 < M0):
+        print(t0, ":", root, ":", stat)
+      else:
+        print(t0, ":", root, ":", stat)
+        if(t0 < 0):
+          subprocess.call(["convert", line, "-negate", "-blur", "0x" + str(abs(t0)), "-compress", "none", root + "-" + argv[2] + ".ppm"])
+        else:
+          subprocess.call(["convert", line, "-blur", "0x" + str(abs(t0)), "-compress", "none", root + "-" + argv[2] + ".ppm"])
+    elif(argv[2] == "mlev"):
+      import numpy
+      low = .01
+      high = 10.
+      for i in range(1, 20):
+        gamma = (high + low) / 2.
+        subprocess.call(["convert", line, "-gamma", str(numpy.log(.5)/numpy.log(gamma)), root + "-mlev.png"])
+        mean  = float(subprocess.run(["identify", "-format", r"%[fx:mean]", root + "-mlev.png"], capture_output = True, text = True).stdout)
+        if(mean < .5): low = gamma
+        else: high = gamma
     elif(argv[2] == "prep"):
       subprocess.call(["convert", line, "-resize", str(pixels) + "x>", "-resize", "x" + str(pixels) + ">", "-depth", "16", root + "-prep.png"])
     elif(argv[2] == "prepsq"):

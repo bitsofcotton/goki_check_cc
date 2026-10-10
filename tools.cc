@@ -15,6 +15,12 @@
 #include <omp.h>
 #endif
 
+#if defined(_MIMALLOC_)
+#define MIMALLOC_OVERRIDE_H
+#define MIMALLOC_NEW_DELETE_H
+#include <mimalloc.h>
+#endif
+
 #if !defined(_OLDCPP_)
 #include <random>
 #if defined(_PERSISTENT_)
@@ -32,6 +38,7 @@
 
 #include "lieonn.hh"
 typedef myfloat num_t;
+lieonn_t lieonn;
 
 using std::cout;
 using std::cerr;
@@ -62,15 +69,18 @@ int main(int argc, const char* argv[]) {
 #  error Cannot handle PERSISTENT option
 # endif
 #endif
+  lieonnStaticInit();
   if(argc < 2) goto usage;
   if(strcmp(argv[1], "collect") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
+     strcmp(argv[1], "normalize") == 0 ||
      strcmp(argv[1], "blur") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "shrink") == 0 ||
-     strcmp(argv[1], "flarge") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
+     strcmp(argv[1], "dither") == 0 ||
+     strcmp(argv[1], "xyz2rgb") == 0 ||
      strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "limit") == 0 ||
      strcmp(argv[1], "bit") == 0 ||
@@ -95,7 +105,8 @@ int main(int argc, const char* argv[]) {
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLUR_BOTH, recur, rot);
     else if(strcmp(argv[1], "bump") == 0) {
-      data[0] = filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, recur, rot);
+      data[0] = filter<num_t>(filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, 1,
+        infBase()), BLUR_BOTH, infBase(), loop22<num_t>() );
       data.resize(1);
     } else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
@@ -103,12 +114,22 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "shrink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(filter<num_t>(data[i], SHRINK_BOTH, recur, rot), CLIP);
-    else if(strcmp(argv[1], "flarge") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], FLARGE_BOTH, recur, rot);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
+    else if(strcmp(argv[1], "dither") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++)
+            data[i](j, k) = offsetHalf<num_t>(unOffsetHalf<num_t>(
+#if defined(_ARCFOUR_)
+              data[i](j, k) ) * num_t(int(arc4random()) & 0xffff) /
+#else
+              data[i](j, k) ) * num_t(int(random()) & 0xffff) /
+#endif
+                num_t(int(0xffff)) );
+    else if(strcmp(argv[1], "xyz2rgb") == 0)
+      data = xyz2rgb<num_t>(data);
     else if(strcmp(argv[1], "bit") == 0)
       for(int i = 0; i < data.size(); i ++) {
         SimpleVector<SimpleVector<num_t> > di(bitsG<num_t, false>(data[i].entity, recur));
@@ -152,8 +173,7 @@ int main(int argc, const char* argv[]) {
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
         strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0 &&
-        strcmp(argv[1], "bump") != 0 && strcmp(argv[1], "offrat") != 0 ?
-        normalize<num_t>(data) : data,
+        strcmp(argv[1], "bump") != 0 ? normalize<num_t>(data) : data,
         strcmp(argv[1], "limit") == 0 ? recur : 65535) )
       return - 1;
   } else if(strcmp(argv[1], "reshape") == 0 ||
@@ -176,18 +196,16 @@ int main(int argc, const char* argv[]) {
       const SimpleMatrix<num_t> datav(rgb2d<num_t>(datas));
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reShape<num_t>(datac[i], datav, count, myatof(argv[6]) );
-    } else if(strcmp(argv[1], "recolor2") == 0)
+    } else if(strcmp(argv[1], "recolor") == 0)
+      for(int i = 0; i < datac.size(); i ++)
+        datac[i] = reColor<num_t>(datac[i], datas[i], count, myatof(argv[6]));
+    else if(strcmp(argv[1], "recolor2") == 0)
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reColor<num_t>(datac[i], count, myatof(argv[5]));
     else if(strcmp(argv[1], "recolor3") == 0)
       for(int i = 0; i < datac.size(); i ++)
         datac[i] = reColor3<num_t>(datac[i], datas[i], count);
-    else {
-      for(int i = 0; i < datac.size(); i ++)
-        datac[i] = strcmp(argv[1], "recolor") == 0 ?
-          reColor<num_t>(datac[i], datas[i], count, myatof(argv[6])) :
-          reColor<num_t>(datac[i], count, myatof(argv[5]));
-    }
+    else assert(0 && "should not be reached.");
     if(!savep2or3<num_t>(argv[strcmp(argv[1], "recolor2") == 0 ? 4 : 5],
         normalize<num_t>(xyz2rgb<num_t>(datac))))
       return - 1;
@@ -196,7 +214,7 @@ int main(int argc, const char* argv[]) {
     if(argc < 4) goto usage;
     if(!loadp2or3<num_t>(data, argv[2]))
       return - 1;
-    SimpleMatrix<num_t> sd(rgb2d<num_t>(data));
+    SimpleMatrix<num_t> sd(data.size() == 1 ? data[0] : rgb2d<num_t>(data));
     const int rows(sd.rows());
     const int cols(sd.cols());
     vector<SimpleVector<num_t> > points(getTileVec<num_t>(move(sd)));
@@ -292,20 +310,87 @@ int main(int argc, const char* argv[]) {
     savep2or3<num_t>((outbase + string("-repl2.ppm")).c_str(), normalize<num_t>(out) );
     for(int i = 0; i < nemph; i ++) {
       const num_t iemph(num_t(i) / num_t(nemph));
-      SimpleMatrix<num_t> reref(rin1.rows(), rin1.cols());
+      SimpleMatrix<num_t> reref(rin0.rows(), rin0.cols());
       reref.O();
       for(int i = 0; i < m.size(); i ++) {
-        const SimpleMatrix<num_t> rd(draw<num_t>(rin1, shape1,
-          takeShape<num_t>(shape1, shape0, m[i], iemph), mhull1[i]));
+        const SimpleMatrix<num_t> rd(draw<num_t>(rin0, shape0,
+          takeShape<num_t>(shape0, shape1, m[i], iemph), mhull0[i]));
         for(int j = 0; j < min(reref.rows(), rd.rows()); j ++)
           for(int k = 0; k < min(reref.cols(), rd.cols()); k ++)
             if(rd(j, k) != num_t(0)) reref(j, k) = rd(j, k);
       }
       for(int idx = 0; idx < out.size(); idx ++)
-        out[idx] = pullRefMatrix<num_t>(reref, 1 + rin0.rows() * rin0.cols(), in1[idx]);
+        out[idx] = pullRefMatrix<num_t>(reref, 1, in0[idx]);
       savep2or3<num_t>((outbase + string("-") + to_string(i) + string("-") +
                        to_string(nemph) + string(".ppm")).c_str(), out);
     }
+  } else if(strcmp(argv[1], "matcheach") == 0 ||
+            strcmp(argv[1], "matchEach") == 0) {
+    if(argc < 6) goto usage;
+    const int nsub(atoi(argv[2]));
+    const int vbox(atoi(argv[3]));
+    vector<string> ins;
+    vector<pair<int, int> > inss;
+    vector<vector<SimpleVector<num_t> > > shapes;
+    ins.reserve(argc - 3);
+    inss.reserve(argc - 3);
+    shapes.reserve(argc - 3);
+    for(int i = 4; i < argc; i ++) {
+      vector<SimpleMatrix<num_t> > work;
+      // XXX: show error?
+      if(!loadp2or3<num_t>(work, argv[i])) continue;
+      ins.emplace_back(string(argv[i]));
+      inss.emplace_back(make_pair(work[0].rows(), work[0].cols() ));
+      const SimpleMatrix<num_t> lumi(work.size() == 1 ? work[0] : rgb2d<num_t>(work) );
+      shapes.emplace_back(vbox < 0 ? getHesseVec<num_t>(lumi, abs(vbox)) :
+        getTileVec<num_t>(lumi, abs(vbox)) );
+    }
+    const int loop(strcmp(argv[1], "matchEach") == 0 ? 1 : ins.size());
+    for(int i = 0; i < ins.size(); i ++)
+      for(int j = loop <= 1 ? 0 : i + 1; j < loop; j ++) {
+        const vector<match_t<num_t> > m(matchPartialR<num_t>(shapes[i],
+          shapes[j], nsub));
+        for(int k = 0; k < m.size(); k ++) {
+          if(! m[k].dst.size()) continue;
+          SimpleVector<num_t> dstM(2), dstm(2);
+          SimpleVector<num_t> srcM(2), srcm(2);
+          dstM.O(); srcM.O();
+          dstm[0] = inss[i].first; dstm[1] = inss[i].second;
+          srcm[0] = inss[j].first; srcm[1] = inss[j].second;
+          for(int n = 0; n < m[k].dst.size(); n ++) {
+            SimpleVector<num_t>& workd(shapes[i][m[k].dst[n]]);
+            SimpleVector<num_t>& works(shapes[j][m[k].src[n]]);
+            for(int nn = 0; nn < 2; nn ++) {
+              dstM[nn] = max(dstM[nn], workd[nn]);
+              srcM[nn] = max(srcM[nn], works[nn]);
+              dstm[nn] = min(dstm[nn], workd[nn]);
+              srcm[nn] = min(srcm[nn], works[nn]);
+            }
+          }
+          if(int(dstM[0] - dstm[0]) >= inss[i].first  / 2 &&
+             int(dstM[1] - dstm[1]) >= inss[i].second / 2) continue;
+          if(loop == 1 && int(srcM[0] - srcm[0]) <= inss[i].first  / 2 &&
+             int(srcM[1] - srcm[1]) <= inss[i].second / 2) continue;
+          if(loop != 1 && int(srcM[0] - srcm[0]) >= inss[j].first  / 2 &&
+             int(srcM[1] - srcm[1]) >= inss[j].second / 2) continue;
+          std::cout << argv[0] << " cut \"" << ins[i] << "\" " << int(dstm[0])
+            << " " << int(dstm[1]) << " " << int(dstM[0] - dstm[0]) << " " <<
+              int(dstM[1] - dstm[1]) << " " << i << "-" << j << "-" << k <<
+                "dst.ppm" << endl;
+          std::cout << argv[0] << " cut \"" << ins[j] << "\" " << int(srcm[0])
+            << " " << int(srcm[1]) << " " << int(srcM[0] - srcm[0]) << " " <<
+              int(srcM[1] - srcm[1]) << " " << i << "-" << j << "-" << k <<
+                "src.ppm" << endl;
+        }
+      }
+  } else if(strcmp(argv[1], "cut") == 0) {
+    vector<SimpleMatrix<num_t> > work;
+    if(!loadp2or3<num_t>(work, argv[2])) goto usage;
+    vector<SimpleMatrix<num_t> > out(work.size());
+    for(int i = 0; i < out.size(); i ++)
+      out[i] = work[i].subMatrix(std::atoi(argv[3]), std::atoi(argv[4]),
+        std::atoi(argv[5]), std::atoi(argv[6]) );
+    if(! savep2or3<num_t>(argv[7], out)) cerr << "Failed to save." << endl;
   } else if(strcmp(argv[1], "cat") == 0) {
     if(argc < 3) goto usage;
     vector<vector<SimpleMatrix<num_t> > > in;
@@ -343,65 +428,13 @@ int main(int argc, const char* argv[]) {
     saveobj<num_t>(takeShape<num_t>(pdst, psrc,
       matchPartialR<num_t>(pdst, psrc)[0],
       num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
-#if !defined(_OLDCPP_)
-  } else if(strcmp(argv[1], "omake") == 0) {
-    vector<vector<num_t> > data;
-    string header;
-    loaddat<num_t>(argv[3], header, data);
-    SimpleMatrix<num_t> buf(atoi(argv[4]), atoi(argv[4]));
-    const SimpleMatrix<complex(num_t)> mdft(dft<num_t>(buf.rows()));
-    const SimpleMatrix<complex(num_t)> midft(dft<num_t>(- buf.rows()));
-    for(int i0 = 1; i0 < data.size(); i0 ++) {
-      for(int i = 0; i <= data[i0].size() / buf.rows() / buf.rows(); i ++) {
-        for(int k = 0; k < buf.cols(); k ++)
-          for(int j = 0; j < buf.rows(); j ++) {
-            const int idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
-            buf(j, k) = idx < data[i0].size() ? data[i0][idx] : num_t(0);
-          }
-        SimpleMatrix<num_t> buf2;
-        if(strcmp(argv[2], "diff") == 0)
-          buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, COLLECT_BOTH).template cast<complex(num_t) >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, COLLECT_BOTH).template cast<complex(num_t) >() * complexctor(num_t)(num_t(0), num_t(1)) ) ).template real<num_t>();
-        else if(strcmp(argv[2], "sharpen") == 0)
-          buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, SHARPEN_X).template cast<complex(num_t) >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, SHARPEN_X).template cast<complex(num_t) >() * complexctor(num_t)(num_t(0), num_t(1)) ) ).template real<num_t>();
-        else if(strcmp(argv[2], "bump") == 0)
-          buf2 = (midft * (
-            filter<num_t>(mdft.template real<num_t>() * buf, BUMP_BOTH).template cast<complex(num_t) >() +
-            filter<num_t>(mdft.template imag<num_t>() * buf, BUMP_BOTH).template cast<complex(num_t) >() * complexctor(num_t)(num_t(0), num_t(1)) ) ).template real<num_t>();
-        for(int k = 0; k < buf2.cols(); k ++)
-          for(int j = 0; j < buf2.rows(); j ++) {
-            const int idx(i * buf.rows() * buf.rows() + k * buf.rows() + j);
-            if(idx < data[i0].size())
-              data[i0][idx] = buf2(j, k);
-            else
-              break;
-          }
-      }
-    }
-    num_t M(0);
-    for(int i = 1; i < data.size(); i ++) {
-      vector<num_t> sdata(data[i]);
-      for(int i = 0; i < sdata.size(); i ++)
-        sdata[i] = abs(sdata[i]);
-      sort(sdata.begin(), sdata.end());
-      M = max(M, sdata[sdata.size() * 7 / 8] * num_t(4));
-    }
-    cout << header;
-    for(int i = 0; i < data[0].size(); i ++) {
-      cout << data[0][i] << " ";
-      for(int j = 1; j < data.size(); j ++)
-        cout << (i < data[j].size() ? data[j][i] / M : num_t(0)) << " ";
-      cout << endl;
-    }
-#endif
   } else goto usage;
+  lieonnStaticDestroy();
   return 0;
  usage:
+  lieonnStaticDestroy();
   cout << "Usage:" << endl;
-  cout << argv[0] << " (collect|sharpen|blur|bump|enlarge|shrink|flarge|blink|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << argv[0] << " (collect|sharpen|blur|bump|enlarge|shrink|blink|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << argv[0] << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << argv[0] << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << argv[0] << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
