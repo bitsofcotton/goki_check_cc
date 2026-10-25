@@ -51,7 +51,7 @@ using std::sort;
 #include <stdlib.h>
 
 static inline num_t myatof(const char* v) {
-  return num_t(int(std::atof(v) * 10000)) / num_t(int(10000));
+  return num_t(int(std::atof(v) * (1LL << 31))) / num_t(int(1LL << 31));
 }
 
 #if !defined(_OLDCPP_)
@@ -72,6 +72,8 @@ int main(int argc, const char* argv[]) {
   lieonnStaticInit();
   if(argc < 2) goto usage;
   if(strcmp(argv[1], "collect") == 0 ||
+     strcmp(argv[1], "fcollect") == 0 ||
+     strcmp(argv[1], "abs") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "normalize") == 0 ||
      strcmp(argv[1], "blur") == 0 ||
@@ -97,6 +99,14 @@ int main(int argc, const char* argv[]) {
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t>(data[i], COLLECT_BOTH, recur, rot);
+    else if(strcmp(argv[1], "fcollect") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        data[i] = filter<num_t>(data[i], FCOLLECT_BOTH, recur, rot);
+    else if(strcmp(argv[1], "abs") == 0)
+      for(int i = 0; i < data.size(); i ++)
+        for(int j = 0; j < data[i].rows(); j ++)
+          for(int k = 0; k < data[i].cols(); k ++)
+            data[i](j, k) = abs(unOffsetHalf<num_t>(data[i](j, k) ));
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int ii = 0; ii < (recur < 1 ? 1 : recur); ii ++)
         for(int i = 0; i < data.size(); i ++)
@@ -434,7 +444,7 @@ int main(int argc, const char* argv[]) {
  usage:
   lieonnStaticDestroy();
   cout << "Usage:" << endl;
-  cout << argv[0] << " (collect|sharpen|blur|bump|enlarge|shrink|blink|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
+  cout << argv[0] << " (collect|fcollect|sharpen|blur|bump|enlarge|shrink|blink|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << argv[0] << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;
   cout << argv[0] << " match <nsub> <nemph> <vbox_dst> <vbox_src> <dst.ppm> <src.ppm> <dst-bump.ppm> <src-bump.ppm> <output-basename>" << endl;
   cout << argv[0] << " reshape <num_shape_per_color> <input_color.ppm> <input_shape.ppm> <output.ppm>" << endl;
