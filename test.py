@@ -21,7 +21,7 @@ elif(argv[2] == "move"):
 elif(argv[2] == "pavg"):
   # N.B. needs reseed arc4random by getentropy per prediction.
   cmd = [argv[1], argv[2][0] ]
-  cmd.extend(argv[4:])
+  cmd.extend(argv[5:])
   acmd = ["convert"]
   bcmd = ["convert"]
   for t in range(0, int(argv[3])):
@@ -30,7 +30,7 @@ elif(argv[2] == "pavg"):
     subprocess.call(["mv", "testg.ppm", "testg" + str(t) + ".ppm"])
     acmd.append("predg" + str(t) + ".ppm")
     bcmd.append("testg" + str(t) + ".ppm")
-  acmd.extend(["-statistic", "median", "7x7", "-negate", "-average", "pred.png"])
+  acmd.extend(["-negate", "-despeckle", "-statistic", "median", "7x7", "-average", "pred.png"])
   bcmd.extend(["-average", "test.png"])
   subprocess.call(acmd)
   subprocess.call(bcmd)
@@ -125,7 +125,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and ext != ".pgm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", "-depth", "16", root + ".ppm"])
-    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "bump" or argv[2] == "normalize" or argv[2] == "enormalize"):
+    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "bump" or argv[2] == "normalize" or argv[2] == "enormalize" or argv[2] == "flatten"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "collect" or argv[2] == "fcollect" or argv[2] == "sharpen" or argv[2] == "blur" or argv[2] == "abs"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
