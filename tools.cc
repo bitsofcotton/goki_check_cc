@@ -51,7 +51,7 @@ using std::sort;
 #include <stdlib.h>
 
 static inline num_t myatof(const char* v) {
-  return num_t(int(std::atof(v) * (1LL << 31))) / num_t(int(1LL << 31));
+  return num_t(int(std::atof(v) * (1LL << 29))) / num_t(int(1LL << 29));
 }
 
 #if !defined(_OLDCPP_)
@@ -76,6 +76,7 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "abs") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "normalize") == 0 ||
+     strcmp(argv[1], "enormalize") == 0 ||
      strcmp(argv[1], "blur") == 0 ||
      strcmp(argv[1], "bump")    == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
@@ -98,10 +99,10 @@ int main(int argc, const char* argv[]) {
       return - 1;
     if(strcmp(argv[1], "collect") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], COLLECT_BOTH, recur, rot);
+        data[i] = filter<num_t, true>(data[i], COLLECT_BOTH, recur, rot);
     else if(strcmp(argv[1], "fcollect") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], FCOLLECT_BOTH, recur, rot);
+        data[i] = filter<num_t, true>(data[i], FCOLLECT_BOTH, recur, rot);
     else if(strcmp(argv[1], "abs") == 0)
       for(int i = 0; i < data.size(); i ++)
         for(int j = 0; j < data[i].rows(); j ++)
@@ -110,23 +111,23 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "sharpen") == 0)
       for(int ii = 0; ii < (recur < 1 ? 1 : recur); ii ++)
         for(int i = 0; i < data.size(); i ++)
-          data[i] = filter<num_t>(data[i], SHARPEN_BOTH, 1, rot);
+          data[i] = filter<num_t, true>(data[i], SHARPEN_BOTH, 1, rot);
     else if(strcmp(argv[1], "blur") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], BLUR_BOTH, recur, rot);
+        data[i] = filter<num_t, true>(data[i], BLUR_BOTH, recur, rot);
     else if(strcmp(argv[1], "bump") == 0) {
-      data[0] = filter<num_t>(filter<num_t>(rgb2d<num_t>(data), BUMP_BOTH, 1,
+      data[0] = filter<num_t, true>(filter<num_t, true>(rgb2d<num_t>(data), BUMP_BOTH, 1,
         infBase()), BLUR_BOTH, infBase(), loop22<num_t>() );
       data.resize(1);
     } else if(strcmp(argv[1], "enlarge") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(filter<num_t>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
+        data[i] = filter<num_t, true>(filter<num_t, true>(data[i], ENLARGE_BOTH, recur, rot), CLIP);
     else if(strcmp(argv[1], "shrink") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(filter<num_t>(data[i], SHRINK_BOTH, recur, rot), CLIP);
+        data[i] = filter<num_t, true>(filter<num_t, true>(data[i], SHRINK_BOTH, recur, rot), CLIP);
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
-        data[i] = filter<num_t>(data[i], BLINK_BOTH, recur, rot);
+        data[i] = filter<num_t, true>(data[i], BLINK_BOTH, recur, rot);
     else if(strcmp(argv[1], "dither") == 0)
       for(int i = 0; i < data.size(); i ++)
         for(int j = 0; j < data[i].rows(); j ++)
@@ -142,7 +143,7 @@ int main(int argc, const char* argv[]) {
       data = xyz2rgb<num_t>(data);
     else if(strcmp(argv[1], "bit") == 0)
       for(int i = 0; i < data.size(); i ++) {
-        SimpleVector<SimpleVector<num_t> > di(bitsG<num_t, false>(data[i].entity, recur));
+        SimpleVector<SimpleVector<num_t> > di(bitsG<num_t, true>(data[i].entity, recur));
         data[i].resize(di.size(), di[0].size());
         data[i].entity = move(di);
       }
@@ -179,7 +180,8 @@ int main(int argc, const char* argv[]) {
               data[1](i, j) == ddata[1](i, j) &&
               data[2](i, j) == ddata[2](i, j)) )
             data[0](i, j) = data[1](i, j) = data[2](i, j) = num_t(1);
-    }
+    } else if(strcmp(argv[1], "enormalize") == 0)
+      for(int i = 0; i < data.size(); i ++) data[i] = normalize<num_t>(data[i]);
     if(!savep2or3<num_t>(argv[3],
         strcmp(argv[1], "b2w") != 0 && strcmp(argv[1], "b2wd") != 0 &&
         strcmp(argv[1], "nop") != 0 && strcmp(argv[1], "limit") != 0 &&
