@@ -21,7 +21,7 @@ elif(argv[2] == "move"):
 elif(argv[2] == "pavg"):
   # N.B. needs reseed arc4random by getentropy per prediction.
   cmd = [argv[1], argv[2][0] ]
-  cmd.extend(argv[5:])
+  cmd.extend(argv[4:])
   acmd = ["convert"]
   bcmd = ["convert"]
   for t in range(0, int(argv[3])):
