@@ -132,11 +132,11 @@ int main(int argc, const char* argv[]) {
             data[i](j, k) = j < data[i].rows() / 2 ?
               (k < j * data[i].cols() / data[i].rows() ? lt(j, k) + lb(j, k) :
                 (data[i].cols() - j * data[i].cols() / data[i].rows() <= k ?
-                  lt(j, k) + rt(j, k) : rt(j, k) + rb(j, k)) ) :
+                  rt(j, k) + rb(j, k) : lt(j, k) + rt(j, k)) ) :
               (k < (data[i].rows() - j) * data[i].cols() / data[i].rows() ?
                 lt(j, k) + lb(j, k) : (data[i].cols() - (data[i].rows() - j) *
-                  data[i].cols() / data[i].rows() <= k ? lb(j, k) + rb(j, k) :
-                    rt(j, k) + rb(j, k)) );
+                  data[i].cols() / data[i].rows() <= k ? rt(j, k) + rb(j, k) :
+                    lb(j, k) + rb(j, k)) );
         data[i] /= num_t(int(2));
       }
     else if(strcmp(argv[1], "blur") == 0)
