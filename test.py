@@ -12,28 +12,22 @@ rot    = 0
 
 if(len(argv) < 3):
   print("no much argments.")
+elif(argv[2] == "repeat"):
+  f = []
+  for t in range(0, int(argv[3])):
+    subprocess.call(argv[4:])
+    subprocess.call(["mv", argv[1], argv[1] + "-" + str(t) + ".ppm"])
+    f.append(argv[1] + "-" + str(t) + ".ppm")
+  cmd = ["convert"]
+  cmd.extend(f)
+  cmd.extend(["-evaluate-sequence", "median", argv[1] + ".png"])
+  subprocess.call(cmd)
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
     root, ext = os.path.splitext(f)
     subprocess.call(["mv", f, argv[1] + str(t).zfill(len(str(len(argv[3:]))) ) + ext])
     t += 1
-elif(argv[2] == "pavg"):
-  # N.B. needs reseed arc4random by getentropy per prediction.
-  cmd = [argv[1], argv[2][0] ]
-  cmd.extend(argv[4:])
-  acmd = ["convert"]
-  bcmd = ["convert"]
-  for t in range(0, int(argv[3])):
-    subprocess.call(cmd)
-    subprocess.call(["mv", "predg.ppm", "predg" + str(t) + ".ppm"])
-    subprocess.call(["mv", "testg.ppm", "testg" + str(t) + ".ppm"])
-    acmd.append("predg" + str(t) + ".ppm")
-    bcmd.append("testg" + str(t) + ".ppm")
-  acmd.extend(["-negate", "-despeckle", "-statistic", "median", "7x7", "-average", "pred.png"])
-  bcmd.extend(["-average", "test.png"])
-  subprocess.call(acmd)
-  subprocess.call(bcmd)
 elif(argv[2] == "seinp" or argv[2] == "seinq" or argv[2] == "seinP" or argv[2] == "seinQ"):
   files = []
   for root, dirs, filesw in os.walk(argv[3]):
@@ -116,6 +110,53 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", ".00000001"])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
       subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i-emph.ppm", "-.000000005"])
+elif(argv[2] == "check"):
+  print("pred:")
+  subprocess.call(["python3", argv[0], argv[1], "check2", argv[- 1] ])
+  print("copylast:")
+  subprocess.call(["ddpmopt", "d", argv[- 2], argv[- 1] ])
+  subprocess.call(["convert", "tdot.ppm", "tdot.png"])
+  subprocess.call(["python3", argv[0], "tdot.png", "check2", argv[- 1] ])
+  subprocess.call(["rm", "-f", "tdot.png", "tdot.ppm"])
+  print("average:")
+  cmd = ["convert"]
+  cmd.extend(argv[3:])
+  cmd.extend(["-average", "-compress", "none", "tdot.ppm"])
+  subprocess.call(cmd)
+  subprocess.call(["ddpmopt", "d", "tdot.ppm", argv[- 1] ])
+  subprocess.call(["convert", "tdot.ppm", "tdot.png"])
+  subprocess.call(["python3", argv[0], "tdot.png", "check2", argv[- 1] ])
+  subprocess.call(["rm", "-f", "tdot.png", "tdot.ppm"])
+elif(argv[2] == "check2"):
+  # thanks to claude.ai 2026/11/07
+  import numpy as np
+  from PIL import Image
+  from scipy.stats import rankdata
+  from scipy.stats import ks_2samp
+  def load_gray(path):
+    im = Image.open(path)
+    if im.mode.startswith("I"):
+      return np.asarray(im, float) / 65535 * 255
+    if im.mode in ("RGB", "RGBA"):
+      return np.asarray(im.convert("RGB"), float).mean(axis=2)
+    return np.asarray(im.convert("L"), float)
+  def rho(u, v):
+    return np.corrcoef(u.ravel(), v.ravel())[0, 1]
+  p   = load_gray(argv[1])
+  x   = load_gray(argv[3])
+  ra  = rankdata(p.ravel()).reshape(p.shape)
+  rb  = rankdata(x.ravel()).reshape(x.shape)
+  obs = rho(ra, rb)
+  rng = np.random.default_rng(0)
+  h, w = p.shape
+  null = []
+  for _ in range(2000):
+    dy = rng.integers(h//4, 3*h//4)
+    dx = rng.integers(w//4, 3*w//4)
+    null.append(rho(ra, np.roll(rb, (dy, dx), axis=(0, 1))))
+  null = np.array(null)
+  p = (1 + np.sum(np.abs(null) >= abs(obs))) / (1 + len(null))
+  print(obs, p, null.std())
 else:
   for line in argv[3:]:
     try:
@@ -125,7 +166,7 @@ else:
       root, ext = os.path.splitext(line)
     if(ext != ".ppm" and ext != ".pgm" and argv[2] != "prep" and argv[2] != "prepsq"):
       subprocess.call(["convert", line, "-compress", "none", "-depth", "16", root + ".ppm"])
-    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "bump" or argv[2] == "normalize" or argv[2] == "enormalize" or argv[2] == "flatten"):
+    if(argv[2] == "enlarge" or argv[2] == "shrink" or argv[2] == "blink" or argv[2] == "limit" or argv[2] == "bit" or argv[2] == "nbit" or argv[2] == "bump" or argv[2] == "normalize"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", str(pixels), str(rot)])
     elif(argv[2] == "collect" or argv[2] == "fcollect" or argv[2] == "sharpen" or argv[2] == "blur" or argv[2] == "abs"):
       subprocess.call([argv[1], argv[2], root + ".ppm", root + "-" + argv[2] + ".ppm", "1", str(pixels)])
