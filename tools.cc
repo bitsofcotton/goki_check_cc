@@ -76,15 +76,11 @@ int main(int argc, const char* argv[]) {
      strcmp(argv[1], "abs") == 0 ||
      strcmp(argv[1], "sharpen") == 0 ||
      strcmp(argv[1], "normalize") == 0 ||
-     strcmp(argv[1], "enormalize") == 0 ||
-     strcmp(argv[1], "flatten") == 0 ||
      strcmp(argv[1], "blur") == 0 ||
-     strcmp(argv[1], "bump")    == 0 ||
+     strcmp(argv[1], "bump") == 0 ||
      strcmp(argv[1], "enlarge") == 0 ||
      strcmp(argv[1], "shrink") == 0 ||
      strcmp(argv[1], "blink") == 0 ||
-     strcmp(argv[1], "dither") == 0 ||
-     strcmp(argv[1], "xyz2rgb") == 0 ||
      strcmp(argv[1], "nop") == 0 ||
      strcmp(argv[1], "limit") == 0 ||
      strcmp(argv[1], "bit") == 0 ||
@@ -113,32 +109,6 @@ int main(int argc, const char* argv[]) {
       for(int ii = 0; ii < (recur < 1 ? 1 : recur); ii ++)
         for(int i = 0; i < data.size(); i ++)
           data[i] = filter<num_t, true>(data[i], SHARPEN_BOTH, 1, rot);
-    else if(strcmp(argv[1], "enormalize") == 0)
-      for(int i = 0; i < data.size(); i ++) data[i] = normalize<num_t>(data[i]);
-    else if(strcmp(argv[1], "flatten") == 0)
-      for(int i = 0; i < data.size(); i ++) {
-        assert(0 < recur);
-        const SimpleMatrix<num_t> rb(filter<num_t, true>(data[i], BLINK_BOTH,
-          - recur, rot));
-        const SimpleMatrix<num_t> rt(flip<num_t>(filter<num_t, true>(
-          flip<num_t>(data[i]), BLINK_BOTH, - recur, rot) ));
-        const SimpleMatrix<num_t> lb(flop<num_t>(filter<num_t, true>(
-          flop<num_t>(data[i]), BLINK_BOTH, - recur, rot) ));
-        const SimpleMatrix<num_t> lt(flip<num_t>(flop<num_t>(filter<num_t,
-          true>(flip<num_t>(flop<num_t>(data[i])), BLINK_BOTH, - recur, rot)
-            )) );
-        for(int j = 0; j < data[i].rows(); j ++)
-          for(int k = 0; k < data[i].cols(); k ++)
-            data[i](j, k) = j < data[i].rows() / 2 ?
-              (k < j * data[i].cols() / data[i].rows() ? lt(j, k) + lb(j, k) :
-                (data[i].cols() - j * data[i].cols() / data[i].rows() <= k ?
-                  rt(j, k) + rb(j, k) : lt(j, k) + rt(j, k)) ) :
-              (k < (data[i].rows() - j) * data[i].cols() / data[i].rows() ?
-                lt(j, k) + lb(j, k) : (data[i].cols() - (data[i].rows() - j) *
-                  data[i].cols() / data[i].rows() <= k ? rt(j, k) + rb(j, k) :
-                    lb(j, k) + rb(j, k)) );
-        data[i] /= num_t(int(2));
-      }
     else if(strcmp(argv[1], "blur") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t, true>(data[i], BLUR_BOTH, recur, rot);
@@ -155,22 +125,9 @@ int main(int argc, const char* argv[]) {
     else if(strcmp(argv[1], "blink") == 0)
       for(int i = 0; i < data.size(); i ++)
         data[i] = filter<num_t, true>(data[i], BLINK_BOTH, recur, rot);
-    else if(strcmp(argv[1], "dither") == 0)
-      for(int i = 0; i < data.size(); i ++)
-        for(int j = 0; j < data[i].rows(); j ++)
-          for(int k = 0; k < data[i].cols(); k ++)
-            data[i](j, k) = offsetHalf<num_t>(unOffsetHalf<num_t>(
-#if defined(_ARCFOUR_)
-              data[i](j, k) ) * num_t(int(arc4random()) & 0xffff) /
-#else
-              data[i](j, k) ) * num_t(int(random()) & 0xffff) /
-#endif
-                num_t(int(0xffff)) );
-    else if(strcmp(argv[1], "xyz2rgb") == 0)
-      data = xyz2rgb<num_t>(data);
     else if(strcmp(argv[1], "bit") == 0)
       for(int i = 0; i < data.size(); i ++) {
-        SimpleVector<SimpleVector<num_t> > di(bitsG<num_t, true>(data[i].entity, recur));
+        SimpleVector<SimpleVector<num_t> > di(bitsG<num_t, false>(data[i].entity, recur));
         data[i].resize(di.size(), di[0].size());
         data[i].entity = move(di);
       }

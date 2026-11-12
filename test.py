@@ -13,15 +13,13 @@ rot    = 0
 if(len(argv) < 3):
   print("no much argments.")
 elif(argv[2] == "repeat"):
-  f = []
-  for t in range(0, int(argv[3])):
-    subprocess.call(argv[4:])
-    subprocess.call(["mv", argv[1], argv[1] + "-" + str(t) + ".ppm"])
-    f.append(argv[1] + "-" + str(t) + ".ppm")
-  cmd = ["convert"]
-  cmd.extend(f)
-  cmd.extend(["-evaluate-sequence", "median", argv[1] + ".png"])
-  subprocess.call(cmd)
+  for s in range(0, int(argv[4])):
+    cmd = argv[5:7]
+    if(s == 0): cmd.extend(argv[7:][- int(len(argv[7:]) / int(argv[4])):])
+    else: cmd.extend(argv[7:- s][::-1][::s + 1][::-1][- int(len(argv[7:]) / int(argv[4])):])
+    for t in range(0, int(argv[3])):
+      subprocess.call(cmd)
+      subprocess.call(["mv", argv[1], argv[1] + "-" + str(s) + "-" + str(t) + ".ppm"])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
@@ -110,53 +108,6 @@ elif(argv[2] == "i2i"):
       subprocess.call([argv[1], "recolor",  str(pixels), rootx + ".ppm", rooty + ".ppm", rooty + "-" + rootx + "-i2i1.ppm", ".00000001"])
       subprocess.call([argv[1], "recolor3", str(pixels), rooty + "-" + rootx + "-i2i1.ppm", rooty + "-" + rootx + "-i2i0.ppm", rooty + "-" + rootx + "-i2i.ppm"])
       subprocess.call([argv[1], "recolor2", str(pixels), rooty + "-" + rootx + "-i2i.ppm", rooty + "-" + rootx + "-i2i-emph.ppm", "-.000000005"])
-elif(argv[2] == "check"):
-  print("pred:")
-  subprocess.call(["python3", argv[0], argv[1], "check2", argv[- 1] ])
-  print("copylast:")
-  subprocess.call(["ddpmopt", "d", argv[- 2], argv[- 1] ])
-  subprocess.call(["convert", "tdot.ppm", "tdot.png"])
-  subprocess.call(["python3", argv[0], "tdot.png", "check2", argv[- 1] ])
-  subprocess.call(["rm", "-f", "tdot.png", "tdot.ppm"])
-  print("average:")
-  cmd = ["convert"]
-  cmd.extend(argv[3:])
-  cmd.extend(["-average", "-compress", "none", "tdot.ppm"])
-  subprocess.call(cmd)
-  subprocess.call(["ddpmopt", "d", "tdot.ppm", argv[- 1] ])
-  subprocess.call(["convert", "tdot.ppm", "tdot.png"])
-  subprocess.call(["python3", argv[0], "tdot.png", "check2", argv[- 1] ])
-  subprocess.call(["rm", "-f", "tdot.png", "tdot.ppm"])
-elif(argv[2] == "check2"):
-  # thanks to claude.ai 2026/11/07
-  import numpy as np
-  from PIL import Image
-  from scipy.stats import rankdata
-  from scipy.stats import ks_2samp
-  def load_gray(path):
-    im = Image.open(path)
-    if im.mode.startswith("I"):
-      return np.asarray(im, float) / 65535 * 255
-    if im.mode in ("RGB", "RGBA"):
-      return np.asarray(im.convert("RGB"), float).mean(axis=2)
-    return np.asarray(im.convert("L"), float)
-  def rho(u, v):
-    return np.corrcoef(u.ravel(), v.ravel())[0, 1]
-  p   = load_gray(argv[1])
-  x   = load_gray(argv[3])
-  ra  = rankdata(p.ravel()).reshape(p.shape)
-  rb  = rankdata(x.ravel()).reshape(x.shape)
-  obs = rho(ra, rb)
-  rng = np.random.default_rng(0)
-  h, w = p.shape
-  null = []
-  for _ in range(2000):
-    dy = rng.integers(h//4, 3*h//4)
-    dx = rng.integers(w//4, 3*w//4)
-    null.append(rho(ra, np.roll(rb, (dy, dx), axis=(0, 1))))
-  null = np.array(null)
-  p = (1 + np.sum(np.abs(null) >= abs(obs))) / (1 + len(null))
-  print(obs, p, null.std())
 else:
   for line in argv[3:]:
     try:
