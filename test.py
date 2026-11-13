@@ -13,11 +13,12 @@ rot    = 0
 if(len(argv) < 3):
   print("no much argments.")
 elif(argv[2] == "repeat"):
-  for s in range(0, int(argv[4])):
-    cmd = argv[5:7]
+  # N.B. we crush to last as ind2vd limit which internally *= 2.
+  for s in range(0, int(len(argv[6:]) / 21));
+    cmd = argv[4:6]
     # N.B. we cannot shorten the input stream when we test the result.
-    if(s == 0): cmd.extend(argv[7:])
-    else: cmd.extend(argv[7:- s][::-1][::s + 1][::-1])
+    if(s == 0): cmd.extend(argv[6:])
+    else: cmd.extend(argv[6:- s][::-1][::s + 1][::-1])
     for t in range(0, int(argv[3])):
       subprocess.call(cmd)
       subprocess.call(["mv", argv[1], argv[1] + "-" + str(s) + "-" + str(t) + ".ppm"])
