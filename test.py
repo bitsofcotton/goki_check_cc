@@ -13,17 +13,24 @@ rot    = 0
 if(len(argv) < 3):
   print("no much argments.")
 elif(argv[2] == "repeat"):
-  # rep == 11 for 2/3 -> .9?
-  rep = 3
-  n   = int(len(argv[5:]) / 21)
-  l   = int(len(argv[5:]) / n)
-  # N.B. we crush to last as ind2vd limit which internally *= 2.
+  import numpy
+  rep = int(argv[3])
+  n   = abs(int(argv[4]))
+  l   = int(len(argv[7:]) / n)
+  # N.B. occam generalization bound claude.ai once supposed.
+  p   = int(2. * l / numpy.log(2) )
+  if(int(argv[4]) < 0):
+    ext = ".pgm"
+  else:
+    ext = ".ppm"
+  f   = []
+  for line in argv[7:]:
+    subprocess.call(["convert", line, "-scale", str(p) + "@", "-compress", "none", line + ext])
+    f.append(line + ext)
   for s in range(0, n):
-    cmd = argv[3:5]
-    # N.B. shorten input for large output, we cannot match entire meaning
-    #      better than average, last subtracted series.
-    if(s == 0): cmd.extend(argv[5:][- l:])
-    else: cmd.extend(argv[5:- s][::-1][::s + 1][::-1][- l:])
+    cmd = argv[5:7]
+    if(s == 0): cmd.extend(f[- l:])
+    else: cmd.extend(f[:- s][::-1][::s + 1][::-1][- l:])
     for t in range(0, rep):
       subprocess.call(cmd)
       subprocess.call(["mv", argv[1], argv[1] + "-" + str(s) + "-" + str(t) + ".ppm"])
@@ -95,66 +102,6 @@ elif(argv[2] == "tile"):
   cmd.extend(argv[idx:])
   cmd.extend(["-tile", pixels, "-geometry", "+0+0", "tile.png"])
   subprocess.call(cmd)
-elif(argv[2] == "check"):
-  # Thanks to claude.ai 2026/11/14
-  import numpy as np
-  from PIL import Image
-  from scipy.stats import rankdata
-  B = 4
-  rng = np.random.default_rng(0)
-  def prep(a):
-    H, W = a.shape
-    return a[ : H // B * B, : W // B * B]
-  def rank01(a):
-    a = np.asarray(a, float).ravel()
-    return (rankdata(a, method="average") - 0.5) / a.size
-  def resid(y):
-    return y - y.mean()
-  def bsum(a):
-    return a.reshape(H, W).reshape(hb, B, wb, B).sum((1, 3))
-  def stats(xv, full=False):
-    rX = resid(rank01(xv))
-    nX = np.linalg.norm(rX)
-    c  = bsum(rX * rP)
-    sxx = bsum(rX * rX)
-    u  = c / (nX * nP)
-    ok = (sxx * syy) > 0
-    rb = np.zeros_like(c)
-    rb[ok] = c[ok] / np.sqrt(sxx[ok] * syy[ok])
-    v  = np.array([u.sum(), u[u > 0].sum(), u[u < 0].sum(),
-      (rb[ok] ** 2).mean() if ok.any() else 0.0])
-    return (v, c, sxx, u) if full else v
-  def phase_surrogate(x, rng):
-    F = np.fft.fft2(x - x.mean())
-    ph = np.angle(np.fft.fft2(rng.standard_normal(x.shape)))
-    return np.real(np.fft.ifft2(np.abs(F) * np.exp(1j * ph)))
-  def pvals(obs, null, two_sided=False):
-    m = null.mean()
-    up = (1 + (null >= obs).sum()) / (1 + len(null))
-    if two_sided:
-      return up, (1 + (np.abs(null - m) >= abs(obs - m)).sum()) / (1 + len(null))
-    return up
-  x = prep(np.asarray(Image.open(argv[1]).convert("L"), dtype=float))
-  p = prep(np.asarray(Image.open(argv[3]).convert("L"), dtype=float))
-  H,  W  = x.shape
-  hb, wb = H // B, W // B
-  k   = 0
-  rP  = resid(rank01(p))
-  nP  = np.linalg.norm(rP)
-  syy = bsum(rP * rP)
-  obs, c, sxx, u = stats(x.ravel(), full=True)
-  null = np.array([stats(phase_surrogate(x, rng).ravel()) for _ in range(20000)])
-  m, s = null[:, k].mean(), null[:, k].std()
-  out = {}
-  out["rho"] = dict(obs=float(obs[k]), null_mean=float(m), null_sd=float(s),
-    z=float((obs[k] - m) / s) if s > 0 else float("nan"))
-  out["rho"]["p_one_sided"], out["rho"]["p_two_sided"] = [float(v) for v in
-    pvals(obs[k], null[:, k], two_sided=True)]
-  idx   = rng.integers(0, c.size, (2000, c.size))
-  boots = c.ravel()[idx].sum(1) / np.sqrt(sxx.ravel()[idx].sum(1) * syy.ravel()[idx].sum(1))
-  lo, hi = np.percentile(boots, [2.5, 97.5])
-  out["ci95"] = (float(lo), float(hi))
-  print(out)
 elif(argv[2] == "i2i"):
   idx = 3
   try:
