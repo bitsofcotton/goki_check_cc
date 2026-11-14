@@ -16,8 +16,6 @@
 #endif
 
 #if defined(_MIMALLOC_)
-#define MIMALLOC_OVERRIDE_H
-#define MIMALLOC_NEW_DELETE_H
 #include <mimalloc.h>
 #endif
 
@@ -38,7 +36,7 @@
 
 #include "lieonn.hh"
 typedef myfloat num_t;
-lieonn_t lieonn;
+int revert_acc_regression;
 
 using std::cout;
 using std::cerr;
@@ -424,10 +422,8 @@ int main(int argc, const char* argv[]) {
       matchPartialR<num_t>(pdst, psrc)[0],
       num_t(1) / num_t(2)), My, Mx, poldst, argv[4]);
   } else goto usage;
-  lieonnStaticDestroy();
   return 0;
  usage:
-  lieonnStaticDestroy();
   cout << "Usage:" << endl;
   cout << argv[0] << " (collect|fcollect|sharpen|blur|bump|enlarge|shrink|blink|nop|limit|bit|nbit) <input.ppm> <output.ppm> <recur> <rot>" << endl;
   cout << argv[0] << " (tilt|sbox) <index> <max_index> <psi> <input.ppm> <input-bump.ppm> <output.ppm>" << endl;

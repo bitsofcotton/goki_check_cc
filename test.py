@@ -16,7 +16,7 @@ elif(argv[2] == "repeat"):
   import numpy
   rep = int(argv[3])
   n   = abs(int(argv[4]))
-  l   = int(len(argv[7:]) / n)
+  l   = int(len(argv[8:]) / n)
   # N.B. occam generalization bound claude.ai once supposed.
   p   = int(2. * l / numpy.log(2) )
   if(int(argv[4]) < 0):
@@ -24,11 +24,13 @@ elif(argv[2] == "repeat"):
   else:
     ext = ".ppm"
   f   = []
-  for line in argv[7:]:
-    subprocess.call(["convert", line, "-scale", str(p) + "@", "-compress", "none", line + ext])
+  for line in argv[8:]:
+    # N.B. we need to complement dimension of the input stream as to match
+    #      PRNG internal state length.
+    subprocess.call(["convert", line, "-scale", str(p) + "@", "-resize", str(int(argv[5]) * 100) + "%", "-equalize", "-compress", "none", line + ext])
     f.append(line + ext)
   for s in range(0, n):
-    cmd = argv[5:7]
+    cmd = argv[6:8]
     if(s == 0): cmd.extend(f[- l:])
     else: cmd.extend(f[:- s][::-1][::s + 1][::-1][- l:])
     for t in range(0, rep):
