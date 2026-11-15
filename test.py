@@ -14,28 +14,22 @@ if(len(argv) < 3):
   print("no much argments.")
 elif(argv[2] == "repeat"):
   import numpy
-  rep = int(argv[3])
-  n   = abs(int(argv[4]))
-  l   = int(len(argv[8:]) / n)
+  rep = abs(int(argv[3]))
   # N.B. occam generalization bound claude.ai once supposed.
-  p   = int(2. * l / numpy.log(2) )
-  if(int(argv[4]) < 0):
+  #      also we need to complement dimension of the input stream as to match
+  #      PRNG internal state length.
+  p   = int(2. * len(argv[8:]) / int(argv[7]) / numpy.log(2) * int(argv[4]))
+  if(int(argv[3]) < 0):
     ext = ".pgm"
   else:
     ext = ".ppm"
-  f   = []
+  cmd = argv[5:8]
   for line in argv[8:]:
-    # N.B. we need to complement dimension of the input stream as to match
-    #      PRNG internal state length.
-    subprocess.call(["convert", line, "-scale", str(p) + "@", "-resize", str(int(argv[5]) * 100) + "%", "-equalize", "-compress", "none", line + ext])
-    f.append(line + ext)
-  for s in range(0, n):
-    cmd = argv[6:8]
-    if(s == 0): cmd.extend(f[- l:])
-    else: cmd.extend(f[:- s][::-1][::s + 1][::-1][- l:])
-    for t in range(0, rep):
-      subprocess.call(cmd)
-      subprocess.call(["mv", argv[1], argv[1] + "-" + str(s) + "-" + str(t) + ".ppm"])
+    subprocess.call(["convert", line, "-scale", str(p) + "@", "-equalize", "-compress", "none", line + ext])
+    cmd.append(line + ext)
+  for t in range(0, rep):
+    subprocess.call(cmd)
+    subprocess.call(["mv", argv[1], argv[1] + str(t) + ".ppm"])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
