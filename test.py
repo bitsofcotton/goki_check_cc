@@ -18,6 +18,8 @@ elif(argv[2] == "repeat"):
   # N.B. occam generalization bound claude.ai once supposed.
   #      also we need to complement dimension of the input stream as to match
   #      PRNG internal state length.
+  # N.B. also if we're beating with PRNG whic have smaller internal states than
+  #      predictor, the enlarge ratio is no use for us (set 1 to them).
   p   = int(2. * len(argv[8:]) / int(argv[7]) / numpy.log(2) * int(argv[4]))
   if(int(argv[3]) < 0):
     ext = ".pgm"
@@ -33,7 +35,7 @@ elif(argv[2] == "repeat"):
     subprocess.call(["mv", argv[1], argv[1] + str(t) + ".ppm"])
     cmd2.append(argv[1] + str(t) + ".ppm")
   subprocess.call(cmd2)
-  subprocess.call(["convert", "med.ppm", "-blur", "0x" + str(pow(int(argv[4]), .5) / 2.), "pred.png"])
+  subprocess.call(["convert", "med.ppm", "-blur", "0x" + str(pow(int(argv[4]), .5) / 2.), "-contrast-stretch", "0%", "pred.png"])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
