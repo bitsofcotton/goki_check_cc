@@ -27,9 +27,13 @@ elif(argv[2] == "repeat"):
   for line in argv[8:]:
     subprocess.call(["convert", line, "-scale", str(p) + "@", "-equalize", "-compress", "none", line + ext])
     cmd.append(line + ext)
+  cmd2 = [argv[5], "m"]
   for t in range(0, rep):
     subprocess.call(cmd)
     subprocess.call(["mv", argv[1], argv[1] + str(t) + ".ppm"])
+    cmd2.append(argv[1] + str(t) + ".ppm")
+  subprocess.call(cmd2)
+  subprocess.call(["convert", "med.ppm", "-blur", "0x" + str(pow(int(argv[4]), .5) / 2.), "pred.png"])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
