@@ -16,26 +16,24 @@ elif(argv[2] == "repeat"):
   import numpy
   rep = abs(int(argv[3]))
   # N.B. occam generalization bound claude.ai once supposed.
-  #      also we need to complement dimension of the input stream as to match
-  #      PRNG internal state length.
-  # N.B. also if we're beating with PRNG whic have smaller internal states than
-  #      predictor, the enlarge ratio is no use for us (set 1 to them).
-  p   = int(2. * len(argv[8:]) / int(argv[7]) / numpy.log(2) * int(argv[4]))
-  if(int(argv[3]) < 0):
-    ext = ".pgm"
-  else:
-    ext = ".ppm"
-  cmd = argv[5:8]
-  for line in argv[8:]:
-    subprocess.call(["convert", line, "-scale", str(p) + "@", "-equalize", "-compress", "none", line + ext])
+  #      we bet lack of the internal states can be better treated by repeating
+  #      trials with global reseed. we bet average them vanishes random
+  #      composits, also we have another upper bound on prediction, we predict
+  #      this also after blur 0x2log2.
+  p   = int(len(argv[8:]) / int(argv[6]))
+  if(int(argv[3]) < 0): ext = ".pgm"
+  else: ext = ".ppm"
+  cmd = argv[4:7]
+  for line in argv[7:]:
+    subprocess.call(["convert", line, "-scale", str(p) + "@", "-resize", "400%", "-equalize", "-compress", "none", line + ext])
     cmd.append(line + ext)
-  cmd2 = [argv[5], "m"]
+  cmd2 = [argv[4], "m"]
   for t in range(0, rep):
     subprocess.call(cmd)
     subprocess.call(["mv", argv[1], argv[1] + str(t) + ".ppm"])
     cmd2.append(argv[1] + str(t) + ".ppm")
   subprocess.call(cmd2)
-  subprocess.call(["convert", "med.ppm", "-blur", "0x" + str(pow(int(argv[4]), .5) / 2.), "-contrast-stretch", "0%", "pred.png"])
+  subprocess.call(["convert", "med.ppm", "-blur", "0x" + str(numpy.log(2) * 2), "-contrast-stretch", "0%", "pred.png"])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
