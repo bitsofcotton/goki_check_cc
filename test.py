@@ -20,7 +20,7 @@ elif(argv[2] == "repeat"):
   #      trials with global reseed. we bet average them vanishes random
   #      composits, also we have another upper bound on prediction, we predict
   #      this also after blur 0x2log2.
-  p   = int(len(argv[8:]) / int(argv[6]))
+  p   = int(len(argv[7:]) / int(argv[6]))
   if(int(argv[3]) < 0): ext = ".pgm"
   else: ext = ".ppm"
   cmd = argv[4:7]
@@ -33,7 +33,8 @@ elif(argv[2] == "repeat"):
     subprocess.call(["mv", argv[1], argv[1] + str(t) + ".ppm"])
     cmd2.append(argv[1] + str(t) + ".ppm")
   subprocess.call(cmd2)
-  subprocess.call(["convert", "med.ppm", "-blur", "0x" + str(numpy.log(2) * 2), "-contrast-stretch", "0%", "pred.png"])
+  # also gather 3x3=9 pixels for majority divide by number of parallel preds.
+  subprocess.call(["convert", "med.ppm", "-blur", "0x" + str(numpy.log(2) * 2 * max(1, 3 / int(argv[6])) ), "-contrast-stretch", "0%", "pred.png"])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
