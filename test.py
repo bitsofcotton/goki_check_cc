@@ -15,11 +15,12 @@ if(len(argv) < 3):
 elif(argv[2] == "repeat"):
   import numpy
   rep = abs(int(argv[3]))
-  # N.B. occam generalization bound claude.ai once supposed.
-  #      we bet lack of the internal states can be better treated by repeating
-  #      trials with global reseed. we bet average them vanishes random
-  #      composits, also we have another upper bound on prediction, we predict
-  #      this also after blur 0x2log2.
+  # N.B. only information entropy reason on the surface of i/o we cannot avoid
+  #      this limit because the enlarge then shrink causes only a input image
+  #      copy structure condiiton.
+  #      also we have lg(p) internal state size limit, however we cannot make
+  #      another choice on ours also they're mixed in (could have avoiding
+  #      LoEM limit).
   p   = int(len(argv[7:]) / int(argv[6]))
   if(int(argv[3]) < 0): ext = ".pgm"
   else: ext = ".ppm"
@@ -33,8 +34,6 @@ elif(argv[2] == "repeat"):
     subprocess.call(["mv", argv[1], argv[1] + str(t) + ".ppm"])
     cmd2.append(argv[1] + str(t) + ".ppm")
   subprocess.call(cmd2)
-  # also gather 3x3=9 pixels for majority divide by number of parallel preds.
-  subprocess.call(["convert", "med.ppm", "-blur", "0x" + str(numpy.log(2) * 2 * max(1, 3 / int(argv[6])) ), "-contrast-stretch", "0%", "pred.png"])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
