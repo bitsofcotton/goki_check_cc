@@ -12,15 +12,22 @@ rot    = 0
 
 if(len(argv) < 3):
   print("no much argments.")
+elif(argv[2] == "repeatp"):
+  m = int(len(argv[6:]) / 21)
+  for t in range(0, m):
+    cmd = ["python3", argv[0], "predg.ppm", "repeat", str(int(argv[3])), argv[1], "p", str(m - t)]
+    cmd.extend(argv[6:])
+    subprocess.call(cmd)
+    subprocess.call(["mv", "med.ppm", "p" + str(t) + ".ppm"])
 elif(argv[2] == "repeat"):
   import numpy
   rep = abs(int(argv[3]))
   # N.B. only information entropy reason on the surface of i/o we cannot avoid
   #      this limit because the enlarge then shrink causes only a input image
-  #      copy structure condiiton.
+  #      copy structure condition.
   #      also we have lg(p) internal state size limit, however we cannot make
   #      another choice on ours also they're mixed in (could have avoiding
-  #      LoEM limit).
+  #      LoEM limit). we take maximum size on them.
   p   = int(len(argv[7:]) / int(argv[6]))
   if(int(argv[3]) < 0): ext = ".pgm"
   else: ext = ".ppm"
