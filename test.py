@@ -33,8 +33,8 @@ elif(argv[2] == "repeat"):
   for t in range(0, rep):
     subprocess.call(cmd)
     for s in range(0, l):
-      subprocess.call(["mv", "predg" + str(s) + ".ppm", argv[1] + str(t) + + "-" + str(s) +  ".ppm"])
-      cmds[s].append("predg" + str(s) + ".ppm", argv[1] + str(t) + + "-" + str(s) +  ".ppm")
+      subprocess.call(["mv", "predg" + str(s) + ".ppm", argv[1] + str(t) + "-" + str(s) +  ".ppm"])
+      cmds[s].append(argv[1] + str(t) + "-" + str(s) +  ".ppm")
   for t in range(0, l):
     cmds[t].extend(["-average", "-negate", "p" + str(t) + ".png"])
     subprocess.call(cmds[t])
