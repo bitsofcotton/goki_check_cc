@@ -35,7 +35,7 @@ elif(argv[2] == "repeat"):
       subprocess.call(["mv", "predg" + str(s) + ".ppm", "predg" + str(s) + "-" + str(t) + ".ppm"])
       cmds[s].append("predg" + str(s) + "-" + str(t) + ".ppm")
   for s in range(0, 3):
-    cmds[s].extend(["-average", "-negate", "-contrast-stretch", "0%", "p" + str(t) + ".png"])
+    cmds[s].extend(["-average", "-negate", "-contrast-stretch", "0%", "p" + str(s) + ".png"])
     subprocess.call(cmds[s])
 elif(argv[2] == "move"):
   t = 0
