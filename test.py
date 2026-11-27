@@ -26,16 +26,17 @@ elif(argv[2] == "repeat"):
   cmd = argv[3:5]
   cmds = []
   for s in range(0, 3): cmds.append(["convert"])
+  for line in argv[5:]:
+    subprocess.call(["convert", line, "-scale", str(p) + "@", "-equalize", "-compress", "none", line + ext])
+    cmd.append(line + ext)
   for t in range(0, 11):
-    for line in argv[5:]:
-      subprocess.call(["convert", line, "-scale", str(p) + "@", "-equalize", "-compress", "none", line + ext])
-      cmd.append(line + ext)
     subprocess.call(cmd)
     for s in range(0, 3):
       subprocess.call(["mv", "predg" + str(s) + ".ppm", "predg" + str(s) + "-" + str(t) + ".ppm"])
       cmds[s].append("predg" + str(s) + "-" + str(t) + ".ppm")
-  for t in range(0, 3):
+  for s in range(0, 3):
     cmds[s].extend(["-average", "-negate", "-contrast-stretch", "0%", "p" + str(t) + ".png"])
+    subprocess.call(cmds[s])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
