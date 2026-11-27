@@ -13,31 +13,29 @@ rot    = 0
 if(len(argv) < 3):
   print("no much argments.")
 elif(argv[2] == "repeat"):
-  rep = abs(int(argv[3]))
   # N.B. only information entropy reason on the surface of i/o we cannot avoid
   #      this limit because the enlarge then shrink causes only a input image
   #      copy structure condition.
   #      also we have lg(p) internal state size limit, however we cannot make
   #      another choice on ours also they're mixed in (could have avoiding
   #      LoEM limit). we take maximum size on them.
-  l   = min(3, int(len(argv[7:]) / 21))
-  p   = int(len(argv[7:]) / l * int(argv[1]))
-  if(int(argv[3]) < 0): ext = ".pgm"
+  l   = min(3, int(len(argv[5:]) / 40))
+  p   = int(len(argv[6:]) / l * abs(int(argv[1])))
+  if(int(argv[1]) < 0): ext = ".pgm"
   else: ext = ".ppm"
-  cmd = argv[4:6]
-  for line in argv[6:]:
-    subprocess.call(["convert", line, "-scale", str(p) + "@", "-equalize", "-compress", "none", line + ext])
-    cmd.append(line + ext)
+  cmd = argv[3:5]
   cmds = []
-  for t in range(0, l): cmds.append(["convert"])
-  for t in range(0, rep):
+  for s in range(0, 3): cmds.append(["convert"])
+  for t in range(0, 11):
+    for line in argv[5:]:
+      subprocess.call(["convert", line, "-scale", str(p) + "@", "-equalize", "-compress", "none", line + ext])
+      cmd.append(line + ext)
     subprocess.call(cmd)
-    for s in range(0, l):
-      subprocess.call(["mv", "predg" + str(s) + ".ppm", argv[1] + str(t) + "-" + str(s) +  ".ppm"])
-      cmds[s].append(argv[1] + str(t) + "-" + str(s) +  ".ppm")
-  for t in range(0, l):
-    cmds[t].extend(["-average", "-negate", "p" + str(t) + ".png"])
-    subprocess.call(cmds[t])
+    for s in range(0, 3):
+      subprocess.call(["mv", "predg" + str(s) + ".ppm", "predg" + str(s) + "-" + str(t) + ".ppm"])
+      cmds[s].append("predg" + str(s) + "-" + str(t) + ".ppm")
+  for t in range(0, 3):
+    cmds[s].extend(["-average", "-negate", "-contrast-stretch", "0%", "p" + str(t) + ".png"])
 elif(argv[2] == "move"):
   t = 0
   for f in argv[3:]:
